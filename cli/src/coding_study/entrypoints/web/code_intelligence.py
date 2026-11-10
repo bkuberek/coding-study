@@ -8,10 +8,11 @@ session's broker's to say (`language_broker.py`). At most four servers run at on
 keeps data, JDT LS, gets a data directory of its root under `.cs/lsp/` that no running server
 holds, since two cannot share one. A service project's server runs in a sidecar container of its
 own, through `docker exec`, and the sidecar goes once the server has stopped
-(docs/specs/service-projects.md#language-servers). A session ends when the socket closes, the server exits or the server stops; the stop sequence of the server runs
-as a task of its own, so a socket that goes away mid-request never leaves a process behind. What
-waits for a side that stopped reading is bounded: a server that reads none of its input, or a page
-that reads none of the server's messages, ends the session.
+(docs/specs/service-projects.md#language-servers). A session ends when the socket closes, the
+server exits or the server stops; the stop sequence of the server runs as a task of its own, so a
+socket that goes away mid-request never leaves a process behind. What waits for a side that stopped
+reading is bounded: a server that reads none of its input, or a page that reads none of the
+server's messages, ends the session.
 """
 
 import asyncio

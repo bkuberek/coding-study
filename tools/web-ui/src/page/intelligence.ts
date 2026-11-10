@@ -254,9 +254,10 @@ export class IntelligenceLink {
     tracked.found = null;
   }
 
+  /** The servers as this attempt's sessions judge them: a service project's run in its sidecar. */
   #read(): Promise<void> {
     this.#reading ??= this.#context.api
-      .get<LanguageStates>(LANGUAGES)
+      .get<LanguageStates>(`${LANGUAGES}?attempt_id=${this.#attemptId}`)
       .then((read) => {
         this.#states = read.languages;
       })

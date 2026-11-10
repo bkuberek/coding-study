@@ -36,6 +36,7 @@ from coding_study.domain.code_intelligence import (
     EXPIRY_WARNING_DAYS,
     LSP_DIRECTORY,
     NOT_AVAILABLE_YET,
+    SIDECAR_SERVERS,
     LanguageServer,
     License,
     no_code_intelligence,
@@ -118,6 +119,30 @@ def language_server_states(
     that runs on a JDK is judged against the selected one, and one that Go builds against the
     version the selected Go pins."""
     return tuple(_state(language, locator, jdk) for language in Language)
+
+
+def session_server_states(
+    environment: Environment, attempt_id: int | None
+) -> tuple[LanguageServerState, ...]:
+    """The states as a session of the attempt judges its servers, which the page reads before it
+    connects: a service project's TypeScript runs the project's own compiler in its sidecar, so it
+    needs nothing of the workspace's `typescript/`. Without an attempt, or for one that is no
+    service project's, these are `language_server_states`."""
+    locator, jdk = environment.language_servers, environment.jdk
+    folder = _service_folder(environment, attempt_id)
+    if folder is None:
+        return language_server_states(locator, jdk)
+    return tuple(_state(language, locator, jdk, folder) for language in Language)
+
+
+def _service_folder(environment: Environment, attempt_id: int | None) -> str | None:
+    """The absolute project folder of a service project's attempt; None for any other."""
+    attempt = None if attempt_id is None else environment.progress.attempt(attempt_id)
+    if attempt is None or attempt.language is None:
+        return None
+    if service_of(environment.problems.load(attempt.slug).meta) is None:
+        return None
+    return str(environment.root / project_folder(attempt.slug))
 
 
 @dataclass(frozen=True, slots=True)
@@ -306,13 +331,20 @@ def _shared(folder: Path) -> SharedFolder:
 
 
 def _state(
-    language: Language, locator: LanguageServerLocator, jdk: JdkSelector
+    language: Language,
+    locator: LanguageServerLocator,
+    jdk: JdkSelector,
+    service_folder: str | None = None,
 ) -> LanguageServerState:
+    """The server's state on this machine, or in the sidecar of the service project whose folder
+    is `service_folder`."""
     server = server_for(language)
     if server is None:
         return LanguageServerState(
             language, None, None, ServerStatus.NOT_AVAILABLE, NOT_AVAILABLE_YET, None, None, None
         )
+    if service_folder is not None and server in SIDECAR_SERVERS:
+        server = sidecar_server(server, service_folder)
     return _located(server, locator, jdk)
 
 

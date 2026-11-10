@@ -44,6 +44,7 @@ FILE_BUTTON = f"button.tree-file[data-path='{SOURCE_FILE}']"
 ACTIVE_TAB = "[role=tab][aria-selected=true]"
 EDITOR = ".panel:not([hidden]) .cm-content"
 SEGMENT = ".statusbar .code-intelligence"
+LANGUAGES = "/api/v1/code-intelligence/languages"
 HEAD = "typescript · typescript-language-server · "
 READY = f"{HEAD}ready · 1 error"
 WAITING = f"{HEAD}Docker is not running · Restart"
@@ -112,11 +113,13 @@ def make_lab(base: Path, practice_workspace: Path, *, running: bool) -> Lab:
 
 
 def _install_fake_typescript_server(workspace: Path) -> None:
-    """The file `cstudy` looks for in `.cs/lsp/`; the workspace's `typescript/node_modules`
-    holds the `tsserver` that the list of languages also needs."""
+    """The file `cstudy` looks for in `.cs/lsp/`. The workspace's `typescript/` has no
+    `node_modules`, as for a learner of service projects only: a sidecar's server runs the
+    project's own compiler, so the page's list for the attempt counts the server as installed."""
     script = workspace / LSP_DIRECTORY / str(TYPESCRIPT_LANGUAGE_SERVER.script)
     script.parent.mkdir(parents=True)
     script.write_text("")
+    (workspace / "typescript" / "node_modules").unlink()
 
 
 def _open_the_file(page: Any, server: RunningServer) -> None:
@@ -194,6 +197,13 @@ def test_the_server_is_the_one_in_the_workspaces_lsp_directory(seen, running_lab
 def test_the_sidecar_goes_once_the_page_has_gone(seen, running_lab):
     downs = [call for call in running_lab.docker_calls() if call.endswith(" down")]
     assert [" -p cstudy-l-" in call for call in downs] == [True]
+
+
+def test_the_workspace_alone_has_no_typescript_server_to_run_on_this_machine(running_lab):
+    with running_server(running_lab.workspace, variables=running_lab.variables) as server:
+        states = opened_page(server).client.get(LANGUAGES).json()["languages"]
+    typescript = next(state for state in states if state["language"] == "typescript")
+    assert typescript["state"] == "not_installed"
 
 
 def test_no_console_error_or_csp_violation(seen):

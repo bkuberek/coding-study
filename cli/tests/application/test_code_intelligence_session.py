@@ -6,12 +6,25 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.application.code_intelligence import SessionTarget, session_target
+from coding_study.application.code_intelligence import (
+    LanguageServerState,
+    ServerStatus,
+    SessionTarget,
+    session_server_states,
+    session_target,
+)
 from coding_study.application.environment import Environment
-from coding_study.application.ports import StubGenerator, VersionFailed, VersionPrinted
+from coding_study.application.ports import (
+    FileMissing,
+    ServerProbe,
+    StubGenerator,
+    VersionFailed,
+    VersionPrinted,
+)
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import Attempt, AttemptStatus
+from coding_study.domain.code_intelligence import LanguageServer
 from coding_study.domain.errors import (
     AttemptEndedError,
     LanguageServerNotInstalledError,
@@ -334,6 +347,66 @@ def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(t
 
     with pytest.raises(UsageError, match="no code intelligence for go service projects yet"):
         target(environment, attempt)
+
+
+class WithoutPracticeProjects(FakeLanguageServers):
+    """Every server is installed in `.cs/lsp/`, and the workspace's `typescript/` has no
+    `node_modules`, as for a learner who works on service projects only."""
+
+    def probe(self, server: LanguageServer) -> ServerProbe:
+        requirement = server.requirement
+        return FileMissing(requirement.path) if requirement else super().probe(server)
+
+
+def without_practice_projects(tmp_path: Path, language: str = "typescript") -> Environment:
+    root = make_content(tmp_path)
+    write_problem(root, {**meta_document(), "languages": [language]})
+    servers = WithoutPracticeProjects(INSTALLED_SERVERS)
+    return make_environment(root, sandbox=FakeSandbox(), language_servers=servers)
+
+
+def typescript_state(environment: Environment, attempt_id: int | None) -> LanguageServerState:
+    states = session_server_states(environment, attempt_id)
+    return next(state for state in states if state.language is Language.TYPESCRIPT)
+
+
+def test_a_service_projects_typescript_needs_no_practice_project_of_the_workspace(tmp_path):
+    environment = without_practice_projects(tmp_path)
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+
+    assert typescript_state(environment, attempt.id).status is ServerStatus.INSTALLED
+
+
+def test_without_an_attempt_typescript_still_needs_the_workspaces_practice_project(tmp_path):
+    environment = without_practice_projects(tmp_path)
+
+    assert typescript_state(environment, None).status is ServerStatus.NOT_INSTALLED
+
+
+def test_a_practice_attempts_typescript_needs_the_workspaces_practice_project(practice, tmp_path):
+    environment = replace(practice, language_servers=WithoutPracticeProjects(INSTALLED_SERVERS))
+    attempt = started(environment, Language.TYPESCRIPT)
+
+    assert typescript_state(environment, attempt.id).status is ServerStatus.NOT_INSTALLED
+
+
+def test_an_unknown_attempt_gets_the_workspaces_states(tmp_path):
+    environment = without_practice_projects(tmp_path)
+
+    assert typescript_state(environment, 99).status is ServerStatus.NOT_INSTALLED
+
+
+def test_an_items_attempt_gets_the_workspaces_states(practice):
+    attempt = start_item_attempt(practice, ItemStartRequest("url-shortener")).attempt
+
+    assert len(session_server_states(practice, attempt.id)) == len(Language)
+
+
+def test_a_service_project_session_needs_no_practice_project_either(tmp_path):
+    environment = without_practice_projects(tmp_path)
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+
+    assert target(environment, attempt).server.name == "typescript-language-server"
 
 
 def test_an_item_has_no_code(practice):
