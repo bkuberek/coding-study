@@ -167,9 +167,9 @@ def test_status_json_says_the_project_has_no_code_intelligence(environment):
     )
 
 
-def test_status_json_says_the_web_ui_runs_none_of_its_tests(environment):
+def test_status_json_names_the_mock_servers_of_a_service_project(environment):
     start_it()
-    assert json.loads(invoke("status", "--json").output)["no_web_runs"] == "service_project"
+    assert json.loads(invoke("status", "--json").output)["service"] == {"mocks": []}
 
 
 def test_show_lists_the_needs_above_the_statement(environment):

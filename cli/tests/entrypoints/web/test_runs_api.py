@@ -21,6 +21,7 @@ from coding_study.entrypoints.web.runs import Children
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.sandbox_fakes import FakeSandbox
 from tests.scripted_runs import (
     CASE_RESULT,
     CASE_START,
@@ -38,6 +39,8 @@ from tests.scripted_runs import (
     lines_of,
     outs,
 )
+from tests.service_problems import SLUG as SERVICE_SLUG
+from tests.service_problems import make_content, write_problem
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -259,6 +262,40 @@ def bank(project) -> int:
 def test_a_project_run_names_no_language(project_server, bank):
     project_server.started(bank, command="submit", level=1)
     assert project_server.script.arguments() == ["submit", PROJECT_SLUG, "--events", "--level=1"]
+
+
+@pytest.fixture
+def service(tmp_path) -> Environment:
+    root = make_content(tmp_path / "service")
+    write_problem(root)
+    return make_environment(root, sandbox=FakeSandbox())
+
+
+@pytest.fixture
+def service_server(tmp_path, service, script) -> Iterator[Server]:
+    with serve(tmp_path, service, script) as running:
+        yield running
+
+
+@pytest.fixture
+def rooms(service) -> int:
+    return start_attempt(service, StartRequest(SERVICE_SLUG)).attempt.id
+
+
+def test_a_service_project_test_runs_with_no_flag(service_server, rooms):
+    service_server.started(rooms)
+    assert service_server.script.arguments() == ["test", SERVICE_SLUG, "--events"]
+
+
+def test_a_service_project_takes_no_type_check_from_the_preference(service_server, rooms):
+    """Its TypeScript runs in the stack, and `cstudy test` there takes no flag."""
+    run_id = service_server.started(rooms)
+    assert service_server.document(run_id)["options"]["typecheck"] is None
+
+
+def test_a_service_project_submits_with_its_level(service_server, rooms):
+    service_server.started(rooms, command="submit", level=1)
+    assert service_server.script.arguments() == ["submit", SERVICE_SLUG, "--events", "--level=1"]
 
 
 def test_a_locked_level_is_refused_with_the_clis_message(project_server, bank):

@@ -56,7 +56,7 @@ async def start_run(request: Request) -> Response:
     options = run_options(await json_body(request))
     subject, workspace = await in_workspace(request, _checked_run, options.check)
     server = server_state(request)
-    if options.typecheck is None:
+    if options.typecheck is None and not subject.service:
         preferences = await server.worker.run(read_preferences, server.settings.preferences)
         options = replace(options, typecheck=preferences.typecheck)
     start = ChildStart(

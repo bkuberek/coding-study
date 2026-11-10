@@ -1,6 +1,6 @@
 """`cstudy status` of a service project (docs/specs/cli.md#cstudy-status): its next step names the
-commands a service project takes, it has no code intelligence whatever its language, and the Web UI
-runs none of its tests."""
+commands a service project takes, it has no code intelligence whatever its language, and it names
+its mock servers with the scenarios a dev stack may switch them to."""
 
 from datetime import timedelta
 
@@ -12,11 +12,18 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.code_intelligence import NoCodeIntelligence
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.service_project import NoWebRuns
+from coding_study.domain.service_project import MockScenarios
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from tests.fakes import NOW, make_environment
 from tests.sandbox_fakes import FakeSandbox
-from tests.service_problems import SLUG, make_content, write_problem
+from tests.service_problems import (
+    CONFIG,
+    SLUG,
+    make_content,
+    meta_document,
+    write_mock,
+    write_problem,
+)
 
 
 @pytest.fixture
@@ -34,8 +41,20 @@ def test_a_service_project_has_no_code_intelligence_whatever_its_language(servic
     )
 
 
-def test_the_web_ui_runs_none_of_a_service_projects_tests(service):
-    assert attempt_status(service, None, None).no_web_runs is NoWebRuns.SERVICE_PROJECT
+def test_a_service_project_without_mock_servers_names_none(service):
+    assert attempt_status(service, None, None).service == ()
+
+
+def test_each_mock_server_is_named_with_its_visible_scenarios_only(tmp_path):
+    root = make_content(tmp_path)
+    write_problem(root, meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}]))
+    write_mock(root)
+    environment = make_environment(root, sandbox=FakeSandbox())
+    start_attempt(environment, StartRequest(SLUG, Language.TYPESCRIPT))
+
+    assert attempt_status(environment, None, None).service == (
+        MockScenarios("room-vendor", ("outage",)),
+    )
 
 
 def test_before_any_submission_a_service_project_names_dev_then_its_tests(service):

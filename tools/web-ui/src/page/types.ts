@@ -208,6 +208,12 @@ export interface History {
   readonly attempts: readonly PastAttempt[];
 }
 
+/** A mock server of a service project, and its visible scenarios. */
+export interface MockScenarios {
+  readonly name: string;
+  readonly scenarios: readonly string[];
+}
+
 /** `cstudy status --json`. */
 export interface AttemptStatus {
   readonly slug: string;
@@ -229,8 +235,8 @@ export interface AttemptStatus {
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;
   /** Why the attempt has no code intelligence whatever its language's server: `service_project`. */
   readonly no_code_intelligence: string | null;
-  /** Why the page starts no run of the attempt, which runs from a terminal: `service_project`. */
-  readonly no_web_runs: string | null;
+  /** A service project's mock servers, each with the scenarios a dev stack may switch it to; null for any other problem. */
+  readonly service: { readonly mocks: readonly MockScenarios[] } | null;
   readonly next: string;
 }
 

@@ -35,7 +35,7 @@ export class RunOptionsForm {
     const applicable = applicableOptions(context);
     const fields: HTMLElement[] = [];
     if (applicable.has("level") && context.levels) fields.push(this.#level(context.levels.unlocked));
-    fields.push(this.#cases());
+    if (applicable.has("cases")) fields.push(this.#cases());
     if (applicable.has("typecheck")) fields.push(this.#typecheck(context.typecheck ?? true));
     if (applicable.has("stress")) fields.push(this.#number("stress", "stress", 1, 100, context.kind === "concurrent" ? "runs per stress case" : "oracle inputs"));
     if (applicable.has("seed")) fields.push(this.#number("seed", "seed", null, null, "base seed"));
@@ -51,8 +51,9 @@ export class RunOptionsForm {
     this.#changed(this.#options);
   }
 
+  /** The `cstudy test` command the options make; a service project's `cstudy submit`, since its test takes none. */
   #showCommand(): void {
-    if (this.#context) this.#preview.replaceChildren(command(runCommand("test", this.#options, this.#context)));
+    if (this.#context) this.#preview.replaceChildren(command(runCommand(this.#context.service ? "submit" : "test", this.#options, this.#context)));
   }
 
   #level(unlocked: number): HTMLElement {

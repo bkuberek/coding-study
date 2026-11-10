@@ -9,9 +9,21 @@ import "./results-draw.css";
 
 import { badge, h } from "./dom.ts";
 import { caseFacts, caseLines, durationText, levelLine, stressFacts, testName } from "./results-format.ts";
-import { type CaseRow, headerText, type RowStatus, type RunModel, resultsView, STATUS_WORDS, type StressGroup, type TestRow, type ViewItem } from "./results-model.ts";
+import {
+  type CaseRow,
+  headerText,
+  type RowStatus,
+  type RunModel,
+  resultsView,
+  type StackStanding,
+  stackText,
+  STATUS_WORDS,
+  type StressGroup,
+  type TestRow,
+  type ViewItem,
+} from "./results-model.ts";
 import type { ResultsActions, ResultsParts } from "./results.ts";
-import type { Diagnostic } from "./run-events.ts";
+import type { Diagnostic, StackState } from "./run-events.ts";
 
 const FOLLOW_SLACK_PX = 8;
 const GLYPHS: Readonly<Record<RowStatus, string>> = {
@@ -48,6 +60,7 @@ export function drawRun(parts: ResultsParts, model: RunModel, showAll: boolean, 
   // Like a terminal, the panel follows the newest line while it is scrolled to the end.
   const following = body.scrollTop + body.clientHeight >= body.scrollHeight - FOLLOW_SLACK_PX;
   body.replaceChildren(
+    ...(model.stack ? [stackLine(model.stack)] : []),
     ...(model.build ? [buildLine(model.build)] : []),
     h("ol", { class: "result-rows" }, ...view.items.map((item) => itemRow(item, model, actions))),
     ...view.running.map((id) => h("p", { class: "result-running" }, badge(GLYPHS.running, STATUS_WORDS.running, "info"), " ", h("span", { class: "result-id" }, id))),
@@ -185,6 +198,22 @@ function resultRow(status: RowStatus, id: string, facts: string, lines: readonly
     lines.length ? h("dl", { class: "result-details" }, ...lines.flatMap(([label, text]) => [h("dt", {}, label), h("dd", {}, text)])) : null,
   );
 }
+
+/** A service project's stack: `stack  ● ready after 2.4 s, not counted`. */
+function stackLine(stack: StackStanding): HTMLElement {
+  const [glyph, tone] = STACK_BADGES[stack.state];
+  return h("p", { class: `result-stack stack-${stack.state}` }, h("span", { class: "result-label" }, "stack"), badge(glyph, stackText(stack), tone));
+}
+
+const STACK_BADGES: Readonly<Record<StackState, readonly [string, string]>> = {
+  docker: ["▸", "info"],
+  pulling: ["▸", "info"],
+  installing: ["▸", "info"],
+  starting: ["▸", "info"],
+  ready: ["●", "ok"],
+  failed: ["✕", "fail"],
+  stopped: ["■", "quiet"],
+};
 
 function buildLine(build: { readonly seconds: number; readonly note: string | null }): HTMLElement {
   return h("p", { class: "result-build" }, h("span", { class: "result-label" }, "build"), `${build.seconds.toFixed(1)}s`, build.note ? ` (${build.note})` : " · failed");
