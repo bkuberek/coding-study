@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0296"
+slug: memory-facts-with-merge
+title: Memory Facts with Merge
+summary: "Build FactMemory, the store behind an assistant's memory of facts about its users, which grows over four levels from storing facts to merging and moving whole stores."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+domains: [ai-llm, backend]
+job_roles: [backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Facts per user}
+  - {level: 2, title: Versions and as-of reads}
+  - {level: 3, title: Merging two stores}
+  - {level: 4, title: Export and import}
+signature:
+  class:
+    name: FactMemory
+    constructor: {params: []}
+    methods:
+      - {name: remember, level: 1, params: [{name: timestamp, type: long}, {name: user, type: string}, {name: subject, type: string}, {name: attribute, type: string}, {name: value, type: string}], returns: {type: string}}
+      - {name: recall, level: 1, params: [{name: timestamp, type: long}, {name: user, type: string}, {name: subject, type: string}, {name: attribute, type: string}], returns: {type: string}}
+      - {name: listFacts, level: 1, params: [{name: timestamp, type: long}, {name: user, type: string}], returns: {type: "list<string>"}}
+      - {name: recallAt, level: 2, params: [{name: timestamp, type: long}, {name: user, type: string}, {name: subject, type: string}, {name: attribute, type: string}, {name: at, type: long}], returns: {type: string}}
+      - {name: history, level: 2, params: [{name: timestamp, type: long}, {name: user, type: string}, {name: subject, type: string}, {name: attribute, type: string}], returns: {type: "list<string>"}}
+      - {name: setPriority, level: 3, params: [{name: timestamp, type: long}, {name: user, type: string}, {name: priority, type: int}], returns: {type: void}}
+      - {name: merge, level: 3, params: [{name: timestamp, type: long}, {name: fromUser, type: string}, {name: intoUser, type: string}], returns: {type: int}}
+      - {name: exportFacts, level: 4, params: [{name: timestamp, type: long}, {name: user, type: string}], returns: {type: "list<string>"}}
+      - {name: importFacts, level: 4, params: [{name: timestamp, type: long}, {name: user, type: string}, {name: lines, type: "list<string>"}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: versioned-facts, name: Per-fact version history with ids from one counter for the whole store, role: optimal, time: "O(1) per remember or recall, O(log v) per recallAt, O(v) per history, O(f log f) per listFacts or merge, O(h log h) per exportFacts, O(l) per importFacts", space: "O(w)", time_class: "n log n", space_class: "n"}
+related: [in-memory-database, effective-dated-history]
+estimate_minutes: 90
