@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0300"
+slug: chunking-with-overlap
+title: Chunking With Overlap
+summary: "Write chunkText: cut a text into chunks of at most maxTokens words, each sharing a few words with the one before and ending at a sentence where allowed, and return where each chunk starts and ends."
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [sliding-window]
+domains: [ai-llm]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: chunkText
+    params:
+      - {name: text, type: string}
+      - {name: maxTokens, type: int}
+      - {name: overlap, type: int}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: sentence-end-table, name: Find the tokens once and look up the last sentence end of each window in a table, role: optimal, time: "O(L + c)", space: "O(t + c)", time_class: "n", space_class: "n"}
+related: [cosine-top-k, rag-citations-typescript]
+estimate_minutes: 35

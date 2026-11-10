@@ -1,0 +1,28 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"text": "The cache was cold. Every request missed it. Then the warmer ran.", "maxTokens": 6, "overlap": 1}, "expected": [[0, 19], [14, 44], [41, 65]]},
+    {"id": "ex2", "visible": true, "input": {"text": "Retries back off exponentially with jitter until the budget runs out.", "maxTokens": 4, "overlap": 1}, "expected": [[0, 30], [17, 48], [43, 64], [60, 69]]},
+    {"id": "ex3", "visible": true, "input": {"text": "Any text at all.", "maxTokens": 2, "overlap": 2}, "expected": []},
+    {"id": "h1", "input": {"text": "a b c d e f g h", "maxTokens": 4, "overlap": 1}, "expected": [[0, 7], [6, 13], [12, 15]], "note": "consecutive chunks share exactly one token: the next starts at end - overlap + 1"},
+    {"id": "h2", "input": {"text": "a b c d e f", "maxTokens": 4, "overlap": 2}, "expected": [[0, 7], [4, 11]], "note": "the second chunk reaches the last token, so there is no third chunk of shared tokens"},
+    {"id": "h3", "input": {"text": "one two three four", "maxTokens": 3, "overlap": 3}, "expected": [], "note": "overlap equal to maxTokens is refused"},
+    {"id": "h4", "input": {"text": "one two three four", "maxTokens": 2, "overlap": 5}, "expected": [], "note": "overlap above maxTokens is refused"},
+    {"id": "h5", "input": {"text": "", "maxTokens": 5, "overlap": 1}, "expected": [], "note": "empty text has no chunks"},
+    {"id": "h6", "input": {"text": " \t\n\r  ", "maxTokens": 5, "overlap": 1}, "expected": [], "note": "whitespace only has no tokens"},
+    {"id": "h7", "input": {"text": "  Hello there.  ", "maxTokens": 8, "overlap": 3}, "expected": [[2, 14]], "note": "fewer tokens than maxTokens make one chunk, without the surrounding whitespace"},
+    {"id": "h8", "input": {"text": "A b. C d. E f g h i", "maxTokens": 6, "overlap": 1}, "expected": [[0, 9], [7, 19]], "note": "the chunk ends at the last sentence end in the window, not the first"},
+    {"id": "h9", "input": {"text": "One two. three four five six seven", "maxTokens": 4, "overlap": 2}, "expected": [[0, 19], [9, 28], [20, 34]], "note": "a sentence end inside the first overlap tokens would not move forward, so the chunk is cut at maxTokens"},
+    {"id": "h10", "input": {"text": "a b c. d e f g", "maxTokens": 4, "overlap": 2}, "expected": [[0, 6], [2, 10], [7, 14]], "note": "a sentence end at token s + overlap leaves overlap + 1 tokens, which is enough"},
+    {"id": "h11", "input": {"text": "x y z. w v.", "maxTokens": 3, "overlap": 0}, "expected": [[0, 6], [7, 11]], "note": "a sentence end on the window's last token fills the chunk"},
+    {"id": "h12", "input": {"text": "First line.\n\n\tSecond  line has\r\nmore words here.", "maxTokens": 4, "overlap": 1}, "expected": [[0, 11], [6, 30], [27, 48]], "note": "offsets index the text as written, whitespace runs included"},
+    {"id": "h13", "input": {"text": "Use e.g. this. Values like 3.5 stay (as noted.) here! Why? Done", "maxTokens": 5, "overlap": 1}, "expected": [[0, 14], [9, 35], [31, 58], [54, 63]], "note": "only the last character counts: e.g. ends a sentence, 3.5 and noted.) do not"},
+    {"id": "h14", "input": {"text": "a. b. c. d", "maxTokens": 4, "overlap": 1}, "expected": [[0, 10]], "note": "when the rest fits, the last chunk takes it all, sentence ends or not"},
+    {"id": "h15", "input": {"text": "one two  three", "maxTokens": 1, "overlap": 0}, "expected": [[0, 3], [4, 7], [9, 14]], "note": "one token per chunk"},
+    {"id": "h16", "input": {"text": "Alpha beta. Gamma delta epsilon. Zeta.", "maxTokens": 3, "overlap": 0}, "expected": [[0, 11], [12, 32], [33, 38]], "note": "no overlap: each chunk starts right after the previous one"},
+    {"id": "h17", "input": {"text": "t0 t1 t2 t3 t4 t5 t6 t7 t8 t9", "maxTokens": 3, "overlap": 2}, "expected": [[0, 8], [3, 11], [6, 14], [9, 17], [12, 20], [15, 23], [18, 26], [21, 29]], "note": "the largest overlap moves forward one token at a time"},
+    {"id": "h18", "input": {"text": "Retrieval works on chunks, not on whole documents. A chunk that is too long blurs several topics into one vector! A chunk that is too short loses the context that made it useful. So most pipelines pick a size, add a little overlap, and try not to cut a sentence in half. Is that enough? Usually it is a good start.", "maxTokens": 12, "overlap": 3}, "expected": [[0, 50], [31, 96], [76, 113], [97, 157], [140, 178], [163, 222], [210, 264], [251, 286], [271, 314]], "note": "a paragraph: sentence ends where they fit, hard cuts where they do not"},
+    {"id": "h19", "input": {"text": "Hi!", "maxTokens": 1, "overlap": 0}, "expected": [[0, 3]], "note": "a single token"}
+  ]
+}
