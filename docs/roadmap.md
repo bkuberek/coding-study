@@ -16,7 +16,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 9 | Local web UI with full practice parity | `serve`, `history`, `test --events` for every kind, `--json` for `list`, `next` and `doctor` |
 | 10 | Async and concurrent project problems | harness operations, `new --virtual-clock` and `--stress`, `verify` S18 and D10 |
 | 11 | Editor code intelligence in the web UI | `doctor` and `doctor --fix` for language servers; the `code_intelligence` and `autocomplete` preferences |
-| 12 | Service projects (planned, not started) | `dev`, `start --yes`, `list --needs`, `verify` S19 to S23 and D11 |
+| 12 | Service projects | `dev`, `start --yes`, `list --needs`, `verify` S19 to S23 and D11 |
 
 ## Status
 
@@ -295,3 +295,12 @@ Suggested order: PP1 to PP13 and PP15 are built, and PP14 is on hold. P9, code i
 - [x] `cstudy set`, and `--set` on `cstudy list` and `cstudy next`.
 - [x] The web API under the page's write rules.
 - [x] The Set filter, the add-to-set control and the Sets view.
+
+## Phase 16: Frontend problems
+
+**Status.** Planned, not started (owner, 2026-11-10).
+
+**Scope.** Problems where you fix or build a real UI component, such as a search box with keyboard navigation, graded by driving the page in a headless browser inside the sandbox: pressing keys, reading what is highlighted, and checking what the page asked the server. It needs a browser image in the sandbox, a grader that drives it, and a decision on frameworks (React first). Until then, the logic of such problems is taught as state machines driven by events, such as the autocomplete problem below, which can later move here.
+
+- [ ] An ADR and a spike: a browser in the sandbox (size, memory, offline), how cases drive it, and how a learner runs it with `cstudy dev`.
+- [ ] The grader and the first problem, a search box with keyboard navigation and server matching.
