@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v0.35.0 (2026-11-10)
+
+### Documentation
+
+- Catalog at 303 with 0283 to 0287, PP6 to PP10 ticked, and service-project known limits and Valkey
+  note
+  ([`7ff3ac0`](https://github.com/bkuberek/coding-study/commit/7ff3ac013e88ae091768348a550a062d706fb982))
+
+### Features
+
+- **problems**: Add 0283 job queue on Postgres (PP6)
+  ([`3aae480`](https://github.com/bkuberek/coding-study/commit/3aae480d5676b17e371140f4a2138acfeaa8a916))
+
+- **problems**: Add 0284 CSV upload ingestion on S3, SQS and Postgres (PP7)
+  ([`2851bc9`](https://github.com/bkuberek/coding-study/commit/2851bc942996e3587b9af252f96e37484eded842))
+
+- **problems**: Add 0285 price cache and rate limits on Valkey (PP9)
+  ([`c9304b4`](https://github.com/bkuberek/coding-study/commit/c9304b4e5ea62ca7aad2a7e76bc85f3d3776cbfd))
+
+- **problems**: Add 0286 multi-tenant API on Postgres with row-level security (PP8)
+  ([`95f7a74`](https://github.com/bkuberek/coding-study/commit/95f7a74792dbe28dcf3dada01d2eed3736befab5))
+
+- **problems**: Add 0287 event-sourced ledger on Postgres (PP10)
+  ([`a098b12`](https://github.com/bkuberek/coding-study/commit/a098b12f0971b0b9adb8d567134e2d79211050e6))
+
+
 ## v0.34.0 (2026-11-10)
 
 ### Documentation
