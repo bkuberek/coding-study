@@ -731,31 +731,17 @@ class DockerSandbox:
                 stack = run / STACK_FILE
                 _write_file(stack, render_compose(sidecar_document(plan)))
                 up = (*_COMPOSE, "-p", name, "-f", str(stack), "up", "--detach", *_PULL_NEVER)
-                self._sidecar_started(self._runner.run(up, SIDECAR_UP_S))
+                _require_sidecar_up(self._runner.run(up, SIDECAR_UP_S))
                 yield
             finally:
                 with _signals_held_off():
                     self._down(name, removes_volumes=False)
                 _remove_folder(run)
 
-    def _sidecar_started(self, up: ProbeResult | None) -> None:
-        if up is None:
-            raise SandboxError("docker is not installed")
-        if up.exit_code != 0:
-            raise SandboxError(f"the sidecar did not start: {_tail(up.output).strip()}")
-
     def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
         """No `--tty`: the server's output is the LSP stream, byte for byte."""
-        directory = plan.project.path
-        return (
-            DOCKER,
-            "exec",
-            "--interactive",
-            "--workdir",
-            directory,
-            plan.identity.name,
-            *command,
-        )
+        exec_in = ("exec", "--interactive", "--workdir", plan.project.path, plan.identity.name)
+        return (DOCKER, *exec_in, *command)
 
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
@@ -766,6 +752,13 @@ class DockerSandbox:
         _write_passwd(run, plan.user)
         arguments = ("run", "--rm", "-T", *_PULL_NEVER, INSTALL_SERVICE)
         return self._one_off(plan, arguments, timeout_s, on_output)
+
+
+def _require_sidecar_up(up: ProbeResult | None) -> None:
+    if up is None:
+        raise SandboxError("docker is not installed")
+    if up.exit_code != 0:
+        raise SandboxError(f"the sidecar did not start: {_tail(up.output).strip()}")
 
 
 class _ServiceState:
