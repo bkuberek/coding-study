@@ -1,0 +1,4487 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "an enqueued job waits in its queue",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales",
+            "month": "2027-02"
+          }
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales",
+            "month": "2027-02"
+          },
+          "status": "queued",
+          "attempts": 0,
+          "run_after": "2027-03-01T12:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a claim takes the waiting job, for 30 seconds",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a claim on an empty queue gets nothing",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 204
+      }
+    },
+    {
+      "id": "v4",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "jobs are claimed in the order they were enqueued",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r2",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a complete that names the claim's attempt finishes the job",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "status": "done",
+          "attempts": 1,
+          "run_after": null
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "8 claims at once for 5 jobs: each job is claimed once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p3",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p4",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p5",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "parallel": {
+        "count": 8,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      },
+      "expected_statuses": {
+        "200": 5,
+        "204": 3
+      },
+      "after": {
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        "expected": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "id": "v7",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a job the first version enqueued is still waiting",
+      "request": {
+        "method": "GET",
+        "path": "/jobs/inv-1001"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "inv-1001",
+          "queue": "invoices",
+          "tenant": "acme",
+          "payload": {
+            "invoice": 1001
+          },
+          "status": "queued",
+          "attempts": 0,
+          "run_after": "2027-02-28T09:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "fresh": true,
+      "note": "a job id is taken once, whatever the second enqueue says",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "birch",
+          "payload": {
+            "report": "stock"
+          }
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "job_exists"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "a body that is not JSON",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "body": "{\"id\": \"r1\","
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "a payload that is not an object",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": [
+            1,
+            2
+          ]
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "a job id with a space",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r 1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          }
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a job with no tenant",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "payload": {
+            "report": "sales"
+          }
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "a job id of 65 characters",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          }
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "note": "a queue name in capitals",
+      "request": {
+        "method": "POST",
+        "path": "/queues/Reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          }
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "a job nobody enqueued",
+      "request": {
+        "method": "GET",
+        "path": "/jobs/nope"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_job"
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "completing a job nobody enqueued",
+      "request": {
+        "method": "POST",
+        "path": "/jobs/nope/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_job"
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "fresh": true,
+      "note": "completing a job nobody claimed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "fresh": true,
+      "note": "a job is completed once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/complete",
+          "json": {
+            "attempt": 1
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "fresh": true,
+      "note": "a complete that names another attempt",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 2
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "note": "a complete that names no attempt",
+      "request": {
+        "method": "POST",
+        "path": "/jobs/nope/complete",
+        "json": {}
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "fresh": true,
+      "note": "a claim takes only from its own queue",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/emails/jobs",
+          "json": {
+            "id": "e1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 204
+      }
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "fresh": true,
+      "note": "a claimed job is not claimed again while its claim lasts",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 204
+      }
+    },
+    {
+      "id": "h16",
+      "level": 1,
+      "fresh": true,
+      "note": "a done job is never claimed again",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/complete",
+          "json": {
+            "attempt": 1
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 204
+      }
+    },
+    {
+      "id": "h17",
+      "level": 1,
+      "fresh": true,
+      "note": "a claimed job shows when its claim runs out",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/jobs/r1"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "status": "claimed",
+          "attempts": 1,
+          "run_after": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h18",
+      "level": 1,
+      "fresh": true,
+      "note": "a job waiting since the first version can be claimed",
+      "request": {
+        "method": "POST",
+        "path": "/queues/x-backlog/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "x-old-1",
+          "tenant": "harbor",
+          "payload": {
+            "report": "audit"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h19",
+      "level": 1,
+      "fresh": true,
+      "note": "a hidden waiting job keeps the time it was enqueued",
+      "request": {
+        "method": "GET",
+        "path": "/jobs/x-old-2"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "x-old-2",
+          "queue": "x-backlog",
+          "tenant": "lumen",
+          "payload": {
+            "report": "payroll"
+          },
+          "status": "queued",
+          "attempts": 0,
+          "run_after": "2027-02-27T08:30:00Z"
+        }
+      }
+    },
+    {
+      "id": "h20",
+      "level": 1,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 claims at once for 5 jobs",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p3",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p4",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p5",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      },
+      "expected_statuses": {
+        "200": 5,
+        "204": 15
+      },
+      "after": {
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        "expected": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 1,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 claims at once for 10 jobs: every job is claimed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p3",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p4",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p5",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p6",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p7",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p8",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p9",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p10",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      },
+      "expected_statuses": {
+        "200": 10
+      },
+      "after": {
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        "expected": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 1,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 completes of one claim at once finish the job once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/jobs/r1/complete",
+          "json": {
+            "attempt": 1
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/jobs/r1"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "id": "r1",
+            "queue": "reports",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "status": "done",
+            "attempts": 1,
+            "run_after": null
+          }
+        }
+      }
+    },
+    {
+      "id": "h23",
+      "level": 1,
+      "fresh": true,
+      "repeat": 3,
+      "note": "the same job enqueued 10 times at once is enqueued once",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/jobs/r1"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "id": "r1",
+            "queue": "reports",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "status": "queued",
+            "attempts": 0,
+            "run_after": "2027-03-01T12:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "h24",
+      "level": 1,
+      "fresh": true,
+      "note": "a payload comes back as it was sent",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales",
+            "filters": {
+              "region": "north",
+              "months": [
+                1,
+                2,
+                3
+              ]
+            },
+            "pdf": true
+          }
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales",
+            "filters": {
+              "region": "north",
+              "months": [
+                1,
+                2,
+                3
+              ]
+            },
+            "pdf": true
+          },
+          "status": "queued",
+          "attempts": 0,
+          "run_after": "2027-03-01T12:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "h25",
+      "level": 1,
+      "fresh": true,
+      "note": "claims follow the order jobs were enqueued in, not their ids",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "zeta",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "alpha",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "mid",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "alpha",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h26",
+      "level": 1,
+      "note": "a claim whose body is not a JSON object",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "body": "now"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "v8",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a claim of 0 seconds has run out by the next request, so the job is claimed again",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 2,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v9",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a complete from a claim that ran out, after another worker claimed the job, is refused",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "v10",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "the worker that holds the claim now completes the job",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 2
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "status": "done",
+          "attempts": 2,
+          "run_after": null
+        }
+      }
+    },
+    {
+      "id": "v11",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a claim says how long it holds the job",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {
+          "visibility_seconds": 120
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:02:00Z"
+        }
+      }
+    },
+    {
+      "id": "h30",
+      "level": 2,
+      "fresh": true,
+      "note": "a complete after the claim ran out is refused, even if nobody claimed the job since",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h31",
+      "level": 2,
+      "fresh": true,
+      "note": "a late complete loses nothing: the job stays with the worker that holds it",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              }
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 2,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/complete",
+            "json": {
+              "attempt": 1
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "stale_claim"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/jobs/r1"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "claimed",
+              "attempts": 2,
+              "run_after": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/complete",
+            "json": {
+              "attempt": 2
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "done",
+              "attempts": 2,
+              "run_after": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 2,
+      "fresh": true,
+      "note": "a late complete does not finish the job: it can be claimed again",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              }
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/complete",
+            "json": {
+              "attempt": 1
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "stale_claim"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 2,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 2,
+      "fresh": true,
+      "note": "a job whose claim ran out reads as queued",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/jobs/r1"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "status": "queued",
+          "attempts": 1,
+          "run_after": "2027-03-01T12:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "h34",
+      "level": 2,
+      "fresh": true,
+      "note": "a job whose claim ran out keeps its place in the queue",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 2,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h35",
+      "level": 2,
+      "fresh": true,
+      "note": "each claim of a job is its next attempt",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              }
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 2,
+              "expires_at": "2027-03-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 3,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 2,
+      "note": "a claim of more than an hour",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {
+          "visibility_seconds": 3601
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h37",
+      "level": 2,
+      "note": "a claim time given as text",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {
+          "visibility_seconds": "30"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h38",
+      "level": 2,
+      "fresh": true,
+      "note": "a claim of an hour",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {
+          "visibility_seconds": 3600
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T13:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "h39",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 claims at once for 3 jobs, one of them back from a claim that ran out",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "p3",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      },
+      "expected_statuses": {
+        "200": 3,
+        "204": 7
+      },
+      "after": {
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        "expected": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "id": "h40",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 completes at once from an old claim and the current one finish the job once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/jobs/r1/complete",
+            "json": {
+              "attempt": 1
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/jobs/r1/complete",
+            "json": {
+              "attempt": 2
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/jobs/r1"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "id": "r1",
+            "queue": "reports",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "status": "done",
+            "attempts": 2,
+            "run_after": null
+          }
+        }
+      }
+    },
+    {
+      "id": "v12",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a failed attempt waits out its backoff: 30 seconds after the first",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/fail",
+        "json": {
+          "attempt": 1,
+          "error": "renderer crashed"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "status": "queued",
+          "attempts": 1,
+          "run_after": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v13",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a job waiting out its backoff is not claimed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 204
+      }
+    },
+    {
+      "id": "v14",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a backoff of 0 lets the job be claimed again at once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "backoff_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 2,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v15",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a failed last attempt makes the job dead",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/fail",
+        "json": {
+          "attempt": 1,
+          "error": "renderer crashed"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "queue": "reports",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "status": "dead",
+          "attempts": 1,
+          "run_after": null
+        }
+      }
+    },
+    {
+      "id": "v16",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a dead job is in its queue's dead letters",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/queues/reports/dead-letters"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "attempts": 1,
+            "error": "renderer crashed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "h50",
+      "level": 3,
+      "fresh": true,
+      "note": "the second attempt waits twice the backoff",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "max_attempts": 5
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 2,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/fail",
+            "json": {
+              "attempt": 2,
+              "error": "renderer crashed"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "queued",
+              "attempts": 2,
+              "run_after": "2027-03-01T12:01:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h51",
+      "level": 3,
+      "fresh": true,
+      "note": "the third attempt waits four times the backoff",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "max_attempts": 5
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 3,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/fail",
+            "json": {
+              "attempt": 3,
+              "error": "renderer crashed"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "queued",
+              "attempts": 3,
+              "run_after": "2027-03-01T12:02:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h52",
+      "level": 3,
+      "fresh": true,
+      "note": "a backoff never waits more than an hour",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "max_attempts": 5,
+              "backoff_seconds": 1000
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 3,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/fail",
+            "json": {
+              "attempt": 3,
+              "error": "renderer crashed"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "queued",
+              "attempts": 3,
+              "run_after": "2027-03-01T13:00:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h53",
+      "level": 3,
+      "fresh": true,
+      "note": "retries stop after the last attempt",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "max_attempts": 2,
+              "backoff_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/fail",
+            "json": {
+              "attempt": 1,
+              "error": "renderer crashed"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "queued",
+              "attempts": 1,
+              "run_after": "2027-03-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 2,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/jobs/r1/fail",
+            "json": {
+              "attempt": 2,
+              "error": "renderer crashed"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "dead",
+              "attempts": 2,
+              "run_after": null
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 204
+          }
+        }
+      ]
+    },
+    {
+      "id": "h54",
+      "level": 3,
+      "fresh": true,
+      "note": "claims that run out use up attempts too",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "max_attempts": 2
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 2,
+              "expires_at": "2027-03-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/jobs/r1"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "queue": "reports",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "status": "dead",
+              "attempts": 2,
+              "run_after": null
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/queues/reports/dead-letters"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "r1",
+                "tenant": "acme",
+                "payload": {
+                  "report": "sales"
+                },
+                "attempts": 2,
+                "error": "claim expired"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h55",
+      "level": 3,
+      "fresh": true,
+      "note": "a claim that sends a job to the dead letters goes on to the next job",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "max_attempts": 1
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/jobs",
+            "json": {
+              "id": "r2",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              }
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {
+              "visibility_seconds": 0
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/reports/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "r2",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/queues/reports/dead-letters"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "r1",
+                "tenant": "acme",
+                "payload": {
+                  "report": "sales"
+                },
+                "attempts": 1,
+                "error": "claim expired"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h56",
+      "level": 3,
+      "fresh": true,
+      "note": "a fail after another worker claimed the job",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/fail",
+        "json": {
+          "attempt": 1,
+          "error": "renderer crashed"
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h57",
+      "level": 3,
+      "fresh": true,
+      "note": "a fail after the claim ran out",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/fail",
+        "json": {
+          "attempt": 1,
+          "error": "renderer crashed"
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h58",
+      "level": 3,
+      "note": "failing a job nobody enqueued",
+      "request": {
+        "method": "POST",
+        "path": "/jobs/nope/fail",
+        "json": {
+          "attempt": 1,
+          "error": "renderer crashed"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_job"
+        }
+      }
+    },
+    {
+      "id": "h59",
+      "level": 3,
+      "note": "a fail that gives no error",
+      "request": {
+        "method": "POST",
+        "path": "/jobs/nope/fail",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h60",
+      "level": 3,
+      "note": "an error of 201 characters",
+      "request": {
+        "method": "POST",
+        "path": "/jobs/nope/fail",
+        "json": {
+          "attempt": 1,
+          "error": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h61",
+      "level": 3,
+      "note": "a job allowed no attempts",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "max_attempts": 0
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h62",
+      "level": 3,
+      "note": "a job allowed 11 attempts",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "max_attempts": 11
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h63",
+      "level": 3,
+      "note": "a backoff of more than an hour",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "backoff_seconds": 3601
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h64",
+      "level": 3,
+      "fresh": true,
+      "note": "a queue with no dead letters",
+      "request": {
+        "method": "GET",
+        "path": "/queues/reports/dead-letters"
+      },
+      "expected": {
+        "status": 200,
+        "body": []
+      }
+    },
+    {
+      "id": "h65",
+      "level": 3,
+      "fresh": true,
+      "note": "dead letters are listed in the order their jobs died",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "d1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "d2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/d2/fail",
+          "json": {
+            "attempt": 1,
+            "error": "timed out"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/d1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/queues/reports/dead-letters"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "d2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "attempts": 1,
+            "error": "timed out"
+          },
+          {
+            "id": "d1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "attempts": 1,
+            "error": "renderer crashed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "h66",
+      "level": 3,
+      "fresh": true,
+      "note": "a dead job cannot be completed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/jobs/r1/complete",
+        "json": {
+          "attempt": 1
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "stale_claim"
+        }
+      }
+    },
+    {
+      "id": "h67",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 fails of one claim at once fail the attempt once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/jobs/r1"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "id": "r1",
+            "queue": "reports",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "status": "queued",
+            "attempts": 1,
+            "run_after": "2027-03-01T12:00:30Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "h68",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "5 claims at once meet a job whose last claim ran out: it goes to the dead letters once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "parallel": {
+        "count": 5,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      },
+      "expected_statuses": {
+        "200": 1,
+        "204": 4
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/queues/reports/dead-letters"
+        },
+        "expected": {
+          "status": 200,
+          "body": [
+            {
+              "id": "r1",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempts": 1,
+              "error": "claim expired"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h69",
+      "level": 3,
+      "fresh": true,
+      "note": "dead letters belong to their queue",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/emails/jobs",
+          "json": {
+            "id": "e1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/emails/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/e1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/queues/reports/dead-letters"
+      },
+      "expected": {
+        "status": 200,
+        "body": []
+      }
+    },
+    {
+      "id": "h70",
+      "level": 3,
+      "fresh": true,
+      "note": "a retried job keeps its place in the queue",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "backoff_seconds": 0
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 2,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h71",
+      "level": 3,
+      "fresh": true,
+      "note": "a dead job's id stays taken",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "r1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "max_attempts": 1
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/r1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          }
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "job_exists"
+        }
+      }
+    },
+    {
+      "id": "v17",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a higher priority is claimed first",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "low",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 2
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "high",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 8
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "high",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v18",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a tenant with a claim running waits for the others",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a3",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "b1",
+          "tenant": "birch",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "v19",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "the job the first version marked urgent is claimed first",
+      "request": {
+        "method": "POST",
+        "path": "/queues/invoices/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "inv-1003",
+          "tenant": "acme",
+          "payload": {
+            "invoice": 1003
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h80",
+      "level": 4,
+      "fresh": true,
+      "note": "a job enqueued with no priority has 5",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "low",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 4
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "plain",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "plain",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h81",
+      "level": 4,
+      "fresh": true,
+      "note": "the jobs waiting since the first version have priority 5",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/x-backlog/jobs",
+          "json": {
+            "id": "low",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 4
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/x-backlog/jobs",
+          "json": {
+            "id": "high",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 6
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/x-backlog/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/x-backlog/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "x-old-1",
+          "tenant": "harbor",
+          "payload": {
+            "report": "audit"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h82",
+      "level": 4,
+      "fresh": true,
+      "note": "a hidden job the first version marked urgent has priority 9",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/x-rush/jobs",
+          "json": {
+            "id": "rush",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 8
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/x-rush/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "x-r2",
+          "tenant": "harbor",
+          "payload": {
+            "report": "recall"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h83",
+      "level": 4,
+      "fresh": true,
+      "note": "the urgent hidden job, then the others at 5, then a lower priority",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/x-rush/jobs",
+            "json": {
+              "id": "rush",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "priority": 4
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/x-rush/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "x-r2",
+              "tenant": "harbor",
+              "payload": {
+                "report": "recall"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/x-rush/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "x-r1",
+              "tenant": "harbor",
+              "payload": {
+                "report": "stock"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/queues/x-rush/claim",
+            "json": {}
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "rush",
+              "tenant": "acme",
+              "payload": {
+                "report": "sales"
+              },
+              "attempt": 1,
+              "expires_at": "2027-03-01T12:00:30Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h84",
+      "level": 4,
+      "note": "a priority of 10",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "priority": 10
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h85",
+      "level": 4,
+      "note": "a priority given as text",
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/jobs",
+        "json": {
+          "id": "r1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "priority": "high"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h86",
+      "level": 4,
+      "fresh": true,
+      "note": "a tenant's finished jobs do not count against it",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/a1/complete",
+          "json": {
+            "attempt": 1
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "a2",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h87",
+      "level": 4,
+      "fresh": true,
+      "note": "a claim that ran out does not count against its tenant",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {
+            "visibility_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "a1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 2,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h88",
+      "level": 4,
+      "fresh": true,
+      "note": "a higher priority goes first, however many claims its tenant runs",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 8
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "a2",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h89",
+      "level": 4,
+      "fresh": true,
+      "note": "fair shares count the claims of this queue only",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/emails/jobs",
+          "json": {
+            "id": "e1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/emails/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "a1",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h90",
+      "level": 4,
+      "fresh": true,
+      "note": "three tenants take turns",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "c1",
+            "tenant": "cedar",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "c1",
+          "tenant": "cedar",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h91",
+      "level": 4,
+      "fresh": true,
+      "note": "a job waiting out its backoff is not a running claim",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "a2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "b1",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/jobs/a1/fail",
+          "json": {
+            "attempt": 1,
+            "error": "renderer crashed"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/queues/reports/claim",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "a2",
+          "tenant": "acme",
+          "payload": {
+            "report": "sales"
+          },
+          "attempt": 1,
+          "expires_at": "2027-03-01T12:00:30Z"
+        }
+      }
+    },
+    {
+      "id": "h92",
+      "level": 4,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 claims at once over priorities and tenants claim each job once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "q1",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "q2",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 7
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "q3",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "q4",
+            "tenant": "birch",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 2
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "q5",
+            "tenant": "cedar",
+            "payload": {
+              "report": "sales"
+            },
+            "priority": 9
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/queues/reports/jobs",
+          "json": {
+            "id": "q6",
+            "tenant": "acme",
+            "payload": {
+              "report": "sales"
+            }
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        }
+      },
+      "expected_statuses": {
+        "200": 6,
+        "204": 4
+      },
+      "after": {
+        "request": {
+          "method": "POST",
+          "path": "/queues/reports/claim",
+          "json": {}
+        },
+        "expected": {
+          "status": 204
+        }
+      }
+    }
+  ]
+}
