@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0299"
+slug: cosine-top-k
+title: Cosine Top K
+summary: "Write topKCosine: return the k documents most similar to a query vector by cosine similarity, best first, with a fixed tie-break and zero vectors left out."
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [heap]
+domains: [ai-llm]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: topKCosine
+    params:
+      - {name: query, type: "double[]"}
+      - {name: documents, type: "double[][]"}
+      - {name: k, type: int}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: sort-all, name: Score every document and sort them all, role: brute, time: "O(n m + n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: bounded-heap, name: Keep the k best in a min-heap whose root is the weakest of them, role: optimal, time: "O(n m + n log k)", space: "O(k)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n documents, with m = 8 numbers each and k = 10
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: bounded-heap
+related: [k-closest-points, bm25-hybrid-ranker]
+estimate_minutes: 25
