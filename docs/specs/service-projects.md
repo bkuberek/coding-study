@@ -251,12 +251,13 @@ Native problems are a separate matter: their environment is the allowlist of [Pr
 `cstudy dev` is the only new verb. `install`, `bootstrap`, `run` and `reset` have no verbs of their own. `cstudy test` takes none of the flags of a native run, and exits 3 for one: debug through your own IDE against `cstudy dev`.
 
 ```text
-cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]...
+cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--events]
 ```
 
 | Flag | Effect |
 |------|--------|
 | `--scenario` | Sets a mock server's visible scenario at start. A hidden or unknown name exits 3 with the visible names, before anything starts |
+| `--events` | The stack as JSON events, and each line of standard input a scenario to switch to while it runs, for the Web UI ([the dev stack from the page](#the-dev-stack-from-the-page)) |
 
 It runs in the foreground: it brings the stack up, prints your app's published URL and the mock server names, then what your app prints. Ctrl-C, or SIGTERM, brings the stack down and keeps its data, exit 0, and a second Ctrl-C during that cannot leave half a stack. Your app ending brings the stack down too, exit 2, and so does an app that never starts, with its output. One dev stack runs per project: a second `cstudy dev` exits 3 and names the holder's process id. The lock is `.cs/projects/<slug>.dev.lock`.
 
