@@ -30,10 +30,14 @@ PROBLEM_PLACEHOLDER = "{problem}"
 GRADLE_LOCK = "gradle/verification-metadata.xml"
 """Gradle's dependency verification file, where Gradle reads it: the checksum of every artifact the
 install may download, which makes it the lock of a Java or Kotlin service project."""
+GO_LOCK = "go.sum"
+"""The checksum of every module a Go service project's build needs, which `go` holds each download
+to; empty for a module that needs only the standard library."""
 LOCK_MANAGERS: Mapping[str, str] = {
     "pnpm-lock.yaml": "pnpm",
     "uv.lock": "uv",
     GRADLE_LOCK: "gradle",
+    GO_LOCK: "go",
 }
 """The package manager a lock file names, for the list of what a problem depends on."""
 INSTALLED_DIRECTORIES: Mapping[str, str] = {"pnpm-lock.yaml": "node_modules", "uv.lock": ".venv"}
@@ -79,7 +83,7 @@ class ServiceApp:
     mem_limit: str | None = None
     install_cache: bool = False
     """The app's containers mount the install cache too: the toolchain keeps the dependencies there,
-    as Gradle does in its user home, instead of in the project folder."""
+    as Gradle does in its user home and Go in its module cache, instead of in the project folder."""
 
 
 @dataclass(frozen=True, slots=True)
