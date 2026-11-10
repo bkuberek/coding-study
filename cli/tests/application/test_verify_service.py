@@ -17,7 +17,14 @@ from coding_study.domain.problem import Language
 from coding_study.domain.sandbox import CommandOutcome, StackKind, StackStartError, StartupFailure
 from tests.application.http_grading_fakes import FakeApp, FakeMockControl
 from tests.fakes import make_environment
-from tests.real_service_projects import FIXTURES, MEMBERS, PYTHON, TYPESCRIPT, copy_fixture
+from tests.real_service_projects import (
+    FIXTURES,
+    JAVA,
+    MEMBERS,
+    PYTHON,
+    TYPESCRIPT,
+    copy_fixture,
+)
 from tests.sandbox_fakes import FakeSandbox
 from tests.service_problems import (
     CONFIG,
@@ -286,7 +293,9 @@ def test_a_sandbox_that_fails_raises_since_it_says_nothing_about_the_problem(env
         verified(environment)
 
 
-@pytest.fixture(params=[TYPESCRIPT, PYTHON, MEMBERS], ids=["typescript", "python", "services"])
+@pytest.fixture(
+    params=[TYPESCRIPT, PYTHON, MEMBERS, JAVA], ids=["typescript", "python", "services", "java"]
+)
 def fixture_problem(request, tmp_path, engine):
     root = make_content(tmp_path)
     copy_fixture(request.param, root / "problems" / request.param)

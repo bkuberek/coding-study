@@ -1,5 +1,5 @@
-"""A service project from `cstudy start` to the last `cstudy submit`, in TypeScript and in Python,
-on a real Docker engine, and its code intelligence from inside the sidecar. Run with
+"""A service project from `cstudy start` to the last `cstudy submit`, in TypeScript, Python and
+Java, on a real Docker engine, and its code intelligence from inside the sidecar. Run with
 `uv run pytest -q -m docker`. The waits are generous for a busy machine: what these tests assert
 is what happened, not how fast."""
 
@@ -21,11 +21,13 @@ from coding_study.adapters.subprocess_tool_probe import (
     SubprocessToolProbe,
 )
 from coding_study.domain.preferences import Preferences, preferences_document
+from coding_study.domain.sandbox import workspace_digest
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from tests.helpers import SCHEMAS_DIRECTORY
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import received, session
 from tests.real_service_projects import (
+    JAVA,
     MEMBERS,
     PYTHON,
     TYPESCRIPT,
@@ -51,7 +53,7 @@ def require_engine() -> None:
         pytest.skip("no docker on PATH")
 
 
-@pytest.fixture(params=[TYPESCRIPT, PYTHON], ids=["typescript", "python"])
+@pytest.fixture(params=[TYPESCRIPT, PYTHON, JAVA], ids=["typescript", "python", "java"])
 def project(request: pytest.FixtureRequest, tmp_path: Path) -> Generator[FixtureProject]:
     found = fixture_project(request.param, tmp_path)
     try:
@@ -92,8 +94,14 @@ def assert_start_installs_and_starts_nothing(project: FixtureProject) -> None:
 
     assert result.returncode == EXIT_OK, said(result)
     assert "cstudy dev" in result.stdout
-    assert any(project.folder.glob("node_modules")) or any(project.folder.glob(".venv"))
+    assert installed(project)
     nothing_running(project)
+
+
+def installed(project: FixtureProject) -> bool:
+    """`node_modules` or `.venv` in the folder, or Gradle's user home in the install cache."""
+    in_folder = any(project.folder.glob("node_modules")) or any(project.folder.glob(".venv"))
+    return in_folder or bool(project.labelled("volumes"))
 
 
 def assert_the_starter_fails_its_visible_cases(project: FixtureProject) -> None:
@@ -195,6 +203,42 @@ def test_verify_require_ready_passes_on_the_reference(project: FixtureProject):
 
     assert result.returncode == EXIT_OK, said(result)
     nothing_running(project)
+
+
+@pytest.fixture
+def java(tmp_path: Path) -> Generator[FixtureProject]:
+    found = fixture_project(JAVA, tmp_path)
+    try:
+        yield found
+    finally:
+        found.remove_all_it_left()
+
+
+def test_a_jvm_project_builds_from_its_install_cache_with_no_volume_of_the_images_own(
+    java: FixtureProject,
+):
+    """The install cache is Gradle's user home in every container of the app, and the image's
+    `VOLUME` is a tmpfs, so Docker makes no anonymous volume there for the dev stack to leave.
+    What stays is what stays by design: the dev stack's data and the install cache."""
+    assert java.cstudy("start", java.slug, "--yes", "--no-open").returncode == EXIT_OK
+
+    result = java.cstudy(
+        "dev", "--exec", "--", "grep", "-E", " /(cache|home/gradle/.gradle) ", "/proc/mounts"
+    )
+
+    assert result.returncode == EXIT_OK, said(result)
+    assert "tmpfs /home/gradle/.gradle tmpfs" in result.stdout
+    assert " /cache " in result.stdout
+    stacks = (
+        f"cstudy-d-{java.slug}-{workspace_of(java)}",
+        f"cstudy-i-{java.slug}-{workspace_of(java)}",
+    )
+    assert sorted(java.labelled("volumes")) == [f"{stacks[0]}_data", f"{stacks[1]}_cache"]
+    nothing_running(java)
+
+
+def workspace_of(project: FixtureProject) -> str:
+    return workspace_digest(str(project.root.resolve()))
 
 
 @pytest.fixture

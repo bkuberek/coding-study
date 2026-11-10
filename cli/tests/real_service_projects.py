@@ -16,6 +16,8 @@ TYPESCRIPT = "5901-fixture-rooms-typescript"
 PYTHON = "5902-fixture-rooms-python"
 MEMBERS = "5903-fixture-members-python"
 """Postgres and Redis as backing services, with `grade_setup` and `reset`."""
+JAVA = "5904-fixture-rooms-java"
+"""Gradle in the image, its user home in the install cache, and every build offline."""
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
 COMMAND_WAIT_S = 3 * GENEROUS_WAIT_S
 """A command brings a stack up more than once, and may install."""

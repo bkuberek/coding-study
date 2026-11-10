@@ -1,0 +1,22 @@
+package rooms;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import org.junit.jupiter.api.Test;
+
+class HealthTest {
+    @Test
+    void theServiceAnswersItsHealthPath() throws Exception {
+        URI health = URI.create("http://127.0.0.1:" + System.getenv("PORT") + "/health");
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpResponse<Void> response = client.send(
+                    HttpRequest.newBuilder(health).build(), HttpResponse.BodyHandlers.discarding());
+
+            assertEquals(200, response.statusCode());
+        }
+    }
+}
