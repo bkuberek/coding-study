@@ -68,7 +68,7 @@ One build wants an exact JDK: `tools/ide-launcher/build.sh`, which rebuilds the 
 
 Problem statements, tests, hints and solutions must be original ([ADR 0004](docs/decisions/0004-original-problem-wording.md)); a LeetCode problem appears only as a link in `references.leetcode`.
 
-1. Scaffold the problem in the checkout: `uv run cstudy new <slug> --from-template array|tree|design|progressive|concurrent`.
+1. Scaffold the problem in the checkout: `uv run cstudy new <slug> --from-template array|tree|design|progressive|concurrent`. Run from a development checkout, `cstudy new` writes into the repository's `problems/`, not into the workspace named by `CSTUDY_WORKSPACE` (a follow-up to know about when you test with a scratch workspace).
 2. Follow the [authoring workflow](docs/specs/authoring.md#workflow): the statement in `problem.md`, the signature in `meta.yaml`, the cases in `tests.json`, a brute-force Python oracle, `generator.py`, the optimal approaches in Python, TypeScript, Java, and Kotlin, and `solutions/explanation.md`. The [problem format](docs/specs/problem-format.md) defines every file.
 3. Set `status: ready` once the problem passes the ready gate:
 

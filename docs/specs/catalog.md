@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 123 non-DSA items (107 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 198 DSA problems and 126 non-DSA items (110 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
-| `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 70 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 15 service projects added, 11 memory and retrieval problems added, 1 search box problem added) | `problems/` |
+| `dsa` | 198 (185 planned, 13 added) | `problems/` |
+| `practical` | 73 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 18 service projects added, 11 memory and retrieval problems added, 1 search box problem added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **319** (303 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **324** (308 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -40,9 +40,9 @@ Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by
 
 ## DSA catalog
 
-Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 196 rows, with no exceptions.
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 198 rows, with no exceptions.
 
-196 problems: 185 planned in six batches, and 11 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
+198 problems: 185 planned in six batches, and 13 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
 
 ### Batch 1 (34 problems: `arrays-hashing`, `two-pointers`, `sliding-window`, `stack`)
 
@@ -261,7 +261,7 @@ Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on
 
 ### Later DSA additions
 
-11 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210).
+13 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210).
 
 | id | slug | title | primary | secondary | difficulty | lc | kind |
 |----|------|-------|---------|-----------|------------|----|------|
@@ -276,6 +276,8 @@ Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on
 | 0237 | `tax-brackets` | Tax Owed Under Brackets | `math-geometry` | - | easy | 2303 | function |
 | 0238 | `replace-words` | Replace Words with Roots | `tries` | `arrays-hashing` | medium | 648 | function |
 | 0239 | `sorted-insertion-cost` | Sorted Insertion Cost | `segment-tree-fenwick` | `binary-search` | hard | 1649 | function |
+| 0308 | `all-grid-paths` | All Grid Paths | `backtracking` | - | medium | - | function |
+| 0309 | `find-missing-and-duplicates` | Find All Missing and Duplicate Numbers | `arrays-hashing` | - | medium | - | function |
 
 ## Stream assignment
 
@@ -297,7 +299,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (70, `problems/`)
+### practical (73, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -436,6 +438,19 @@ One function-size, four-level progressive problem in all six languages: `0304` i
 |----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
 | 0304 | `search-box-navigation` | Search Box with Keyboard Navigation | - | progressive | medium | all six | `backend` | `general` | function |
 
+Two service projects in Java and Kotlin, from P12 ([roadmap](../roadmap.md)): `0305` and `0306` are the Java and Kotlin versions of `0277`. They are graded by the same cases and mock servers as `0277`, each is built from scratch in its language on one Gradle image, and each lists the other versions in `related`.
+
+| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|------|------------|-----------|---------|-----------|-------|
+| 0305 | `coworking-availability-java` | Coworking Availability (Java) | project | hard | `java` | `backend` | `backend`, `platform` | project |
+| 0306 | `coworking-availability-kotlin` | Coworking Availability (Kotlin) | project | hard | `kotlin` | `backend` | `backend`, `platform` | project |
+
+One security service project in TypeScript, the built form of PP14 ([roadmap](../roadmap.md)): `0307` hands over a working service with four levels of flaw (notes that belong to someone else, names and fields taken from the request, text that becomes a query, and logs and errors), and grades the fix with attack cases that must fail and normal cases that must keep passing.
+
+| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|------|------------|-----------|---------|-----------|-------|
+| 0307 | `fix-the-flaws-typescript` | Fix the Flaws (TypeScript) | project | hard | `typescript` | `security` | `security-engineer`, `backend` | project |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -489,7 +504,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-70-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-73-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|
