@@ -1,6 +1,6 @@
 # Spec: Service projects
 
-**Status: built through P8, P10's backing services and P11's engine work: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop and [on Linux](#on-linux) with Docker Engine, and the first catalog problem, [coworking availability](#the-first-problem), uses them in TypeScript and in Python. [Backing services](#backing-services) such as Postgres and Redis run beside your app, with migrations, `grade_setup` and `reset`, and the grader can [reach a declared service](#grader-reach), which a [multi-step case](#multi-step-cases) names by its origin, through a mock server's [pass-through](#pass-through) or directly. What is still planned says so where it stands: code intelligence and the Web UI (P9), contract tables and the D7 check of parallel cases (P10's grader side), and the AI catalog problems that use the [extensions](#extensions) (P11). The mock server streams server-sent events, matches on request bodies and fills in run-time values, and a case can judge what a request's JSON body carried, so a [mock LLM provider](#a-mock-llm-provider) is config data.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: built through P9, P10's backing services and P11's engine work: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop and [on Linux](#on-linux) with Docker Engine, and the first catalog problem, [coworking availability](#the-first-problem), uses them in TypeScript and in Python. [Backing services](#backing-services) such as Postgres and Redis run beside your app, with migrations, `grade_setup` and `reset`, and the grader can [reach a declared service](#grader-reach), which a [multi-step case](#multi-step-cases) names by its origin, through a mock server's [pass-through](#pass-through) or directly. [Code intelligence](#language-servers) runs in a sidecar for TypeScript and Python, and the [Web UI](#web-ui) runs tests, submits and holds a dev stack (P9). What is still planned says so where it stands: your own IDE's generated files and `cstudy dev`'s other flags, contract tables and the D7 check of parallel cases (P10's grader side), and the AI catalog problems that use the [extensions](#extensions) (P11). The mock server streams server-sent events, matches on request bodies and fills in run-time values, and a case can judge what a request's JSON body carried, so a [mock LLM provider](#a-mock-llm-provider) is config data.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -261,7 +261,7 @@ cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--events]
 
 It runs in the foreground: it brings the stack up, prints your app's published URL and the mock server names, then what your app prints. Ctrl-C, or SIGTERM, brings the stack down and keeps its data, exit 0, and a second Ctrl-C during that cannot leave half a stack. Your app ending brings the stack down too, exit 2, and so does an app that never starts, with its output. One dev stack runs per project: a second `cstudy dev` exits 3 and names the holder's process id. The lock is `.cs/projects/<slug>.dev.lock`.
 
-Planned, with P9:
+Planned:
 
 ```text
 cstudy dev [<slug|file>] [--no-run] [--debug] [--reset-data]
@@ -1277,7 +1277,7 @@ The page reads the list of languages for its attempt (`GET /api/v1/code-intellig
 
 ### Your own IDE
 
-Planned, for P9 (R29).
+Planned (R29).
 
 | Item | Rule |
 |------|------|
