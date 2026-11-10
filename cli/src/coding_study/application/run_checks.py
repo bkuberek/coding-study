@@ -62,6 +62,16 @@ def check_run(environment: Environment, check: RunCheck) -> RunSubject:
     return RunSubject(attempt.slug, language, meta.kind, service_of(meta) is not None)
 
 
+def check_dev(environment: Environment, attempt_id: int) -> str:
+    """The slug of the attempt whose dev stack the page starts. Raises UnknownAttemptError and
+    AttemptEndedError for an attempt not in progress, and UsageError for a problem that is not a
+    service project, as `cstudy dev` does."""
+    attempt = attempt_in_progress(environment.progress, attempt_id)
+    if service_of(environment.problems.load(attempt.slug).meta) is None:
+        raise UsageError(f"cstudy dev is for service projects; {attempt.slug} is not one")
+    return attempt.slug
+
+
 def check_verify_scope(environment: Environment, slugs: Sequence[str]) -> None:
     """Raises UnknownProblemError for a slug no problem has, and UsageError for a catalog
     problem: the page verifies the workspace's own problems only."""

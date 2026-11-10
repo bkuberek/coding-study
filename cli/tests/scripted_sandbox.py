@@ -4,14 +4,18 @@ tests of service projects: `fake_sandbox_site/sitecustomize.py` puts `ScriptedSa
 
 The folder holds `script.json`, read at each step so a test can change it between runs, and
 `calls.log`, where each process appends what it was asked, one line each, so a test can say that a
-cancelled run's stack came down. Nothing here reaches Docker.
+cancelled run's stack came down. A stack with mock servers gets a control interface of its own on
+loopback, which answers every scenario, and a dev stack's app prints its lines, then runs until the
+dev stack stops. Nothing here reaches Docker.
 """
 
 import json
 import os
+import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +36,9 @@ SCRIPT_FILE = "script.json"
 CALLS_FILE = "calls.log"
 CLI_DIRECTORY = Path(__file__).parents[1]
 DEFAULT_TEST_LINES = ("ok 1 - rooms",)
+LOOPBACK = "127.0.0.1"
+APP_RUNS_S = 3600.0
+"""How long a dev stack's app runs: until Ctrl-C or SIGTERM stops `cstudy dev`."""
 
 
 def sandbox_variables(folder: Path, script: Mapping[str, object]) -> dict[str, str]:
@@ -55,12 +62,14 @@ class SandboxScript:
     test_s: float = 0.0
     test_exit: int = 0
     test_lines: tuple[str, ...] = DEFAULT_TEST_LINES
+    app_lines: tuple[str, ...] = ()
 
     @classmethod
     def read(cls, folder: Path) -> "SandboxScript":
         document: dict[str, Any] = json.loads((folder / SCRIPT_FILE).read_text())
         lines = tuple(str(line) for line in document.pop("test_lines", DEFAULT_TEST_LINES))
-        return cls(**document, test_lines=lines)
+        app = tuple(str(line) for line in document.pop("app_lines", ()))
+        return cls(**document, test_lines=lines, app_lines=app)
 
 
 def logged_calls(folder: Path) -> list[str]:
@@ -83,7 +92,13 @@ class ScriptedSandbox(FakeSandbox):
         self._log(f"start {plan.identity.name}")
         began = time.monotonic()
         time.sleep(self._script().start_s)
-        return ReadyStack(plan.identity.name, self.app_port, None, began, time.monotonic())
+        control = None if plan.mocks is None else _control_port(self._log)
+        return ReadyStack(plan.identity.name, self.app_port, control, began, time.monotonic())
+
+    def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
+        for line in self._script().app_lines:
+            on_line(line)
+        time.sleep(APP_RUNS_S)
 
     def stop(self, plan: StackPlan) -> str | None:
         self._log(f"stop {plan.identity.name}")
@@ -112,3 +127,31 @@ class ScriptedSandbox(FakeSandbox):
     def _log(self, line: str) -> None:
         with (self._folder / CALLS_FILE).open("a") as calls:
             calls.write(f"{line}\n")
+
+
+def _control_port(log: Callable[[str], None]) -> int:
+    """A control interface that sets any scenario and logs it, on a port of loopback, for as long as
+    the process runs."""
+
+    class Control(BaseHTTPRequestHandler):
+        def do_PUT(self) -> None:
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            log(f"scenario {self.path.split('/')[2]} {json.loads(body)['scenario']}")
+            self._answer(body)
+
+        def do_POST(self) -> None:
+            log("reset")
+            self._answer(b"{}")
+
+        def _answer(self, body: bytes) -> None:
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+    server = ThreadingHTTPServer((LOOPBACK, 0), Control)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server.server_address[1]

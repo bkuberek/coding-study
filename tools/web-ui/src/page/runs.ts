@@ -20,6 +20,7 @@ import { fetchChunk } from "./lazy.ts";
 import { needsRefusal } from "./needs-model.ts";
 import { noRunYet, ResultsPanel } from "./results.ts";
 import { DEFAULT_OPTIONS, type RunCommandName, type RunContext, runCommand, type RunOptionsState } from "./run-options.ts";
+import type { DevPanel } from "./dev-panel.ts";
 import type { RunSession } from "./run-session.ts";
 import type { AttemptStatus, NeedRow, ProblemDocument } from "./types.ts";
 import type { EditorTabs } from "./workbench.ts";
@@ -95,6 +96,7 @@ export class AttemptRuns implements RunShell {
   /** A service project's Docker, when it cannot run the project here: shown above the latest run. */
   #dockerState: readonly Node[] = [];
   #dockerRead = false;
+  #devPanel: DevPanel | null = null;
   /** The saves this page made and has not heard back as notices yet, by `savedKey`. */
   readonly #ownSaves = new Set<string>();
 
@@ -138,6 +140,7 @@ export class AttemptRuns implements RunShell {
     }
     await this.showToolbar(status);
     this.showCommands();
+    if (first && status.service !== null) void this.#openDevPanel(status);
     if (first) await this.#showLatestRun(status);
     else if (this.#showsRecorded) this.#showRecorded(status);
     else void this.#session?.then((session) => session?.configure());
@@ -196,6 +199,7 @@ export class AttemptRuns implements RunShell {
   destroy(): void {
     this.#destroyed = true;
     window.clearTimeout(this.#saveTimer);
+    this.#devPanel?.destroy();
     void this.#session?.then((session) => session?.destroy());
     this.results.destroy();
     for (const cleanup of this.#cleanups) cleanup();
@@ -236,6 +240,14 @@ export class AttemptRuns implements RunShell {
     this.results.show(null, [...this.#dockerState, ...noRunYet(runCommand("test", this.options, this.runContext()), status.last_test_run)]);
     this.#showsRecorded = true;
     if (status.service !== null) void this.#readDocker(status);
+  }
+
+  /** A service project's dev stack, with its code fetched the first time. */
+  async #openDevPanel(status: AttemptStatus): Promise<void> {
+    const module = await fetchChunk((message) => this.host.context.shell.announce(message), () => import("./dev-panel.ts"));
+    if (module === null || this.#destroyed) return;
+    this.#devPanel = new module.DevPanel(this.host.context, status);
+    this.results.addDev(this.#devPanel.element);
   }
 
   /** A service project: whether Docker can run it here, read once and asking it nothing that

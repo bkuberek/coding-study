@@ -1,10 +1,12 @@
-"""The runs and jobs of the server (docs/specs/web-ui.md#runs, docs/specs/web-ui.md#jobs).
+"""The runs, jobs and dev stacks of the server (docs/specs/web-ui.md#runs,
+docs/specs/web-ui.md#jobs, docs/specs/web-ui.md#dev-stack).
 
 Each is a child `cstudy` whose output the server relays as server-sent events. A run relays the
-`--events` lines of `cstudy test` or `cstudy submit` unchanged; a job relays the lines of a
-command's text report. Every message stays in memory, so a stream can start again after any of
-them (`Last-Event-ID`), until ten newer runs of the same attempt, or ten newer jobs, take its
-place. A slot is held from the start until the child exits, not until its `run_end`: a run asked
+`--events` lines of `cstudy test` or `cstudy submit` unchanged, and a dev stack those of
+`cstudy dev --events`, whose standard input the server keeps to switch scenarios; a job relays the
+lines of a command's text report. Every message stays in memory, so a stream can start again after
+any of them (`Last-Event-ID`), until ten newer runs of the same attempt, or ten newer jobs, take
+its place. A slot is held from the start until the child exits, not until its `run_end`: a run asked
 for right after a cancel must wait until the child is gone.
 
 Cancel sends SIGINT, as Ctrl-C does in a terminal; a child still alive after a while gets SIGTERM,
@@ -26,7 +28,12 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 
 from coding_study.domain.cases import JsonValue
-from coding_study.entrypoints.web.children import ChildCommand, StreamedChild, start_child
+from coding_study.entrypoints.web.children import (
+    ChildCommand,
+    StreamedChild,
+    start_child,
+    start_piped_child,
+)
 from coding_study.entrypoints.web.errors import ApiError, ErrorCode
 
 ID_BYTES = 8
@@ -36,6 +43,9 @@ STDERR_LINES = 20
 CLOSED_EVENT = "closed"
 LINE_EVENT = "line"
 RUN_END = "run_end"
+DEV_END = "dev_end"
+ENDS = frozenset({RUN_END, DEV_END})
+"""The last event of a run's stream, and of a dev stack's."""
 KEEP_ALIVE = ": keep-alive\n\n"
 SIGNAL_EXIT_BASE = 128
 """A shell reports a process that a signal ended as 128 + the signal's number."""
@@ -51,6 +61,7 @@ def _report_nothing(_label: str, _text: str) -> None:
 class ChildKind(StrEnum):
     RUN = "run"
     JOB = "job"
+    DEV = "dev"
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +91,7 @@ class ChildStart:
     """The start of the line the server prints when it ends: `test two-sum · python`."""
     options: Mapping[str, JsonValue] = field(default_factory=dict[str, JsonValue])
     attempt_id: int | None = None
-    """A run's attempt, whose slot it takes."""
+    """A run's or a dev stack's attempt, whose slot it takes."""
     excludes_runs: bool = False
     """A job that starts only while no run runs, and while it runs no run starts."""
 
@@ -155,11 +166,15 @@ def _line_message(stream: str, text: str) -> Message:
     return Message(LINE_EVENT, json.dumps({"stream": stream, "text": text}))
 
 
-_RELAYS: Mapping[ChildKind, Relay] = {ChildKind.RUN: EventRelay(), ChildKind.JOB: LineRelay()}
+_RELAYS: Mapping[ChildKind, Relay] = {
+    ChildKind.RUN: EventRelay(),
+    ChildKind.JOB: LineRelay(),
+    ChildKind.DEV: EventRelay(),
+}
 
 
 class Child:
-    """A run or a job: its process and every message it relayed."""
+    """A run, a job or a dev stack: its process and every message it relayed."""
 
     def __init__(self, kind: ChildKind, start: ChildStart, timing: ChildTiming) -> None:
         self.id = secrets.token_hex(ID_BYTES)
@@ -184,7 +199,8 @@ class Child:
 
     async def launch(self, ended: Callable[["Child"], None]) -> None:
         """Starts the process; `ended` is called once it exited and its stream closed."""
-        process = await start_child(self.start.child, self.start.workspace, self.start.arguments)
+        start = start_piped_child if self.kind is ChildKind.DEV else start_child
+        process = await start(self.start.child, self.start.workspace, self.start.arguments)
         self._process = process
         self._run_task(self._supervise(process, ended))
 
@@ -198,6 +214,14 @@ class Child:
 
     async def wait_ended(self) -> None:
         await self._ended.wait()
+
+    def write_line(self, text: str) -> None:
+        """A line on a dev stack's standard input. Raises ApiError `conflict` once it ended."""
+        process = self._process
+        if process is None or not self.running:
+            message = f"{self.kind} {self.id} has ended"
+            raise ApiError(ErrorCode.CONFLICT, message, {self.kind.value: self.id})
+        process.stdin.write(f"{text}\n".encode())
 
     async def frames(self, after: int | None) -> AsyncIterator[str]:
         """The stream: the messages after `after` (all of them for None), the live ones, then
@@ -255,7 +279,7 @@ class Child:
         if message is None:
             _warn(f"{self.kind} {self.id}: dropped a line that is not an event: {line}")
             return
-        if message.event == RUN_END:
+        if message.event in ENDS:
             self.run_end = json.loads(message.data)
         self._append(message)
 
@@ -297,14 +321,15 @@ class ChildListener(Protocol):
 
 
 class Children:
-    """Every run and job of the server, and their slots: one run per attempt, one job at a time,
-    and no run while a job that excludes runs runs."""
+    """Every run, job and dev stack of the server, and their slots: one run and one dev stack per
+    attempt, one job at a time, and no run while a job that excludes runs runs."""
 
     def __init__(self, timing: ChildTiming | None = None, report: Report = _report_nothing) -> None:
         self._timing = timing or ChildTiming()
         self._report = report
         self._runs: list[Child] = []
         self._jobs: list[Child] = []
+        self._devs: list[Child] = []
         self._listeners: list[ChildListener] = []
         self._starting = asyncio.Lock()
         self._stopping = False
@@ -345,9 +370,21 @@ class Children:
             self._jobs = _retained([*self._jobs, job], lambda _kept: True)
             return job
 
+    async def start_dev(self, start: ChildStart) -> Child:
+        """Raises ApiError `conflict` while the attempt's dev stack runs."""
+        async with self._starting:
+            self._refuse_new_child()
+            busy = _first(self._devs, lambda dev: dev.running and _same_attempt(dev, start))
+            if busy is not None:
+                message = f"the dev stack of this attempt runs: {busy.start.title}"
+                raise ApiError(ErrorCode.CONFLICT, message, {"dev": busy.id})
+            dev = await self._launch(ChildKind.DEV, start)
+            self._devs = _retained([*self._devs, dev], lambda kept: _same_attempt(kept, start))
+            return dev
+
     def active(self) -> Child | None:
-        """A run or a job that is running; the first found."""
-        return _first([*self._runs, *self._jobs], lambda child: child.running)
+        """A run, a job or a dev stack that is running; the first found."""
+        return _first([*self._runs, *self._jobs, *self._devs], lambda child: child.running)
 
     @asynccontextmanager
     async def none_running(self, refused_by: str) -> AsyncGenerator[None]:
@@ -368,9 +405,17 @@ class Children:
         """Raises ApiError `not_found` for an id no retained job has."""
         return _found(self._jobs, job_id, ChildKind.JOB)
 
+    def dev(self, dev_id: str) -> Child:
+        """Raises ApiError `not_found` for an id no retained dev stack has."""
+        return _found(self._devs, dev_id, ChildKind.DEV)
+
     def runs_of(self, attempt_id: int) -> list[Child]:
         """The attempt's retained runs, newest first."""
         return [run for run in reversed(self._runs) if run.start.attempt_id == attempt_id]
+
+    def devs_of(self, attempt_id: int) -> list[Child]:
+        """The attempt's retained dev stacks, newest first."""
+        return [dev for dev in reversed(self._devs) if dev.start.attempt_id == attempt_id]
 
     async def stop(self) -> None:
         """Cancels every run and job and waits for their children, as the server stops; no new
@@ -379,7 +424,7 @@ class Children:
             self._stopping = True
         for listener in self._listeners:
             listener.stopping()
-        running = [child for child in (*self._runs, *self._jobs) if child.running]
+        running = [child for child in (*self._runs, *self._jobs, *self._devs) if child.running]
         for child in running:
             child.cancel()
         await asyncio.gather(*(child.wait_ended() for child in running))

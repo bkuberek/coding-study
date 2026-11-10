@@ -15,6 +15,7 @@ steps in order, each an object with one key:
                                output open and outlives it, and writes that process's pid
     {"spawn_sleeper": "<path>"} starts a process that ignores SIGINT and SIGTERM in this one's
                                process group, and writes its pid
+    {"read_line": "<path>"}    reads a line of standard input and appends it to the file
 
 After the last step it waits for signals. It imports the standard library only, so it starts
 fast.
@@ -94,6 +95,11 @@ def spawn_sleeper(pid_path: object) -> None:
     Path(str(pid_path)).write_text(str(process.pid))
 
 
+def read_line(path: object) -> None:
+    with Path(str(path)).open("a", encoding="utf-8") as lines:
+        lines.write(sys.stdin.readline())
+
+
 def _player(steps: list[dict[str, object]]):
     def handle(_number: int, _frame: FrameType | None) -> None:
         play(steps)
@@ -109,6 +115,7 @@ STEPS = {
     "on": on,
     "leave_behind": leave_behind,
     "spawn_sleeper": spawn_sleeper,
+    "read_line": read_line,
 }
 
 if __name__ == "__main__":

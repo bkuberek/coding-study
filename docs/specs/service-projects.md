@@ -1271,14 +1271,28 @@ Planned, for P9 (R29).
 | Item | Phase |
 |------|-------|
 | Run tests and Submit from the attempt page, with `cstudy test --events` and `cstudy submit --events`, the stack's stages in the results panel, and Cancel, which takes the stack down ([Attempt view](web-ui.md#attempt-view)) | P9, built |
-| A stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) | P9 |
-| Stack and mock server status, and a scenario picker over the control interface | P9 |
+| A dev stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) ([Dev stack](web-ui.md#dev-stack)) | P9, built |
+| Stack and mock server status, and a scenario picker over the control interface, through `cstudy dev --events` | P9, built |
 | `.env` is an ordinary file in the tree | P4, built |
 | The dependency list in the Problems view, the Problem view and the Start dialog. The page's Start downloads nothing, so it asks no confirmation: the first run, or `cstudy dev`, pulls and installs, and the results panel shows it as the `pulling` and `installing` stages | P9, built |
 | The Docker messages in Start, in the Attempt view before any run, at the end of a run that Docker stopped, and in the [Health view](web-ui.md#health-view) | P9, built |
 | Code intelligence through the [container](#language-servers) | P9 |
 
 If a terminal holds the dev stack, the page shows that and does not start a second.
+
+### The dev stack from the page
+
+`cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... --events` runs the dev stack as `cstudy dev` does and writes it as JSON events on standard output, one per line, version 1, so the [Web UI](web-ui.md#dev-stack) renders it ([`schemas/dev-events.schema.json`](../../schemas/dev-events.schema.json)):
+
+| Event | Fields |
+|-------|--------|
+| `output` | A progress notice, as in the [event stream](cli.md#event-stream) of `cstudy test`, with `stack` on a stage and `startup_s` on `ready` |
+| `dev_ready` | `app_url` (`http://127.0.0.1:<port>`), `startup_s`, and `mocks`: each mock server's `name`, `scenario` (null for none) and `scenarios`, its visible ones |
+| `app` | `text`: a line your app printed |
+| `scenario` | `mock`, `scenario` (what it holds now) and `message` (why the switch was refused, or null), once per line of standard input |
+| `dev_end` | Last, whatever ended the stack: `outcome` (`stopped` on Ctrl-C or SIGTERM, exit 0; `app_exited`, exit 2; `load_failed`, exit 2, with `output`, what your app printed; `error`, with the exit code of the refusal, `error: ...` on standard error too), `exit_code` and `message` |
+
+Each line of standard input, `{"mock": "room-vendor", "scenario": "outage"}`, switches a mock server over the [control interface](#control-interface) while the stack runs; `"scenario": null` sets none, which resets every mock server and sets the others' scenarios again. A hidden or unknown scenario or mock server, or a line that is no switch, is refused in `message` and changes nothing. The terminal's `cstudy dev` prints the stack's stages as notices too, `starting the stack`, `the stack is ready after 2.4 s, not counted` and `the stack is down`.
 
 ## Checks
 

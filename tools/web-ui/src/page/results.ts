@@ -72,6 +72,11 @@ export class ResultsPanel {
     (this.#job ?? this.#body).before(form);
   }
 
+  /** Puts a service project's dev stack at the top of the panel, under its heading. */
+  addDev(dev: HTMLElement): void {
+    this.#progress.before(dev);
+  }
+
   /** Puts a job's panel above the results, under the run options. */
   addJob(job: HTMLElement): void {
     this.#body.before(job);

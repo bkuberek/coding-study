@@ -13,8 +13,9 @@ from typing import Protocol
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
+from coding_study.application.http_grading_ports import MockControl
 from coding_study.application.ports import ProgressNotice
-from coding_study.application.sandbox import running_stack
+from coding_study.application.sandbox import reported_stack
 from coding_study.application.service_lifecycle import prepare_service_run
 from coding_study.application.service_stacks import dev_stack_plan, workspace_id
 from coding_study.domain.errors import LockBusyError, RunnerStartError, UsageError
@@ -39,6 +40,35 @@ class DevRequest:
     """`--scenario`: the visible scenario each named mock server starts with."""
 
 
+class DevScenarios:
+    """Switches the running dev stack's mock servers among their visible scenarios, or back to
+    none, over the control interface (docs/specs/service-projects.md#control-interface)."""
+
+    def __init__(self, problem: Problem, control: MockControl, current: Mapping[str, str]) -> None:
+        self._problem = problem
+        self._control = control
+        self._current = dict(current)
+
+    @property
+    def current(self) -> dict[str, str]:
+        """The scenario each mock server holds; one that holds none is left out."""
+        return dict(self._current)
+
+    def switch(self, mock: str, scenario: str | None) -> None:
+        """None sets no scenario: the control interface resets every mock server, and the others
+        get theirs back. Raises UsageError for a mock server or a scenario this stack does not
+        hold, and RunnerStartError when the mock server refuses it."""
+        if scenario is None:
+            _require_mock(self._problem, mock)
+            self._control.reset()
+            self._current.pop(mock, None)
+            _set_scenarios(self._control, self._current)
+            return
+        _require_visible(self._problem, {mock: scenario})
+        _set_scenarios(self._control, {mock: scenario})
+        self._current[mock] = scenario
+
+
 @dataclass(frozen=True, slots=True)
 class DevStack:
     """What there is to reach, once the stack is ready."""
@@ -47,6 +77,10 @@ class DevStack:
     mocks: tuple[str, ...]
     scenarios: Mapping[str, str]
     startup_seconds: float
+    visible: Mapping[str, tuple[str, ...]] = field(default_factory=dict[str, tuple[str, ...]])
+    """Each mock server's visible scenarios: those the stack holds."""
+    control: DevScenarios | None = None
+    """Switches them while the stack runs."""
 
 
 class DevListener(Protocol):
@@ -103,13 +137,23 @@ def _dev_lock(problem: Problem) -> str:
 def _require_visible(problem: Problem, scenarios: Mapping[str, str]) -> None:
     mocks = (problem.project_files or NO_PROJECT_FILES).mocks
     for mock, scenario in scenarios.items():
-        if mock not in mocks:
-            raise UsageError(f"no mock server named {mock}; this problem has: {_names(mocks)}")
+        _require_mock(problem, mock)
         visible = visible_scenario_names(mocks[mock])
         if scenario not in visible:
             raise UsageError(
                 f"{mock} has no visible scenario {scenario}; it has: {_names(visible)}"
             )
+
+
+def _require_mock(problem: Problem, mock: str) -> None:
+    mocks = (problem.project_files or NO_PROJECT_FILES).mocks
+    if mock not in mocks:
+        raise UsageError(f"no mock server named {mock}; this problem has: {_names(mocks)}")
+
+
+def _visible(problem: Problem) -> dict[str, tuple[str, ...]]:
+    mocks = (problem.project_files or NO_PROJECT_FILES).mocks
+    return {name: visible_scenario_names(files) for name, files in mocks.items()}
 
 
 def _names(names: Iterable[str]) -> str:
@@ -127,13 +171,20 @@ def _in_stack(
     service = service_of(problem.meta)
     assert service is not None
     engine = environment.sandbox
-    with running_stack(engine, plan, service.startup_budget, notify) as ready:
+    with reported_stack(engine, plan, service.startup_budget, notify) as ready:
         stack = SandboxGradedStack(engine, RunningStack(plan, ready), service)
         endpoints = stack.endpoints
-        if request.scenarios:
-            _set_scenarios(environment, stack, request.scenarios)
+        control = environment.stack_clients(endpoints).mocks
+        _set_scenarios(control, request.scenarios)
         listener.stack_ready(
-            DevStack(endpoints.app_url, endpoints.mocks, request.scenarios, ready.startup_seconds)
+            DevStack(
+                endpoints.app_url,
+                endpoints.mocks,
+                request.scenarios,
+                ready.startup_seconds,
+                _visible(problem),
+                DevScenarios(problem, control, request.scenarios),
+            )
         )
         while True:
             engine.follow_app(plan, listener.app_line)
@@ -142,10 +193,7 @@ def _in_stack(
                 return ended
 
 
-def _set_scenarios(
-    environment: Environment, stack: SandboxGradedStack, scenarios: Mapping[str, str]
-) -> None:
-    control = environment.stack_clients(stack.endpoints).mocks
+def _set_scenarios(control: MockControl, scenarios: Mapping[str, str]) -> None:
     for mock, scenario in scenarios.items():
         if not control.set_scenario(mock, scenario):
             raise RunnerStartError(f"the mock server {mock} refused the scenario {scenario}")

@@ -10,6 +10,7 @@ import pytest
 from coding_study.application.http_grading_ports import StackClients, StackEndpoints
 from coding_study.application.service_dev import (
     DevRequest,
+    DevScenarios,
     DevStack,
     forget_dev_data,
     run_dev_stack,
@@ -198,3 +199,54 @@ def test_a_running_dev_stack_keeps_its_data_and_says_so(environment, engine):
 
     assert engine.called("remove_stack") == []
     assert any("cstudy dev" in line for line in lines)
+
+
+def ready_stack(environment, **fields: Any) -> DevStack:
+    _ended, listener = run(environment, **fields)
+    return listener.ready[0]
+
+
+def controls(environment, **fields: Any) -> DevScenarios:
+    control = ready_stack(environment, **fields).control
+    assert control is not None
+    return control
+
+
+def test_the_stack_names_each_mock_servers_visible_scenarios(environment):
+    assert ready_stack(environment).visible == {"room-vendor": ("outage",)}
+
+
+def test_a_running_stack_switches_a_mock_server_to_a_visible_scenario(environment, journal):
+    controls(environment).switch("room-vendor", "outage")
+
+    assert journal == ["scenario room-vendor=outage"]
+
+
+def test_switching_says_what_each_mock_server_holds_now(environment):
+    control = controls(environment)
+
+    control.switch("room-vendor", "outage")
+
+    assert control.current == {"room-vendor": "outage"}
+
+
+def test_a_running_stack_refuses_a_hidden_scenario(environment, journal):
+    control = controls(environment)
+
+    with pytest.raises(UsageError, match="outage"):
+        control.switch("room-vendor", "rate_limited")
+    assert journal == []
+
+
+def test_a_running_stack_refuses_a_mock_server_it_does_not_have(environment):
+    with pytest.raises(UsageError, match="room-vendor"):
+        controls(environment).switch("nobody", None)
+
+
+def test_no_scenario_resets_the_mock_servers_and_keeps_the_others(environment, journal):
+    control = controls(environment, scenarios={"room-vendor": "outage"})
+    journal.clear()
+
+    control.switch("room-vendor", None)
+
+    assert (journal, control.current) == (["mocks reset"], {})

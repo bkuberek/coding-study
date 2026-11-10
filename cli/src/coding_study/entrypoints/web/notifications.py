@@ -169,6 +169,8 @@ def _child_document(child: Child) -> dict[str, JsonValue]:
     command = child.start.command
     if child.kind is ChildKind.RUN:
         return {"run_id": child.id, "attempt_id": child.start.attempt_id, "command": command}
+    if child.kind is ChildKind.DEV:
+        return {"dev_id": child.id, "attempt_id": child.start.attempt_id, "command": command}
     return {"job_id": child.id, "command": command}
 
 

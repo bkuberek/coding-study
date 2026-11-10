@@ -14,6 +14,7 @@ from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
 from coding_study.entrypoints.web.api_code_intelligence import code_intelligence_routes
 from coding_study.entrypoints.web.api_config import config_routes
+from coding_study.entrypoints.web.api_dev import dev_routes
 from coding_study.entrypoints.web.api_events import event_routes
 from coding_study.entrypoints.web.api_files import file_routes
 from coding_study.entrypoints.web.api_health import health_routes
@@ -62,6 +63,7 @@ def create_app(
         *solution_routes(),
         *mock_routes(),
         *run_routes(),
+        *dev_routes(),
         *health_routes(),
         *code_intelligence_routes(),
         *progress_routes(),

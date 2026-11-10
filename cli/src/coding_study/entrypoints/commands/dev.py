@@ -1,13 +1,10 @@
 """`cstudy dev` (docs/specs/service-projects.md#how-you-reach-them): the dev stack, in the
 foreground. It prints where your app answers and the mock servers it can call, then what your app
-prints, until Ctrl-C brings the stack down and keeps its data.
+prints, until Ctrl-C brings the stack down and keeps its data. `--events` writes the same as JSON
+events for the Web UI (`dev_events.py`).
 """
 
-import signal
-from collections.abc import Generator
-from contextlib import contextmanager
 from pathlib import Path
-from types import FrameType
 from typing import Annotated
 
 import typer
@@ -19,6 +16,7 @@ from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.service_dev import DevRequest, DevStack, run_dev_stack
 from coding_study.domain.errors import UsageError
 from coding_study.domain.sandbox import StackStartError
+from coding_study.entrypoints.commands.dev_events import stream_dev, terminated_as_interrupt
 from coding_study.entrypoints.shared import (
     OPTIONAL_TARGET_HELP,
     ExitCode,
@@ -31,6 +29,7 @@ NAME = "dev"
 LABEL_WIDTH = 11
 SCENARIO_SEPARATOR = "="
 SCENARIO_HELP = "A mock server's visible scenario to start with; repeat it for several."
+EVENTS_HELP = "The stack as JSON events, one per line; each line of input switches a scenario."
 
 
 def register(app: typer.Typer) -> None:
@@ -44,15 +43,21 @@ def dev(
         list[str] | None,
         typer.Option("--scenario", metavar="MOCK=SCENARIO", help=SCENARIO_HELP),
     ] = None,
+    events: Annotated[
+        bool,
+        typer.Option("--events", help=EVENTS_HELP),
+    ] = False,
 ) -> None:
     """Run a service project's stack in the foreground, until Ctrl-C."""
     scenarios = dict(_scenario(text) for text in scenario or ())
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug), Path.cwd())
-    output = console(context)
     request = DevRequest(target.slug, target.language, scenarios)
+    if events:
+        raise typer.Exit(stream_dev(environment, request))
+    output = console(context)
     try:
-        with _terminated_as_interrupt():
+        with terminated_as_interrupt():
             ended = run_dev_stack(environment, request, _Printer(output), _notice(output))
     except KeyboardInterrupt:
         output.print(_line("stopped", "the stack is down and its data is kept"))
@@ -75,27 +80,12 @@ def _scenario(text: str) -> tuple[str, str]:
     return mock, scenario
 
 
-@contextmanager
-def _terminated_as_interrupt() -> Generator[None]:
-    """SIGTERM brings the stack down as Ctrl-C does."""
-
-    def interrupted(_signal_number: int, _frame: FrameType | None) -> None:
-        raise KeyboardInterrupt
-
-    previous = signal.signal(signal.SIGTERM, interrupted)
-    try:
-        yield
-    finally:
-        signal.signal(signal.SIGTERM, previous)
-
-
 class _Printer:
     def __init__(self, output: Console) -> None:
         self._output = output
 
     def stack_ready(self, stack: DevStack) -> None:
         output = self._output
-        output.print(_line("startup", f"{stack.startup_seconds:.1f} s"))
         output.print(_line("app", stack.app_url))
         for mock in stack.mocks:
             scenario = stack.scenarios.get(mock)

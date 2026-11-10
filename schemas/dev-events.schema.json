@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study dev stack events",
+  "description": "One line of `cstudy dev --events`, version 1; a reader ignores the types and fields it does not know. Spec: docs/specs/service-projects.md#the-dev-stack-from-the-page",
+  "oneOf": [
+    { "$ref": "#/$defs/output" },
+    { "$ref": "#/$defs/dev_ready" },
+    { "$ref": "#/$defs/app" },
+    { "$ref": "#/$defs/scenario" },
+    { "$ref": "#/$defs/dev_end" }
+  ],
+  "$defs": {
+    "version": { "const": 1 },
+    "output": {
+      "description": "A progress notice, as `output` in the event stream of cstudy test, with the stack's stage when it names one",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "text"],
+      "properties": {
+        "type": { "const": "output" },
+        "version": { "$ref": "#/$defs/version" },
+        "text": { "type": "string" },
+        "stack": { "enum": ["docker", "pulling", "installing", "starting", "ready", "failed", "stopped"] },
+        "startup_s": { "type": "number", "minimum": 0 }
+      },
+      "dependentRequired": { "startup_s": ["stack"] }
+    },
+    "dev_ready": {
+      "description": "The stack is ready: where your app answers on this machine, and each mock server",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "app_url", "startup_s", "mocks"],
+      "properties": {
+        "type": { "const": "dev_ready" },
+        "version": { "$ref": "#/$defs/version" },
+        "app_url": { "type": "string", "pattern": "^http://127\\.0\\.0\\.1:[0-9]+$" },
+        "startup_s": { "type": "number", "minimum": 0 },
+        "mocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "scenario", "scenarios"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "scenario": { "description": "The scenario it holds; null for none", "type": ["string", "null"] },
+              "scenarios": { "description": "Its visible scenarios", "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "app": {
+      "description": "A line your app printed",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "text"],
+      "properties": {
+        "type": { "const": "app" },
+        "version": { "$ref": "#/$defs/version" },
+        "text": { "type": "string" }
+      }
+    },
+    "scenario": {
+      "description": "A line of standard input asked to switch a mock server: the scenario it holds now, and why it was refused, or null",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "mock", "scenario", "message"],
+      "properties": {
+        "type": { "const": "scenario" },
+        "version": { "$ref": "#/$defs/version" },
+        "mock": { "type": ["string", "null"] },
+        "scenario": { "type": ["string", "null"] },
+        "message": { "type": ["string", "null"] }
+      }
+    },
+    "dev_end": {
+      "description": "Last: how the dev stack ended, and the exit code",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "outcome", "exit_code", "message"],
+      "properties": {
+        "type": { "const": "dev_end" },
+        "version": { "$ref": "#/$defs/version" },
+        "outcome": { "enum": ["stopped", "app_exited", "load_failed", "error"] },
+        "exit_code": { "enum": [0, 2, 3, 4, 70] },
+        "message": { "type": ["string", "null"] },
+        "output": { "description": "With load_failed: what your app printed before it stopped", "type": "string" }
+      }
+    }
+  }
+}

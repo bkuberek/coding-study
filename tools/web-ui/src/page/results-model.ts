@@ -138,7 +138,7 @@ export class RunModel {
         return;
       case "output":
         this.notice = event.text;
-        if (event.stack) this.stack = nextStack(this.stack, event.stack, event.startup_s);
+        if (event.stack) this.stack = stackStanding(this.stack, event.stack, event.startup_s);
         return;
       case "build":
         this.build = event;
@@ -215,8 +215,8 @@ export class RunModel {
   }
 }
 
-/** A stack that failed to start stays failed once it is down; one that was ready keeps its startup. */
-function nextStack(before: StackStanding | null, stage: StackState, startup_s: number | undefined): StackStanding {
+/** The stack after a notice names `stage`: one that failed to start stays failed once it is down, and one that was ready keeps its startup. */
+export function stackStanding(before: StackStanding | null, stage: StackState, startup_s: number | undefined): StackStanding {
   if (stage === "stopped" && before?.state === "failed") return { ...before, down: true };
   return { state: stage, startup_s: startup_s ?? before?.startup_s ?? null, down: stage === "stopped" };
 }

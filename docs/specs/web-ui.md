@@ -341,6 +341,26 @@ Measured 2026-10-31 on an Apple Silicon Mac, load average 4.0 to 5.6 (other work
 
 The Go project's terminal run took 1.67 s at that load, within NFR-1's 2 s for Go projects; every page run is within 0.1 s of its terminal run but the Kotlin project's first measurement, 12 ms over and inside the JVM's run-to-run spread of about 0.15 s.
 
+## Dev stack
+
+A service project's dev stack runs from the Attempt view as a child `cstudy dev <slug> --events` ([the dev stack from the page](service-projects.md#the-dev-stack-from-the-page)), relayed as a run is, one per attempt. The server keeps a pipe on its standard input and writes each scenario switch to it as one line.
+
+| Method and path | Request | Response |
+|-----------------|---------|----------|
+| `POST /api/v1/dev` | `attempt_id` | 201 `{"id"}`. The attempt in progress, of a service project (422 `usage`, `cstudy dev is for service projects; two-sum is not one`); one dev stack per attempt: 409 `conflict` with `"dev": <id>` while one runs, and the page attaches to it. A dev stack takes no run slot, and a run takes none of its |
+| `GET /api/v1/dev?attempt_id=N` | | The attempt's retained dev stacks, newest first, each `{"id", "attempt_id", "state", "started_at", "exit_code", "end"}`: `state` `running` or `ended`, `end` the stream's `dev_end` or null |
+| `GET /api/v1/dev/{id}` | | That document |
+| `GET /api/v1/dev/{id}/events` | `Last-Event-ID` | The stream as [SSE](#server-sent-events), as a run's: `output` (with `stack`), `dev_ready`, `app`, `scenario` and `dev_end`, then `closed` |
+| `POST /api/v1/dev/{id}/stop` | | 202 `{"id"}`: the [Cancel](#cancel) ladder, SIGINT first, as Ctrl-C does in a terminal; the stack comes down and keeps its data |
+| `POST /api/v1/dev/{id}/scenario` | `{"mock", "scenario"}`, `scenario` null for none | 202 `{"id"}`: the switch, written as one line to the child's standard input; `cstudy dev` answers with a `scenario` event, which names a refusal. Any other body: 422 `usage`; an ended dev stack: 409 `conflict` |
+
+| Rule | Detail |
+|------|--------|
+| Start | Only on request, with the panel's Start dev stack, because a stack holds memory. A terminal that holds the project's dev stack makes `cstudy dev` exit 3 with the holder's process id, and the panel shows that line and starts no second |
+| Panel | Above the results: the stack's stage as in the results panel's `stack` line, the app's address on this machine as a link (`http://127.0.0.1:<port>`), a list per mock server of `no scenario` and its visible scenarios, disabled until the stack is ready, a refusal in words, and the app's last 200 lines in a short log. How it ended stays shown, with the app's output when it would not start |
+| Stop | Stop, in the place of Start, as Ctrl-C does. The tab that started the stack stops it when it leaves the Attempt view or the page (a `keepalive` request as the page hides), and when it has been hidden for 5 minutes, the idle rule of a hidden tab's [sessions](#lifecycle-and-limits). A tab that attached to another's stack never stops it on its own. Ctrl-C or SIGTERM on `cstudy serve` stops every dev stack with its runs and jobs |
+| Abort and reset | A running dev stack holds the attempt as a run does: abort and reset answer 409 `conflict` naming it |
+
 ## Jobs
 
 A job is a child `cstudy` command whose text report is relayed line by line: commands with no event stream, shown as their terminal output.
@@ -371,6 +391,7 @@ A job is a child `cstudy` command whose text report is relayed line by line: com
 | `progress_changed` | `{}` | `progress.db` or its `-wal` file changed: an attempt started, ended or recorded a run, a hint or a reveal, from the page or the terminal. A mock is nothing but its attempts, so this is also when the [mock's state](#mock-view) may have changed |
 | `run_started`, `run_ended` | `run_id`, `attempt_id`, `command`, and `exit_code` when ended | A run of any tab started or ended |
 | `job_started`, `job_ended` | `job_id`, `command`, and `exit_code` when ended | A job started or ended |
+| `dev_started`, `dev_ended` | `dev_id`, `attempt_id`, `command` (`dev`), and `exit_code` when ended | A [dev stack](#dev-stack) of any tab started or ended |
 
 | Rule | Detail |
 |------|--------|
@@ -697,7 +718,7 @@ Opening the History row of an attempt that is over reads [`GET …/past-files`](
 | Concurrent | Sequential case rows, then one row per stress case and variant, whose run dots fill in as runs end; a failing run shows its seed and reasons and a Rerun action that starts `cases: [id]`, `stress: 1`, `seed: <seed>`. The summary adds `stress runs found no race (not a proof of thread safety)` |
 | Project | Test rows by file with origin tags for `test`; level tallies and case rows for `submit` (in a mock, only failing hidden counts); a level unlock adds the new test file to the tree. A deadlock on the [virtual clock](problem-format.md#asynchronous-code-and-the-virtual-clock) is a `STALLED` case row that names the operation and the virtual time. [Stress cases](problem-format.md#stress-cases-in-projects) draw their rows with their run dots inside the level's group of a submission (each level's case rows, then its stress rows, whose facts name the level), as they do for a concurrent problem's test run but without a Rerun action, since a project's stress case runs only in a submission, and the summary of a passing submission adds `stress runs found no race (not a proof of thread safety)`. The statement pane renders an example's harness operations in words (`r1 = receive(5000) starts`, `1000 ms pass`, `r1 returns "a"`, `the clock reads 1000 ms`), and a level section with stress cases shows the stress table that a concurrent problem's `## Concurrency` section has |
 | Item | The notes file in the editor and the prompt in the statement pane; no runs; Done takes a rating only; Solution shows the rubric and the reference without asking |
-| Service project | From the attempt's `service`: Run tests (`cstudy test <slug> --events`, with no flag, the type check preference included, since `cstudy test` takes none there) and Submit, as for a project; Run options offers only the level, for Submit, and shows the `cstudy submit` command it makes; no Bench. The results panel adds a `stack` line, from the `stack` of each `output` event: `starting Docker`, `pulling images`, `installing dependencies`, `starting`, `ready after 2.4 s, not counted`, `did not become ready`, and `down`, which keeps the startup of a stack that was ready (`down · it was ready after 2.4 s, not counted`) and the failure of one that was not. `commands.test` is one test row, with no file heading, and the tail of its output under it when it did not pass; the visible cases follow as case rows. Cancel stops the run as for any run: `cstudy` takes the stack down before it exits, so the panel ends on `down` |
+| Service project | From the attempt's `service`: Run tests (`cstudy test <slug> --events`, with no flag, the type check preference included, since `cstudy test` takes none there) and Submit, as for a project; Run options offers only the level, for Submit, and shows the `cstudy submit` command it makes; no Bench. The results panel adds a `stack` line, from the `stack` of each `output` event: `starting Docker`, `pulling images`, `installing dependencies`, `starting`, `ready after 2.4 s, not counted`, `did not become ready`, and `down`, which keeps the startup of a stack that was ready (`down · it was ready after 2.4 s, not counted`) and the failure of one that was not. `commands.test` is one test row, with no file heading, and the tail of its output under it when it did not pass; the visible cases follow as case rows. Cancel stops the run as for any run: `cstudy` takes the stack down before it exits, so the panel ends on `down`. Above the results, the [dev stack](#dev-stack) panel starts and stops `cstudy dev` and switches its scenarios; before any run, a Docker that is missing or refuses this user is said in the results panel, in the words of `cstudy start` |
 
 | Change from elsewhere | Page behaviour |
 |-----------------------|----------------|
