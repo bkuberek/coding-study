@@ -212,6 +212,7 @@ jobs:
             cli/src/coding_study/application/verify_service.py
             cli/src/coding_study/application/code_intelligence.py
             cli/src/coding_study/domain/sandbox.py
+            cli/src/coding_study/domain/devcontainer.py
             cli/src/coding_study/domain/docker_engine.py
             cli/src/coding_study/domain/mock_configs.py
             cli/src/coding_study/domain/service_*.py
