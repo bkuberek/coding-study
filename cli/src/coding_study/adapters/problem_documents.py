@@ -386,7 +386,7 @@ def _case(case: Document, rules: _CaseRules, location: str) -> Case:
         case_input = _case_input(case, rules.flows)
     except CaseDocumentError as error:
         raise _DocumentError(location, str(error)) from None
-    expected = Expected(case["expected"]) if "expected" in case else None
+    expected = Expected(case["expected"]) if "expected" in case else _burst_expected(case)
     if expected is None and _requires_expected(case_input, rules.comparator):
         raise _DocumentError(
             location, "missing expected (required unless generated or the comparator is checker)"
@@ -402,8 +402,19 @@ def _case(case: Document, rules: _CaseRules, location: str) -> Case:
     )
 
 
+def _burst_expected(case: Document) -> Expected | None:
+    """A parallel case expects its counts, and its `after` answer, in the shape a report shows
+    what came back, so an example and a failure read the same way."""
+    if "parallel" not in case:
+        return None
+    expected: dict[str, Any] = {"statuses": case["expected_statuses"]}
+    if "after" in case:
+        expected["after"] = case["after"]["expected"]
+    return Expected(expected)
+
+
 def _case_input(case: Document, flows: Flows) -> CaseInput:
-    if "request" in case or "steps" in case:
+    if "request" in case or "steps" in case or "parallel" in case:
         return http_case_input(case, flows)
     if "stress" in case:
         return stress_from_document(case["stress"])
@@ -417,9 +428,11 @@ def _case_input(case: Document, flows: Flows) -> CaseInput:
 
 
 def _requires_expected(case_input: CaseInput, comparator: ComparatorSpec) -> bool:
-    """A multi-step case holds what it expects in each step."""
+    """A multi-step case holds what it expects in each step, and a parallel case in its
+    `expected_statuses` and `after`."""
     has_no_expected = isinstance(case_input, GeneratedInput | StressScenario) or (
-        isinstance(case_input, HttpCaseInput) and bool(case_input.steps)
+        isinstance(case_input, HttpCaseInput)
+        and (bool(case_input.steps) or case_input.parallel is not None)
     )
     return not has_no_expected and comparator.type is not ComparatorType.CHECKER
 

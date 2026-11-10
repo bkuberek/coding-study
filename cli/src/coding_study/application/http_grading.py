@@ -3,7 +3,8 @@
 Given a stack that is ready, runs each case of the graded levels in tests.json order: resets the
 mock servers, restarts the app with fresh data if the case asks, sets its scenarios, sends its
 requests or steps within its limit, then judges the answer and the mock servers' logs, and runs its
-cleanup steps. Nothing before the first request counts toward the limit. An app that dies leaves
+cleanup steps. A parallel case sends its burst all at once, and one that repeats runs again from
+its reset. Nothing before the first request counts toward the limit. An app that dies leaves
 the remaining cases not run, as does one that hangs too often. The result is a `Judgement` like a
 runner's, so levels, tallies, submissions and events need no code of their own.
 """
@@ -13,6 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from typing import Protocol
 
+from coding_study.application.http_grading_parallel import BurstAnswered, BurstEnd, run_burst
 from coding_study.application.http_grading_ports import (
     AppExit,
     GradedStack,
@@ -43,6 +45,7 @@ from coding_study.domain.http_grading import (
     answered_verdict,
     log_failures,
 )
+from coding_study.domain.http_parallel import burst_verdict
 from coding_study.domain.http_steps import output_failures
 from coding_study.domain.http_templates import MissingValueError, rendered_assertion
 from coding_study.domain.judging import CaseVerdict, Judgement, RunnableCase, concrete_case
@@ -137,8 +140,8 @@ class _CaseChecker:
     def _problem_with(self, http: HttpCaseInput, comparator: ComparatorSpec) -> str | None:
         if comparator.type not in HTTP_COMPARATORS:
             return f"the comparator {comparator.type} cannot judge a response body"
-        if not http.exchange_steps():
-            return "a service project's case needs a request or steps"
+        if not http.exchange_steps() and http.parallel is None:
+            return "a service project's case needs a request, steps or a parallel burst"
         named = (*http.mocks, *(assertion.mock for assertion in http.log))
         unknown = [mock for mock in named if mock not in self.known_mocks]
         return f"no mock server named {unknown[0]}" if unknown else None
@@ -175,6 +178,17 @@ class _Grader:
         return verdict
 
     def _graded(self, checked: _CheckedCase) -> CaseVerdict:
+        """A case that repeats runs again, from its reset, after each run that passed; the first
+        run that did not pass is the verdict, and says which run it was."""
+        runs = checked.http.runs
+        run = 1
+        verdict = self._graded_once(checked)
+        while verdict.status is CaseStatus.PASS and run < runs:
+            run += 1
+            verdict = self._graded_once(checked)
+        return _in_run(verdict, run, runs)
+
+    def _graded_once(self, checked: _CheckedCase) -> CaseVerdict:
         # The clock the engine stamps the app's output with, read before a fresh start, so that
         # the output check also covers what the app prints while it starts.
         started_s = time.time()
@@ -205,7 +219,12 @@ class _Grader:
         self._app.clear_cookies()
         rules = StepRules(checked.comparator, checked.limit_ms)
         runner = StepRunner(self._app, self._endpoints, rules)
-        verdict = self._judged(checked, runner.run(http.exchange_steps()), runner)
+        ended = (
+            run_burst(runner, http, http.parallel)
+            if http.parallel is not None
+            else runner.run(http.exchange_steps())
+        )
+        verdict = self._judged(checked, ended, runner)
         if self._stopped is not None:
             return verdict
         if http.cleanup:
@@ -216,14 +235,19 @@ class _Grader:
             verdict = _with_failures(verdict, found)
         return verdict
 
-    def _judged(self, checked: _CheckedCase, ended: StepsEnd, runner: StepRunner) -> CaseVerdict:
+    def _judged(
+        self, checked: _CheckedCase, ended: StepsEnd | BurstEnd, runner: StepRunner
+    ) -> CaseVerdict:
         if isinstance(ended, ExchangeFailed):
             return self._failed(checked, ended)
         if isinstance(ended, StepsStopped):
             return _stopped(checked.case, ended)
         logs = self._logs(checked.http.log)
         log_problems = tuple(_log_problems(checked.http.log, logs, runner.values))
-        return answered_verdict(checked.case, ended.answer, (*ended.failures, *log_problems))
+        failures = (*ended.failures, *log_problems)
+        if isinstance(ended, BurstAnswered):
+            return burst_verdict(checked.case, ended.answer, failures)
+        return answered_verdict(checked.case, ended.answer, failures)
 
     def _logs(self, assertions: tuple[LogAssertion, ...]) -> dict[str, MockLog]:
         """Each mock server's log once, read after the last answer."""
@@ -294,6 +318,14 @@ def _stopped(case: RunnableCase, stopped: StepsStopped) -> CaseVerdict:
     return CaseVerdict(
         case, CaseStatus.FAIL, outcome, Mismatch(FAILURE_SEPARATOR.join(stopped.failures))
     )
+
+
+def _in_run(verdict: CaseVerdict, run: int, runs: int) -> CaseVerdict:
+    """A failure of a case that repeats names its run."""
+    mismatch = verdict.mismatch
+    if runs == 1 or mismatch is None:
+        return verdict
+    return replace(verdict, mismatch=Mismatch(f"run {run} of {runs}: {mismatch.detail}"))
 
 
 def _with_failures(verdict: CaseVerdict, failures: tuple[str, ...]) -> CaseVerdict:

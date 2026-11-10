@@ -11,6 +11,7 @@ from coding_study.domain.http_case import (
     HttpRequest,
     HttpStep,
     LogAssertion,
+    ParallelBurst,
     RequestTemplate,
 )
 from coding_study.domain.mock_configs import MockFiles
@@ -619,6 +620,35 @@ def test_fresh_with_data_needs_a_reset_command():
 
 def test_fresh_with_no_data_only_restarts_and_needs_no_reset():
     assert s23(http_case(fresh=True), http_case("h2", 2)) == []
+
+
+def parallel_case(
+    count: int = 3, statuses: int = 3, *, repeat: int = 1, fresh: bool = False
+) -> Case:
+    burst = ParallelBurst(
+        (HttpRequest("POST", "/r"),) * count, {201: 1, 409: statuses - 1}, None, repeat
+    )
+    return Case("h1", HttpCaseInput({}, parallel=burst, fresh=fresh), None, level=1)
+
+
+def test_a_good_parallel_case_has_no_issue():
+    assert s23(parallel_case(), http_case("h2", 2)) == []
+
+
+def test_a_parallel_case_counts_as_many_answers_as_it_sends():
+    found = s23(parallel_case(count=3, statuses=4), http_case("h2", 2))
+
+    assert found == ["expected_statuses count 4 answers, and parallel sends 3 requests"]
+
+
+def test_a_repeated_parallel_case_starts_each_run_fresh():
+    found = s23(parallel_case(repeat=2), http_case("h2", 2))
+
+    assert found == ["repeat needs fresh, so that each run starts from a reset"]
+
+
+def test_a_repeated_fresh_parallel_case_has_no_issue():
+    assert s23(parallel_case(repeat=2, fresh=True), http_case("h2", 2)) == []
 
 
 def steps_case(target: str) -> Case:

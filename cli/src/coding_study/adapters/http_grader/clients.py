@@ -1,13 +1,16 @@
 """The HTTP grader's clients, on the standard library: one sends a case's requests under a limit on
-the whole exchange, as a browser would, the other works the mock control interface
+the whole exchange, as a browser would, one at a time or a parallel case's burst all at once, the
+other works the mock control interface
 (docs/specs/service-projects.md#control-interface)."""
 
 import http.client
 import json
 import socket
+import threading
 import time
 import urllib.request
-from collections.abc import Buffer, Mapping
+from collections.abc import Buffer, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from email.message import Message
 from http.cookiejar import CookieJar
@@ -95,6 +98,22 @@ class HttpAppClient:
             request = following
             sent = self._sent_once(request, clock)
         return sent
+
+    def send_together(
+        self, requests: Sequence[HttpRequest], limit_ms: int
+    ) -> tuple[HttpResponse | ExchangeFailed, ...]:
+        """A thread and a connection per request, held at a barrier until every thread is ready,
+        so that no request waits for another to be sent. Each limit starts at the release."""
+        if not requests:
+            return ()
+        release = threading.Barrier(len(requests))
+
+        def released(request: HttpRequest) -> HttpResponse | ExchangeFailed:
+            release.wait()
+            return self.send(request, limit_ms)
+
+        with ThreadPoolExecutor(max_workers=len(requests)) as pool:
+            return tuple(pool.map(released, requests))
 
     def _sent_once(self, request: HttpRequest, clock: "_Deadline") -> HttpResponse | ExchangeFailed:
         said = f"{request.method} {self._shown_url(request)}"

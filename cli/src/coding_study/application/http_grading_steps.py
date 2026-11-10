@@ -110,11 +110,26 @@ class StepRunner:
             failures.extend(judged.failures)
         return tuple(failures)
 
+    def send_together(
+        self, requests: tuple[HttpRequest, ...]
+    ) -> tuple[HttpResponse | ExchangeFailed, ...]:
+        """A parallel case's burst, within what is left of the case's limit. The requests run
+        side by side, so the burst spends what its slowest one took."""
+        sent = self._app.send_together(requests, self._left_ms())
+        self._spent_ns += max((answer.duration_ns for answer in sent), default=0)
+        return sent
+
+    @property
+    def spent_ns(self) -> int:
+        return self._spent_ns
+
     def _send(self, request: HttpRequest) -> HttpResponse | ExchangeFailed:
-        left_ms = self._rules.limit_ms - self._spent_ns // NANOSECONDS_PER_MILLISECOND
-        sent = self._app.send(request, max(left_ms, 0))
+        sent = self._app.send(request, self._left_ms())
         self._spent_ns += sent.duration_ns
         return sent
+
+    def _left_ms(self) -> int:
+        return max(self._rules.limit_ms - self._spent_ns // NANOSECONDS_PER_MILLISECOND, 0)
 
     def _prepared(self, step: HttpStep) -> _Prepared | _Unsendable:
         """The request as it goes out. A single-request case's goes as it was written."""

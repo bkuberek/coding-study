@@ -4,7 +4,8 @@ what must come back, and nothing about the app that answers.
 
 A case is one request, with the requests `before` it, or an ordered list of steps
 (docs/specs/service-projects.md#multi-step-cases), which can carry values from one answer into a
-later request and keep cookies, as a browser would.
+later request and keep cookies, as a browser would, or a burst of requests sent at once
+(docs/specs/service-projects.md#parallel-cases), judged by how many answered each status.
 """
 
 from collections.abc import Mapping
@@ -160,6 +161,22 @@ type AbsentOutput = str | OutputPattern
 
 
 @dataclass(frozen=True, slots=True)
+class ParallelBurst:
+    """Requests sent at once against limited capacity
+    (docs/specs/service-projects.md#parallel-cases)."""
+
+    requests: tuple[HttpRequest, ...]
+    """Each with its index, from 0, filled in where the case wrote `{i}`."""
+    statuses: Mapping[ExpectedStatus, int]
+    """How many answers must come back with each status, or class of them. The verdict counts
+    statuses, never their order."""
+    after: HttpStep | None = None
+    """Sent once every answer is in, to judge the state the burst left."""
+    repeat: int = 1
+    """How many times the whole case runs, each time from a reset."""
+
+
+@dataclass(frozen=True, slots=True)
 class OutputCheck:
     """What the app may not print, on standard output or error, while a case runs."""
 
@@ -189,17 +206,27 @@ class HttpCaseInput(FunctionInput):
     cleanup: tuple[HttpStep, ...] = ()
     """Steps that run after the case whatever happened, to undo what it changed."""
     app_output: OutputCheck | None = None
+    parallel: ParallelBurst | None = None
+    """A parallel case's burst, sent after its `before` requests."""
+
+    @property
+    def runs(self) -> int:
+        """How many times the case runs: a parallel case may repeat."""
+        return self.parallel.repeat if self.parallel is not None else 1
 
     def exchange_steps(self) -> tuple[HttpStep, ...]:
         """Every step the case sends, in order: a single-request case's `before` requests, each of
         which must answer 2xx, then its request."""
         if self.steps or self.request is None:
             return self.steps
-        befores = tuple(
+        return (*self.before_steps(), HttpStep("", self.request, self.expected))
+
+    def before_steps(self) -> tuple[HttpStep, ...]:
+        """The `before` requests, each of which must answer 2xx."""
+        return tuple(
             HttpStep(f"before[{index}] {request.method} {request.target}", request, BEFORE_EXPECTED)
             for index, request in enumerate(self.before)
         )
-        return (*befores, HttpStep("", self.request, self.expected))
 
 
 BEFORE_EXPECTED = HttpExpected(SUCCESS)

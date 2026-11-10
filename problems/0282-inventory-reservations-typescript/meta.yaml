@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0282"
+slug: inventory-reservations-typescript
+title: Inventory Reservations (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
+languages: [typescript]
+summary: Many checkouts race for a shop's last items. Build the reservation service on Postgres so that it never sells what it does not have, and migrate its schema to warehouses without losing a row.
+levels:
+  - {level: 1, title: Reserve and release}
+  - {level: 2, title: Checkouts at once}
+  - {level: 3, title: Holds that expire and orders that hold together}
+  - {level: 4, title: Warehouses}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, node_modules/node-pg-migrate/bin/node-pg-migrate.js, up]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+    reset: [node, scripts/reset.ts]
+    grade_setup: [node, "{problem}/grading/grade_setup.ts"]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://app:app@db:5432/app
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  services: services/compose.yaml
+  requires:
+    lock: pnpm-lock.yaml
+    services: [postgres]
+    sizes: {install_mb: 37, images_mb: {app: 81, postgres: 117}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "Settle every race where the database settles it: a key, a row lock, one conditional update", role: optimal, time: "per request", space: "per request"}
+related: [supplier-records-locking-typescript, coworking-availability-typescript]
+estimate_minutes: 240

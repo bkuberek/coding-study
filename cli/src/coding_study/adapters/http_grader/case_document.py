@@ -3,10 +3,11 @@
 
 A multi-step case's flows are written out here, once, as it is read: a `use` step becomes the
 flow's steps, with each name its `with` gives filled in, so nothing after loading knows of flows.
+A parallel case's burst is written out the same way, one request per index.
 """
 
 import json
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -14,6 +15,7 @@ from coding_study.domain.cases import Expected
 from coding_study.domain.http_captures import CaptureSyntaxError, capture_source
 from coding_study.domain.http_case import (
     DEFAULT_JAR,
+    ExpectedStatus,
     FormBody,
     HttpCaseInput,
     HttpExpected,
@@ -23,6 +25,7 @@ from coding_study.domain.http_case import (
     LogAssertion,
     OutputCheck,
     OutputPattern,
+    ParallelBurst,
     QueryValue,
     RequestTemplate,
     TemplateBody,
@@ -38,6 +41,9 @@ CONTENT_TYPE = "Content-Type"
 JSON_CONTENT_TYPE = "application/json"
 _MOCKS_FIELD = "mocks"
 _STEPS_FIELD = "steps"
+_PARALLEL_FIELD = "parallel"
+INDEX_PLACEHOLDER = "{i}"
+"""Where each request of a parallel case's burst gets its index."""
 _BOUND_FIELDS = ("request", "expected", "with")
 """The parts of a flow's step that its `with` fills in; captures name places, not values."""
 
@@ -52,6 +58,8 @@ def http_case_input(case: Document, flows: Flows | None = None) -> HttpCaseInput
     itself, or a capture that names no place in an answer."""
     if _STEPS_FIELD in case:
         return _steps_case(case, flows or {})
+    if _PARALLEL_FIELD in case:
+        return _parallel_case(case)
     request: Document = case["request"]
     mocks: Mapping[str, str] = case.get(_MOCKS_FIELD, {})
     return HttpCaseInput(
@@ -84,6 +92,57 @@ def _steps_case(case: Document, flows: Flows) -> HttpCaseInput:
         cleanup=expander.steps(case.get("cleanup", ()), _Place("cleanup")),
         app_output=_output_check(case),
     )
+
+
+def _parallel_case(case: Document) -> HttpCaseInput:
+    """Each request of the burst with its index, from 0, in place of each `{i}`; with several
+    requests written, the burst takes them in turn."""
+    parallel: Document = case[_PARALLEL_FIELD]
+    mocks: Mapping[str, str] = case.get(_MOCKS_FIELD, {})
+    arguments: dict[str, Any] = {_PARALLEL_FIELD: dict(parallel)}
+    if mocks:
+        arguments[_MOCKS_FIELD] = dict(mocks)
+    templates: Sequence[Document] = (
+        (parallel["request"],) if "request" in parallel else parallel["requests"]
+    )
+    statuses: Mapping[str, int] = case["expected_statuses"]
+    burst = ParallelBurst(
+        requests=tuple(
+            _request(_indexed(templates[index % len(templates)], index))
+            for index in range(parallel["count"])
+        ),
+        statuses={_status(written): count for written, count in statuses.items()},
+        after=_after(case["after"]) if "after" in case else None,
+        repeat=case.get("repeat", 1),
+    )
+    return HttpCaseInput(
+        arguments=arguments,
+        mocks=dict(mocks),
+        before=tuple(_request(before) for before in case.get("before", ())),
+        comparator=_optional_comparator(case),
+        log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
+        fresh=case.get("fresh", False),
+        app_output=_output_check(case),
+        parallel=burst,
+    )
+
+
+def _indexed(request: Document, index: int) -> Document:
+    def with_index(text: str) -> str:
+        return text.replace(INDEX_PLACEHOLDER, str(index))
+
+    return cast(Document, _with_texts(request, with_index))
+
+
+def _status(written: str) -> ExpectedStatus:
+    """`"201"` is a status; `"4xx"` stays a class."""
+    return int(written) if written.isdigit() else written
+
+
+def _after(after: Document) -> HttpStep:
+    request = _request(after["request"])
+    label = f"after {request.method} {request.target}"
+    return HttpStep(label, request, _expected(after["expected"]))
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,20 +189,25 @@ class _Expander:
 def _bound_step(step: Document, bindings: Mapping[str, str]) -> Document:
     if not bindings:
         return step
+
+    def bound_text(text: str) -> str:
+        return bound(text, bindings)
+
     return {
-        key: _bound_value(value, bindings) if key in _BOUND_FIELDS else value
+        key: _with_texts(value, bound_text) if key in _BOUND_FIELDS else value
         for key, value in step.items()
     }
 
 
-def _bound_value(value: object, bindings: Mapping[str, str]) -> object:
+def _with_texts(value: object, change: Callable[[str], str]) -> object:
+    """`value` with each string in it, at any depth, changed."""
     if isinstance(value, str):
-        return bound(value, bindings)
+        return change(value)
     if isinstance(value, list):
-        return [_bound_value(item, bindings) for item in cast(list[object], value)]
+        return [_with_texts(item, change) for item in cast(list[object], value)]
     if isinstance(value, dict):
         members = cast(dict[str, object], value)
-        return {key: _bound_value(item, bindings) for key, item in members.items()}
+        return {key: _with_texts(item, change) for key, item in members.items()}
     return value
 
 

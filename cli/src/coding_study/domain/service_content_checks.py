@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from coding_study.domain.cases import Case
-from coding_study.domain.http_case import HttpCaseInput
+from coding_study.domain.http_case import HttpCaseInput, ParallelBurst
 from coding_study.domain.http_case_checks import step_issues
 from coding_study.domain.http_grading import HTTP_COMPARATORS
 from coding_study.domain.http_origins import declared_origins
@@ -372,6 +372,19 @@ def _case(where: str, case: Case, rules: _CaseRules) -> _Found:
         yield where, message
     if http.fresh and rules.service.services is not None and rules.service.commands.reset is None:
         yield where, "fresh with data needs commands.reset"
+    if http.parallel is not None:
+        for message in _parallel_issues(http.parallel, fresh=http.fresh):
+            yield where, message
+
+
+def _parallel_issues(burst: ParallelBurst, *, fresh: bool) -> Iterator[str]:
+    """What the schema cannot say: the counts add up to the requests sent, and each run of a case
+    that repeats starts from a reset. The schema holds `count` from 2 to 64."""
+    answers, sent = sum(burst.statuses.values()), len(burst.requests)
+    if answers != sent:
+        yield f"expected_statuses count {answers} answers, and parallel sends {sent} requests"
+    if burst.repeat > 1 and not fresh:
+        yield "repeat needs fresh, so that each run starts from a reset"
 
 
 def _scenarios(where: str, case: Case, http: HttpCaseInput, rules: _CaseRules) -> _Found:
