@@ -183,11 +183,14 @@ jobs:
             cli/tests/conftest.py
             cli/tests/browsers.py
             cli/tests/fake_language_server.py
+            cli/tests/fake_sandbox_site
             cli/tests/helpers.py
             cli/tests/intelligence_lab.py
             cli/tests/language_server_scripts.py
+            cli/tests/sandbox_fakes.py
             cli/tests/scripted_child.py
             cli/tests/scripted_runs.py
+            cli/tests/scripted_sandbox.py
             cli/tests/serve_page.py
             cli/tests/serve_process.py
             cli/tests/workspaces.py
@@ -206,13 +209,18 @@ jobs:
             cli/src/coding_study/application/http_grading_ports.py
             cli/src/coding_study/application/service_*.py
             cli/src/coding_study/application/verify_service.py
+            cli/src/coding_study/application/code_intelligence.py
             cli/src/coding_study/domain/sandbox.py
             cli/src/coding_study/domain/docker_engine.py
             cli/src/coding_study/domain/mock_configs.py
             cli/src/coding_study/domain/service_*.py
             cli/src/coding_study/domain/http_*.py
+            cli/src/coding_study/domain/stack_progress.py
+            cli/src/coding_study/domain/code_intelligence.py
             cli/src/coding_study/entrypoints/commands/dev.py
+            cli/src/coding_study/entrypoints/commands/dev_events.py
             cli/src/coding_study/entrypoints/commands/service_test.py
+            cli/src/coding_study/entrypoints/web/code_intelligence.py
             cli/tests/adapters/test_docker_sandbox_real.py
             cli/tests/adapters/test_backing_services_real.py
             cli/tests/real_service_projects.py
