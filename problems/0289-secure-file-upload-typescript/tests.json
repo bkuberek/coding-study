@@ -1,0 +1,3614 @@
+{
+ "$schema": "../../schemas/tests.schema.json",
+ "version": 1,
+ "cases": [
+  {
+   "id": "v1",
+   "level": 1,
+   "visible": true,
+   "note": "an upload answers 201, and its record keeps the name only as metadata",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v1-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "v1-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{id}}",
+       "name": "avatar.gif",
+       "size": 29,
+       "sha256": "1f117ab884befddb6b06149ee2aa019d76d02b8635c49d734031d69d2d0d7f93"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v2",
+   "level": 1,
+   "visible": true,
+   "note": "the file comes back byte for byte",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v2-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "v2-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;",
+      "headers": {
+       "Content-Length": "29"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v3",
+   "level": 1,
+   "visible": true,
+   "note": "a body over MAX_BODY_BYTES is refused",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "v3-ana"
+    },
+    "json": {
+     "name": "huge.png",
+     "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+   },
+   "expected": {
+    "status": 413,
+    "body": {
+     "error": "too_large"
+    }
+   }
+  },
+  {
+   "id": "v4",
+   "level": 1,
+   "visible": true,
+   "note": "two files of 400 bytes fit in the quota of 1,024, and a third does not",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v4-ana"
+      },
+      "json": {
+       "name": "invoice-1.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v4-ana"
+      },
+      "json": {
+       "name": "invoice-2.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v4-ana"
+      },
+      "json": {
+       "name": "invoice-3.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 507,
+      "body": {
+       "error": "quota_exceeded"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "v4-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 800,
+       "quota_bytes": 1024
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h1",
+   "level": 1,
+   "note": "an upload that declares 1,000,000 bytes is refused from its headers: the rest of its body never comes",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h1-ana",
+     "Content-Type": "application/json",
+     "Content-Length": "1000000"
+    },
+    "body": "{\"name\": \"huge.png\", \"data\": \""
+   },
+   "expected": {
+    "status": 413,
+    "body": {
+     "error": "too_large"
+    }
+   },
+   "hang_guard_ms": 5000
+  },
+  {
+   "id": "h2",
+   "level": 1,
+   "note": "a chunked body that passes MAX_BODY_BYTES is refused as it arrives: it never ends",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h2-ana",
+     "Content-Type": "application/json",
+     "Transfer-Encoding": "chunked"
+    },
+    "body": "800\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n10\r\nAAAAAAAAAAAAAAAA\r\n"
+   },
+   "expected": {
+    "status": 413,
+    "body": {
+     "error": "too_large"
+    }
+   },
+   "hang_guard_ms": 5000
+  },
+  {
+   "id": "h3",
+   "level": 1,
+   "note": "a body of exactly MAX_BODY_BYTES is accepted",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h3-ana",
+     "Content-Type": "application/json"
+    },
+    "body": "{\"name\": \"edge.png\", \"data\": \"iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII=\"}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "
+   },
+   "expected": {
+    "status": 201
+   }
+  },
+  {
+   "id": "h4",
+   "level": 1,
+   "note": "a body one byte over MAX_BODY_BYTES is refused",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h4-ana",
+     "Content-Type": "application/json"
+    },
+    "body": "{\"name\": \"edge.png\", \"data\": \"iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII=\"}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             "
+   },
+   "expected": {
+    "status": 413,
+    "body": {
+     "error": "too_large"
+    }
+   }
+  },
+  {
+   "id": "h5",
+   "level": 1,
+   "note": "two users upload avatar.gif, and each gets their own file back",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h5-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h5-ben"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAgABAAAAACwAAAAAAgABAAACAgQKADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "b": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{a}}/content",
+      "headers": {
+       "X-User": "h5-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{b}}/content",
+      "headers": {
+       "X-User": "h5-ben"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0002\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0002\u0000\u0001\u0000\u0000\u0002\u0002\u0004\n\u0000;"
+     }
+    }
+   ]
+  },
+  {
+   "id": "h6",
+   "level": 1,
+   "note": "one user uploads avatar.gif twice: two files, neither replacing the other",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h6-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h6-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAgABAAAAACwAAAAAAgABAAACAgQKADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "b": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{a}}/content",
+      "headers": {
+       "X-User": "h6-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{b}}/content",
+      "headers": {
+       "X-User": "h6-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0002\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0002\u0000\u0001\u0000\u0000\u0002\u0002\u0004\n\u0000;"
+     }
+    }
+   ]
+  },
+  {
+   "id": "h7",
+   "level": 1,
+   "note": "names that climb into another user's folder store new files, and leave hers alone",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h7-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h7-eve"
+      },
+      "json": {
+       "name": "../h7-ana/avatar.gif",
+       "data": "R0lGODlhAgABAAAAACwAAAAAAgABAAACAgQKADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "e1": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h7-eve"
+      },
+      "json": {
+       "name": "..\\..\\h7-ana\\avatar.gif",
+       "data": "R0lGODlhAgABAAAAACwAAAAAAgABAAACAgQKADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "e2": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{a}}/content",
+      "headers": {
+       "X-User": "h7-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{e1}}",
+      "headers": {
+       "X-User": "h7-eve"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{e1}}",
+       "name": "avatar.gif",
+       "size": 29,
+       "sha256": "b3d0dcdd9b7d5705d4155fbe77c24ba0c7bee18d6687e10e8c16b2c707677e0e"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{e2}}",
+      "headers": {
+       "X-User": "h7-eve"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{e2}}",
+       "name": "avatar.gif",
+       "size": 29,
+       "sha256": "b3d0dcdd9b7d5705d4155fbe77c24ba0c7bee18d6687e10e8c16b2c707677e0e"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h8",
+   "level": 1,
+   "note": "a name that climbs out of the data directory keeps only its last part",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h8-ana"
+      },
+      "json": {
+       "name": "../../../../../../etc/passwd.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h8-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{id}}",
+       "name": "passwd.gif",
+       "size": 29,
+       "sha256": "1f117ab884befddb6b06149ee2aa019d76d02b8635c49d734031d69d2d0d7f93"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h8-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    }
+   ]
+  },
+  {
+   "id": "h9",
+   "level": 1,
+   "note": "a whole Windows path, as an old browser sent it, keeps only the file's name",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h9-ana"
+      },
+      "json": {
+       "name": "C:\\Users\\kim\\Pictures\\avatar.png",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h9-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{id}}",
+       "name": "avatar.png",
+       "size": 74,
+       "sha256": "67faa6f6525f204910ba6d147a603f3d15415761f43c45ddfe89f78fea273e3d"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h10",
+   "level": 1,
+   "note": "names with nothing left to show, or a quote, are refused",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h10-ana"
+      },
+      "json": {
+       "name": "photos/..",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_name"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h10-ana"
+      },
+      "json": {
+       "name": "photos/",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_name"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h10-ana"
+      },
+      "json": {
+       "name": "say \"hi\".png",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h11",
+   "level": 1,
+   "note": "without X-User, nothing is read or stored",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 401,
+      "body": {
+       "error": "unauthenticated"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "../admin"
+      }
+     },
+     "expected": {
+      "status": 401,
+      "body": {
+       "error": "unauthenticated"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h12",
+   "level": 1,
+   "note": "another user's file answers 404 to every request",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h12-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h12-ben"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h12-ben"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h12-ben"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h12-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    }
+   ]
+  },
+  {
+   "id": "h13",
+   "level": 1,
+   "note": "deleting a file gives its bytes back to the quota",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h13-ana"
+      },
+      "json": {
+       "name": "invoice-1.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h13-ana"
+      },
+      "json": {
+       "name": "invoice-2.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h13-ana"
+      },
+      "json": {
+       "name": "invoice-3.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 507,
+      "body": {
+       "error": "quota_exceeded"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "path": "/files/{{a}}",
+      "headers": {
+       "X-User": "h13-ana"
+      }
+     },
+     "expected": {
+      "status": 204
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h13-ana"
+      },
+      "json": {
+       "name": "invoice-3.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h13-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 800,
+       "quota_bytes": 1024
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{a}}",
+      "headers": {
+       "X-User": "h13-ana"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h14",
+   "level": 1,
+   "note": "each user has a quota of their own",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h14-ana"
+      },
+      "json": {
+       "name": "invoice-1.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h14-ana"
+      },
+      "json": {
+       "name": "invoice-2.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h14-ben"
+      },
+      "json": {
+       "name": "invoice-1.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h14-ben"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 400,
+       "quota_bytes": 1024
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h15",
+   "level": 1,
+   "note": "8 uploads of 400 bytes at once: the quota holds 2 of them",
+   "parallel": {
+    "count": 8,
+    "request": {
+     "method": "POST",
+     "path": "/files",
+     "headers": {
+      "X-User": "h15-ana"
+     },
+     "json": {
+      "name": "invoice-{i}.pdf",
+      "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+     }
+    }
+   },
+   "expected_statuses": {
+    "201": 2,
+    "507": 6
+   },
+   "after": {
+    "request": {
+     "method": "GET",
+     "path": "/usage",
+     "headers": {
+      "X-User": "h15-ana"
+     }
+    },
+    "expected": {
+     "status": 200,
+     "body": {
+      "used_bytes": 800,
+      "quota_bytes": 1024
+     }
+    }
+   }
+  },
+  {
+   "id": "h16",
+   "level": 1,
+   "note": "a body that is not an upload is refused",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h16-ana",
+       "Content-Type": "application/json"
+      },
+      "body": "{\"name\": \"avatar.gif\", "
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h16-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlh!!"
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h16-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": ""
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h16-ana"
+      },
+      "json": {
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h16-ana"
+      },
+      "json": [
+       "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      ]
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h17",
+   "level": 1,
+   "note": "an id this service never gave answers 404, however it is written",
+   "steps": [
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/0123456789abcdef0123456789abcdef",
+      "headers": {
+       "X-User": "h17-ana"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/..%2F..%2Frecords/content",
+      "headers": {
+       "X-User": "h17-ana"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v5",
+   "level": 2,
+   "visible": true,
+   "note": "a PNG is served as image/png, shown inline, and never sniffed",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v5-ana"
+      },
+      "json": {
+       "name": "avatar.png",
+       "content_type": "image/png",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "v5-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "image/png",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "inline; filename=\"avatar.png\"",
+       "Content-Length": "74"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v6",
+   "level": 2,
+   "visible": true,
+   "note": "a page named avatar.png, claimed as image/png, is still a page",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "v6-ana"
+    },
+    "json": {
+     "name": "avatar.png",
+     "content_type": "image/png",
+     "data": "PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGJvZHk+PHNjcmlwdD5hbGVydChkb2N1bWVudC5jb29raWUpPC9zY3JpcHQ+PC9ib2R5PjwvaHRtbD4K"
+    }
+   },
+   "expected": {
+    "status": 415,
+    "body": {
+     "error": "unsupported_type"
+    }
+   }
+  },
+  {
+   "id": "v7",
+   "level": 2,
+   "visible": true,
+   "note": "a PDF is only ever downloaded",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v7-ana"
+      },
+      "json": {
+       "name": "invoice.pdf",
+       "content_type": "application/pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAKJSVFT0YK"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "v7-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "%PDF-1.4\n1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj\n2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj\n3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 72 72]>> endobj\ntrailer <</Root 1 0 R>>\n%000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\n%%EOF\n",
+      "headers": {
+       "Content-Type": "application/pdf",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "attachment; filename=\"invoice.pdf\"",
+       "Content-Length": "300"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v8",
+   "level": 2,
+   "visible": true,
+   "note": "a JPEG named photo.png: the bytes and the name disagree",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "v8-ana"
+    },
+    "json": {
+     "name": "photo.png",
+     "content_type": "image/png",
+     "data": "/9j/4AAQSkZJRgABAQAASABIAAD/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9sAQwAJCQkJCQkQCQkQFhAQEBYeFhYWFh4mHh4eHh4mLiYmJiYmJi4uLi4uLi4uNzc3Nzc3QEBAQEBISEhISEhISEhI/9sAQwELDAwSERIfEREfSzMqM0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tL/90ABAAB/9oADAMBAAIRAxEAPwC9RRRXxh9if//Z"
+    }
+   },
+   "expected": {
+    "status": 415,
+    "body": {
+     "error": "type_mismatch"
+    }
+   }
+  },
+  {
+   "id": "h18",
+   "level": 2,
+   "note": "a PNG claimed as text/html is stored, and served as the PNG it is",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h18-ana"
+      },
+      "json": {
+       "name": "avatar.png",
+       "content_type": "text/html",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mMQWTANK2IYWhIAHChSgWo6iAMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h18-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "image/png",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "inline; filename=\"avatar.png\"",
+       "Content-Length": "74"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h19",
+   "level": 2,
+   "note": "neither an SVG with a script nor a page named notes.gif is a type this service takes",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h19-ana"
+      },
+      "json": {
+       "name": "logo.svg",
+       "content_type": "image/svg+xml",
+       "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxzY3JpcHQ+YWxlcnQoZG9jdW1lbnQuY29va2llKTwvc2NyaXB0Pjwvc3ZnPgo="
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "unsupported_type"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h19-ana"
+      },
+      "json": {
+       "name": "notes.gif",
+       "content_type": "image/gif",
+       "data": "PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGJvZHk+PHNjcmlwdD5hbGVydChkb2N1bWVudC5jb29raWUpPC9zY3JpcHQ+PC9ib2R5PjwvaHRtbD4K"
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "unsupported_type"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h20",
+   "level": 2,
+   "note": "a PNG named avatar.gif: the extension must match the bytes",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h20-ana"
+    },
+    "json": {
+     "name": "avatar.gif",
+     "content_type": "image/gif",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+    }
+   },
+   "expected": {
+    "status": 415,
+    "body": {
+     "error": "type_mismatch"
+    }
+   }
+  },
+  {
+   "id": "h21",
+   "level": 2,
+   "note": "only the last extension counts, and a name needs one",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h21-ana"
+      },
+      "json": {
+       "name": "avatar",
+       "content_type": "image/png",
+       "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mP4UCGCFTEMLQkAVfNfARjgQMMAAAAASUVORK5CYII="
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "type_mismatch"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h21-ana"
+      },
+      "json": {
+       "name": "report.pdf.png",
+       "content_type": "image/png",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAKJSVFT0YK"
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "type_mismatch"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h22",
+   "level": 2,
+   "note": "a JPEG may end in .jpg or .JPEG, and is served as image/jpeg",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h22-ana"
+      },
+      "json": {
+       "name": "photo.jpg",
+       "content_type": "image/jpeg",
+       "data": "/9j/4AAQSkZJRgABAQAASABIAAD/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9sAQwAJCQkJCQkQCQkQFhAQEBYeFhYWFh4mHh4eHh4mLiYmJiYmJi4uLi4uLi4uNzc3Nzc3QEBAQEBISEhISEhISEhI/9sAQwELDAwSERIfEREfSzMqM0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tL/90ABAAB/9oADAMBAAIRAxEAPwC9RRRXxh9if//Z"
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h22-ben"
+      },
+      "json": {
+       "name": "photo.JPEG",
+       "content_type": "application/octet-stream",
+       "data": "/9j/4AAQSkZJRgABAQAASABIAAD/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9sAQwAJCQkJCQkQCQkQFhAQEBYeFhYWFh4mHh4eHh4mLiYmJiYmJi4uLi4uLi4uNzc3Nzc3QEBAQEBISEhISEhISEhI/9sAQwELDAwSERIfEREfSzMqM0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tL/90ABAAB/9oADAMBAAIRAxEAPwC9RRRXxh9if//Z"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h22-ben"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "image/jpeg",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "inline; filename=\"photo.JPEG\"",
+       "Content-Length": "639"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h23",
+   "level": 2,
+   "note": "a real GIF with a script in its comment is a polyglot",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h23-ana"
+    },
+    "json": {
+     "name": "anim.gif",
+     "content_type": "image/gif",
+     "data": "R0lGODlhAQABAAAAACH+JzxzY3JpcHQ+YWxlcnQoZG9jdW1lbnQuZG9tYWluKTwvc2NyaXB0PgAsAAAAAAEAAQAAAgJEAQA7"
+    }
+   },
+   "expected": {
+    "status": 415,
+    "body": {
+     "error": "active_content"
+    }
+   }
+  },
+  {
+   "id": "h24",
+   "level": 2,
+   "note": "a real PNG with a page in a text chunk, in capitals, is a polyglot",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h24-ana"
+    },
+    "json": {
+     "name": "avatar.png",
+     "content_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAASXRFWHRDb21tZW50ADxIVE1MPjxCT0RZPjxTQ1JJUFQ+YWxlcnQoZG9jdW1lbnQuY29va2llKTwvU0NSSVBUPjwvQk9EWT48L0hUTUw+yYhULAAAAA9JREFUeNpjiMIBGIaWBABgTkOB140Z+wAAAABJRU5ErkJggg=="
+    }
+   },
+   "expected": {
+    "status": 415,
+    "body": {
+     "error": "active_content"
+    }
+   }
+  },
+  {
+   "id": "h25",
+   "level": 2,
+   "note": "a PDF that runs JavaScript when opened is refused",
+   "request": {
+    "method": "POST",
+    "path": "/files",
+    "headers": {
+     "X-User": "h25-ana"
+    },
+    "json": {
+     "name": "invoice.pdf",
+     "content_type": "application/pdf",
+     "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUiAvT3BlbkFjdGlvbiA8PC9TIC9KYXZhU2NyaXB0IC9KUyAoYXBwLmFsZXJ0KDEpKT4+Pj4gZW5kb2JqCjIgMCBvYmogPDwvVHlwZSAvUGFnZXMgL0tpZHMgWzMgMCBSXSAvQ291bnQgMT4+IGVuZG9iagozIDAgb2JqIDw8L1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA3MiA3Ml0+PiBlbmRvYmoKdHJhaWxlciA8PC9Sb290IDEgMCBSPj4KJTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAKJSVFT0YK"
+    }
+   },
+   "expected": {
+    "status": 415,
+    "body": {
+     "error": "active_content"
+    }
+   }
+  },
+  {
+   "id": "h26",
+   "level": 2,
+   "note": "five bytes of a GIF signature, and plain text, are no allowed type",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h26-ana"
+      },
+      "json": {
+       "name": "stub.gif",
+       "content_type": "image/gif",
+       "data": "R0lGODk="
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "unsupported_type"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h26-ana"
+      },
+      "json": {
+       "name": "hello.txt",
+       "content_type": "text/plain",
+       "data": "aGVsbG8sIHRoaXMgaXMgbm90IGEgcGljdHVyZQo="
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "unsupported_type"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h27",
+   "level": 2,
+   "note": "a GIF87a is a GIF too, served inline with its name",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h27-ana"
+      },
+      "json": {
+       "name": "old.gif",
+       "data": "R0lGODdhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h27-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF87a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;",
+      "headers": {
+       "Content-Type": "image/gif",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "inline; filename=\"old.gif\"",
+       "Content-Length": "29"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h28",
+   "level": 2,
+   "note": "a refused upload takes nothing from the quota",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h28-ana"
+      },
+      "json": {
+       "name": "avatar.png",
+       "content_type": "image/png",
+       "data": "PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGJvZHk+PHNjcmlwdD5hbGVydChkb2N1bWVudC5jb29raWUpPC9zY3JpcHQ+PC9ib2R5PjwvaHRtbD4K"
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "unsupported_type"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h28-ana"
+      },
+      "json": {
+       "name": "anim.gif",
+       "data": "R0lGODlhAQABAAAAACH+JzxzY3JpcHQ+YWxlcnQoZG9jdW1lbnQuZG9tYWluKTwvc2NyaXB0PgAsAAAAAAEAAQAAAgJEAQA7"
+      }
+     },
+     "expected": {
+      "status": 415,
+      "body": {
+       "error": "active_content"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h28-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 0,
+       "quota_bytes": 1024
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v9",
+   "level": 3,
+   "visible": true,
+   "note": "a clean scan releases the file: one request to the scanner, with the key and the file's hash",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v9-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "v9-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "clean"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "v9-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    }
+   ],
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 1,
+     "headers": {
+      "Authorization": "Bearer scan-key-sandbox-0001",
+      "X-Content-Sha256": "1f117ab884befddb6b06149ee2aa019d76d02b8635c49d734031d69d2d0d7f93"
+     }
+    }
+   ]
+  },
+  {
+   "id": "v10",
+   "level": 3,
+   "visible": true,
+   "note": "an infected upload is refused, and nothing of it is kept",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v10-ana"
+      },
+      "json": {
+       "name": "invoice.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 422,
+      "body": {
+       "error": "infected"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "v10-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 0,
+       "quota_bytes": 1024
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "infected"
+   }
+  },
+  {
+   "id": "v11",
+   "level": 3,
+   "visible": true,
+   "note": "the scanner answers 503 to every attempt: the file stays pending and is never served",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v11-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "v11-ana"
+      }
+     },
+     "expected": {
+      "status": 409,
+      "body": {
+       "error": "scan_pending"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "v11-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "pending"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "outage"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 3,
+     "min_gap_ms": 230
+    }
+   ]
+  },
+  {
+   "id": "v12",
+   "level": 3,
+   "visible": true,
+   "note": "a 429 with Retry-After: 1: wait a second, then the scan is clean",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v12-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "v12-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "rate_limited_then_clean"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 2,
+     "min_gap_ms": 950
+    }
+   ]
+  },
+  {
+   "id": "h29",
+   "level": 3,
+   "note": "every attempt times out: the file is pending, and its content is not served",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h29-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h29-ana"
+      }
+     },
+     "expected": {
+      "status": 409,
+      "body": {
+       "error": "scan_pending"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h29-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{id}}",
+       "name": "avatar.gif",
+       "size": 29,
+       "sha256": "1f117ab884befddb6b06149ee2aa019d76d02b8635c49d734031d69d2d0d7f93"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "slow"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "h30",
+   "level": 3,
+   "note": "a 502 with an HTML page on every attempt: pending, never clean",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h30-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h30-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "pending"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h30-ana"
+      }
+     },
+     "expected": {
+      "status": 409,
+      "body": {
+       "error": "scan_pending"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "bad_gateway"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 3,
+     "min_gap_ms": 230
+    }
+   ]
+  },
+  {
+   "id": "h31",
+   "level": 3,
+   "note": "a 200 whose JSON is cut short names no verdict: pending at once, with no retry",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h31-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h31-ana"
+      }
+     },
+     "expected": {
+      "status": 409,
+      "body": {
+       "error": "scan_pending"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "malformed"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "h32",
+   "level": 3,
+   "note": "a verdict that is neither clean nor infected is not clean",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h32-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h32-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "pending"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "unknown_verdict"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "h33",
+   "level": 3,
+   "note": "a 401 from the scanner will not change on a retry: pending after one request",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h33-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "unauthorized"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "h34",
+   "level": 3,
+   "note": "503, then 500, then clean: three requests, waiting 250 ms and then 500 ms",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h34-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h34-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "flaky_then_clean"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 3,
+     "min_gap_ms": 230
+    }
+   ]
+  },
+  {
+   "id": "h35",
+   "level": 3,
+   "note": "the first attempt times out and the second is clean",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h35-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h35-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "clean"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "timeout_then_clean"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "h36",
+   "level": 3,
+   "note": "a pending file scanned again later is released when the scanner is back",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h36-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h36-ana"
+      }
+     },
+     "expected": {
+      "status": 409,
+      "body": {
+       "error": "scan_pending"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h36-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "clean"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h36-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "down_then_clean"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "h37",
+   "level": 3,
+   "note": "a pending file found infected later is never served, and frees its quota",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h37-ana"
+      },
+      "json": {
+       "name": "invoice.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h37-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 400,
+       "quota_bytes": 1024
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h37-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "infected"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/content",
+      "headers": {
+       "X-User": "h37-ana"
+      }
+     },
+     "expected": {
+      "status": 410,
+      "body": {
+       "error": "infected"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h37-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "infected"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h37-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 0,
+       "quota_bytes": 1024
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "down_then_infected"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "h38",
+   "level": 3,
+   "note": "a 429 with Retry-After: 2 is waited out in full",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h38-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "long_rate_limit"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 2,
+     "min_gap_ms": 1950
+    }
+   ]
+  },
+  {
+   "id": "h39",
+   "level": 3,
+   "note": "three 429s in a row: three requests a second apart, then pending",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h39-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "always_rate_limited"
+   },
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 3,
+     "min_gap_ms": 950
+    }
+   ]
+  },
+  {
+   "id": "h40",
+   "level": 3,
+   "note": "scanning a clean file again asks the scanner nothing",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h40-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h40-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "clean"
+      }
+     }
+    }
+   ],
+   "log": [
+    {
+     "mock": "scanner",
+     "route": "scan",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "h41",
+   "level": 3,
+   "note": "a pending file holds its room in the quota until it is deleted",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h41-ana"
+      },
+      "json": {
+       "name": "invoice.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwCiUlRU9GCg=="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h41-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 400,
+       "quota_bytes": 1024
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h41-ana"
+      }
+     },
+     "expected": {
+      "status": 204
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/usage",
+      "headers": {
+       "X-User": "h41-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "used_bytes": 0,
+       "quota_bytes": 1024
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "outage"
+   }
+  },
+  {
+   "id": "v13",
+   "level": 4,
+   "visible": true,
+   "note": "a link opens the file for anyone, with no X-User",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v13-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "v13-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;",
+      "headers": {
+       "Content-Type": "image/gif",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "inline; filename=\"avatar.gif\"",
+       "Content-Length": "29"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v14",
+   "level": 4,
+   "visible": true,
+   "note": "a link whose signature was changed opens nothing",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v14-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "v14-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+     },
+     "expected": {
+      "status": 403,
+      "body": {
+       "error": "invalid_link"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v15",
+   "level": 4,
+   "visible": true,
+   "note": "no link to a file still waiting for its scan",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "v15-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "v15-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 409,
+      "body": {
+       "error": "scan_pending"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "outage"
+   }
+  },
+  {
+   "id": "h42",
+   "level": 4,
+   "note": "a link for 2 s opens the file at once, and no longer 3 s later",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h42-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h42-ana"
+      },
+      "json": {
+       "expires_in_s": 2
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "url": "http://scanner:8080/v1/status"
+     },
+     "expected": {
+      "status": 200
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 410,
+      "body": {
+       "error": "link_expired"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "slow_status"
+   }
+  },
+  {
+   "id": "h43",
+   "level": 4,
+   "note": "a link whose expiry was moved later, with its own signature, opens nothing",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h43-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h43-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "9999999999",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 403,
+      "body": {
+       "error": "invalid_link"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h44",
+   "level": 4,
+   "note": "one file's signature does not open another file",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h44-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h44-ana"
+      },
+      "json": {
+       "name": "invoice.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAKJSVFT0YK"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "b": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{a}}/links",
+      "headers": {
+       "X-User": "h44-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{b}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 403,
+      "body": {
+       "error": "invalid_link"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h45",
+   "level": 4,
+   "note": "nobody can make a link to another user's file",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h45-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h45-ben"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h46",
+   "level": 4,
+   "note": "a deleted file's link opens nothing",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h46-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h46-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "path": "/files/{{id}}",
+      "headers": {
+       "X-User": "h46-ana"
+      }
+     },
+     "expected": {
+      "status": 204
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h47",
+   "level": 4,
+   "note": "a link lasts from 1 s to an hour, given as a whole number of seconds",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h47-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h47-ana"
+      },
+      "json": {
+       "expires_in_s": 0
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h47-ana"
+      },
+      "json": {
+       "expires_in_s": 3601
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h47-ana"
+      },
+      "json": {
+       "expires_in_s": "60"
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h47-ana"
+      },
+      "json": {
+       "expires_in_s": 1.5
+      }
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h47-ana"
+      },
+      "json": {
+       "expires_in_s": 3600
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    }
+   ]
+  },
+  {
+   "id": "h48",
+   "level": 4,
+   "note": "a link without its signature or its expiry, or forged and long expired, opens nothing",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h48-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h48-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}"
+      }
+     },
+     "expected": {
+      "status": 403,
+      "body": {
+       "error": "invalid_link"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 403,
+      "body": {
+       "error": "invalid_link"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "1000000000",
+       "sig": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+     },
+     "expected": {
+      "status": 403,
+      "body": {
+       "error": "invalid_link"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h49",
+   "level": 4,
+   "note": "a PDF opened by link is still only downloaded",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h49-ana"
+      },
+      "json": {
+       "name": "invoice.pdf",
+       "data": "JVBERi0xLjQKMSAwIG9iaiA8PC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUj4+IGVuZG9iagoyIDAgb2JqIDw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PiBlbmRvYmoKMyAwIG9iaiA8PC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNzIgNzJdPj4gZW5kb2JqCnRyYWlsZXIgPDwvUm9vdCAxIDAgUj4+CiUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAKJSVFT0YK"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h49-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "exp": "body.expires",
+      "sig": "header.location.query.sig"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/shared/{{id}}",
+      "query": {
+       "expires": "{{exp}}",
+       "sig": "{{sig}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "%PDF-1.4\n1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj\n2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj\n3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 72 72]>> endobj\ntrailer <</Root 1 0 R>>\n%000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\n%%EOF\n",
+      "headers": {
+       "Content-Type": "application/pdf",
+       "X-Content-Type-Options": "nosniff",
+       "Content-Disposition": "attachment; filename=\"invoice.pdf\"",
+       "Content-Length": "300"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h50",
+   "level": 4,
+   "note": "no link to a file found infected",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files",
+      "headers": {
+       "X-User": "h50-ana"
+      },
+      "json": {
+       "name": "avatar.gif",
+       "data": "R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs="
+      }
+     },
+     "expected": {
+      "status": 202
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/scan",
+      "headers": {
+       "X-User": "h50-ana"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "status": "infected"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/files/{{id}}/links",
+      "headers": {
+       "X-User": "h50-ana"
+      },
+      "json": {
+       "expires_in_s": 60
+      }
+     },
+     "expected": {
+      "status": 410,
+      "body": {
+       "error": "infected"
+      }
+     }
+    }
+   ],
+   "mocks": {
+    "scanner": "down_then_infected"
+   }
+  }
+ ]
+}

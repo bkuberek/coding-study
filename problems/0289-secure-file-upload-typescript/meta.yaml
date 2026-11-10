@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0289"
+slug: secure-file-upload-typescript
+title: Secure File Upload (TypeScript)
+status: ready
+difficulty: medium
+track: practical
+kind: project
+domains: [security, backend]
+job_roles: [backend, security-engineer]
+scope: project
+languages: [typescript]
+summary: Users upload attachments and avatars, and your service stores and serves them. Build it so no upload can be too big, lie about its type, escape its folder, or reach a browser before a malware scan clears it.
+levels:
+  - {level: 1, title: Upload and serve}
+  - {level: 2, title: Trust the bytes}
+  - {level: 3, title: Quarantine until clean}
+  - {level: 4, title: Links that expire}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    # Small on purpose, so a case's upload fits in a few lines of its tests.json.
+    MAX_BODY_BYTES: "2048"
+    QUOTA_BYTES: "1024"
+    SCANNER_URL: http://scanner:8080
+    SCANNER_API_KEY: scan-key-sandbox-0001
+    LINK_SIGNING_KEY: link-key-sandbox-6b1f0c9e4d2a7385
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: scanner, config: mocks/scanner.yaml}
+  # The one case about an expired link waits for it on the scanner's slow status route, since a
+  # case has no sleep step.
+  grader_reach: [scanner:8080]
+  requires:
+    lock: pnpm-lock.yaml
+    # Measured on arm64 while the reference ran level 4: the app at 64 MiB, the mock server at
+    # 20 MiB and the forwarder at 21 MiB.
+    sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 110}
+approaches:
+  - {id: reference, name: "Count the body as it arrives, trust only the bytes, and serve only what the scanner cleared", role: optimal, time: "per upload", space: "per upload"}
+related: [ssrf-safe-webhook-dispatcher-typescript, csv-upload-ingestion-typescript]
+estimate_minutes: 240

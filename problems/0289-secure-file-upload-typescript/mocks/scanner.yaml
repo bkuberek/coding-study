@@ -1,0 +1,92 @@
+# The malware-scanning vendor, and how it can misbehave. Hidden scenarios are what a graded run
+# adds: a dev or test stack holds only those marked visible.
+routes:
+  - id: scan
+    method: POST
+    path: /v1/scan
+    response:
+      status: 200
+      body: {verdict: clean}
+  - id: status
+    method: GET
+    path: /v1/status
+    response:
+      status: 200
+      body: {status: ok}
+scenarios:
+  infected:
+    visible: true
+    route: scan
+    status: 200
+    body: {verdict: infected, threat: Test.File.Sample}
+  outage:
+    visible: true
+    route: scan
+    status: 503
+    body: {error: scanner unavailable}
+  slow:
+    visible: true
+    route: scan
+    delay_ms: 1500
+  rate_limited_then_clean:
+    visible: true
+    route: scan
+    sequence:
+      - {status: 429, headers: {Retry-After: "1"}, body: {error: slow down}}
+      - {status: 200, body: {verdict: clean}}
+  flaky_then_clean:
+    route: scan
+    sequence:
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 500, body: {error: internal error}}
+      - {status: 200, body: {verdict: clean}}
+  timeout_then_clean:
+    route: scan
+    sequence:
+      - {delay_ms: 1500}
+      - {status: 200, body: {verdict: clean}}
+  down_then_clean:
+    route: scan
+    sequence:
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 200, body: {verdict: clean}}
+  down_then_infected:
+    route: scan
+    sequence:
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 503, body: {error: scanner unavailable}}
+      - {status: 200, body: {verdict: infected, threat: Test.File.Sample}}
+  bad_gateway:
+    route: scan
+    status: 502
+    headers: {Content-Type: text/html}
+    body: "<html><body>502 Bad Gateway</body></html>"
+  long_rate_limit:
+    route: scan
+    sequence:
+      - {status: 429, headers: {Retry-After: "2"}, body: {error: slow down}}
+      - {status: 200, body: {verdict: clean}}
+  always_rate_limited:
+    route: scan
+    status: 429
+    headers: {Retry-After: "1"}
+    body: {error: slow down}
+  malformed:
+    route: scan
+    status: 200
+    headers: {Content-Type: application/json}
+    body: '{"verdict": '
+  unknown_verdict:
+    route: scan
+    status: 200
+    body: {verdict: suspicious}
+  unauthorized:
+    route: scan
+    status: 401
+    body: {error: unknown api key}
+  slow_status:
+    route: status
+    delay_ms: 3000
