@@ -6,10 +6,11 @@ import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-from coding_study.entrypoints.web.runs import Child, Children, ChildStart, ChildTiming
+from coding_study.entrypoints.web.runs import KEEP_ALIVE, Child, Children, ChildStart, ChildTiming
 from tests.scripted_runs import CASE_START, QUICK, RUN_END, RUN_START, Script, outs
+from tests.waits import GENEROUS_WAIT_S
 
-TIMEOUT_S = 10.0
+TIMEOUT_S = GENEROUS_WAIT_S
 KEEP_ALIVE_S = 0.05
 
 
@@ -53,18 +54,29 @@ def test_a_line_reaches_the_stream_while_the_child_runs(tmp_path):
     assert asyncio.run(first_frame()) == f"id: 0\nevent: run_start\ndata: {RUN_START}\n\n"
 
 
+async def until_run_start(frames: AsyncIterator[str]) -> None:
+    """Reads up to `run_start`. A child that takes longer than the keep-alive interval to print it
+    leaves keep-alive comments before it, and those alone."""
+    while (frame := await next_frame(frames)) == KEEP_ALIVE:
+        pass
+    assert event_name(frame) == "run_start"
+
+
 def test_a_silent_stream_gets_a_keep_alive_comment(tmp_path):
-    async def second_frame() -> str:
+    """The child prints `run_start`, then waits for the gate, so whatever the machine's load, the
+    stream stays silent after it until a keep-alive comment comes."""
+
+    async def frame_after_run_start() -> str:
         timing = ChildTiming(keep_alive_s=KEEP_ALIVE_S, drain_s=QUICK.drain_s)
         children, run, gate = await started(tmp_path, timing)
         frames = run.frames(None)
-        await next_frame(frames)
+        await until_run_start(frames)
         frame = await next_frame(frames)
         gate.touch()
         await children.stop()
         return frame
 
-    assert asyncio.run(second_frame()) == ": keep-alive\n\n"
+    assert asyncio.run(frame_after_run_start()) == KEEP_ALIVE
 
 
 def test_the_lines_after_a_live_stream_started_reach_it(tmp_path):

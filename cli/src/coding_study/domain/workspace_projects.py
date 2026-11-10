@@ -28,10 +28,12 @@ UNTRACKED_DIRECTORIES = frozenset(
         *(layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"),
         *("build", ".gradle", ".kotlin"),
         "target",
+        ".devcontainer",
     }
 )
 """Untracked wherever they appear in a folder: `build`, `.gradle` and `.kotlin` are what a Gradle
-build writes, `target` what the native `cargo test` builds."""
+build writes, `target` what the native `cargo test` builds, and `.devcontainer` what `cstudy dev`
+writes for your own IDE, with this machine's paths in it."""
 GO_MODULE_FILE = "go.mod"
 GO_WORK_FILE = "go.work"
 GO_WORK_SUM_FILE = "go.work.sum"

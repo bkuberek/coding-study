@@ -82,3 +82,41 @@ def debug_session(request: DebugRequest, language: Language) -> DebugSession:
         raise ValueError(f"--debug-connect is only for java and kotlin, not {language}")
     port = DEFAULT_DEBUG_PORTS[language] if request.port is None else request.port
     return DebugSession(language, port, request.connect)
+
+
+CONTAINER_DEBUG_HOST = "0.0.0.0"
+"""In a dev stack the forwarder, another container, relays the debug port, so the agent listens on
+every interface of the app's container; the forwarder publishes it on 127.0.0.1 alone."""
+NODE = "node"
+PYTHON_INTERPRETER_PREFIX = "python"
+
+
+@dataclass(frozen=True, slots=True)
+class ContainerDebugAgent:
+    """`cstudy dev --debug` (docs/specs/service-projects.md#your-own-ide): `commands.run` under its
+    language's debug agent, on that language's usual port."""
+
+    port: int
+    command: tuple[str, ...]
+
+
+def container_debug_agent(language: Language, run: tuple[str, ...]) -> ContainerDebugAgent:
+    """Node's inspector for a run that starts `node`, debugpy for one that starts a Python
+    interpreter; debugpy must be installed in the project. Neither waits for a debugger, so the
+    app answers its health path as it does without one.
+
+    Raises ValueError for another language or another first word."""
+    port = DEFAULT_DEBUG_PORTS[language]
+    address = f"{CONTAINER_DEBUG_HOST}:{port}"
+    program, *arguments = run
+    name = program.rsplit("/", 1)[-1]
+    if language is Language.TYPESCRIPT and name == NODE:
+        return ContainerDebugAgent(port, (program, f"--inspect={address}", *arguments))
+    if language is Language.PYTHON and name.startswith(PYTHON_INTERPRETER_PREFIX):
+        return ContainerDebugAgent(
+            port, (program, "-m", "debugpy", "--listen", address, *arguments)
+        )
+    raise ValueError(
+        f"cstudy dev --debug runs a typescript app's node or a python app's interpreter under "
+        f"its debugger; this {language} app runs {' '.join(run)}"
+    )

@@ -34,12 +34,13 @@ from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, rep
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.scripted_runs import QUICK, RUN_END, RUN_START, Script, eventually, outs
+from tests.waits import GENEROUS_WAIT_S
 from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, web_app
 
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
 JAVA_PACKAGE = "jvm/java/src/main/java/practice/two_sum"
-TIMEOUT_S = 10.0
+TIMEOUT_S = GENEROUS_WAIT_S
 QUIET_S = 0.3
 SPACED = NotificationTiming(keep_alive_s=30, progress_interval_s=0.2, retry_s=0.05)
 EVENTS = "/api/v1/events"

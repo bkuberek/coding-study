@@ -39,6 +39,7 @@ class FakeSandbox:
     every_image_present: bool = True
     inventory_found: SandboxInventory = field(default_factory=SandboxInventory)
     live_pids: set[int] = field(default_factory=set[int])
+    removes_stacks: bool = True
     calls: list[tuple[str, object]] = field(default_factory=list[tuple[str, object]])
     start_error: StackStartError | None = None
     started_engine_state: EngineState = RUNNING
@@ -48,6 +49,8 @@ class FakeSandbox:
     started_at: float = 10.0
     app_port: int = 56223
     control_port: int | None = None
+    debug_port: int = 50229
+    """Where a plan's published debug port lands, when it has one."""
     pull_error: Exception | None = None
     plans: list[StackPlan] = field(default_factory=list[StackPlan])
     after_install: Callable[[], None] | None = None
@@ -100,7 +103,7 @@ class FakeSandbox:
 
     def remove_stack(self, stack: LeftoverStack) -> bool:
         self.calls.append(("remove_stack", stack))
-        return True
+        return self.removes_stacks
 
     def remove_network(self, name: str) -> bool:
         self.calls.append(("remove_network", name))
@@ -123,8 +126,14 @@ class FakeSandbox:
         self.plans.append(plan)
         if self.start_error is not None:
             raise self.start_error
+        debug = self.debug_port if plan.published_debug_port is not None else None
         return ReadyStack(
-            plan.identity.name, self.app_port, self.control_port, self.started_at, self.ready_at
+            plan.identity.name,
+            self.app_port,
+            self.control_port,
+            self.started_at,
+            self.ready_at,
+            debug_port=debug,
         )
 
     def stop(self, plan: StackPlan) -> str | None:

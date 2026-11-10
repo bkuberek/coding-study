@@ -3,28 +3,48 @@
 
 It holds visible scenarios only and keeps its data. One runs per project, because its compose
 project has one name: a second would adopt the first's containers, and stopping either would stop
-both.
+both. `--exec` holds the project in the same way, since it runs its command in that stack.
 """
 
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Callable, Generator, Iterable, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
 from coding_study.application.http_grading_ports import MockControl
-from coding_study.application.ports import ProgressNotice
+from coding_study.application.ports import ContainerCommand, ProgressNotice
 from coding_study.application.sandbox import reported_stack
-from coding_study.application.service_lifecycle import prepare_service_run
-from coding_study.application.service_stacks import dev_stack_plan, workspace_id
-from coding_study.domain.errors import LockBusyError, RunnerStartError, UsageError
+from coding_study.application.service_lifecycle import (
+    prepare_engine,
+    prepare_service_run,
+    run_install_plan,
+)
+from coding_study.application.service_stacks import (
+    dev_stack_plan,
+    network_command_plan,
+    service_project,
+    workspace_id,
+)
+from coding_study.domain.debugging import DEBUG_HOST, ContainerDebugAgent, container_debug_agent
+from coding_study.domain.devcontainer import DEVCONTAINER_FILE, devcontainer_text, is_generated
+from coding_study.domain.docker_engine import INSTALL_REACHES
+from coding_study.domain.errors import LockBusyError, RunnerStartError, SandboxError, UsageError
 from coding_study.domain.mock_configs import visible_scenario_names
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.project import NO_PROJECT_FILES
-from coding_study.domain.project_manifest import MANIFESTS_DIRECTORY
-from coding_study.domain.sandbox import CommandOutcome, LeftoverStack, StackPlan, dev_stack_name
+from coding_study.domain.project_manifest import MANIFESTS_DIRECTORY, project_lock
+from coding_study.domain.sandbox import (
+    CommandOutcome,
+    LeftoverStack,
+    ReadyStack,
+    StackPlan,
+    dev_stack_name,
+)
 from coding_study.domain.service_project import service_of
+from coding_study.domain.workspace_projects import project_folder
 
 DEV_LOCK_SUFFIX = ".dev.lock"
 LOGS_ENDED_GRACE_MS = 2_000
@@ -38,6 +58,26 @@ class DevRequest:
     language: Language | None = None
     scenarios: Mapping[str, str] = field(default_factory=dict[str, str])
     """`--scenario`: the visible scenario each named mock server starts with."""
+    idle: bool = False
+    """`--no-run`: the app container idles instead of running `commands.run`, for an IDE or a
+    debugger."""
+    debug: bool = False
+    """`--debug`: `commands.run` under its language's debug agent, whose port the stack publishes
+    on 127.0.0.1."""
+    reset_data: bool = False
+    """`--reset-data`: the dev stack's data, its own volume and each backing service's, goes before
+    the stack starts."""
+
+
+@dataclass(frozen=True, slots=True)
+class DevCommand:
+    """`cstudy dev --exec [--network] -- <command>`: one command in a one-off app container."""
+
+    command: tuple[str, ...]
+    network: bool = False
+    """`--network`: the internet and no stack, as an install has, to add a dependency."""
+    on_output: Callable[[str], None] | None = None
+    """Hears each line the command prints."""
 
 
 class DevScenarios:
@@ -81,6 +121,11 @@ class DevStack:
     """Each mock server's visible scenarios: those the stack holds."""
     control: DevScenarios | None = None
     """Switches them while the stack runs."""
+    app_running: bool = True
+    """False with `--no-run`: the app container idles, and nothing answers at `app_url` until you
+    run your app in it."""
+    debug_address: str | None = None
+    """`127.0.0.1:<port>`, where a debugger attaches, with `--debug` alone."""
 
 
 class DevListener(Protocol):
@@ -99,21 +144,117 @@ def run_dev_stack(
     gone either way and its data stays.
 
     Raises UsageError without an attempt, for another kind of problem, for a scenario this stack
-    does not hold and while another `cstudy dev` holds the project; StackStartError and SandboxError
-    as a stack's start does.
+    does not hold, for `--debug` on a run it cannot debug and while another `cstudy dev` holds the
+    project; StackStartError and SandboxError as a stack's start does.
     """
+    problem = _dev_problem(environment, request)
+    with _held_stack(environment, problem, request, notify) as plan:
+        _write_devcontainer(environment, plan, notify)
+        return _in_stack(environment, (problem, plan), request, listener, notify)
+
+
+def run_dev_command(
+    environment: Environment, request: DevRequest, command: DevCommand, notify: ProgressNotice
+) -> CommandOutcome:
+    """`--exec`: the command in a one-off app container of the dev stack, which comes up with the
+    app idle and goes down after it; with `--network`, in the install's stack instead, with the
+    internet and nothing else. The command has no terminal and no standard input. Its limit is
+    `commands.test`'s, or the install's with `--network`.
+
+    Raises as `run_dev_stack` does."""
+    problem = _dev_problem(environment, request)
+    service = service_project(problem)
+    if command.network:
+        return _with_network(environment, problem, command, notify)
+    with _held_stack(environment, problem, replace(request, idle=True), notify) as plan:
+        engine = environment.sandbox
+        with reported_stack(engine, plan, service.startup_budget, notify) as ready:
+            endpoints = SandboxGradedStack(engine, RunningStack(plan, ready), service).endpoints
+            _set_scenarios(environment.stack_clients(endpoints).mocks, request.scenarios)
+            ran = ContainerCommand(command.command, {}, service.timeouts.test, command.on_output)
+            return engine.run_one_off(plan, ran)
+
+
+def _dev_problem(environment: Environment, request: DevRequest) -> Problem:
     attempt = find_attempt(environment.progress, request.slug, request.language)
     problem = environment.problems.load(attempt.slug)
     if service_of(problem.meta) is None:
         raise UsageError(f"cstudy dev is for service projects; {problem.meta.slug} is not one")
+    return problem
+
+
+@contextmanager
+def _held_stack(
+    environment: Environment, problem: Problem, request: DevRequest, notify: ProgressNotice
+) -> Generator[StackPlan]:
+    """The dev stack's plan as `request` asks, for this process alone, with the engine and the
+    dependencies ready and, for `--reset-data`, its data gone."""
     _require_visible(problem, request.scenarios)
-    plan = dev_stack_plan(environment, problem)
+    plan = _as_requested(dev_stack_plan(environment, problem), problem, request)
     try:
         with environment.workspace.locked_with_deadline(_dev_lock(problem), NO_WAIT_S):
             prepare_service_run(environment, problem, notify)
-            return _in_stack(environment, (problem, plan), request, listener, notify)
+            if request.reset_data:
+                _remove_data(environment, plan)
+            yield plan
     except LockBusyError:
         raise UsageError(_held_by(environment, problem, plan)) from None
+
+
+def _as_requested(plan: StackPlan, problem: Problem, request: DevRequest) -> StackPlan:
+    command, debug_port = plan.app.command, None
+    if request.debug:
+        agent = _debug_agent(problem, command)
+        command, debug_port = agent.command, agent.port
+    if request.idle:
+        command = None
+    return replace(plan, app=replace(plan.app, command=command), debug_port=debug_port)
+
+
+def _debug_agent(problem: Problem, run: tuple[str, ...] | None) -> ContainerDebugAgent:
+    language = problem.meta.languages[0]
+    try:
+        return container_debug_agent(language, run or ())
+    except ValueError as refused:
+        raise UsageError(str(refused)) from None
+
+
+def _remove_data(environment: Environment, plan: StackPlan) -> None:
+    identity = plan.identity
+    if not environment.sandbox.remove_stack(LeftoverStack(identity.name, identity.workspace, True)):
+        raise SandboxError(f"could not remove the data of {identity.name}; nothing started")
+
+
+def _write_devcontainer(environment: Environment, plan: StackPlan, notify: ProgressNotice) -> None:
+    """For your own IDE, unless the file there is yours. A link there is never followed, and a
+    file that cannot be written is said and stops nothing."""
+    workspace = environment.workspace
+    folder = project_folder(plan.identity.slug)
+    try:
+        if _ours_to_write(environment, folder):
+            workspace.write_within(folder, DEVCONTAINER_FILE, devcontainer_text(plan))
+    except (ValueError, OSError) as refused:
+        notify(f"did not write {DEVCONTAINER_FILE}: {refused}")
+
+
+def _ours_to_write(environment: Environment, folder: str) -> bool:
+    try:
+        found = environment.workspace.read_within(folder, DEVCONTAINER_FILE)
+    except FileNotFoundError:
+        return True
+    return is_generated(found.decode(errors="replace"))
+
+
+def _with_network(
+    environment: Environment, problem: Problem, command: DevCommand, notify: ProgressNotice
+) -> CommandOutcome:
+    """Under the install's lock, since it is the install's stack."""
+    prepare_engine(environment, problem, notify)
+    plan = network_command_plan(environment, problem, command.command)
+    limit = service_project(problem).timeouts.install
+    with environment.workspace.locked(project_lock(problem.meta.slug)):
+        notify(INSTALL_REACHES)
+        return run_install_plan(environment, plan, limit, command.on_output)
 
 
 def forget_dev_data(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
@@ -184,6 +325,8 @@ def _in_stack(
                 ready.startup_seconds,
                 _visible(problem),
                 DevScenarios(problem, control, request.scenarios),
+                app_running=plan.app.command is not None,
+                debug_address=_debug_address(ready),
             )
         )
         while True:
@@ -191,6 +334,10 @@ def _in_stack(
             ended = engine.app_exit(plan, LOGS_ENDED_GRACE_MS)
             if ended is not None:
                 return ended
+
+
+def _debug_address(ready: ReadyStack) -> str | None:
+    return None if ready.debug_port is None else f"{DEBUG_HOST}:{ready.debug_port}"
 
 
 def _set_scenarios(control: MockControl, scenarios: Mapping[str, str]) -> None:

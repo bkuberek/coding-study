@@ -208,6 +208,19 @@ On Linux, `cstudy` never runs `sudo`, and says what to run when it cannot start 
 
 What a project needs is listed before anything downloads, by `cstudy show` and `cstudy start`. An install reaches the network, and with it your LAN and this machine's loopback services, so packages' install scripts stay off; a run has no way out at all.
 
+A service project needs no toolchain on your machine: the image is the toolchain. For your own IDE and debugger, use `cstudy dev`:
+
+| You want | Run |
+|----------|-----|
+| Your app running, with its mock servers, until Ctrl-C | `cstudy dev` |
+| VS Code or IntelliJ in a container of the project's image | `cstudy dev`, or `cstudy dev --no-run` to run the app from the IDE, then open the project folder's `.devcontainer/devcontainer.json`, which `cstudy dev` writes, in the IDE |
+| A debugger attached to your app | `cstudy dev --debug`, then attach to the `debug` address it prints: Node's inspector for TypeScript, debugpy for Python, which the project must list as a dependency |
+| Empty data | `cstudy dev --reset-data` |
+| A dependency added | `cstudy dev --exec --network -- corepack pnpm add <package>`, or `-- uv add <package>` for Python |
+| One command in the app's environment | `cstudy dev --exec -- <command>` |
+
+[Your own IDE](../specs/service-projects.md#your-own-ide) has the details.
+
 ## git
 
 git is optional: `cstudy init --git` runs `git init` in the new workspace, and `cstudy` never commits. macOS provides git with the Xcode Command Line Tools (`xcode-select --install`) or `brew install git`; on Linux, install your distribution's `git` package.

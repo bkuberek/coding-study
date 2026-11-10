@@ -460,10 +460,18 @@ class DockerSandbox:
             origin: self._published(plan, listen)
             for origin, listen in reach_listen_ports(plan).items()
         }
+        debug = plan.published_debug_port
+        debug_port = self._published(plan, debug) if debug is not None else None
         if plan.app.command is not None:
             self._wait_for_health(plan, app_port, budget)
         return ReadyStack(
-            plan.identity.name, app_port, control_port, started_at, self._monotonic(), reach_ports
+            plan.identity.name,
+            app_port,
+            control_port,
+            started_at,
+            self._monotonic(),
+            reach_ports,
+            debug_port,
         )
 
     def _compose(

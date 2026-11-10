@@ -5,7 +5,7 @@ is what happened, not how fast."""
 
 import json
 from collections.abc import Callable, Generator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -144,6 +144,25 @@ def typescript(tmp_path: Path) -> Generator[FixtureProject]:
         yield found
     finally:
         found.remove_all_it_left()
+
+
+REACH_THE_MOCK_SERVER = (
+    "fetch('http://room-vendor:8080/v1/rooms')"
+    ".then((answer) => console.log(`room-vendor answered ${answer.status}`))"
+    ".catch((error) => { console.log(String(error)); process.exit(1); })"
+)
+"""Only a container on the dev stack's network can name the mock server."""
+
+
+def test_dev_exec_runs_a_command_in_the_dev_stack_and_takes_it_down(typescript: FixtureProject):
+    started = typescript.cstudy("start", typescript.slug, "--yes", "--no-open")
+    assert started.returncode == EXIT_OK, said(started)
+
+    result = typescript.cstudy("dev", "--exec", "--", "node", "-e", REACH_THE_MOCK_SERVER)
+
+    assert result.returncode == EXIT_OK, said(result)
+    assert "room-vendor answered 200" in result.stdout
+    nothing_running(typescript)
 
 
 def test_test_events_stream_the_stack_the_command_and_the_visible_cases(
@@ -296,6 +315,12 @@ PYTHON_FILE = Opened(
 FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE}
 
 
+def patient_language_servers(root: Path) -> LspDirectory:
+    """The workspace's servers, whose version checks run on this machine and wait as long as a
+    busy machine needs: a check that runs out is no server, and the session would refuse."""
+    return LspDirectory(root, SubprocessToolProbe(GENEROUS_WAIT_S), SubprocessCommandRunner())
+
+
 @pytest.fixture(scope="module", params=[TYPESCRIPT, PYTHON], ids=["typescript", "python"])
 def sidecar_project(
     request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
@@ -304,8 +329,7 @@ def sidecar_project(
     try:
         started = found.cstudy("start", found.slug, "--yes", "--no-open")
         assert started.returncode == 0, f"{started.stdout}\n{started.stderr}"
-        installed = LspDirectory(found.root, SubprocessToolProbe(), SubprocessCommandRunner())
-        result = installed.install()
+        result = patient_language_servers(found.root).install()
         if result is None or result.exit_code != 0:
             pytest.skip(f"the language servers are not installed: {result and result.output}")
         FsPreferencesStore(found.root).write(
@@ -340,8 +364,11 @@ def sidecar_session(sidecar_project: FixtureProject) -> Played:
     """A session that opens the file, waits for its diagnostics and asks for a hover, then ends;
     the server's stop has taken the sidecar down by the time the app has stopped."""
     opened = FILES[sidecar_project.directory]
-    environment = load_environment(
-        sidecar_project.root, sidecar_project.environment(), sidecar_project.root.parent
+    environment = replace(
+        load_environment(
+            sidecar_project.root, sidecar_project.environment(), sidecar_project.root.parent
+        ),
+        language_servers=patient_language_servers(sidecar_project.root),
     )
     attempt = environment.progress.active_attempt(sidecar_project.slug)
     assert attempt is not None
