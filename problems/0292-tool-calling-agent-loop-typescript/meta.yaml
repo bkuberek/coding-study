@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0292"
+slug: tool-calling-agent-loop-typescript
+title: Tool-Calling Agent Loop (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [ai-llm, security]
+job_roles: [ai-engineer, security-engineer]
+scope: project
+languages: [typescript]
+summary: A chat model answers support staff by calling the shop's tools. Build the runtime around it, which runs only the calls each caller may make, treats what tools return as data, and stops within its budget whatever the model does.
+levels:
+  - {level: 1, title: The loop}
+  - {level: 2, title: Allowlist and permissions}
+  - {level: 3, title: Untrusted tool output}
+  - {level: 4, title: Budgets and failing safely}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    MODEL_URL: http://model:8080
+    MODEL_API_KEY: cs-fake-llm-key
+    MODEL_NAME: assistant-small-1
+    KB_URL: http://kb:8080
+    ORDERS_URL: http://orders:8080
+    HELPDESK_URL: http://helpdesk:8080
+    MAX_STEPS: "6"
+    TOKEN_BUDGET: "6000"
+    TOOL_TIMEOUT_MS: "1000"
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: model, config: mocks/model.yaml}
+    - {name: kb, config: mocks/kb.yaml}
+    - {name: orders, config: mocks/orders.yaml}
+    - {name: helpdesk, config: mocks/helpdesk.yaml}
+  requires:
+    lock: pnpm-lock.yaml
+    sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "The model proposes, the runtime decides: every call judged, every reply counted", role: optimal, time: "per question", space: "per question"}
+related: [loan-extraction-review-typescript, ssrf-safe-webhook-dispatcher-typescript]
+estimate_minutes: 180

@@ -1,0 +1,14 @@
+# The support team's helpdesk, behind the create_ticket tool. Hidden scenarios are what a graded
+# run adds: a dev or test stack holds only those marked visible.
+routes:
+  - id: ticket
+    method: POST
+    path: /v1/tickets
+    response:
+      status: 201
+      body: {id: T-3001, status: open, subject: "{{request.body.subject}}", priority: "{{request.body.priority}}"}
+scenarios:
+  outage:
+    visible: true
+    status: 503
+    body: {error: unavailable}
