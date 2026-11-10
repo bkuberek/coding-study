@@ -2,6 +2,59 @@
 
 <!-- version list -->
 
+## v0.39.0 (2026-11-10)
+
+### Continuous Integration
+
+- Keep the real-engine JVM tests out of the sandbox job
+  ([`2478eef`](https://github.com/bkuberek/coding-study/commit/2478eef10487b68cc2f77a19e7544641255e53c6))
+
+- Run the browser job when the shared test waits change
+  ([`df94395`](https://github.com/bkuberek/coding-study/commit/df94395cd77364c0ecefe3af42d118d2b36f5443))
+
+### Documentation
+
+- Catalog at 324 with 0305 to 0309, P12 and PP14 ticked, cstudy new target noted
+  ([`496d52c`](https://github.com/bkuberek/coding-study/commit/496d52ce784279ed24b1e4363626cd270f4d86c0))
+
+- P12 built, with Gradle's --offline settled and measured
+  ([`a9ec367`](https://github.com/bkuberek/coding-study/commit/a9ec367f07777d12deea05420a65dcace9a9f53e))
+
+### Features
+
+- **problems**: Add 0307 fix the flaws, a security-fix round on a notes service
+  ([`2584583`](https://github.com/bkuberek/coding-study/commit/25845836ef300a3af6b6ed3ab5638585b1d3d3ff))
+
+- **problems**: Add 0308 all-grid-paths, listing every right-and-down route in order
+  ([`5c27bda`](https://github.com/bkuberek/coding-study/commit/5c27bda3aff9bfe90aa9873f3f2dc9c9e08aeada))
+
+- **problems**: Add 0309 find-missing-and-duplicates with cyclic sort
+  ([`30b28a2`](https://github.com/bkuberek/coding-study/commit/30b28a2dd119bc47317e5c9e661f75e71f3316fa))
+
+- **problems**: Coworking availability in Java and Kotlin
+  ([`8eec5d5`](https://github.com/bkuberek/coding-study/commit/8eec5d553422f570334829d14ffbcbf51379b1bd))
+
+- **project**: Java and Kotlin service templates
+  ([`a7d41c7`](https://github.com/bkuberek/coding-study/commit/a7d41c76c4b8ddf225510257cc839206826d4609))
+
+- **project**: Size the Kotlin service template as measured
+  ([`7a835ca`](https://github.com/bkuberek/coding-study/commit/7a835caaa58beea4d97bd14dcaada52de68620c4))
+
+- **sandbox**: Gradle's install cache and lock for JVM service projects
+  ([`8dce9a9`](https://github.com/bkuberek/coding-study/commit/8dce9a9152c5e6b13b6efd2892e09932337f8ae1))
+
+### Testing
+
+- A Java service fixture on a real engine
+  ([`62f5619`](https://github.com/bkuberek/coding-study/commit/62f5619493b92645393b2083a08a58a63f1deb0e))
+
+- Keep the coworking drift guard's docstring within the line limit
+  ([`5442323`](https://github.com/bkuberek/coding-study/commit/5442323f5afac0bc5e30bc3aee761449e23ade9d))
+
+- Run the sandbox job when devcontainer.json's code changes
+  ([`3d701bf`](https://github.com/bkuberek/coding-study/commit/3d701bfe476506656c92cf70771731921aa0b4f6))
+
+
 ## v0.38.0 (2026-11-10)
 
 ### Continuous Integration
