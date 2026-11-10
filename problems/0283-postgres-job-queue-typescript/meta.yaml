@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0283"
+slug: postgres-job-queue-typescript
+title: Postgres Job Queue (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend, platform]
+scope: project
+languages: [typescript]
+summary: Workers race for the reports a service must generate. Build the job queue itself on Postgres, so that each job is claimed once, a stuck claim runs out, failures retry with backoff until the dead letters, and every tenant gets its turn.
+levels:
+  - {level: 1, title: Enqueue and claim}
+  - {level: 2, title: Claims that run out}
+  - {level: 3, title: Retries and dead letters}
+  - {level: 4, title: Priorities and fair shares}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, node_modules/node-pg-migrate/bin/node-pg-migrate.js, up]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+    reset: [node, scripts/reset.ts]
+    grade_setup: [node, "{problem}/grading/grade_setup.ts"]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://app:app@db:5432/app
+    CLOCK_NOW: "1803902400"
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  services: services/compose.yaml
+  requires:
+    lock: pnpm-lock.yaml
+    services: [postgres]
+    sizes: {install_mb: 37, images_mb: {app: 81, postgres: 117}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "Claim in one locking statement, and fence every finish with the attempt number", role: optimal, time: "per request", space: "per request"}
+related: [inventory-reservations-typescript, idempotent-document-consumer-typescript, transactional-outbox-typescript]
+estimate_minutes: 240
