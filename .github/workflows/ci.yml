@@ -193,6 +193,7 @@ jobs:
             cli/tests/scripted_sandbox.py
             cli/tests/serve_page.py
             cli/tests/serve_process.py
+            cli/tests/waits.py
             cli/tests/workspaces.py
             .github/workflows/ci.yml
           SANDBOX_PATHS: |
