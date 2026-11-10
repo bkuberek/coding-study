@@ -164,7 +164,8 @@ def _needs(root: Path, record: Recorder) -> None:
         record("needs", client.get(f"/api/v1/problems/{SERVICE_SLUG}/needs"))
         record("needs", client.get("/api/v1/problems/two-sum/needs"))
         body = {"attempt_id": attempt}
-        dev = record("child_started", client.post(DEV, json=body, headers=WRITE_HEADERS)).json()["id"]
+        started = record("child_started", client.post(DEV, json=body, headers=WRITE_HEADERS))
+        dev = started.json()["id"]
         record("error", client.post(DEV, json=body, headers=WRITE_HEADERS))
         switch = {"mock": "room-vendor", "scenario": None}
         switched = client.post(f"{DEV}/{dev}/scenario", json=switch, headers=WRITE_HEADERS)
