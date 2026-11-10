@@ -2,6 +2,58 @@
 
 <!-- version list -->
 
+## v0.36.0 (2026-11-10)
+
+### Documentation
+
+- Bring the README's practical count, ADR 0020's catalog link and Phase 12 status up to date
+  ([`424cdee`](https://github.com/bkuberek/coding-study/commit/424cdee799f5bf0669ad7e50da4db66b96cfdc93))
+
+- Catalog at 307 with 0289 to 0292, P11 built, PP11 to PP13 and PP15 ticked, and service-project
+  known limits
+  ([`6c9fa86`](https://github.com/bkuberek/coding-study/commit/6c9fa86a755674befa5752b523f02ee6b9f1b4de))
+
+### Features
+
+- **grader**: Assert on what a logged request's JSON body carried
+  ([`6dc3e43`](https://github.com/bkuberek/coding-study/commit/6dc3e434ae1c0b54d16700cd7f57678e3ec8bdf5))
+
+- **grader**: Limit the time to a response's first body byte
+  ([`f3ff656`](https://github.com/bkuberek/coding-study/commit/f3ff656b4a323843b2766572b81f0d30874e1670))
+
+- **mock-server**: Fill in run-time values in mock responses
+  ([`9b8f457`](https://github.com/bkuberek/coding-study/commit/9b8f457427106b99b05e5d89838846be0311d220))
+
+- **mock-server**: Match routes on JSON request bodies
+  ([`cae6505`](https://github.com/bkuberek/coding-study/commit/cae65052ea9400a537487820260bdae96de551d2))
+
+- **mock-server**: Ship an example mock LLM provider config
+  ([`42c052d`](https://github.com/bkuberek/coding-study/commit/42c052dc5bbd9aff434395368e4acc98d87c53f6))
+
+- **mock-server**: Stream server-sent events with drop and stall scenarios
+  ([`46d6ed8`](https://github.com/bkuberek/coding-study/commit/46d6ed88c0c2fa71cd75709d0bd10d587577eabd))
+
+- **problems**: Add 0289 secure file upload, a TypeScript service project
+  ([`859a133`](https://github.com/bkuberek/coding-study/commit/859a133b4780b01c27404d091e9cbc7b7fe678d0))
+
+- **problems**: Add 0290 LLM gateway in TypeScript (PP11)
+  ([`5647e68`](https://github.com/bkuberek/coding-study/commit/5647e6882114376d93b3a2d46521e1deb5d444dd))
+
+- **problems**: Add 0291 rag service with citations in TypeScript
+  ([`8ae07d0`](https://github.com/bkuberek/coding-study/commit/8ae07d0290f3b6862bcb466a08b6194cbdf19d30))
+
+- **problems**: Add tool-calling agent loop project 0292
+  ([`60171bc`](https://github.com/bkuberek/coding-study/commit/60171bcac3b329dcf7ab1922a4e7076efc12513d))
+
+- **problems**: Time the first byte of 0290's slow stream
+  ([`6f02cdb`](https://github.com/bkuberek/coding-study/commit/6f02cdb5d2e673fbad126a7593ecb774bb5734fd))
+
+### Testing
+
+- Give Rust runners the generous wait to start
+  ([`1872f5b`](https://github.com/bkuberek/coding-study/commit/1872f5b0afad29597617f98413cfb7f8caf26788))
+
+
 ## v0.35.0 (2026-11-10)
 
 ### Documentation
