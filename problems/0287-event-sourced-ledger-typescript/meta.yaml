@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0287"
+slug: event-sourced-ledger-typescript
+title: Event-Sourced Ledger (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [fintech, backend]
+job_roles: [backend]
+scope: project
+languages: [typescript]
+summary: Every change to a club's wallets is an event that is never changed or deleted. Build the ledger on Postgres so that balances come from those events, survive bursts of withdrawals, rebuild exactly, and answer for any moment in the past.
+levels:
+  - {level: 1, title: Events and a balance projection}
+  - {level: 2, title: One version at a time}
+  - {level: 3, title: Rebuild and replay}
+  - {level: 4, title: Balances in the past}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, node_modules/node-pg-migrate/bin/node-pg-migrate.js, up]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+    reset: [node, scripts/reset.ts]
+    grade_setup: [node, "{problem}/grading/grade_setup.ts"]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://app:app@db:5432/app
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  services: services/compose.yaml
+  requires:
+    lock: pnpm-lock.yaml
+    services: [postgres]
+    sizes: {install_mb: 37, images_mb: {app: 81, postgres: 117}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "One evolve function for every fold, and a unique index that lets one append win each version", role: optimal, time: "per request", space: "per request"}
+related: [inventory-reservations-typescript, transactional-outbox-typescript]
+estimate_minutes: 240

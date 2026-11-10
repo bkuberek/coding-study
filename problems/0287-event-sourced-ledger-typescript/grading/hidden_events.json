@@ -1,0 +1,10 @@
+[
+  {"stream_id": "x-dana", "version": 1, "event_id": "x-1", "type": "deposited", "data": {"amount": 7000}, "recorded_at": "2026-01-10T08:00:00Z"},
+  {"stream_id": "x-eli", "version": 1, "event_id": "x-2", "type": "deposited", "data": {"amount": 4000}, "recorded_at": "2026-01-15T08:00:00Z"},
+  {"stream_id": "x-dana", "version": 2, "event_id": "x-3", "type": "withdrawn", "data": {"amount": 2500}, "recorded_at": "2026-02-01T08:00:00Z"},
+  {"stream_id": "x-eli", "version": 2, "event_id": "x-4", "type": "transferred_out", "data": {"amount": 1500, "to": "x-dana"}, "recorded_at": "2026-02-20T12:00:00Z"},
+  {"stream_id": "x-dana", "version": 3, "event_id": "x-4", "type": "transferred_in", "data": {"amount": 1500, "from": "x-eli"}, "recorded_at": "2026-02-20T12:00:00Z"},
+  {"stream_id": "x-dana", "version": 4, "event_id": "x-5", "type": "transferred_out", "data": {"amount": 1000, "to": "x-eli"}, "recorded_at": "2026-03-15T12:00:00Z"},
+  {"stream_id": "x-eli", "version": 3, "event_id": "x-5", "type": "transferred_in", "data": {"amount": 1000, "from": "x-dana"}, "recorded_at": "2026-03-15T12:00:00Z"},
+  {"stream_id": "x-eli", "version": 4, "event_id": "x-6", "type": "withdrawn", "data": {"amount": 3500}, "recorded_at": "2026-04-01T08:00:00Z"}
+]
