@@ -13,6 +13,10 @@ from typing import Any
 SAMPLE_FOLDER = Path(__file__).parent / "adapters" / "mock_server" / "sample"
 SAMPLE_CONFIG = SAMPLE_FOLDER / "mocks.json"
 SAMPLE_TOKEN = "sample-token"
+LLM_PROVIDER_CONFIG = Path(__file__).parent / "fixtures" / "mock_configs" / "llm-provider.yaml"
+"""The example mock LLM provider: a generic chat-completions-style API, as data."""
+LLM_FAKE_KEY = "cs-fake-llm-key"
+"""The fake key its comments tell a problem to put in `project.env`."""
 
 GENEROUS_WAIT_S = 30.0
 """The longest any socket, process or poll may take before a test calls it a hang, for a busy

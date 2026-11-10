@@ -20,6 +20,7 @@ from .matching import (
 )
 from .replies import Reply, no_route_reply
 from .request_log import LogEntry, Outcome, RequestLog
+from .templates import RequestValues
 
 
 class UnknownScenarioError(Exception):
@@ -122,7 +123,7 @@ class MockState:
 
     def _answered(self, request: MockRequest, route: Route, applied: "_Applied") -> Exchange:
         entry = applied.entry
-        reply = reply_for(route, entry)
+        reply = reply_for(route, entry, RequestValues(request, self._log.next_seq))
         jwt = entry.jwt if entry is not None else None
         upstream = self._definition.upstream
         if upstream is None or not passes_through(route, entry):

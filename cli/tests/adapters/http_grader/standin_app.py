@@ -4,7 +4,7 @@ sockets and the real mock server, with no container."""
 import json
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -33,6 +33,9 @@ class AppAnswer:
     status: int
     document: Any = None
     headers: Mapping[str, str] = field(default_factory=dict[str, str])
+    stream: Iterable[bytes] | None = None
+    """Sent piece by piece as server-sent events, in place of `document`, with no length: closing
+    the connection ends it."""
 
 
 type Route = Callable[[AppRequest], AppAnswer | None]
@@ -85,6 +88,9 @@ def _handler_for(
             answer = routes[self.command, target.path](request)
             if answer is None:
                 return
+            if answer.stream is not None:
+                self._stream(answer.status, answer.stream)
+                return
             body = json.dumps(answer.document).encode()
             self.send_response(answer.status)
             for name, value in answer.headers.items():
@@ -93,6 +99,13 @@ def _handler_for(
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        def _stream(self, status: int, pieces: Iterable[bytes]) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            for piece in pieces:
+                self.wfile.write(piece)
 
         do_GET = _answer  # noqa: N815
         do_POST = _answer  # noqa: N815

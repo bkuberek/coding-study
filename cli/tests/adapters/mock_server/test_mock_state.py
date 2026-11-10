@@ -55,6 +55,25 @@ def entries_of(state: MockState) -> list[dict[str, object]]:
     return entries
 
 
+def numbered_state() -> MockState:
+    numbered = Body(b"n-{{seq}}", template="n-{{seq}}")
+    route = Route("n", "GET", "/rooms", {}, ResponseFields(status=200, body=numbered))
+    return MockState(MockDefinition("room-vendor", (route,), {}))
+
+
+def test_a_run_time_value_counts_requests_from_one():
+    state = numbered_state()
+    bodies = [state.receive(request()).reply.body for _ in range(2)]
+    assert bodies == [b"n-1", b"n-2"]
+
+
+def test_a_reset_counts_requests_from_one_again():
+    state = numbered_state()
+    state.receive(request())
+    state.reset()
+    assert state.receive(request()).reply.body == b"n-1"
+
+
 def test_no_scenario_answers_the_routes_own_response():
     reply = new_state().receive(request()).reply
     assert (reply.status, reply.body) == (200, b"rooms")

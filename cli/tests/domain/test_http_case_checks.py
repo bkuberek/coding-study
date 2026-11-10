@@ -87,6 +87,11 @@ def test_a_log_assertion_naming_an_uncaptured_value_is_refused():
     assert issues(step("step 1"), log=log) == ["log idp: {{token}} is captured by no step"]
 
 
+def test_a_log_body_subset_naming_an_uncaptured_value_is_refused():
+    log = (LogAssertion("llm", count=1, body={"user": ["{{user_id}}"]}),)
+    assert issues(step("step 1"), log=log) == ["log llm: {{user_id}} is captured by no step"]
+
+
 def test_a_url_to_a_declared_origin_is_allowed():
     assert issues(step("step 1", "http://idp:8080/realms/pp3/auth")) == []
 

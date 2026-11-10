@@ -8,6 +8,14 @@ JSON_HEADERS: Mapping[str, str] = {"Content-Type": "application/json"}
 
 
 @dataclass(frozen=True)
+class Frame:
+    """One event of a streamed answer, as it goes out, `after_ms` after the one before it."""
+
+    content: bytes
+    after_ms: int = 0
+
+
+@dataclass(frozen=True)
 class Reply:
     status: int
     headers: Mapping[str, str]
@@ -16,6 +24,11 @@ class Reply:
     header_lines: tuple[tuple[str, str], ...] = ()
     """Headers sent after `headers`, each on its own line, so that an upstream's `Set-Cookie` lines
     stay apart."""
+    stream: tuple[Frame, ...] | None = None
+    """Events sent one by one in place of `body`, with no `Content-Length`: the connection's close
+    ends them."""
+    holds_open: bool = False
+    """After its stream, the connection stays open until the app closes it: a stall."""
 
     def every_header(self) -> tuple[tuple[str, str], ...]:
         return (*self.headers.items(), *self.header_lines)

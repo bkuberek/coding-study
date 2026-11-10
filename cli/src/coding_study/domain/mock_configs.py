@@ -7,6 +7,7 @@ and the body of a hidden scenario goes wherever that scenario goes.
 """
 
 import json
+import re
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -18,6 +19,16 @@ API_SUFFIX = ".API.md"
 """`mocks/<name>.API.md`, next to `mocks/<name>.yaml`."""
 BODY_FILE = "body_file"
 BODY = "body"
+STREAM = "stream"
+OPENING = "{{"
+_REFERENCE = (
+    r"(?:request\.(?:method|path|body(?:\.[A-Za-z0-9_-]+)*"
+    r"|query\.[A-Za-z0-9_-]+|headers\.[A-Za-z0-9-]+)|seq)"
+)
+RUN_TIME_VALUE = re.compile(rf"\{{\{{(?:(?:len|words|json)\({_REFERENCE}\)|{_REFERENCE})\}}\}}")
+"""What a response may fill in per request (docs/specs/service-projects.md#run-time-values). The
+mock server reads the same grammar in `adapters/mock_server/templates.py`, which runs alone and
+cannot import this; `tests/mock_template_table.py` holds the two to one table."""
 MILLISECONDS_PER_SECOND = 1000
 RETRY_AFTER = "retry-after"
 _RENDERED_FIELDS = ("upstream", "routes", "scenarios")
@@ -81,8 +92,37 @@ def response_fields(files: MockFiles) -> Iterator[tuple[str, _Document]]:
             yield f"scenarios.{name}[{index}]", entry
 
 
+def response_texts(fields: _Document, files: MockFiles) -> Iterator[str]:
+    """Every text of a response's fields that may name run-time values: each string of its body,
+    the text of its `body_file`, and each event's `data` or `raw`."""
+    yield from _json_strings(fields.get(BODY))
+    body_file = fields.get(BODY_FILE)
+    if isinstance(body_file, str):
+        yield from _json_strings(files.bodies.get(body_file))
+    for chunk in _stream(fields):
+        yield from _json_strings(chunk.get("data"))
+        yield from _json_strings(chunk.get("raw"))
+
+
+def stream_wait_ms(fields: _Document) -> int:
+    """What a stream's events wait, together, from the headers to the last one."""
+    return sum(cast(int, chunk.get("after_ms", 0)) for chunk in _stream(fields))
+
+
+def malformed_run_time_value(text: str) -> str | None:
+    """The first `{{` that opens no run-time value, from there to the end of the text, or None."""
+    position = text.find(OPENING)
+    while position != -1:
+        found = RUN_TIME_VALUE.match(text, position)
+        if found is None:
+            return text[position:]
+        position = text.find(OPENING, found.end())
+    return None
+
+
 def scenario_waits_ms(scenario: _Document) -> list[int]:
-    """What each entry of a scenario makes the app wait: its delay, then what `Retry-After` asks."""
+    """What each entry of a scenario makes the app wait: its delay and its stream's events, then
+    what `Retry-After` asks."""
     return [_entry_wait_ms(entry) for entry in _entries(scenario)]
 
 
@@ -137,13 +177,28 @@ def _body_text(name: object, files: MockFiles, mock: str) -> str:
     return text
 
 
+def _json_strings(value: object) -> Iterator[str]:
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, list):
+        for item in cast(list[object], value):
+            yield from _json_strings(item)
+    elif isinstance(value, Mapping):
+        for item in cast(_Document, value).values():
+            yield from _json_strings(item)
+
+
 def _entries(scenario: _Document) -> tuple[_Document, ...]:
     sequence = scenario.get("sequence")
     return tuple(cast(list[_Document], sequence)) if sequence is not None else (scenario,)
 
 
+def _stream(fields: _Document) -> tuple[_Document, ...]:
+    return tuple(cast(list[_Document], fields.get(STREAM, [])))
+
+
 def _entry_wait_ms(entry: _Document) -> int:
-    delay = cast(int, entry.get("delay_ms", 0))
+    delay = cast(int, entry.get("delay_ms", 0)) + stream_wait_ms(entry)
     return delay + _retry_after_ms(cast(Mapping[str, str], entry.get("headers", {})))
 
 

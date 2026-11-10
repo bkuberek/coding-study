@@ -92,6 +92,93 @@ def test_a_broken_json_body_is_allowed_by_design():
     assert violations(config) == []
 
 
+def test_a_config_may_record_its_shape_version():
+    config = valid_config()
+    config["shape_version"] = "generic chat-completions style, docs read 2026-11"
+    assert violations(config) == []
+
+
+def test_a_shape_version_is_a_text():
+    config = valid_config()
+    config["shape_version"] = 2026
+    assert violations(config) != []
+
+
+def test_a_route_may_match_on_its_body():
+    config = valid_config()
+    first_route(config)["match"] = {"body": {"stream": True}, "body_contains": "refund"}
+    assert violations(config) == []
+
+
+def streaming_config() -> dict[str, Any]:
+    return {
+        "routes": [
+            {
+                "id": "chat",
+                "method": "POST",
+                "path": "/v1/chat",
+                "response": {
+                    "status": 200,
+                    "stream": [
+                        {"event": "delta", "data": '{"t": "Desk"}', "after_ms": 20},
+                        {"raw": ": keep-alive\n\n"},
+                        {"data": "[DONE]"},
+                    ],
+                },
+            }
+        ],
+        "scenarios": {
+            "dropped": {"visible": True, "drop_after_chunks": 1},
+            "stalled": {"sequence": [{"stall_after_chunks": 0}, {"status": 200}]},
+            "malformed": {"stream": [{"data": '{"t": '}]},
+        },
+    }
+
+
+def test_a_streaming_mock_server_is_valid():
+    assert violations(streaming_config()) == []
+
+
+def chat_response(config: dict[str, Any]) -> dict[str, Any]:
+    return first_route(config)["response"]
+
+
+STREAMING_INVALID: dict[str, Mutation] = {
+    "body next to a stream": lambda config: chat_response(config).update(body="x"),
+    "empty stream": lambda config: chat_response(config).update(stream=[]),
+    "chunk with neither data nor raw": lambda config: chat_response(config).update(
+        stream=[{"event": "delta"}]
+    ),
+    "chunk with raw and data": lambda config: chat_response(config).update(
+        stream=[{"raw": "x", "data": "y"}]
+    ),
+    "chunk with raw and event": lambda config: chat_response(config).update(
+        stream=[{"raw": "x", "event": "y"}]
+    ),
+    "event with a line break": lambda config: chat_response(config).update(
+        stream=[{"event": "a\nb", "data": "y"}]
+    ),
+    "unknown chunk field": lambda config: chat_response(config).update(
+        stream=[{"data": "y", "id": "1"}]
+    ),
+    "drop and stall together": lambda config: config["scenarios"]["dropped"].update(
+        stall_after_chunks=1
+    ),
+    "negative drop": lambda config: config["scenarios"]["dropped"].update(drop_after_chunks=-1),
+    "drop in a route's response": lambda config: chat_response(config).update(drop_after_chunks=1),
+    "drop next to a sequence": lambda config: config["scenarios"]["stalled"].update(
+        drop_after_chunks=1
+    ),
+}
+
+
+@pytest.mark.parametrize("mutate", STREAMING_INVALID.values(), ids=STREAMING_INVALID.keys())
+def test_invalid_streaming_configs_are_refused(mutate: Mutation):
+    config = streaming_config()
+    mutate(config)
+    assert violations(config) != []
+
+
 def pass_through_config() -> dict[str, Any]:
     return {
         "upstream": "http://keycloak:8080",
@@ -183,6 +270,10 @@ INVALID: dict[str, Mutation] = {
     ),
     "unknown scenario field": lambda config: config["scenarios"]["outage"].update(extra=1),
     "visible as a string": lambda config: config["scenarios"]["outage"].update(visible="yes"),
+    "match with no condition": lambda config: first_route(config).update(match={}),
+    "match body as a list": lambda config: first_route(config).update(match={"body": [1]}),
+    "empty body_contains": lambda config: first_route(config).update(match={"body_contains": ""}),
+    "unknown match field": lambda config: first_route(config).update(match={"headers": {}}),
 }
 
 

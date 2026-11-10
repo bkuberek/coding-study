@@ -9,6 +9,7 @@ holds exactly what was captured, and a query value is encoded as any query value
 import json
 import re
 from collections.abc import Iterator, Mapping
+from dataclasses import replace
 from urllib.parse import urlencode
 
 from coding_study.domain.cases import Expected, JsonValue
@@ -158,16 +159,25 @@ def rendered_expected(expected: HttpExpected, values: Mapping[str, str]) -> Http
 
 
 def rendered_assertion(assertion: LogAssertion, values: Mapping[str, str]) -> LogAssertion:
-    return LogAssertion(
-        mock=assertion.mock,
-        route=assertion.route,
-        count=assertion.count,
-        min_count=assertion.min_count,
-        max_count=assertion.max_count,
-        min_gap_ms=assertion.min_gap_ms,
+    """The assertion with each text that may name a value filled in: its headers, its form fields
+    and the strings of its body subset."""
+    body = assertion.body
+    return replace(
+        assertion,
         headers={name: filled(value, values) for name, value in assertion.headers.items()},
         form={name: filled(value, values) for name, value in assertion.form.items()},
+        body=None
+        if body is None
+        else {key: filled_json(item, values) for key, item in body.items()},
     )
+
+
+def assertion_texts(assertion: LogAssertion) -> Iterator[str]:
+    """Every text of a log assertion that may name a value."""
+    yield from assertion.headers.values()
+    yield from assertion.form.values()
+    if assertion.body is not None:
+        yield from json_texts(dict(assertion.body))
 
 
 def _origin_and_path(target: str) -> tuple[str | None, str]:

@@ -43,6 +43,11 @@ class RequestLog:
         self._bytes = 0
         self._began = self._clock()
 
+    @property
+    def next_seq(self) -> int:
+        """The `seq` the next request recorded gets: its number since the last reset."""
+        return self._received + 1
+
     def record(self, request: MockRequest, outcome: Outcome) -> LogEntry | None:
         """Logs a request on arrival, so a request still being answered already counts. `None`
         when the log is full."""

@@ -1,0 +1,102 @@
+# An example mock LLM provider: a generic chat-completions-style API, named after no vendor,
+# as plain data on the mock server's format (docs/specs/service-projects.md#a-mock-llm-provider).
+#
+# Where its shape comes from: the shape most chat-completions-style APIs shared in their public
+# documentation in November 2026. POST /v1/chat/completions takes model, messages, max_tokens and
+# stream, and answers with choices[].message and usage; with stream true it answers server-sent
+# events whose choices[].delta carry the text, a last event with usage, then `data: [DONE]`.
+# POST /v1/embeddings takes model and input, and answers data[].embedding with usage. A 429 says
+# when to retry in Retry-After. Real APIs drift from this, and from each other.
+#
+# A problem owns its config: it copies this file into its own mocks/, edits it to the shape its
+# statement documents, and keeps shape_version saying what it copied. Nothing keeps a copy in step
+# with this file, and cstudy never compares a config with a live API (ADR 0019, R33).
+#
+# The fake key: the problem's project.env sets LLM_API_KEY: cs-fake-llm-key. It reaches no
+# provider, since nothing in a stack can, and a case asserts that the app sent it:
+#   {"mock": "llm", "route": "chat-stream", "count": 1,
+#    "headers": {"Authorization": "Bearer cs-fake-llm-key"}}
+#
+# Usage: prompt_tokens counts the words of the request's texts, its roles included, a
+# deterministic stand-in for a tokenizer. There is no total_tokens, since run-time values do no
+# arithmetic: a gateway that reports a total adds the two itself.
+shape_version: "generic chat-completions style, public docs of 2026-11"
+routes:
+  - id: chat-stream
+    method: POST
+    path: /v1/chat/completions
+    match: {body: {stream: true}}
+    response:
+      status: 200
+      stream:
+        - data: '{"id": "chat-{{seq}}", "model": {{json(request.body.model)}}, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Oak "}}]}'
+          after_ms: 20
+        - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "is free."}, "finish_reason": "stop"}]}'
+          after_ms: 20
+        - data: '{"id": "chat-{{seq}}", "choices": [], "usage": {"prompt_tokens": {{words(request.body.messages)}}, "completion_tokens": 3}}'
+        - data: "[DONE]"
+  - id: chat
+    method: POST
+    path: /v1/chat/completions
+    response:
+      status: 200
+      body:
+        id: "chat-{{seq}}"
+        object: chat.completion
+        model: "{{request.body.model}}"
+        choices:
+          - index: 0
+            message: {role: assistant, content: "Oak is free."}
+            finish_reason: stop
+        usage:
+          prompt_tokens: "{{words(request.body.messages)}}"
+          completion_tokens: 3
+  - id: embed-refund
+    method: POST
+    path: /v1/embeddings
+    match: {body_contains: refund}
+    response:
+      status: 200
+      body:
+        object: list
+        model: "{{request.body.model}}"
+        data: [{object: embedding, index: 0, embedding: [0.12, 0.88, 0.05]}]
+        usage: {prompt_tokens: "{{words(request.body.input)}}"}
+  - id: embed
+    method: POST
+    path: /v1/embeddings
+    response:
+      status: 200
+      body:
+        object: list
+        model: "{{request.body.model}}"
+        data: [{object: embedding, index: 0, embedding: [0.71, 0.10, 0.33]}]
+        usage: {prompt_tokens: "{{words(request.body.input)}}"}
+scenarios:
+  rate_limited:
+    visible: true
+    status: 429
+    headers: {Retry-After: "1"}
+    body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+  rate_limited_then_ok:
+    visible: true
+    sequence:
+      - status: 429
+        headers: {Retry-After: "1"}
+        body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+      - {status: 200}                    # the route's own answer, its stream included
+  dropped_mid_stream:
+    visible: true
+    route: chat-stream
+    drop_after_chunks: 1                 # one event, then the connection closes with no [DONE]
+  stalled_stream:
+    route: chat-stream
+    stall_after_chunks: 1                # one event, then silence until the app gives up
+  malformed_chunk:
+    route: chat-stream
+    stream:
+      - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "Oa'
+      - data: "[DONE]"
+  overloaded:
+    status: 503
+    body: {error: {type: overloaded, message: "The model is overloaded."}}

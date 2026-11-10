@@ -9,13 +9,22 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import islice, pairwise
-from typing import NoReturn
+from typing import NoReturn, cast
 from urllib.parse import parse_qs
 
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import Expected, FunctionInput, JsonValue
 from coding_study.domain.comparators import Comparator, Mismatch, comparator_for
-from coding_study.domain.http_case import ExpectedStatus, HttpExpected, LogAssertion
+from coding_study.domain.http_bodies import (
+    MISSING,
+    canonical_text,
+    is_number,
+    json_contains,
+    parsed_body,
+    prefix_break,
+    value_at,
+)
+from coding_study.domain.http_case import ExpectedStatus, HttpExpected, LogAssertion, SameBody
 from coding_study.domain.judging import CaseVerdict, RunnableCase
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
 from coding_study.domain.runs import Returned
@@ -35,6 +44,7 @@ OVERFLOWED = (
     "send fewer or smaller requests in one case"
 )
 CUT_BODY = "a logged body was cut at the log's limit, so its form cannot be judged"
+CUT_JSON_BODY = "a logged body was cut at the log's limit, so its JSON cannot be judged"
 FILTER_VALUE_LIMIT = 40
 """How much of a value a log assertion's label shows: a token is long, and its start names it."""
 
@@ -154,26 +164,85 @@ def _status_failure(expected: ExpectedStatus, actual: int) -> str:
     return f"expected a {expected} status, got {actual}"
 
 
-def log_failures(assertion: LogAssertion, log: MockLog) -> tuple[str, ...]:
-    """Why the log breaks `assertion`. What a full log dropped is counted but not kept: it says how
-    many came and nothing of which route they took, what they carried or when, so only a count of
-    the whole mock server can be judged then."""
+def log_failures(
+    assertion: LogAssertion, log: MockLog, reference: MockLog | None = None
+) -> tuple[str, ...]:
+    """Why the log breaks `assertion`; `reference` is the log its `body_same_as` names. What a full
+    log dropped is counted but not kept: it says how many came and nothing of which route they
+    took, what they carried or when, so only a count of the whole mock server can be judged then."""
     label = _log_label(assertion)
-    filtered = bool(assertion.headers or assertion.form)
-    narrowed = assertion.route is not None or assertion.min_gap_ms is not None or filtered
-    if log.dropped > 0 and narrowed:
+    if log.dropped > 0 and _narrows(assertion):
         return (f"{label}: {OVERFLOWED}",)
     on_route = tuple(
         entry for entry in log.entries if assertion.route is None or entry.route == assertion.route
     )
-    if assertion.form and any(entry.truncated for entry in on_route):
-        return (f"{label}: {CUT_BODY}",)
-    matching = tuple(entry for entry in on_route if _carries(entry, assertion))
+    try:
+        _refuse_cut_bodies(assertion, on_route)
+        same = _reference_texts(assertion.body_same_as, reference or MockLog())
+    except _UnjudgedError as unjudged:
+        return (f"{label}: {unjudged}",)
+    matching = tuple(entry for entry in on_route if _carries(entry, assertion, same))
     problems = (
         *_count_failures(assertion, len(matching) + log.dropped),
         *_gap_failure(assertion, matching),
+        *_prefix_failure(assertion.body_prefix_stable, matching),
     )
     return tuple(f"{label}: {problem}" for problem in problems)
+
+
+class _UnjudgedError(Exception):
+    """An assertion the log cannot judge; the message says why."""
+
+
+def _narrows(assertion: LogAssertion) -> bool:
+    """Whether the assertion needs to know which requests came, not only how many."""
+    return (
+        assertion.route is not None
+        or assertion.min_gap_ms is not None
+        or bool(assertion.headers or assertion.form)
+        or _reads_json(assertion)
+    )
+
+
+def _reads_json(assertion: LogAssertion) -> bool:
+    return (
+        assertion.body is not None
+        or bool(assertion.body_max)
+        or assertion.body_same_as is not None
+        or assertion.body_prefix_stable is not None
+    )
+
+
+def _refuse_cut_bodies(assertion: LogAssertion, entries: tuple[LoggedRequest, ...]) -> None:
+    if not any(entry.truncated for entry in entries):
+        return
+    if assertion.form:
+        raise _UnjudgedError(CUT_BODY)
+    if _reads_json(assertion):
+        raise _UnjudgedError(CUT_JSON_BODY)
+
+
+def _reference_texts(same: SameBody | None, reference: MockLog) -> Mapping[str, str]:
+    """The canonical JSON text of each field `same` names, in the first request its route logged."""
+    if same is None:
+        return {}
+    named = f"{same.mock} {same.route}" if same.route else same.mock
+    first = next(
+        (entry for entry in reference.entries if same.route is None or entry.route == same.route),
+        None,
+    )
+    if first is None:
+        raise _UnjudgedError(f"{named} logged no request to compare with")
+    if first.truncated:
+        raise _UnjudgedError(f"{named}: {CUT_JSON_BODY}")
+    body = parsed_body(first.body)
+    texts: dict[str, str] = {}
+    for path in same.fields:
+        value = value_at(body, path)
+        if value is MISSING:
+            raise _UnjudgedError(f"{named} logged a first request with no body {path}")
+        texts[path] = canonical_text(value)
+    return texts
 
 
 def _log_label(assertion: LogAssertion) -> str:
@@ -181,23 +250,72 @@ def _log_label(assertion: LogAssertion) -> str:
     carried = [
         *(f"header {name}={_short(value)}" for name, value in assertion.headers.items()),
         *(f"form {name}={_short(value)}" for name, value in assertion.form.items()),
+        *_body_labels(assertion),
     ]
     return f"{label} with {', '.join(carried)}" if carried else label
 
 
-def _short(value: str) -> str:
+def _body_labels(assertion: LogAssertion) -> Iterator[str]:
+    if assertion.body is not None:
+        yield f"body {_short(dict(assertion.body))}"
+    for path, maximum in assertion.body_max.items():
+        yield f"body {path} at most {maximum:g}"
+    same = assertion.body_same_as
+    if same is not None:
+        named = f"{same.mock} {same.route}" if same.route else same.mock
+        yield f"body {', '.join(same.fields)} the same as {named}"
+
+
+def _short(value: JsonValue) -> str:
     return value_text(value, FILTER_VALUE_LIMIT)
 
 
-def _carries(entry: LoggedRequest, assertion: LogAssertion) -> bool:
-    """Whether the request carried every header and form field the assertion names."""
+def _carries(entry: LoggedRequest, assertion: LogAssertion, same: Mapping[str, str]) -> bool:
+    """Whether the request carried every header, form field and JSON body field the assertion
+    names; `same` holds what `body_same_as` asks for, as canonical JSON text."""
     headers_match = all(
         entry.headers.get(name.lower()) == value for name, value in assertion.headers.items()
     )
-    if not headers_match or not assertion.form:
-        return headers_match
-    fields = parse_qs(entry.body or "", keep_blank_values=True)
-    return all(value in fields.get(name, ()) for name, value in assertion.form.items())
+    if not headers_match:
+        return False
+    if assertion.form:
+        fields = parse_qs(entry.body or "", keep_blank_values=True)
+        if not all(value in fields.get(name, ()) for name, value in assertion.form.items()):
+            return False
+    return not _reads_json(assertion) or _carries_json(parsed_body(entry.body), assertion, same)
+
+
+def _carries_json(body: object, assertion: LogAssertion, same: Mapping[str, str]) -> bool:
+    if assertion.body is not None and not json_contains(body, dict(assertion.body)):
+        return False
+    for path, maximum in assertion.body_max.items():
+        value = value_at(body, path)
+        if not is_number(value) or cast(float, value) > maximum:
+            return False
+    return all(_holds_the_same(body, path, text) for path, text in same.items())
+
+
+def _holds_the_same(body: object, path: str, text: str) -> bool:
+    value = value_at(body, path)
+    return value is not MISSING and canonical_text(value) == text
+
+
+def _prefix_failure(path: str | None, entries: tuple[LoggedRequest, ...]) -> tuple[str, ...]:
+    """The first request whose value at `path` does not start with the previous one's whole."""
+    if path is None:
+        return ()
+    values = [value_at(parsed_body(entry.body), path) for entry in entries]
+    for number, value in enumerate(values, start=1):
+        if value is MISSING:
+            return (f"body {path} of request {number} is missing",)
+        if not isinstance(value, str | list):
+            return (f"body {path} of request {number} is neither a text nor a list",)
+    for number, (earlier, later) in enumerate(pairwise(values), start=1):
+        broken = prefix_break(earlier, later)
+        if broken is not None:
+            wanted = f"body {path} of request {number + 1} does not start with request {number}'s"
+            return (f"{wanted}: {broken}",)
+    return ()
 
 
 def _count_failures(assertion: LogAssertion, seen: int) -> Iterator[str]:

@@ -13,6 +13,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import cast
 
+from .templates import compact_json, has_values
+
 MOCK_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 PATH = re.compile(r"(/([^/{}?#\s]*|\{[A-Za-z_][A-Za-z0-9_]*\}))+")
 HEADER_NAME = re.compile(r"[A-Za-z0-9-]+")
@@ -26,12 +28,15 @@ HEADER_ENCODING = "latin-1"
 
 STACK_FIELDS = frozenset({"control_token", "mocks"})
 MOCK_FIELDS = frozenset({"upstream", "routes", "scenarios"})
-ROUTE_FIELDS = frozenset({"id", "method", "path", "query", "response"})
-RESPONSE_FIELDS = frozenset({"status", "headers", "body", "body_file", "delay_ms"})
-ENTRY_FIELDS = RESPONSE_FIELDS | {"jwt"}
-"""A scenario entry's fields: a route's response, plus a JWT to tamper with."""
+ROUTE_FIELDS = frozenset({"id", "method", "path", "query", "match", "response"})
+MATCH_FIELDS = frozenset({"body", "body_contains"})
+RESPONSE_FIELDS = frozenset({"status", "headers", "body", "body_file", "stream", "delay_ms"})
+CUT_FIELDS = frozenset({"drop_after_chunks", "stall_after_chunks"})
+ENTRY_FIELDS = RESPONSE_FIELDS | {"jwt"} | CUT_FIELDS
+"""A scenario entry's fields: a route's response, plus a JWT to tamper with and a stream to cut."""
 SCENARIO_FIELDS = ENTRY_FIELDS | {"visible", "route", "sequence"}
 JWT_FIELDS = frozenset({"field", "tamper"})
+CHUNK_FIELDS = frozenset({"data", "event", "raw", "after_ms"})
 
 
 class ConfigError(Exception):
@@ -43,6 +48,9 @@ class Body:
     content: bytes
     content_type: str | None = None
     """What a body built from a mapping or list is sent as, unless the headers say otherwise."""
+    template: object = None
+    """The body as the config wrote it, a text or a JSON value, when it names run-time values
+    filled in per request; None sends `content` as it is."""
 
 
 class TamperKind(StrEnum):
@@ -63,6 +71,32 @@ class JwtTamper:
 
 
 @dataclass(frozen=True)
+class StreamChunk:
+    """One server-sent event of a streamed answer, sent `after_ms` after the one before it: `data`,
+    under an optional `event` name, or `raw` text sent as written, which can break the format."""
+
+    data: str | None = None
+    event: str | None = None
+    raw: str | None = None
+    after_ms: int = 0
+
+
+class StreamCutKind(StrEnum):
+    """How a scenario cuts a stream short after some of its chunks."""
+
+    DROP = "drop"
+    """The connection closes, with no terminator."""
+    STALL = "stall"
+    """Nothing more is sent, and the connection stays open until the app closes it."""
+
+
+@dataclass(frozen=True)
+class StreamCut:
+    kind: StreamCutKind
+    after_chunks: int
+
+
+@dataclass(frozen=True)
 class ResponseFields:
     """A route's response or a scenario's override; `None` is a field left out."""
 
@@ -72,6 +106,10 @@ class ResponseFields:
     delay_ms: int | None = None
     jwt: JwtTamper | None = None
     """A scenario's only: the JWT of the answer it spoils."""
+    stream: tuple[StreamChunk, ...] | None = None
+    """Server-sent events in place of a body."""
+    cut: StreamCut | None = None
+    """A scenario's only: where it cuts the stream short."""
 
 
 @dataclass(frozen=True)
@@ -82,6 +120,10 @@ class Route:
     query: Mapping[str, str]
     response: ResponseFields | None
     """None passes the request through to the mock server's upstream."""
+    match_body: Mapping[str, object] | None = None
+    """A JSON subset the request's body must hold; None matches any body."""
+    match_body_contains: str | None = None
+    """A text the request's body must hold anywhere; None matches any body."""
 
 
 @dataclass(frozen=True)
@@ -186,12 +228,17 @@ class _Reader:
         response = fields.optional("response", self._response_fields)
         if response is not None and response.status is None:
             raise ConfigError(f"{where}.response.status: required")
+        match = _Fields(fields.optional("match", _mapping) or {}, MATCH_FIELDS, f"{where}.match")
+        if fields.has("match") and not match.among(MATCH_FIELDS):
+            raise ConfigError(f"{where}.match: expected body or body_contains")
         return Route(
             id=fields.required("id", _string),
             method=fields.required("method", _method),
             path=fields.required("path", _path),
             query=fields.optional("query", _string_mapping) or {},
             response=response,
+            match_body=match.optional("body", _mapping),
+            match_body_contains=match.optional("body_contains", _text),
         )
 
     def _scenarios(self, raw: object, where: str) -> dict[str, Scenario]:
@@ -232,13 +279,17 @@ class _Reader:
             status=fields.optional("status", _status),
             headers=fields.optional("headers", _headers),
             body=self._body(fields),
-            delay_ms=fields.optional("delay_ms", _delay),
+            delay_ms=fields.optional("delay_ms", _non_negative),
             jwt=fields.optional("jwt", _jwt),
+            stream=fields.optional("stream", _stream),
+            cut=_cut(fields),
         )
 
     def _body(self, fields: _Fields) -> Body | None:
         if fields.has("body") and fields.has("body_file"):
             raise ConfigError(f"{fields.where}.body_file: cannot stand next to body")
+        if fields.has("stream") and (fields.has("body") or fields.has("body_file")):
+            raise ConfigError(f"{fields.where}.stream: cannot stand next to a body")
         return fields.optional("body", _inline_body) or fields.optional(
             "body_file", self._body_file
         )
@@ -249,7 +300,7 @@ class _Reader:
         if not path.is_relative_to(self._folder):
             raise ConfigError(f"{where}: {name} is outside the configuration's folder")
         try:
-            return Body(path.read_bytes())
+            return _file_body(path.read_bytes())
         except OSError as error:
             raise ConfigError(f"{where}: cannot read {name}: {error.strerror}") from error
 
@@ -300,6 +351,45 @@ def _jwt(raw: object, where: str) -> JwtTamper:
     return JwtTamper(tuple(path.split(".")), TamperKind(kind))
 
 
+def _stream(raw: object, where: str) -> tuple[StreamChunk, ...]:
+    items = _list(raw, where)
+    if not items:
+        raise ConfigError(f"{where}: expected at least one chunk")
+    return tuple(_chunk(item, f"{where}[{index}]") for index, item in enumerate(items))
+
+
+def _chunk(raw: object, where: str) -> StreamChunk:
+    fields = _Fields(raw, CHUNK_FIELDS, where)
+    after_ms = fields.optional("after_ms", _non_negative) or 0
+    if fields.has("raw"):
+        if fields.has("data") or fields.has("event"):
+            raise ConfigError(f"{where}.raw: cannot stand next to data or event")
+        return StreamChunk(raw=fields.required("raw", _string), after_ms=after_ms)
+    return StreamChunk(
+        data=fields.required("data", _string),
+        event=fields.optional("event", _event),
+        after_ms=after_ms,
+    )
+
+
+def _event(raw: object, where: str) -> str:
+    event = _text(raw, where)
+    if "\r" in event or "\n" in event:
+        raise ConfigError(f"{where}: an event name is one line")
+    return event
+
+
+def _cut(fields: _Fields) -> StreamCut | None:
+    drops, stalls = fields.has("drop_after_chunks"), fields.has("stall_after_chunks")
+    if drops and stalls:
+        raise ConfigError(f"{fields.where}.stall_after_chunks: cannot stand next to a drop")
+    if drops:
+        return StreamCut(StreamCutKind.DROP, fields.required("drop_after_chunks", _non_negative))
+    if stalls:
+        return StreamCut(StreamCutKind.STALL, fields.required("stall_after_chunks", _non_negative))
+    return None
+
+
 def _mapping(raw: object, where: str) -> dict[str, object]:
     if not isinstance(raw, dict):
         raise ConfigError(f"{where}: expected a mapping")
@@ -316,6 +406,14 @@ def _string(raw: object, where: str) -> str:
     if not isinstance(raw, str):
         raise ConfigError(f"{where}: expected a string")
     return raw
+
+
+def _text(raw: object, where: str) -> str:
+    """A string that is not empty."""
+    text = _string(raw, where)
+    if not text:
+        raise ConfigError(f"{where}: must not be empty")
+    return text
 
 
 def _integer(raw: object, where: str) -> int:
@@ -352,7 +450,7 @@ def _status(raw: object, where: str) -> int:
     return status
 
 
-def _delay(raw: object, where: str) -> int:
+def _non_negative(raw: object, where: str) -> int:
     delay = _integer(raw, where)
     if delay < 0:
         raise ConfigError(f"{where}: must not be negative")
@@ -383,8 +481,20 @@ def _sendable(header_value: str) -> bool:
 
 def _inline_body(raw: object, where: str) -> Body:
     if isinstance(raw, str):
-        return Body(raw.encode())
+        return Body(raw.encode(), template=_template(raw))
     if isinstance(raw, dict | list):
-        compact = json.dumps(raw, ensure_ascii=False, separators=(",", ":"))
-        return Body(compact.encode(), "application/json")
+        written = cast(object, raw)
+        return Body(compact_json(written).encode(), "application/json", _template(written))
     raise ConfigError(f"{where}: expected a mapping, a list or a string")
+
+
+def _file_body(content: bytes) -> Body:
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return Body(content)
+    return Body(content, template=_template(text))
+
+
+def _template(written: object) -> object:
+    return written if has_values(written) else None

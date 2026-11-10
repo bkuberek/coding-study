@@ -22,13 +22,17 @@ from coding_study.domain.mock_configs import (
     API_SUFFIX,
     BODY_FILE,
     MILLISECONDS_PER_SECOND,
+    OPENING,
     MockFiles,
+    malformed_run_time_value,
     response_fields,
+    response_texts,
     retry_after_text,
     route_ids,
     scenario_documents,
     scenario_names,
     scenario_waits_ms,
+    stream_wait_ms,
     visible_scenario_names,
 )
 from coding_study.domain.precedence import DEFAULT_HANG_GUARD_MS
@@ -44,10 +48,13 @@ from coding_study.domain.sandbox import (
 )
 from coding_study.domain.service_checks import THIS_MACHINE, url_host
 from coding_study.domain.service_project import ServiceMock, ServiceProject
+from coding_study.domain.value_text import value_text
 
 MOCKS_DIRECTORY = "mocks/"
 MAX_WAIT_S = 3
 """What a scenario may make an app wait, so a hidden case stays under the 10 s hang guard."""
+SHOWN_TEMPLATE_LIMIT = 40
+"""How much of a mistaken run-time value an issue shows, from its `{{` on."""
 VENDOR_DOCUMENT = "vendors/{name}/API.md"
 _PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]+")
 _REPOSITORY = re.compile(r"(?:.*/)?(?P<name>[^/:@]+)(?::[^@/]*)?(?:@.*)?$")
@@ -89,6 +96,7 @@ def mock_config_issues(service: ServiceProject, files: ProjectFiles) -> _Found:
         found = files.mocks.get(mock.name)
         if found is not None:
             yield from _bodies(mock, found)
+            yield from _run_time_values(mock, found)
             yield from _waits(mock, found)
             yield from _documentation(mock, found, files)
             yield from _upstream(mock, found, files)
@@ -120,12 +128,26 @@ def _bodies(mock: ServiceMock, files: MockFiles) -> _Found:
             yield location, f"body_file {name} is not UTF-8 text"
 
 
+def _run_time_values(mock: ServiceMock, files: MockFiles) -> _Found:
+    """The mock server sends a `{{` that opens no value as written, which is a typo far more often
+    than it is meant, so S20 refuses it."""
+    for where, fields in response_fields(files):
+        for text in response_texts(fields, files):
+            malformed = malformed_run_time_value(text)
+            if malformed is not None:
+                shown = value_text(malformed, SHOWN_TEMPLATE_LIMIT)
+                yield f"{mock.config} {where}", f"{OPENING} opens no run-time value at {shown}"
+
+
 def _waits(mock: ServiceMock, files: MockFiles) -> _Found:
     for where, fields in response_fields(files):
         location = f"{mock.config} {where}"
         delay = fields.get("delay_ms", 0)
         if isinstance(delay, int) and delay > MAX_WAIT_S * MILLISECONDS_PER_SECOND:
             yield location, f"delay_ms is {delay}: a wait is at most {MAX_WAIT_S} s"
+        streamed = stream_wait_ms(fields)
+        if streamed > MAX_WAIT_S * MILLISECONDS_PER_SECOND:
+            yield location, f"stream waits {streamed} ms in all: a wait is at most {MAX_WAIT_S} s"
         text = retry_after_text(cast(Mapping[str, str], fields.get("headers", {})))
         if text is None:
             continue
@@ -405,8 +427,13 @@ def _scenarios(where: str, case: Case, http: HttpCaseInput, rules: _CaseRules) -
 
 def _logs(where: str, http: HttpCaseInput, rules: _CaseRules) -> _Found:
     for assertion in http.log:
-        files = rules.files.mocks.get(assertion.mock)
-        if files is None:
-            yield where, f"no mock server named {assertion.mock}"
-        elif assertion.route is not None and assertion.route not in route_ids(files):
-            yield where, f"{assertion.mock} has no route {assertion.route}"
+        named = [(assertion.mock, assertion.route)]
+        same = assertion.body_same_as
+        if same is not None:
+            named.append((same.mock, same.route))
+        for mock, route in named:
+            files = rules.files.mocks.get(mock)
+            if files is None:
+                yield where, f"no mock server named {mock}"
+            elif route is not None and route not in route_ids(files):
+                yield where, f"{mock} has no route {route}"
