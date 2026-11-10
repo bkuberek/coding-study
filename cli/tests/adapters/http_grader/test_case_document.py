@@ -218,6 +218,19 @@ def test_a_fresh_case_says_so():
     assert http_case_input(document(fresh=True)).fresh is True
 
 
+def test_a_case_keeps_its_app_running_unless_it_says_so():
+    assert http_case_input(document()).restart_app is False
+
+
+def test_a_case_that_restarts_the_app_says_so():
+    assert http_case_input(document(restart="app")).restart_app is True
+
+
+def test_a_multi_step_case_may_restart_the_app():
+    case = {"id": "h1", "level": 1, "restart": "app", "steps": [GET_A]}
+    assert http_case_input(case).restart_app is True
+
+
 def test_reports_show_the_request_as_written():
     request = {"method": "GET", "path": "/a", "query": {"date": "2027-03-01"}}
     assert http_case_input(document(request=request)).arguments == request

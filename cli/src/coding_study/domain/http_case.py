@@ -256,6 +256,8 @@ class HttpCaseInput(FunctionInput):
     log: tuple[LogAssertion, ...] = ()
     fresh: bool = False
     """Restart the app and reset its data first."""
+    restart_app: bool = False
+    """Restart the app first and keep its data, as a crash and a restart would."""
     steps: tuple[CaseStep, ...] = ()
     """A multi-step case's steps, with every flow it uses written out."""
     cleanup: tuple[HttpStep, ...] = ()

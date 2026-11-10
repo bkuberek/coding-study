@@ -149,6 +149,7 @@
           "items": { "$ref": "#/$defs/logAssertion" }
         },
         "fresh": { "description": "Restart the app and run commands.reset first", "type": "boolean" },
+        "restart": { "description": "Restart the app first and keep its data, with no commands.reset", "const": "app" },
         "app_output": {
           "description": "What the app may not print, on standard output or error, while the case runs, cleanup included",
           "type": "object",
@@ -219,6 +220,9 @@
         "comparator": { "$ref": "#/$defs/anHttpCase" },
         "log": { "$ref": "#/$defs/anHttpCase" },
         "fresh": { "$ref": "#/$defs/anHttpCase" },
+        "restart": {
+          "allOf": [{ "$ref": "#/$defs/anHttpCase" }, { "not": { "required": ["fresh"], "properties": { "fresh": { "const": true } } } }]
+        },
         "app_output": { "$ref": "#/$defs/anHttpCase" }
       }
     },

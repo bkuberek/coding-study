@@ -692,6 +692,12 @@ def test_fresh_with_data_needs_a_reset_command():
     assert any("commands.reset" in message for message in found)
 
 
+def test_a_restart_that_keeps_the_data_needs_no_reset():
+    project = service(services="c.yaml")
+
+    assert s23(http_case(restart_app=True), http_case("h2", 2), project=project) == []
+
+
 def test_fresh_with_no_data_only_restarts_and_needs_no_reset():
     assert s23(http_case(fresh=True), http_case("h2", 2)) == []
 

@@ -814,7 +814,8 @@ The contract between the stack and the grader's multi-step cases (P11). Some ser
 
 Engine gaps found while building `0283` to `0287`. None blocks a problem; each is worked around in the problem that met it.
 
-- **A kept restart needs a no-op reset.** With services, S23 requires `commands.reset` for any `fresh` case. Restarting the app while keeping its data therefore needs a `reset` that does nothing, as `0284` declares.
+Four gaps found then are closed: a binary request body ([`body_base64`](#hidden-http-case)), a [sleep step and a change to a backing service](#steps-that-send-nothing) mid-case, and a restart that keeps the app's data ([`restart`](#hidden-http-case)). Problems that worked around them keep their workarounds, except `0284`, which restarts with `restart: "app"`.
+
 - **Parallel cases judge status counts only.** They never compare bodies.
 - **The `unordered` comparator applies to every step of a multi-step case.**
 - **Moto holds a whole S3 object in memory.** A large object needs a bigger memory limit on the Moto service and a disk-backed `/tmp` for it.
@@ -870,7 +871,7 @@ A case then names a problem-owned script as `write_data`, run as `grade_setup` i
 
 ### Reset
 
-Data resets per run. A problem that needs a reset between cases declares `commands.reset`, and a case asks for it with `fresh: true`. cstudy stops the app, runs `reset` with `CSTUDY_RESET_PHASE=apply`, and starts the app again. `CSTUDY_RESET_PHASE=prepare` runs once after `bootstrap`. PostgreSQL's `CREATE DATABASE ... TEMPLATE` is an example of such a command, not a core feature: the fixture's `prepare` copies the migrated database to a template, and its `apply` drops the database `WITH (FORCE)`, creates it again from the template and empties Redis with `FLUSHALL`. On Postgres 17.11 with the fixture's tables, the copy took 31 ms and putting it back 87 ms (69 to drop, 18 to create). Without `commands.reset`, `fresh: true` only restarts the app.
+Data resets per run. A problem that needs a reset between cases declares `commands.reset`, and a case asks for it with `fresh: true`. cstudy stops the app, runs `reset` with `CSTUDY_RESET_PHASE=apply`, and starts the app again. `CSTUDY_RESET_PHASE=prepare` runs once after `bootstrap`. PostgreSQL's `CREATE DATABASE ... TEMPLATE` is an example of such a command, not a core feature: the fixture's `prepare` copies the migrated database to a template, and its `apply` drops the database `WITH (FORCE)`, creates it again from the template and empties Redis with `FLUSHALL`. On Postgres 17.11 with the fixture's tables, the copy took 31 ms and putting it back 87 ms (69 to drop, 18 to create). Without `commands.reset`, `fresh: true` only restarts the app. A case that restarts the app and keeps its data, as after a crash, asks for `restart: "app"` instead, and needs no `commands.reset`.
 
 ### Parallel cases
 
@@ -913,7 +914,7 @@ The grader asks a stack for little, through `GradedStack` in `application/http_g
 | Member | What it is |
 |--------|------------|
 | `endpoints` | `app_url` and `control_url` on `127.0.0.1`, `control_token`, and the names in `mocks`. `control_url` is `None` without mock servers |
-| `restart_app()` | Stops your app and starts it again, for a case that hung it |
+| `restart_app()` | Stops your app and starts it again, for a case that hung it, or before one with `restart: "app"` |
 | `restart_app_with_fresh_data()` | For `fresh`: stops your app, runs `commands.reset` with `CSTUDY_RESET_PHASE=apply` if declared, starts your app |
 | `change_service(change)` | `docker compose pause`, `unpause`, `stop` or `start` on one backing service, for a [step](#steps-that-send-nothing). `start` returns once the service is healthy |
 | `app_exit(within_ms)` | Your app's exit code and stderr tail, or `None` if it still runs after waiting that long, since a container's exit shows a moment after its connections drop |
@@ -936,7 +937,7 @@ A case's limit runs from its first request to the last byte of its last answer, 
 3. With `grade_setup`, the from-empty check: a stack of its own, under a fresh name, brings up the mock and service containers and runs `bootstrap` on empty data, with the app idle, then goes with its data (`down -v`). A failure is a [migration failure](#failure-reporting) that says it was from empty, and it shows its output even in a mock attempt, since no hidden data is there. Without `grade_setup`, the `bootstrap` of the next step is itself this check.
 4. Bring up a fresh stack (`up --wait`), with its one-shots in order before `app`: `grade_setup` if declared, `bootstrap` if declared, `reset` with `prepare` if declared. The app's start depends on them and on the mock container being healthy, which P1 measured faster than separate steps, with one failure path.
 5. `app` runs `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`, each try limited to 5 s as a whole, so an answer that never ends still counts as no answer. The second clock starts here.
-6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, put back any backing service the steps left paused or stopped, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
+6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data, or if `restart` is `"app"`, restart the app alone and keep its data, then `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, put back any backing service the steps left paused or stopped, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
 7. `down -v`.
 
 Each `cstudy submit` has a stack of its own, under a fresh name, so two at once cannot collide, and `.cs/runs/` holds the run's generated files until it ends. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
@@ -969,6 +970,7 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 | `comparator` | Overrides the problem's: `{"type": ...}`, with `tolerance` for `float`. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
 | `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers. `headers` and `form` narrow what counts to the requests that carried each header, by its name in any case, or each field of a form-encoded body, such as `{"form": {"refresh_token": "{{rt2}}"}}` with `count: 1`. Their values may name [captures](#multi-step-cases). A log that overflowed fails them too, and so does a body cut at the log's 64 KiB, whose form cannot be read. `body`, `body_max`, `body_same_as` and `body_prefix_stable` judge a JSON body ([Logged bodies](#logged-bodies)) |
 | `fresh` | Restart the app and run `commands.reset` first |
+| `restart` | `"app"`: restart the app first and keep its data, as a crash and a restart would, with no `commands.reset`, so S23 asks for none. Not beside `fresh: true`, which resets the data as well: `{"id": "h25", "level": 3, "restart": "app", "steps": [...]}`, as `0284` restarts its app in the middle of a load |
 | `app_output` | What your app may not print while the case runs: `{"absent": [...]}` ([Output check](#output-check)) |
 
 A case has a `level`, or no graded run would reach it. `project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.

@@ -49,6 +49,9 @@ JSON_CONTENT_TYPE = "application/json"
 _MOCKS_FIELD = "mocks"
 _STEPS_FIELD = "steps"
 _PARALLEL_FIELD = "parallel"
+_RESTART_FIELD = "restart"
+_APP = "app"
+"""What `restart` restarts, its one value."""
 _SLEEP_FIELD = "sleep_ms"
 _SERVICE_FIELD = "service"
 _BASE64_BODY_FIELD = "body_base64"
@@ -82,6 +85,7 @@ def http_case_input(case: Document, flows: Flows | None = None) -> HttpCaseInput
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        restart_app=case.get(_RESTART_FIELD) == _APP,
         app_output=_output_check(case),
     )
 
@@ -99,6 +103,7 @@ def _steps_case(case: Document, flows: Flows) -> HttpCaseInput:
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        restart_app=case.get(_RESTART_FIELD) == _APP,
         steps=expander.steps(steps, _Place("step")),
         cleanup=_requests(expander.steps(case.get("cleanup", ()), _Place("cleanup"))),
         app_output=_output_check(case),
@@ -138,6 +143,7 @@ def _parallel_case(case: Document) -> HttpCaseInput:
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        restart_app=case.get(_RESTART_FIELD) == _APP,
         app_output=_output_check(case),
         parallel=burst,
     )

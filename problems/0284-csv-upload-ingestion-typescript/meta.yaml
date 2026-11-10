@@ -25,10 +25,6 @@ project:
     bootstrap: [node, scripts/setup.ts]
     run: [node, src/server.ts]
     test: [node, --test, --test-concurrency=1]
-    # The one case that restarts the app does so while it loads the bulk file, and must find the
-    # data as the crash left it, as a real restart would: a rollback that did not happen, or a file
-    # counted twice, shows only then. So there is nothing to reset; S23 asks for the command.
-    reset: ["true"]
     grade_setup: [node, "{problem}/grading/grade_setup.ts"]
   # The memory limit is part of the problem: the bulk file of 160 MB is bigger than it.
   app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60, mem_limit: 128m}

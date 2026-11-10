@@ -76,6 +76,10 @@ def test_a_request_may_carry_a_binary_body_in_base64(validator: SchemaValidator)
     assert violations(validator, with_fields(request=request)) == []
 
 
+def test_a_case_may_restart_the_app_and_keep_its_data(validator: SchemaValidator):
+    assert violations(validator, without("fresh") | {"restart": "app"}) == []
+
+
 def test_a_request_may_carry_json_null(validator: SchemaValidator):
     request = {"method": "POST", "path": "/bookings", "json": None}
     assert violations(validator, with_fields(request=request)) == []
@@ -184,6 +188,8 @@ def test_a_body_assertion_is_refused_for(
             with_fields(expected={"status": 200, "first_byte_ms_max": 1.5}),
         ),
         ("a scenario that is not a name", with_fields(mocks={"room-vendor": None})),
+        ("a restart of anything but the app", without("fresh") | {"restart": "db"}),
+        ("a restart beside fresh", with_fields(restart="app")),
     ],
 )
 def test_a_case_is_refused_for(validator: SchemaValidator, label: str, case: dict[str, Any]):
@@ -198,6 +204,7 @@ def test_a_case_is_refused_for(validator: SchemaValidator, label: str, case: dic
         ("comparator", {"type": "exact"}),
         ("log", [{"mock": "room-vendor", "count": 1}]),
         ("fresh", True),
+        ("restart", "app"),
     ],
 )
 def test_an_http_field_needs_a_request(validator: SchemaValidator, field: str, value: Any):
