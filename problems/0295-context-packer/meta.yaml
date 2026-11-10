@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0295"
+slug: context-packer
+title: Context Packer
+summary: "Build ContextPacker, which chooses the memories that go into a model's context: the best ones that fit a token budget, with pinned items, per-category caps and near-duplicates collapsed."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [greedy]
+domains: [ai-llm, backend]
+job_roles: [backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Packing under a budget}
+  - {level: 2, title: Pinned items}
+  - {level: 3, title: Category caps}
+  - {level: 4, title: Near-duplicates}
+signature:
+  class:
+    name: ContextPacker
+    constructor: {params: []}
+    methods:
+      - {name: addItem, level: 1, params: [{name: timestamp, type: long}, {name: itemId, type: string}, {name: text, type: string}, {name: tokens, type: int}, {name: score, type: int}], returns: {type: bool}}
+      - {name: removeItem, level: 1, params: [{name: timestamp, type: long}, {name: itemId, type: string}], returns: {type: bool}}
+      - {name: pack, level: 1, params: [{name: timestamp, type: long}, {name: budget, type: int}], returns: {type: "list<string>"}}
+      - {name: pin, level: 2, params: [{name: timestamp, type: long}, {name: itemId, type: string}], returns: {type: bool}}
+      - {name: unpin, level: 2, params: [{name: timestamp, type: long}, {name: itemId, type: string}], returns: {type: bool}}
+      - {name: setCategory, level: 3, params: [{name: timestamp, type: long}, {name: itemId, type: string}, {name: category, type: string}], returns: {type: bool}}
+      - {name: setCap, level: 3, params: [{name: timestamp, type: long}, {name: category, type: string}, {name: cap, type: int}], returns: {type: void}}
+      - {name: duplicateOf, level: 4, params: [{name: timestamp, type: long}, {name: itemId, type: string}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: rank-then-fill, name: Rank once then fill greedily, role: optimal, time: "O(n log n + n k w) per pack", space: "O(n w)", time_class: "n^2", space_class: "n"}
+related: [memory-store, chat-history-index]
+estimate_minutes: 90
