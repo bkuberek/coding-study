@@ -1,7 +1,7 @@
-"""The TypeScript, Python, Java and Kotlin versions of coworking availability are one problem in four
-languages: the same cases grade them all, against the same vendors, over the same seeded desks. A
-service project reads only its own files, so each holds a copy, and these tests keep the copies the
-same as the TypeScript version's."""
+"""The TypeScript, Python, Java and Kotlin versions of coworking availability are one problem in
+four languages: the same cases grade them all, against the same vendors, over the same seeded desks.
+A service project reads only its own files, so each holds a copy, and these tests keep the copies
+the same as the TypeScript version's."""
 
 from pathlib import Path
 
