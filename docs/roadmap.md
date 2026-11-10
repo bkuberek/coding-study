@@ -199,8 +199,8 @@ The pilots are written with the next project problems.
 - [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
 - [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
 - [ ] P9: code intelligence and Web UI.
-- [x] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. Not built yet: parallel cases and contract tables. The data-driven problems are PP5 to PP10 below.
-- [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems. Grader part built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. Still open: SSE streaming and the rest of R33, and the AI problems.
+- [x] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. [Parallel cases](specs/service-projects.md#parallel-cases) are built too. Still planned: D7 for them, and contract tables (R9). The data-driven problems are PP5 to PP10 below; PP5 is built.
+- [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems. Grader part built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. PP3 is built as `0280`. Still open: SSE streaming and the rest of R33, and the AI problems.
 - [ ] P12 to P14: Kotlin and Java, Go, Rust (maybe).
 
 ## Phase 13: Catalog labels and new catalogs
@@ -227,10 +227,10 @@ The owner accepted this list on 2026-11-08. Each is original and new; none repla
 |----|---------|-----------------|-----------------|------------|
 | PP1 | Coworking availability in Python (P8) | backend · backend | `0277` in a second language | hard |
 | PP2 | Payment webhook receiver | fintech, security · backend, security-engineer | HMAC signatures, replay windows, idempotency, events out of order, a provider's retries | medium |
-| PP3 | OAuth client with PKCE against an identity provider (moved to P10 and P11, not built) | identity, security · backend, security-engineer | The code flow with PKCE, token refresh, rotated signing keys, clock skew, revoked tokens; the whole flow that `0255` and `0256` cover in parts | hard |
+| PP3 | OAuth client with PKCE against an identity provider (`0280`, on Keycloak) | identity, security · backend, security-engineer | The code flow with PKCE, token refresh, rotated signing keys, clock skew, revoked tokens; the whole flow that `0255` and `0256` cover in parts | hard |
 | PP4 | SSRF-safe webhook dispatcher | security · security-engineer, backend | User-supplied URLs: blocking internal addresses, following redirects safely, timeouts, signing | hard |
 
-PP3 moved: it needs P10's backing services and P11's multi-step cases, because a mock server does not sign tokens per request ([ADR 0019](decisions/0019-service-projects.md), R34). Keycloak is being spiked as the identity provider; this is not built yet.
+PP3 waited for P10's backing services and grader reach and for P11's multi-step cases, because a mock server does not sign tokens per request ([ADR 0019](decisions/0019-service-projects.md), R34). It is built as `0280`, with Keycloak as the identity provider behind a mock server's pass-through.
 
 **With backing services (P10: Postgres, Redis, AWS services through Moto):**
 
@@ -253,13 +253,14 @@ PP3 moved: it needs P10's backing services and P11's multi-step cases, because a
 | PP14 | Fix the vulnerable service | security · security-engineer | A working app with broken authentication, IDOR, mass assignment and path traversal, graded by attack cases that must fail and normal cases that must keep passing | hard |
 | PP15 | Secure file upload | security, backend · backend, security-engineer | Size limits, content sniffing, path traversal, a mock malware-scan vendor that fails | medium |
 
-Suggested order: PP1, then PP2 and PP4, then P10 with PP5, then P11 with PP11 and PP3.
+Suggested order: PP1, PP2, PP4, PP3 and PP5 are built. Next PP6 to PP10 on the backing services, then D7 and contract tables (R9) where a problem needs them, then P11's SSE streaming and the rest of R33 with PP11 to PP15.
 
 - [x] PP1: `0278-coworking-availability-python` (P8).
 - [x] PP2: `0279-payment-webhook-receiver-typescript`.
 - [x] PP4: `0281-ssrf-safe-webhook-dispatcher-typescript`. The catalog now has 296 entries.
-- [ ] PP3: moved to P10 and P11, with Keycloak as the identity provider, not built.
-- [ ] PP5 to PP10, after P10.
+- [x] PP3: `0280-oauth-pkce-client-typescript`, with Keycloak as the identity provider.
+- [x] PP5: `0282-inventory-reservations-typescript`, on Postgres with node-pg-migrate. The catalog now has 298 entries.
+- [ ] PP6 to PP10, on the backing services.
 - [ ] PP11 to PP15, after P11.
 
 ## Phase 14: AI-reviewed problems
