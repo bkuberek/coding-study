@@ -80,6 +80,17 @@ def test_an_expected_body_may_be_null(validator: SchemaValidator):
     assert violations(validator, with_fields(expected={"status": 200, "body": None})) == []
 
 
+def test_an_expected_answer_may_limit_its_first_body_byte(validator: SchemaValidator):
+    expected = {"status": 200, "first_byte_ms_max": 1000}
+    assert violations(validator, with_fields(expected=expected)) == []
+
+
+def test_a_step_may_limit_its_first_body_byte(validator: SchemaValidator):
+    step = {"request": request_with(), "expected": {"status": 200, "first_byte_ms_max": 1000}}
+    case = {"id": "h1", "level": 1, "steps": [step]}
+    assert violations(validator, case) == []
+
+
 def test_a_log_assertion_may_cover_a_whole_mock_server(validator: SchemaValidator):
     assert violations(validator, with_fields(log=[{"mock": "room-vendor", "count": 1}])) == []
 
@@ -150,6 +161,14 @@ def test_a_body_assertion_is_refused_for(
         ("a log entry with no assertion", with_fields(log=[{"mock": "room-vendor"}])),
         ("a log entry with no mock", with_fields(log=[{"count": 1}])),
         ("a negative gap", with_fields(log=[{"mock": "m", "min_gap_ms": -1}])),
+        (
+            "a first byte limit of zero",
+            with_fields(expected={"status": 200, "first_byte_ms_max": 0}),
+        ),
+        (
+            "a first byte limit that is no integer",
+            with_fields(expected={"status": 200, "first_byte_ms_max": 1.5}),
+        ),
         ("a scenario that is not a name", with_fields(mocks={"room-vendor": None})),
     ],
 )

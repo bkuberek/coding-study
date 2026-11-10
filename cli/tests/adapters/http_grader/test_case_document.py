@@ -79,6 +79,15 @@ def test_no_expected_body_means_any_body():
     assert expected_of(document()).body is None
 
 
+def test_an_expected_first_byte_limit_is_kept():
+    expected = expected_of(document(expected={"status": 200, "first_byte_ms_max": 500}))
+    assert expected.first_byte_ms_max == 500
+
+
+def test_no_first_byte_limit_means_any_time_will_do():
+    assert expected_of(document()).first_byte_ms_max is None
+
+
 def test_expected_headers_are_kept():
     expected = expected_of(document(expected={"status": 200, "headers": {"X-Trace": "1"}}))
     assert expected.headers == {"X-Trace": "1"}

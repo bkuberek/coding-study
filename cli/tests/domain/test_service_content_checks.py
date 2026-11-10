@@ -745,3 +745,44 @@ def test_a_step_naming_a_mock_server_the_grader_does_not_reach_is_refused():
 def test_a_step_naming_an_undeclared_origin_is_refused():
     found = s23(steps_case("http://keycloak:8080/realms"), http_case("h2", 2))
     assert any("http://keycloak:8080 is no origin the problem declares" in item for item in found)
+
+
+def timed_case(first_byte_ms_max: int, *, hang_guard_ms: int | None = None) -> Case:
+    expected = HttpExpected(200, first_byte_ms_max=first_byte_ms_max)
+    http = HttpCaseInput({}, request=HttpRequest("GET", "/a"), expected=expected)
+    return Case("h1", http, Expected({"status": 200}), level=1, hang_guard_ms=hang_guard_ms)
+
+
+def test_a_first_byte_limit_under_the_hang_guard_is_allowed():
+    assert s23(timed_case(1000), http_case("h2", 2)) == []
+
+
+def test_a_first_byte_limit_at_the_hang_guard_is_refused():
+    found = s23(timed_case(10_000), http_case("h2", 2))
+
+    assert found == [
+        "first_byte_ms_max 10000 ms is not under the hang guard of 10000 ms, "
+        "so the case would time out first"
+    ]
+
+
+def test_a_first_byte_limit_is_held_to_the_cases_own_hang_guard():
+    found = s23(timed_case(5000, hang_guard_ms=4000), http_case("h2", 2))
+
+    assert found == [
+        "first_byte_ms_max 5000 ms is not under the hang guard of 4000 ms, "
+        "so the case would time out first"
+    ]
+
+
+def test_a_steps_first_byte_limit_names_the_step():
+    expected = HttpExpected(200, first_byte_ms_max=3000)
+    step = HttpStep("step 1 GET /a", RequestTemplate("GET", "/a"), expected)
+    case = Case("h1", HttpCaseInput({}, steps=(step,)), None, level=1)
+
+    found = s23(case, http_case("h2", 2), hang_guard_ms=2000)
+
+    assert found == [
+        "step 1 GET /a: first_byte_ms_max 3000 ms is not under the hang guard of 2000 ms, "
+        "so the case would time out first"
+    ]

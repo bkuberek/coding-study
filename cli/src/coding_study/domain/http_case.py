@@ -58,6 +58,9 @@ class HttpExpected:
     """None accepts any body; `Expected(None)` asks for a JSON null."""
     headers: Mapping[str, str] = field(default_factory=dict[str, str])
     """Each listed header must match."""
+    first_byte_ms_max: int | None = None
+    """The most milliseconds from sending the request to the first byte of its body; None allows
+    any (docs/specs/service-projects.md#hidden-http-case)."""
 
 
 @dataclass(frozen=True, slots=True)

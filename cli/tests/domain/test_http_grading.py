@@ -543,3 +543,52 @@ def test_a_long_filter_value_is_cut_in_the_label():
     assertion = LogAssertion("idp", count=1, form={"refresh_token": token})
     (failure,) = log_failures(assertion, MockLog())
     assert token not in failure
+
+
+NANOSECONDS_PER_MILLISECOND = 1_000_000
+FIRST_BYTE_LIMIT_MS = 500
+
+
+def first_byte_after(milliseconds: float, status: int = 200) -> HttpResponse:
+    waited_ns = int(milliseconds * NANOSECONDS_PER_MILLISECOND)
+    return HttpResponse(status, {}, b"data: {}\n\n", first_byte_ns=waited_ns)
+
+
+def timed(status: int = 200) -> HttpExpected:
+    return HttpExpected(status, first_byte_ms_max=FIRST_BYTE_LIMIT_MS)
+
+
+def test_a_first_byte_within_its_limit_passes():
+    assert response_failures(first_byte_after(120), timed(), EXACT) == ()
+
+
+def test_a_first_byte_right_at_its_limit_passes():
+    assert response_failures(first_byte_after(FIRST_BYTE_LIMIT_MS), timed(), EXACT) == ()
+
+
+def test_a_late_first_byte_says_when_it_came():
+    assert response_failures(first_byte_after(2140), timed(), EXACT) == (
+        "first body byte after 2140 ms, expected within 500 ms",
+    )
+
+
+def test_a_first_byte_a_fraction_past_its_limit_fails_and_rounds_up():
+    assert response_failures(first_byte_after(500.4), timed(), EXACT) == (
+        "first body byte after 501 ms, expected within 500 ms",
+    )
+
+
+def test_a_wrong_status_leaves_out_a_late_first_byte():
+    assert response_failures(first_byte_after(2140, status=502), timed(), EXACT) == (
+        "status: expected 200, got 502",
+    )
+
+
+def test_a_late_first_byte_comes_after_what_the_body_got_wrong():
+    expected = HttpExpected(200, Expected("data: [DONE]\n\n"), first_byte_ms_max=500)
+    failures = response_failures(first_byte_after(2140), expected, EXACT)
+    assert failures[-1] == "first body byte after 2140 ms, expected within 500 ms"
+
+
+def test_no_limit_accepts_a_first_byte_however_late():
+    assert response_failures(first_byte_after(60_000), HttpExpected(200), EXACT) == ()

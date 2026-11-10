@@ -56,6 +56,7 @@ class _Answered:
     lines: tuple[tuple[str, str], ...]
     """Every header as it came, so that each `Set-Cookie` stays apart."""
     body: bytes
+    first_byte_ns: int
 
 
 class _Received:
@@ -150,7 +151,10 @@ class HttpAppClient:
             connection.close()
         self._keep_cookies(request, answered)
         headers = _joined_headers(answered.lines)
-        return HttpResponse(answered.status, headers, answered.body, clock.spent_ns())
+        spent_ns = clock.spent_ns()
+        return HttpResponse(
+            answered.status, headers, answered.body, spent_ns, answered.first_byte_ns
+        )
 
     def _browser_headers(self, request: HttpRequest) -> dict[str, str]:
         """`Host` for a named origin, and the jar's cookies."""
@@ -215,15 +219,20 @@ class _BodyCutShortError(Exception):
 def _exchange(
     connection: http.client.HTTPConnection, request: HttpRequest, browser: Mapping[str, str]
 ) -> _Answered:
+    """Reads the body's first byte on its own, so that its time is known apart from the end's."""
     headers = {"Connection": "close", **browser, **request.headers}
+    connection.connect()
+    written_ns = time.perf_counter_ns()
     connection.request(request.method, request.target, body=request.body, headers=headers)
     response = connection.getresponse()
-    body = response.read(MAX_RESPONSE_BYTES + 1)
+    first = response.read(1)
+    first_byte_ns = time.perf_counter_ns() - written_ns
+    body = first + response.read(MAX_RESPONSE_BYTES)
     if len(body) > MAX_RESPONSE_BYTES:
         raise _BodyTooLargeError
     if response.length:
         raise _BodyCutShortError(f"{response.length} bytes of the body never came")
-    return _Answered(response.status, tuple(response.getheaders()), body)
+    return _Answered(response.status, tuple(response.getheaders()), body, first_byte_ns)
 
 
 def _joined_headers(lines: tuple[tuple[str, str], ...]) -> dict[str, str]:

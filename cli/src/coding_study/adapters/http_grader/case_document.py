@@ -277,6 +277,7 @@ def _expected(expected: Document) -> HttpExpected:
         status=expected["status"],
         body=Expected(expected["body"]) if "body" in expected else None,
         headers=dict(expected.get("headers", {})),
+        first_byte_ms_max=expected.get("first_byte_ms_max"),
     )
 
 

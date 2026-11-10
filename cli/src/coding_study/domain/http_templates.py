@@ -151,8 +151,8 @@ def rendered_request(template: RequestTemplate, values: Mapping[str, str]) -> Ht
 
 def rendered_expected(expected: HttpExpected, values: Mapping[str, str]) -> HttpExpected:
     body = expected.body
-    return HttpExpected(
-        status=expected.status,
+    return replace(
+        expected,
         body=Expected(filled_json(body.value, values)) if body is not None else None,
         headers={name: filled(value, values) for name, value in expected.headers.items()},
     )

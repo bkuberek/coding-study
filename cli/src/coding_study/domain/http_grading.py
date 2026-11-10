@@ -47,6 +47,7 @@ CUT_BODY = "a logged body was cut at the log's limit, so its form cannot be judg
 CUT_JSON_BODY = "a logged body was cut at the log's limit, so its JSON cannot be judged"
 FILTER_VALUE_LIMIT = 40
 """How much of a value a log assertion's label shows: a token is long, and its start names it."""
+NANOSECONDS_PER_MILLISECOND = 1_000_000
 
 _MULTISET_COMPARATORS = frozenset({ComparatorType.UNORDERED, ComparatorType.UNORDERED_NESTED})
 HTTP_COMPARATORS = frozenset({ComparatorType.EXACT, ComparatorType.FLOAT, *_MULTISET_COMPARATORS})
@@ -62,6 +63,10 @@ class HttpResponse:
     body: bytes
     duration_ns: int = 0
     """From sending the request to the end of the response."""
+    first_byte_ns: int = 0
+    """From writing the request to the first byte of the body, or to the end of an empty one: what
+    tells a stream from an answer held back until it is whole. With redirects followed, the last
+    request's."""
 
 
 class ExchangeFailure(StrEnum):
@@ -148,6 +153,7 @@ def response_failures(
     return (
         *_header_failures(response.headers, expected.headers),
         *_body_failures(response.body, expected.body, comparator),
+        *_first_byte_failure(response.first_byte_ns, expected.first_byte_ms_max),
     )
 
 
@@ -156,6 +162,16 @@ def status_matches(expected: ExpectedStatus, actual: int) -> bool:
     if isinstance(expected, int):
         return actual == expected
     return str(actual)[:1] == expected[:1]
+
+
+def _first_byte_failure(first_byte_ns: int, limit_ms: int | None) -> tuple[str, ...]:
+    """Whole milliseconds, rounded up, so that a byte a fraction past the limit reads as past it."""
+    if limit_ms is None:
+        return ()
+    waited_ms = -(-first_byte_ns // NANOSECONDS_PER_MILLISECOND)
+    if waited_ms <= limit_ms:
+        return ()
+    return (f"first body byte after {waited_ms} ms, expected within {limit_ms} ms",)
 
 
 def _status_failure(expected: ExpectedStatus, actual: int) -> str:

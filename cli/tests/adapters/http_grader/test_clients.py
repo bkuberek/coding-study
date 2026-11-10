@@ -100,6 +100,32 @@ def test_an_answer_says_how_long_it_took():
     assert sent.duration_ns > 0
 
 
+BODY_DELAY_S = 0.2
+"""How long a server holds back its body after its headers: a lower bound, kept on any machine."""
+
+
+def body_held_back(server: RawServer, connection: socket.socket) -> None:
+    server.read_request(connection)
+    connection.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
+    server.stopping.wait(BODY_DELAY_S)
+    connection.sendall(b"2\r\nok\r\n0\r\n\r\n")
+
+
+def test_an_answer_says_when_its_first_body_byte_came_not_its_headers():
+    with raw_server(body_held_back) as server:
+        sent = app_at(server).send(GET_A, GENEROUS_LIMIT_MS)
+    assert isinstance(sent, HttpResponse)
+    assert sent.first_byte_ns >= BODY_DELAY_S * 1_000_000_000
+
+
+def test_an_empty_body_s_first_byte_is_the_end_of_the_answer():
+    reply = b"HTTP/1.1 204 No Content\r\n\r\n"
+    with raw_server(answering(reply)) as server:
+        sent = app_at(server).send(GET_A, GENEROUS_LIMIT_MS)
+    assert isinstance(sent, HttpResponse)
+    assert 0 < sent.first_byte_ns <= sent.duration_ns
+
+
 def test_the_request_goes_out_as_the_case_says():
     request = HttpRequest("POST", "/bookings", {"date": "2027-03-01"}, {"X-Member": "m1"}, b"{}")
     with raw_server(answering(OK)) as server:

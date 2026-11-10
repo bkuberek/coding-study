@@ -338,7 +338,12 @@
           ]
         },
         "body": { "description": "A string is the body's exact text; any other JSON is compared parsed, by the comparator. Left out, any body passes" },
-        "headers": { "description": "Each listed header must match", "$ref": "#/$defs/httpHeaders" }
+        "headers": { "description": "Each listed header must match", "$ref": "#/$defs/httpHeaders" },
+        "first_byte_ms_max": {
+          "description": "The most milliseconds from sending the request to the first byte of the response body, or to the end of an empty one; under the case's hang guard",
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "logAssertion": {

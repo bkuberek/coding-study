@@ -73,6 +73,12 @@ def test_a_step_keeps_its_jar_its_redirects_and_a_status_class():
     )
 
 
+def test_a_step_keeps_its_first_byte_limit():
+    timed = {**me_step(), "expected": {"status": 200, "first_byte_ms_max": 1000}}
+    (step,) = http_case_input(case_with(timed)).steps
+    assert step.expected == HttpExpected(200, first_byte_ms_max=1000)
+
+
 def test_a_json_body_stays_json_until_it_is_sent():
     step = {"request": {"method": "POST", "path": "/a", "json": {"n": "{{n}}"}}}
     assert http_case_input(case_with(step)).steps[0].request == RequestTemplate(

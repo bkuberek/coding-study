@@ -1,12 +1,14 @@
 """An LLM gateway stand-in, the real mock server serving the example provider config as two
 providers, and the real grader, on loopback with no container: the gateway streams a provider's
 events through to its client, falls back to the second provider when a stream breaks, and keeps a
-conversation's history, and the cases judge it by what it answered and what it sent."""
+conversation's history, and the cases judge it by what it answered, what it sent, and how soon
+the first byte of a slow stream reached its client."""
 
 import http.client
 import json
-from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field
+import re
+from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -17,13 +19,21 @@ from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.mock_server.config import load_stack_config
 from coding_study.adapters.mock_server.http_server import ListenOn, RunningServers, start_servers
 from coding_study.adapters.problem_documents import cases_from_document
+from coding_study.adapters.schema_validation import TESTS_SCHEMA_FILE, SchemaValidator
 from coding_study.application.http_grading import HttpGradingRun, run_http_grading
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.config import Config
 from coding_study.domain.judging import Judgement
 from coding_study.domain.mock_configs import MockFiles, ScenarioReach, rendered_mock_config
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Problem
-from tests.adapters.http_grader.standin_app import AppAnswer, AppRequest, StandInApp, StandInStack
+from tests.adapters.http_grader.standin_app import (
+    AppAnswer,
+    AppRequest,
+    Route,
+    StandInApp,
+    StandInStack,
+)
+from tests.helpers import SCHEMAS_DIRECTORY
 from tests.mock_server_support import (
     LLM_FAKE_KEY,
     LLM_PROVIDER_CONFIG,
@@ -44,6 +54,14 @@ PROMPT_WORDS = 11
 DONE = "[DONE]"
 READ_TIMEOUT_S = 1.0
 """How long the gateway waits for a provider's next event before it falls back: a stall."""
+SLOW_STREAM = "slow_stream"
+FIRST_EVENT_MS = 50
+EVENT_GAP_MS = 500
+"""Under the gateway's stall timeout, so the slow stream stays a healthy one."""
+SLOW_PIECES = ("Oak ", "is ", "free.")
+FIRST_BYTE_LIMIT_MS = 1000
+"""Generous for a first event the provider sends 50 ms after its headers, and a second before the
+2 s the whole slow stream takes, so a gateway that holds the stream back is clearly late."""
 
 
 def sse(*documents: Any) -> str:
@@ -132,10 +150,33 @@ class Gateway:
             connection.close()
 
 
+def slow_event(document: dict[str, Any], after_ms: int = EVENT_GAP_MS) -> dict[str, Any]:
+    return {"data": json.dumps(document), "after_ms": after_ms}
+
+
+def slow_stream_scenario() -> dict[str, Any]:
+    """A healthy stream whose first piece comes at once and whose end comes 2 s later."""
+    first, *rest = SLOW_PIECES
+    usage = {"prompt_tokens": PROMPT_WORDS, "completion_tokens": len(SLOW_PIECES)}
+    return {
+        "route": "chat-stream",
+        "stream": [
+            slow_event(
+                {"model": MODEL, "choices": [{"delta": {"content": first}}]}, FIRST_EVENT_MS
+            ),
+            *(slow_event({"choices": [{"delta": {"content": piece}}]}) for piece in rest),
+            slow_event({"choices": [], "usage": usage}),
+            {"data": DONE, "after_ms": EVENT_GAP_MS},
+        ],
+    }
+
+
 @pytest.fixture
 def providers(tmp_path: Path) -> Iterator[RunningServers]:
-    """The example config served twice, as two providers on one API port."""
-    files = MockFiles(yaml.safe_load(LLM_PROVIDER_CONFIG.read_text()))
+    """The example config served twice, as two providers on one API port, with a slow stream."""
+    document = yaml.safe_load(LLM_PROVIDER_CONFIG.read_text())
+    document["scenarios"][SLOW_STREAM] = slow_stream_scenario()
+    files = MockFiles(document)
     rendered = rendered_mock_config(
         dict.fromkeys(PROVIDERS, files), SAMPLE_TOKEN, ScenarioReach.EVERY
     )
@@ -161,21 +202,47 @@ class Graded:
 type Grade = Callable[..., Graded]
 
 
+def held_back(pieces: Iterable[bytes]) -> Iterator[bytes]:
+    """Every piece at once, when the last one is in: the same bytes as a stream, sent late."""
+    yield b"".join(pieces)
+
+
+def buffering(chat: Route) -> Route:
+    """The same answer, with its headers at once and its body held back until the stream ends."""
+
+    def answer(request: AppRequest) -> AppAnswer | None:
+        streamed = chat(request)
+        if streamed is None or streamed.stream is None:
+            return streamed
+        return replace(streamed, stream=held_back(streamed.stream))
+
+    return answer
+
+
+@pytest.fixture(scope="module")
+def validator() -> SchemaValidator:
+    return SchemaValidator.from_file(SCHEMAS_DIRECTORY / TESTS_SCHEMA_FILE)
+
+
 @pytest.fixture
-def grade(providers: RunningServers) -> Iterator[Grade]:
+def grade(providers: RunningServers, validator: SchemaValidator) -> Iterator[Grade]:
     apps: list[StandInApp] = []
 
     def run(*documents: dict[str, Any]) -> Graded:
         steady = Gateway(providers.api_port)
         busting = Gateway(providers.api_port, lambda turn: f"{SYSTEM} Turn {turn}.")
-        routes = {("POST", "/chat"): steady.chat, ("POST", "/chat-busting"): busting.chat}
+        routes = {
+            ("POST", "/chat"): steady.chat,
+            ("POST", "/chat-busting"): busting.chat,
+            ("POST", "/chat-buffered"): buffering(Gateway(providers.api_port).chat),
+        }
         app = StandInApp(routes)
         apps.append(app)
         stack = StandInStack(app, providers.control_port, mocks=PROVIDERS)
         comparator = ComparatorSpec(ComparatorType.EXACT)
-        cases = cases_from_document(
-            {"version": 1, "cases": list(documents)}, comparator, "tests.json"
-        )
+        tests_json = {"version": 1, "cases": list(documents)}
+        assert validator.violations(tests_json, "tests.json") == []
+        cases = cases_from_document(tests_json, comparator, "tests.json")
         problem = Problem(project_meta(comparator=comparator), cases)
         run = HttpGradingRun(problem, 1, Config())
         return Graded(run_http_grading(run, stack, open_stack_clients))
@@ -263,3 +330,30 @@ def test_a_system_prompt_that_changes_each_turn_breaks_the_prefix(grade: Grade):
         "primary chat-stream: body messages of request 2 does not start with request 1's: "
         "element 0 differs"
     ]
+
+
+def slow_streamed_case(path: str) -> dict[str, Any]:
+    usage = {"prompt_tokens": PROMPT_WORDS, "completion_tokens": len(SLOW_PIECES)}
+    ending = {"provider": PRIMARY, "model": MODEL, "usage": usage}
+    events = [*({"delta": piece} for piece in SLOW_PIECES), ending, DONE]
+    return {
+        "id": "h3",
+        "level": 1,
+        "mocks": {PRIMARY: SLOW_STREAM},
+        "request": asking(f"c-slow{path}", path),
+        "expected": {
+            "status": 200,
+            "body": sse(*events),
+            "first_byte_ms_max": FIRST_BYTE_LIMIT_MS,
+        },
+    }
+
+
+def test_a_gateway_that_streams_a_slow_answer_sends_its_first_byte_in_time(grade: Grade):
+    assert grade(slow_streamed_case("/chat")).statuses() == [CaseStatus.PASS]
+
+
+def test_a_gateway_that_holds_a_slow_stream_back_fails_on_its_first_byte(grade: Grade):
+    (reason,) = grade(slow_streamed_case("/chat-buffered")).reasons()
+    late = rf"first body byte after \d+ ms, expected within {FIRST_BYTE_LIMIT_MS} ms"
+    assert re.fullmatch(late, reason or ""), reason

@@ -146,6 +146,11 @@ def test_an_expected_body_and_headers_are_filled():
     )
 
 
+def test_an_expected_first_byte_limit_is_kept():
+    expected = HttpExpected(200, first_byte_ms_max=500)
+    assert rendered_expected(expected, VALUES).first_byte_ms_max == 500
+
+
 def test_a_log_assertion_is_filled():
     assertion = LogAssertion("idp", "token", count=1, form={"code": "{{code}}"})
     assert rendered_assertion(assertion, VALUES).form == {"code": "c-1"}

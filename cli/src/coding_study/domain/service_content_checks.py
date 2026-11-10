@@ -389,6 +389,8 @@ def _case(where: str, case: Case, rules: _CaseRules) -> _Found:
         yield where, f"the comparator {used.type} cannot judge a response body"
     yield from _scenarios(where, case, http, rules)
     yield from _logs(where, http, rules)
+    for message in _first_byte_issues(http, _hang_guard_ms(case, rules)):
+        yield where, message
     origins = declared_origins(rules.service.app.port, rules.service.grader_reach)
     for message in step_issues(http, origins):
         yield where, message
@@ -409,8 +411,26 @@ def _parallel_issues(burst: ParallelBurst, *, fresh: bool) -> Iterator[str]:
         yield "repeat needs fresh, so that each run starts from a reset"
 
 
+def _hang_guard_ms(case: Case, rules: _CaseRules) -> int:
+    return case.hang_guard_ms or rules.hang_guard_ms or DEFAULT_HANG_GUARD_MS
+
+
+def _first_byte_issues(http: HttpCaseInput, limit_ms: int) -> Iterator[str]:
+    """A first-byte limit at or past the hang guard could never fail: the case times out first."""
+    after = (http.parallel.after,) if http.parallel and http.parallel.after else ()
+    for step in (*http.exchange_steps(), *http.cleanup, *after):
+        allowed = step.expected.first_byte_ms_max if step.expected is not None else None
+        if allowed is None or allowed < limit_ms:
+            continue
+        problem = (
+            f"first_byte_ms_max {allowed} ms is not under the hang guard of {limit_ms} ms, "
+            "so the case would time out first"
+        )
+        yield f"{step.label}: {problem}" if step.label else problem
+
+
 def _scenarios(where: str, case: Case, http: HttpCaseInput, rules: _CaseRules) -> _Found:
-    limit = case.hang_guard_ms or rules.hang_guard_ms or DEFAULT_HANG_GUARD_MS
+    limit = _hang_guard_ms(case, rules)
     for mock, scenario in http.mocks.items():
         files = rules.files.mocks.get(mock)
         if files is None:
