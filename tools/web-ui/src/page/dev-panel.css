@@ -22,17 +22,27 @@
 
 .dev-head {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 12px;
+  gap: 12px;
 }
 
-.dev-head .eyebrow {
+.dev-head .eyebrow,
+.dev-button {
+  flex: none;
   margin: 0;
 }
 
 .dev-head .spacer {
   flex: 1;
+}
+
+/* The state and the address give way first, so Start or Stop keeps its place on the line. */
+.dev-state,
+.dev-url {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .dev-app-link {
@@ -58,6 +68,7 @@
 
 .dev-mock label {
   color: var(--ink-soft);
+  white-space: nowrap;
 }
 
 .dev-note p {
