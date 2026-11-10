@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0302"
+slug: freshness-reranker
+title: Freshness Reranker
+summary: "Write rerankByFreshness: rescore the best retrieved candidates by relevance, age and source, keep one copy of each document, and return them in their new order."
+status: ready
+difficulty: easy
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [ai-llm]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: rerankByFreshness
+    params:
+      - {name: candidates, type: "string[][]"}
+      - {name: relevance, type: "double[]"}
+      - {name: ageHours, type: "double[]"}
+      - {name: halfLifeHours, type: double}
+      - {name: boostSources, type: "string[]"}
+      - {name: boostFactors, type: "double[]"}
+      - {name: poolSize, type: int}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: pool-then-rescore, name: "Take the pool by relevance, then rescore and keep the best copy of each document", role: optimal, time: "O(n log n + b)", space: "O(n + b)", time_class: "n log n", space_class: "n"}
+related: [bm25-hybrid-ranker, cosine-top-k, retrieval-metrics]
+estimate_minutes: 25
