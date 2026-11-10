@@ -27,7 +27,10 @@ from coding_study.entrypoints.web.runs import Children
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, SCHEMAS_DIRECTORY, copy_catalog_problems
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.sandbox_fakes import FakeSandbox
 from tests.scripted_runs import PASSING_RUN, QUICK, WAIT_S, Script, eventually, frames, outs
+from tests.service_problems import SLUG as SERVICE_SLUG
+from tests.service_problems import make_content, write_problem
 from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, web_app
 
 SCHEMA = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
@@ -48,6 +51,7 @@ DOCUMENTS = (
     "error",
     "problem",
     "statement",
+    "needs",
     "hint",
     "abort",
     "done",
@@ -128,7 +132,18 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _reset(tmp_path_factory.mktemp("reset"), record)
     _sets(tmp_path_factory.mktemp("sets"), record)
     _abort(tmp_path_factory.mktemp("abort"), record)
+    _needs(tmp_path_factory.mktemp("needs"), record)
     return record.documents
+
+
+def _needs(root: Path, record: Recorder) -> None:
+    """What a service project depends on, and the null of a problem that is not one."""
+    content = make_content(root)
+    write_problem(content)
+    environment = make_environment(content, sandbox=FakeSandbox())
+    with session_client(web_app(root, environment)) as client:
+        record("needs", client.get(f"/api/v1/problems/{SERVICE_SLUG}/needs"))
+        record("needs", client.get("/api/v1/problems/two-sum/needs"))
 
 
 def _practice(root: Path, record: Recorder) -> dict[str, Any]:

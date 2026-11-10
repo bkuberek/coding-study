@@ -80,6 +80,27 @@ export interface ListEntry {
   readonly in_progress: readonly AttemptRef[];
   /** The releases its Java and Kotlin run on; null without either. */
   readonly jdk: JdkRange | null;
+  /** What a service project depends on, as its manifest declares it; null for any other problem. */
+  readonly requires: Requires | null;
+}
+
+/** `requires` of `cstudy list --json`. */
+export interface Requires {
+  readonly docker: true;
+  readonly services: readonly string[];
+  readonly mocks: readonly string[];
+  readonly lock: string | null;
+  readonly install_mb: number | null;
+  readonly images_mb: Readonly<Record<string, number>>;
+  readonly memory_mb: number | null;
+}
+
+/** A line of what a problem depends on, as `cstudy show` lists it, with its state here. */
+export interface NeedRow {
+  readonly label: string;
+  readonly text: string;
+  /** Why it is not met on this machine; null when it is. */
+  readonly problem: string | null;
 }
 
 export interface ProblemList {

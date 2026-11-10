@@ -32,7 +32,7 @@ from coding_study.application.service_stacks import (
     workspace_id,
 )
 from coding_study.domain.attempts import Attempt
-from coding_study.domain.docker_engine import INSTALL_REACHES
+from coding_study.domain.docker_engine import INSTALL_REACHES, EngineStatus, engine_problem
 from coding_study.domain.errors import SandboxError, UsageError
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import FIRST_LEVEL
@@ -108,6 +108,21 @@ def service_needs_of(environment: Environment, slug: str) -> tuple[NeedRow, ...]
         return None
     engine = environment.sandbox
     return service_needs(meta, service, engine.state(), engine.platform())
+
+
+def require_service_engine(environment: Environment, problem: Problem) -> None:
+    """The Web UI's Start: refuses, with the state's message, an engine this machine cannot run the
+    project on, before anything is written. It asks and starts nothing: a stopped engine is no
+    problem, since the first run starts it, and nothing downloads until then."""
+    if service_of(problem.meta) is None:
+        return
+    engine = environment.sandbox
+    state = engine.state()
+    if state.status is EngineStatus.STOPPED:
+        return
+    problem_text = engine_problem(state, engine.platform())
+    if problem_text is not None:
+        raise SandboxError(problem_text)
 
 
 def needs_install(environment: Environment, problem: Problem) -> bool:

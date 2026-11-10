@@ -2,7 +2,9 @@
  * The Start dialog (docs/specs/web-ui.md#problem-view): the language, a fresh start and the time
  * box of `cstudy start`, which it names as it runs. A Java or Kotlin the selected JDK cannot run is
  * disabled, with the CLI's reason beside it, and when no language is left the dialog cannot start.
- * It is a chunk of its own, fetched when the first Start control is used (NFR-12).
+ * A service project lists what it needs before anything starts, and cannot start while Docker is
+ * missing or refuses this user, which the list says in the CLI's words. It is a chunk of its own,
+ * fetched when the first Start control is used (NFR-12).
  */
 
 import { defaultLanguage, refreshAttemptsMenu, REVIEW_DIALOG_NOTE, startBody, startLine, type StartChoice } from "./attempts.ts";
@@ -10,12 +12,15 @@ import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";
 import { h } from "./dom.ts";
 import { jdkRefusals } from "./jdk.ts";
+import { needsList, readNeeds } from "./needs.ts";
+import { needsRefusal } from "./needs-model.ts";
 import { attemptHash } from "./routes.ts";
 import { failure } from "./states.ts";
 import type { AttemptStatus, ProblemDocument } from "./types.ts";
 
 const PROJECT = "project";
 const TIMER_RANGE = { min: 1, max: 600 } as const;
+const DOWNLOADS_LATER = "Start downloads nothing: the first run, or cstudy dev, pulls the images and installs the packages, with their progress.";
 
 /** The Start dialog of a problem; `scheduled` problems start a review attempt. */
 export function openStartDialog(context: PageContext, problem: ProblemDocument, scheduled: boolean): void {
@@ -39,6 +44,8 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
   const resumeNote = h("p", { class: "quiet", role: "status" });
   const submit = h("button", { type: "submit", class: "button primary" }, "Start");
   const problemArea = h("div", { class: "sheet-error" });
+  const needsArea = problem.requires === null ? null : h("div", { class: "field needs-field" }, h("p", { class: "quiet" }, "reading what it needs…"));
+  let refusedByNeeds = false;
   const choice = (): StartChoice => ({
     slug: problem.slug,
     language: choosesLanguage ? language.value : null,
@@ -52,7 +59,7 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
   };
   const update = () => {
     const current = choice();
-    submit.disabled = starting || cannotRun(current);
+    submit.disabled = starting || cannotRun(current) || refusedByNeeds;
     line.textContent = startLine(current);
     const open = problem.in_progress.find((attempt) => current.language === null || attempt.language === current.language);
     const resumes = open !== undefined && !current.fresh;
@@ -66,6 +73,7 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
       ? h("div", { class: "field" }, h("label", { for: "start-language" }, "language"), language)
       : h("p", { class: "field quiet" }, fixedLanguage ? `${fixedLanguage}: a project starts in its one language` : "notes: an item takes no language"),
     jdkNote,
+    needsArea,
     h("div", { class: "field check" }, fresh, h("label", { for: "start-fresh" }, "start fresh"), h("p", { class: "quiet" }, "archive your current files to .archive/ and begin again")),
     h(
       "div",
@@ -101,6 +109,17 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
         update();
       });
   });
+  if (needsArea !== null) {
+    void readNeeds(context, problem.slug).then(
+      (rows) => {
+        refusedByNeeds = rows !== null && needsRefusal(rows) !== null;
+        const list = rows === null ? null : needsList(rows);
+        needsArea.replaceChildren(h("p", { class: "eyebrow" }, "needs"), ...(list ? [list] : []), h("p", { class: "needs-note quiet" }, DOWNLOADS_LATER));
+        update();
+      },
+      (error: unknown) => needsArea.replaceChildren(failure(error)),
+    );
+  }
   update();
   sheet.body.append(form);
   (choosesLanguage ? language : fresh).focus();

@@ -1,0 +1,1 @@
+.needs-list{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 12px;margin:0 0 12px;font-size:var(--text-s)}.needs-list dt{color:var(--ink-soft)}.needs-list dd{margin:0;overflow-wrap:anywhere}.need-problem{display:block;margin-top:2px;padding-left:8px;border-left:3px solid var(--warn)}.needs-note{margin:0 0 12px;font-size:var(--text-s)}

@@ -1165,8 +1165,8 @@ The list is a small declared `project.requires` block plus what cstudy derives f
 | `cstudy list --needs` | `--needs none` keeps problems that need nothing beyond the language's toolchain, which leaves out every service project; `--needs docker` or a service name keeps those that do |
 | `cstudy list --json` | Each entry gains `requires`, next to `jdk`, null for other problems |
 | [`cstudy show`](cli.md#cstudy-show) | The full list above the statement, with each requirement's state. It reads state and starts nothing |
-| [Problems view](web-ui.md#problems-view) | Planned, P9: the marker in the table and a filter of the same values |
-| [Problem view](web-ui.md#problem-view) | Planned, P9: the full list |
+| [Problems view](web-ui.md#problems-view) | `needs docker`, or `needs docker postgres`, after the title, from `requires` alone. A filter of the same values is planned |
+| [Problem view](web-ui.md#problem-view) and its Start dialog | The full list, with each requirement's state, from `GET /api/v1/problems/{slug}/needs`. A requirement not met here keeps Start from starting and shows the CLI's words |
 
 An example, with illustrative figures:
 
@@ -1182,7 +1182,7 @@ needs
 
 ### At Start
 
-`cstudy start` and the Web UI's Start show the summary before any download begins. They ask for confirmation only when something will be downloaded or a requirement is missing. `cstudy start --yes` skips the prompt for scripts; without a terminal and without `--yes`, a start that would download exits 3 and names the flag. If a requirement is missing, Start says what to install rather than failing midway, exiting 4 before it writes anything, as a JDK outside the range does. A stopped Docker engine is not missing: Start starts it ([Docker states](#docker-states)).
+`cstudy start` and the Web UI's Start show the summary before any download begins. The Web UI's Start downloads nothing: the first run or `cstudy dev` pulls and installs, with its progress, so the page asks for no confirmation. They ask for confirmation only when something will be downloaded or a requirement is missing. `cstudy start --yes` skips the prompt for scripts; without a terminal and without `--yes`, a start that would download exits 3 and names the flag. If a requirement is missing, Start says what to install rather than failing midway, exiting 4 before it writes anything, as a JDK outside the range does. A stopped Docker engine is not missing: Start starts it ([Docker states](#docker-states)).
 
 ## Without a network
 
@@ -1274,8 +1274,8 @@ Planned, for P9 (R29).
 | A stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) | P9 |
 | Stack and mock server status, and a scenario picker over the control interface | P9 |
 | `.env` is an ordinary file in the tree | P4, built |
-| The dependency list, and Start's summary and confirmation | P9 |
-| The Docker messages in Start and the [Health view](web-ui.md#health-view) | P9 |
+| The dependency list in the Problems view, the Problem view and the Start dialog. The page's Start downloads nothing, so it asks no confirmation: the first run, or `cstudy dev`, pulls and installs, and the results panel shows it as the `pulling` and `installing` stages | P9, built |
+| The Docker messages in Start, in the Attempt view before any run, at the end of a run that Docker stopped, and in the [Health view](web-ui.md#health-view) | P9, built |
 | Code intelligence through the [container](#language-servers) | P9 |
 
 If a terminal holds the dev stack, the page shows that and does not start a second.

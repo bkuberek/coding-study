@@ -190,6 +190,7 @@ Errors share one document:
 | `GET /api/v1/problems/{slug}` | | The problem's entry of `cstudy list --json`, with `languages` the languages `cstudy start` accepts instead of the reference languages, plus `approaches` (`id`, `name`, `role`), `broken` (the broken reference ids, or empty), `levels` (`last`, or null), `hints_total`, `bench` (whether `cstudy bench` applies) and `oracle` (whether `--stress N` adds oracle inputs). For an item: `languages`, `approaches` and `broken` empty, `levels` null, `hints_total` 0, `bench` and `oracle` false |
 | `GET /api/v1/problems/{slug}/statement` | `level` (optional, as `cstudy show --level`) | `{"markdown": …, "html": …}`: the text `cstudy show` prints, and its HTML; `show_statement` |
 | `GET /api/v1/problems/{slug}/history` | | [`cstudy history --json`](cli.md#cstudy-history) |
+| `GET /api/v1/problems/{slug}/needs` | | `{"needs": [{"label", "text", "problem"}]}`: what a [service project](service-projects.md#where-it-shows) depends on, the rows `cstudy show` prints, `problem` the reason one is not met here or null; `{"needs": null}` for any other problem, which asks Docker nothing; `service_needs_of`. It asks the engine its state and starts nothing |
 | `GET /api/v1/next` | `set`, `track` (repeatable), `pattern`, `difficulty`, `lang`, `domain`, `role`, `scope`, `new` or `review` (booleans) | [`cstudy next --json`](cli.md#cstudy-next) |
 
 ### Sets
@@ -211,7 +212,7 @@ Each write is atomic and goes through the use case of its `cstudy set` command, 
 
 | Method and path | Request | Response and use case |
 |-----------------|---------|-----------------------|
-| `POST /api/v1/attempts` | `slug`, `language` (null: `default_lang`, or the problem's one language; null for an item), `fresh` (boolean), `timer_minutes` (an integer from 1 to 600, or null) | 201 with the attempt's [`cstudy status --json`](cli.md#cstudy-status) document. As `cstudy start <slug> --no-open [--lang] [--fresh] [--timer <n>m]`: it resumes an attempt in progress, never opens an editor, a review attempt archives as `--fresh` does, and a new Rust project folder joins VS Code's linked projects as it does in the terminal. An item with a `language` gets the CLI's 422 (`url-shortener is not autograded; --lang applies to problems`) |
+| `POST /api/v1/attempts` | `slug`, `language` (null: `default_lang`, or the problem's one language; null for an item), `fresh` (boolean), `timer_minutes` (an integer from 1 to 600, or null) | 201 with the attempt's [`cstudy status --json`](cli.md#cstudy-status) document. As `cstudy start <slug> --no-open [--lang] [--fresh] [--timer <n>m]`: it resumes an attempt in progress, never opens an editor, a review attempt archives as `--fresh` does, and a new Rust project folder joins VS Code's linked projects as it does in the terminal. An item with a `language` gets the CLI's 422 (`url-shortener is not autograded; --lang applies to problems`). A service project's start writes the attempt only, and downloads and installs nothing: its first run, or `cstudy dev`, does, with its progress. It is refused, 503 `environment` with the message of [Docker states](service-projects.md#docker-states), before anything is written, when Docker is missing, has no compose v2 or refuses this user; a stopped engine is no refusal, and the start does not start it |
 | `GET /api/v1/attempts/{id}` | | `cstudy status --json` of the attempt |
 | `POST /api/v1/attempts/{id}/hints` | | `{"hint": {"number": 1, "total": 2, "markdown": …, "html": …}}`, `{"locked_until_level": 2}` or `{"exhausted": true}`; `reveal_hint`. During a mock: 422 `usage` with the lock message |
 | `POST /api/v1/attempts/{id}/done` | `rating` (`easy`, `ok`, `hard`) or `gave_up: true`, and `notes` (optional) | What `cstudy done` prints, as `{"slug", "language", "status", "levels_finished", "solve_s", "rating", "grade", "caps", "hints_used", "next_review": {"due_on", "in_days", "ease"}}`, where `levels_finished` is a project's (else null) and `caps` names, in this order, each cap that held the grade below the rating (`hint`, `time_box`, `suboptimal`, `levels`, `solution`), so it is empty after `gave_up`; `complete_attempt`. The wrong one of `rating` and `gave_up` gets the CLI's 422. The page shows the two lines `cstudy done` prints, built from these values |
@@ -651,7 +652,7 @@ The top bar on every view: the navigation (Problems, Sets, Mock, Progress, Healt
 
 ### Problem view
 
-Planned, for P9: this view, the Problems view and the Start dialog list [what a problem depends on](service-projects.md#what-a-problem-depends-on). See also the [Web UI plan for service projects](service-projects.md#web-ui).
+For a service project, this view and the Start dialog list [what a problem depends on](service-projects.md#what-a-problem-depends-on), from `GET /api/v1/problems/{slug}/needs`: the rows `cstudy show` prints, each with its state here, which asks Docker and starts nothing. A requirement not met here shows the CLI's words under its row. The Problems view marks the project after its title, `needs docker` (`needs docker postgres` with backing services), from `requires` alone, as `cstudy list` does. See also the [Web UI plan for service projects](service-projects.md#web-ui).
 
 | Area | Behaviour |
 |------|-----------|
@@ -764,7 +765,7 @@ A mock started in the terminal shows the same way, since the state comes from th
 
 ### Health view
 
-Planned, for P9: the Docker rows and their install message. `cstudy doctor` has them. See [Docker states](service-projects.md#docker-states).
+The `docker` and `docker leftovers` rows of `cstudy doctor`, with the install or permission message as their fix, show as every row does. See [Docker states](service-projects.md#docker-states).
 
 | Area | Content |
 |------|---------|

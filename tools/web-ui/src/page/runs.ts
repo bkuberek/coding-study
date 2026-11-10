@@ -15,12 +15,13 @@
 
 import { FILE_SAVED_EVENT, type FileSaved } from "./api.ts";
 import type { PageContext } from "./context.ts";
-import { h } from "./dom.ts";
+import { badge, fixHint, h } from "./dom.ts";
 import { fetchChunk } from "./lazy.ts";
+import { needsRefusal } from "./needs-model.ts";
 import { noRunYet, ResultsPanel } from "./results.ts";
 import { DEFAULT_OPTIONS, type RunCommandName, type RunContext, runCommand, type RunOptionsState } from "./run-options.ts";
 import type { RunSession } from "./run-session.ts";
-import type { AttemptStatus, ProblemDocument } from "./types.ts";
+import type { AttemptStatus, NeedRow, ProblemDocument } from "./types.ts";
 import type { EditorTabs } from "./workbench.ts";
 
 const RUN_ON_SAVE_DEBOUNCE_MS = 150;
@@ -91,6 +92,9 @@ export class AttemptRuns implements RunShell {
   #frozen = false;
   /** Whether the panel shows the run `cstudy test` last recorded, which a refresh redraws. */
   #showsRecorded = false;
+  /** A service project's Docker, when it cannot run the project here: shown above the latest run. */
+  #dockerState: readonly Node[] = [];
+  #dockerRead = false;
   /** The saves this page made and has not heard back as notices yet, by `savedKey`. */
   readonly #ownSaves = new Set<string>();
 
@@ -229,8 +233,21 @@ export class AttemptRuns implements RunShell {
 
   /** The run `cstudy test` last recorded, until the run session shows a run. */
   #showRecorded(status: AttemptStatus): void {
-    this.results.show(null, noRunYet(runCommand("test", this.options, this.runContext()), status.last_test_run));
+    this.results.show(null, [...this.#dockerState, ...noRunYet(runCommand("test", this.options, this.runContext()), status.last_test_run)]);
     this.#showsRecorded = true;
+    if (status.service !== null) void this.#readDocker(status);
+  }
+
+  /** A service project: whether Docker can run it here, read once and asking it nothing that
+   * starts it. When it cannot, the panel says why in the CLI's words before any run. */
+  async #readDocker(status: AttemptStatus): Promise<void> {
+    if (this.#dockerRead) return;
+    this.#dockerRead = true;
+    const found = await this.host.context.api.get<{ readonly needs: readonly NeedRow[] | null }>(`/api/v1/problems/${encodeURIComponent(status.slug)}/needs`).catch(() => null);
+    const refusal = found?.needs ? needsRefusal(found.needs) : null;
+    if (refusal === null || this.#destroyed) return;
+    this.#dockerState = [h("p", { class: "docker-state tone-warn", role: "status" }, badge("!", "Docker", "warn"), " ", fixHint(refusal))];
+    if (this.#showsRecorded) this.#showRecorded(status);
   }
 
   /** Does `act` with the run session, which is fetched the first time; false when it could not be. */

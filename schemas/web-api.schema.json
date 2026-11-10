@@ -392,6 +392,32 @@
       }
     },
     "statement": { "description": "GET /api/v1/problems/{slug}/statement", "$ref": "#/$defs/markdown" },
+    "needs": {
+      "description": "GET /api/v1/problems/{slug}/needs: what a service project depends on, as `cstudy show` lists it, each row with its state here; null for any other problem",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["needs"],
+      "properties": {
+        "needs": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text", "problem"],
+                "properties": {
+                  "label": { "enum": ["docker", "language", "packages", "services", "mocks", "total"] },
+                  "text": { "type": "string" },
+                  "problem": { "description": "Why it is not met here; null when it is", "type": ["string", "null"] }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
     "hint": {
       "description": "POST /api/v1/attempts/{id}/hints",
       "oneOf": [
