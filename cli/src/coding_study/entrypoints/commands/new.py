@@ -86,6 +86,7 @@ PROJECT_TEMPLATES = frozenset(
         TemplateName.PROJECT_PYTHON_SERVICE,
         TemplateName.PROJECT_JAVA_SERVICE,
         TemplateName.PROJECT_KOTLIN_SERVICE,
+        TemplateName.PROJECT_GO_SERVICE,
     }
 )
 """A project problem is written in its one language, so no languages need trimming."""
