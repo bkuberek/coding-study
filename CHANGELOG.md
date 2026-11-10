@@ -2,6 +2,67 @@
 
 <!-- version list -->
 
+## v0.38.0 (2026-11-10)
+
+### Continuous Integration
+
+- Run the service-step test in the sandbox job with the fixture's Redis pulled first
+  ([`8091af7`](https://github.com/bkuberek/coding-study/commit/8091af7ebb7627806f344d762f254a1b4b219b84))
+
+### Documentation
+
+- Catalog at 319 with 0304, P9 leftovers and engine gaps ticked on the roadmap
+  ([`86dfa80`](https://github.com/bkuberek/coding-study/commit/86dfa8084947b174266c063bc50ef706d1e7e5df))
+
+- Describe service projects in the web ui guide
+  ([`0e248de`](https://github.com/bkuberek/coding-study/commit/0e248de05ab449ae19320cee2c1aa29f0dde3018))
+
+- Mark P11's AI problems built in ADR 0019's status
+  ([`cc4d71b`](https://github.com/bkuberek/coding-study/commit/cc4d71b1eb4981f928d7be2ae3de5535e7af4fa4))
+
+- Plan frontend problems graded in a headless browser on the roadmap
+  ([`31e11e1`](https://github.com/bkuberek/coding-study/commit/31e11e11dfb346494a727b72a5b61f12d895d366))
+
+### Features
+
+- **cli**: Add cstudy dev's --no-run, --debug, --reset-data and --exec, and a devcontainer.json
+  ([`7512391`](https://github.com/bkuberek/coding-study/commit/75123913144bbbdfbd72448c1880ba80c219ac13))
+
+- **grader**: Pause, stop and start a backing service mid-case
+  ([`9743f02`](https://github.com/bkuberek/coding-study/commit/9743f02780265df05aa62643690a70be1b3441d7))
+
+- **grader**: Restart only the app between cases with restart: app
+  ([`4ce8579`](https://github.com/bkuberek/coding-study/commit/4ce8579b580a86114b07d563c2f075334a80ef30))
+
+- **grader**: Send a binary request body written as base64
+  ([`f6a1171`](https://github.com/bkuberek/coding-study/commit/f6a1171356e18c3adf5a4d65e5bc90a01176f983))
+
+- **grader**: Wait inside a multi-step case with a sleep step
+  ([`1ca5589`](https://github.com/bkuberek/coding-study/commit/1ca558906690baf363170f9d74de273b2e472c96))
+
+- **problems**: Add 0304 search box with keyboard navigation
+  ([`de8b66f`](https://github.com/bkuberek/coding-study/commit/de8b66f383a02003afb5f4b0374f5515dd02d09a))
+
+- **project**: Set basedpyright's standard mode in Python service starters
+  ([`1809000`](https://github.com/bkuberek/coding-study/commit/1809000339f1b107956bbee6c37d41f0b033c54f))
+
+- **sandbox**: Pause, unpause, stop and start one backing service of a stack
+  ([`3a642bd`](https://github.com/bkuberek/coding-study/commit/3a642bda5e4d4e504880629a067a180533afa84e))
+
+### Refactoring
+
+- **grader**: Name the stack step type without a forward reference
+  ([`e38eb33`](https://github.com/bkuberek/coding-study/commit/e38eb33e2aa7ef0c796a893969c63bbd610b3d21))
+
+### Testing
+
+- Wait generously for host version checks and stream frames
+  ([`d5e8ac0`](https://github.com/bkuberek/coding-study/commit/d5e8ac05527be3dc53721c81df1404ad6fa74d9b))
+
+- Wait generously for the dev stack panel under load
+  ([`2f08ca0`](https://github.com/bkuberek/coding-study/commit/2f08ca0a92d492008b5e396d89cc6dde2a9ea841))
+
+
 ## v0.37.0 (2026-11-10)
 
 ### Bug Fixes
