@@ -71,17 +71,24 @@ def validate(case_input: dict) -> None:
     _assert_no_near_tie_at_the_cut(query, documents, k)
 
 
-def _assert_no_near_tie_at_the_cut(query: list[float], documents: list[list[float]], k: int) -> None:
+def _assert_no_near_tie_at_the_cut(
+    query: list[float], documents: list[list[float]], k: int
+) -> None:
     query_norm = _norm(query)
     if query_norm == 0:
         return
     scores = sorted(
-        (_dot(query, document) / (query_norm * _norm(document)) for document in documents if any(document)),
+        (
+            _dot(query, document) / (query_norm * _norm(document))
+            for document in documents
+            if any(document)
+        ),
         reverse=True,
     )
     leading = scores[: k + 1]
     for higher, lower in zip(leading, leading[1:], strict=False):
-        assert higher == lower or higher - lower > TIE_GAP, "two scores near the cut differ by rounding"
+        exact_tie_or_clear_gap = higher == lower or higher - lower > TIE_GAP
+        assert exact_tie_or_clear_gap, "two scores near the cut differ by rounding"
 
 
 def _dot(a: list[float], b: list[float]) -> float:

@@ -42,5 +42,7 @@ export function retrievalMetrics(
   if (scored.length === 0) {
     return [0, 0, 0];
   }
-  return [0, 1, 2].map((metric) => scored.reduce((sum, row) => sum + row[metric], 0) / scored.length);
+  return [0, 1, 2].map(
+    (metric) => scored.reduce((sum, row) => sum + row[metric], 0) / scored.length,
+  );
 }

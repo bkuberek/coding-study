@@ -84,5 +84,7 @@ export function topKCosine(query: number[], documents: number[][], k: number): n
       heap.replaceRoot(entry);
     }
   });
-  return heap.items.sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.index);
+  return heap.items
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.index);
 }
