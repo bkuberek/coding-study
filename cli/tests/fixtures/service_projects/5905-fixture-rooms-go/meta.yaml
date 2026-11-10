@@ -1,0 +1,47 @@
+id: "5905"
+slug: fixture-rooms-go
+title: Rooms in Go
+status: ready
+difficulty: medium
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
+languages: [go]
+levels:
+  - {level: 1, title: Count the desk passes}
+  - {level: 2, title: Serve the rooms}
+comparator: {type: exact}
+project:
+  grading: http
+  image: golang:1.27.3@sha256:e519d3b0a5b285e5aa53ab9eef02bc6bbb9cb04608389b743a136a9ce75f0d1e
+  commands:
+    install: [go, mod, download]
+    bootstrap: [go, run, ./scripts/seed]
+    run: [sh, scripts/run.sh]
+    test: [go, test, -count=1, ./...]
+    reset: [go, run, ./scripts/reset]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 180, mem_limit: 512m, install_cache: true}
+  env:
+    PORT: "8000"
+    ROOM_VENDOR_URL: http://room-vendor:8080
+    GOPROXY: "off"
+    GOFLAGS: -mod=readonly
+    GOMODCACHE: /cache/go/mod
+    GOCACHE: /cache/go/build
+    GOTMPDIR: /cache
+    GOWORK: "off"
+    CGO_ENABLED: "0"
+  install_env:
+    GOMODCACHE: /cache/go/mod
+    GOCACHE: /cache/go/build
+    GOFLAGS: -mod=readonly
+    GOWORK: "off"
+  mocks:
+    - {name: room-vendor, config: mocks/room-vendor.yaml}
+  requires:
+    lock: go.sum
+    sizes: {install_mb: 120, images_mb: {app: 316, mocks: 43}, memory_mb: 450}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}
