@@ -2,7 +2,7 @@
 id: "0303"
 slug: versioned-memory-store
 title: Versioned Memory Store
-summary: "Implement MemoryStore: a shared memory whose changes name the version their writer read and are refused, with the current version, when it has moved on, so that no writer silently erases another's update."
+summary: "Implement MemoryStore: a shared memory whose changes name the version their writer read and are refused, with the current version, once it has moved on, so no writer erases an update unseen."
 status: ready
 difficulty: easy
 track: practical

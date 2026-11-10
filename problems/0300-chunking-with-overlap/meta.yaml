@@ -2,7 +2,7 @@
 id: "0300"
 slug: chunking-with-overlap
 title: Chunking With Overlap
-summary: "Write chunkText: cut a text into chunks of at most a given number of words that share a few words with the chunk before, ending at a sentence where the rules allow, and return where each starts and ends."
+summary: "Write chunkText: cut a text into chunks of at most maxTokens words, each sharing a few words with the one before and ending at a sentence where allowed, and return where each chunk starts and ends."
 status: ready
 difficulty: medium
 track: practical
