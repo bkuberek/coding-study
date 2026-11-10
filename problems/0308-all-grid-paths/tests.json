@@ -1,0 +1,17 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 2}, "expected": ["DR", "RD"]},
+    {"id": "ex2", "visible": true, "input": {"n": 3}, "expected": ["DDRR", "DRDR", "DRRD", "RDDR", "RDRD", "RRDD"]},
+    {"id": "h1", "input": {"n": 1}, "expected": [""], "note": "a 1 by 1 grid: the start is the goal, so the only path is the empty one"},
+    {"id": "h2", "input": {"n": 4}, "expected": ["DDDRRR", "DDRDRR", "DDRRDR", "DDRRRD", "DRDDRR", "DRDRDR", "DRDRRD", "DRRDDR", "DRRDRD", "DRRRDD", "RDDDRR", "RDDRDR", "RDDRRD", "RDRDDR", "RDRDRD", "RDRRDD", "RRDDDR", "RRDDRD", "RRDRDD", "RRRDDD"], "note": "20 paths"},
+    {"id": "h3", "input": {"n": 5}, "expected": ["DDDDRRRR", "DDDRDRRR", "DDDRRDRR", "DDDRRRDR", "DDDRRRRD", "DDRDDRRR", "DDRDRDRR", "DDRDRRDR", "DDRDRRRD", "DDRRDDRR", "DDRRDRDR", "DDRRDRRD", "DDRRRDDR", "DDRRRDRD", "DDRRRRDD", "DRDDDRRR", "DRDDRDRR", "DRDDRRDR", "DRDDRRRD", "DRDRDDRR", "DRDRDRDR", "DRDRDRRD", "DRDRRDDR", "DRDRRDRD", "DRDRRRDD", "DRRDDDRR", "DRRDDRDR", "DRRDDRRD", "DRRDRDDR", "DRRDRDRD", "DRRDRRDD", "DRRRDDDR", "DRRRDDRD", "DRRRDRDD", "DRRRRDDD", "RDDDDRRR", "RDDDRDRR", "RDDDRRDR", "RDDDRRRD", "RDDRDDRR", "RDDRDRDR", "RDDRDRRD", "RDDRRDDR", "RDDRRDRD", "RDDRRRDD", "RDRDDDRR", "RDRDDRDR", "RDRDDRRD", "RDRDRDDR", "RDRDRDRD", "RDRDRRDD", "RDRRDDDR", "RDRRDDRD", "RDRRDRDD", "RDRRRDDD", "RRDDDDRR", "RRDDDRDR", "RRDDDRRD", "RRDDRDDR", "RRDDRDRD", "RRDDRRDD", "RRDRDDDR", "RRDRDDRD", "RRDRDRDD", "RRDRRDDD", "RRRDDDDR", "RRRDDDRD", "RRRDDRDD", "RRRDRDDD", "RRRRDDDD"], "note": "70 paths"},
+    {"id": "h4", "input": {"n": 6}, "note": "252 paths"},
+    {"id": "h5", "input": {"n": 7}, "note": "924 paths"},
+    {"id": "h6", "input": {"n": 8}, "note": "3432 paths"},
+    {"id": "h7", "input": {"n": 9}, "note": "12870 paths"},
+    {"id": "h8", "input": {"n": 10}, "note": "maximum size: 48620 paths"},
+    {"id": "g1", "generate": {"n": 10, "seed": 308}, "note": "largest generated size"}
+  ]
+}

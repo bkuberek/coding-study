@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0308"
+slug: all-grid-paths
+title: All Grid Paths
+summary: "List every route from the top-left to the bottom-right of an n by n grid that moves only right or down, as strings of R and D in lexicographic order with D before R."
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: allGridPaths
+    params:
+      - {name: n, type: int}
+    returns: {type: "list<string>"}
+comparator: {type: checker}
+approaches:
+  - {id: filter-sequences, name: "Write every sequence of right and down moves, keep the ones with n - 1 of each", role: brute, time: "O(n * 4^n)", space: "O(sqrt(n) * 4^n)", time_class: "2^n", space_class: "2^n", oracle: true}
+  - {id: build-path, name: Extend one path builder with a move only while the corner is still reachable, role: optimal, time: "O(sqrt(n) * 4^n)", space: "O(sqrt(n) * 4^n)", time_class: "2^n", space_class: "2^n"}
+perf:
+  size_param: n (the output grows as 4^n, so the ladder stays at 6 to 10)
+  size_ladder: [6, 8, 10]
+  expected_from: build-path
+  time_limit: {factor: 5}
+related: [unique-paths, permutations, generate-parentheses]
+order: 11
+estimate_minutes: 25
