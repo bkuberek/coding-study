@@ -420,6 +420,15 @@ class StackPlan:
     reach: tuple[str, ...] = ()
     """`project.grader_reach`: each `<name>:<port>` the grader may reach, as the app's network
     names it, published on `127.0.0.1` through the forwarder. A dev stack publishes none."""
+    debug_port: int | None = None
+    """`cstudy dev --debug`: the port of the app's debug agent, as `published_debug_port`
+    publishes it."""
+
+    @property
+    def published_debug_port(self) -> int | None:
+        """The debug port the forwarder publishes on `127.0.0.1`: a dev stack's alone, so a test
+        or a graded stack never has one, whatever its plan says."""
+        return self.debug_port if self.identity.kind is StackKind.DEV else None
 
     @property
     def backing_document(self) -> Mapping[str, object]:
@@ -865,6 +874,10 @@ def _forwarder(plan: StackPlan) -> dict[str, object]:
     for origin, listen in reach_listen_ports(plan).items():
         relays.append(f"{listen}={origin}")
         published.append(f"127.0.0.1::{listen}")
+    debug = plan.published_debug_port
+    if debug is not None:
+        relays.append(f"{debug}={APP_SERVICE}:{debug}")
+        published.append(f"127.0.0.1::{debug}")
     return {
         **_helper(plan.identity),
         "command": ["python", "-I", FORWARDER_PATH, *relays],
@@ -1048,6 +1061,8 @@ class ReadyStack:
     """In the seconds of `Clock.monotonic`."""
     reach_ports: Mapping[str, int] = field(default_factory=dict[str, int])
     """The port on `127.0.0.1` of each `<name>:<port>` the grader may reach."""
+    debug_port: int | None = None
+    """On `127.0.0.1`: the app's debug agent, with `cstudy dev --debug` alone."""
 
     @property
     def startup_seconds(self) -> float:

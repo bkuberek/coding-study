@@ -1,6 +1,6 @@
 # Spec: Service projects
 
-**Status: built through P9, P10's backing services and P11's engine work: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop and [on Linux](#on-linux) with Docker Engine, and the first catalog problem, [coworking availability](#the-first-problem), uses them in TypeScript and in Python. [Backing services](#backing-services) such as Postgres and Redis run beside your app, with migrations, `grade_setup` and `reset`, and the grader can [reach a declared service](#grader-reach), which a [multi-step case](#multi-step-cases) names by its origin, through a mock server's [pass-through](#pass-through) or directly. [Code intelligence](#language-servers) runs in a sidecar for TypeScript and Python, and the [Web UI](#web-ui) runs tests, submits and holds a dev stack (P9). What is still planned says so where it stands: your own IDE's generated files and `cstudy dev`'s other flags, contract tables and the D7 check of parallel cases (P10's grader side), and the AI catalog problems that use the [extensions](#extensions) (P11). The mock server streams server-sent events, matches on request bodies and fills in run-time values, and a case can judge what a request's JSON body carried, so a [mock LLM provider](#a-mock-llm-provider) is config data.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: built through P9, P10's backing services and P11's engine work: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop and [on Linux](#on-linux) with Docker Engine, and the first catalog problem, [coworking availability](#the-first-problem), uses them in TypeScript and in Python. [Backing services](#backing-services) such as Postgres and Redis run beside your app, with migrations, `grade_setup` and `reset`, and the grader can [reach a declared service](#grader-reach), which a [multi-step case](#multi-step-cases) names by its origin, through a mock server's [pass-through](#pass-through) or directly. [Code intelligence](#language-servers) runs in a sidecar for TypeScript and Python, and the [Web UI](#web-ui) runs tests, submits and holds a dev stack (P9). `cstudy dev` has its flags for [your own IDE](#your-own-ide), which it writes a `devcontainer.json` for, and the AI catalog problems that use the [extensions](#extensions) are built (P11). What is still planned says so where it stands: contract tables and the D7 check of parallel cases (P10's grader side). The mock server streams server-sent events, matches on request bodies and fills in run-time values, and a case can judge what a request's JSON body carried, so a [mock LLM provider](#a-mock-llm-provider) is config data.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -49,7 +49,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 |---------|-----|--------|
 | `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN, a metadata address or your machine. DNS is no way out either, as measured on Engine 29: the engine's name server answers an outside name with `SERVFAIL` in under 0.2 ms, where an ordinary bridge takes about 30 ms to ask upstream, and `host.docker.internal` resolves to nothing and the addresses behind it are unreachable, so D11 probes addresses alone. Its bridge holds no address (`com.docker.network.bridge.inhibit_ipv4`): an internal network's bridge otherwise holds its gateway address, and on Linux a container reaches every service listening on all of your machine's addresses through it, `sshd` among them. It sets `enable_ipv6: false` too, since an engine set to give new networks IPv6 would give that bridge an IPv6 address, which `inhibit_ipv4` does not take away, and D11 reads `/proc/net/if_inet6` in a container on `sandbox`: only `::1` and `fe80::/10` may be there, and a missing file counts as none. Its containers still reach each other |
 | `edge` (an ordinary bridge) | `cstudy-forward` only | Holds no user code |
-| An ordinary bridge, `egress` | `install` containers (and `cstudy dev --exec --network`, planned) only, with no mock server or service attached | Yes, and P1 measured that it reaches your LAN and this machine's loopback services too |
+| An ordinary bridge, `egress` | `install` containers, and `cstudy dev --exec --network`, only, with no mock server or service attached | Yes, and P1 measured that it reaches your LAN and this machine's loopback services too |
 
 **The catch.** A service only on an `internal: true` network publishes nothing, and `docker compose port` prints `:0` and exits 0 (measured), which `cstudy` treats as a failure. So the forwarder above, a small TCP relay, joins both networks. It publishes on `127.0.0.1` with a dynamic host port, read back with `docker compose port`:
 
@@ -58,7 +58,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 | Your app's port | Every stack | The grader, your browser and `curl` |
 | The mock control port | Every stack, token-protected | The grader and the Web UI only. It is the one exception to "only the app's port is published". A grader inside the network, the alternative in R24, would remove it |
 | Each port in `project.grader_reach` | Test and graded stacks only | The grader, for a service it must speak to itself, such as an identity provider's login ([Grader reach](#grader-reach)) |
-| A debug port | `cstudy dev --debug` only (planned), never in a graded stack | Your [debugger](#your-own-ide) |
+| A debug port | `cstudy dev --debug` only: a dev stack publishes it, and a test or a graded stack never does, whatever its plan says | Your [debugger](#your-own-ide) |
 
 Mock servers and services have stable names and publish nothing. Nothing is ever published beyond `127.0.0.1`. Inside the containers your app listens on all interfaces, because the forwarder is another container.
 
@@ -212,7 +212,7 @@ Every command runs with the project root as its working directory.
 |---------|----------------------|---------------|-------------------|------------|---------|---------|
 | `install` | `cstudy start`, and any command that needs the project when the lock digest differs from the [install record](#install-rules) | A one-off app container | Fixed variables only | 600 s | Internet | [Install failed](#failure-reporting), exit 4 |
 | `bootstrap` | After services are up: at the start of `cstudy dev`, `cstudy test` and `cstudy submit`, and after `grade_setup` in a graded run | A one-shot of the stack that `app` depends on, so one failure path and a failed one stops the start | [Environment](#environment) | Within the startup budget | `sandbox` | [Migration failed](#failure-reporting) |
-| `run` | As the `app` container's own command, so a crash ends the container and `up --wait` catches it, after `bootstrap`, in every run that needs the app (`--no-run` is planned) | The `app` container | Environment | `ready_timeout_s` from `up` until the health path answers, on the first clock, then none until cstudy stops it | `sandbox` | [App did not start](#failure-reporting) |
+| `run` | As the `app` container's own command, so a crash ends the container and `up --wait` catches it, after `bootstrap`, in every run that needs the app, and not with `cstudy dev --no-run` or `--exec`, whose app idles | The `app` container | Environment | `ready_timeout_s` from `up` until the health path answers, on the first clock, then none until cstudy stops it | `sandbox` | [App did not start](#failure-reporting) |
 | `test` | `cstudy test`, with the app running | `docker compose exec` in `app` | Environment, plus the visible-only control variables | 120 s | `sandbox` | Its exit code is a test failure; it never grades |
 | `reset` | Once with `CSTUDY_RESET_PHASE=prepare` after `bootstrap`, as a one-shot before `app` (in a test or graded stack), then with `CSTUDY_RESET_PHASE=apply` before each case with `fresh: true`, with the app stopped | A one-off app container | Environment | 30 s | `sandbox` | `prepare`: [Migration failed](#failure-reporting). `apply`: case `error`, and the remaining cases `not_run` |
 | `grade_setup` | Graded runs and `cstudy verify` only: after every backing service's healthcheck passes and before `bootstrap`. A graded run with it first runs `bootstrap` from empty data on a stack of its own ([Graded run](#graded-run)) | A short-lived container of the same image, with the project folder and `{problem}/grading/` read-only, gone before `app` starts | Environment, plus `CSTUDY_PROBLEM_DIR` and `CSTUDY_GRADED_LEVEL` | Within the startup budget | `sandbox` | A content error, exit 4, whose output is never shown as a hidden case |
@@ -252,28 +252,22 @@ Native problems are a separate matter: their environment is the allowlist of [Pr
 
 ```text
 cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--events]
+cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--no-run] [--debug] [--reset-data]
+cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--reset-data] --exec -- <command> [<argument>]...
+cstudy dev [<slug|file>] --exec --network -- <command> [<argument>]...
 ```
 
 | Flag | Effect |
 |------|--------|
 | `--scenario` | Sets a mock server's visible scenario at start. A hidden or unknown name exits 3 with the visible names, before anything starts |
-| `--events` | The stack as JSON events, and each line of standard input a scenario to switch to while it runs, for the Web UI ([the dev stack from the page](#the-dev-stack-from-the-page)) |
+| `--events` | The stack as JSON events, and each line of standard input a scenario to switch to while it runs, for the Web UI ([the dev stack from the page](#the-dev-stack-from-the-page)). It takes `--scenario` alone |
+| `--no-run` | Keeps the `app` container idle (`sleep infinity`) instead of running `commands.run`, for an IDE or a debugger: nothing waits for the health path, and the `app` line says `idle`. Your app cannot run outside the stack and still reach the mock servers, so running is the default |
+| `--debug` | Runs `commands.run` under the language's debug agent, listening on every interface of the app's container, and publishes its port on `127.0.0.1` through the forwarder, printed on a `debug` line: TypeScript as `node --inspect=0.0.0.0:9229 …` for a run that starts `node`, Python as `<interpreter> -m debugpy --listen 0.0.0.0:5678 …` for one that starts a Python interpreter, which needs debugpy among the project's dependencies. Neither waits for a debugger, so the health path answers as without one. Any other run exits 3 before anything starts. With `--no-run`, the port is published and nothing runs |
+| `--reset-data` | Removes the dev stack's data before it starts, its own volume and each backing service's, as `cstudy start --fresh` does, so `bootstrap` migrates from empty. A removal that fails exits 4 and starts nothing |
+| `--exec` | Runs the command after `--` in a one-off app container (`docker compose run`) of the dev stack, which comes up with the app idle, `bootstrap` run and the scenarios set, and goes down after it, its data kept. It holds the project's dev lock as `cstudy dev` does. The command has no terminal and no standard input, prints as it goes, and has `commands.test`'s limit. It exits 0 when the command exits 0, and 2 with the command's exit code otherwise. It takes no `--no-run`, `--debug` or `--events` |
+| `--network` | With `--exec` only: the command runs where `commands.install` runs, under the project's install lock, on the `egress` bridge with the install's environment and cache, and no stack, which is how you add a dependency: `cstudy dev --exec --network -- corepack pnpm add <package>`. Its limit is the install's, and it takes no `--scenario` or `--reset-data` |
 
-It runs in the foreground: it brings the stack up, prints your app's published URL and the mock server names, then what your app prints. Ctrl-C, or SIGTERM, brings the stack down and keeps its data, exit 0, and a second Ctrl-C during that cannot leave half a stack. Your app ending brings the stack down too, exit 2, and so does an app that never starts, with its output. One dev stack runs per project: a second `cstudy dev` exits 3 and names the holder's process id. The lock is `.cs/projects/<slug>.dev.lock`.
-
-Planned:
-
-```text
-cstudy dev [<slug|file>] [--no-run] [--debug] [--reset-data]
-cstudy dev [<slug|file>] --exec [--network] -- <command> [<argument>]...
-```
-
-| Flag | Effect |
-|------|--------|
-| `--no-run` | Keeps the `app` container idle instead of running `commands.run`, for an IDE or a debugger. Your app cannot run outside the stack and still reach the mock servers, so running is the default |
-| `--debug` | Publishes the template's debug port on `127.0.0.1` |
-| `--reset-data` | Removes the dev volume before starting |
-| `--exec` | Runs one command in a one-off app container, then exits. `--network` gives it the internet and no stack, which is how you add a dependency: `cstudy dev --exec --network -- pnpm add <package>` |
+The words after `--` are the command, never the slug. A command after `--` without `--exec`, `--exec` without a command, and `--network` without `--exec` exit 3.
 
 And one line per request a mock server receives.
 
@@ -1094,7 +1088,7 @@ A project problem may have its own dependencies, and cstudy installs them automa
 | Record | `.cs/projects/<slug>.install.json`, with the lock's SHA-256, written after success |
 | Lock | The project's exclusive [lock](installation-and-workspaces.md#project-folders) is held during an install |
 | Retry | A failed install keeps the attempt. It prints the retry, `cstudy start <slug>`, and the Web UI offers a Retry button |
-| You add a dependency | From a shell of your own for now, and `cstudy dev --exec --network -- <your package manager's add command>` once it is built. The digest differs, so the next command installs. The lock file is your file, hashed in `code_hash` |
+| You add a dependency | `cstudy dev --exec --network -- <your package manager's add command>`, such as `corepack pnpm add <package>` or `uv add <package>`. The digest differs, so the next command installs. The lock file is your file, hashed in `code_hash` |
 
 ### Templates per language
 
@@ -1231,12 +1225,12 @@ There is no `cstudy reset` and no command that removes a problem; verified again
 | Deleting `projects/<slug>/` by hand | Everything in it. A resumed attempt copies the starter and installs again |
 | `.cs/build/projects/<slug>/` | The reference's copy and its install, recreated by `cstudy verify` |
 | `cstudy doctor --fix` | Docker leftovers, by label only |
-| `cstudy dev --reset-data` | The dev volume |
+| `cstudy dev --reset-data` | The dev stack's data: its own volume and each backing service's |
 | Images | Never removed by cstudy, since other work may use them |
 
 ## Code intelligence and editors
 
-**The riskiest part of the design.** The spike measured that it works, close to the host's speed. The language servers are built (P9, 2026-11-10); your own IDE's files are planned.
+**The riskiest part of the design.** The spike measured that it works, close to the host's speed. The language servers are built (P9, 2026-11-10), and so are your own IDE's files and `cstudy dev --debug`.
 
 ### Language servers
 
@@ -1277,12 +1271,17 @@ The page reads the list of languages for its attempt (`GET /api/v1/code-intellig
 
 ### Your own IDE
 
-Planned (R29).
+Built (R29, 2026-11-10): the generated file and the [flags of `cstudy dev`](#how-you-reach-them). Opening the file in VS Code and in IntelliJ is not yet measured.
 
 | Item | Rule |
 |------|------|
-| IDEs | The user's own IDE probably uses a generated `devcontainer.json`, naming the same image, mount and network, written by `cstudy dev`. VS Code and IntelliJ read it. LazyVim does not, so the spike tries a per-project server command there |
-| Debugging | `cstudy dev --debug` publishes the template's debug port on `127.0.0.1`, for Node's inspector or debugpy. Paths match because of the same-path mount |
+| The file | `cstudy dev`, without `--exec` or `--events`, writes `.devcontainer/devcontainer.json` in the project folder, through no link, before the stack starts. VS Code and IntelliJ read it and start your IDE's own container, beside the stack, from what it names |
+| What it names | The dev stack's image; the project folder bind-mounted at its same path, as `workspaceMount` and `workspaceFolder`; `runArgs` with the dev stack's `sandbox` network (`cstudy-d-<slug>-<workspace digest>_sandbox`), your UID and GID, `--cap-drop=ALL` and `no-new-privileges`; and `containerEnv` with `project.env` and `HOME=/tmp/home`. Not the data volume, which stays the stack's |
+| While it works | The network exists only while `cstudy dev` runs, so start `cstudy dev` first, or `cstudy dev --no-run` to run the app from the IDE. There the mock servers and backing services answer by their names, as they do to your app, and nothing beyond the stack does. Docker keeps the network while your IDE's container is attached to it, so close that container before you stop `cstudy dev` |
+| Your edits | The file's first line, a comment, says `cstudy dev` wrote it, and `cstudy dev` writes the file again while that line is there. Delete the line and your edits stay |
+| Tracked | `.devcontainer` is untracked wherever it appears, as `node_modules` is: it holds this machine's paths, counts toward no `code_hash`, and goes with `cstudy start --fresh` |
+| LazyVim | Does not read `devcontainer.json`, and `cstudy` writes nothing for it: a language server on your machine would read a `.venv` that points at an interpreter in the container. The Web UI's code intelligence runs the server in the [sidecar](#language-servers); a per-project server command is not built |
+| Debugging | `cstudy dev --debug` publishes the language's debug port on `127.0.0.1`, for Node's inspector or debugpy; attach to the `debug` address it prints. Paths match because of the same-path mount |
 | A host toolchain | Not needed. An editor running its own server on your machine finds `.venv` pointing at an interpreter that exists only in the container, and native packages built for Linux |
 
 ## Web UI

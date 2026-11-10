@@ -115,14 +115,28 @@ def from_empty_stack_plan(
 def install_plan(environment: Environment, problem: Problem, folder: str) -> InstallPlan:
     """`commands.install`, in a stack of its own whose cache outlives it. Raises ValueError for a
     problem with no install."""
+    command = service_project(problem).commands.install
+    if command is None:
+        raise ValueError(f"{problem.meta.slug} has no install")
+    return _install_stack(environment, problem, folder, command)
+
+
+def network_command_plan(
+    environment: Environment, problem: Problem, command: tuple[str, ...]
+) -> InstallPlan:
+    """`cstudy dev --exec --network`: `command` where the install runs, in the project folder,
+    with the internet, the install's cache and nothing else of the stack."""
+    return _install_stack(environment, problem, project_folder(problem.meta.slug), command)
+
+
+def _install_stack(
+    environment: Environment, problem: Problem, folder: str, command: tuple[str, ...]
+) -> InstallPlan:
     engine = environment.sandbox
     service = service_project(problem)
     slug = problem.meta.slug
     digest = workspace_id(environment)
     name = install_stack_name(slug, digest)
-    command = service.commands.install
-    if command is None:
-        raise ValueError(f"{slug} has no install")
     return InstallPlan(
         identity=StackIdentity(name, StackKind.INSTALL, digest, slug, engine.owner_pid()),
         user=engine.host_user(),

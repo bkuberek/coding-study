@@ -146,6 +146,25 @@ def typescript(tmp_path: Path) -> Generator[FixtureProject]:
         found.remove_all_it_left()
 
 
+REACH_THE_MOCK_SERVER = (
+    "fetch('http://room-vendor:8080/v1/rooms')"
+    ".then((answer) => console.log(`room-vendor answered ${answer.status}`))"
+    ".catch((error) => { console.log(String(error)); process.exit(1); })"
+)
+"""Only a container on the dev stack's network can name the mock server."""
+
+
+def test_dev_exec_runs_a_command_in_the_dev_stack_and_takes_it_down(typescript: FixtureProject):
+    started = typescript.cstudy("start", typescript.slug, "--yes", "--no-open")
+    assert started.returncode == EXIT_OK, said(started)
+
+    result = typescript.cstudy("dev", "--exec", "--", "node", "-e", REACH_THE_MOCK_SERVER)
+
+    assert result.returncode == EXIT_OK, said(result)
+    assert "room-vendor answered 200" in result.stdout
+    nothing_running(typescript)
+
+
 def test_test_events_stream_the_stack_the_command_and_the_visible_cases(
     typescript: FixtureProject,
 ):

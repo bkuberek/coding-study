@@ -42,6 +42,7 @@ from coding_study.domain.sandbox import (
     CONTROL_PORT,
     MOCK_SERVICE,
     CommandOutcome,
+    InstallPlan,
     StackPlan,
     StackStartError,
 )
@@ -190,15 +191,26 @@ def install_in_folder(
 def _run_install(
     environment: Environment, problem: Problem, folder: str, notify: ProgressNotice
 ) -> CommandOutcome:
-    engine = environment.sandbox
     plan = install_plan(environment, problem, folder)
+    return run_install_plan(environment, plan, service_project(problem).timeouts.install, notify)
+
+
+def run_install_plan(
+    environment: Environment,
+    plan: InstallPlan,
+    limit_s: float,
+    on_output: Callable[[str], None] | None,
+) -> CommandOutcome:
+    """`plan`'s command, with its stack gone after it however it ends; a stack that does not come
+    down is said, not raised."""
+    engine = environment.sandbox
     with engine.guard(plan.identity):
         try:
-            return engine.install(plan, service_project(problem).timeouts.install, notify)
+            return engine.install(plan, limit_s, on_output)
         finally:
             problem_stopping = engine.stop_install(plan)
-            if problem_stopping is not None:
-                notify(problem_stopping)
+            if problem_stopping is not None and on_output is not None:
+                on_output(problem_stopping)
 
 
 def _install_failure(

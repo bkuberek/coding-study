@@ -3,6 +3,7 @@ import pytest
 from coding_study.domain.debugging import (
     DebugRequest,
     DebugSession,
+    container_debug_agent,
     debug_session,
     delve_minimum_go,
 )
@@ -69,3 +70,47 @@ def test_delve_1_27_and_newer_debug_only_go_1_25_and_newer(delve, minimum):
 @pytest.mark.parametrize("delve", ["1.26.1", "1.9.0", "0.12.2"])
 def test_an_older_delve_has_no_known_minimum_go(delve):
     assert delve_minimum_go(delve) is None
+
+
+def test_a_dev_stack_runs_node_with_its_inspector_on_every_interface():
+    agent = container_debug_agent(Language.TYPESCRIPT, ("node", "src/server.ts"))
+
+    assert agent.command == ("node", "--inspect=0.0.0.0:9229", "src/server.ts")
+
+
+def test_a_dev_stack_runs_python_under_debugpy_on_every_interface():
+    agent = container_debug_agent(Language.PYTHON, (".venv/bin/python", "src/server.py"))
+
+    assert agent.command == (
+        ".venv/bin/python",
+        "-m",
+        "debugpy",
+        "--listen",
+        "0.0.0.0:5678",
+        "src/server.py",
+    )
+
+
+@pytest.mark.parametrize(
+    ("language", "run", "port"),
+    [
+        (Language.TYPESCRIPT, ("node", "src/server.ts"), 9229),
+        (Language.PYTHON, ("python3", "src/server.py"), 5678),
+    ],
+)
+def test_a_dev_stack_debugs_on_the_languages_usual_port(language, run, port):
+    assert container_debug_agent(language, run).port == port
+
+
+@pytest.mark.parametrize(
+    ("language", "run"),
+    [
+        (Language.TYPESCRIPT, ("corepack", "pnpm", "start")),
+        (Language.PYTHON, ("uv", "run", "src/server.py")),
+        (Language.PYTHON, ("node", "src/server.ts")),
+        (Language.GO, ("go", "run", ".")),
+    ],
+)
+def test_a_dev_stack_refuses_a_run_it_cannot_put_under_a_debugger(language, run):
+    with pytest.raises(ValueError, match="runs " + " ".join(run)):
+        container_debug_agent(language, run)

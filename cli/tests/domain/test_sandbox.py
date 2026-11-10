@@ -239,6 +239,30 @@ def test_the_forwarder_also_publishes_the_control_port_with_mock_servers():
     assert forward["command"][-1] == f"{CONTROL_PORT}=cstudy-mocks:{CONTROL_PORT}"
 
 
+DEV_IDENTITY = StackIdentity("cstudy-d-rooms-d1g3st", StackKind.DEV, "d1g3st", "rooms", 41)
+
+
+def test_a_dev_stack_publishes_its_debug_port_on_loopback():
+    forward = services(identity=DEV_IDENTITY, debug_port=9229)[FORWARD_SERVICE]
+
+    assert forward["ports"] == ["127.0.0.1::8000", "127.0.0.1::9229"]
+
+
+def test_a_dev_stack_relays_its_debug_port_to_the_app():
+    forward = services(identity=DEV_IDENTITY, debug_port=9229)[FORWARD_SERVICE]
+
+    assert forward["command"][-1] == "9229=app:9229"
+
+
+@pytest.mark.parametrize("kind", [StackKind.TEST, StackKind.GRADED])
+def test_a_test_or_graded_stack_never_publishes_a_debug_port(kind):
+    identity = StackIdentity("cstudy-g-41-abc", kind, "d1g3st", "rooms", 41)
+
+    forward = services(identity=identity, debug_port=9229)[FORWARD_SERVICE]
+
+    assert forward["ports"] == ["127.0.0.1::8000"]
+
+
 def test_only_the_forwarder_publishes_anything():
     published = [
         name for name, service in services(mocks=MOCKS).items() if service.get("ports") is not None

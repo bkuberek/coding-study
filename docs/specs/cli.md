@@ -10,7 +10,7 @@
 | [`cstudy doctor`](#cstudy-doctor) | Check and set up toolchains | 0 |
 | [`cstudy ide`](#cstudy-ide) | Write or refresh the VS Code and IntelliJ project files | W1 |
 | [`cstudy start`](#cstudy-start) | Create or reopen a stub, open the statement, begin an attempt | 0 |
-| [`cstudy dev`](service-projects.md#how-you-reach-them) | Run a service project's stack in the foreground, until Ctrl-C | 12 |
+| [`cstudy dev`](service-projects.md#how-you-reach-them) | Run a service project's stack in the foreground, until Ctrl-C, or one command in its app's environment with `--exec` | 12 |
 | [`cstudy test`](#cstudy-test) | Run the user's code against the cases; for a project problem, its native tests | 0 |
 | [`cstudy submit`](#cstudy-submit) | Grade a project problem and open its next level | 8 |
 | [`cstudy status`](#cstudy-status) | Show where an attempt stands | 8 (every kind in 9) |

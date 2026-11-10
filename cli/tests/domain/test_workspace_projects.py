@@ -169,6 +169,7 @@ def test_other_folders_get_no_toolchain_file(language):
         "target",
         "target/debug/deps/bank-0123",
         "Cargo.lock",
+        ".devcontainer/devcontainer.json",
     ],
 )
 def test_the_venv_link_node_modules_caches_and_the_uv_lock_are_untracked(path):

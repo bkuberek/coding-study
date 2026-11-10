@@ -351,6 +351,101 @@ def test_dev_refuses_a_mock_server_the_problem_does_not_have(environment):
     assert "nobody" in result.stderr
 
 
+def test_dev_no_run_says_the_app_idles(environment, engine):
+    start_it()
+    engine.on_follow = stop_with_ctrl_c
+
+    result = invoke("dev", SLUG, "--no-run")
+
+    assert engine.plans[0].app.command is None
+    assert "idle" in result.stdout
+
+
+def test_dev_debug_prints_where_a_debugger_attaches(environment, engine):
+    start_it()
+    engine.on_follow = stop_with_ctrl_c
+
+    result = invoke("dev", SLUG, "--debug")
+
+    assert "127.0.0.1:50229" in result.stdout
+
+
+def test_dev_reset_data_removes_the_dev_stacks_data(environment, engine):
+    start_it()
+    engine.on_follow = stop_with_ctrl_c
+
+    invoke("dev", SLUG, "--reset-data")
+
+    assert len(engine.called("remove_stack")) == 1
+
+
+SEED = ["node", "scripts/seed.ts"]
+
+
+def test_dev_exec_runs_the_command_after_the_double_dash(environment, engine):
+    start_it()
+
+    result = invoke("dev", SLUG, "--exec", "--", *SEED)
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert engine.called("run_one_off")[0].command == tuple(SEED)
+
+
+def test_dev_exec_takes_the_active_attempt_without_a_slug(environment, engine):
+    start_it()
+
+    result = invoke("dev", "--exec", "--", *SEED)
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert engine.called("run_one_off")[0].command == tuple(SEED)
+
+
+def test_dev_exec_exits_2_when_its_command_fails(environment, engine):
+    start_it()
+    engine.one_off_outcome = CommandOutcome(7, "")
+
+    result = invoke("dev", SLUG, "--exec", "--", *SEED)
+
+    assert result.exit_code == ExitCode.USER_CODE_ERROR
+    assert "exited with code 7" in result.stdout
+
+
+def test_dev_exec_with_network_runs_where_the_install_runs(environment, engine):
+    start_it()
+    engine.calls.clear()
+
+    result = invoke("dev", SLUG, "--exec", "--network", "--", "corepack", "pnpm", "add", "x")
+
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+    assert engine.called("install")[0].command == ("corepack", "pnpm", "add", "x")
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--network"],
+        ["--exec"],
+        ["--exec", "--"],
+        ["--exec", "--no-run", "--", *SEED],
+        ["--exec", "--debug", "--", *SEED],
+        ["--exec", "--events", "--", *SEED],
+        ["--exec", "--network", "--reset-data", "--", *SEED],
+        ["--exec", "--network", "--scenario", "room-vendor=outage", "--", *SEED],
+        ["--events", "--debug"],
+        ["--events", "--no-run"],
+        ["--events", "--reset-data"],
+        ["--", *SEED],
+    ],
+)
+def test_dev_refuses_flags_that_do_not_go_together(environment, engine, arguments):
+    start_it()
+
+    result = invoke("dev", SLUG, *arguments)
+
+    assert result.exit_code == ExitCode.USAGE_ERROR, result.output
+    assert engine.plans == []
+
+
 def listing(environment, monkeypatch, *arguments: str):
     monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: environment)
     return invoke("list", *arguments)
