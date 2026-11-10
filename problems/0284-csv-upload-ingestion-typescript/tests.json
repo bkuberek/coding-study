@@ -1,0 +1,2154 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "flows": {
+    "upload": [
+      {
+        "request": {
+          "method": "PUT",
+          "url": "http://aws:5000/uploads/{{key}}",
+          "headers": {
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned",
+            "Content-Type": "text/csv"
+          },
+          "body": "{{csv}}"
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.SendMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/upload-events",
+            "MessageBody": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2027-03-01T09:00:00.000Z\",\"eventName\":\"ObjectCreated:Put\",\"s3\":{\"s3SchemaVersion\":\"1.0\",\"bucket\":{\"name\":\"uploads\",\"arn\":\"arn:aws:s3:::uploads\"},\"object\":{\"key\":\"{{key}}\",\"sequencer\":\"{{seq}}\"}}}]}"
+          }
+        },
+        "expected": {
+          "status": 200
+        }
+      }
+    ],
+    "event": [
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.SendMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/upload-events",
+            "MessageBody": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2027-03-01T09:00:00.000Z\",\"eventName\":\"{{name}}\",\"s3\":{\"s3SchemaVersion\":\"1.0\",\"bucket\":{\"name\":\"uploads\",\"arn\":\"arn:aws:s3:::uploads\"},\"object\":{\"key\":\"{{key}}\",\"sequencer\":\"{{seq}}\"}}}]}"
+          }
+        },
+        "expected": {
+          "status": 200
+        }
+      }
+    ],
+    "import_result": [
+      {
+        "request": {
+          "method": "GET",
+          "path": "/health"
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.ReceiveMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/import-results",
+            "MaxNumberOfMessages": 1,
+            "WaitTimeSeconds": 10,
+            "VisibilityTimeout": 43200
+          }
+        },
+        "expected": {
+          "status": 200
+        },
+        "capture": {
+          "import_result": "body.Messages.0.Body"
+        }
+      }
+    ],
+    "bulk_import_result": [
+      {
+        "request": {
+          "method": "GET",
+          "path": "/health"
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.ReceiveMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/import-results",
+            "MaxNumberOfMessages": 1,
+            "WaitTimeSeconds": 20,
+            "VisibilityTimeout": 0
+          }
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.ReceiveMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/import-results",
+            "MaxNumberOfMessages": 1,
+            "WaitTimeSeconds": 20,
+            "VisibilityTimeout": 43200
+          }
+        },
+        "expected": {
+          "status": 200
+        }
+      }
+    ],
+    "dead_letter": [
+      {
+        "request": {
+          "method": "GET",
+          "path": "/health"
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.ReceiveMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/upload-events-dlq",
+            "MaxNumberOfMessages": 1,
+            "WaitTimeSeconds": 20,
+            "VisibilityTimeout": 43200
+          }
+        },
+        "expected": {
+          "status": 200
+        },
+        "capture": {
+          "dead_letter": "body.Messages.0.Body"
+        }
+      }
+    ],
+    "no_import_result": [
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://aws:5000/",
+          "headers": {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.ReceiveMessage",
+            "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+          },
+          "json": {
+            "QueueUrl": "http://aws:5000/123456789012/import-results",
+            "MaxNumberOfMessages": 1,
+            "WaitTimeSeconds": 2,
+            "VisibilityTimeout": 43200
+          }
+        },
+        "expected": {
+          "status": 200,
+          "body": {}
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "hang_guard_ms": 30000,
+      "note": "a delivery of three rows loads, and its result and its import say so",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v1/2027-03-01.csv",
+            "seq": "0001",
+            "csv": "sku,description,quantity\nV1-BOLT-M6,Hex bolt M6 x 30 mm,1200\nV1-NUT-M6,Hex nut M6,800\nV1-WASHER-6,Flat washer 6 mm,1500\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/grader",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/grader/v1.json",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "body": "{{import_result}}"
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/grader/v1.json",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "bucket": "uploads",
+              "key": "deliveries/v1/2027-03-01.csv",
+              "status": "loaded",
+              "rows": 3,
+              "loaded": 3,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v1/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/v1/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 3,
+                "loaded": 3,
+                "rejected": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "hang_guard_ms": 30000,
+      "note": "two lines of one product add up, and the last line's description is the product's",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v2/2027-03-01.csv",
+            "seq": "0002",
+            "csv": "sku,description,quantity\nV2-BOLT-M8,Hex bolt M8,500\nV2-NUT-M8,Hex nut M8,300\nV2-BOLT-M8,Hex bolt M8 x 40 mm,250\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/V2-BOLT-M8"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "V2-BOLT-M8",
+              "description": "Hex bolt M8 x 40 mm",
+              "quantity": 750
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "hang_guard_ms": 34000,
+      "note": "an event that arrives before its object is tried again, and loads once the object is there",
+      "steps": [
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/h1/2027-03-01.csv",
+            "seq": "0003",
+            "name": "ObjectCreated:Put"
+          }
+        },
+        {
+          "use": "no_import_result"
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/uploads/deliveries/h1/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned",
+              "Content-Type": "text/csv"
+            },
+            "body": "sku,description,quantity\nH1-HINGE,Door hinge 80 mm,40\n"
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h1/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h1/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H1-HINGE"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H1-HINGE",
+              "description": "Door hinge 80 mm",
+              "quantity": 40
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "hang_guard_ms": 50000,
+      "note": "two deliveries of one product add up, and the later file's description wins",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h2-a/2027-03-01.csv",
+            "seq": "0004",
+            "csv": "sku,description,quantity\nH2-SCREW,Wood screw 4 x 40,1000\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h2-b/2027-03-01.csv",
+            "seq": "0005",
+            "csv": "sku,description,quantity\nH2-SCREW,Wood screw 4 x 40 mm countersunk,600\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H2-SCREW"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H2-SCREW",
+              "description": "Wood screw 4 x 40 mm countersunk",
+              "quantity": 1600
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "hang_guard_ms": 30000,
+      "note": "a product no delivery brought is unknown, and a key nothing was loaded from has no imports",
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H3-NEVER"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_sku"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h3/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "hang_guard_ms": 30000,
+      "note": "GET /imports without a key is an invalid request",
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_request"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "hang_guard_ms": 30000,
+      "note": "a file with Windows line endings loads the same",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h5/2027-03-01.csv",
+            "seq": "0006",
+            "csv": "sku,description,quantity\r\nH5-ANCHOR,Wall anchor 6 mm,250\r\nH5-ANCHOR,Wall anchor 6 mm grey,50\r\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h5/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h5/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 2,
+                "loaded": 2,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H5-ANCHOR"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H5-ANCHOR",
+              "description": "Wall anchor 6 mm grey",
+              "quantity": 300
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "hang_guard_ms": 30000,
+      "note": "a last row with no line break after it still loads",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h6/2027-03-01.csv",
+            "seq": "0007",
+            "csv": "sku,description,quantity\nH6-RIVET,Blind rivet 4 mm,900\nH6-CLIP,Cable clip 8 mm,60"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h6/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h6/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 2,
+                "loaded": 2,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H6-CLIP"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H6-CLIP",
+              "description": "Cable clip 8 mm",
+              "quantity": 60
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "hang_guard_ms": 30000,
+      "note": "a file with its header and no rows is loaded, with nothing in it",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h7/2027-03-01.csv",
+            "seq": "0008",
+            "csv": "sku,description,quantity\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h7/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h7/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 0,
+                "loaded": 0,
+                "rejected": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "level": 2,
+      "visible": true,
+      "hang_guard_ms": 30000,
+      "note": "two bad rows of five: the three good ones load, and the report names the bad ones",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v3/2027-03-01.csv",
+            "seq": "0010",
+            "csv": "sku,description,quantity\nV3-BRACKET,Shelf bracket 150 mm,120\nV3-BRACKET,,10\nv3-shelf,Shelf 80 cm,30\nV3-SHELF,Shelf 80 cm,30\nV3-PEG,Shelf peg,400\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v3/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/v3/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 5,
+                "loaded": 3,
+                "rejected": 2
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/v3/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n3,invalid_description\n4,invalid_sku\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/V3-BRACKET"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "V3-BRACKET",
+              "description": "Shelf bracket 150 mm",
+              "quantity": 120
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "hang_guard_ms": 30000,
+      "note": "three bad rows of four: the file is rejected, nothing loads, and the report names them",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v4/2027-03-01.csv",
+            "seq": "0011",
+            "csv": "sku,description,quantity\nV4-GLUE,Wood glue 250 ml,24\nV4-TAPE,Masking tape,0\nV4-SAND,Sandpaper P120\nV4-BRUSH,Paint brush 50 mm,12,extra\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v4/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/v4/2027-03-01.csv",
+                "status": "rejected",
+                "rows": 4,
+                "loaded": 0,
+                "rejected": 3
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/v4/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n3,invalid_quantity\n4,wrong_column_count\n5,wrong_column_count\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/V4-GLUE"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_sku"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "each rule, at its limits: the report names every row that breaks one, by line",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h10/2027-03-01.csv",
+            "seq": "0012",
+            "csv": "sku,description,quantity\nH10-A,Good,1\nH10-B,dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd,100000\nH10-C,Good,7\nH10-D,Good,8\nH10-E,Good,9\nH10-F,Good,10\nH10-G,Good,11\nH10-H,Good,12\nH10-I,Good,13\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,Too long a SKU,1\nH10-J,Too many,1,2\n\nH10-K,ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd,1\nH10-L,Zero,0\nH10-M,Too many,100001\nH10-N,Signed,+5\nH10-O,Decimal,1.0\nH10-P,Padded,007\n-H10,Leading dash,1\nH10-Q,Good,14\nH10-R,Good,15\nH10-S,Good,16\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h10/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h10/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 22,
+                "loaded": 12,
+                "rejected": 10
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/h10/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n11,invalid_sku\n12,wrong_column_count\n13,wrong_column_count\n14,invalid_description\n15,invalid_quantity\n16,invalid_quantity\n17,invalid_quantity\n18,invalid_quantity\n19,invalid_quantity\n20,invalid_sku\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H10-B"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H10-B",
+              "description": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "quantity": 100000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "a row that breaks several rules is reported once, for the first of them",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h11/2027-03-01.csv",
+            "seq": "0013",
+            "csv": "sku,description,quantity\nH11-OK,Fine,5\nh11 bad,,0\nH11-OK,Fine,5\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h11/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h11/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 3,
+                "loaded": 2,
+                "rejected": 1
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/h11/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n3,invalid_sku\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "exactly half the rows bad is not mostly bad: the good half loads",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h12/2027-03-01.csv",
+            "seq": "0014",
+            "csv": "sku,description,quantity\nH12-A,Good,3\nH12-B,Bad,zero\nH12-C,Good,4\nH12-D,\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h12/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h12/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 4,
+                "loaded": 2,
+                "rejected": 2
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H12-C"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H12-C",
+              "description": "Good",
+              "quantity": 4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "a file whose first line is not the header is rejected without reading on",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h13/2027-03-01.csv",
+            "seq": "0015",
+            "csv": "sku,quantity,description\nH13-A,Good,3\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h13/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h13/2027-03-01.csv",
+                "status": "rejected",
+                "rows": 0,
+                "loaded": 0,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/h13/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n1,invalid_header\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H13-A"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_sku"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "an empty file has no header, so it is rejected",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h14/2027-03-01.csv",
+            "seq": "0016",
+            "csv": ""
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h14/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h14/2027-03-01.csv",
+                "status": "rejected",
+                "rows": 0,
+                "loaded": 0,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/h14/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n1,invalid_header\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "a byte order mark before the header is not part of it",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h15/2027-03-01.csv",
+            "seq": "0017",
+            "csv": "﻿sku,description,quantity\nH15-LEVEL,Spirit level 60 cm,15\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h15/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h15/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H15-LEVEL"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H15-LEVEL",
+              "description": "Spirit level 60 cm",
+              "quantity": 15
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "hang_guard_ms": 30000,
+      "note": "a file with no bad rows writes no report",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h16/2027-03-01.csv",
+            "seq": "0018",
+            "csv": "sku,description,quantity\nH16-SAW,Hand saw 500 mm,8\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/h16/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 404
+          }
+        }
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "hang_guard_ms": 90000,
+      "note": "the bulk file: 550000 rows, 160 MB, more than the app's 128 MiB of memory, streamed and loaded",
+      "steps": [
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/bulk/2027-03-01.csv",
+            "seq": "0019",
+            "name": "ObjectCreated:Put"
+          }
+        },
+        {
+          "use": "bulk_import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/bulk/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/bulk/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 550000,
+                "loaded": 549989,
+                "rejected": 11
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/upload-reports/deliveries/bulk/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": "line,error\n50001,invalid_quantity\n100001,invalid_quantity\n150001,invalid_quantity\n200001,invalid_quantity\n250001,invalid_quantity\n300001,invalid_quantity\n350001,invalid_quantity\n400001,invalid_quantity\n450001,invalid_quantity\n500001,invalid_quantity\n550001,invalid_quantity\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/BULK-000"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "BULK-000",
+              "description": "Pallet line 549900 zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plat",
+              "quantity": 21951
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/BULK-042"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "BULK-042",
+              "description": "Pallet line 549942 zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plat",
+              "quantity": 21998
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "level": 3,
+      "visible": true,
+      "hang_guard_ms": 34000,
+      "note": "the same event delivered twice loads once, and is announced once",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v5/2027-03-01.csv",
+            "seq": "0020",
+            "csv": "sku,description,quantity\nV5-DRILL,Drill bit 6 mm,50\n"
+          }
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/v5/2027-03-01.csv",
+            "seq": "0020",
+            "name": "ObjectCreated:Put"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "use": "no_import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v5/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/v5/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/V5-DRILL"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "V5-DRILL",
+              "description": "Drill bit 6 mm",
+              "quantity": 50
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "level": 3,
+      "visible": true,
+      "hang_guard_ms": 50000,
+      "note": "an event whose object never arrives fails every time, and its third failure leaves it in the dead-letter queue",
+      "steps": [
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/v6/2027-03-01.csv",
+            "seq": "0021",
+            "name": "ObjectCreated:Put"
+          }
+        },
+        {
+          "use": "dead_letter"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.GetQueueAttributes",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "AttributeNames": [
+                "ApproximateNumberOfMessages",
+                "ApproximateNumberOfMessagesNotVisible"
+              ]
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "Attributes": {
+                "ApproximateNumberOfMessages": "0",
+                "ApproximateNumberOfMessagesNotVisible": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 3,
+      "hang_guard_ms": 50000,
+      "note": "a new upload of the same key is a new import, and adds again",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h20/2027-03-01.csv",
+            "seq": "0022",
+            "csv": "sku,description,quantity\nH20-CLAMP,Bar clamp 300 mm,10\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h20/2027-03-01.csv",
+            "seq": "0023",
+            "csv": "sku,description,quantity\nH20-CLAMP,Bar clamp 300 mm,4\nH20-VISE,Bench vise,1\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/grader",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/grader/h20.json",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "body": "{{import_result}}"
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://aws:5000/grader/h20.json",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "bucket": "uploads",
+              "key": "deliveries/h20/2027-03-01.csv",
+              "status": "loaded",
+              "rows": 2,
+              "loaded": 2,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h20/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h20/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              },
+              {
+                "key": "deliveries/h20/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 2,
+                "loaded": 2,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H20-CLAMP"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H20-CLAMP",
+              "description": "Bar clamp 300 mm",
+              "quantity": 14
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h21",
+      "level": 3,
+      "hang_guard_ms": 34000,
+      "note": "a duplicate that arrives after the upload was loaded changes nothing",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h21/2027-03-01.csv",
+            "seq": "0024",
+            "csv": "sku,description,quantity\nH21-FILE,Flat file 200 mm,6\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/h21/2027-03-01.csv",
+            "seq": "0024",
+            "name": "ObjectCreated:Put"
+          }
+        },
+        {
+          "use": "no_import_result"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.GetQueueAttributes",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "AttributeNames": [
+                "ApproximateNumberOfMessages",
+                "ApproximateNumberOfMessagesNotVisible"
+              ]
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "Attributes": {
+                "ApproximateNumberOfMessages": "0",
+                "ApproximateNumberOfMessagesNotVisible": "0"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h21/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h21/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H21-FILE"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H21-FILE",
+              "description": "Flat file 200 mm",
+              "quantity": 6
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "hang_guard_ms": 50000,
+      "note": "a message that is not an S3 event is dead-lettered after its third failure",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.SendMessage",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "MessageBody": "this is not an event"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "use": "dead_letter"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.GetQueueAttributes",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "AttributeNames": [
+                "ApproximateNumberOfMessages",
+                "ApproximateNumberOfMessagesNotVisible"
+              ]
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "Attributes": {
+                "ApproximateNumberOfMessages": "0",
+                "ApproximateNumberOfMessagesNotVisible": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "hang_guard_ms": 34000,
+      "note": "a duplicate of a rejected file is not imported again",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h23/2027-03-01.csv",
+            "seq": "0025",
+            "csv": "sku,description,quantity\nH23-A,Fine,1\nH23-B,,1\nH23-C,,1\n"
+          }
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/h23/2027-03-01.csv",
+            "seq": "0025",
+            "name": "ObjectCreated:Put"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "use": "no_import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h23/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h23/2027-03-01.csv",
+                "status": "rejected",
+                "rows": 3,
+                "loaded": 0,
+                "rejected": 2
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 3,
+      "hang_guard_ms": 30000,
+      "note": "the bulk file is uploaded again, and starts loading; the next case restarts the app while it loads",
+      "steps": [
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/bulk/2027-03-01.csv",
+            "seq": "0026",
+            "name": "ObjectCreated:Put"
+          }
+        }
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 3,
+      "fresh": true,
+      "hang_guard_ms": 90000,
+      "note": "after a restart in the middle of the bulk file, its event comes back, and the second upload loads once, whole",
+      "steps": [
+        {
+          "use": "bulk_import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/bulk/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/bulk/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 550000,
+                "loaded": 549989,
+                "rejected": 11
+              },
+              {
+                "key": "deliveries/bulk/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 550000,
+                "loaded": 549989,
+                "rejected": 11
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/BULK-007"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "BULK-007",
+              "description": "Pallet line 549907 zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking zinc plat",
+              "quantity": 43996
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "level": 4,
+      "visible": true,
+      "hang_guard_ms": 30000,
+      "note": "a test event is nothing to load: it is deleted, and the upload after it loads",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.SendMessage",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "MessageBody": "{\"Service\":\"Amazon S3\",\"Event\":\"s3:TestEvent\",\"Time\":\"2027-03-01T08:59:00.000Z\",\"Bucket\":\"uploads\",\"RequestId\":\"5582815E1AEA5ADF\",\"HostId\":\"8cLeGAmw098X5cv4Zkwcmo8vvZa3eH3eKxsPzbB9wrR+YstdA6Knx4Ip8EXAMPLE\"}"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v7/2027-03-01.csv",
+            "seq": "0030",
+            "csv": "sku,description,quantity\nV7-TAPE,Measuring tape 5 m,20\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.GetQueueAttributes",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "AttributeNames": [
+                "ApproximateNumberOfMessages",
+                "ApproximateNumberOfMessagesNotVisible"
+              ]
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "Attributes": {
+                "ApproximateNumberOfMessages": "0",
+                "ApproximateNumberOfMessagesNotVisible": "0"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v7/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/v7/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 4,
+      "visible": true,
+      "hang_guard_ms": 34000,
+      "note": "an upload written as .part and then renamed loads once, from the finished file",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/v8/2027-03-01.csv.part",
+            "seq": "0031",
+            "csv": "sku,description,quantity\nV8-PLUG,Wall plug 8 mm,300\nV8-PLUG,Wall plu"
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/uploads/deliveries/v8/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned",
+              "Content-Type": "text/csv"
+            },
+            "body": "sku,description,quantity\nV8-PLUG,Wall plug 8 mm,300\nV8-PLUG,Wall plug 8 mm grey,200\n"
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/v8/2027-03-01.csv",
+            "seq": "0032",
+            "name": "ObjectCreated:Copy"
+          }
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/v8/2027-03-01.csv.part",
+            "seq": "0033",
+            "name": "ObjectRemoved:Delete"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "use": "no_import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v8/2027-03-01.csv.part"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/v8/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/v8/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 2,
+                "loaded": 2,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/V8-PLUG"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "V8-PLUG",
+              "description": "Wall plug 8 mm grey",
+              "quantity": 500
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 4,
+      "hang_guard_ms": 30000,
+      "note": "a key with a space and a plus arrives URL-encoded, and loads under its own name",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/uploads/deliveries/north%20depot/h30%2Bextra.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned",
+              "Content-Type": "text/csv"
+            },
+            "body": "sku,description,quantity\nH30-CHAIN,Steel chain 5 mm,25\n"
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.SendMessage",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "MessageBody": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2027-03-01T09:00:00.000Z\",\"eventName\":\"ObjectCreated:Put\",\"s3\":{\"s3SchemaVersion\":\"1.0\",\"bucket\":{\"name\":\"uploads\",\"arn\":\"arn:aws:s3:::uploads\"},\"object\":{\"key\":\"deliveries/north+depot/h30%2Bextra.csv\",\"sequencer\":\"0034\"}}}]}"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/north depot/h30+extra.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/north depot/h30+extra.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H30-CHAIN"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H30-CHAIN",
+              "description": "Steel chain 5 mm",
+              "quantity": 25
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 4,
+      "hang_guard_ms": 30000,
+      "note": "a finished multipart upload is a finished upload, and loads",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://aws:5000/uploads/deliveries/h31/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned",
+              "Content-Type": "text/csv"
+            },
+            "body": "sku,description,quantity\nH31-ROPE,Nylon rope 10 m,12\n"
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/h31/2027-03-01.csv",
+            "seq": "0035",
+            "name": "ObjectCreated:CompleteMultipartUpload"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h31/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h31/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 4,
+      "hang_guard_ms": 34000,
+      "note": "a file deleted after it was loaded leaves its stock and its import as they were",
+      "steps": [
+        {
+          "use": "upload",
+          "with": {
+            "key": "deliveries/h32/2027-03-01.csv",
+            "seq": "0036",
+            "csv": "sku,description,quantity\nH32-HOOK,Coat hook,40\n"
+          }
+        },
+        {
+          "use": "import_result"
+        },
+        {
+          "request": {
+            "method": "DELETE",
+            "url": "http://aws:5000/uploads/deliveries/h32/2027-03-01.csv",
+            "headers": {
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=unsigned"
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "use": "event",
+          "with": {
+            "key": "deliveries/h32/2027-03-01.csv",
+            "seq": "0037",
+            "name": "ObjectRemoved:Delete"
+          }
+        },
+        {
+          "use": "no_import_result"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://aws:5000/",
+            "headers": {
+              "Content-Type": "application/x-amz-json-1.0",
+              "X-Amz-Target": "AmazonSQS.GetQueueAttributes",
+              "Authorization": "AWS4-HMAC-SHA256 Credential=grader/20270301/us-east-1/sqs/aws4_request, SignedHeaders=host, Signature=unsigned"
+            },
+            "json": {
+              "QueueUrl": "http://aws:5000/123456789012/upload-events",
+              "AttributeNames": [
+                "ApproximateNumberOfMessages",
+                "ApproximateNumberOfMessagesNotVisible"
+              ]
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "Attributes": {
+                "ApproximateNumberOfMessages": "0",
+                "ApproximateNumberOfMessagesNotVisible": "0"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/imports",
+            "query": {
+              "key": "deliveries/h32/2027-03-01.csv"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "key": "deliveries/h32/2027-03-01.csv",
+                "status": "loaded",
+                "rows": 1,
+                "loaded": 1,
+                "rejected": 0
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/H32-HOOK"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "H32-HOOK",
+              "description": "Coat hook",
+              "quantity": 40
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

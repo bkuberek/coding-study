@@ -1,0 +1,9 @@
+{
+  "key": "deliveries/bulk/2027-03-01.csv",
+  "rows": 550000,
+  "skus": 100,
+  "quantity_cycle": 7,
+  "bad_every": 50000,
+  "description_length": 280,
+  "filler": "zinc plated hex bolts with nuts and washers in mixed sizes for shelving and racking "
+}
