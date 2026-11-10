@@ -61,6 +61,18 @@ class HttpExpected:
 
 
 @dataclass(frozen=True, slots=True)
+class SameBody:
+    """The first request a mock server logged on a route, whose JSON body fields another request's
+    must equal (docs/specs/service-projects.md#logged-bodies)."""
+
+    mock: str
+    route: str | None
+    """None is the mock server's first request, whatever its route."""
+    fields: tuple[str, ...]
+    """Dotted paths, such as `messages`."""
+
+
+@dataclass(frozen=True, slots=True)
 class LogAssertion:
     """What the request log of a mock server must show when the case's answer is in."""
 
@@ -76,6 +88,15 @@ class LogAssertion:
     """Only requests that carried each of these headers count; values may name `{{captures}}`."""
     form: Mapping[str, str] = field(default_factory=dict[str, str])
     """Only requests whose form-encoded body held each of these fields count."""
+    body: Mapping[str, JsonValue] | None = None
+    """Only requests whose JSON body held this subset count; its strings may name `{{captures}}`."""
+    body_max: Mapping[str, float] = field(default_factory=dict[str, float])
+    """Only requests whose JSON body had a number at most this at each dotted path count."""
+    body_same_as: SameBody | None = None
+    """Only requests whose JSON body fields equal those of another logged request count."""
+    body_prefix_stable: str | None = None
+    """A dotted path: each request that counts, in order, holds there a text or list that starts
+    with the previous one's whole value."""
 
 
 @dataclass(frozen=True, slots=True)

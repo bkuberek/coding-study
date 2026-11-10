@@ -142,7 +142,7 @@ class _CaseChecker:
             return f"the comparator {comparator.type} cannot judge a response body"
         if not http.exchange_steps() and http.parallel is None:
             return "a service project's case needs a request, steps or a parallel burst"
-        named = (*http.mocks, *(assertion.mock for assertion in http.log))
+        named = (*http.mocks, *_logged_mocks(http.log))
         unknown = [mock for mock in named if mock not in self.known_mocks]
         return f"no mock server named {unknown[0]}" if unknown else None
 
@@ -251,7 +251,7 @@ class _Grader:
 
     def _logs(self, assertions: tuple[LogAssertion, ...]) -> dict[str, MockLog]:
         """Each mock server's log once, read after the last answer."""
-        asserted = dict.fromkeys(assertion.mock for assertion in assertions)
+        asserted = dict.fromkeys(_logged_mocks(assertions))
         return {mock: self._mocks.log(mock) for mock in asserted}
 
     def _failed(self, checked: _CheckedCase, failed: ExchangeFailed) -> CaseVerdict:
@@ -305,7 +305,18 @@ def _log_problems(
             filled = rendered_assertion(assertion, values)
         except MissingValueError:
             continue
-        yield from log_failures(filled, logs[assertion.mock])
+        same = assertion.body_same_as
+        reference = logs[same.mock] if same is not None else None
+        yield from log_failures(filled, logs[assertion.mock], reference)
+
+
+def _logged_mocks(assertions: tuple[LogAssertion, ...]) -> Iterator[str]:
+    """Each mock server whose log an assertion reads, its own or the one its `body_same_as`
+    compares with."""
+    for assertion in assertions:
+        yield assertion.mock
+        if assertion.body_same_as is not None:
+            yield assertion.body_same_as.mock
 
 
 def _stopped(case: RunnableCase, stopped: StepsStopped) -> CaseVerdict:

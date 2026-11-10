@@ -493,7 +493,7 @@ Reading a log answers `{"mock": "room-vendor", "entries": [...], "truncated": fa
 
 ### Extensions
 
-R33, for P11. They let a config mock a streaming API, an LLM provider among them. Matching on bodies, run-time values and streaming are built; the rest of this section is recommended, to confirm.
+R33, for P11. They let a config mock a streaming API, an LLM provider among them. Matching on bodies, run-time values, streaming and assertions on logged bodies are built; the rest of this section is recommended, to confirm.
 
 #### Matching on bodies
 
@@ -590,6 +590,31 @@ scenarios:
 | Waits | A stream's `after_ms` add up to at most 3 s (S20), and count with `delay_ms` toward a case's [hang guard](runners.md#hang-guard-and-restarts) |
 | Log | An entry's `responded_ms` is set when the stream ends: after its last event, its drop, or its stall. The log's [bounds](#request-log) are unchanged |
 
+#### Logged bodies
+
+Built at P11 (R33). A case's [`log`](#hidden-http-case) entry can judge what a request's JSON body carried: that a gateway capped `max_tokens`, that its fallback sent the second provider the same messages as the first, or that a conversation's history only grew, which is what a provider's prompt cache needs.
+
+```json
+"log": [
+  {"mock": "primary", "route": "chat-stream", "count": 1,
+   "body": {"stream": true}, "body_max": {"max_tokens": 256}},
+  {"mock": "backup", "route": "chat-stream", "count": 1,
+   "body_same_as": {"mock": "primary", "route": "chat-stream", "fields": ["messages"]}},
+  {"mock": "primary", "route": "chat", "count": 2, "body_prefix_stable": "messages"}
+]
+```
+
+| Field | Rule |
+|-------|------|
+| `body` | Only requests whose JSON body holds this subset count, by the rules of a mock server's [`match.body`](#matching-on-bodies). Its strings may name [captures](#multi-step-cases). A body that is not JSON holds nothing |
+| `body_max` | Only requests whose body holds a number at most this at each dotted path count, such as `{"max_tokens": 256}`. A missing field, a string or a boolean there does not count. A path names a list element by its number, as in `messages.0.content` |
+| `body_same_as` | Only requests whose body holds, at each of `fields`, the same value as the first request `mock` logged on `route`, or its first request at all without a `route`, count. Values compare as JSON, whatever their key order, so `1` is not `1.0`. If that mock server logged no such request, or its body lacks a field, the assertion fails, saying so. Its mock server and route must exist (S23) |
+| `body_prefix_stable` | A dotted path. The requests that count, in the order they came, each hold there a text or a list that starts with the whole of the previous one's: a text by its characters, a list by its first elements, each the same JSON. A request that lacks the field, or holds anything else there, fails it. It is an assertion alone, so `count` is optional beside it; with fewer than two requests it holds |
+| With the others | These narrow what counts together with `route`, `headers` and `form`, then `count`, `min_count`, `max_count`, `min_gap_ms` and `body_prefix_stable` judge what is left. A failure names what narrowed: `backup chat-stream with body messages the same as primary chat-stream: expected 1 request, saw 0` |
+| Limits | The [log's](#request-log) bounds are unchanged. A body cut at its 64 KiB fails any of these with `a logged body was cut at the log's limit, so its JSON cannot be judged`, and a log that overflowed fails them as it fails `form` |
+
+**The byte-prefix check, read simply.** R33 asked for a byte-prefix check across requests, and the first sketch said each request's whole body bytes start with the previous request's whole body. A JSON body closes its brackets after its last message, so a growing conversation never does that, and a provider caches the prompt it reads from the JSON, not the body's bytes. So the check reads one field, the one that grows: a text by its characters, which are its bytes once encoded, and a list element by element, each compared as canonical JSON text. A system prompt that gains a timestamp, a history rewritten in place, or tools reordered between calls break it; another key order or spacing does not. A second `log` entry checks a second field, such as `system` or `tools`.
+
 #### Still to confirm
 
 ```yaml
@@ -615,7 +640,6 @@ scenarios:
 
 | Feature | Rule |
 |---------|------|
-| Logged bodies | A case's `log` entry gains `body`, a JSON subset the logged body must contain, and `body_prefix_stable: true`: each request's body bytes start with the previous request's whole body, which is what a cache-stable history needs. A body truncated at the log's limit is a content error for that assertion, so such a route raises its own limit up to 1 MiB |
 | A mock LLM provider | Just config data on this format, with no key and no cost. A fake key goes in `project.env`, and a `log` entry can assert the header carried it |
 | Shape drift | Provider response shapes drift, so a config modeling a real API records `shape_version`, an authoring rule that no check can detect. It is a record for authors, and cstudy never checks it against a live API |
 | Out of scope | Per-request token signing for a mock identity provider. Use a service container, decided at the first identity problem (R34) |
@@ -919,7 +943,7 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 | `expected.body` | Optional; left out, any body passes. A string is the body's exact text. Anything else is compared parsed, by `comparator`, so key order and whitespace cannot fail a correct answer, and `null` asks for a JSON null. An object must hold exactly the fields expected: an extra one fails and is named. `NaN` and `Infinity` are not JSON |
 | `expected.headers` | Optional. Each listed header must match, its name in any case. A `Content-Type` that names no parameter ignores the answer's, so a framework's `; charset=utf-8` cannot fail it |
 | `comparator` | Overrides the problem's: `{"type": ...}`, with `tolerance` for `float`. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
-| `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers. `headers` and `form` narrow what counts to the requests that carried each header, by its name in any case, or each field of a form-encoded body, such as `{"form": {"refresh_token": "{{rt2}}"}}` with `count: 1`. Their values may name [captures](#multi-step-cases). A log that overflowed fails them too, and so does a body cut at the log's 64 KiB, whose form cannot be read |
+| `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers. `headers` and `form` narrow what counts to the requests that carried each header, by its name in any case, or each field of a form-encoded body, such as `{"form": {"refresh_token": "{{rt2}}"}}` with `count: 1`. Their values may name [captures](#multi-step-cases). A log that overflowed fails them too, and so does a body cut at the log's 64 KiB, whose form cannot be read. `body`, `body_max`, `body_same_as` and `body_prefix_stable` judge a JSON body ([Logged bodies](#logged-bodies)) |
 | `fresh` | Restart the app and run `commands.reset` first |
 | `app_output` | What your app may not print while the case runs: `{"absent": [...]}` ([Output check](#output-check)) |
 
@@ -1241,7 +1265,7 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; each `{{` in a body opens a [run-time value](#run-time-values); every scenario's `delay_ms`, `Retry-After` and stream `after_ms` in all are at most 3 s, and `Retry-After` is whole seconds; an `upstream` names a service of the compose file; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
 | S21 (new) | Nothing in the compose file reaches past the sandbox, and a stack holds the file to it before it starts. The file holds only `services`, at least one, and their `volumes`. A service sets only `image`, `command`, `entrypoint`, `environment`, `healthcheck`, `mem_limit`, `pids_limit`, `volumes`, `tmpfs`, `user`, `working_dir`, `read_only`, `depends_on`, `stop_grace_period`, `stop_signal`, `shm_size` and `init`, so `privileged`, `cap_add`, `network_mode`, `pid`, `ipc`, `devices`, `ports`, `networks`, `env_file`, `extends`, hooks, `build` and anything else are refused, including what compose adds later. Its image is pinned by digest; `mem_limit` is a size and `pids_limit` a positive number, both required; its `healthcheck` has a test and is not disabled; it waits only for the file's own services; its name is lowercase letters, digits and `-`, neither reserved nor a mock server's. A mount is a bind inside the problem, never the Docker socket, a named volume the file declares, or a tmpfs; no anonymous volume. A volume takes no settings, no `external`, driver, options, name or labels, and is not named `data` or `cache` |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image. Static only: a stack does not refuse a list that disagrees |
-| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. In a [multi-step case](#multi-step-cases), each `{{name}}` was captured before it is used, each `{{` opens a name, and each `url` written out names your app's origin or a `grader_reach` entry's. In a [parallel case](#parallel-cases), `expected_statuses` adds up to `count`, and `repeat` comes with `fresh`; the schema holds `count` from 2 to 64 |
+| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes, its `body_same_as` too; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. In a [multi-step case](#multi-step-cases), each `{{name}}` was captured before it is used, each `{{` opens a name, and each `url` written out names your app's origin or a `grader_reach` entry's. In a [parallel case](#parallel-cases), `expected_statuses` adds up to `count`, and `repeat` comes with `fresh`; the schema holds `count` from 2 to 64 |
 
 ### Dynamic
 

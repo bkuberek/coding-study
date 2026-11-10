@@ -18,6 +18,7 @@ from coding_study.domain.http_case import (
 from coding_study.domain.http_origins import is_absolute, split_url
 from coding_study.domain.http_templates import (
     OPENING,
+    assertion_texts,
     expected_texts,
     malformed_placeholder,
     placeholder_names,
@@ -50,7 +51,7 @@ def _issues_of(step: HttpStep, captured: set[str], origins: frozenset[str]) -> I
 
 
 def _log_issues(assertion: LogAssertion, captured: set[str]) -> Iterator[str]:
-    texts = (*assertion.headers.values(), *assertion.form.values())
+    texts = assertion_texts(assertion)
     for problem in _text_issues(texts, captured, "is captured by no step"):
         yield f"log {assertion.mock}: {problem}"
 

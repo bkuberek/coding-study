@@ -14,7 +14,7 @@ from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import Case, Expected, FunctionInput
 from coding_study.domain.config import Config, HangGuardSettings
 from coding_study.domain.errors import ContentError
-from coding_study.domain.http_case import HttpExpected, HttpRequest, LogAssertion
+from coding_study.domain.http_case import HttpExpected, HttpRequest, LogAssertion, SameBody
 from coding_study.domain.http_grading import (
     ExchangeFailed,
     ExchangeFailure,
@@ -441,6 +441,21 @@ def test_a_log_assertion_on_an_unknown_mock_server_is_a_content_error():
     rig = Rig()
     with pytest.raises(ContentError, match="other-vendor"):
         grade(rig, http_case(log=(LogAssertion("other-vendor", count=1),)))
+
+
+def test_a_same_body_reference_to_an_unknown_mock_server_is_a_content_error():
+    rig = Rig()
+    same = SameBody("other-vendor", None, ("messages",))
+    with pytest.raises(ContentError, match="other-vendor"):
+        grade(rig, http_case(log=(LogAssertion(ROOM_VENDOR, count=1, body_same_as=same),)))
+
+
+def test_a_same_body_assertion_reads_its_reference_log():
+    rig = Rig()
+    rig.control.logs[ROOM_VENDOR] = MockLog((LoggedRequest("r", 0, 1, {}, '{"m": [1]}'),))
+    same = SameBody(ROOM_VENDOR, "r", ("m",))
+    case = http_case(log=(LogAssertion(ROOM_VENDOR, "r", count=1, body_same_as=same),))
+    assert statuses(grade(rig, case)) == [CaseStatus.PASS]
 
 
 def test_an_unknown_scenario_is_a_content_error_that_keeps_its_name_out_of_a_report():

@@ -2,7 +2,7 @@ from typing import Any
 
 from coding_study.adapters.http_grader.case_document import http_case_input
 from coding_study.domain.cases import Expected
-from coding_study.domain.http_case import HttpExpected, HttpRequest, LogAssertion
+from coding_study.domain.http_case import HttpExpected, HttpRequest, LogAssertion, SameBody
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
 
 
@@ -115,6 +115,34 @@ def test_a_log_assertion_reads_every_field():
     }
     parsed = http_case_input(document(log=[entry]))
     assert parsed.log == (LogAssertion("room-vendor", "availability", 2, 1, 3, 950),)
+
+
+def test_a_log_assertion_reads_its_body_fields():
+    entry = {
+        "mock": "backup",
+        "route": "chat",
+        "count": 1,
+        "body": {"stream": True},
+        "body_max": {"max_tokens": 256},
+        "body_same_as": {"mock": "primary", "route": "chat", "fields": ["messages"]},
+        "body_prefix_stable": "messages",
+    }
+    (assertion,) = http_case_input(document(log=[entry])).log
+    assert assertion == LogAssertion(
+        "backup",
+        "chat",
+        count=1,
+        body={"stream": True},
+        body_max={"max_tokens": 256},
+        body_same_as=SameBody("primary", "chat", ("messages",)),
+        body_prefix_stable="messages",
+    )
+
+
+def test_a_same_body_reference_may_name_no_route():
+    entry = {"mock": "backup", "count": 1, "body_same_as": {"mock": "primary", "fields": ["a.b"]}}
+    (assertion,) = http_case_input(document(log=[entry])).log
+    assert assertion.body_same_as == SameBody("primary", None, ("a.b",))
 
 
 def test_before_requests_are_requests():

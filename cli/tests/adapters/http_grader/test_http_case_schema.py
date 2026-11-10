@@ -84,6 +84,48 @@ def test_a_log_assertion_may_cover_a_whole_mock_server(validator: SchemaValidato
     assert violations(validator, with_fields(log=[{"mock": "room-vendor", "count": 1}])) == []
 
 
+BODY_ASSERTION = {
+    "mock": "backup",
+    "route": "chat",
+    "count": 1,
+    "body": {"stream": True},
+    "body_max": {"max_tokens": 256},
+    "body_same_as": {"mock": "primary", "route": "chat", "fields": ["messages"]},
+}
+
+
+def test_a_log_assertion_may_judge_a_logged_body(validator: SchemaValidator):
+    assert violations(validator, with_fields(log=[BODY_ASSERTION])) == []
+
+
+def test_prefix_stability_is_an_assertion_alone(validator: SchemaValidator):
+    entry = {"mock": "llm", "body_prefix_stable": "messages"}
+    assert violations(validator, with_fields(log=[entry])) == []
+
+
+@pytest.mark.parametrize(
+    ("label", "changes"),
+    [
+        ("a body subset that is a list", {"body": [1]}),
+        ("a maximum that is no number", {"body_max": {"max_tokens": "256"}}),
+        ("an empty maximum", {"body_max": {}}),
+        ("a maximum on an empty path", {"body_max": {"a..b": 1}}),
+        ("a reference with no fields", {"body_same_as": {"mock": "primary", "fields": []}}),
+        ("a reference with no mock", {"body_same_as": {"fields": ["messages"]}}),
+        (
+            "a reference with an extra field",
+            {"body_same_as": {"mock": "p", "fields": ["m"], "x": 1}},
+        ),
+        ("a prefix on an empty path", {"body_prefix_stable": ""}),
+    ],
+)
+def test_a_body_assertion_is_refused_for(
+    validator: SchemaValidator, label: str, changes: dict[str, Any]
+):
+    case = with_fields(log=[{**BODY_ASSERTION, **changes}])
+    assert violations(validator, case) != [], label
+
+
 @pytest.mark.parametrize(
     ("label", "case"),
     [

@@ -427,8 +427,13 @@ def _scenarios(where: str, case: Case, http: HttpCaseInput, rules: _CaseRules) -
 
 def _logs(where: str, http: HttpCaseInput, rules: _CaseRules) -> _Found:
     for assertion in http.log:
-        files = rules.files.mocks.get(assertion.mock)
-        if files is None:
-            yield where, f"no mock server named {assertion.mock}"
-        elif assertion.route is not None and assertion.route not in route_ids(files):
-            yield where, f"{assertion.mock} has no route {assertion.route}"
+        named = [(assertion.mock, assertion.route)]
+        same = assertion.body_same_as
+        if same is not None:
+            named.append((same.mock, same.route))
+        for mock, route in named:
+            files = rules.files.mocks.get(mock)
+            if files is None:
+                yield where, f"no mock server named {mock}"
+            elif route is not None and route not in route_ids(files):
+                yield where, f"{mock} has no route {route}"

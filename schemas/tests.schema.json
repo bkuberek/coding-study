@@ -360,14 +360,46 @@
           "description": "Only requests whose form-encoded body held each of these fields count; a value may name a {{capture}}",
           "type": "object",
           "additionalProperties": { "type": "string" }
+        },
+        "body": {
+          "description": "Only requests whose JSON body holds this subset count, as a mock server's match.body; a string may name a {{capture}}",
+          "type": "object"
+        },
+        "body_max": {
+          "description": "Only requests whose JSON body has a number at most this at each dotted path count",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/dottedPath" },
+          "additionalProperties": { "type": "number" }
+        },
+        "body_same_as": {
+          "description": "Only requests whose JSON body holds the same value at each field as the first request this mock server logged on this route count",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mock", "fields"],
+          "properties": {
+            "mock": { "$ref": "#/$defs/mockName" },
+            "route": { "description": "Left out, the mock server's first request", "type": "string", "minLength": 1 },
+            "fields": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/dottedPath" } }
+          }
+        },
+        "body_prefix_stable": {
+          "description": "A dotted path: each request that counts, in order, holds there a text or a list that starts with the previous one's whole value",
+          "$ref": "#/$defs/dottedPath"
         }
       },
       "anyOf": [
         { "required": ["count"] },
         { "required": ["min_count"] },
         { "required": ["max_count"] },
-        { "required": ["min_gap_ms"] }
+        { "required": ["min_gap_ms"] },
+        { "required": ["body_prefix_stable"] }
       ]
+    },
+    "dottedPath": {
+      "description": "JSON field names joined by dots, a number naming a list element: messages.0.content",
+      "type": "string",
+      "pattern": "^[^.]+(\\.[^.]+)*$"
     },
     "memberName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "groupName": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },

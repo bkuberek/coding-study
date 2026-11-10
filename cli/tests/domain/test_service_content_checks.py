@@ -13,6 +13,7 @@ from coding_study.domain.http_case import (
     LogAssertion,
     ParallelBurst,
     RequestTemplate,
+    SameBody,
 )
 from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Level
@@ -630,6 +631,25 @@ def test_a_log_assertion_names_a_known_mock_server_and_route():
 
     assert any("nobody" in message for message in s23(unknown_mock, http_case("h2", 2)))
     assert any("nothing" in message for message in s23(unknown_route, http_case("h2", 2)))
+
+
+def same_body_case(mock: str, route: str | None) -> Case:
+    same = SameBody(mock, route, ("messages",))
+    return http_case(log=(LogAssertion("room-vendor", count=1, body_same_as=same),))
+
+
+def test_a_same_body_reference_names_a_known_mock_server():
+    found = s23(same_body_case("nobody", None), http_case("h2", 2))
+    assert any("nobody" in message for message in found)
+
+
+def test_a_same_body_reference_names_a_known_route():
+    found = s23(same_body_case("room-vendor", "nothing"), http_case("h2", 2))
+    assert any("nothing" in message for message in found)
+
+
+def test_a_same_body_reference_to_a_known_route_is_allowed():
+    assert s23(same_body_case("room-vendor", "rooms"), http_case("h2", 2)) == []
 
 
 def test_waits_stay_within_the_cases_hang_guard():

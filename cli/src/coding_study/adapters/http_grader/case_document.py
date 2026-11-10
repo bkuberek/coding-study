@@ -28,6 +28,7 @@ from coding_study.domain.http_case import (
     ParallelBurst,
     QueryValue,
     RequestTemplate,
+    SameBody,
     TemplateBody,
     TextBody,
 )
@@ -299,7 +300,17 @@ def _log_assertion(entry: Document) -> LogAssertion:
         min_gap_ms=entry.get("min_gap_ms"),
         headers=dict(entry.get("headers", {})),
         form=dict(entry.get("form", {})),
+        body=entry.get("body"),
+        body_max=dict(entry.get("body_max", {})),
+        body_same_as=_same_body(entry.get("body_same_as")),
+        body_prefix_stable=entry.get("body_prefix_stable"),
     )
+
+
+def _same_body(reference: Document | None) -> SameBody | None:
+    if reference is None:
+        return None
+    return SameBody(reference["mock"], reference.get("route"), tuple(reference["fields"]))
 
 
 def _output_check(case: Document) -> OutputCheck | None:

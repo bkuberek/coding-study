@@ -9,6 +9,7 @@ from coding_study.domain.http_case import (
     JsonBody,
     LogAssertion,
     RequestTemplate,
+    SameBody,
     TextBody,
 )
 from coding_study.domain.http_templates import (
@@ -148,3 +149,16 @@ def test_an_expected_body_and_headers_are_filled():
 def test_a_log_assertion_is_filled():
     assertion = LogAssertion("idp", "token", count=1, form={"code": "{{code}}"})
     assert rendered_assertion(assertion, VALUES).form == {"code": "c-1"}
+
+
+def test_a_log_assertions_body_subset_is_filled():
+    assertion = LogAssertion("llm", count=1, body={"user": {"code": "{{code}}"}, "n": 1})
+    assert rendered_assertion(assertion, VALUES).body == {"user": {"code": "c-1"}, "n": 1}
+
+
+def test_a_log_assertion_keeps_its_other_body_fields():
+    same = SameBody("llm", "chat", ("messages",))
+    assertion = LogAssertion(
+        "backup", count=1, body_max={"max_tokens": 9}, body_same_as=same, body_prefix_stable="m"
+    )
+    assert rendered_assertion(assertion, VALUES) == assertion
