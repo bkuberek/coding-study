@@ -1,12 +1,27 @@
 """A service project from `cstudy start` to the last `cstudy submit`, in TypeScript and in Python,
-on a real Docker engine. Run with `uv run pytest -q -m docker`. The waits are generous for a busy
-machine: what these tests assert is what happened, not how fast."""
+on a real Docker engine, and its code intelligence from inside the sidecar. Run with
+`uv run pytest -q -m docker`. The waits are generous for a busy machine: what these tests assert
+is what happened, not how fast."""
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
+from starlette.testclient import WebSocketTestSession
 
+from coding_study.adapters.environment_factory import load_environment
+from coding_study.adapters.language_servers.lsp_directory import LspDirectory
+from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.subprocess_tool_probe import (
+    SubprocessCommandRunner,
+    SubprocessToolProbe,
+)
+from coding_study.domain.preferences import Preferences, preferences_document
+from coding_study.entrypoints.web.code_intelligence import LanguageSessions
+from tests.language_server_scripts import notification, request
+from tests.language_sessions import received, session
 from tests.real_service_projects import (
     MEMBERS,
     PYTHON,
@@ -15,6 +30,8 @@ from tests.real_service_projects import (
     docker,
     fixture_project,
 )
+from tests.waits import GENEROUS_WAIT_S
+from tests.web_server import session_client, web_app
 
 pytestmark = [pytest.mark.slow, pytest.mark.docker]
 
@@ -186,3 +203,181 @@ def test_verify_require_ready_passes_on_the_reference_with_backing_services(
     assert result.returncode == EXIT_OK, said(result)
     nothing_running(members)
     no_data_of_a_run_left(members)
+
+
+# Code intelligence from inside the sidecar (docs/specs/service-projects.md#language-servers):
+# `cstudy start` installs the fixture, the real servers of `.cs/lsp/` run in a sidecar over
+# `docker exec`, and a session gets a type error and a hover from the project's own
+# dependencies; once it ends, nothing of cstudy's is left. Needs Node and pnpm for `.cs/lsp/`.
+
+
+@dataclass(frozen=True, slots=True)
+class Opened:
+    """A file of the fixture, the text the page opens it with, what it is wrong about, where a
+    hover lands, and where a definition is asked for, which leads into the project's own
+    dependencies."""
+
+    path: str
+    language_id: str
+    text: str
+    error: str
+    """Words of the error the server reports for `text`."""
+    hover_at: dict[str, int]
+    hovered: str
+    """Words of the hover there."""
+    defined_at: dict[str, int]
+    defined_in: str
+    """Where in the project folder the definition's file is."""
+
+
+TYPESCRIPT_FILE = Opened(
+    path="src/server.ts",
+    language_id="typescript",
+    text=(
+        'import { createServer } from "node:http";\n\n'
+        "const port: string = Number(process.env.PORT);\n"
+        "createServer().listen(port);\n"
+    ),
+    error="is not assignable to type 'string'",
+    hover_at={"line": 0, "character": 10},
+    hovered="createServer",
+    defined_at={"line": 0, "character": 10},
+    defined_in="node_modules/",
+)
+"""`createServer`'s types come from the project's own `@types/node` in its `node_modules`."""
+PYTHON_FILE = Opened(
+    path="src/server.py",
+    language_id="python",
+    text="import json\n\nimport pytest\n\nprint(json.dumps({}) + 1, pytest)\n",
+    error="Operator",
+    hover_at={"line": 4, "character": 12},
+    hovered="dumps",
+    defined_at={"line": 2, "character": 8},
+    defined_in=".venv/lib/",
+)
+"""`pytest` is installed in the project's `.venv` only, by `uv sync` in Docker."""
+FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE}
+
+
+@pytest.fixture(scope="module", params=[TYPESCRIPT, PYTHON], ids=["typescript", "python"])
+def sidecar_project(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Generator[FixtureProject]:
+    found = fixture_project(request.param, tmp_path_factory.mktemp("sidecar"))
+    try:
+        started = found.cstudy("start", found.slug, "--yes", "--no-open")
+        assert started.returncode == 0, f"{started.stdout}\n{started.stderr}"
+        installed = LspDirectory(found.root, SubprocessToolProbe(), SubprocessCommandRunner())
+        result = installed.install()
+        if result is None or result.exit_code != 0:
+            pytest.skip(f"the language servers are not installed: {result and result.output}")
+        FsPreferencesStore(found.root).write(
+            preferences_document(Preferences(code_intelligence=True))
+        )
+        yield found
+    finally:
+        found.remove_all_it_left()
+
+
+@dataclass
+class Played:
+    diagnostics: list[dict[str, Any]]
+    hover: dict[str, Any]
+    definition: str
+    """The URI of the first place the definition named."""
+    library: dict[str, Any]
+    """What `cstudy/libraryFile` answered for that place."""
+
+
+def until(
+    websocket: WebSocketTestSession, matches: Callable[[dict[str, Any]], bool]
+) -> dict[str, Any]:
+    while True:
+        message = received(websocket, GENEROUS_WAIT_S)
+        if matches(message):
+            return message
+
+
+@pytest.fixture(scope="module")
+def sidecar_session(sidecar_project: FixtureProject) -> Played:
+    """A session that opens the file, waits for its diagnostics and asks for a hover, then ends;
+    the server's stop has taken the sidecar down by the time the app has stopped."""
+    opened = FILES[sidecar_project.directory]
+    environment = load_environment(
+        sidecar_project.root, sidecar_project.environment(), sidecar_project.root.parent
+    )
+    attempt = environment.progress.active_attempt(sidecar_project.slug)
+    assert attempt is not None
+    document = (sidecar_project.folder / opened.path).as_uri()
+    app = web_app(sidecar_project.root, environment, sessions=LanguageSessions())
+    with session_client(app) as client, session(client, f"?attempt_id={attempt.id}") as websocket:
+        websocket.send_json(request(1, "initialize", {"capabilities": {}}))
+        until(websocket, lambda message: message.get("id") == 1)
+        websocket.send_json(notification("initialized", {}))
+        text = {
+            "uri": document,
+            "languageId": opened.language_id,
+            "version": 1,
+            "text": opened.text,
+        }
+        websocket.send_json(notification("textDocument/didOpen", {"textDocument": text}))
+        published = until(websocket, lambda message: _reports_on(message, document))
+        position = {"textDocument": {"uri": document}, "position": opened.hover_at}
+        websocket.send_json(request(2, "textDocument/hover", position))
+        hover = until(websocket, lambda message: message.get("id") == 2)
+        position = {"textDocument": {"uri": document}, "position": opened.defined_at}
+        websocket.send_json(request(3, "textDocument/definition", position))
+        definition = _first_target(until(websocket, lambda message: message.get("id") == 3))
+        websocket.send_json(request(4, "cstudy/libraryFile", {"uri": definition}))
+        library = until(websocket, lambda message: message.get("id") == 4)
+    return Played(published["params"]["diagnostics"], hover, definition, library)
+
+
+def _first_target(answer: dict[str, Any]) -> str:
+    found = answer["result"]
+    location = found[0] if isinstance(found, list) else found
+    return location.get("targetUri") or location["uri"]
+
+
+def _reports_on(message: dict[str, Any], document: str) -> bool:
+    params = message.get("params") or {}
+    return (
+        message.get("method") == "textDocument/publishDiagnostics"
+        and params.get("uri") == document
+        and bool(params.get("diagnostics"))
+    )
+
+
+def test_the_server_in_the_sidecar_reports_the_type_error(sidecar_project, sidecar_session):
+    error = FILES[sidecar_project.directory].error
+
+    assert any(error in diagnostic["message"] for diagnostic in sidecar_session.diagnostics)
+
+
+def test_the_server_in_the_sidecar_answers_a_hover_from_the_projects_dependencies(
+    sidecar_project, sidecar_session
+):
+    assert (
+        FILES[sidecar_project.directory].hovered
+        in sidecar_session.hover["result"]["contents"]["value"]
+    )
+
+
+def test_a_definition_leads_into_the_projects_installed_dependencies(
+    sidecar_project, sidecar_session
+):
+    within = (sidecar_project.folder / FILES[sidecar_project.directory].defined_in).as_uri()
+
+    assert sidecar_session.definition.startswith(within)
+
+
+def test_the_library_tab_reads_that_file_at_the_same_path_on_this_machine(sidecar_session):
+    assert sidecar_session.library["result"]["text"]
+
+
+def test_no_container_is_left_once_the_session_ended(sidecar_project, sidecar_session):
+    assert sidecar_project.labelled("containers") == []
+
+
+def test_no_folder_of_the_sidecar_is_left_once_the_session_ended(sidecar_project, sidecar_session):
+    assert not any((sidecar_project.root / ".cs" / "runs").glob("cstudy-l-*"))

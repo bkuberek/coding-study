@@ -19,6 +19,7 @@ from coding_study.domain.sandbox import (
     ReadyStack,
     SandboxInventory,
     SandboxUser,
+    SidecarPlan,
     StackIdentity,
     StackPlan,
     StackStartError,
@@ -60,6 +61,7 @@ class FakeSandbox:
     """What happens while `follow_app` would block: a test raises KeyboardInterrupt here."""
     app_output: str = ""
     app_output_error: SandboxError | None = None
+    sidecar_error: SandboxError | None = None
 
     def state(self) -> EngineState:
         self.calls.append(("state", None))
@@ -183,6 +185,22 @@ class FakeSandbox:
     def stop_install(self, plan: InstallPlan) -> str | None:
         self.calls.append(("stop_install", plan.identity.name))
         return None
+
+    @contextmanager
+    def sidecar(self, plan: SidecarPlan) -> Generator[None]:
+        """Logs `sidecar` as it comes up and `sidecar_down` once it is gone, with its name."""
+        self.calls.append(("sidecar", plan.identity.name))
+        try:
+            if self.sidecar_error is not None:
+                raise self.sidecar_error
+            yield
+        finally:
+            self.calls.append(("sidecar_down", plan.identity.name))
+
+    def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
+        """The command itself, which then runs on this machine, as a test's fake server does."""
+        self.calls.append(("sidecar_command", tuple(command)))
+        return tuple(command)
 
     def called(self, name: str) -> list[object]:
         return [detail for called, detail in self.calls if called == name]

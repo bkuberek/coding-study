@@ -1,6 +1,6 @@
 """`cstudy status` of a service project (docs/specs/cli.md#cstudy-status): its next step names the
-commands a service project takes, it has no code intelligence whatever its language, and the Web UI
-runs none of its tests."""
+commands a service project takes, it has code intelligence in a sidecar in TypeScript and Python
+and none yet in another language, and the Web UI runs none of its tests."""
 
 from datetime import timedelta
 
@@ -16,7 +16,7 @@ from coding_study.domain.service_project import NoWebRuns
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from tests.fakes import NOW, make_environment
 from tests.sandbox_fakes import FakeSandbox
-from tests.service_problems import SLUG, make_content, write_problem
+from tests.service_problems import SLUG, make_content, meta_document, write_problem
 
 
 @pytest.fixture
@@ -28,8 +28,17 @@ def service(tmp_path) -> Environment:
     return environment
 
 
-def test_a_service_project_has_no_code_intelligence_whatever_its_language(service):
-    assert attempt_status(service, None, None).no_code_intelligence is (
+def test_a_typescript_service_project_has_code_intelligence_in_its_sidecar(service):
+    assert attempt_status(service, None, None).no_code_intelligence is None
+
+
+def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):
+    root = make_content(tmp_path)
+    write_problem(root, {**meta_document(), "languages": ["go"]})
+    environment = make_environment(root, sandbox=FakeSandbox())
+    start_attempt(environment, StartRequest(SLUG, Language.GO))
+
+    assert attempt_status(environment, None, None).no_code_intelligence is (
         NoCodeIntelligence.SERVICE_PROJECT
     )
 

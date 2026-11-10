@@ -148,3 +148,19 @@ def test_the_list_needs_the_session_cookie(tmp_path):
 def test_the_list_is_not_cached(tmp_path):
     response = languages(tmp_path, FakeLanguageServers())
     assert response.headers["cache-control"] == "no-store"
+
+
+def listed(tmp_path, query: str):
+    environment = web_workspace(tmp_path, language_servers=FakeLanguageServers(INSTALLED_SERVERS))
+    with session_client(web_app(tmp_path, environment)) as client:
+        return client.get(f"{LANGUAGES}{query}")
+
+
+def test_the_list_of_an_attempt_no_one_started_is_the_workspaces(tmp_path):
+    """An attempt judges its servers as its sessions would: a service project in its sidecar."""
+    response = listed(tmp_path, "?attempt_id=99")
+    assert (response.status_code, len(response.json()["languages"])) == (200, 6)
+
+
+def test_an_attempt_id_that_is_not_a_positive_integer_is_refused(tmp_path):
+    assert listed(tmp_path, "?attempt_id=two").status_code == 422

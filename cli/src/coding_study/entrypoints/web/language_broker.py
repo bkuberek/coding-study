@@ -104,9 +104,11 @@ class Delivery:
 
 class LanguageBroker:
     """One session's rules. `version` is cstudy's, and `pid` that of `cstudy serve`, which the
-    server watches when it follows LSP's `processId` rule."""
+    server watches when it follows LSP's `processId` rule; None for a server in a sidecar, which
+    cannot see this machine's processes and would exit at once (it stops at the end of its input
+    instead)."""
 
-    def __init__(self, target: SessionTarget, version: str, pid: int) -> None:
+    def __init__(self, target: SessionTarget, version: str, pid: int | None) -> None:
         self._target = target
         self._version = version
         self._pid = pid

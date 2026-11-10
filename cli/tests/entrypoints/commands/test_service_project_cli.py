@@ -160,11 +160,9 @@ def test_status_names_dev_and_the_tests_as_the_next_step(environment):
     assert "next       cstudy dev, then cstudy test and cstudy submit" in invoke("status").output
 
 
-def test_status_json_says_the_project_has_no_code_intelligence(environment):
+def test_status_json_says_the_typescript_project_has_code_intelligence(environment):
     start_it()
-    assert json.loads(invoke("status", "--json").output)["no_code_intelligence"] == (
-        "service_project"
-    )
+    assert json.loads(invoke("status", "--json").output)["no_code_intelligence"] is None
 
 
 def test_status_json_says_the_web_ui_runs_none_of_its_tests(environment):

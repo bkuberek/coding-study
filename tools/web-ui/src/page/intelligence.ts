@@ -36,7 +36,8 @@ export type Decision =
 /** The attempt as code intelligence sees it, from its status. */
 export interface AttemptLanguage {
   readonly language: string | null;
-  /** Why the attempt has none whatever its language's server (`service_project`), or null. */
+  /** Why the attempt has none whatever its language's server (`service_project`, in a language whose server runs
+   * in no sidecar yet), or null. */
   readonly noCodeIntelligence: string | null;
 }
 
@@ -48,7 +49,7 @@ const NO_ATTEMPT: AttemptLanguage = { language: null, noCodeIntelligence: null }
 export function decide(path: string, attempt: AttemptLanguage, states: readonly LanguageState[] | null): Decision {
   const language = serverLanguageFor(path);
   if (language === null || language !== attempt.language) return { kind: "none" };
-  if (attempt.noCodeIntelligence !== null) return { kind: "show", found: { kind: "withheld", reason: attempt.noCodeIntelligence } };
+  if (attempt.noCodeIntelligence !== null) return { kind: "show", found: { kind: "withheld", reason: attempt.noCodeIntelligence, language } };
   if (states === null) return { kind: "waiting" };
   const state = states.find((candidate) => candidate.language === language);
   if (state === undefined) return { kind: "none" };
@@ -253,9 +254,10 @@ export class IntelligenceLink {
     tracked.found = null;
   }
 
+  /** The servers as this attempt's sessions judge them: a service project's run in its sidecar. */
   #read(): Promise<void> {
     this.#reading ??= this.#context.api
-      .get<LanguageStates>(LANGUAGES)
+      .get<LanguageStates>(`${LANGUAGES}?attempt_id=${this.#attemptId}`)
       .then((read) => {
         this.#states = read.languages;
       })

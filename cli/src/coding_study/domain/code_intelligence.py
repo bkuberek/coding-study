@@ -8,8 +8,9 @@ Commands take the absolute directories they run with (`Launch`), so no path type
 import re
 import shlex
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
+from functools import partial
 
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.jdk import SUPPORTED_JDKS, JdkRange
@@ -347,8 +348,13 @@ def _no_options(_workspace: str) -> dict[str, JsonValue]:
 def _typescript_options(workspace: str) -> dict[str, JsonValue]:
     """The compiler that `--typecheck` runs, no typings fetched from npm (NFR-6), and no
     completion that adds an import: adding one is a quick fix, which is out of scope."""
+    return _compiler_options(f"{workspace}/{TYPESCRIPT_PROJECT}", workspace)
+
+
+def _compiler_options(project: str, _workspace: str) -> dict[str, JsonValue]:
+    """The options of a session whose compiler is the one installed in `project`."""
     return {
-        "tsserver": {"path": f"{workspace}/{TYPESCRIPT_PROJECT}/node_modules/typescript/lib"},
+        "tsserver": {"path": f"{project}/node_modules/typescript/lib"},
         "disableAutomaticTypingAcquisition": True,
         "preferences": {"includeCompletionsForModuleExports": False},
     }
@@ -742,13 +748,35 @@ def server_for(language: Language) -> LanguageServer | None:
     return next((server for server in LANGUAGE_SERVERS if server.language is language), None)
 
 
+SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER)
+"""The servers that run in a service project's sidecar: Node programs, so the sidecar's Node image
+runs them for both languages (docs/specs/service-projects.md#language-servers)."""
+
+
+def sidecar_server(server: LanguageServer, folder: str) -> LanguageServer:
+    """`server` as it runs in a service project's sidecar, on the dependencies installed in the
+    absolute `folder`. TypeScript's compiler is the folder's own, so the workspace's `typescript/`
+    is not needed; basedpyright is the catalog's, since it reads the folder's `[tool.pyright]`,
+    whose `venv` it finds without asking Python. Raises ValueError for a server of no sidecar."""
+    if server not in SIDECAR_SERVERS:
+        raise ValueError(f"{server.name} runs in no sidecar")
+    if server is not TYPESCRIPT_LANGUAGE_SERVER:
+        return server
+    options = partial(_compiler_options, folder)
+    return replace(server, initialization_options=options, requirement=None)
+
+
 class NoCodeIntelligence(StrEnum):
     """Why an attempt has no code intelligence whatever its language's server."""
 
     SERVICE_PROJECT = "service_project"
     """Sandboxed code writes the folder, and a server on this machine would read it, until one runs
-    in a container (docs/specs/service-projects.md#language-servers)."""
+    in a sidecar for the language (docs/specs/service-projects.md#language-servers)."""
 
 
-def no_code_intelligence(meta: ProblemMeta) -> NoCodeIntelligence | None:
-    return NoCodeIntelligence.SERVICE_PROJECT if service_of(meta) is not None else None
+def no_code_intelligence(meta: ProblemMeta, language: Language | None) -> NoCodeIntelligence | None:
+    """A service project in a language whose server runs in no sidecar yet has none."""
+    if service_of(meta) is None:
+        return None
+    in_sidecar = any(server.language is language for server in SIDECAR_SERVERS)
+    return None if in_sidecar else NoCodeIntelligence.SERVICE_PROJECT

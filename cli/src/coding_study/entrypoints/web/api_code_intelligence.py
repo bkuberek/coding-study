@@ -1,5 +1,6 @@
-"""`GET /api/v1/code-intelligence/languages`, the state of each language's server, and `GET
-/api/v1/code-intelligence?attempt_id=N`, the WebSocket of a session
+"""`GET /api/v1/code-intelligence/languages`, the state of each language's server, for an attempt
+when `attempt_id` names one, and `GET /api/v1/code-intelligence?attempt_id=N`, the WebSocket of a
+session
 (docs/specs/web-ui.md#code-intelligence, docs/specs/web-ui.md#sessions).
 
 The handshake is checked in the spec's order: the security layer refuses a Host, a cookie or an
@@ -21,10 +22,9 @@ from starlette.websockets import WebSocket
 from coding_study.application.code_intelligence import (
     LanguageServerState,
     SessionTarget,
-    language_server_states,
+    session_server_states,
     session_target,
 )
-from coding_study.application.environment import Environment
 from coding_study.application.preferences import read_preferences
 from coding_study.domain.errors import UsageError
 from coding_study.entrypoints.web.code_intelligence import bad_csrf
@@ -40,7 +40,9 @@ ATTEMPT_ID = "attempt_id"
 
 
 async def languages(request: Request) -> Response:
-    states = await in_workspace(request, _states)
+    """With `attempt_id`, the servers as that attempt's sessions judge them."""
+    attempt_id = positive_integer(request.query_params, ATTEMPT_ID)
+    states = await in_workspace(request, session_server_states, attempt_id)
     return JsonResponse({"languages": [_entry(state) for state in states]})
 
 
@@ -58,7 +60,8 @@ async def session(websocket: WebSocket) -> None:
         return
     await websocket.accept()
     if await _carries_token(websocket, server):
-        broker = LanguageBroker(target, server.settings.version, os.getpid())
+        watched = None if target.sidecar is not None else os.getpid()
+        broker = LanguageBroker(target, server.settings.version, watched)
         await server.sessions.serve(websocket, target, broker)
 
 
@@ -107,10 +110,6 @@ def _is_token(text: str | None, csrf: str) -> bool:
         return False
     token = cast(dict[str, object], document).get("csrf")
     return isinstance(token, str) and matches(token, csrf)
-
-
-def _states(environment: Environment) -> tuple[LanguageServerState, ...]:
-    return language_server_states(environment.language_servers, environment.jdk)
 
 
 def _entry(state: LanguageServerState) -> dict[str, object]:

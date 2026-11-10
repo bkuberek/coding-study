@@ -305,9 +305,25 @@ The fake server keeps the fast and browser tests deterministic: they wait for wh
 | 2 | Java on JDK 25 and 26 only (25 is the JDK to install), after a spike that measures JDT LS's start and memory on `jvm/` and a project folder; Kotlin in the same release, starting from a spike of the alpha Kotlin LSP on `jvm/kotlin` and a Kotlin project folder. If the Kotlin spike fails (it does not start offline, misses errors, or is too heavy), the owner is told before anything is built and Java ships alone. Done: Java ships with diagnostics, hover, definitions and, behind `autocomplete`, completion and signature help; the Kotlin spike failed ([Phase 2 spikes](#phase-2-spikes)), so Java ships alone |
 | 3 | Go and Rust, autocomplete included; pull diagnostics; documentation links that open library sources. Done: gopls, built by `cstudy doctor --fix` at the version the selected Go pins, and the rust-analyzer on `PATH`, which cstudy never installs; pulled diagnostics beside published ones; hover links into GOROOT that open the library tab ([Phase 3 measurements](#phase-3-measurements)) |
 | After 3 | Kotlin, from the owner's answer O5: JetBrains' Kotlin LSP behind a license each user accepts, after a spike of every Kotlin server. Done: diagnostics by pull, hover, definitions and, behind `autocomplete`, completion and signature help, with the license step of `cstudy doctor --fix` and its warm-up ([Kotlin revisited](#kotlin-revisited)) |
+| Service projects | [ADR 0019](0019-service-projects.md)'s P9, for TypeScript and Python. Done (2026-11-10): sandboxed code writes a service project's folder, so its server runs in a sidecar container per session instead of on this machine, through `docker exec`, with the same broker, catalog and `.cs/lsp/` ([Service projects](#service-projects)) |
 | Not planned | References, rename, and quick fixes such as adding a missing import, with the completions that add one ([Revisit](#revisit)) |
 
 The owner set this order on 2026-11-03 (O4). Each phase is its own release, with its guide section, screenshots and website message. A server that is not a Node program (JDT LS, the Kotlin LSP, gopls, rust-analyzer) must keep the [hidden directories](#servers) from its server in its own way, since `hide_paths.cjs` reaches Node processes only: each of those phases decides how, for example a launch the server runs inside, a workspace the server sees without them, or the broker's filtering alone, and tests it with a reference in `.cs/build/` before it ships.
+
+### Service projects
+
+A service project's folder is written by code that runs in Docker, so a server on this machine must not read it: basedpyright or tsserver there would run what the folder names. [ADR 0019](0019-service-projects.md)'s P9 runs the server in an `lsp` sidecar of its own per session, on the pinned `node:24-slim` image for both languages, with no network, the app's hardening and 768 MiB, and the project folder and `.cs/lsp/` read-only at the paths the session names. Nothing else changes for the page or the broker but these ([spec](../specs/service-projects.md#language-servers)):
+
+| Item | Rule |
+|------|------|
+| Command | `docker exec --interactive --workdir <project> <sidecar>` before the catalog's command, in the Docker client's environment; the [hidden directories](#servers) are not mounted, so no variable hides them, and none would cross `docker exec` |
+| `initialize` | `processId` null: the sidecar cannot see `cstudy serve`, and both servers would exit within seconds of finding its PID gone. They stop at the end of their input, as the spike measured |
+| TypeScript | `tsserver.path` is the project's own `node_modules/typescript/lib`, so the workspace's `typescript/` is not needed; the list of languages read with the attempt's id says so |
+| Python | The catalog's settings: basedpyright reads the project's `[tool.pyright]`, whose `venv` the template writes, and finds the packages with no Python in the image |
+| Definitions | Into `node_modules`, the `.venv` or typeshed in `.cs/lsp/`: files of the bind-mounted folders, which the library tab reads on this machine at the same path |
+| Docker not usable | The socket closes with 4004 and a calm reason; a session neither starts Docker nor pulls the image |
+
+Measured on the catalog's first service projects: TypeScript's first diagnostics 1.4 s after `didOpen`, 386 MiB at peak; basedpyright's 0.8 s, 140 MiB at peak. The servers are the same files as on this machine, so the install does not grow; a Python learner's Docker holds the `node:24-slim` image besides the project's, 352 MB on disk.
 
 ## Consequences
 
@@ -343,6 +359,8 @@ The owner set this order on 2026-11-03 (O4). Each phase is its own release, with
 | ty reaches 1.0 with standard-library documentation and pyright's configuration | The Python server |
 | A browser test finds Ctrl-Minus held by an engine | Another Back binding |
 | gopls drops the oldest Go that cstudy supports | The pinned table, or cstudy's Go minimum |
+| A Python service project's starter leaves `venv` out of `[tool.pyright]` | `basedpyright.analysis.extraPaths` with the `.venv`'s `site-packages`, which the spike measured working |
+| A service project in another language gets a template | Its server in the sidecar, or in an image of its own, in place of `no_code_intelligence` |
 
 ## Alternatives considered
 

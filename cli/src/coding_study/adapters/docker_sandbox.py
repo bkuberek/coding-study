@@ -70,6 +70,7 @@ from coding_study.domain.sandbox import (
     SandboxInventory,
     SandboxPaths,
     SandboxUser,
+    SidecarPlan,
     StackContainer,
     StackIdentity,
     StackPlan,
@@ -82,6 +83,7 @@ from coding_study.domain.sandbox import (
     is_stack_name,
     reach_listen_ports,
     render_compose,
+    sidecar_document,
     stack_document,
 )
 
@@ -93,6 +95,8 @@ INVENTORY_TIMEOUT_S = 60.0
 PULL_TIMEOUT_S = 1800.0
 UP_GRACE_S = 30
 """Past compose's own `--wait-timeout`, so its message arrives before the process is killed."""
+SIDECAR_UP_S = 120.0
+"""A container that only sleeps came up in 0.3 s; a loaded machine took seconds for a stack."""
 HEALTH_POLL_S = 0.1
 HEALTH_PROBE_TIMEOUT_S = 5.0
 STATE_CHECK_EVERY_S = 1.0
@@ -713,6 +717,32 @@ class DockerSandbox:
         words = found.output.split() if found is not None and found.exit_code == 0 else []
         return {word for word in words if _is_ipv4(word)}
 
+    @contextmanager
+    def sidecar(self, plan: SidecarPlan) -> Generator[None]:
+        """`up --detach` of the sidecar's own compose file: it idles, with no healthcheck to wait
+        for, until a server runs in it. The guard comes first and goes last, as for a stack."""
+        name = plan.identity.name
+        run = Path(plan.run)
+        with StackGuard(
+            name, removes_volumes=False, environment=docker_environment(), run_directory=run
+        ):
+            try:
+                run.mkdir(parents=True, exist_ok=True)
+                stack = run / STACK_FILE
+                _write_file(stack, render_compose(sidecar_document(plan)))
+                up = (*_COMPOSE, "-p", name, "-f", str(stack), "up", "--detach", *_PULL_NEVER)
+                _require_sidecar_up(self._runner.run(up, SIDECAR_UP_S))
+                yield
+            finally:
+                with _signals_held_off():
+                    self._down(name, removes_volumes=False)
+                _remove_folder(run)
+
+    def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
+        """No `--tty`: the server's output is the LSP stream, byte for byte."""
+        exec_in = ("exec", "--interactive", "--workdir", plan.project.path, plan.identity.name)
+        return (DOCKER, *exec_in, *command)
+
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
     ) -> CommandOutcome:
@@ -722,6 +752,13 @@ class DockerSandbox:
         _write_passwd(run, plan.user)
         arguments = ("run", "--rm", "-T", *_PULL_NEVER, INSTALL_SERVICE)
         return self._one_off(plan, arguments, timeout_s, on_output)
+
+
+def _require_sidecar_up(up: ProbeResult | None) -> None:
+    if up is None:
+        raise SandboxError("docker is not installed")
+    if up.exit_code != 0:
+        raise SandboxError(f"the sidecar did not start: {_tail(up.output).strip()}")
 
 
 class _ServiceState:

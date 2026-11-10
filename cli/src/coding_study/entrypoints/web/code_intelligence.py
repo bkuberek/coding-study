@@ -6,11 +6,13 @@ arrived. Each text message of the socket carries one JSON-RPC message, which thi
 the server's standard input and unframes from its standard output; what each becomes is the
 session's broker's to say (`language_broker.py`). At most four servers run at once. A server that
 keeps data, JDT LS, gets a data directory of its root under `.cs/lsp/` that no running server
-holds, since two cannot share one. A session ends
-when the socket closes, the server exits or the server stops; the stop sequence of the server runs
-as a task of its own, so a socket that goes away mid-request never leaves a process behind. What
-waits for a side that stopped reading is bounded: a server that reads none of its input, or a page
-that reads none of the server's messages, ends the session.
+holds, since two cannot share one. A service project's server runs in a sidecar container of its
+own, through `docker exec`, and the sidecar goes once the server has stopped
+(docs/specs/service-projects.md#language-servers). A session ends when the socket closes, the
+server exits or the server stops; the stop sequence of the server runs as a task of its own, so a
+socket that goes away mid-request never leaves a process behind. What waits for a side that stopped
+reading is bounded: a server that reads none of its input, or a page that reads none of the
+server's messages, ends the session.
 """
 
 import asyncio
@@ -18,7 +20,7 @@ import itertools
 import json
 import sys
 from collections.abc import Callable
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
@@ -26,10 +28,14 @@ from typing import Any, cast
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from coding_study.adapters.process_environment import inherited_environment
+from coding_study.adapters.docker_sandbox import DockerSandbox
+from coding_study.adapters.process_environment import docker_environment, inherited_environment
 from coding_study.application.attempt_changes import FileChanged
-from coding_study.application.code_intelligence import SessionTarget
+from coding_study.application.code_intelligence import SessionTarget, sidecar_unavailable
+from coding_study.application.ports import SidecarEngine
 from coding_study.domain.code_intelligence import Launch
+from coding_study.domain.errors import SandboxError
+from coding_study.domain.sandbox import SidecarPlan
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from coding_study.entrypoints.web.language_server import (
     LanguageServerCommand,
@@ -66,6 +72,9 @@ class CloseCode(IntEnum):
     MESSAGE_TOO_BIG = 1009
     SERVER_EXITED = 4002
     TOO_MANY_SESSIONS = 4003
+    NEEDS_DOCKER = 4004
+    """A service project's server cannot start: Docker does not answer, or the sidecar's image is
+    not here. The page shows it calmly, since nothing failed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +94,10 @@ def bad_csrf() -> Closing:
     return Closing(CloseCode.POLICY_VIOLATION, BAD_CSRF)
 
 
+class _NoSidecarError(Exception):
+    """A service project's server cannot start now; the text says why, as 4004's reason."""
+
+
 class LanguageSession:
     """A socket and its server, relayed until one of them ends, through the broker."""
 
@@ -94,12 +107,15 @@ class LanguageSession:
         process: ServerProcess,
         broker: LanguageBroker,
         data_directory: str | None = None,
+        sidecar: ExitStack | None = None,
     ) -> None:
         self.websocket = websocket
         self.process = process
         self.data_directory = data_directory
         """The data directory the server holds until it has exited, for a server that keeps
         data."""
+        self.sidecar = sidecar
+        """Holds a service project's sidecar up until the server has stopped."""
         self.finished = asyncio.Event()
         """Set once the session is over: its socket closed and its relays cancelled."""
         self.relays: list[asyncio.Task[Any]] = []
@@ -235,10 +251,14 @@ class LanguageSessions:
         command: LanguageServerCommand | None = None,
         timing: LanguageTiming | None = None,
         limit: int = MAX_SESSIONS,
+        *,
+        sidecars: SidecarEngine | None = None,
     ) -> None:
         self.command = command or LanguageServerCommand()
         self.timing = timing or LanguageTiming()
         self._limit = limit
+        self._sidecars = sidecars or DockerSandbox()
+        """Where a service project's server runs."""
         self._starting = asyncio.Lock()
         self._stopping = False
         self._servers: set[ServerProcess] = set()
@@ -257,7 +277,8 @@ class LanguageSessions:
     ) -> None:
         """Starts the target's server and relays the socket to it, through `broker`, until either
         ends; the socket closes with 4003 while `limit` servers run, 4002 when the server cannot
-        start and 1001 once the server is stopping."""
+        start, 4004 when a service project's cannot start yet, and 1001 once the server is
+        stopping."""
         session = await self._open(websocket, target, broker)
         if session is None:
             return
@@ -289,11 +310,14 @@ class LanguageSessions:
             if refusal is None:
                 launch = self._launch(target)
                 try:
-                    process = await self._start(target, launch)
+                    process, sidecar = await self._start(target, launch)
                 except ServerStartError as error:
                     refusal = Closing(CloseCode.SERVER_EXITED, f"cannot start: {error}")
+                except _NoSidecarError as error:
+                    refusal = Closing(CloseCode.NEEDS_DOCKER, str(error))
                 else:
-                    session = LanguageSession(websocket, process, broker, launch.data_directory)
+                    data = launch.data_directory
+                    session = LanguageSession(websocket, process, broker, data, sidecar)
                     return self._admit(session)
         await refusal.close(websocket)
         return None
@@ -318,7 +342,43 @@ class LanguageSessions:
         holder = self._held_data.get(data_directory)
         return holder is not None and holder.running
 
-    async def _start(self, target: SessionTarget, launch: Launch) -> ServerProcess:
+    async def _start(
+        self, target: SessionTarget, launch: Launch
+    ) -> tuple[ServerProcess, ExitStack | None]:
+        """The server, and what holds its sidecar up for a service project. Raises
+        ServerStartError, and _NoSidecarError."""
+        if target.sidecar is not None:
+            return await self._start_in_sidecar(target, target.sidecar, launch)
+        return await self._start_here(target, launch), None
+
+    async def _start_in_sidecar(
+        self, target: SessionTarget, plan: SidecarPlan, launch: Launch
+    ) -> tuple[ServerProcess, ExitStack]:
+        """The engine is never started and the image never pulled for a session, which says
+        calmly why it cannot start. The server runs with no variable that hides directories, since
+        none of them is mounted and none would cross `docker exec`; a sidecar whose server does not
+        start goes at once."""
+        unavailable = await asyncio.to_thread(sidecar_unavailable, self._sidecars)
+        if unavailable is not None:
+            raise _NoSidecarError(unavailable)
+        sidecar = ExitStack()
+        try:
+            await asyncio.to_thread(sidecar.enter_context, self._sidecars.sidecar(plan))
+            command = self.command.arguments(target.server, launch)
+            arguments = self._sidecars.sidecar_command(plan, command)
+            environment = docker_environment()
+            process = await ServerProcess.start(
+                arguments, target.directory, self.timing, environment
+            )
+        except SandboxError as error:
+            await asyncio.to_thread(sidecar.close)
+            raise ServerStartError(str(error)) from None
+        except BaseException:
+            await asyncio.to_thread(sidecar.close)
+            raise
+        return process, sidecar
+
+    async def _start_here(self, target: SessionTarget, launch: Launch) -> ServerProcess:
         """Raises ServerStartError."""
         server = target.server
         needed = (target.directory, target.lsp_directory)
@@ -374,6 +434,8 @@ class LanguageSessions:
             print(f"cstudy serve: cannot stop a language server cleanly: {error}", file=sys.stderr)
         finally:
             self._servers.discard(session.process)
+            if session.sidecar is not None:
+                await asyncio.to_thread(session.sidecar.close)
 
 
 async def _finished(sessions: list[LanguageSession]) -> None:

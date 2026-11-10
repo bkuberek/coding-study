@@ -18,7 +18,7 @@ export type FileIntelligence =
   | { readonly kind: "license"; readonly language: string; readonly server: string; readonly detail: string }
   | { readonly kind: "no-server"; readonly language: string }
   /** The attempt has none whatever its language's server: `no_code_intelligence` of its status. */
-  | { readonly kind: "withheld"; readonly reason: string };
+  | { readonly kind: "withheld"; readonly reason: string; readonly language: string };
 
 export interface Segment {
   readonly text: string;
@@ -26,7 +26,7 @@ export interface Segment {
   readonly action: "restart" | "health" | null;
   /** The whole reason of a stopped session, for the tooltip. */
   readonly title: string;
-  /** `starting`, `ready`, `reconnecting`, `stopped`, `not-installed`, `needs-jdk`, `no-server` or `withheld`. */
+  /** `starting`, `ready`, `reconnecting`, `stopped`, `needs-docker`, `not-installed`, `needs-jdk`, `no-server` or `withheld`. */
   readonly state: string;
 }
 
@@ -39,9 +39,10 @@ const NAMES: Readonly<Record<string, string>> = {
   rust: "Rust",
 };
 
-/** Why an attempt has no code intelligence, by the reason its status gives. */
-const WITHHELD: Readonly<Record<string, string>> = {
-  service_project: "code intelligence for service projects comes later",
+/** Why an attempt has no code intelligence, by the reason its status gives: a service project in a language
+ * whose server runs in no sidecar yet. */
+const WITHHELD: Readonly<Record<string, (language: string) => string>> = {
+  service_project: (language) => `code intelligence for ${languageName(language)} service projects comes later`,
 };
 const WITHHELD_UNKNOWN = "no code intelligence for this attempt";
 
@@ -88,7 +89,7 @@ export function segmentOf(found: FileIntelligence, counts?: DiagnosticCounts): S
         state: "license",
       };
     case "withheld":
-      return { text: WITHHELD[found.reason] ?? WITHHELD_UNKNOWN, action: null, title: "", state: "withheld" };
+      return { text: WITHHELD[found.reason]?.(found.language) ?? WITHHELD_UNKNOWN, action: null, title: "", state: "withheld" };
     case "session":
       return sessionSegment(found, counts);
   }
@@ -106,6 +107,8 @@ function sessionSegment(found: Extract<FileIntelligence, { kind: "session" }>, c
       return { text: `${head}reconnecting…`, action: null, title: "", state: "reconnecting" };
     case "stopped":
       return { text: `${head}stopped${state.why ? `: ${state.why}` : ""}`, action: "restart", title: state.reason, state: "stopped" };
+    case "needs-docker":
+      return { text: `${head}${state.why}`, action: "restart", title: state.reason, state: "needs-docker" };
   }
 }
 
