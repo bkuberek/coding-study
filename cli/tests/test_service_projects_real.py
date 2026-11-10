@@ -213,8 +213,9 @@ def test_verify_require_ready_passes_on_the_reference_with_backing_services(
 
 @dataclass(frozen=True, slots=True)
 class Opened:
-    """A file of the fixture, the text the page opens it with, what it is wrong about, and where
-    a hover lands."""
+    """A file of the fixture, the text the page opens it with, what it is wrong about, where a
+    hover lands, and where a definition is asked for, which leads into the project's own
+    dependencies."""
 
     path: str
     language_id: str
@@ -224,6 +225,9 @@ class Opened:
     hover_at: dict[str, int]
     hovered: str
     """Words of the hover there."""
+    defined_at: dict[str, int]
+    defined_in: str
+    """Where in the project folder the definition's file is."""
 
 
 TYPESCRIPT_FILE = Opened(
@@ -237,16 +241,21 @@ TYPESCRIPT_FILE = Opened(
     error="is not assignable to type 'string'",
     hover_at={"line": 0, "character": 10},
     hovered="createServer",
+    defined_at={"line": 0, "character": 10},
+    defined_in="node_modules/",
 )
 """`createServer`'s types come from the project's own `@types/node` in its `node_modules`."""
 PYTHON_FILE = Opened(
     path="src/server.py",
     language_id="python",
-    text="import json\n\nprint(json.dumps({}) + 1)\n",
+    text="import json\n\nimport pytest\n\nprint(json.dumps({}) + 1, pytest)\n",
     error="Operator",
-    hover_at={"line": 2, "character": 12},
+    hover_at={"line": 4, "character": 12},
     hovered="dumps",
+    defined_at={"line": 2, "character": 8},
+    defined_in=".venv/lib/",
 )
+"""`pytest` is installed in the project's `.venv` only, by `uv sync` in Docker."""
 FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE}
 
 
@@ -274,6 +283,10 @@ def sidecar_project(
 class Played:
     diagnostics: list[dict[str, Any]]
     hover: dict[str, Any]
+    definition: str
+    """The URI of the first place the definition named."""
+    library: dict[str, Any]
+    """What `cstudy/libraryFile` answered for that place."""
 
 
 def until(
@@ -312,7 +325,18 @@ def sidecar_session(sidecar_project: FixtureProject) -> Played:
         position = {"textDocument": {"uri": document}, "position": opened.hover_at}
         websocket.send_json(request(2, "textDocument/hover", position))
         hover = until(websocket, lambda message: message.get("id") == 2)
-    return Played(published["params"]["diagnostics"], hover)
+        position = {"textDocument": {"uri": document}, "position": opened.defined_at}
+        websocket.send_json(request(3, "textDocument/definition", position))
+        definition = _first_target(until(websocket, lambda message: message.get("id") == 3))
+        websocket.send_json(request(4, "cstudy/libraryFile", {"uri": definition}))
+        library = until(websocket, lambda message: message.get("id") == 4)
+    return Played(published["params"]["diagnostics"], hover, definition, library)
+
+
+def _first_target(answer: dict[str, Any]) -> str:
+    found = answer["result"]
+    location = found[0] if isinstance(found, list) else found
+    return location.get("targetUri") or location["uri"]
 
 
 def _reports_on(message: dict[str, Any], document: str) -> bool:
@@ -337,6 +361,18 @@ def test_the_server_in_the_sidecar_answers_a_hover_from_the_projects_dependencie
         FILES[sidecar_project.directory].hovered
         in sidecar_session.hover["result"]["contents"]["value"]
     )
+
+
+def test_a_definition_leads_into_the_projects_installed_dependencies(
+    sidecar_project, sidecar_session
+):
+    within = (sidecar_project.folder / FILES[sidecar_project.directory].defined_in).as_uri()
+
+    assert sidecar_session.definition.startswith(within)
+
+
+def test_the_library_tab_reads_that_file_at_the_same_path_on_this_machine(sidecar_session):
+    assert sidecar_session.library["result"]["text"]
 
 
 def test_no_container_is_left_once_the_session_ended(sidecar_project, sidecar_session):
