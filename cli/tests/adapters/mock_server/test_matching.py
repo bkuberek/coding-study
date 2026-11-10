@@ -7,6 +7,8 @@ from coding_study.adapters.mock_server.matching import (
     scenario_applies,
     scenario_entry,
 )
+from coding_study.adapters.mock_server.replies import Reply
+from coding_study.adapters.mock_server.templates import RequestValues
 
 JSON_BODY = Body(content=b'{"rooms":[]}', content_type="application/json")
 OK_RESPONSE = ResponseFields(status=200)
@@ -32,6 +34,10 @@ def chat_route(**fields) -> Route:
 
 def scenario(*entries: ResponseFields, route_id: str | None = None) -> Scenario:
     return Scenario(name="any", route_id=route_id, entries=entries)
+
+
+def answered(answering: Route, overrides: ResponseFields | None = None) -> Reply:
+    return reply_for(answering, overrides, RequestValues(request(), 1))
 
 
 def test_a_route_matches_its_exact_method_and_path():
@@ -178,7 +184,7 @@ def test_a_sequence_repeats_its_last_entry():
 
 def test_a_route_alone_gives_its_own_response():
     response = ResponseFields(status=201, headers={"X-A": "1"}, body=Body(b"hi"), delay_ms=5)
-    reply = reply_for(route(response=response), None)
+    reply = answered(route(response=response))
     assert (reply.status, reply.headers, reply.body, reply.delay_ms) == (
         201,
         {"X-A": "1"},
@@ -188,51 +194,74 @@ def test_a_route_alone_gives_its_own_response():
 
 
 def test_a_route_without_a_body_answers_empty():
-    assert reply_for(route(), None).body == b""
+    assert answered(route()).body == b""
 
 
 def test_a_route_without_a_delay_answers_at_once():
-    assert reply_for(route(), None).delay_ms == 0
+    assert answered(route()).delay_ms == 0
 
 
 def test_a_scenario_status_keeps_the_routes_body():
     with_body = route(response=ResponseFields(status=200, body=Body(b"hi")))
-    reply = reply_for(with_body, ResponseFields(status=503))
+    reply = answered(with_body, ResponseFields(status=503))
     assert (reply.status, reply.body) == (503, b"hi")
 
 
 def test_scenario_headers_replace_the_routes_whole():
     with_headers = route(response=ResponseFields(status=200, headers={"X-Route": "1"}))
-    reply = reply_for(with_headers, ResponseFields(headers={"Retry-After": "2"}))
+    reply = answered(with_headers, ResponseFields(headers={"Retry-After": "2"}))
     assert reply.headers == {"Retry-After": "2"}
 
 
 def test_a_scenario_with_empty_headers_clears_the_routes():
     with_headers = route(response=ResponseFields(status=200, headers={"X-Route": "1"}))
-    assert reply_for(with_headers, ResponseFields(headers={})).headers == {}
+    assert answered(with_headers, ResponseFields(headers={})).headers == {}
 
 
 def test_a_scenario_with_an_empty_body_clears_the_routes():
     with_body = route(response=ResponseFields(status=200, body=Body(b"hi")))
-    assert reply_for(with_body, ResponseFields(body=Body(b""))).body == b""
+    assert answered(with_body, ResponseFields(body=Body(b""))).body == b""
 
 
 def test_a_scenario_delay_keeps_the_routes_status():
-    reply = reply_for(route(), ResponseFields(delay_ms=30))
+    reply = answered(route(), ResponseFields(delay_ms=30))
     assert (reply.status, reply.delay_ms) == (200, 30)
 
 
 def test_a_json_body_defaults_its_content_type():
     with_json = route(response=ResponseFields(status=200, body=JSON_BODY))
-    assert reply_for(with_json, None).headers == {"Content-Type": "application/json"}
+    assert answered(with_json).headers == {"Content-Type": "application/json"}
 
 
 def test_an_authors_content_type_wins_in_any_case():
     headers = {"content-type": "text/plain"}
     with_json = route(response=ResponseFields(status=200, headers=headers, body=JSON_BODY))
-    assert reply_for(with_json, None).headers == headers
+    assert answered(with_json).headers == headers
+
+
+def echoing(template: object) -> Route:
+    body = Body(b"unused", "application/json", template=template)
+    return chat_route(response=ResponseFields(status=200, body=body))
+
+
+def test_a_json_body_fills_in_the_requests_values():
+    request_values = RequestValues(posted(b'{"model": "chat-small"}'), 1)
+    reply = reply_for(echoing({"model": "{{request.body.model}}"}), None, request_values)
+    assert reply.body == b'{"model":"chat-small"}'
+
+
+def test_a_text_body_fills_in_the_requests_values():
+    request_values = RequestValues(posted(b"{}"), 4)
+    reply = reply_for(echoing("call {{seq}}"), None, request_values)
+    assert reply.body == b"call 4"
+
+
+def test_a_scenarios_body_fills_in_the_requests_values_too():
+    request_values = RequestValues(posted(b"{}"), 2)
+    override = ResponseFields(body=Body(b"unused", template="retry {{seq}}"))
+    assert reply_for(chat_route(), override, request_values).body == b"retry 2"
 
 
 def test_a_plain_string_body_gets_no_content_type():
     with_text = route(response=ResponseFields(status=200, body=Body(b"not json")))
-    assert reply_for(with_text, None).headers == {}
+    assert answered(with_text).headers == {}

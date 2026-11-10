@@ -175,6 +175,39 @@ def test_a_scenario_keeps_its_jwt_tamper(tmp_path: Path):
     assert entry.jwt == JwtTamper(("tokens", "id"), TamperKind.ALG_NONE)
 
 
+def template_of(document: dict[str, Any], folder: Path) -> object:
+    body = first_response(load(document, folder)).body
+    assert body is not None
+    return body.template
+
+
+def test_a_mapping_body_with_run_time_values_keeps_its_template(tmp_path: Path):
+    document = valid_document()
+    response_of(document)["body"] = {"model": "{{request.body.model}}"}
+    assert template_of(document, tmp_path) == {"model": "{{request.body.model}}"}
+
+
+def test_a_text_body_with_run_time_values_keeps_its_template(tmp_path: Path):
+    document = valid_document()
+    response_of(document)["body"] = "seq {{seq}}"
+    assert template_of(document, tmp_path) == "seq {{seq}}"
+
+
+def test_a_body_without_run_time_values_has_no_template(tmp_path: Path):
+    document = valid_document()
+    response_of(document)["body"] = "{{model}}"
+    assert template_of(document, tmp_path) is None
+
+
+def test_a_body_file_with_run_time_values_keeps_its_template(tmp_path: Path):
+    (tmp_path / "bodies").mkdir()
+    (tmp_path / "bodies" / "echo.json").write_text('{"n": {{seq}}}')
+    document = valid_document()
+    del response_of(document)["body"]
+    response_of(document)["body_file"] = "bodies/echo.json"
+    assert template_of(document, tmp_path) == '{"n": {{seq}}}'
+
+
 def test_a_route_keeps_its_body_match(tmp_path: Path):
     document = valid_document()
     route_of(document)["match"] = {"body": {"stream": True}, "body_contains": "refund"}

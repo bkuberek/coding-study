@@ -8,6 +8,7 @@ from urllib.parse import parse_qs
 from .config import Body, ResponseFields, Route, Scenario
 from .json_values import contains, parsed
 from .replies import Reply
+from .templates import RequestValues, compact_json, rendered_json, rendered_text
 
 DEFAULT_STATUS = 200
 NO_BODY = Body(b"")
@@ -51,9 +52,10 @@ def scenario_entry(scenario: Scenario, position: int) -> ResponseFields:
     return scenario.entries[min(position, len(scenario.entries) - 1)]
 
 
-def reply_for(route: Route, overrides: ResponseFields | None) -> Reply:
+def reply_for(route: Route, overrides: ResponseFields | None, values: RequestValues) -> Reply:
     """The route's response with `overrides` applied: a field given replaces the route's whole. A
-    route that passes through has no response of its own, so what a scenario leaves out is empty."""
+    route that passes through has no response of its own, so what a scenario leaves out is empty.
+    A body that names run-time values takes them from `values`."""
     given = overrides or ResponseFields()
     own = route.response or ResponseFields()
     body = _first_given((given.body, own.body), NO_BODY)
@@ -61,7 +63,7 @@ def reply_for(route: Route, overrides: ResponseFields | None) -> Reply:
     return Reply(
         status=_first_given((given.status, own.status), DEFAULT_STATUS),
         headers=_with_content_type(headers, body),
-        body=body.content,
+        body=_content(body, values),
         delay_ms=_first_given((given.delay_ms, own.delay_ms), 0),
     )
 
@@ -122,6 +124,15 @@ def _segment_matches(pattern: str, segment: str) -> bool:
 
 def _query_matches(expected: Mapping[str, str], actual: Mapping[str, tuple[str, ...]]) -> bool:
     return all(value in actual.get(name, ()) for name, value in expected.items())
+
+
+def _content(body: Body, values: RequestValues) -> bytes:
+    template = body.template
+    if template is None:
+        return body.content
+    if isinstance(template, str):
+        return rendered_text(template, values).encode()
+    return compact_json(rendered_json(template, values)).encode()
 
 
 def _first_given[T](candidates: tuple[T | None, T | None], default: T) -> T:

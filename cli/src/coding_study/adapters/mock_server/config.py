@@ -13,6 +13,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import cast
 
+from .templates import compact_json, has_values
+
 MOCK_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 PATH = re.compile(r"(/([^/{}?#\s]*|\{[A-Za-z_][A-Za-z0-9_]*\}))+")
 HEADER_NAME = re.compile(r"[A-Za-z0-9-]+")
@@ -44,6 +46,9 @@ class Body:
     content: bytes
     content_type: str | None = None
     """What a body built from a mapping or list is sent as, unless the headers say otherwise."""
+    template: object = None
+    """The body as the config wrote it, a text or a JSON value, when it names run-time values
+    filled in per request; None sends `content` as it is."""
 
 
 class TamperKind(StrEnum):
@@ -259,7 +264,7 @@ class _Reader:
         if not path.is_relative_to(self._folder):
             raise ConfigError(f"{where}: {name} is outside the configuration's folder")
         try:
-            return Body(path.read_bytes())
+            return _file_body(path.read_bytes())
         except OSError as error:
             raise ConfigError(f"{where}: cannot read {name}: {error.strerror}") from error
 
@@ -401,8 +406,20 @@ def _sendable(header_value: str) -> bool:
 
 def _inline_body(raw: object, where: str) -> Body:
     if isinstance(raw, str):
-        return Body(raw.encode())
+        return Body(raw.encode(), template=_template(raw))
     if isinstance(raw, dict | list):
-        compact = json.dumps(raw, ensure_ascii=False, separators=(",", ":"))
-        return Body(compact.encode(), "application/json")
+        written = cast(object, raw)
+        return Body(compact_json(written).encode(), "application/json", _template(written))
     raise ConfigError(f"{where}: expected a mapping, a list or a string")
+
+
+def _file_body(content: bytes) -> Body:
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return Body(content)
+    return Body(content, template=_template(text))
+
+
+def _template(written: object) -> object:
+    return written if has_values(written) else None

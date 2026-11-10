@@ -31,6 +31,7 @@ from coding_study.domain.service_project import (
     ServiceProject,
     ServiceRequires,
 )
+from tests.mock_template_table import NOT_VALUES, VALUES
 
 CONFIG = "mocks/room-vendor.yaml"
 DIGEST = "@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9"
@@ -147,6 +148,30 @@ def test_a_retry_after_that_is_not_whole_seconds_is_refused():
     document = config(limited={"status": 429, "headers": {"retry-after": "soon"}})
 
     assert any("whole seconds" in message for message in s20(files_of(document)))
+
+
+@pytest.mark.parametrize("template", VALUES)
+def test_a_body_may_name_a_run_time_value(template: str):
+    assert s20(files_of(config(echo={"body": {"value": f"<{template}>"}}))) == []
+
+
+@pytest.mark.parametrize("template", NOT_VALUES)
+def test_braces_that_open_no_run_time_value_are_refused(template: str):
+    found = s20(files_of(config(echo={"body": f"<{template}>"})))
+    assert any("opens no run-time value" in message for message in found)
+
+
+def test_a_route_body_is_checked_for_run_time_values_too():
+    document = config()
+    routes: list[dict[str, object]] = document["routes"]  # type: ignore[assignment]
+    routes[0]["response"] = {"status": 200, "body": ["{{request.model}}"]}
+    assert any("opens no run-time value" in message for message in s20(files_of(document)))
+
+
+def test_a_body_file_is_checked_for_run_time_values_too():
+    document = config(echo={"body_file": "bodies/echo.json"})
+    found = s20(files_of(document, bodies={"bodies/echo.json": '{"m": "{{model}}"}'}))
+    assert any("opens no run-time value" in message for message in found)
 
 
 def test_the_vendor_documentation_is_required():
