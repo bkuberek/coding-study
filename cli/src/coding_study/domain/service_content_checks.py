@@ -14,7 +14,13 @@ from dataclasses import dataclass
 from typing import cast
 
 from coding_study.domain.cases import Case
-from coding_study.domain.http_case import HttpCaseInput, HttpStep, ParallelBurst, SleepStep
+from coding_study.domain.http_case import (
+    HttpCaseInput,
+    HttpStep,
+    ParallelBurst,
+    ServiceStep,
+    SleepStep,
+)
 from coding_study.domain.http_case_checks import step_issues
 from coding_study.domain.http_grading import HTTP_COMPARATORS
 from coding_study.domain.http_origins import declared_origins
@@ -392,6 +398,8 @@ def _case(where: str, case: Case, rules: _CaseRules) -> _Found:
     limit_ms = _hang_guard_ms(case, rules)
     for message in (*_first_byte_issues(http, limit_ms), *_sleep_issues(http, limit_ms)):
         yield where, message
+    for message in _service_issues(http, rules.files.backing_services or _NO_COMPOSE):
+        yield where, message
     origins = declared_origins(rules.service.app.port, rules.service.grader_reach)
     for message in step_issues(http, origins):
         yield where, message
@@ -440,6 +448,18 @@ def _sleep_issues(http: HttpCaseInput, limit_ms: int) -> Iterator[str]:
             f"the steps sleep {slept} ms in all, which is not under the hang guard of "
             f"{limit_ms} ms, so the case would time out first"
         )
+
+
+def _service_issues(http: HttpCaseInput, compose: Mapping[str, object]) -> Iterator[str]:
+    """A step changes only a service of the problem's compose file: never the app, the mock
+    server or the stack's own helpers."""
+    declared = sorted(backing_services_of(compose))
+    named = ", ".join(declared) or "none"
+    for step in http.steps:
+        service = step.change.service if isinstance(step, ServiceStep) else None
+        if service is not None and service not in declared:
+            problem = f"{service} is no backing service of the problem; it declares {named}"
+            yield f"{step.label}: {problem}"
 
 
 def _scenarios(where: str, case: Case, http: HttpCaseInput, rules: _CaseRules) -> _Found:

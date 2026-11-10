@@ -32,12 +32,14 @@ from coding_study.domain.http_case import (
     QueryValue,
     RequestTemplate,
     SameBody,
+    ServiceStep,
     SleepStep,
     TemplateBody,
     TextBody,
 )
 from coding_study.domain.http_templates import bound
 from coding_study.domain.problem import DEFAULT_FLOAT_TOLERANCE, ComparatorSpec, ComparatorType
+from coding_study.domain.sandbox import ServiceAction, ServiceChange
 
 type Document = Mapping[str, Any]
 type Flows = Mapping[str, Sequence[Document]]
@@ -48,6 +50,7 @@ _MOCKS_FIELD = "mocks"
 _STEPS_FIELD = "steps"
 _PARALLEL_FIELD = "parallel"
 _SLEEP_FIELD = "sleep_ms"
+_SERVICE_FIELD = "service"
 _BASE64_BODY_FIELD = "body_base64"
 """A binary body, which a JSON string cannot hold byte for byte."""
 INDEX_PLACEHOLDER = "{i}"
@@ -189,6 +192,9 @@ class _Expander:
             elif _SLEEP_FIELD in document:
                 waits_ms: int = document[_SLEEP_FIELD]
                 yield SleepStep(f"{label} sleep {waits_ms} ms", waits_ms)
+            elif _SERVICE_FIELD in document:
+                change = ServiceChange(document[_SERVICE_FIELD], ServiceAction(document["action"]))
+                yield ServiceStep(f"{label} {change.action} {change.service}", change)
             else:
                 yield _step(document, label)
 

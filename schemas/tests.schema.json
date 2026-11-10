@@ -228,7 +228,7 @@
     "valueName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
     "caseStep": {
       "description": "A request or a flow, or a step that sends nothing",
-      "oneOf": [{ "$ref": "#/$defs/httpStep" }, { "$ref": "#/$defs/sleepStep" }]
+      "oneOf": [{ "$ref": "#/$defs/httpStep" }, { "$ref": "#/$defs/sleepStep" }, { "$ref": "#/$defs/serviceStep" }]
     },
     "sleepStep": {
       "description": "Waits this many milliseconds, which count toward the case's limit",
@@ -236,6 +236,16 @@
       "additionalProperties": false,
       "required": ["sleep_ms"],
       "properties": { "sleep_ms": { "type": "integer", "minimum": 1, "maximum": 10000 } }
+    },
+    "serviceStep": {
+      "description": "Runs docker compose pause, unpause, stop or start on a backing service of the case's own stack; the grader puts it back after the case",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service", "action"],
+      "properties": {
+        "service": { "description": "A service of the problem's compose file (S23)", "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "action": { "enum": ["pause", "unpause", "stop", "start"] }
+      }
     },
     "httpStep": {
       "description": "A request with what it must answer and the values it captures, or a flow used with {\"use\": name, \"with\": {name: text}}",

@@ -13,6 +13,7 @@ from typing import Protocol
 from coding_study.domain.http_case import HttpRequest
 from coding_study.domain.http_grading import ExchangeFailed, HttpResponse, MockLog
 from coding_study.domain.http_origins import split_url
+from coding_study.domain.sandbox import ServiceChange
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,12 @@ class GradedStack(Protocol):
         """For a case with `fresh: true`: stops the app, runs the declared `commands.reset` with
         `CSTUDY_RESET_PHASE=apply` if there is one, and starts the app again. Returns once its
         health path answers; raises StackStepError when `reset` fails or the app does not."""
+        ...
+
+    def change_service(self, change: ServiceChange) -> None:
+        """Pauses, unpauses, stops or starts a backing service, for a case's step, on the first
+        clock: `start` returns once the service is healthy. Raises StackStepError when it
+        cannot."""
         ...
 
     def app_exit(self, within_ms: int) -> AppExit | None:

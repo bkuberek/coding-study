@@ -14,6 +14,7 @@ from coding_study.application.http_grading_ports import (
 from coding_study.domain.cases import Case, Expected
 from coding_study.domain.http_case import HttpCaseInput, HttpExpected, HttpRequest
 from coding_study.domain.http_grading import ExchangeFailed, HttpResponse, MockLog
+from coding_study.domain.sandbox import ServiceChange
 
 type Sent = HttpResponse | ExchangeFailed
 
@@ -36,6 +37,8 @@ class FakeStack:
     origins: dict[str, str] = field(default_factory=dict[str, str])
     output: str = ""
     """What the app printed, for each case that asks."""
+    service_problem: str | None = None
+    """Why each change to a backing service fails, if it does."""
 
     @property
     def endpoints(self) -> StackEndpoints:
@@ -50,6 +53,11 @@ class FakeStack:
     def restart_app_with_fresh_data(self) -> None:
         self.journal.append("restart app with fresh data")
         self._maybe_fail()
+
+    def change_service(self, change: ServiceChange) -> None:
+        self.journal.append(f"{change.action} {change.service}")
+        if self.service_problem is not None:
+            raise StackStepError(self.service_problem, "output of compose")
 
     def app_exit(self, within_ms: int) -> AppExit | None:
         self.exit_waits.append(within_ms)

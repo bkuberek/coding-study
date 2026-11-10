@@ -14,11 +14,13 @@ from coding_study.domain.http_case import (
     ParallelBurst,
     RequestTemplate,
     SameBody,
+    ServiceStep,
     SleepStep,
 )
 from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Level
 from coding_study.domain.project import ProjectFile, ProjectFiles, ProjectTree
+from coding_study.domain.sandbox import ServiceAction, ServiceChange
 from coding_study.domain.service_content_checks import (
     compose_issues,
     compose_requires_issues,
@@ -550,6 +552,7 @@ def http_case(
 
 
 def s23(*cases: Case, **changes: object) -> list[str]:
+    """`backing_services` is the parsed compose file, if the problem has one."""
     files = files_of(
         config(
             outage={"visible": True, "status": 503},
@@ -557,6 +560,7 @@ def s23(*cases: Case, **changes: object) -> list[str]:
             sequenced={"sequence": [{"delay_ms": 3000}, {"delay_ms": 3000}, {"delay_ms": 3000}]},
         )
     )
+    files = replace(files, backing_services=changes.pop("backing_services", None))  # type: ignore[arg-type]
     defaults: dict[str, object] = {
         "project": service(),
         "levels": LEVELS,
@@ -806,3 +810,32 @@ def test_sleeps_adding_up_to_the_hang_guard_are_refused():
         "the steps sleep 10000 ms in all, which is not under the hang guard of 10000 ms, "
         "so the case would time out first"
     ]
+
+
+STORE_COMPOSE = {"services": {"store": {"image": "valkey"}, "db": {"image": "postgres"}}}
+
+
+def service_case(service: str) -> Case:
+    request = HttpStep("step 1 GET /a", RequestTemplate("GET", "/a"), HttpExpected(200))
+    pause = ServiceStep(f"step 2 pause {service}", ServiceChange(service, ServiceAction.PAUSE))
+    return Case("h1", HttpCaseInput({}, steps=(request, pause)), None, level=1)
+
+
+def test_a_step_may_change_a_backing_service_the_problem_declares():
+    found = s23(service_case("store"), http_case("h2", 2), backing_services=STORE_COMPOSE)
+
+    assert found == []
+
+
+def test_a_step_naming_an_undeclared_service_is_refused():
+    found = s23(service_case("cache"), http_case("h2", 2), backing_services=STORE_COMPOSE)
+
+    assert found == [
+        "step 2 pause cache: cache is no backing service of the problem; it declares db, store"
+    ]
+
+
+def test_a_step_changing_a_service_in_a_problem_with_none_is_refused():
+    found = s23(service_case("app"), http_case("h2", 2))
+
+    assert found == ["step 2 pause app: app is no backing service of the problem; it declares none"]

@@ -12,6 +12,8 @@ from coding_study.domain.sandbox import (
     ReadyStack,
     SandboxPaths,
     SandboxUser,
+    ServiceAction,
+    ServiceChange,
     StackIdentity,
     StackKind,
     StackPlan,
@@ -148,6 +150,25 @@ def test_a_reset_past_its_limit_says_so():
 
     with pytest.raises(StackStepError, match="within 7 s"):
         stack_of(engine).restart_app_with_fresh_data()
+
+
+PAUSE_STORE = ServiceChange("store", ServiceAction.PAUSE)
+
+
+def test_a_service_change_goes_to_the_engine_with_the_startup_budget():
+    engine = FakeSandbox()
+
+    stack_of(engine).change_service(PAUSE_STORE)
+
+    change, budget = engine.called("change_service")[0]  # type: ignore[misc]
+    assert (change, budget.app_ready_s) == (PAUSE_STORE, 33)
+
+
+def test_a_service_change_that_fails_is_a_step_error():
+    engine = FakeSandbox(service_error=StackStartError(StartupFailure.SERVICE, "no such service"))
+
+    with pytest.raises(StackStepError, match="no such service"):
+        stack_of(engine).change_service(PAUSE_STORE)
 
 
 def test_an_app_that_runs_has_no_exit():

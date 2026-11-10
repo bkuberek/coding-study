@@ -814,7 +814,6 @@ The contract between the stack and the grader's multi-step cases (P11). Some ser
 
 Engine gaps found while building `0283` to `0287`. None blocks a problem; each is worked around in the problem that met it.
 
-- **Backing services cannot be stopped or paused by a case.** No case can stop or pause a service, and the mock server's pass-through only proxies HTTP, so a problem cannot grade "the store went down" by taking the store away.
 - **A kept restart needs a no-op reset.** With services, S23 requires `commands.reset` for any `fresh` case. Restarting the app while keeping its data therefore needs a `reset` that does nothing, as `0284` declares.
 - **Parallel cases judge status counts only.** They never compare bodies.
 - **The `unordered` comparator applies to every step of a multi-step case.**
@@ -916,6 +915,7 @@ The grader asks a stack for little, through `GradedStack` in `application/http_g
 | `endpoints` | `app_url` and `control_url` on `127.0.0.1`, `control_token`, and the names in `mocks`. `control_url` is `None` without mock servers |
 | `restart_app()` | Stops your app and starts it again, for a case that hung it |
 | `restart_app_with_fresh_data()` | For `fresh`: stops your app, runs `commands.reset` with `CSTUDY_RESET_PHASE=apply` if declared, starts your app |
+| `change_service(change)` | `docker compose pause`, `unpause`, `stop` or `start` on one backing service, for a [step](#steps-that-send-nothing). `start` returns once the service is healthy |
 | `app_exit(within_ms)` | Your app's exit code and stderr tail, or `None` if it still runs after waiting that long, since a container's exit shows a moment after its connections drop |
 | `app_output(since_s)` | What your app printed, standard output and error together, since a moment in seconds since the epoch, for an [output check](#output-check). One `docker compose logs --since` call, through `SandboxEngine.app_output_since`; a read that fails is a stack failure, not a verdict |
 
@@ -936,7 +936,7 @@ A case's limit runs from its first request to the last byte of its last answer, 
 3. With `grade_setup`, the from-empty check: a stack of its own, under a fresh name, brings up the mock and service containers and runs `bootstrap` on empty data, with the app idle, then goes with its data (`down -v`). A failure is a [migration failure](#failure-reporting) that says it was from empty, and it shows its output even in a mock attempt, since no hidden data is there. Without `grade_setup`, the `bootstrap` of the next step is itself this check.
 4. Bring up a fresh stack (`up --wait`), with its one-shots in order before `app`: `grade_setup` if declared, `bootstrap` if declared, `reset` with `prepare` if declared. The app's start depends on them and on the mock container being healthy, which P1 measured faster than separate steps, with one failure path.
 5. `app` runs `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`, each try limited to 5 s as a whole, so an answer that never ends still counts as no answer. The second clock starts here.
-6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
+6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, put back any backing service the steps left paused or stopped, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
 7. `down -v`.
 
 Each `cstudy submit` has a stack of its own, under a fresh name, so two at once cannot collide, and `.cs/runs/` holds the run's generated files until it ends. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
@@ -1007,7 +1007,7 @@ Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a
 
 | Rule | Detail |
 |------|--------|
-| `steps` | In place of `request`, `expected` and `before`; at least one request. A step is a `request` with an optional `expected` and `capture`, a `use` of a flow, or a step that sends nothing: a [sleep](#steps-that-send-nothing). A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was taken, the last request's answer is judged together with `log`, as a single request's is, even when steps that send nothing follow it |
+| `steps` | In place of `request`, `expected` and `before`; at least one request. A step is a `request` with an optional `expected` and `capture`, a `use` of a flow, or a step that sends nothing: a [sleep, or a change to a backing service](#steps-that-send-nothing). A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was taken, the last request's answer is judged together with `log`, as a single request's is, even when steps that send nothing follow it |
 | `request` | As a single request's, plus: `url` in place of `path`, `form`, `jar` and `follow_redirects`. `form` is sent as `application/x-www-form-urlencoded` unless `headers` name a `Content-Type`; one of `json`, `form`, `body` and `body_base64` at most. A `body_base64` names no capture |
 | `path` and `url` | A `path` goes to your app, as every single request does. A `url` is `http://<name>:<port>/<path>`, an origin as the stack's network names it, or a capture that holds one. The grader dials the address the stack publishes for that origin and sends its name as `Host`, so the app and a provider see the same names a container would. The origins a case may name are your app's own, `http://app:<app.port>`, and each entry of [`grader_reach`](#grader-reach), a backing service or a mock server, such as `http://idp:8080` ([below](#reaching-an-origin)). `https` is not sent: nothing in a stack has a certificate |
 | `expected` | A single request's fields, with a status class such as `"4xx"`, and the case's comparator. Left out, any answer passes, which a step that only captures or a cleanup step may want. `first_byte_ms_max` times each step on its own, from writing that step's request, and a late byte names the step: `step 2 POST /v1/chat: first body byte after 2140 ms, expected within 1000 ms`. A parallel case's `after` request takes it too |
@@ -1044,6 +1044,37 @@ Built after P11. A multi-step case can wait between two requests, or after the l
 | Where | In a case's `steps` only: not in a flow, a cleanup step or a parallel case |
 
 A sleep replaces the slow mock route some problems wait with; those problems keep theirs.
+
+A case can also take a backing service away mid-case and bring it back, to grade what the app does when its store goes down: a timeout, a fallback, an error it reports rather than hangs on.
+
+```json
+{"id": "h9", "level": 3, "note": "a store that stops answering: the app answers 503 within its own timeout",
+ "hang_guard_ms": 8000,
+ "steps": [
+   {"service": "store", "action": "pause"},
+   {"request": {"method": "GET", "path": "/prices/oak"},
+    "expected": {"status": 503, "first_byte_ms_max": 3000}},
+   {"service": "store", "action": "unpause"},
+   {"request": {"method": "GET", "path": "/prices/oak"}, "expected": {"status": 200}}]}
+```
+
+| Rule | Detail |
+|------|--------|
+| `service` and `action` | `pause`, `unpause`, `stop` or `start`, run as `docker compose <action> <service>` on the case's own stack. `start` waits until the service's healthcheck passes again, as `up --wait` does. Its label reads `step 1 pause store` |
+| S23 | `service` names a service of the problem's compose file: never the app, a mock server or the stack's own containers |
+| Clock | A change runs on the first clock, as a restart does, so it counts toward no limit |
+| Put back | After the case's steps, whatever happened, even a failure or a timeout, the grader unpauses each service the case left paused and starts each it left stopped, before the cleanup steps and before an app that hung restarts. A case that brings its service back itself is left as it is |
+| Failure | A change the engine cannot make, or cannot undo, is no verdict on your code: the case is `error` with the engine's output, and the remaining cases are `not_run` |
+| Where | In a case's `steps` only, as a sleep |
+
+What a client meets, measured on Docker 29.9.2 and Compose 5.6.1 with the Redis of the fixture `5903`: a new connection by a client with a 1.5 s timeout, as `tests/adapters/test_service_steps_real.py` grades it, and an open one by a probe that held its connection across the change:
+
+| Action | A new connection | An open connection |
+|--------|------------------|--------------------|
+| `pause` | Accepted, since the kernel completes the handshake, then no answer: the client waits until its own timeout. Never refused | A request waits, and is answered the moment the service is unpaused: 1.1 s later in a probe that unpaused it then |
+| `stop` | The name no longer resolves: `Name or service not known` after about 200 ms. Not refused either | Closed by the service as it stops: the next read finds the end of the stream at once |
+
+So `pause` is how a case teaches a timeout: a client with none hangs until the case's limit ends it as `timeout`. `stop` teaches an outage the client can see at once.
 
 #### Output check
 

@@ -144,6 +144,33 @@ def test_a_cleanup_step_may_not_sleep(validator: SchemaValidator):
     assert violations(validator, refused_with(cleanup=[{"sleep_ms": 1}])) != []
 
 
+@pytest.mark.parametrize("action", ["pause", "unpause", "stop", "start"])
+def test_a_step_may_change_a_backing_service(validator: SchemaValidator, action: str):
+    middle = {"service": "store", "action": action}
+    assert violations(validator, with_steps_around(middle)) == []
+
+
+@pytest.mark.parametrize(
+    ("label", "middle"),
+    [
+        ("an unknown action", {"service": "store", "action": "restart"}),
+        ("no action", {"service": "store"}),
+        ("no service", {"action": "pause"}),
+        ("a service that is no name", {"service": "Store DB", "action": "pause"}),
+        ("another field", {"service": "store", "action": "pause", "sleep_ms": 1}),
+    ],
+)
+def test_a_service_step_is_refused_for(
+    validator: SchemaValidator, label: str, middle: dict[str, Any]
+):
+    assert violations(validator, with_steps_around(middle)) != [], label
+
+
+def test_a_cleanup_step_may_not_change_a_service(validator: SchemaValidator):
+    cleanup = [{"service": "store", "action": "start"}]
+    assert violations(validator, refused_with(cleanup=cleanup)) != []
+
+
 def refused_with(**fields: Any) -> dict[str, Any]:
     return steps_case() | fields
 

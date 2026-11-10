@@ -9,6 +9,7 @@ from coding_study.domain.cases import Case, Expected
 from coding_study.domain.config import Config
 from coding_study.domain.http_captures import capture_source
 from coding_study.domain.http_case import (
+    CaseStep,
     HttpCaseInput,
     HttpExpected,
     HttpRequest,
@@ -47,7 +48,7 @@ def step(
 
 
 def steps_case(
-    *steps: HttpStep,
+    *steps: CaseStep,
     case_id: str = "h1",
     cleanup: tuple[HttpStep, ...] = (),
     log: tuple[LogAssertion, ...] = (),

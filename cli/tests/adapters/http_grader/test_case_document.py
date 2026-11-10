@@ -10,9 +10,11 @@ from coding_study.domain.http_case import (
     LogAssertion,
     RequestTemplate,
     SameBody,
+    ServiceStep,
     SleepStep,
 )
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
+from coding_study.domain.sandbox import ServiceAction, ServiceChange
 
 
 def document(**fields: Any) -> dict[str, Any]:
@@ -111,6 +113,13 @@ GET_A = {"request": {"method": "GET", "path": "/a"}}
 def test_a_sleep_step_names_its_place_and_its_wait():
     case = {"id": "h1", "level": 1, "steps": [GET_A, {"sleep_ms": 500}]}
     assert http_case_input(case).steps[1] == SleepStep("step 2 sleep 500 ms", 500)
+
+
+def test_a_service_step_names_its_place_its_action_and_its_service():
+    case = {"id": "h1", "level": 1, "steps": [GET_A, {"service": "store", "action": "pause"}]}
+    assert http_case_input(case).steps[1] == ServiceStep(
+        "step 2 pause store", ServiceChange("store", ServiceAction.PAUSE)
+    )
 
 
 def test_an_expected_body_may_be_null():

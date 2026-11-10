@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 
 from coding_study.domain.cases import Expected, FunctionInput, JsonValue
 from coding_study.domain.problem import ComparatorSpec
+from coding_study.domain.sandbox import ServiceChange
 
 type QueryValue = str | tuple[str, ...]
 type ExpectedStatus = int | str
@@ -190,7 +191,17 @@ class SleepStep:
     ms: int
 
 
-type CaseStep = HttpStep | SleepStep
+@dataclass(frozen=True, slots=True)
+class ServiceStep:
+    """A backing service paused, unpaused, stopped or started mid-case. It runs on the stack's
+    clock, so it counts toward no limit, and the grader puts the service back after the case."""
+
+    label: str
+    """`step 2 pause store`."""
+    change: ServiceChange
+
+
+type CaseStep = HttpStep | SleepStep | ServiceStep
 """A step of a multi-step case: a request, or one that sends nothing."""
 
 
