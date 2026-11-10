@@ -210,7 +210,7 @@ class _Grader:
             return self._stack_failed(checked, failed, SERVICE_FAILED)
 
     def _stack_failed(
-        self, checked: _CheckedCase, failed: StackStepError, step: "_StackStep"
+        self, checked: _CheckedCase, failed: StackStepError, step: _StackStep
     ) -> CaseVerdict:
         """A stack that could not do what a case asks: the case is an error, and the rest are not
         run, since the stack is no longer as the problem made it."""
