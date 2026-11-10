@@ -2,6 +2,87 @@
 
 <!-- version list -->
 
+## v0.34.0 (2026-11-10)
+
+### Documentation
+
+- Backing services are built, with measured numbers
+  ([`0535ccd`](https://github.com/bkuberek/coding-study/commit/0535ccde3ac7215857adeabc0bac1c2a7fee664c))
+
+- Catalog at 298 with 0280 and 0282, PP3 and PP5 ticked, and Keycloak, stateless-service and
+  Liquibase notes
+  ([`7508e7f`](https://github.com/bkuberek/coding-study/commit/7508e7f74b6580433619c9c41bee7c93b16f3fb1))
+
+- Mark R34 and P11's grader part built in ADR 0019
+  ([`3e1da04`](https://github.com/bkuberek/coding-study/commit/3e1da04b7e1d5f74d8e06e4fbad9ee92de363647))
+
+- P10 and P11 meet through grader_reach, and P10 is ticked
+  ([`a23b44c`](https://github.com/bkuberek/coding-study/commit/a23b44c790bc6f75ad00fa38a480a4b76b75be26))
+
+### Features
+
+- **grader**: Check what the app prints during a case
+  ([`fe02819`](https://github.com/bkuberek/coding-study/commit/fe02819d76f5ebb53bca251b82be667ee96bac7e))
+
+- **grader**: Let a parallel burst take several requests in turn
+  ([`6a8050d`](https://github.com/bkuberek/coding-study/commit/6a8050d945635561b079e50c51516215ecad269a))
+
+- **grader**: Multi-step HTTP cases with captures, cookie jars, flows and cleanup
+  ([`ba92407`](https://github.com/bkuberek/coding-study/commit/ba92407d4d2706c40f6b063cdb821f3567875dca))
+
+- **grader**: Parallel cases that send a burst at once and count its statuses
+  ([`828a268`](https://github.com/bkuberek/coding-study/commit/828a268f73caeae306235cf7a3e78d58e61cdd19))
+
+- **grader**: Reach the origins grader_reach publishes, and declare only those
+  ([`cecdd1c`](https://github.com/bkuberek/coding-study/commit/cecdd1c2afe1294564a2988f8156ef4ad178a0b2))
+
+- **grader**: Show a parallel case's expected counts as its report shows them
+  ([`4dcaf77`](https://github.com/bkuberek/coding-study/commit/4dcaf77328d1d7bb92e31082f0bb61aad919c8aa))
+
+- **mock-server**: Pass requests through to an upstream and spoil a JWT in flight
+  ([`3d25dee`](https://github.com/bkuberek/coding-study/commit/3d25dee3375277e8f49f7617eb15458014d5190e))
+
+- **problems**: Add 0280 oauth-pkce-client-typescript, graded against Keycloak
+  ([`603db83`](https://github.com/bkuberek/coding-study/commit/603db837e4c404af354f21b4fd41bd17d516d6d3))
+
+- **problems**: Add 0282 inventory reservations on Postgres (PP5)
+  ([`dc8f86f`](https://github.com/bkuberek/coding-study/commit/dc8f86f2c833527ceaaeae8840f2b892a1f2c226))
+
+- **sandbox**: A fresh start removes the dev stack's data
+  ([`0024c22`](https://github.com/bkuberek/coding-study/commit/0024c2278dc560f3177b1f194603c967e4744f12))
+
+- **sandbox**: A mock server's upstream names a service of the compose file
+  ([`73304c4`](https://github.com/bkuberek/coding-study/commit/73304c402c76103c72e4d0ad4528bafa733250f8))
+
+- **sandbox**: Finish S21 and S22 so a services file stays in the sandbox
+  ([`75e7012`](https://github.com/bkuberek/coding-study/commit/75e70123a2df9bee48f99b6f725cd70816978689))
+
+- **sandbox**: Merge a problem's backing services into its stack
+  ([`b506fce`](https://github.com/bkuberek/coding-study/commit/b506fced18f53afc1ebab55a8541e66480657fb4))
+
+### Refactoring
+
+- **grader**: Say plainly when a step has no expectation to fill in
+  ([`f69fc08`](https://github.com/bkuberek/coding-study/commit/f69fc0812f69a7bd10175b8ee0a315c4f789e210))
+
+- **sandbox**: Say why a pass-through's upstream is a backing service
+  ([`24a211d`](https://github.com/bkuberek/coding-study/commit/24a211d0931e1fdb2e5e436439a07f865e9c686b))
+
+### Testing
+
+- A service project fixture with Postgres and Redis on a real engine
+  ([`40374e8`](https://github.com/bkuberek/coding-study/commit/40374e89ecd1cca72e4cc3e5d0abff596211bb1d))
+
+- Grade a case through grader_reach, a pass-through and the app's output on a real engine
+  ([`53bb438`](https://github.com/bkuberek/coding-study/commit/53bb43863fb95e4a7df539cf93b9d1a13876d6c6))
+
+- Grade a login flow end to end on loopback with tampering and an output check
+  ([`ea3904a`](https://github.com/bkuberek/coding-study/commit/ea3904a23efc93c020b5c0907a0da49eccc4c315))
+
+- Read the app's output in the real Docker tests the CI job runs
+  ([`99aa94f`](https://github.com/bkuberek/coding-study/commit/99aa94fa653ef1e1b7397a130a61c59645e01d92))
+
+
 ## v0.33.0 (2026-11-09)
 
 ### Bug Fixes
