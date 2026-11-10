@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0286"
+slug: multi-tenant-api-typescript
+title: Multi-Tenant API (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend, security]
+job_roles: [backend, security-engineer]
+scope: project
+languages: [typescript]
+summary: Many organizations share one project tracker and one Postgres database. Build its API so none sees, changes or learns of another's rows, even through a forgotten filter, a pooled connection or a field it should not set.
+levels:
+  - {level: 1, title: Scoped reads and writes}
+  - {level: 2, title: Row-level security}
+  - {level: 3, title: Mass assignment and roles}
+  - {level: 4, title: "Comments, closed from the start"}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, node_modules/node-pg-migrate/bin/node-pg-migrate.js, up, --database-url-var, OWNER_DATABASE_URL]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+    reset: [node, scripts/reset.ts]
+    grade_setup: [node, "{problem}/grading/grade_setup.ts"]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://tracker_app:tracker_app@db:5432/tracker
+    OWNER_DATABASE_URL: postgres://tracker_owner:tracker_owner@db:5432/tracker
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  services: services/compose.yaml
+  requires:
+    lock: pnpm-lock.yaml
+    services: [postgres]
+    sizes: {install_mb: 37, images_mb: {app: 81, postgres: 117}, memory_mb: 120}
+approaches:
+  - {id: reference, name: "Scope twice: every query by the caller's organization, every table by a policy, the organization set per transaction", role: optimal, time: "per request", space: "per request"}
+related: [authorization-policy-engine, inventory-reservations-typescript]
+estimate_minutes: 240
