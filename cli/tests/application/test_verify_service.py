@@ -244,6 +244,41 @@ def test_an_install_far_from_its_declared_size_fails_d11(environment, engine, tm
     assert any("install_mb" in problem for problem in verified(environment).d11_problems)
 
 
+@pytest.fixture
+def cached(tmp_path, engine, app):
+    """A problem whose app keeps its dependencies in the install cache, as Gradle's do."""
+    root = make_content(tmp_path)
+    document = meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}])
+    document["project"]["app"]["install_cache"] = True  # type: ignore[index]
+    write_problem(root, document)
+    write_mock(root)
+    write_cases(root, CASES)
+
+    def clients(_endpoints: StackEndpoints) -> StackClients:
+        return StackClients(app, FakeMockControl([]))
+
+    return make_environment(root, sandbox=engine, stack_clients=clients)
+
+
+def test_an_install_cache_near_its_declared_size_passes_d11(cached, engine):
+    engine.cache_bytes = INSTALLED_BYTES
+
+    assert verified(cached).d11_problems == ()
+    assert engine.called("install_cache_bytes")
+
+
+def test_an_install_cache_far_from_its_declared_size_fails_d11(cached, engine):
+    engine.cache_bytes = 1
+
+    assert any("install_mb" in problem for problem in verified(cached).d11_problems)
+
+
+def test_an_install_cache_that_cannot_be_counted_is_not_judged(cached, engine):
+    engine.cache_bytes = None
+
+    assert verified(cached).d11_problems == ()
+
+
 def test_a_sandbox_that_fails_raises_since_it_says_nothing_about_the_problem(environment, engine):
     engine.start_error = StackStartError(StartupFailure.SERVICE, "not your code")
 

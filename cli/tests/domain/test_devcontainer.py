@@ -1,6 +1,7 @@
 """The `devcontainer.json` that `cstudy dev` writes for your own IDE."""
 
 import json
+from dataclasses import replace
 from typing import Any
 
 from coding_study.domain.devcontainer import (
@@ -68,6 +69,18 @@ def test_it_holds_no_capability_and_gains_no_privilege():
 
 def test_it_sets_the_projects_variables_and_a_writable_home():
     assert document()["containerEnv"] == {"PORT": "8000", "HOME": "/tmp/home"}
+
+
+def test_it_mounts_nothing_more_for_an_app_that_keeps_out_of_the_install_cache():
+    assert "mounts" not in document()
+
+
+def test_it_mounts_the_install_cache_where_the_app_keeps_its_dependencies():
+    cached = replace(PLAN, app=replace(PLAN.app, install_cache="cstudy-i-rooms-d1g3st_cache"))
+
+    found = json.loads(devcontainer_text(cached).split("\n", 1)[1])
+
+    assert found["mounts"] == ["source=cstudy-i-rooms-d1g3st_cache,target=/cache,type=volume"]
 
 
 def test_a_file_that_starts_with_cstudys_line_is_cstudys():

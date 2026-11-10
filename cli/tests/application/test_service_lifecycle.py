@@ -432,6 +432,52 @@ def test_a_problem_with_no_install_needs_none(tmp_path, engine):
     assert not needs_install(environment, problem_of(environment))
 
 
+@pytest.fixture
+def cached(tmp_path, engine):
+    """A problem whose app keeps its dependencies in the install cache, as Gradle's does."""
+    root = make_content(tmp_path)
+    document = meta_document()
+    document["project"]["app"]["install_cache"] = True  # type: ignore[index]
+    write_problem(root, document)
+    environment = make_environment(root, sandbox=engine)
+    started(environment)
+    installed(environment)
+    return environment
+
+
+def test_an_app_that_keeps_its_dependencies_in_the_cache_needs_no_install_while_it_is_there(
+    cached, engine
+):
+    assert not needs_install(cached, problem_of(cached))
+    assert engine.called("install_cache_present") == [
+        f"cstudy-i-{SLUG}-{workspace_digest(str(cached.root.resolve()))}_cache"
+    ]
+
+
+def test_an_app_whose_install_cache_is_gone_needs_an_install(cached, engine):
+    engine.cache_present = False
+
+    assert needs_install(cached, problem_of(cached))
+
+
+def test_an_app_that_keeps_out_of_the_cache_never_asks_for_it(environment, engine):
+    started(environment)
+    installed(environment)
+
+    needs_install(environment, problem_of(environment))
+
+    assert engine.called("install_cache_present") == []
+
+
+@pytest.mark.parametrize("plan_of", [dev_stack_plan, practice_stack_plan])
+def test_every_stack_of_an_app_that_keeps_its_dependencies_in_the_cache_mounts_it(cached, plan_of):
+    plan = plan_of(cached, problem_of(cached))
+
+    assert plan.app.install_cache == (
+        f"cstudy-i-{SLUG}-{workspace_digest(str(cached.root.resolve()))}_cache"
+    )
+
+
 def test_the_test_stack_is_a_test_stack_of_this_owner(environment, engine):
     started(environment)
 

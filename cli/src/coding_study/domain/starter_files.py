@@ -16,6 +16,8 @@ LOCK_FILES = frozenset(
         *("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"),
         *("bun.lock", "bun.lockb", "Cargo.lock"),
         "go.sum",
+        *("gradle.lockfile", "buildscript-gradle.lockfile", "settings-gradle.lockfile"),
+        "verification-metadata.xml",
     }
 )
 

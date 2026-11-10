@@ -7,6 +7,7 @@ is P6's: nothing here reads those files.
 """
 
 import json
+import posixpath
 import re
 import sys
 import tomllib
@@ -19,6 +20,7 @@ from coding_study.domain.sandbox import CONTROL_PORT, MOCK_PORT, RESERVED_SERVIC
 from coding_study.domain.service_project import (
     ENV_FILE,
     FROZEN_INSTALL_FLAGS,
+    GRADLE_LOCK,
     PROBLEM_PLACEHOLDER,
     ServiceCommands,
     ServiceProject,
@@ -46,6 +48,23 @@ THIS_MACHINE = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "host.dock
 """Hosts that name your machine, which the sandbox cannot reach."""
 _VERSION_NUMBER = re.compile(r"\d+")
 _PYTHON_SUFFIX = ".py"
+INSTALL_COMMAND = "install"
+GRADLE = "gradle"
+GRADLE_OFFLINE = "--offline"
+GRADLE_LOCK_OVERRIDES = frozenset(
+    {
+        *("--write-verification-metadata", "-M", "--dependency-verification", "-F"),
+        *("--write-locks", "--update-locks"),
+    }
+)
+"""What would make an install write its lock, or check less than it says."""
+GRADLE_SETTINGS_FILES = ("settings.gradle.kts", "settings.gradle")
+GRADLE_WRAPPER_SCRIPT = "gradlew"
+GRADLE_WRAPPER_DIRECTORY = "gradle/wrapper/"
+GRADLE_PROPERTIES_FILE = "gradle.properties"
+GRADLE_DAEMON = "org.gradle.daemon"
+_PROPERTY = re.compile(r"(?P<name>[^=:\s]+)\s*[=:\s]\s*(?P<value>.*)")
+_PROPERTY_COMMENTS = ("#", "!")
 
 type _Found = Iterator[tuple[str, str]]
 
@@ -101,7 +120,10 @@ def _commands(service: ServiceProject) -> _Found:
         yield from _frozen(commands.install)
     if service.services is not None and commands.bootstrap is None:
         yield "project.commands.bootstrap", "required: project.services needs its data brought up"
+    if service.app.install_cache and commands.install is None:
+        yield "project.app.install_cache", "needs commands.install, which fills the cache"
     yield from _placeholders(commands)
+    yield from _gradle_commands(commands)
 
 
 def _frozen(install: tuple[str, ...]) -> _Found:
@@ -110,6 +132,24 @@ def _frozen(install: tuple[str, ...]) -> _Found:
             for flag in flags:
                 if flag not in install:
                     yield "project.commands.install", f"{manager} needs {flag}"
+
+
+def _gradle_commands(commands: ServiceCommands) -> _Found:
+    """Gradle reaches the network in `install` alone, and there it downloads what the lock lists
+    and nothing else; every other command runs it offline, from the install cache."""
+    for name, command in commands.declared().items():
+        if posixpath.basename(command[0]) != GRADLE:
+            continue
+        where = f"project.commands.{name}"
+        if name != INSTALL_COMMAND:
+            if GRADLE_OFFLINE not in command:
+                yield where, f"gradle needs {GRADLE_OFFLINE}: only install has the network"
+            continue
+        if GRADLE_OFFLINE in command:
+            yield where, f"gradle downloads at install: no {GRADLE_OFFLINE}"
+        for word in command:
+            if word.partition("=")[0] in GRADLE_LOCK_OVERRIDES:
+                yield where, f"gradle installs from the lock exactly: no {word}"
 
 
 def _placeholders(commands: ServiceCommands) -> _Found:
@@ -192,8 +232,8 @@ def _starter(meta: ProblemMeta, service: ServiceProject, starter: ProjectTree) -
         yield README_FILE, "missing"
     if lock is not None and lock not in starter.paths:
         yield lock, "missing: requires.lock names it"
-    if lock is not None and PATH_SEPARATOR in lock:
-        yield lock, "a lock file lies at the starter's root"
+    if lock is not None and PATH_SEPARATOR in lock and lock != GRADLE_LOCK:
+        yield lock, f"a lock file lies at the starter's root, or is Gradle's {GRADLE_LOCK}"
     yield from _limits(starter, lock)
     yield from _contents(starter, lock)
     yield from _env_files(starter)
@@ -201,6 +241,8 @@ def _starter(meta: ProblemMeta, service: ServiceProject, starter: ProjectTree) -
         yield from _node_package(starter)
     if lock == UV_LOCK:
         yield from _python_project(starter)
+    if lock == GRADLE_LOCK:
+        yield from _gradle_project(starter)
     if Language.PYTHON in meta.languages:
         yield from _shadowed_modules(starter)
 
@@ -292,6 +334,35 @@ def _python_project(starter: ProjectTree) -> _Found:
     ignore = starter.file(GITIGNORE_FILE)
     if ignore is None or f"!{UV_LOCK}" not in (ignore.text or "").splitlines():
         yield GITIGNORE_FILE, f"needs !{UV_LOCK}, which the workspace's .gitignore ignores"
+
+
+def _gradle_project(starter: ProjectTree) -> _Found:
+    """The image's Gradle builds the folder, offline, and leaves no daemon behind in the app's
+    container: each command is a container of its own, and the app runs once the build ends."""
+    if not any(name in starter.paths for name in GRADLE_SETTINGS_FILES):
+        yield GRADLE_SETTINGS_FILES[0], "missing: without it Gradle looks for one above this folder"
+    for path in sorted(starter.paths):
+        if path == GRADLE_WRAPPER_SCRIPT or path.startswith(GRADLE_WRAPPER_DIRECTORY):
+            yield path, "the image holds Gradle, and a wrapper would download another"
+    properties = starter.file(GRADLE_PROPERTIES_FILE)
+    if properties is None or _property(properties, GRADLE_DAEMON) != "false":
+        yield (
+            GRADLE_PROPERTIES_FILE,
+            f"needs {GRADLE_DAEMON}=false: a daemon would outlive the build in the app's container",
+        )
+
+
+def _property(file: ProjectFile, name: str) -> str | None:
+    """`name`'s value in a `.properties` file, in the forms Gradle reads: `name=value`,
+    `name: value` or `name value`."""
+    for line in (file.text or "").splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith(_PROPERTY_COMMENTS):
+            continue
+        found = _PROPERTY.fullmatch(entry)
+        if found is not None and found["name"] == name:
+            return found["value"].strip()
+    return None
 
 
 def _shadowed_modules(starter: ProjectTree) -> _Found:

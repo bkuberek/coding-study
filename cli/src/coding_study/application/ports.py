@@ -1391,6 +1391,15 @@ class SandboxEngine(Protocol):
         """`down`, keeping the install cache; what went wrong, or None."""
         ...
 
+    def install_cache_present(self, plan: InstallPlan) -> bool:
+        """Whether the plan's cache volume exists; it asks and creates nothing."""
+        ...
+
+    def install_cache_bytes(self, plan: InstallPlan) -> int | None:
+        """What the plan's cache volume holds, counted in a short one-off of the helper image with
+        no network; None when it cannot be counted."""
+        ...
+
 
 class SidecarEngine(Protocol):
     """What a code-intelligence session of a service project asks of the container engine: its

@@ -22,6 +22,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager, suppress
+from dataclasses import replace
 from pathlib import Path
 from typing import IO, Protocol, cast
 
@@ -45,6 +46,7 @@ from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
     APP_SERVICE,
     BOOTSTRAP_SERVICE,
+    CACHE_DIRECTORY,
     CONTROL_PORT,
     EGRESS_HOSTS_VARIABLE,
     EGRESS_PROBE_SERVICE,
@@ -58,7 +60,11 @@ from coding_study.domain.sandbox import (
     LABEL_WORKSPACE,
     MOCK_CODE_DIRECTORY,
     MOCK_CONFIG_FILE,
+    NO_NEW_PRIVILEGES,
+    OWNER_MEMORY,
+    OWNER_PIDS,
     PASSWD_FILE,
+    PYTHON_IMAGE,
     RESET_PREPARE_SERVICE,
     SERVICE_FILES_DIRECTORY,
     STACK_FILE,
@@ -120,7 +126,10 @@ READABLE_FILE = 0o644
 READABLE_DIRECTORY = 0o755
 MILLISECONDS_PER_SECOND = 1000
 EGRESS_PROBE_LIMIT_S = 60.0
+CACHE_COUNT_TIMEOUT_S = 120.0
+BYTES_PER_KIB = 1024
 IPV4 = 4
+_VOLUMES_FORMAT = "{{json .Config.Volumes}}"
 _GATEWAY_FORMAT = "{{range .IPAM.Config}}{{.Gateway}} {{end}}"
 _COMPOSE = (DOCKER, "compose", "--ansi", "never")
 _PULL_NEVER = ("--pull", "never")
@@ -377,6 +386,19 @@ class DockerSandbox:
         found = self._runner.run((DOCKER, "image", "inspect", "--format", "{{.Id}}", image))
         return found is not None and found.exit_code == 0
 
+    def _declared_volumes(self, image: str) -> tuple[str, ...]:
+        """The paths `image` declares as volumes; none when it declares none or cannot be read."""
+        found = self._runner.run((DOCKER, "image", "inspect", "--format", _VOLUMES_FORMAT, image))
+        if found is None or found.exit_code != 0:
+            return ()
+        try:
+            declared: object = json.loads(found.output)
+        except json.JSONDecodeError:
+            return ()
+        return (
+            tuple(sorted(cast(dict[str, object], declared))) if isinstance(declared, dict) else ()
+        )
+
     def pull(self, image: str, notify: ProgressNotice) -> None:
         pulled = self._runner.run((DOCKER, "pull", image), PULL_TIMEOUT_S, notify)
         if pulled is None or pulled.exit_code != 0:
@@ -446,7 +468,8 @@ class DockerSandbox:
         _prepare_project(plan.paths)
         if plan.grade_setup is not None:
             _refuse_link(Path(plan.grade_setup.grading_directory))
-        _write_stack_files(plan)
+        image_volumes = self._declared_volumes(plan.app.image)
+        _write_stack_files(replace(plan, app=replace(plan.app, image_volumes=image_volumes)))
         up = self._compose(
             plan,
             ("up", "--wait", "--wait-timeout", str(budget.up_s), *_PULL_NEVER),
@@ -772,10 +795,41 @@ class DockerSandbox:
     ) -> CommandOutcome:
         _prepare_project(plan.paths)
         run = _run_folder(plan.paths)
-        _write_file(run / STACK_FILE, render_compose(install_document(plan)))
+        covered = replace(plan, image_volumes=self._declared_volumes(plan.image))
+        _write_file(run / STACK_FILE, render_compose(install_document(covered)))
         _write_passwd(run, plan.user)
         arguments = ("run", "--rm", "-T", *_PULL_NEVER, INSTALL_SERVICE)
         return self._one_off(plan, arguments, timeout_s, on_output)
+
+    def install_cache_present(self, plan: InstallPlan) -> bool:
+        found = self._runner.run(
+            (DOCKER, "volume", "inspect", "--format", "{{.Name}}", plan.cache_volume)
+        )
+        return found is not None and found.exit_code == 0
+
+    def install_cache_bytes(self, plan: InstallPlan) -> int | None:
+        """`du` as you, read-only, with no network, no capability and the helpers' limits, in a
+        one-off that removes itself."""
+        labels = (
+            word
+            for name, value in plan.identity.container_labels.items()
+            for word in ("--label", f"{name}={value}")
+        )
+        counted = self._runner.run(
+            (
+                *(DOCKER, "run", "--rm", *_PULL_NEVER, "--network", "none", "--read-only"),
+                *("--cap-drop", "ALL", "--security-opt", NO_NEW_PRIVILEGES),
+                *("--memory", OWNER_MEMORY, "--pids-limit", str(OWNER_PIDS)),
+                *("--user", plan.user.spec, *labels),
+                *("--volume", f"{plan.cache_volume}:{CACHE_DIRECTORY}:ro"),
+                *(PYTHON_IMAGE, "du", "-sk", CACHE_DIRECTORY),
+            ),
+            CACHE_COUNT_TIMEOUT_S,
+        )
+        if counted is None or counted.exit_code != 0:
+            return None
+        kibibytes = counted.output.split()[:1]
+        return int(kibibytes[0]) * BYTES_PER_KIB if kibibytes and kibibytes[0].isdigit() else None
 
 
 def _require_sidecar_up(up: ProbeResult | None) -> None:
