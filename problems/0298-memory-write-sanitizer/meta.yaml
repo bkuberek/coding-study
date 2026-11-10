@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0298"
+slug: memory-write-sanitizer
+title: Memory Write Sanitizer
+summary: "Write sanitizeMemory: before an assistant stores a memory that will later be read back into its context, neutralize the context's delimiters, cap the length and flag lines that address the assistant."
+status: ready
+difficulty: medium
+track: practical
+kind: function
+domains: [ai-llm, security]
+job_roles: [ai-engineer, security-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: sanitizeMemory
+    params:
+      - {name: text, type: string}
+      - {name: maxLength, type: int}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: stack-scan, name: Remove delimiters on a stack in one pass then cut and flag the lines, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [memory-facts-with-merge, forgettable-inverted-index]
+estimate_minutes: 30
