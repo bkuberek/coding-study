@@ -1,0 +1,28 @@
+# Backing services only: cstudy adds the network, labels, log limits, capabilities and privileges.
+# Postgres 17 with the pgvector extension, on Debian. It runs as the image's own user, since its
+# entrypoint otherwise steps down from root through gosu, which needs capabilities a backing
+# service never holds.
+services:
+  db:
+    image: pgvector/pgvector:0.8.7-pg17-bookworm@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8
+    user: postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    tmpfs:
+      - /var/run/postgresql:mode=1777
+      - /tmp:mode=1777
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, pg_isready, -U, app, -d, app, -h, 127.0.0.1]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+      start_interval: 250ms
+volumes:
+  pgdata:

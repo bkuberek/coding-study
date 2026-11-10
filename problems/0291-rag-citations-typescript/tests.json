@@ -1,0 +1,4238 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a document of 69 words is cut into 5 chunks, all embedded in one call",
+      "request": {
+        "method": "PUT",
+        "path": "/documents/refunds",
+        "json": {
+          "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "document_id": "refunds",
+          "chunks": 5
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "route": "embed-refunds",
+          "count": 1,
+          "headers": {
+            "Authorization": "Bearer cs-fake-llm-key"
+          },
+          "body": {
+            "model": "help-embed-1"
+          }
+        },
+        {
+          "mock": "embeddings",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "each chunk keeps its document, its position and its text; each repeats the last 5 words of the one before",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/documents/refunds/chunks"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "document_id": "refunds",
+          "chunks": [
+            {
+              "chunk_id": "refunds:0",
+              "position": 0,
+              "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the"
+            },
+            {
+              "chunk_id": "refunds:1",
+              "position": 1,
+              "text": "The customer must give the order number from the confirmation email. Refunds go back to the original payment method and"
+            },
+            {
+              "chunk_id": "refunds:2",
+              "position": 2,
+              "text": "the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+            },
+            {
+              "chunk_id": "refunds:3",
+              "position": 3,
+              "text": "older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never"
+            },
+            {
+              "chunk_id": "refunds:4",
+              "position": 4,
+              "text": "refund in cash, and never refund a gift card."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "the first embeddings call answers 429 with Retry-After: 1, so the app waits a second and sends it again",
+      "mocks": {
+        "embeddings": "rate_limited_then_ok"
+      },
+      "request": {
+        "method": "PUT",
+        "path": "/documents/leave",
+        "json": {
+          "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "document_id": "leave",
+          "chunks": 4
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "route": "embed-leave",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "fresh": true,
+      "note": "a document of 17 words is one chunk",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/wifi",
+            "json": {
+              "text": "Guest wifi. The network is Harbor Guest, and its password is on the board in the kitchen."
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "wifi",
+              "chunks": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/wifi/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "wifi",
+              "chunks": [
+                {
+                  "chunk_id": "wifi:0",
+                  "position": 0,
+                  "text": "Guest wifi. The network is Harbor Guest, and its password is on the board in the kitchen."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "fresh": true,
+      "note": "a document of exactly 20 words is one chunk",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/printer",
+            "json": {
+              "text": "Printing. The printer on the second floor prints in colour. Collect your pages promptly, and report a jam to facilities."
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "printer",
+              "chunks": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/printer/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "printer",
+              "chunks": [
+                {
+                  "chunk_id": "printer:0",
+                  "position": 0,
+                  "text": "Printing. The printer on the second floor prints in colour. Collect your pages promptly, and report a jam to facilities."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "fresh": true,
+      "note": "21 words are two chunks: words 1 to 20, then words 16 to 21",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/parking",
+            "json": {
+              "text": "Parking. The garage under the office has twenty spaces for staff. Book a space the day before in the parking app."
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "parking",
+              "chunks": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/parking/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "parking",
+              "chunks": [
+                {
+                  "chunk_id": "parking:0",
+                  "position": 0,
+                  "text": "Parking. The garage under the office has twenty spaces for staff. Book a space the day before in the parking"
+                },
+                {
+                  "chunk_id": "parking:1",
+                  "position": 1,
+                  "text": "day before in the parking app."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "fresh": true,
+      "note": "35 words are two chunks: the second ends at the last word, so there is no third",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/badges",
+            "json": {
+              "text": "Visitor badges. Reception prints a badge for each visitor, who wears it at all times. Walk your visitor to the door when they leave, and return the badge to reception before the end of day."
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "badges",
+              "chunks": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/badges/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "badges",
+              "chunks": [
+                {
+                  "chunk_id": "badges:0",
+                  "position": 0,
+                  "text": "Visitor badges. Reception prints a badge for each visitor, who wears it at all times. Walk your visitor to the"
+                },
+                {
+                  "chunk_id": "badges:1",
+                  "position": 1,
+                  "text": "Walk your visitor to the door when they leave, and return the badge to reception before the end of day."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "fresh": true,
+      "note": "runs of spaces, tabs and newlines between words are one space in a chunk",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/phishing",
+            "json": {
+              "text": "  Phishing.\n\nNever open an attachment  from a sender you do not know.\tForward the email to security,\nthen delete it.  If you clicked a link,\n\n  reset your password at once and tell security.  "
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "phishing",
+              "chunks": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/phishing/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "phishing",
+              "chunks": [
+                {
+                  "chunk_id": "phishing:0",
+                  "position": 0,
+                  "text": "Phishing. Never open an attachment from a sender you do not know. Forward the email to security, then delete it."
+                },
+                {
+                  "chunk_id": "phishing:1",
+                  "position": 1,
+                  "text": "to security, then delete it. If you clicked a link, reset your password at once and tell security."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "fresh": true,
+      "note": "118 words are 8 chunks, the most a document may have, embedded in one call of 8 texts",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/handbook",
+            "json": {
+              "text": "Welcome handbook. Your first week starts with a laptop, a badge and a tour of the office. Your manager sets three goals for your first month and meets you every Friday to review them. Ask your buddy anything; that is what buddies are for. Lunch is on the team on your first day. The office opens at eight and closes at eight, and most teams keep their meetings between ten and four. Book meeting rooms in the calendar, and free them if your plans change. Keep your desk clear at the end of the day, since desks are shared. Read the security guide before your first Friday, and finish the privacy course within your first month. Welcome aboard."
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "handbook",
+              "chunks": 8
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/handbook/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "handbook",
+              "chunks": [
+                {
+                  "chunk_id": "handbook:0",
+                  "position": 0,
+                  "text": "Welcome handbook. Your first week starts with a laptop, a badge and a tour of the office. Your manager sets"
+                },
+                {
+                  "chunk_id": "handbook:1",
+                  "position": 1,
+                  "text": "the office. Your manager sets three goals for your first month and meets you every Friday to review them. Ask"
+                },
+                {
+                  "chunk_id": "handbook:2",
+                  "position": 2,
+                  "text": "Friday to review them. Ask your buddy anything; that is what buddies are for. Lunch is on the team on"
+                },
+                {
+                  "chunk_id": "handbook:3",
+                  "position": 3,
+                  "text": "is on the team on your first day. The office opens at eight and closes at eight, and most teams"
+                },
+                {
+                  "chunk_id": "handbook:4",
+                  "position": 4,
+                  "text": "at eight, and most teams keep their meetings between ten and four. Book meeting rooms in the calendar, and free"
+                },
+                {
+                  "chunk_id": "handbook:5",
+                  "position": 5,
+                  "text": "in the calendar, and free them if your plans change. Keep your desk clear at the end of the day,"
+                },
+                {
+                  "chunk_id": "handbook:6",
+                  "position": 6,
+                  "text": "the end of the day, since desks are shared. Read the security guide before your first Friday, and finish the"
+                },
+                {
+                  "chunk_id": "handbook:7",
+                  "position": 7,
+                  "text": "first Friday, and finish the privacy course within your first month. Welcome aboard."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "embeddings",
+          "route": "embed-handbook",
+          "count": 1
+        },
+        {
+          "mock": "embeddings",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "fresh": true,
+      "note": "138 words would be 9 chunks: refused before anything is embedded or kept",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/handbook",
+            "json": {
+              "text": "Welcome handbook. Your first week starts with a laptop, a badge and a tour of the office. Your manager sets three goals for your first month and meets you every Friday to review them. Ask your buddy anything; that is what buddies are for. Lunch is on the team on your first day. The office opens at eight and closes at eight, and most teams keep their meetings between ten and four. Book meeting rooms in the calendar, and free them if your plans change. Keep your desk clear at the end of the day, since desks are shared. Read the security guide before your first Friday, and finish the privacy course within your first month. Welcome aboard. Questions about pay go to the people team, and questions about equipment to the help desk, both on the chat."
+            }
+          },
+          "expected": {
+            "status": 413,
+            "body": {
+              "error": "document_too_large"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/handbook/chunks"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_document"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "fresh": true,
+      "note": "a document never put is unknown",
+      "request": {
+        "method": "GET",
+        "path": "/documents/refunds/chunks"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_document"
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "fresh": true,
+      "note": "a document id with a capital letter is refused, and nothing is embedded",
+      "request": {
+        "method": "PUT",
+        "path": "/documents/Refunds",
+        "json": {
+          "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "fresh": true,
+      "note": "a text with no word in it is refused",
+      "request": {
+        "method": "PUT",
+        "path": "/documents/blank",
+        "json": {
+          "text": " \n\t "
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "fresh": true,
+      "note": "a body without a text field is refused",
+      "request": {
+        "method": "PUT",
+        "path": "/documents/refunds",
+        "json": {
+          "body": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "fresh": true,
+      "note": "a body that is not JSON is refused",
+      "request": {
+        "method": "PUT",
+        "path": "/documents/refunds",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "text=refunds"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "fresh": true,
+      "note": "every embeddings call answers 429: three tries a second apart, then 502, and nothing is kept",
+      "mocks": {
+        "embeddings": "rate_limited"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/refunds",
+            "json": {
+              "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+            }
+          },
+          "expected": {
+            "status": 502,
+            "body": {
+              "error": "embeddings_unavailable"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/refunds/chunks"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_document"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "embeddings",
+          "route": "embed-refunds",
+          "count": 3,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "fresh": true,
+      "note": "the embeddings service answers 503: no retry, 502, and nothing is kept",
+      "mocks": {
+        "embeddings": "outage"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/refunds",
+            "json": {
+              "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+            }
+          },
+          "expected": {
+            "status": 502,
+            "body": {
+              "error": "embeddings_unavailable"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/refunds/chunks"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_document"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "embeddings",
+          "route": "embed-refunds",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "fresh": true,
+      "note": "two documents: each lists its own chunks only",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/wifi",
+          "json": {
+            "text": "Guest wifi. The network is Harbor Guest, and its password is on the board in the kitchen."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/parking",
+          "json": {
+            "text": "Parking. The garage under the office has twenty spaces for staff. Book a space the day before in the parking app."
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/documents/wifi/chunks"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "document_id": "wifi",
+          "chunks": [
+            {
+              "chunk_id": "wifi:0",
+              "position": 0,
+              "text": "Guest wifi. The network is Harbor Guest, and its password is on the board in the kitchen."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "the default search: the 3 chunks most like the question, each scoring at least 0.6",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "refunds:2",
+              "document_id": "refunds",
+              "position": 2,
+              "score": 0.9935,
+              "text": "the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+            },
+            {
+              "chunk_id": "refunds:0",
+              "document_id": "refunds",
+              "position": 0,
+              "score": 0.9715,
+              "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the"
+            },
+            {
+              "chunk_id": "refunds:4",
+              "document_id": "refunds",
+              "position": 4,
+              "score": 0.7166,
+              "text": "refund in cash, and never refund a gift card."
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "route": "embed-q-refund-window",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "k asks for fewer results",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "Who approves an expense claim over 500 euros?",
+          "k": 1
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "expenses:2",
+              "document_id": "expenses",
+              "position": 2,
+              "score": 0.9689,
+              "text": "500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "no chunk scores 0.6 for a question the documents do not cover",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "When is the next team offsite?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": []
+        }
+      }
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "fresh": true,
+      "note": "the default search for: What should I do first when I get paged?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "What should I do first when I get paged?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "oncall:3",
+              "document_id": "oncall",
+              "position": 3,
+              "score": 0.9778,
+              "text": "over open incidents at the end of your shift, in the on-call notes."
+            },
+            {
+              "chunk_id": "oncall:1",
+              "document_id": "oncall",
+              "position": 1,
+              "score": 0.9717,
+              "text": "the alert first, then open an incident channel and post what you see. If customers are affected, page the incident"
+            },
+            {
+              "chunk_id": "oncall:2",
+              "document_id": "oncall",
+              "position": 2,
+              "score": 0.9489,
+              "text": "are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "fresh": true,
+      "note": "the default search for: What do I do if errors rise after a release?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "What do I do if errors rise after a release?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "deploys:0",
+              "document_id": "deploys",
+              "position": 0,
+              "score": 0.9759,
+              "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday"
+            },
+            {
+              "chunk_id": "deploys:2",
+              "document_id": "deploys",
+              "position": 2,
+              "score": 0.9671,
+              "text": "for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the"
+            },
+            {
+              "chunk_id": "deploys:3",
+              "document_id": "deploys",
+              "position": 3,
+              "score": 0.8969,
+              "text": "rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h18",
+      "level": 2,
+      "fresh": true,
+      "note": "the default search for: How do I reset my password?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How do I reset my password?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "access:0",
+              "document_id": "access",
+              "position": 0,
+              "score": 0.9676,
+              "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report"
+            },
+            {
+              "chunk_id": "access:2",
+              "document_id": "access",
+              "position": 2,
+              "score": 0.9428,
+              "text": "device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs"
+            },
+            {
+              "chunk_id": "access:1",
+              "document_id": "access",
+              "position": 1,
+              "score": 0.8697,
+              "text": "asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h19",
+      "level": 2,
+      "fresh": true,
+      "note": "the default search for: How much notice do I need before taking vacation?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How much notice do I need before taking vacation?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "leave:3",
+              "document_id": "leave",
+              "position": 3,
+              "score": 1.0,
+              "text": "10 in the morning, and send a note from a doctor after three sick days in a row."
+            },
+            {
+              "chunk_id": "leave:0",
+              "document_id": "leave",
+              "position": 0,
+              "score": 0.9935,
+              "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask"
+            },
+            {
+              "chunk_id": "leave:1",
+              "document_id": "leave",
+              "position": 1,
+              "score": 0.8662,
+              "text": "the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h20",
+      "level": 2,
+      "fresh": true,
+      "note": "only 2 chunks score 0.6, so fewer than k come back",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "Does my manager need to approve it?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "access:3",
+              "document_id": "access",
+              "position": 3,
+              "score": 0.8202,
+              "text": "day. Access to production needs a request approved by your team lead."
+            },
+            {
+              "chunk_id": "refunds:3",
+              "document_id": "refunds",
+              "position": 3,
+              "score": 0.6717,
+              "text": "older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 2,
+      "fresh": true,
+      "note": "equal scores: the smaller document id first, then the smaller position",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "Where can I park my bike at the office?",
+          "k": 7,
+          "min_score": 0
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "leave:3",
+              "document_id": "leave",
+              "position": 3,
+              "score": 0.2294,
+              "text": "10 in the morning, and send a note from a doctor after three sick days in a row."
+            },
+            {
+              "chunk_id": "refunds:4",
+              "document_id": "refunds",
+              "position": 4,
+              "score": 0.1644,
+              "text": "refund in cash, and never refund a gift card."
+            },
+            {
+              "chunk_id": "deploys:3",
+              "document_id": "deploys",
+              "position": 3,
+              "score": 0.1474,
+              "text": "rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+            },
+            {
+              "chunk_id": "expenses:3",
+              "document_id": "expenses",
+              "position": 3,
+              "score": 0.1474,
+              "text": "paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+            },
+            {
+              "chunk_id": "access:3",
+              "document_id": "access",
+              "position": 3,
+              "score": 0.1348,
+              "text": "day. Access to production needs a request approved by your team lead."
+            },
+            {
+              "chunk_id": "deploys:1",
+              "document_id": "deploys",
+              "position": 1,
+              "score": 0.1348,
+              "text": "Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each"
+            },
+            {
+              "chunk_id": "leave:1",
+              "document_id": "leave",
+              "position": 1,
+              "score": 0.1348,
+              "text": "the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 2,
+      "fresh": true,
+      "note": "a lower minimum lets chunks of other documents in, up to k",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How much notice do I need before taking vacation?",
+          "k": 5,
+          "min_score": 0.4
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "leave:3",
+              "document_id": "leave",
+              "position": 3,
+              "score": 1.0,
+              "text": "10 in the morning, and send a note from a doctor after three sick days in a row."
+            },
+            {
+              "chunk_id": "leave:0",
+              "document_id": "leave",
+              "position": 0,
+              "score": 0.9935,
+              "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask"
+            },
+            {
+              "chunk_id": "leave:1",
+              "document_id": "leave",
+              "position": 1,
+              "score": 0.8662,
+              "text": "the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+            },
+            {
+              "chunk_id": "leave:2",
+              "document_id": "leave",
+              "position": 2,
+              "score": 0.8662,
+              "text": "calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and"
+            },
+            {
+              "chunk_id": "refunds:2",
+              "document_id": "refunds",
+              "position": 2,
+              "score": 0.5102,
+              "text": "the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h23",
+      "level": 2,
+      "fresh": true,
+      "note": "nothing put yet: no results",
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": []
+        }
+      }
+    },
+    {
+      "id": "h24",
+      "level": 2,
+      "fresh": true,
+      "note": "k of 0 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?",
+          "k": 0
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 2,
+      "fresh": true,
+      "note": "k of 11 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?",
+          "k": 11
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 2,
+      "fresh": true,
+      "note": "k of 2.5 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?",
+          "k": 2.5
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 2,
+      "fresh": true,
+      "note": "a minimum score of 1.5 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?",
+          "min_score": 1.5
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h28",
+      "level": 2,
+      "fresh": true,
+      "note": "a query of spaces is refused",
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "   "
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "embeddings",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "the model sees the 3 retrieved chunks and the question, and the answer cites what it used",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Customers can ask within 30 days of purchase, and the refund takes up to 5 business days to appear.",
+          "citations": [
+            {
+              "chunk_id": "refunds:0",
+              "document_id": "refunds",
+              "position": 0
+            },
+            {
+              "chunk_id": "refunds:2",
+              "document_id": "refunds",
+              "position": 2
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-refund-window",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[refunds:2] the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[refunds:0] Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[refunds:4] refund in cash, and never refund a gift card."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: How long do customers have to ask for a refund?"
+                  }
+                ]
+              }
+            ]
+          },
+          "headers": {
+            "Authorization": "Bearer cs-fake-llm-key"
+          }
+        },
+        {
+          "mock": "chat",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "nothing scores 0.6, so the answer is I don't know and the model is never called",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "When is the next team offsite?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "I don't know.",
+          "citations": []
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "count": 0
+        },
+        {
+          "mock": "embeddings",
+          "route": "embed-q-offsite",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "the model finds no answer in the sources and cites none, so neither does the app",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How many vacation days can I sell back?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "I don't know.",
+          "citations": []
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-sell-vacation",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[leave:3] 10 in the morning, and send a note from a doctor after three sick days in a row."
+                  },
+                  {
+                    "type": "text",
+                    "text": "[leave:0] Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[leave:1] the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: How many vacation days can I sell back?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 3,
+      "fresh": true,
+      "note": "only the retrieved chunks reach the model, for: Who approves an expense claim over 500 euros?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "Who approves an expense claim over 500 euros?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Your manager approves it, and the finance team must approve it as well.",
+          "citations": [
+            {
+              "chunk_id": "expenses:1",
+              "document_id": "expenses",
+              "position": 1
+            },
+            {
+              "chunk_id": "expenses:2",
+              "document_id": "expenses",
+              "position": 2
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-expense-approval",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[expenses:2] 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[expenses:1] while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[expenses:0] Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: Who approves an expense claim over 500 euros?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 3,
+      "fresh": true,
+      "note": "only the retrieved chunks reach the model, for: How much notice do I need before taking vacation?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How much notice do I need before taking vacation?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Ask your manager at least two weeks ahead, through the leave calendar.",
+          "citations": [
+            {
+              "chunk_id": "leave:1",
+              "document_id": "leave",
+              "position": 1
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-vacation-notice",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[leave:3] 10 in the morning, and send a note from a doctor after three sick days in a row."
+                  },
+                  {
+                    "type": "text",
+                    "text": "[leave:0] Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[leave:1] the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: How much notice do I need before taking vacation?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 3,
+      "fresh": true,
+      "note": "only the retrieved chunks reach the model, for: What should I do first when I get paged?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What should I do first when I get paged?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Acknowledge the alert first, then open an incident channel and post what you see.",
+          "citations": [
+            {
+              "chunk_id": "oncall:1",
+              "document_id": "oncall",
+              "position": 1
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-paged",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[oncall:3] over open incidents at the end of your shift, in the on-call notes."
+                  },
+                  {
+                    "type": "text",
+                    "text": "[oncall:1] the alert first, then open an incident channel and post what you see. If customers are affected, page the incident"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[oncall:2] are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: What should I do first when I get paged?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 3,
+      "fresh": true,
+      "note": "only the retrieved chunks reach the model, for: What do I do if errors rise after a release?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What do I do if errors rise after a release?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Roll back at once with the rollback button and tell the on-call engineer; investigate after.",
+          "citations": [
+            {
+              "chunk_id": "deploys:2",
+              "document_id": "deploys",
+              "position": 2
+            },
+            {
+              "chunk_id": "deploys:3",
+              "document_id": "deploys",
+              "position": 3
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-release-errors",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[deploys:0] Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[deploys:2] for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[deploys:3] rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: What do I do if errors rise after a release?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 3,
+      "fresh": true,
+      "note": "only the retrieved chunks reach the model, for: I lost my laptop. What do I do?",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "I lost my laptop. What do I do?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Report it to security within one hour, so the device can be locked.",
+          "citations": [
+            {
+              "chunk_id": "access:1",
+              "document_id": "access",
+              "position": 1
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-lost-laptop",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[access:0] Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[access:2] device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[access:1] asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: I lost my laptop. What do I do?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h34",
+      "level": 3,
+      "fresh": true,
+      "note": "only 2 chunks score 0.6, so the model sees those 2 and the question, never a third",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "Does my manager need to approve it?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "It depends on the request: production access needs your team lead, and so does store credit for an old purchase.",
+          "citations": [
+            {
+              "chunk_id": "access:3",
+              "document_id": "access",
+              "position": 3
+            },
+            {
+              "chunk_id": "refunds:3",
+              "document_id": "refunds",
+              "position": 3
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-manager-approval",
+          "count": 1,
+          "body": {
+            "messages": [
+              {
+                "role": "system"
+              },
+              {
+                "role": "user",
+                "content": [
+                  {},
+                  {},
+                  {}
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "mock": "chat",
+          "route": "answer-manager-approval",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[access:3] day. Access to production needs a request approved by your team lead."
+                  },
+                  {
+                    "type": "text",
+                    "text": "[refunds:3] older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: Does my manager need to approve it?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h35",
+      "level": 3,
+      "fresh": true,
+      "note": "the whole corpus is 25 chunks: the model sees 3 of them, one part each, then the question",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How do I reset my password?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Use the self-service portal. The help desk never asks for your password.",
+          "citations": [
+            {
+              "chunk_id": "access:0",
+              "document_id": "access",
+              "position": 0
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-password-reset",
+          "count": 1,
+          "body": {
+            "messages": [
+              {
+                "role": "system"
+              },
+              {
+                "role": "user",
+                "content": [
+                  {},
+                  {},
+                  {},
+                  {}
+                ]
+              }
+            ]
+          },
+          "headers": {
+            "Authorization": "Bearer cs-fake-llm-key"
+          }
+        },
+        {
+          "mock": "chat",
+          "route": "answer-password-reset",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[access:0] Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[access:2] device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[access:1] asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: How do I reset my password?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 3,
+      "fresh": true,
+      "note": "nothing put yet: I don't know, without calling the model",
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "I don't know.",
+          "citations": []
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 3,
+      "fresh": true,
+      "note": "the model answers 429 with Retry-After: 1 once: wait a second and ask again",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "rate_limited_then_ok"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What should I do first when I get paged?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Acknowledge the alert first, then open an incident channel and post what you see.",
+          "citations": [
+            {
+              "chunk_id": "oncall:1",
+              "document_id": "oncall",
+              "position": 1
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-paged",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h38",
+      "level": 3,
+      "fresh": true,
+      "note": "the model answers 429 every time: three tries a second apart, then 502",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "rate_limited"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What should I do first when I get paged?"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "body": {
+          "error": "model_unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-paged",
+          "count": 3,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 3,
+      "fresh": true,
+      "note": "the model answers 503: no retry, 502",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What should I do first when I get paged?"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "body": {
+          "error": "model_unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-paged",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h40",
+      "level": 3,
+      "fresh": true,
+      "note": "the model's content is not the JSON object asked for: 502",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "malformed_answer"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "body": {
+          "error": "model_unavailable"
+        }
+      }
+    },
+    {
+      "id": "h41",
+      "level": 3,
+      "fresh": true,
+      "note": "a body without a question is refused, and nothing is called",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "query": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "count": 0
+        },
+        {
+          "mock": "embeddings",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "putting refunds again with a new text replaces its 5 chunks with 3: positions 3 and 4 are gone",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14 days, offer store credit instead."
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/documents/refunds/chunks"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "document_id": "refunds",
+          "chunks": [
+            {
+              "chunk_id": "refunds:0",
+              "position": 0,
+              "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer"
+            },
+            {
+              "chunk_id": "refunds:1",
+              "position": 1,
+              "text": "days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14"
+            },
+            {
+              "chunk_id": "refunds:2",
+              "position": 2,
+              "text": "original payment method. After 14 days, offer store credit instead."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "v11",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "after the update, the model sees the new chunks only and the answer cites the new text",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14 days, offer store credit instead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Customers can ask within 14 days of purchase, from 1 June.",
+          "citations": [
+            {
+              "chunk_id": "refunds:0",
+              "document_id": "refunds",
+              "position": 0
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-refund-window-updated",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[refunds:0] Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer"
+                  },
+                  {
+                    "type": "text",
+                    "text": "[refunds:2] original payment method. After 14 days, offer store credit instead."
+                  },
+                  {
+                    "type": "text",
+                    "text": "[refunds:1] days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: How long do customers have to ask for a refund?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v12",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "the model cites refunds:7, which was not retrieved: that citation is dropped",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "invented_citation"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How long do customers have to ask for a refund?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Customers can ask within 30 days of purchase, and the refund takes up to 5 business days to appear.",
+          "citations": [
+            {
+              "chunk_id": "refunds:0",
+              "document_id": "refunds",
+              "position": 0
+            },
+            {
+              "chunk_id": "refunds:2",
+              "document_id": "refunds",
+              "position": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h42",
+      "level": 4,
+      "fresh": true,
+      "note": "after the update, a search finds no chunk of the old text, however low the minimum",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14 days, offer store credit instead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?",
+          "k": 6,
+          "min_score": 0
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "refunds:0",
+              "document_id": "refunds",
+              "position": 0,
+              "score": 0.9715,
+              "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer"
+            },
+            {
+              "chunk_id": "refunds:2",
+              "document_id": "refunds",
+              "position": 2,
+              "score": 0.9471,
+              "text": "original payment method. After 14 days, offer store credit instead."
+            },
+            {
+              "chunk_id": "refunds:1",
+              "document_id": "refunds",
+              "position": 1,
+              "score": 0.8504,
+              "text": "days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14"
+            },
+            {
+              "chunk_id": "leave:1",
+              "document_id": "leave",
+              "position": 1,
+              "score": 0.5878,
+              "text": "the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+            },
+            {
+              "chunk_id": "leave:3",
+              "document_id": "leave",
+              "position": 3,
+              "score": 0.5263,
+              "text": "10 in the morning, and send a note from a doctor after three sick days in a row."
+            },
+            {
+              "chunk_id": "leave:0",
+              "document_id": "leave",
+              "position": 0,
+              "score": 0.5102,
+              "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h43",
+      "level": 4,
+      "fresh": true,
+      "note": "after the update, refunds:3 is gone: neither retrieved nor cited, though the model names it",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14 days, offer store credit instead."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "Does my manager need to approve it?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "It depends on the request: production access needs your team lead, and so does store credit for an old purchase.",
+          "citations": [
+            {
+              "chunk_id": "access:3",
+              "document_id": "access",
+              "position": 3
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "chat",
+          "route": "answer-manager-approval",
+          "count": 1,
+          "body": {
+            "model": "help-chat-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "Answer the question using only the sources. Each source starts with its id in brackets. Reply with a JSON object: answer, a short text, and citations, the list of source ids the answer uses. When the sources do not answer the question, reply with the answer I don't know. and no citations."
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "[access:3] day. Access to production needs a request approved by your team lead."
+                  },
+                  {
+                    "type": "text",
+                    "text": "Question: Does my manager need to approve it?"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h44",
+      "level": 4,
+      "fresh": true,
+      "note": "putting the same text again leaves each chunk once",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/search",
+        "json": {
+          "query": "How long do customers have to ask for a refund?",
+          "k": 6,
+          "min_score": 0
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "refunds:2",
+              "document_id": "refunds",
+              "position": 2,
+              "score": 0.9935,
+              "text": "the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+            },
+            {
+              "chunk_id": "refunds:0",
+              "document_id": "refunds",
+              "position": 0,
+              "score": 0.9715,
+              "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the"
+            },
+            {
+              "chunk_id": "refunds:4",
+              "document_id": "refunds",
+              "position": 4,
+              "score": 0.7166,
+              "text": "refund in cash, and never refund a gift card."
+            },
+            {
+              "chunk_id": "refunds:1",
+              "document_id": "refunds",
+              "position": 1,
+              "score": 0.7094,
+              "text": "The customer must give the order number from the confirmation email. Refunds go back to the original payment method and"
+            },
+            {
+              "chunk_id": "refunds:3",
+              "document_id": "refunds",
+              "position": 3,
+              "score": 0.7094,
+              "text": "older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never"
+            },
+            {
+              "chunk_id": "leave:1",
+              "document_id": "leave",
+              "position": 1,
+              "score": 0.5878,
+              "text": "the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h45",
+      "level": 4,
+      "fresh": true,
+      "note": "an update whose embeddings fail changes nothing: the old chunks stay and are still found",
+      "mocks": {
+        "embeddings": "update_outage"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/refunds",
+            "json": {
+              "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/expenses",
+            "json": {
+              "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/leave",
+            "json": {
+              "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/oncall",
+            "json": {
+              "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/deploys",
+            "json": {
+              "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/access",
+            "json": {
+              "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/documents/refunds",
+            "json": {
+              "text": "Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14 days, offer store credit instead."
+            }
+          },
+          "expected": {
+            "status": 502,
+            "body": {
+              "error": "embeddings_unavailable"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/documents/refunds/chunks"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "document_id": "refunds",
+              "chunks": [
+                {
+                  "chunk_id": "refunds:0",
+                  "position": 0,
+                  "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the"
+                },
+                {
+                  "chunk_id": "refunds:1",
+                  "position": 1,
+                  "text": "The customer must give the order number from the confirmation email. Refunds go back to the original payment method and"
+                },
+                {
+                  "chunk_id": "refunds:2",
+                  "position": 2,
+                  "text": "the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+                },
+                {
+                  "chunk_id": "refunds:3",
+                  "position": 3,
+                  "text": "older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never"
+                },
+                {
+                  "chunk_id": "refunds:4",
+                  "position": 4,
+                  "text": "refund in cash, and never refund a gift card."
+                }
+              ]
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/search",
+            "json": {
+              "query": "How long do customers have to ask for a refund?"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "results": [
+                {
+                  "chunk_id": "refunds:2",
+                  "document_id": "refunds",
+                  "position": 2,
+                  "score": 0.9935,
+                  "text": "the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets"
+                },
+                {
+                  "chunk_id": "refunds:0",
+                  "document_id": "refunds",
+                  "position": 0,
+                  "score": 0.9715,
+                  "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the"
+                },
+                {
+                  "chunk_id": "refunds:4",
+                  "document_id": "refunds",
+                  "position": 4,
+                  "score": 0.7166,
+                  "text": "refund in cash, and never refund a gift card."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h46",
+      "level": 4,
+      "fresh": true,
+      "note": "the model cites oncall:0, which exists but was not retrieved: it is dropped",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "cites_unretrieved"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What should I do first when I get paged?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Acknowledge the alert first, then open an incident channel and post what you see.",
+          "citations": [
+            {
+              "chunk_id": "oncall:1",
+              "document_id": "oncall",
+              "position": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h47",
+      "level": 4,
+      "fresh": true,
+      "note": "the model cites deploys:2 twice: it is kept once, where it came first",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "repeated_citation"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "What do I do if errors rise after a release?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Roll back at once with the rollback button and tell the on-call engineer; investigate after.",
+          "citations": [
+            {
+              "chunk_id": "deploys:2",
+              "document_id": "deploys",
+              "position": 2
+            },
+            {
+              "chunk_id": "deploys:3",
+              "document_id": "deploys",
+              "position": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h48",
+      "level": 4,
+      "fresh": true,
+      "note": "the model cites only access:9, which does not exist: the answer stays, with no citation",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/documents/refunds",
+          "json": {
+            "text": "Customer refunds. Support agents may refund a customer who asks within 30 days of purchase. The customer must give the order number from the confirmation email. Refunds go back to the original payment method and take up to 5 business days to appear. A purchase older than 30 days gets store credit instead, once a team lead approves it. Never refund in cash, and never refund a gift card."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/expenses",
+          "json": {
+            "text": "Expense claims. Submit each expense within 60 days, with a photo of the receipt. Meals while travelling are covered up to 40 euros a day. Your manager approves claims under 500 euros, and claims above that need the finance team as well. Approved claims are paid with the next monthly salary. Personal items, fines and alcohol are never reimbursed."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/leave",
+          "json": {
+            "text": "Time off. Everyone gets 25 vacation days a year, and unused days carry over until the end of March. Ask your manager at least two weeks ahead, through the leave calendar, before you book a trip. Sick days need no approval: tell your team before 10 in the morning, and send a note from a doctor after three sick days in a row."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/oncall",
+          "json": {
+            "text": "On-call runbook. The on-call engineer answers a page within 15 minutes, day or night. Acknowledge the alert first, then open an incident channel and post what you see. If customers are affected, page the incident commander and update the status page every 30 minutes. Hand over open incidents at the end of your shift, in the on-call notes."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/deploys",
+          "json": {
+            "text": "Deploy runbook. Deploys run from the main branch through the pipeline, never from a laptop. Nobody deploys on a Friday afternoon or during an open incident. Watch the error dashboard for 20 minutes after each release. If errors rise, roll back at once with the rollback button and tell the on-call engineer. Investigate after the rollback, not before."
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/documents/access",
+          "json": {
+            "text": "Accounts and access. To reset your password, use the self-service portal; the help desk never asks for your password. Report a lost laptop to security within one hour, so the device can be locked. New joiners get a laptop and a badge on their first day. Access to production needs a request approved by your team lead."
+          }
+        }
+      ],
+      "mocks": {
+        "chat": "only_invented"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/ask",
+        "json": {
+          "question": "How do I reset my password?"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "answer": "Use the self-service portal. The help desk never asks for your password.",
+          "citations": []
+        }
+      }
+    }
+  ]
+}
