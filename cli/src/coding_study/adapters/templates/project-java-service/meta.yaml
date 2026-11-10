@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: project
+{{patterns}}
+{{labels}}
+languages: [java]
+levels:
+  - {level: 1, title: Answer on one endpoint}
+  - {level: 2, title: Answer on a second endpoint}
+comparator: {type: exact}
+project:
+  grading: http
+  image: gradle:9.8.2-jdk25-alpine@sha256:20d4d9547874206648a7a72991bf3af6d8bc1c8bffc7f32051f682b21f86d027
+  commands:
+    install: [gradle, --quiet, resolveDependencies]
+    run: [sh, scripts/run.sh]
+    test: [gradle, --offline, test, --rerun]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 120, mem_limit: 512m, install_cache: true}
+  env:
+    PORT: "8000"
+    GRADLE_USER_HOME: /cache/gradle
+  install_env:
+    GRADLE_USER_HOME: /cache/gradle
+  requires:
+    lock: gradle/verification-metadata.xml
+    sizes: {install_mb: 5, images_mb: {app: 307}, memory_mb: 400}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

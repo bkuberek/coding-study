@@ -1,0 +1,30 @@
+package app
+
+import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.util.concurrent.Executors
+
+fun main() {
+    val port = System.getenv("PORT").toInt()
+    val server = HttpServer.create(InetSocketAddress(port), 0)
+    server.executor = Executors.newVirtualThreadPerTaskExecutor()
+    server.createContext("/", ::handle)
+    server.start()
+    println("listening on $port")
+}
+
+private fun handle(exchange: HttpExchange) {
+    if (exchange.requestURI.path == "/health") {
+        exchange.answer(200, """{"status": "ok"}""")
+    } else {
+        exchange.answer(404, """{"error": "not found"}""")
+    }
+}
+
+private fun HttpExchange.answer(status: Int, json: String) {
+    val body = json.toByteArray()
+    responseHeaders["Content-Type"] = "application/json"
+    sendResponseHeaders(status, body.size.toLong())
+    responseBody.use { it.write(body) }
+}

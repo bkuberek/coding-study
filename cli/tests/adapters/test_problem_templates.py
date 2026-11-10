@@ -35,6 +35,8 @@ TEMPLATE_FILES = {
             "project-rust",
             "project-typescript-service",
             "project-python-service",
+            "project-java-service",
+            "project-kotlin-service",
         )
     ],
 )
@@ -310,6 +312,8 @@ def test_a_stress_overlay_on_the_real_clock_declares_no_clock(overlay):
     [
         (TemplateName.PROJECT_TYPESCRIPT_SERVICE, "starter/pnpm-lock.yaml"),
         (TemplateName.PROJECT_PYTHON_SERVICE, "starter/uv.lock"),
+        (TemplateName.PROJECT_JAVA_SERVICE, "starter/gradle/verification-metadata.xml"),
+        (TemplateName.PROJECT_KOTLIN_SERVICE, "starter/gradle/verification-metadata.xml"),
     ],
 )
 def test_a_service_template_ships_its_lock_and_no_env_file(template, lock):
@@ -317,3 +321,25 @@ def test_a_service_template_ships_its_lock_and_no_env_file(template, lock):
 
     assert lock in files
     assert "starter/.env" not in files
+
+
+JVM_SERVICE_TEMPLATES = (TemplateName.PROJECT_JAVA_SERVICE, TemplateName.PROJECT_KOTLIN_SERVICE)
+
+
+@pytest.mark.parametrize("template", JVM_SERVICE_TEMPLATES)
+def test_a_jvm_service_template_builds_offline_outside_install(template):
+    meta = PackagedProblemTemplates().files(template)["meta.yaml"]
+
+    assert "install: [gradle, --quiet, resolveDependencies]\n" in meta
+    assert "test: [gradle, --offline, test, --rerun]\n" in meta
+    assert "install_cache: true" in meta
+
+
+@pytest.mark.parametrize("template", JVM_SERVICE_TEMPLATES)
+def test_a_jvm_service_templates_run_script_builds_offline_then_runs_the_app_in_its_place(
+    template,
+):
+    script = PackagedProblemTemplates().files(template)["starter/scripts/run.sh"]
+
+    assert "gradle --offline --quiet installDist\n" in script
+    assert script.endswith("exec build/install/app/bin/app\n")

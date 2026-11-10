@@ -1,0 +1,23 @@
+package app
+
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class HealthTest {
+    @Test
+    fun theServiceAnswersItsHealthPath() {
+        val health = URI.create("http://127.0.0.1:${System.getenv("PORT")}/health")
+        HttpClient.newHttpClient().use { client ->
+            val response = client.send(
+                HttpRequest.newBuilder(health).build(),
+                HttpResponse.BodyHandlers.discarding(),
+            )
+
+            assertEquals(200, response.statusCode())
+        }
+    }
+}
