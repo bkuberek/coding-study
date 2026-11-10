@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.application.code_intelligence import session_target
+from coding_study.application.code_intelligence import SessionTarget, session_target
 from coding_study.application.environment import Environment
 from coding_study.application.ports import StubGenerator, VersionFailed, VersionPrinted
 from coding_study.application.start_attempt import StartRequest, start_attempt
@@ -20,6 +20,7 @@ from coding_study.domain.errors import (
 )
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language
+from coding_study.domain.sandbox import SandboxUser, SidecarPlan, StackKind
 from tests.fakes import (
     INSTALLED_SERVERS,
     JDK_HOME,
@@ -34,7 +35,7 @@ from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.sandbox_fakes import FakeSandbox
 from tests.service_problems import SLUG as SERVICE_SLUG
-from tests.service_problems import make_content, write_problem
+from tests.service_problems import make_content, meta_document, write_problem
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 ON = Preferences(code_intelligence=True)
@@ -228,30 +229,111 @@ def test_a_kotlin_attempt_whose_license_is_not_accepted_is_refused_with_the_acce
     ]
 
 
-@pytest.fixture
-def service_project(tmp_path) -> Environment:
+def service_environment(tmp_path: Path, language: str = "typescript") -> Environment:
     root = make_content(tmp_path)
-    write_problem(root)
+    write_problem(root, {**meta_document(), "languages": [language]})
     return make_environment(
         root, sandbox=FakeSandbox(), language_servers=FakeLanguageServers(INSTALLED_SERVERS)
     )
 
 
-def test_a_service_project_gets_no_server_on_this_machine(service_project):
-    """Sandboxed code writes that folder, and a server here would read it: P9 brings a sidecar."""
+@pytest.fixture
+def service_project(tmp_path) -> Environment:
+    return service_environment(tmp_path)
+
+
+def service_target(environment: Environment) -> SessionTarget:
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+    return target(environment, attempt)
+
+
+def sidecar_of(found: SessionTarget) -> SidecarPlan:
+    assert found.sidecar is not None
+    return found.sidecar
+
+
+def test_a_typescript_service_project_gets_its_server_in_a_sidecar_rooted_in_its_folder(
+    service_project,
+):
+    """Sandboxed code writes that folder, so no server on this machine reads it."""
+    found = service_target(service_project)
+
+    assert (found.server.name, found.root, found.sidecar is not None) == (
+        "typescript-language-server",
+        f"projects/{SERVICE_SLUG}",
+        True,
+    )
+
+
+def test_the_sidecars_typescript_runs_the_projects_own_compiler(service_project):
+    found = service_target(service_project)
+    options = found.server.initialization_options(str(found.workspace))
+
+    assert options["tsserver"] == {"path": f"{found.directory}/node_modules/typescript/lib"}
+
+
+def test_a_python_service_project_gets_basedpyright_in_a_sidecar(tmp_path):
+    found = service_target(service_environment(tmp_path, "python"))
+
+    assert (found.server.name, found.sidecar is not None) == ("basedpyright", True)
+
+
+def test_a_practice_attempt_runs_its_server_on_this_machine(practice):
+    assert target(practice, started(practice, Language.PYTHON)).sidecar is None
+
+
+def test_the_sidecar_is_a_stack_of_its_own_owned_by_this_process(service_project):
+    identity = sidecar_of(service_target(service_project)).identity
+
+    assert (identity.kind, identity.slug, identity.owner_pid, identity.name[:12]) == (
+        StackKind.LSP,
+        SERVICE_SLUG,
+        41,
+        "cstudy-l-41-",
+    )
+
+
+def test_each_session_gets_a_sidecar_of_its_own(service_project):
     attempt = start_attempt(service_project, StartRequest(SERVICE_SLUG)).attempt
 
-    with pytest.raises(UsageError, match="no code intelligence for typescript yet"):
-        target(service_project, attempt)
+    first, second = (sidecar_of(target(service_project, attempt)) for _ in range(2))
+
+    assert first.identity.name != second.identity.name
 
 
-def test_a_service_project_probes_no_server(service_project):
-    attempt = start_attempt(service_project, StartRequest(SERVICE_SLUG)).attempt
+def test_the_sidecar_mounts_the_project_where_the_session_names_it(service_project):
+    found = service_target(service_project)
+    project = sidecar_of(found).project
 
-    with pytest.raises(UsageError):
-        target(service_project, attempt)
+    assert (project.path, project.source) == (
+        str(found.directory),
+        str(found.directory.resolve()),
+    )
 
-    assert service_project.language_servers.probed == []  # type: ignore[attr-defined]
+
+def test_the_sidecar_mounts_the_servers_of_the_workspace(service_project):
+    found = service_target(service_project)
+
+    assert sidecar_of(found).servers.path == str(found.lsp_directory)
+
+
+def test_the_sidecar_writes_its_compose_file_among_the_runs(service_project):
+    found = service_target(service_project)
+    plan = sidecar_of(found)
+
+    assert plan.run == str((found.workspace / ".cs" / "runs" / plan.identity.name).resolve())
+
+
+def test_the_sidecar_runs_as_you(service_project):
+    assert sidecar_of(service_target(service_project)).user == SandboxUser(501, 20)
+
+
+def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):
+    environment = service_environment(tmp_path, "go")
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+
+    with pytest.raises(UsageError, match="no code intelligence for go service projects yet"):
+        target(environment, attempt)
 
 
 def test_an_item_has_no_code(practice):

@@ -1,11 +1,14 @@
 """The state of the language servers and their installation: the `code intelligence` rows of
 `cstudy doctor`, `cstudy doctor --fix`, and `GET /api/v1/code-intelligence/languages`
-(docs/specs/web-ui.md#language-servers); and which server and root a session gets from an
-attempt (docs/specs/web-ui.md#sessions).
+(docs/specs/web-ui.md#language-servers); which server and root a session gets from an attempt
+(docs/specs/web-ui.md#sessions); and, for a service project, the sidecar its server runs in
+(docs/specs/service-projects.md#language-servers).
 
 Like highlighting, code intelligence grades nothing and records nothing.
 """
 
+import secrets
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from enum import StrEnum
@@ -22,10 +25,12 @@ from coding_study.application.ports import (
     NotInstalled,
     ProbeResult,
     ServerProbe,
+    SidecarEngine,
     Unpacked,
     VersionFailed,
     VersionPrinted,
 )
+from coding_study.application.service_stacks import RUN_ID_BYTES, workspace_id
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.code_intelligence import (
     EXPIRY_WARNING_DAYS,
@@ -35,17 +40,39 @@ from coding_study.domain.code_intelligence import (
     License,
     no_code_intelligence,
     server_for,
+    sidecar_server,
 )
+from coding_study.domain.docker_engine import EngineStatus
 from coding_study.domain.errors import LanguageServerNotInstalledError, UsageError
 from coding_study.domain.jdk import JdkRange, jdk_fix, no_jdk_sentence, range_text
 from coding_study.domain.layout import BUILD_DIRECTORY, CASES_DIRECTORY, RUNS_DIRECTORY
 from coding_study.domain.preferences import Preferences
-from coding_study.domain.problem import Language, ProblemKind
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
+from coding_study.domain.sandbox import (
+    NODE_IMAGE,
+    SharedFolder,
+    SidecarPlan,
+    StackIdentity,
+    StackKind,
+    run_stack_name,
+)
+from coding_study.domain.service_project import service_of
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
 ACCEPT_LICENSE_OPTION = "--accept-license"
 OFF = "code intelligence is off: turn it on in Settings"
+NO_DOCKER: Mapping[EngineStatus, str] = {
+    EngineStatus.STOPPED: "Docker is not running",
+    EngineStatus.NOT_INSTALLED: "Docker is not installed",
+    EngineStatus.NO_COMPOSE: "Docker has no compose v2",
+    EngineStatus.NO_PERMISSION: "Docker refuses this user",
+}
+"""Why a service project's server cannot start, by the engine's state, as the status bar says it;
+`cstudy doctor` says the rest."""
+NO_SIDECAR_IMAGE = f"needs the node image: docker pull {NODE_IMAGE}"
+"""A TypeScript project's `cstudy start` pulled the image, a Python project's did not. The status
+bar shows what comes before the colon, and its tooltip the rest."""
 
 
 class ServerStatus(StrEnum):
@@ -107,6 +134,9 @@ class SessionTarget:
     """Where the reference solutions are, which a library file is never read from."""
     java_home: Path | None = None
     """The selected JDK's home, for a server that runs on a JDK."""
+    sidecar: SidecarPlan | None = None
+    """Where a service project's server runs, in place of this machine: sandboxed code writes the
+    project folder. None for every other attempt."""
 
     @property
     def directory(self) -> Path:
@@ -144,20 +174,36 @@ def session_target(
     refusals come.
 
     Raises UnknownAttemptError, AttemptEndedError, UsageError (the preference is off, the attempt
-    has no code, its language has no server yet, it is a service project) and
+    has no code, its language has no server yet, or none in a service project's sidecar) and
     LanguageServerNotInstalledError (the server is missing, or the selected JDK cannot run it).
     """
     attempt = attempt_in_progress(environment.progress, attempt_id)
     if not preferences.code_intelligence:
         raise UsageError(OFF)
-    server = _server_of(environment, attempt)
+    language = _language_of(attempt)
+    meta = environment.problems.load(attempt.slug).meta
+    server = _server_of(meta, language)
+    root = _root(meta, server)
+    sidecar = _sidecar(environment, meta.slug, root) if service_of(meta) is not None else None
+    if sidecar is not None:
+        server = sidecar_server(server, sidecar.project.path)
     jdk = environment.jdk
     state = _located(server, environment.language_servers, jdk)
     if state.problem is not None:
         raise LanguageServerNotInstalledError(state.problem, state.fix or FIX_COMMAND)
-    root = _root(environment, attempt, server)
     java_home = jdk.selected_home() if server.jdks is not None else None
-    return SessionTarget(server, environment.root, root, environment.content_root, java_home)
+    content_root = environment.content_root
+    return SessionTarget(server, environment.root, root, content_root, java_home, sidecar)
+
+
+def sidecar_unavailable(engine: SidecarEngine) -> str | None:
+    """Why a service project's server cannot start now, as the status bar says it; None once the
+    engine answers and the sidecar's image is here. A session starts no engine and pulls nothing:
+    a file opened in the editor is no reason to start a VM or to download an image."""
+    state = engine.state()
+    if not state.running:
+        return NO_DOCKER[state.status]
+    return None if engine.image_present(NODE_IMAGE) else NO_SIDECAR_IMAGE
 
 
 def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult | None:
@@ -215,22 +261,48 @@ def install_language_server_with_go(
     return None if install is None else installer.go_install(install, version)
 
 
-def _server_of(environment: Environment, attempt: Attempt) -> LanguageServer:
-    """A service project's folder is written by sandboxed code, and a server on this machine would
-    read it, so it has none until P9 runs one in a sidecar
-    (docs/specs/service-projects.md#language-servers)."""
+def _language_of(attempt: Attempt) -> Language:
     if attempt.language is None:
         raise UsageError(f"{attempt.slug} has no code")
-    server = server_for(attempt.language)
-    if server is None or no_code_intelligence(environment.problems.load(attempt.slug).meta):
-        raise UsageError(f"no code intelligence for {attempt.language.value} yet")
+    return attempt.language
+
+
+def _server_of(meta: ProblemMeta, language: Language) -> LanguageServer:
+    """A service project's folder is written by sandboxed code, and a server on this machine would
+    read it, so its server runs in a sidecar, in the languages whose servers run there
+    (docs/specs/service-projects.md#language-servers)."""
+    server = server_for(language)
+    if server is None:
+        raise UsageError(f"no code intelligence for {language.value} yet")
+    if no_code_intelligence(meta, language) is not None:
+        raise UsageError(f"no code intelligence for {language.value} service projects yet")
     return server
 
 
-def _root(environment: Environment, attempt: Attempt, server: LanguageServer) -> str:
-    if environment.problems.load(attempt.slug).meta.kind is ProblemKind.PROJECT:
-        return project_folder(attempt.slug)
+def _root(meta: ProblemMeta, server: LanguageServer) -> str:
+    if meta.kind is ProblemKind.PROJECT:
+        return project_folder(meta.slug)
     return server.root_project
+
+
+def _sidecar(environment: Environment, slug: str, root: str) -> SidecarPlan:
+    """A sidecar of its own for each session, owned by this process, so a sweep of a `cstudy serve`
+    that died takes it down."""
+    engine = environment.sandbox
+    owner = engine.owner_pid()
+    name = run_stack_name(StackKind.LSP, owner, secrets.token_hex(RUN_ID_BYTES))
+    identity = StackIdentity(name, StackKind.LSP, workspace_id(environment), slug, owner)
+    return SidecarPlan(
+        identity=identity,
+        user=engine.host_user(),
+        project=_shared(environment.root / root),
+        servers=_shared(environment.root / LSP_DIRECTORY),
+        run=str((environment.root / RUNS_DIRECTORY / name).resolve()),
+    )
+
+
+def _shared(folder: Path) -> SharedFolder:
+    return SharedFolder(path=str(folder), source=str(folder.resolve()))
 
 
 def _state(

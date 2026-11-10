@@ -26,6 +26,9 @@ PYTHON_IMAGE = (
 )
 """The volume owners, the forwarder and the mock server: nothing is built, and the digest of the
 multi-architecture index holds on arm64 and amd64."""
+NODE_IMAGE = "node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9"
+"""The language-server sidecar's, for every language: the servers in `.cs/lsp/` are Node programs,
+and a TypeScript project's own image is this one."""
 
 APP_SERVICE = "app"
 BOOTSTRAP_SERVICE = "bootstrap"
@@ -37,6 +40,8 @@ CACHE_OWNER_SERVICE = "cache-owner"
 INSTALL_SERVICE = "install"
 MOCK_SERVICE = "cstudy-mocks"
 FORWARD_SERVICE = "cstudy-forward"
+SIDECAR_SERVICE = "lsp"
+"""The one service of a language-server sidecar, a compose project of its own."""
 RESERVED_SERVICES = frozenset(
     {
         APP_SERVICE,
@@ -127,6 +132,11 @@ OWNER_MEMORY = "32m"
 OWNER_PIDS = 16
 INSTALL_MEMORY = "1g"
 INSTALL_PIDS = 512
+SIDECAR_MEMORY = "768m"
+"""TypeScript's server and its two tsservers peaked at 504 MiB in the spike, 386 MiB on the
+catalog's first service project; basedpyright at 140 MiB."""
+SIDECAR_PIDS = 128
+SIDECAR_TMPFS_MB = 64
 APP_TMPFS_MB = 128
 INSTALL_TMPFS_MB = 256
 HELPER_TMPFS_MB = 16
@@ -212,7 +222,7 @@ fails or times out proves what D11 asks; one that succeeds is named, and so is a
 machine."""
 
 _DIGEST_LENGTH = 8
-_STACK_NAME = re.compile(r"cstudy-[dtgi]-[a-z0-9][a-z0-9_-]*")
+_STACK_NAME = re.compile(r"cstudy-[dtgil]-[a-z0-9][a-z0-9_-]*")
 
 
 class StackKind(StrEnum):
@@ -220,6 +230,8 @@ class StackKind(StrEnum):
     TEST = "test"
     GRADED = "graded"
     INSTALL = "install"
+    LSP = "lsp"
+    """A code-intelligence session's language-server sidecar, owned by `cstudy serve`."""
 
     @property
     def removes_volumes(self) -> bool:
@@ -233,7 +245,11 @@ class StackKind(StrEnum):
         return self in (StackKind.TEST, StackKind.GRADED)
 
 
-_RUN_LETTERS: Mapping[StackKind, str] = {StackKind.TEST: "t", StackKind.GRADED: "g"}
+_RUN_LETTERS: Mapping[StackKind, str] = {
+    StackKind.TEST: "t",
+    StackKind.GRADED: "g",
+    StackKind.LSP: "l",
+}
 
 
 def workspace_digest(root: str) -> str:
@@ -422,6 +438,58 @@ class InstallPlan:
     image: str
     command: tuple[str, ...]
     environment: Mapping[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class SharedFolder:
+    """A folder of this machine, mounted read-only in a sidecar at the path a session names it by,
+    so the server's URIs are the page's."""
+
+    path: str
+    """As the session names it."""
+    source: str
+    """The same folder with every link resolved, which is what Docker Desktop shares."""
+
+
+@dataclass(frozen=True, slots=True)
+class SidecarPlan:
+    """The language-server sidecar of one code-intelligence session on a service project
+    (docs/specs/service-projects.md#language-servers): a compose project of its own, so it needs no
+    mock server and no backing service, that idles until the session runs its server in it."""
+
+    identity: StackIdentity
+    user: SandboxUser
+    project: SharedFolder
+    """The project folder, with its installed dependencies: `node_modules`, `.venv`."""
+    servers: SharedFolder
+    """`.cs/lsp/`, whose servers run on the image's Node."""
+    run: str
+    """`.cs/runs/<stack>/`, absolute: where its compose file is written. Nothing there is
+    mounted."""
+
+
+def sidecar_document(plan: SidecarPlan) -> dict[str, object]:
+    """The compose file of a sidecar: hardened as the app is, on no network at all, with the
+    project and the servers read-only. None of the hidden directories exists in it."""
+    sidecar = {
+        **_hardened(plan.identity),
+        "image": NODE_IMAGE,
+        "container_name": plan.identity.name,
+        "user": plan.user.spec,
+        "working_dir": plan.project.path,
+        "command": ["sleep", "infinity"],
+        "environment": {"HOME": HOME_DIRECTORY, "TMPDIR": TEMPORARY_DIRECTORY},
+        "tmpfs": [_tmpfs(SIDECAR_TMPFS_MB, plan.user)],
+        "volumes": [_shared(plan.project), _shared(plan.servers)],
+        "network_mode": "none",
+        "mem_limit": SIDECAR_MEMORY,
+        "pids_limit": SIDECAR_PIDS,
+    }
+    return {"name": plan.identity.name, "services": {SIDECAR_SERVICE: sidecar}}
+
+
+def _shared(folder: SharedFolder) -> dict[str, object]:
+    return _bind(folder.source, folder.path, read_only=True)
 
 
 def stack_document(plan: StackPlan) -> dict[str, object]:

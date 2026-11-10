@@ -42,6 +42,7 @@ from coding_study.domain.sandbox import (
     ReadyStack,
     SandboxInventory,
     SandboxUser,
+    SidecarPlan,
     StackIdentity,
     StackPlan,
     StartupBudget,
@@ -1381,6 +1382,29 @@ class SandboxEngine(Protocol):
 
     def stop_install(self, plan: InstallPlan) -> str | None:
         """`down`, keeping the install cache; what went wrong, or None."""
+        ...
+
+
+class SidecarEngine(Protocol):
+    """What a code-intelligence session of a service project asks of the container engine: its
+    state, the sidecar's image, and the sidecar itself
+    (docs/specs/service-projects.md#language-servers). Nothing here starts the engine or pulls."""
+
+    def state(self) -> EngineState:
+        """Asks and starts nothing: an idle VM stays asleep."""
+        ...
+
+    def image_present(self, image: str) -> bool: ...
+
+    def sidecar(self, plan: SidecarPlan) -> AbstractContextManager[None]:
+        """The sidecar up and idle for the block, and gone after it however the block ends, and
+        once this process dies. Raises SandboxError when it does not come up, after taking down
+        what did."""
+        ...
+
+    def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
+        """What runs `command` in the sidecar, in the project folder, with the standard input and
+        output of the process that runs it."""
         ...
 
 

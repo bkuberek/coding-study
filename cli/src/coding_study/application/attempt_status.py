@@ -81,7 +81,8 @@ class AttemptStanding:
     last_test_run: RunRecord | None = None
     project: ProjectStanding | None = None
     no_code_intelligence: NoCodeIntelligence | None = None
-    """None when the language's server decides, as for every attempt but a service project's."""
+    """None when the language's server decides, as for every attempt but a service project's in
+    a language whose server runs in no sidecar yet."""
     no_web_runs: NoWebRuns | None = None
     """None when the Web UI runs the attempt, as it does every attempt but a service project's."""
 
@@ -151,7 +152,7 @@ class _ProblemStatus:
             opened=self._opened(),
             last_test_run=last_run,
             project=project,
-            no_code_intelligence=no_code_intelligence(meta),
+            no_code_intelligence=no_code_intelligence(meta, self._attempt.language),
             no_web_runs=no_web_runs(meta),
         )
 

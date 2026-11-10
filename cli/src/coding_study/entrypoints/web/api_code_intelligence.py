@@ -58,7 +58,8 @@ async def session(websocket: WebSocket) -> None:
         return
     await websocket.accept()
     if await _carries_token(websocket, server):
-        broker = LanguageBroker(target, server.settings.version, os.getpid())
+        watched = None if target.sidecar is not None else os.getpid()
+        broker = LanguageBroker(target, server.settings.version, watched)
         await server.sessions.serve(websocket, target, broker)
 
 
