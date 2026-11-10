@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0291"
+slug: rag-citations-typescript
+title: RAG Service with Citations (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [ai-llm]
+job_roles: [ai-engineer]
+scope: project
+languages: [typescript]
+summary: A team's help assistant answers questions from its internal documents. Cut them into chunks, embed them, find the right ones in Postgres, and have a chat model answer from those alone, citing only what it was shown.
+levels:
+  - {level: 1, title: Ingest and chunk}
+  - {level: 2, title: Retrieve}
+  - {level: 3, title: Answer with citations}
+  - {level: 4, title: Updates and grounding}
+comparator: {type: float, tolerance: 0.001}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, node_modules/node-pg-migrate/bin/node-pg-migrate.js, up]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+    reset: [node, scripts/reset.ts]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://app:app@db:5432/app
+    EMBEDDINGS_URL: http://embeddings:8080
+    CHAT_URL: http://chat:8080
+    LLM_API_KEY: cs-fake-llm-key
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: embeddings, config: mocks/embeddings.yaml}
+    - {name: chat, config: mocks/chat.yaml}
+  services: services/compose.yaml
+  requires:
+    lock: pnpm-lock.yaml
+    services: [pgvector]
+    sizes: {install_mb: 37, images_mb: {app: 81, mocks: 43, pgvector: 156}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "Embed each document in one call, rank by cosine in Postgres, and keep only the citations that were retrieved", role: optimal, time: "per request", space: "per chunk"}
+related: [bm25-hybrid-ranker, token-cost-reconciler, inventory-reservations-typescript]
+estimate_minutes: 240

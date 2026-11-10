@@ -1,0 +1,327 @@
+# The team's chat model: help-chat-1, a stand-in for a language model, on the generic
+# chat-completions shape most such APIs shared in their public documentation in November 2026.
+# It finds the question by the last part of the user message and answers it as the system prompt
+# asks, a JSON object in the message's content, whatever the sources hold; the one exception is
+# the refund question asked over the updated refund policy, matched on its whole prompt. The cases
+# judge what it was sent through the request log. Hidden scenarios are what a graded run adds.
+shape_version: "generic chat-completions style, public docs of 2026-11"
+routes:
+  - id: answer-refund-window-updated
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body:
+        messages:
+          - role: system
+          - role: user
+            content:
+              - text: '[refunds:0] Customer refunds. From 1 June, support agents may refund a customer who asks within 14 days of purchase. The customer'
+              - text: '[refunds:2] original payment method. After 14 days, offer store credit instead.'
+              - text: '[refunds:1] days of purchase. The customer must give the order number. Refunds go back to the original payment method. After 14'
+              - text: 'Question: How long do customers have to ask for a refund?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Customers can ask within 14 days of purchase, from 1 June.", "citations": ["refunds:0"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 14
+  - id: answer-refund-window
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: How long do customers have to ask for a refund?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Customers can ask within 30 days of purchase, and the refund takes up to 5 business days to appear.", "citations": ["refunds:0", "refunds:2"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 23
+  - id: answer-expense-approval
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: Who approves an expense claim over 500 euros?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Your manager approves it, and the finance team must approve it as well.", "citations": ["expenses:1", "expenses:2"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 17
+  - id: answer-vacation-notice
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: How much notice do I need before taking vacation?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Ask your manager at least two weeks ahead, through the leave calendar.", "citations": ["leave:1"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 15
+  - id: answer-paged
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: What should I do first when I get paged?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Acknowledge the alert first, then open an incident channel and post what you see.", "citations": ["oncall:1"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 17
+  - id: answer-release-errors
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: What do I do if errors rise after a release?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Roll back at once with the rollback button and tell the on-call engineer; investigate after.", "citations": ["deploys:2", "deploys:3"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 19
+  - id: answer-password-reset
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: How do I reset my password?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Use the self-service portal. The help desk never asks for your password.", "citations": ["access:0"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 15
+  - id: answer-lost-laptop
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: I lost my laptop. What do I do?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "Report it to security within one hour, so the device can be locked.", "citations": ["access:1"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 16
+  - id: answer-manager-approval
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: Does my manager need to approve it?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "It depends on the request: production access needs your team lead, and so does store credit for an old purchase.", "citations": ["access:3", "refunds:3"]}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 24
+  - id: answer-sell-vacation
+    method: POST
+    path: /v1/chat/completions
+    match:
+      body_contains: 'Question: How many vacation days can I sell back?'
+    response:
+      status: 200
+      body:
+        id: chat-{{seq}}
+        object: chat.completion
+        model: '{{request.body.model}}'
+        choices:
+          - index: 0
+            message:
+              role: assistant
+              content: '{"answer": "I don''t know.", "citations": []}'
+            finish_reason: stop
+        usage:
+          prompt_tokens: '{{words(request.body.messages)}}'
+          completion_tokens: 6
+  - id: unknown-question
+    method: POST
+    path: /v1/chat/completions
+    response:
+      status: 400
+      body:
+        error:
+          type: unknown_question
+          message: 'help-chat-1 here is a stand-in that answers the questions the cases ask only, found by the last part of the user message: Question: followed by the question.'
+scenarios:
+  rate_limited_then_ok:
+    visible: true
+    sequence:
+      - status: 429
+        headers:
+          Retry-After: '1'
+        body:
+          error:
+            type: rate_limit
+            message: 'Too many requests: retry after 1 s.'
+      - status: 200
+  rate_limited:
+    status: 429
+    headers:
+      Retry-After: '1'
+    body:
+      error:
+        type: rate_limit
+        message: 'Too many requests: retry after 1 s.'
+  overloaded:
+    status: 503
+    body:
+      error:
+        type: overloaded
+        message: The model is overloaded.
+  malformed_answer:
+    status: 200
+    body:
+      id: chat-{{seq}}
+      object: chat.completion
+      model: '{{request.body.model}}'
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: Customers can ask within 30 days [refunds:0].
+          finish_reason: stop
+      usage:
+        prompt_tokens: '{{words(request.body.messages)}}'
+        completion_tokens: 7
+  invented_citation:
+    visible: true
+    route: answer-refund-window
+    body:
+      id: chat-{{seq}}
+      object: chat.completion
+      model: '{{request.body.model}}'
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: '{"answer": "Customers can ask within 30 days of purchase, and the refund takes up to 5 business days to appear.", "citations": ["refunds:0", "refunds:7", "refunds:2"]}'
+          finish_reason: stop
+      usage:
+        prompt_tokens: '{{words(request.body.messages)}}'
+        completion_tokens: 24
+  cites_unretrieved:
+    route: answer-paged
+    body:
+      id: chat-{{seq}}
+      object: chat.completion
+      model: '{{request.body.model}}'
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: '{"answer": "Acknowledge the alert first, then open an incident channel and post what you see.", "citations": ["oncall:1", "oncall:0"]}'
+          finish_reason: stop
+      usage:
+        prompt_tokens: '{{words(request.body.messages)}}'
+        completion_tokens: 18
+  repeated_citation:
+    route: answer-release-errors
+    body:
+      id: chat-{{seq}}
+      object: chat.completion
+      model: '{{request.body.model}}'
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: '{"answer": "Roll back at once with the rollback button and tell the on-call engineer; investigate after.", "citations": ["deploys:2", "deploys:3", "deploys:2"]}'
+          finish_reason: stop
+      usage:
+        prompt_tokens: '{{words(request.body.messages)}}'
+        completion_tokens: 20
+  only_invented:
+    route: answer-password-reset
+    body:
+      id: chat-{{seq}}
+      object: chat.completion
+      model: '{{request.body.model}}'
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: '{"answer": "Use the self-service portal. The help desk never asks for your password.", "citations": ["access:9"]}'
+          finish_reason: stop
+      usage:
+        prompt_tokens: '{{words(request.body.messages)}}'
+        completion_tokens: 15
