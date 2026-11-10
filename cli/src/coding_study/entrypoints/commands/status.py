@@ -26,6 +26,7 @@ from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import EntryKind
 from coding_study.domain.levels import LevelProgress
+from coding_study.domain.service_project import MockScenarios
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from coding_study.entrypoints.commands.project_documents import level_tally_value
 from coding_study.entrypoints.commands.report_text import clock_text
@@ -116,9 +117,15 @@ def status_document(found: AttemptStanding) -> dict[str, JsonValue]:
         ],
         "files": _files_value(project) if project else None,
         "no_code_intelligence": found.no_code_intelligence,
-        "no_web_runs": found.no_web_runs,
+        "service": _service_value(found.service),
         "next": found.next_step,
     }
+
+
+def _service_value(mocks: tuple[MockScenarios, ...] | None) -> JsonValue:
+    if mocks is None:
+        return None
+    return {"mocks": [{"name": mock.name, "scenarios": list(mock.scenarios)} for mock in mocks]}
 
 
 def _hints_value(hints: HintCount) -> JsonValue:

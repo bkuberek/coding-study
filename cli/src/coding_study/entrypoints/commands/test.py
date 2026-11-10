@@ -85,6 +85,8 @@ from coding_study.entrypoints.commands.run_document import run_document
 from coding_study.entrypoints.commands.service_test import (
     require_service_options,
     run_service_test_command,
+    run_service_test_json,
+    stream_service_test_command,
 )
 from coding_study.entrypoints.shared import (
     ERROR_EXIT_CODES,
@@ -254,17 +256,16 @@ def run_tests(
                     "--perf": perf,
                     "--stress": stress is not None,
                     "--seed": seed is not None,
-                    "--json": as_json,
-                    "--events": events,
                     "--debug": debug,
                 }
             )
         )
-        raise typer.Exit(
-            run_service_test_command(
-                environment, ServiceTestRequest(target.slug, target.language), console(context)
-            )
-        )
+        service_request = ServiceTestRequest(target.slug, target.language)
+        if events:
+            raise typer.Exit(stream_service_test_command(environment, service_request))
+        if as_json:
+            raise typer.Exit(run_service_test_json(environment, service_request))
+        raise typer.Exit(run_service_test_command(environment, service_request, console(context)))
     if is_project_attempt(environment, target.slug, target.language):
         require_project_options(
             _given(

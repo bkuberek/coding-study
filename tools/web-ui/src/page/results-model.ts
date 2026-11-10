@@ -16,6 +16,7 @@ import type {
   RunEnd,
   RunEvent,
   RunStart,
+  StackState,
   StressResult,
   StressRun,
   TestResult,
@@ -61,6 +62,15 @@ export type ViewItem =
   | { readonly kind: "stress"; readonly group: StressGroup }
   | { readonly kind: "level"; readonly result: LevelResult };
 
+/** A service project's stack as the run's notices left it. */
+export interface StackStanding {
+  readonly state: StackState;
+  /** The startup once the stack was ready, which no limit or result counts. */
+  readonly startup_s: number | null;
+  /** Down, after the run, a failure or a cancel. */
+  readonly down: boolean;
+}
+
 export interface Summary {
   readonly tone: "ok" | "warn" | "fail";
   readonly text: string;
@@ -100,6 +110,8 @@ const SUMMARY_COUNTS: readonly (readonly [CaseStatus, string, string])[] = [
   ["not_run", "not run", "not run"],
 ];
 const SHOWN_ORACLE_FAILURES = 3;
+/** The one test of a service project's `cstudy test`. */
+const SERVICE_TEST_ID = "commands.test";
 const NOT_A_PROOF = "stress runs found no race (not a proof of thread safety)";
 
 /** A run's events folded as they come; `close` takes the server's last message. */
@@ -111,6 +123,8 @@ export class RunModel {
   perf: PerfResult | null = null;
   unlocked: LevelUnlocked | null = null;
   notice: string | null = null;
+  /** A service project's stack, from the stages its notices name; null for any other run. */
+  stack: StackStanding | null = null;
   readonly diagnostics: Diagnostic[] = [];
   readonly levels: LevelResult[] = [];
   readonly cases = new Map<string, CaseRow>();
@@ -124,6 +138,7 @@ export class RunModel {
         return;
       case "output":
         this.notice = event.text;
+        if (event.stack) this.stack = stackStanding(this.stack, event.stack, event.startup_s);
         return;
       case "build":
         this.build = event;
@@ -200,6 +215,37 @@ export class RunModel {
   }
 }
 
+/** The stack after a notice names `stage`: one that failed to start stays failed once it is down, and one that was ready keeps its startup. */
+export function stackStanding(before: StackStanding | null, stage: StackState, startup_s: number | undefined): StackStanding {
+  if (stage === "stopped" && before?.state === "failed") return { ...before, down: true };
+  return { state: stage, startup_s: startup_s ?? before?.startup_s ?? null, down: stage === "stopped" };
+}
+
+const STAGE_WORDS: Readonly<Record<StackState, string>> = {
+  docker: "starting Docker",
+  pulling: "pulling images",
+  installing: "installing dependencies",
+  starting: "starting",
+  ready: "ready",
+  failed: "did not become ready",
+  stopped: "down",
+};
+
+/** `ready after 2.4 s, not counted`: what the results panel says of the stack. */
+export function stackText(stack: StackStanding): string {
+  const startup = stack.startup_s === null ? null : `ready after ${stack.startup_s.toFixed(1)} s, not counted`;
+  switch (stack.state) {
+    case "ready":
+      return startup ?? STAGE_WORDS.ready;
+    case "stopped":
+      return startup ? `${STAGE_WORDS.stopped} · it was ${startup}` : STAGE_WORDS.stopped;
+    case "failed":
+      return stack.down ? `${STAGE_WORDS.failed} · ${STAGE_WORDS.stopped}` : STAGE_WORDS.failed;
+    default:
+      return STAGE_WORDS[stack.state];
+  }
+}
+
 function caseRow(event: CaseResult): CaseRow {
   return {
     id: event.id,
@@ -263,13 +309,13 @@ function oracleItems(rows: readonly CaseRow[], showAll: boolean): ViewItem[] {
   return items;
 }
 
-/** Tests under a heading per file, in the suite's order. */
+/** Tests under a heading per file, in the suite's order; a service project's `commands.test` names no file. */
 function testItems(rows: readonly TestRow[]): ViewItem[] {
   const items: ViewItem[] = [];
   let file: string | null = null;
   for (const row of rows) {
     const path = testFile(row.id);
-    if (path !== file) {
+    if (row.id !== SERVICE_TEST_ID && path !== file) {
       items.push({ kind: "file", path });
       file = path;
     }

@@ -80,6 +80,27 @@ export interface ListEntry {
   readonly in_progress: readonly AttemptRef[];
   /** The releases its Java and Kotlin run on; null without either. */
   readonly jdk: JdkRange | null;
+  /** What a service project depends on, as its manifest declares it; null for any other problem. */
+  readonly requires: Requires | null;
+}
+
+/** `requires` of `cstudy list --json`. */
+export interface Requires {
+  readonly docker: true;
+  readonly services: readonly string[];
+  readonly mocks: readonly string[];
+  readonly lock: string | null;
+  readonly install_mb: number | null;
+  readonly images_mb: Readonly<Record<string, number>>;
+  readonly memory_mb: number | null;
+}
+
+/** A line of what a problem depends on, as `cstudy show` lists it, with its state here. */
+export interface NeedRow {
+  readonly label: string;
+  readonly text: string;
+  /** Why it is not met on this machine; null when it is. */
+  readonly problem: string | null;
 }
 
 export interface ProblemList {
@@ -208,6 +229,12 @@ export interface History {
   readonly attempts: readonly PastAttempt[];
 }
 
+/** A mock server of a service project, and its visible scenarios. */
+export interface MockScenarios {
+  readonly name: string;
+  readonly scenarios: readonly string[];
+}
+
 /** `cstudy status --json`. */
 export interface AttemptStatus {
   readonly slug: string;
@@ -230,8 +257,8 @@ export interface AttemptStatus {
   /** Why the attempt has no code intelligence whatever its language's server: `service_project`, for a service
    * project in a language whose server runs in no sidecar yet. */
   readonly no_code_intelligence: string | null;
-  /** Why the page starts no run of the attempt, which runs from a terminal: `service_project`. */
-  readonly no_web_runs: string | null;
+  /** A service project's mock servers, each with the scenarios a dev stack may switch it to; null for any other problem. */
+  readonly service: { readonly mocks: readonly MockScenarios[] } | null;
   readonly next: string;
 }
 

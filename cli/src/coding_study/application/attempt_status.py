@@ -20,9 +20,11 @@ from coding_study.domain.file_states import FolderFile, StarterChanges, starter_
 from coding_study.domain.hints import hint_level, problem_hints
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
-from coding_study.domain.problem import Language, ProblemKind, Track
+from coding_study.domain.mock_configs import visible_scenario_names
+from coding_study.domain.problem import Language, Problem, ProblemKind, Track
 from coding_study.domain.problem_files import PROBLEM_FILE
-from coding_study.domain.service_project import NoWebRuns, no_web_runs, service_of
+from coding_study.domain.project import NO_PROJECT_FILES
+from coding_study.domain.service_project import MockScenarios, service_of
 from coding_study.domain.submissions import LevelTally, SubmissionRecord, best_per_level
 
 TEST_NEXT = "cstudy test --watch"
@@ -83,8 +85,8 @@ class AttemptStanding:
     no_code_intelligence: NoCodeIntelligence | None = None
     """None when the language's server decides, as for every attempt but a service project's in
     a language whose server runs in no sidecar yet."""
-    no_web_runs: NoWebRuns | None = None
-    """None when the Web UI runs the attempt, as it does every attempt but a service project's."""
+    service: tuple[MockScenarios, ...] | None = None
+    """A service project's mock servers, each with its visible scenarios; None for any other."""
 
     @property
     def file(self) -> str | None:
@@ -153,7 +155,7 @@ class _ProblemStatus:
             last_test_run=last_run,
             project=project,
             no_code_intelligence=no_code_intelligence(meta, self._attempt.language),
-            no_web_runs=no_web_runs(meta),
+            service=service_mocks(self._problem),
         )
 
     @property
@@ -216,3 +218,17 @@ class _ProblemStatus:
             best_per_level=best_per_level(submissions),
             files=folder_states(self._environment, self._problem, self._levels.unlocked),
         )
+
+
+def service_mocks(problem: Problem) -> tuple[MockScenarios, ...] | None:
+    """The mock servers a dev stack holds, in the manifest's order, each with the scenarios it may
+    switch to; None for a problem that is not a service project."""
+    service = service_of(problem.meta)
+    if service is None:
+        return None
+    files = (problem.project_files or NO_PROJECT_FILES).mocks
+    return tuple(
+        MockScenarios(mock.name, visible_scenario_names(files[mock.name]))
+        for mock in service.mocks
+        if mock.name in files
+    )

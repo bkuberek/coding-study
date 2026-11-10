@@ -251,12 +251,13 @@ Native problems are a separate matter: their environment is the allowlist of [Pr
 `cstudy dev` is the only new verb. `install`, `bootstrap`, `run` and `reset` have no verbs of their own. `cstudy test` takes none of the flags of a native run, and exits 3 for one: debug through your own IDE against `cstudy dev`.
 
 ```text
-cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]...
+cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--events]
 ```
 
 | Flag | Effect |
 |------|--------|
 | `--scenario` | Sets a mock server's visible scenario at start. A hidden or unknown name exits 3 with the visible names, before anything starts |
+| `--events` | The stack as JSON events, and each line of standard input a scenario to switch to while it runs, for the Web UI ([the dev stack from the page](#the-dev-stack-from-the-page)) |
 
 It runs in the foreground: it brings the stack up, prints your app's published URL and the mock server names, then what your app prints. Ctrl-C, or SIGTERM, brings the stack down and keeps its data, exit 0, and a second Ctrl-C during that cannot leave half a stack. Your app ending brings the stack down too, exit 2, and so does an app that never starts, with its output. One dev stack runs per project: a second `cstudy dev` exits 3 and names the holder's process id. The lock is `.cs/projects/<slug>.dev.lock`.
 
@@ -1055,10 +1056,12 @@ Built: this is where P10's [grader reach](#grader-reach) and P11's cases meet, w
 
 `--json` and `--events` keep version 1 of the [event stream](cli.md#event-stream), with additive changes only, so the CLI and the Web UI render it:
 
+`cstudy test --json` on a service project prints one document: `slug`, `language`, `attempt_id`, `outcome` (`passed`, `failed`, or `load_failed` when your code kept the stack from becoming ready), `exit_code`, `levels`, `load_error`, `tests` (`commands.test`, as its `test_result`; empty without a ready stack), `cases` (the visible cases, each with its `level`), `tally` (of those cases), `startup_s` (the first clock) and `duration_s` (the second). Progress and the lines of `commands.test` go to standard error. The exit codes are those of the report.
+
 | Event | On a service project |
 |-------|----------------------|
-| `output` | Progress: image pull, install, Docker start, `bootstrap` |
-| `test_start`, `test_result` | Planned, with P9's Web UI: `cstudy test --events` and `--json` exit 3 on a service project for now. One result for `commands.test`, with id `commands.test`; its output streams through `output`, since cstudy does not parse a framework |
+| `output` | Progress: Docker start, image pull, install, the stack's start, its readiness and its end, each with `stack`, its stage (`docker`, `pulling`, `installing`, `starting`, `ready`, `failed`, `stopped`), and `startup_s` on `ready`; and every line `commands.test` prints |
+| `test_start`, `test_result` | `cstudy test --events`. One result for `commands.test`, with id `commands.test` and origin `starter`: `pass` on exit 0, `fail` with `message` (`exited with 1`) and the last 4 KiB of its output as `stdout`, or `timeout` past its limit. Its output streams through `output` before the result, since cstudy does not parse a framework |
 | `case_start`, `case_result` | `cstudy submit`, and with `--events` above also `cstudy test` for the visible cases. `input` holds the request and the scenarios it set, `expected` and `actual` the status and body, and `reason` every difference and log assertion that failed (`room-vendor availability: expected 2 requests, saw 5`) |
 | `level_result`, `level_unlocked` | As today, with `methods` empty |
 
@@ -1163,8 +1166,8 @@ The list is a small declared `project.requires` block plus what cstudy derives f
 | `cstudy list --needs` | `--needs none` keeps problems that need nothing beyond the language's toolchain, which leaves out every service project; `--needs docker` or a service name keeps those that do |
 | `cstudy list --json` | Each entry gains `requires`, next to `jdk`, null for other problems |
 | [`cstudy show`](cli.md#cstudy-show) | The full list above the statement, with each requirement's state. It reads state and starts nothing |
-| [Problems view](web-ui.md#problems-view) | Planned, P9: the marker in the table and a filter of the same values |
-| [Problem view](web-ui.md#problem-view) | Planned, P9: the full list |
+| [Problems view](web-ui.md#problems-view) | `needs docker`, or `needs docker postgres`, after the title, from `requires` alone. A filter of the same values is planned |
+| [Problem view](web-ui.md#problem-view) and its Start dialog | The full list, with each requirement's state, from `GET /api/v1/problems/{slug}/needs`. A requirement not met here keeps Start from starting and shows the CLI's words |
 
 An example, with illustrative figures:
 
@@ -1180,7 +1183,7 @@ needs
 
 ### At Start
 
-`cstudy start` and the Web UI's Start show the summary before any download begins. They ask for confirmation only when something will be downloaded or a requirement is missing. `cstudy start --yes` skips the prompt for scripts; without a terminal and without `--yes`, a start that would download exits 3 and names the flag. If a requirement is missing, Start says what to install rather than failing midway, exiting 4 before it writes anything, as a JDK outside the range does. A stopped Docker engine is not missing: Start starts it ([Docker states](#docker-states)).
+`cstudy start` and the Web UI's Start show the summary before any download begins. The Web UI's Start downloads nothing: the first run or `cstudy dev` pulls and installs, with its progress, so the page asks for no confirmation. They ask for confirmation only when something will be downloaded or a requirement is missing. `cstudy start --yes` skips the prompt for scripts; without a terminal and without `--yes`, a start that would download exits 3 and names the flag. If a requirement is missing, Start says what to install rather than failing midway, exiting 4 before it writes anything, as a JDK outside the range does. A stopped Docker engine is not missing: Start starts it ([Docker states](#docker-states)).
 
 ## Without a network
 
@@ -1286,15 +1289,29 @@ Planned, for P9 (R29).
 
 | Item | Phase |
 |------|-------|
-| Run tests and Submit from the attempt page, with `cstudy test --events`. Until then the page starts no run and names `cstudy dev`, `cstudy test` and `cstudy submit` to run in a terminal, from the status's `no_web_runs` ([Attempt view](web-ui.md#attempt-view)) | P9 |
-| A stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) | P9 |
-| Stack and mock server status, and a scenario picker over the control interface | P9 |
+| Run tests and Submit from the attempt page, with `cstudy test --events` and `cstudy submit --events`, the stack's stages in the results panel, and Cancel, which takes the stack down ([Attempt view](web-ui.md#attempt-view)) | P9, built |
+| A dev stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) ([Dev stack](web-ui.md#dev-stack)) | P9, built |
+| Stack and mock server status, and a scenario picker over the control interface, through `cstudy dev --events` | P9, built |
 | `.env` is an ordinary file in the tree | P4, built |
-| The dependency list, and Start's summary and confirmation | P9 |
-| The Docker messages in Start and the [Health view](web-ui.md#health-view) | P9 |
+| The dependency list in the Problems view, the Problem view and the Start dialog. The page's Start downloads nothing, so it asks no confirmation: the first run, or `cstudy dev`, pulls and installs, and the results panel shows it as the `pulling` and `installing` stages | P9, built |
+| The Docker messages in Start, in the Attempt view before any run, at the end of a run that Docker stopped, and in the [Health view](web-ui.md#health-view) | P9, built |
 | Code intelligence through the [container](#language-servers), in TypeScript and Python | P9, built |
 
 If a terminal holds the dev stack, the page shows that and does not start a second.
+
+### The dev stack from the page
+
+`cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... --events` runs the dev stack as `cstudy dev` does and writes it as JSON events on standard output, one per line, version 1, so the [Web UI](web-ui.md#dev-stack) renders it ([`schemas/dev-events.schema.json`](../../schemas/dev-events.schema.json)):
+
+| Event | Fields |
+|-------|--------|
+| `output` | A progress notice, as in the [event stream](cli.md#event-stream) of `cstudy test`, with `stack` on a stage and `startup_s` on `ready` |
+| `dev_ready` | `app_url` (`http://127.0.0.1:<port>`), `startup_s`, and `mocks`: each mock server's `name`, `scenario` (null for none) and `scenarios`, its visible ones |
+| `app` | `text`: a line your app printed |
+| `scenario` | `mock`, `scenario` (what it holds now) and `message` (why the switch was refused, or null), once per line of standard input |
+| `dev_end` | Last, whatever ended the stack: `outcome` (`stopped` on Ctrl-C or SIGTERM, exit 0; `app_exited`, exit 2; `load_failed`, exit 2, with `output`, what your app printed; `error`, with the exit code of the refusal, `error: ...` on standard error too), `exit_code` and `message` |
+
+Each line of standard input, `{"mock": "room-vendor", "scenario": "outage"}`, switches a mock server over the [control interface](#control-interface) while the stack runs; `"scenario": null` sets none, which resets every mock server and sets the others' scenarios again. A hidden or unknown scenario or mock server, or a line that is no switch, is refused in `message` and changes nothing. The terminal's `cstudy dev` prints the stack's stages as notices too, `starting the stack`, `the stack is ready after 2.4 s, not counted` and `the stack is down`.
 
 ## Checks
 

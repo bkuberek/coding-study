@@ -35,9 +35,16 @@ export interface RunStart {
   readonly planned?: Planned | null;
 }
 
+/** Where a service project's stack stands (docs/specs/cli.md#events). */
+export type StackState = "docker" | "pulling" | "installing" | "starting" | "ready" | "failed" | "stopped";
+
 export interface Output {
   readonly type: "output";
   readonly text: string;
+  /** A service project: the stage its stack reached with this notice. */
+  readonly stack?: StackState;
+  /** With `ready`: the startup, which no limit or result counts. */
+  readonly startup_s?: number;
 }
 
 export interface Build {

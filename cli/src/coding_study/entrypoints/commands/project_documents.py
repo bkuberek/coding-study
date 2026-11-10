@@ -1,11 +1,15 @@
 """JSON documents of the project commands, in the style of `cstudy test --json`: `cstudy test` on
-a project problem (docs/specs/cli.md#project-problems) and `cstudy submit`
+a project problem (docs/specs/cli.md#project-problems), `commands.test` of a service project
+(docs/specs/service-projects.md#what-you-see) and `cstudy submit`
 (docs/specs/cli.md#cstudy-submit)."""
 
 from coding_study.application.project_testing import ProjectTestResult
+from coding_study.application.run_events import CommandTested
+from coding_study.application.service_events import COMMAND_TEST_ID
 from coding_study.application.submit_project import SubmitResult
+from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.project_test_runs import SuiteTestVerdict
+from coding_study.domain.project_test_runs import SuiteOrigin, SuiteTestVerdict
 from coding_study.domain.runs import Crashed, Raised, TimedOut, UserError
 from coding_study.domain.submissions import LevelTally
 from coding_study.domain.suite_runs import AssertionFailed, Passed, Skipped
@@ -15,6 +19,7 @@ from coding_study.entrypoints.commands.run_document import (
     case_value,
     error_value,
     levels_value,
+    status_value,
     stress_value,
     tally_value,
     timer_value,
@@ -24,6 +29,9 @@ NO_BUILD: JsonValue = {"seconds": 0.0, "note": None, "diagnostics": []}
 """A project folder builds nothing before its suite runs."""
 CRASH_TYPE = "crash"
 """The `error.type` of a test during which the runner process ended."""
+NANOSECONDS_PER_SECOND = 1_000_000_000
+OUTPUT_TAIL_CHARACTERS = 4096
+"""What a `commands.test` that did not pass keeps of its output, as a stderr tail is kept."""
 
 
 def project_test_document(result: ProjectTestResult, exit_code: int) -> dict[str, JsonValue]:
@@ -183,3 +191,29 @@ def _submit_outcome(result: SubmitResult) -> str:
     if result.judgement.load_error is not None:
         return "load_failed"
     return "passed" if result.judgement.passed else "failed"
+
+
+def command_test_value(tested: CommandTested) -> dict[str, JsonValue]:
+    """`commands.test` as a test of the run: `cstudy` parses no framework, so its exit code is
+    the verdict, and the tail of its output says why it did not pass."""
+    outcome = tested.outcome
+    entry: dict[str, JsonValue] = {
+        "id": COMMAND_TEST_ID,
+        "status": _command_test_status(tested),
+        "duration_ns": round(tested.seconds * NANOSECONDS_PER_SECOND),
+        "origin": SuiteOrigin.STARTER.value,
+        "level": None,
+    }
+    if outcome.timed_out:
+        return entry | {"message": f"did not finish within {tested.limit_s} s"}
+    if outcome.exit_code != 0:
+        tail = outcome.output[-OUTPUT_TAIL_CHARACTERS:]
+        return entry | {"message": f"exited with {outcome.exit_code}", "stdout": tail}
+    return entry
+
+
+def _command_test_status(tested: CommandTested) -> str:
+    outcome = tested.outcome
+    if outcome.timed_out:
+        return status_value(CaseStatus.TIMEOUT)
+    return status_value(CaseStatus.PASS if outcome.exit_code == 0 else CaseStatus.FAIL)

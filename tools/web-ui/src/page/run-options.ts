@@ -39,12 +39,15 @@ export interface RunContext {
   readonly oracle: boolean;
   /** The `typecheck` preference. */
   readonly typecheck?: boolean;
+  /** A service project, whose `cstudy test` takes no flag and whose `cstudy submit` takes a level. */
+  readonly service?: boolean;
 }
 
 const SINGLE_FILE_WITH_PERF = new Set(["function", "design"]);
 
 /** The options `cstudy test` takes for the attempt's kind and language. */
 export function applicableOptions(context: RunContext): ReadonlySet<OptionName> {
+  if (context.service) return new Set(["level"]);
   const names: OptionName[] = ["cases"];
   if (context.kind === "progressive" || context.kind === "project") names.push("level");
   if (context.language === "typescript") names.push("typecheck");
@@ -62,7 +65,7 @@ export function runBody(attemptId: number, command: RunCommandName, options: Run
 /** `cstudy test two-sum --lang python --stress 30`: the command the run is. */
 export function runCommand(command: RunCommandName, options: RunOptionsState, context: RunContext): string {
   const sent = sentOptions(command, options, context);
-  const typecheck = (sent.typecheck ?? context.typecheck ?? false) && context.language === "typescript";
+  const typecheck = (sent.typecheck ?? context.typecheck ?? false) && context.language === "typescript" && !context.service;
   const words = [
     "cstudy",
     command,
@@ -87,6 +90,7 @@ export function parseCases(text: string): string[] {
 function sentOptions(command: RunCommandName, options: RunOptionsState, context: RunContext): Partial<RunOptionsState> {
   const applicable = applicableOptions(context);
   const sent: { -readonly [Name in keyof RunOptionsState]?: RunOptionsState[Name] } = {};
+  if (context.service && command === "test") return sent;
   if (applicable.has("level") && options.level !== null) sent.level = options.level;
   if (command === "submit") return sent;
   if (options.cases.length) sent.cases = options.cases;

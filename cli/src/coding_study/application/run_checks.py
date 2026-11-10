@@ -15,6 +15,7 @@ from coding_study.application.submit_project import require_project
 from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import level_run
 from coding_study.domain.problem import Language, ProblemKind
+from coding_study.domain.service_project import service_of
 
 VERIFY_SCOPE = (
     "the page verifies your own problems; "
@@ -41,6 +42,8 @@ class RunSubject:
     slug: str
     language: Language
     kind: ProblemKind
+    service: bool = False
+    """A service project, whose `cstudy test` takes no flag of a native run."""
 
 
 def check_run(environment: Environment, check: RunCheck) -> RunSubject:
@@ -56,7 +59,17 @@ def check_run(environment: Environment, check: RunCheck) -> RunSubject:
         level_run(meta, attempt.level_unlocked, check.level)
     except ValueError as error:
         raise UsageError(str(error)) from None
-    return RunSubject(attempt.slug, language, meta.kind)
+    return RunSubject(attempt.slug, language, meta.kind, service_of(meta) is not None)
+
+
+def check_dev(environment: Environment, attempt_id: int) -> str:
+    """The slug of the attempt whose dev stack the page starts. Raises UnknownAttemptError and
+    AttemptEndedError for an attempt not in progress, and UsageError for a problem that is not a
+    service project, as `cstudy dev` does."""
+    attempt = attempt_in_progress(environment.progress, attempt_id)
+    if service_of(environment.problems.load(attempt.slug).meta) is None:
+        raise UsageError(f"cstudy dev is for service projects; {attempt.slug} is not one")
+    return attempt.slug
 
 
 def check_verify_scope(environment: Environment, slugs: Sequence[str]) -> None:

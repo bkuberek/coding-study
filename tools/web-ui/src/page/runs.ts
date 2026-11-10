@@ -15,12 +15,14 @@
 
 import { FILE_SAVED_EVENT, type FileSaved } from "./api.ts";
 import type { PageContext } from "./context.ts";
-import { h } from "./dom.ts";
+import { badge, fixHint, h } from "./dom.ts";
 import { fetchChunk } from "./lazy.ts";
-import { noRunYet, ResultsPanel, terminalRuns } from "./results.ts";
+import { needsRefusal } from "./needs-model.ts";
+import { noRunYet, ResultsPanel } from "./results.ts";
 import { DEFAULT_OPTIONS, type RunCommandName, type RunContext, runCommand, type RunOptionsState } from "./run-options.ts";
+import type { DevPanel } from "./dev-panel.ts";
 import type { RunSession } from "./run-session.ts";
-import type { AttemptStatus, ProblemDocument } from "./types.ts";
+import type { AttemptStatus, NeedRow, ProblemDocument } from "./types.ts";
 import type { EditorTabs } from "./workbench.ts";
 
 const RUN_ON_SAVE_DEBOUNCE_MS = 150;
@@ -91,6 +93,10 @@ export class AttemptRuns implements RunShell {
   #frozen = false;
   /** Whether the panel shows the run `cstudy test` last recorded, which a refresh redraws. */
   #showsRecorded = false;
+  /** A service project's Docker, when it cannot run the project here: shown above the latest run. */
+  #dockerState: readonly Node[] = [];
+  #dockerRead = false;
+  #devPanel: DevPanel | null = null;
   /** The saves this page made and has not heard back as notices yet, by `savedKey`. */
   readonly #ownSaves = new Set<string>();
 
@@ -132,12 +138,9 @@ export class AttemptRuns implements RunShell {
       this.results.show(null, [h("p", { class: "quiet" }, "Items have no runs: answer in the notes.")]);
       return;
     }
-    if (status.no_web_runs !== null) {
-      this.results.show(null, terminalRuns(status.slug));
-      return;
-    }
     await this.showToolbar(status);
     this.showCommands();
+    if (first && status.service !== null) void this.#openDevPanel(status);
     if (first) await this.#showLatestRun(status);
     else if (this.#showsRecorded) this.#showRecorded(status);
     else void this.#session?.then((session) => session?.configure());
@@ -147,7 +150,7 @@ export class AttemptRuns implements RunShell {
    * view waits for it before its first draw: the toolbar shown later would make the header taller
    * and move the file tree under a pointer about to click it, which then clicks nothing. */
   async showToolbar(status: AttemptStatus): Promise<void> {
-    if (status.kind === "item" || status.no_web_runs !== null) return;
+    if (status.kind === "item") return;
     this.#problemRead ??= this.host.context.api
       .get<ProblemDocument>(`/api/v1/problems/${encodeURIComponent(status.slug)}`)
       .then(
@@ -159,7 +162,7 @@ export class AttemptRuns implements RunShell {
     await this.#problemRead;
     this.toolbar.hidden = false;
     this.buttons.submit.hidden = status.kind !== "project";
-    this.buttons.bench.hidden = !(this.#problem?.bench && status.language);
+    this.buttons.bench.hidden = !(this.#problem?.bench && status.language && status.service === null);
   }
 
   /** Follows a run another tab started (`run_started`), unless this tab shows one already. */
@@ -196,6 +199,7 @@ export class AttemptRuns implements RunShell {
   destroy(): void {
     this.#destroyed = true;
     window.clearTimeout(this.#saveTimer);
+    this.#devPanel?.destroy();
     void this.#session?.then((session) => session?.destroy());
     this.results.destroy();
     for (const cleanup of this.#cleanups) cleanup();
@@ -210,6 +214,7 @@ export class AttemptRuns implements RunShell {
       levels: status.levels,
       oracle: this.#problem?.oracle ?? false,
       typecheck: this.host.context.preferences().typecheck,
+      service: status.service !== null,
     };
   }
 
@@ -232,18 +237,34 @@ export class AttemptRuns implements RunShell {
 
   /** The run `cstudy test` last recorded, until the run session shows a run. */
   #showRecorded(status: AttemptStatus): void {
-    this.results.show(null, noRunYet(runCommand("test", this.options, this.runContext()), status.last_test_run));
+    this.results.show(null, [...this.#dockerState, ...noRunYet(runCommand("test", this.options, this.runContext()), status.last_test_run)]);
     this.#showsRecorded = true;
+    if (status.service !== null) void this.#readDocker(status);
   }
 
-  /** Whether the attempt's runs go through a terminal, so no shortcut or save here starts one. */
-  get #inATerminal(): boolean {
-    return (this.#status?.no_web_runs ?? null) !== null;
+  /** A service project's dev stack, with its code fetched the first time. */
+  async #openDevPanel(status: AttemptStatus): Promise<void> {
+    const module = await fetchChunk((message) => this.host.context.shell.announce(message), () => import("./dev-panel.ts"));
+    if (module === null || this.#destroyed) return;
+    this.#devPanel = new module.DevPanel(this.host.context, status);
+    this.results.addDev(this.#devPanel.element);
+  }
+
+  /** A service project: whether Docker can run it here, read once and asking it nothing that
+   * starts it. When it cannot, the panel says why in the CLI's words before any run. */
+  async #readDocker(status: AttemptStatus): Promise<void> {
+    if (this.#dockerRead) return;
+    this.#dockerRead = true;
+    const found = await this.host.context.api.get<{ readonly needs: readonly NeedRow[] | null }>(`/api/v1/problems/${encodeURIComponent(status.slug)}/needs`).catch(() => null);
+    const refusal = found?.needs ? needsRefusal(found.needs) : null;
+    if (refusal === null || this.#destroyed) return;
+    this.#dockerState = [h("p", { class: "docker-state tone-warn", role: "status" }, badge("!", "Docker", "warn"), " ", fixHint(refusal))];
+    if (this.#showsRecorded) this.#showRecorded(status);
   }
 
   /** Does `act` with the run session, which is fetched the first time; false when it could not be. */
   async #use(act: (session: RunSession) => unknown): Promise<boolean> {
-    if (this.#frozen || this.#inATerminal) return false;
+    if (this.#frozen) return false;
     this.#session ??= this.#openSession();
     const session = await this.#session;
     if (session === null || this.#destroyed) return false;

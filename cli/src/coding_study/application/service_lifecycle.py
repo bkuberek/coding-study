@@ -7,8 +7,9 @@ result. The limit on `commands.test`, and the run time this reports, start at th
 """
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from typing import Protocol
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
@@ -19,7 +20,8 @@ from coding_study.application.sandbox import (
     ensure_engine,
     missing_images,
     pull_images,
-    running_stack,
+    reported_stack,
+    staged,
     sweep_leftovers,
 )
 from coding_study.application.service_stacks import (
@@ -30,7 +32,7 @@ from coding_study.application.service_stacks import (
     workspace_id,
 )
 from coding_study.domain.attempts import Attempt
-from coding_study.domain.docker_engine import INSTALL_REACHES
+from coding_study.domain.docker_engine import INSTALL_REACHES, EngineStatus, engine_problem
 from coding_study.domain.errors import SandboxError, UsageError
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import FIRST_LEVEL
@@ -50,6 +52,7 @@ from coding_study.domain.service_project import (
     service_needs,
     service_of,
 )
+from coding_study.domain.stack_progress import StackStage
 from coding_study.domain.workspace_projects import project_folder
 
 INSTALL_RECORD_SUFFIX = ".install.json"
@@ -107,6 +110,21 @@ def service_needs_of(environment: Environment, slug: str) -> tuple[NeedRow, ...]
     return service_needs(meta, service, engine.state(), engine.platform())
 
 
+def require_service_engine(environment: Environment, problem: Problem) -> None:
+    """The Web UI's Start: refuses, with the state's message, an engine this machine cannot run the
+    project on, before anything is written. It asks and starts nothing: a stopped engine is no
+    problem, since the first run starts it, and nothing downloads until then."""
+    if service_of(problem.meta) is None:
+        return
+    engine = environment.sandbox
+    state = engine.state()
+    if state.status is EngineStatus.STOPPED:
+        return
+    problem_text = engine_problem(state, engine.platform())
+    if problem_text is not None:
+        raise SandboxError(problem_text)
+
+
 def needs_install(environment: Environment, problem: Problem) -> bool:
     """Whether the lock file differs from what the last install recorded, or what it installed is
     gone. A problem with no install needs none."""
@@ -156,7 +174,7 @@ def install_in_folder(
         raise SandboxError(f"{lock} is missing. Run: cstudy start --restore {lock}")
     with workspace.locked(project_lock(slug)):
         before = workspace.content_hash(lock_path)
-        notify(f"installing dependencies: {' '.join(command)}")
+        staged(notify, StackStage.INSTALLING)(f"installing dependencies: {' '.join(command)}")
         notify(INSTALL_REACHES)
         outcome = _run_install(environment, problem, folder, notify)
         if outcome.exit_code != 0:
@@ -225,6 +243,16 @@ def environment_of_test_command(plan: StackPlan) -> dict[str, str]:
     }
 
 
+class TestCommandListener(Protocol):
+    """Told when `commands.test` starts in the ready stack, and how it ended."""
+
+    def test_started(self) -> None: ...
+
+    def test_ended(self, outcome: CommandOutcome, seconds: float) -> None:
+        """`seconds` on the second clock, from the moment the stack was ready."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class ServiceTestRequest:
     slug: str | None = None
@@ -233,6 +261,7 @@ class ServiceTestRequest:
     """Hears each line `commands.test` prints."""
     listener: HttpCaseListener | None = None
     """Hears each visible case as it starts and as it is judged."""
+    on_test: TestCommandListener | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,6 +281,8 @@ class ServiceTestResult:
     """The visible HTTP cases of the unlocked levels, as feedback; nothing keeps it."""
     cases_seconds: float = 0.0
     """The second clock: those cases."""
+    case_levels: Mapping[str, int | None] = field(default_factory=dict[str, int | None])
+    """Each case's level, by its id."""
 
     @property
     def command_passed(self) -> bool:
@@ -300,7 +331,11 @@ def run_service_tests(
         if not failure.failure.is_your_code:
             raise
         return ServiceTestResult(
-            problem.meta, attempt, failure=failure, limit_s=service.timeouts.test
+            problem.meta,
+            attempt,
+            failure=failure,
+            limit_s=service.timeouts.test,
+            case_levels=_case_levels(problem),
         )
 
 
@@ -332,8 +367,11 @@ def _tests_in(
     limit = service.timeouts.test
     engine = environment.sandbox
     clock = environment.clock
-    with running_stack(engine, plan, service.startup_budget, notify) as ready:
+    on_test = request.on_test
+    with reported_stack(engine, plan, service.startup_budget, notify) as ready:
         run_began = clock.monotonic()
+        if on_test is not None:
+            on_test.test_started()
         outcome = engine.exec_app(
             plan,
             ContainerCommand(
@@ -341,6 +379,8 @@ def _tests_in(
             ),
         )
         test_seconds = clock.monotonic() - run_began
+        if on_test is not None:
+            on_test.test_ended(outcome, test_seconds)
         cases_began = clock.monotonic()
         cases = _visible_cases(
             environment,
@@ -358,7 +398,12 @@ def _tests_in(
         limit_s=limit,
         cases=cases,
         cases_seconds=cases_seconds,
+        case_levels=_case_levels(problem),
     )
+
+
+def _case_levels(problem: Problem) -> dict[str, int | None]:
+    return {case.id: case.level for case in problem.cases}
 
 
 def _visible_cases(

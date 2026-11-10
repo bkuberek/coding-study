@@ -13,6 +13,7 @@ from coding_study.application.next_problem import NextRequest, next_source, reco
 from coding_study.application.problem_details import problem_details
 from coding_study.application.problem_history import problem_history
 from coding_study.application.problem_sets import in_named_set
+from coding_study.application.service_lifecycle import service_needs_of
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UnknownProblemError
@@ -56,6 +57,10 @@ async def statement(request: Request) -> Response:
     return JsonResponse(await in_workspace(request, _statement, show))
 
 
+async def needs(request: Request) -> Response:
+    return JsonResponse(await in_workspace(request, _needs, _slug(request)))
+
+
 async def history(request: Request) -> Response:
     return JsonResponse(await in_workspace(request, _history, _slug(request)))
 
@@ -80,6 +85,7 @@ def browsing_routes() -> list[BaseRoute]:
         Route(f"{PROBLEMS}/{{slug}}", problem, methods=["GET"]),
         Route(f"{PROBLEMS}/{{slug}}/statement", statement, methods=["GET"]),
         Route(f"{PROBLEMS}/{{slug}}/history", history, methods=["GET"]),
+        Route(f"{PROBLEMS}/{{slug}}/needs", needs, methods=["GET"]),
         Route("/api/v1/next", next_pick, methods=["GET"]),
     ]
 
@@ -118,6 +124,17 @@ def _list_entry(environment: Environment, slug: str) -> dict[str, JsonValue]:
 
 def _statement(environment: Environment, show: ShowRequest) -> dict[str, JsonValue]:
     return markdown_document(show_statement(environment, show))
+
+
+def _needs(environment: Environment, slug: str) -> dict[str, JsonValue]:
+    """What `cstudy show` lists above the statement, each row with its state on this machine:
+    asking starts nothing. Null for a problem that is not a service project."""
+    rows = service_needs_of(environment, slug)
+    return {
+        "needs": None
+        if rows is None
+        else [{"label": row.label, "text": row.text, "problem": row.problem} for row in rows]
+    }
 
 
 def _history(environment: Environment, slug: str) -> dict[str, JsonValue]:

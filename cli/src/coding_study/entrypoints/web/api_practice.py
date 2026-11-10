@@ -19,6 +19,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.ide_files import link_rust_projects
 from coding_study.application.practice_catalog import is_item
 from coding_study.application.reveal_hint import reveal_hint
+from coding_study.application.service_lifecycle import require_service_engine
 from coding_study.application.start_attempt import StartedAttempt, StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import SECONDS_PER_MINUTE, Attempt, Rating
@@ -110,6 +111,9 @@ def _start(environment: Environment, request: StartRequest) -> dict[str, JsonVal
 
 
 def _start_problem(environment: Environment, request: StartRequest) -> Attempt:
+    """A service project's start writes the attempt only: its first run pulls and installs, with
+    their progress, as `cstudy start` would."""
+    require_service_engine(environment, environment.problems.load(request.slug))
     started = start_attempt(environment, request)
     if _seeded_rust_folder(started):
         link_rust_projects(RENDERERS, FsGeneratedFiles(environment.root))

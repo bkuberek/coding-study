@@ -2,9 +2,10 @@
 (docs/specs/cli.md#event-stream).
 
 A stream names its run once, then passes on what the run reports as it goes: progress notices,
-the build, each test, case or stress run as it starts and ends, revisions, diagnostics, graded
-and opened levels, and the `--perf` check. The command that writes the stream ends it with the
-outcome and the exit code, which are the command's own.
+with a service project's stack stage when one names it, the build, each test, case or stress run
+as it starts and ends, revisions, diagnostics, graded and opened levels, and the `--perf` check.
+The command that writes the stream ends it with the outcome and the exit code, which are the
+command's own.
 """
 
 from collections.abc import Callable
@@ -21,6 +22,8 @@ from coding_study.domain.judging import CaseVerdict, RunnableCase
 from coding_study.domain.levels import LevelRun
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.project_test_runs import SuiteTestVerdict
+from coding_study.domain.sandbox import CommandOutcome
+from coding_study.domain.stack_progress import StackNotice, StackStage
 from coding_study.domain.stress_runs import PlannedRun
 from coding_study.domain.stress_verdict import StressRunResult, StressVerdict
 from coding_study.domain.submissions import LevelTally
@@ -79,6 +82,17 @@ class OutputLine:
     """A progress notice, such as `computing expected values ...`."""
 
     text: str
+    stage: StackStage | None = None
+    """The stage a service project's stack reached, when the notice names one."""
+    startup_s: float | None = None
+    """On `ready`: the first clock, which no limit or result counts."""
+
+
+def notice_event(line: str) -> OutputLine:
+    """A progress notice as an event, with the stack's stage when it names one."""
+    if isinstance(line, StackNotice):
+        return OutputLine(str(line), line.stage, line.startup_s)
+    return OutputLine(line)
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +116,17 @@ class SuiteTestReported:
     """One test of the native suite ended (`cstudy test`)."""
 
     verdict: SuiteTestVerdict
+
+
+@dataclass(frozen=True, slots=True)
+class CommandTested:
+    """`commands.test` of a service project ended (`cstudy test`); its output came as it printed
+    it, as `OutputLine`s."""
+
+    outcome: CommandOutcome
+    seconds: float
+    """On the second clock, from the moment the stack was ready."""
+    limit_s: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,6 +214,7 @@ type RunEvent = (
     | BuildEnded
     | SuiteTestStarted
     | SuiteTestReported
+    | CommandTested
     | CaseStarted
     | CaseGraded
     | CaseRevised

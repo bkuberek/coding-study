@@ -104,15 +104,24 @@
       }
     },
     "output": {
-      "description": "A progress notice the report would print",
+      "description": "A progress notice the report would print; on a service project, a line `commands.test` printed too",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "text"],
       "properties": {
         "type": { "const": "output" },
         "version": { "$ref": "#/$defs/version" },
-        "text": { "type": "string" }
-      }
+        "text": { "type": "string" },
+        "stack": {
+          "description": "A service project: the stage its stack reached with this notice",
+          "enum": ["docker", "pulling", "installing", "starting", "ready", "failed", "stopped"]
+        },
+        "startup_s": {
+          "description": "With `ready`: the startup, which no limit or result counts",
+          "$ref": "#/$defs/seconds"
+        }
+      },
+      "dependentRequired": { "startup_s": ["stack"] }
     },
     "build": {
       "description": "`cstudy test` on a single-file problem: the build or type check ended, built or not",

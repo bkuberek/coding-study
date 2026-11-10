@@ -11,6 +11,7 @@ import type { Cleanup, PageContext } from "../context.ts";
 import { badge, type Child, command, h, isTyping } from "../dom.ts";
 import { problemBadge } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
+import { needMarkers } from "../needs-model.ts";
 import {
   activeFilters,
   canHide,
@@ -460,6 +461,13 @@ function resumeLink(slug: string, attempt: AttemptRef, said: string | null, show
   );
 }
 
+/** `needs docker postgres`, from the manifest alone, as `cstudy list` marks it; null for a problem that needs nothing more. */
+function needsTag(entry: ListEntry): HTMLElement | null {
+  const markers = needMarkers(entry.requires);
+  if (!markers.length) return null;
+  return h("span", { class: "tag needs-tag", title: `needs ${markers.join(", ")}: the Problem view lists sizes and memory` }, `needs ${markers.join(" ")}`);
+}
+
 function labelsOf(labels: readonly string[]): string {
   return labels.length ? labels.join(", ") : "–";
 }
@@ -475,6 +483,7 @@ const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawi
       h("span", { class: "slug" }, entry.slug),
       entry.content === "draft" ? h("span", { class: "tag" }, "draft") : null,
       entry.source === "workspace" ? h("span", { class: "tag" }, "yours") : null,
+      needsTag(entry),
     ),
   difficulty: (entry) => h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
   pattern: (entry) => h("td", {}, entry.patterns[0] ?? entry.track),

@@ -1,0 +1,90 @@
+/*
+ * The dev stack on the Attempt view (dev-panel.ts): one ruled strip above the results, its state
+ * and the app's address on the heading line, a picker per mock server, and the app's lines in a
+ * short scrolling log, as a terminal shows them.
+ */
+
+.dev-stack {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.dev-stack[data-phase="ready"] {
+  border-left-color: var(--ok);
+}
+
+.dev-stack[data-phase="starting"] {
+  border-left-color: var(--info);
+}
+
+.dev-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.dev-head .eyebrow,
+.dev-button {
+  flex: none;
+  margin: 0;
+}
+
+.dev-head .spacer {
+  flex: 1;
+}
+
+/* The state and the address give way first, so Start or Stop keeps its place on the line. */
+.dev-state,
+.dev-url {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dev-app-link {
+  font-size: var(--text-s);
+}
+
+.dev-mocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.dev-mocks:not(:empty) {
+  margin-top: 6px;
+}
+
+.dev-mock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--text-s);
+}
+
+.dev-mock label {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.dev-note p {
+  margin: 6px 0 0;
+  font-size: var(--text-s);
+  overflow-wrap: anywhere;
+}
+
+.dev-log,
+.dev-output {
+  max-height: 9em;
+  margin: 6px 0 0;
+  padding: 4px 6px;
+  overflow: auto;
+  border-top: 1px dashed var(--rule);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

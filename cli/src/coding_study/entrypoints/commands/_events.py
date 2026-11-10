@@ -21,6 +21,7 @@ from coding_study.application.run_events import (
     CaseGraded,
     CaseRevised,
     CaseStarted,
+    CommandTested,
     DiagnosticFound,
     EventSink,
     LevelGraded,
@@ -43,7 +44,11 @@ from coding_study.domain.generated_cases import OracleInput
 from coding_study.domain.stress_runs import PlannedRun
 from coding_study.entrypoints.commands._diagnostics import diagnostic_value
 from coding_study.entrypoints.commands.bench import perf_value
-from coding_study.entrypoints.commands.project_documents import level_tally_value, suite_test_value
+from coding_study.entrypoints.commands.project_documents import (
+    command_test_value,
+    level_tally_value,
+    suite_test_value,
+)
 from coding_study.entrypoints.commands.run_document import (
     DECIMALS,
     case_value,
@@ -160,14 +165,16 @@ def event_value(event: RunEvent) -> dict[str, JsonValue]:
     match event:
         case RunStarted():
             return _event("run_start", _start_fields(event))
-        case OutputLine(text=text):
-            return _event("output", {"text": text})
+        case OutputLine():
+            return _event("output", _output_fields(event))
         case BuildEnded(seconds=seconds, note=note):
             return _event("build", {"seconds": round(seconds, DECIMALS), "note": note})
         case SuiteTestStarted(test_id=test_id):
             return _event("test_start", {"id": test_id})
         case SuiteTestReported(verdict=verdict):
             return _event("test_result", suite_test_value(verdict))
+        case CommandTested():
+            return _event("test_result", command_test_value(event))
         case CaseStarted(case=case, level=level, oracle=oracle):
             started = {"id": case.id, "visible": case.visible, "level": level}
             return _event("case_start", started | _oracle_fields(oracle))
@@ -199,6 +206,17 @@ def event_value(event: RunEvent) -> dict[str, JsonValue]:
 
 def _event(event_type: str, fields: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
     return {"type": event_type, "version": EVENTS_VERSION, **fields}
+
+
+def _output_fields(line: OutputLine) -> dict[str, JsonValue]:
+    """A notice that moves a service project's stack along names its stage, and `ready` the
+    startup, which no limit or result counts."""
+    fields: dict[str, JsonValue] = {"text": line.text}
+    if line.stage is not None:
+        fields["stack"] = line.stage.value
+    if line.startup_s is not None:
+        fields["startup_s"] = round(line.startup_s, DECIMALS)
+    return fields
 
 
 def _start_fields(started: RunStarted) -> dict[str, JsonValue]:

@@ -165,9 +165,9 @@ def test_status_json_says_the_typescript_project_has_code_intelligence(environme
     assert json.loads(invoke("status", "--json").output)["no_code_intelligence"] is None
 
 
-def test_status_json_says_the_web_ui_runs_none_of_its_tests(environment):
+def test_status_json_names_the_mock_servers_of_a_service_project(environment):
     start_it()
-    assert json.loads(invoke("status", "--json").output)["no_web_runs"] == "service_project"
+    assert json.loads(invoke("status", "--json").output)["service"] == {"mocks": []}
 
 
 def test_show_lists_the_needs_above_the_statement(environment):
@@ -251,7 +251,7 @@ def test_a_stack_that_failed_for_another_reason_exits_4_as_not_your_code(environ
 
 @pytest.mark.parametrize(
     "flag",
-    [("--debug",), ("--case", "x"), ("--level", "1"), ("--watch",), ("--json",), ("--events",)],
+    [("--debug",), ("--case", "x"), ("--level", "1"), ("--watch",), ("--typecheck",)],
 )
 def test_the_flags_of_a_native_run_exit_3(environment, flag):
     start_it()

@@ -1,0 +1,1 @@
+import{b as e}from"./chunk-JHMKAQH3.js";var n="confirmation_required";async function c(r,t){try{return await r(!1)}catch(o){if(!(o instanceof e)||o.code!==n)throw o;return await t(o.message)?r(!0):null}}export{c as a};

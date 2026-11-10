@@ -349,6 +349,7 @@
             "fix": { "type": ["string", "null"] },
             "run": { "description": "A conflict's run holding the slot", "$ref": "#/$defs/child_id" },
             "job": { "description": "A conflict's job holding the slot", "$ref": "#/$defs/child_id" },
+            "dev": { "description": "A conflict's dev stack holding the slot", "$ref": "#/$defs/child_id" },
             "sha256": { "description": "precondition_failed: the file's content now, null when it is gone", "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
           }
         }
@@ -392,6 +393,32 @@
       }
     },
     "statement": { "description": "GET /api/v1/problems/{slug}/statement", "$ref": "#/$defs/markdown" },
+    "needs": {
+      "description": "GET /api/v1/problems/{slug}/needs: what a service project depends on, as `cstudy show` lists it, each row with its state here; null for any other problem",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["needs"],
+      "properties": {
+        "needs": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text", "problem"],
+                "properties": {
+                  "label": { "enum": ["docker", "language", "packages", "services", "mocks", "total"] },
+                  "text": { "type": "string" },
+                  "problem": { "description": "Why it is not met here; null when it is", "type": ["string", "null"] }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
     "hint": {
       "description": "POST /api/v1/attempts/{id}/hints",
       "oneOf": [
@@ -578,7 +605,7 @@
     },
 
     "child_started": {
-      "description": "POST /api/v1/runs and /api/v1/jobs (201), and their cancel (202)",
+      "description": "POST /api/v1/runs, /api/v1/jobs and /api/v1/dev (201), their cancel and stop, and a dev stack's scenario (202)",
       "type": "object",
       "additionalProperties": false,
       "required": ["id"],
@@ -619,6 +646,21 @@
       }
     },
     "runs": { "description": "GET /api/v1/runs?attempt_id=N, newest first", "type": "array", "items": { "$ref": "#/$defs/run" } },
+    "dev": {
+      "description": "GET /api/v1/dev/{id}",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "attempt_id", "state", "started_at", "exit_code", "end"],
+      "properties": {
+        "id": { "$ref": "#/$defs/child_id" },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "state": { "enum": ["running", "ended"] },
+        "started_at": { "$ref": "#/$defs/timestamp" },
+        "exit_code": { "description": "null while it runs", "type": ["integer", "null"] },
+        "end": { "description": "The stream's dev_end (schemas/dev-events.schema.json), or null", "type": ["object", "null"] }
+      }
+    },
+    "devs": { "description": "GET /api/v1/dev?attempt_id=N, newest first", "type": "array", "items": { "$ref": "#/$defs/dev" } },
     "closed": {
       "description": "The data of a run's or a job's last event, closed",
       "type": "object",

@@ -168,6 +168,18 @@ async def start_child(
     )
 
 
+async def start_piped_child(
+    child: ChildCommand, workspace: Path, command: Sequence[str]
+) -> StreamedChild:
+    """`start_child`, with a pipe on standard input that the server writes lines to."""
+    return await start_process(
+        child.arguments(workspace, command),
+        workspace,
+        {**os.environ, **CHILD_ENVIRONMENT},
+        asyncio.subprocess.PIPE,
+    )
+
+
 async def start_process(
     arguments: Sequence[str], directory: Path, environment: Mapping[str, str], stdin: int
 ) -> StreamedChild:

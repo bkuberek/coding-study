@@ -13,6 +13,7 @@ import { solutionButton } from "../solution.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { localMinute, problemBadge, solveTime } from "../format.ts";
 import { openLazily } from "../lazy.ts";
+import { needsList, readNeeds } from "../needs.ts";
 import { attemptHash, setHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, showFailure } from "../states.ts";
@@ -87,11 +88,24 @@ function side(context: PageContext, problem: ProblemDocument, history: History, 
   return h(
     "aside",
     { class: "problem-side", "aria-label": "Practice" },
+    needsSection(context, problem),
     practice(context, problem, history.schedule !== null),
     setsSection(context, problem.slug, sets),
     problem.approaches.length ? approaches(problem) : null,
     historySection(context, problem.slug, history),
   );
+}
+
+/** What a service project depends on, each with its state here, read as the view opens; null for any other problem. */
+function needsSection(context: PageContext, problem: ProblemDocument): HTMLElement | null {
+  if (problem.requires === null) return null;
+  const heading = h("h2", { id: "needs-heading", class: "eyebrow" }, "needs");
+  const section = h("section", { class: "side-block needs", "aria-labelledby": "needs-heading" }, heading, loading());
+  void readNeeds(context, problem.slug).then(
+    (rows) => section.replaceChildren(heading, rows === null ? empty("nothing beyond its language") : needsList(rows)),
+    (error: unknown) => section.replaceChildren(heading, failure(error)),
+  );
+  return section;
 }
 
 function practice(context: PageContext, problem: ProblemDocument, scheduled: boolean): HTMLElement {

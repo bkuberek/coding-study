@@ -72,6 +72,11 @@ export class ResultsPanel {
     (this.#job ?? this.#body).before(form);
   }
 
+  /** Puts a service project's dev stack at the top of the panel, under its heading. */
+  addDev(dev: HTMLElement): void {
+    this.#progress.before(dev);
+  }
+
   /** Puts a job's panel above the results, under the run options. */
   addJob(job: HTMLElement): void {
     this.#body.before(job);
@@ -117,21 +122,6 @@ export class ResultsPanel {
 }
 
 /** What the panel shows before the page runs anything: the latest recorded run, and how to run one. */
-/** What the panel shows of a service project, whose runs the page does not start yet. */
-export function terminalRuns(slug: string): Node[] {
-  const run = (words: string, what: string) => h("li", {}, command(`${words} ${slug}`), h("span", { class: "quiet" }, ` ${what}`));
-  return [
-    h("p", { class: "quiet" }, "Runs from this page come later for service projects. In a terminal:"),
-    h(
-      "ul",
-      { class: "plain terminal-runs" },
-      run("cstudy dev", "runs your app and its mock servers until Ctrl-C"),
-      run("cstudy test", "runs commands.test, then the visible HTTP cases"),
-      run("cstudy submit", "grades the open levels"),
-    ),
-  ];
-}
-
 export function noRunYet(testCommand: string, lastRun: { readonly total: number; readonly passed: number; readonly ran_at: string } | null): Node[] {
   return [
     lastRun

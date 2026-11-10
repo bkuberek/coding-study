@@ -32,7 +32,6 @@ from coding_study.application.run_events import (
     EventSink,
     LevelGraded,
     LevelOpened,
-    OutputLine,
     RunCommand,
     RunStarted,
     StressGraded,
@@ -40,6 +39,7 @@ from coding_study.application.run_events import (
     StressRunStarted,
     SuiteTestReported,
     SuiteTestStarted,
+    notice_event,
 )
 from coding_study.application.submit_project import (
     SubmitRequest,
@@ -217,4 +217,4 @@ def _slot(planned: PlannedRun) -> _StressSlot:
 
 
 def _notices(emit: EventSink) -> ProgressNotice:
-    return lambda line: emit(OutputLine(line))
+    return lambda line: emit(notice_event(line))
