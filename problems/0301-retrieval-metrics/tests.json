@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"rankings": [["d3", "d1", "d7", "d2"]], "judgedDocs": [["d1", "d2", "d3", "d4"]], "grades": [[3, 0, 1, 2]], "k": 3}, "expected": [0.6666666666666666, 1.0, 0.5766666455144387]},
+    {"id": "ex2", "visible": true, "input": {"rankings": [["a", "b"], ["x", "y"]], "judgedDocs": [["b"], ["x"]], "grades": [[2], [0]], "k": 2}, "expected": [1.0, 0.5, 0.6309297535714574]},
+    {"id": "ex3", "visible": true, "input": {"rankings": [["p", "q", "r"], ["s", "t"]], "judgedDocs": [["r", "q"], ["s", "u", "v"]], "grades": [[1, 1], [2, 1, 1]], "k": 2}, "expected": [0.41666666666666663, 0.75, 0.6065437321815508]},
+    {"id": "h1", "input": {"rankings": [["a"]], "judgedDocs": [["a", "b"]], "grades": [[1, 3]], "k": 2}, "expected": [0.5, 1.0, 0.1310456303875653], "note": "the ideal ranking holds every judged document, including b, which was never retrieved"},
+    {"id": "h2", "input": {"rankings": [["a", "b"]], "judgedDocs": [["a", "b", "c", "d"]], "grades": [[2, 2, 2, 2]], "k": 2}, "expected": [0.5, 1.0, 1.0], "note": "the ideal ranking is cut at k too, so a perfect top 2 has nDCG 1"},
+    {"id": "h3", "input": {"rankings": [["x", "a"]], "judgedDocs": [["a"]], "grades": [[1]], "k": 2}, "expected": [1.0, 0.5, 0.6309297535714575], "note": "rank 2 is discounted by log2(3); log2(rank) would not discount it at all"},
+    {"id": "h4", "input": {"rankings": [["low", "high"]], "judgedDocs": [["high", "low"]], "grades": [[3, 1]], "k": 2}, "expected": [1.0, 1.0, 0.7098097413968655], "note": "the gain is 2^grade - 1, not the grade"},
+    {"id": "h5", "input": {"rankings": [["a"], ["b"]], "judgedDocs": [["a"], ["b"]], "grades": [[1], [0]], "k": 1}, "expected": [1.0, 1.0, 1.0], "note": "the second query has nothing relevant and is left out of every average, not counted as 0"},
+    {"id": "h6", "input": {"rankings": [["a", "b"], []], "judgedDocs": [[], ["c"]], "grades": [[], [0]], "k": 3}, "expected": [0.0, 0.0, 0.0], "note": "no query has a relevant document"},
+    {"id": "h7", "input": {"rankings": [["a", "x"], ["b", "y"]], "judgedDocs": [["a"], ["b", "c", "d", "e"]], "grades": [[1], [1, 1, 1, 1]], "k": 2}, "expected": [0.625, 1.0, 0.8065735963827292], "note": "recall is averaged per query (macro), not pooled over all relevant documents (micro)"},
+    {"id": "h8", "input": {"rankings": [["x", "y", "a"]], "judgedDocs": [["a"]], "grades": [[2]], "k": 2}, "expected": [0.0, 0.0, 0.0], "note": "the first relevant document is at rank 3, past k, so the reciprocal rank is 0"},
+    {"id": "h9", "input": {"rankings": [["a", "b"]], "judgedDocs": [["a", "b", "c"]], "grades": [[1, 1, 1]], "k": 2}, "expected": [0.6666666666666666, 1.0, 1.0], "note": "recall divides by all relevant documents, even when there are more than k"},
+    {"id": "h10", "input": {"rankings": [["z", "a"]], "judgedDocs": [["z", "a"]], "grades": [[0, 2]], "k": 2}, "expected": [1.0, 0.5, 0.6309297535714574], "note": "a document judged 0 is judged not relevant"},
+    {"id": "h11", "input": {"rankings": [["a"], []], "judgedDocs": [["a", "b"], ["c"]], "grades": [[2, 1], [3]], "k": 5}, "expected": [0.25, 0.5, 0.41311732856427996], "note": "a ranking shorter than k, and an empty one"},
+    {"id": "h12", "input": {"rankings": [["u1", "u2", "a"]], "judgedDocs": [["a"]], "grades": [[1]], "k": 3}, "expected": [1.0, 0.3333333333333333, 0.5], "note": "documents nobody judged have grade 0"},
+    {"id": "h13", "input": {"rankings": [["c", "b", "a"]], "judgedDocs": [["a", "b", "c"]], "grades": [[1, 2, 3]], "k": 2}, "expected": [0.6666666666666666, 1.0, 1.0], "note": "the ideal ranking sorts the grades best first, whatever order the judgments come in"},
+    {"id": "h14", "input": {"rankings": [["a", "b"], ["c", "d"]], "judgedDocs": [["b"], ["c", "d"]], "grades": [[1], [2, 3]], "k": 1}, "expected": [0.25, 0.5, 0.21428571428571427], "note": "k = 1"},
+    {"id": "h15", "input": {"rankings": [["d1", "d5", "d2", "d9", "d4", "d8"], ["e2", "e1", "e3"], ["f9", "f8", "f7", "f1", "f2"], ["g1", "g2"]], "judgedDocs": [["d1", "d2", "d3", "d4", "d5"], ["e1", "e2", "e3", "e4"], ["f1", "f2", "f3"], ["g3"]], "grades": [[3, 2, 2, 1, 0], [1, 0, 3, 2], [2, 3, 1], [1]], "k": 5}, "expected": [0.5208333333333333, 0.4375, 0.4216823116894064], "note": "four queries with mixed grades"}
+  ]
+}
