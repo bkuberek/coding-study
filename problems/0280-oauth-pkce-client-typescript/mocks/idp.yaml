@@ -1,0 +1,26 @@
+# The identity provider as your app and the grader reach it, at idp:8080. Every request passes
+# through to Keycloak, which answers it and signs every token; nothing here signs anything. The
+# routes name the back-channel calls a case counts, and any other request, such as the login form
+# or the admin API the grader uses, passes through too. Hidden scenarios are what a graded run
+# adds: a dev or test stack holds none of them.
+upstream: http://keycloak:8080
+routes:
+  - id: discovery
+    method: GET
+    path: /realms/campus/.well-known/openid-configuration
+  - id: token
+    method: POST
+    path: /realms/campus/protocol/openid-connect/token
+  - id: certs
+    method: GET
+    path: /realms/campus/protocol/openid-connect/certs
+  - id: revoke
+    method: POST
+    path: /realms/campus/protocol/openid-connect/revoke
+scenarios:
+  alg_none:
+    route: token
+    jwt: {field: id_token, tamper: alg_none}
+  bad_signature:
+    route: token
+    jwt: {field: id_token, tamper: bad_signature}

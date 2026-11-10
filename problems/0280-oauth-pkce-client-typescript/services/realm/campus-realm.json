@@ -1,0 +1,84 @@
+{
+  "id": "campus",
+  "realm": "campus",
+  "displayName": "Campus",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "bruteForceProtected": false,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "id": "da76d235-21bc-44f4-8547-bee9d255ca23",
+      "clientId": "portal",
+      "name": "Campus portal",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "fullScopeAllowed": false,
+      "redirectUris": ["http://app:8000/callback"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://app:8000/",
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": ["basic", "profile", "email"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "grader",
+      "name": "The grader's admin client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "grader-secret-only-for-this-sandbox",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["basic", "roles", "kc-admin-api"],
+      "optionalClientScopes": []
+    }
+  ],
+  "users": [
+    {
+      "id": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+      "username": "learner",
+      "enabled": true,
+      "email": "learner@campus.example",
+      "emailVerified": true,
+      "firstName": "Lee",
+      "lastName": "Learner",
+      "credentials": [{ "type": "password", "value": "learner-pass", "temporary": false }]
+    },
+    {
+      "username": "service-account-grader",
+      "enabled": true,
+      "serviceAccountClientId": "grader",
+      "clientRoles": {
+        "realm-management": [
+          "manage-realm",
+          "view-realm",
+          "manage-users",
+          "view-users",
+          "manage-clients",
+          "view-clients"
+        ]
+      }
+    }
+  ]
+}
