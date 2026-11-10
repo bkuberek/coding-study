@@ -168,6 +168,30 @@ def test_a_route_body_is_checked_for_run_time_values_too():
     assert any("opens no run-time value" in message for message in s20(files_of(document)))
 
 
+def test_a_streams_event_data_is_checked_for_run_time_values():
+    document = config(echo={"stream": [{"data": "{{request.body.model}}"}, {"data": "{{model}}"}]})
+    assert any("opens no run-time value" in message for message in s20(files_of(document)))
+
+
+def test_a_streams_raw_text_is_checked_for_run_time_values():
+    document = config(echo={"stream": [{"raw": "data: {{request.model}}\n\n"}]})
+    assert any("opens no run-time value" in message for message in s20(files_of(document)))
+
+
+def test_a_stream_whose_events_wait_past_the_bound_is_refused():
+    document = config(
+        slow={"stream": [{"data": "a", "after_ms": 2000}, {"data": "b", "after_ms": 1001}]}
+    )
+    assert any("at most 3 s" in message for message in s20(files_of(document)))
+
+
+def test_a_stream_whose_events_wait_up_to_the_bound_is_allowed():
+    document = config(
+        slow={"stream": [{"data": "a", "after_ms": 2000}, {"data": "b", "after_ms": 1000}]}
+    )
+    assert s20(files_of(document)) == []
+
+
 def test_a_body_file_is_checked_for_run_time_values_too():
     document = config(echo={"body_file": "bodies/echo.json"})
     found = s20(files_of(document, bodies={"bodies/echo.json": '{"m": "{{model}}"}'}))

@@ -30,11 +30,13 @@ STACK_FIELDS = frozenset({"control_token", "mocks"})
 MOCK_FIELDS = frozenset({"upstream", "routes", "scenarios"})
 ROUTE_FIELDS = frozenset({"id", "method", "path", "query", "match", "response"})
 MATCH_FIELDS = frozenset({"body", "body_contains"})
-RESPONSE_FIELDS = frozenset({"status", "headers", "body", "body_file", "delay_ms"})
-ENTRY_FIELDS = RESPONSE_FIELDS | {"jwt"}
-"""A scenario entry's fields: a route's response, plus a JWT to tamper with."""
+RESPONSE_FIELDS = frozenset({"status", "headers", "body", "body_file", "stream", "delay_ms"})
+CUT_FIELDS = frozenset({"drop_after_chunks", "stall_after_chunks"})
+ENTRY_FIELDS = RESPONSE_FIELDS | {"jwt"} | CUT_FIELDS
+"""A scenario entry's fields: a route's response, plus a JWT to tamper with and a stream to cut."""
 SCENARIO_FIELDS = ENTRY_FIELDS | {"visible", "route", "sequence"}
 JWT_FIELDS = frozenset({"field", "tamper"})
+CHUNK_FIELDS = frozenset({"data", "event", "raw", "after_ms"})
 
 
 class ConfigError(Exception):
@@ -69,6 +71,32 @@ class JwtTamper:
 
 
 @dataclass(frozen=True)
+class StreamChunk:
+    """One server-sent event of a streamed answer, sent `after_ms` after the one before it: `data`,
+    under an optional `event` name, or `raw` text sent as written, which can break the format."""
+
+    data: str | None = None
+    event: str | None = None
+    raw: str | None = None
+    after_ms: int = 0
+
+
+class StreamCutKind(StrEnum):
+    """How a scenario cuts a stream short after some of its chunks."""
+
+    DROP = "drop"
+    """The connection closes, with no terminator."""
+    STALL = "stall"
+    """Nothing more is sent, and the connection stays open until the app closes it."""
+
+
+@dataclass(frozen=True)
+class StreamCut:
+    kind: StreamCutKind
+    after_chunks: int
+
+
+@dataclass(frozen=True)
 class ResponseFields:
     """A route's response or a scenario's override; `None` is a field left out."""
 
@@ -78,6 +106,10 @@ class ResponseFields:
     delay_ms: int | None = None
     jwt: JwtTamper | None = None
     """A scenario's only: the JWT of the answer it spoils."""
+    stream: tuple[StreamChunk, ...] | None = None
+    """Server-sent events in place of a body."""
+    cut: StreamCut | None = None
+    """A scenario's only: where it cuts the stream short."""
 
 
 @dataclass(frozen=True)
@@ -247,13 +279,17 @@ class _Reader:
             status=fields.optional("status", _status),
             headers=fields.optional("headers", _headers),
             body=self._body(fields),
-            delay_ms=fields.optional("delay_ms", _delay),
+            delay_ms=fields.optional("delay_ms", _non_negative),
             jwt=fields.optional("jwt", _jwt),
+            stream=fields.optional("stream", _stream),
+            cut=_cut(fields),
         )
 
     def _body(self, fields: _Fields) -> Body | None:
         if fields.has("body") and fields.has("body_file"):
             raise ConfigError(f"{fields.where}.body_file: cannot stand next to body")
+        if fields.has("stream") and (fields.has("body") or fields.has("body_file")):
+            raise ConfigError(f"{fields.where}.stream: cannot stand next to a body")
         return fields.optional("body", _inline_body) or fields.optional(
             "body_file", self._body_file
         )
@@ -313,6 +349,45 @@ def _jwt(raw: object, where: str) -> JwtTamper:
         known = sorted(TamperKind)
         raise ConfigError(f"{where}.tamper: expected one of {known}, got {kind!r}")
     return JwtTamper(tuple(path.split(".")), TamperKind(kind))
+
+
+def _stream(raw: object, where: str) -> tuple[StreamChunk, ...]:
+    items = _list(raw, where)
+    if not items:
+        raise ConfigError(f"{where}: expected at least one chunk")
+    return tuple(_chunk(item, f"{where}[{index}]") for index, item in enumerate(items))
+
+
+def _chunk(raw: object, where: str) -> StreamChunk:
+    fields = _Fields(raw, CHUNK_FIELDS, where)
+    after_ms = fields.optional("after_ms", _non_negative) or 0
+    if fields.has("raw"):
+        if fields.has("data") or fields.has("event"):
+            raise ConfigError(f"{where}.raw: cannot stand next to data or event")
+        return StreamChunk(raw=fields.required("raw", _string), after_ms=after_ms)
+    return StreamChunk(
+        data=fields.required("data", _string),
+        event=fields.optional("event", _event),
+        after_ms=after_ms,
+    )
+
+
+def _event(raw: object, where: str) -> str:
+    event = _text(raw, where)
+    if "\r" in event or "\n" in event:
+        raise ConfigError(f"{where}: an event name is one line")
+    return event
+
+
+def _cut(fields: _Fields) -> StreamCut | None:
+    drops, stalls = fields.has("drop_after_chunks"), fields.has("stall_after_chunks")
+    if drops and stalls:
+        raise ConfigError(f"{fields.where}.stall_after_chunks: cannot stand next to a drop")
+    if drops:
+        return StreamCut(StreamCutKind.DROP, fields.required("drop_after_chunks", _non_negative))
+    if stalls:
+        return StreamCut(StreamCutKind.STALL, fields.required("stall_after_chunks", _non_negative))
+    return None
 
 
 def _mapping(raw: object, where: str) -> dict[str, object]:
@@ -375,7 +450,7 @@ def _status(raw: object, where: str) -> int:
     return status
 
 
-def _delay(raw: object, where: str) -> int:
+def _non_negative(raw: object, where: str) -> int:
     delay = _integer(raw, where)
     if delay < 0:
         raise ConfigError(f"{where}: must not be negative")

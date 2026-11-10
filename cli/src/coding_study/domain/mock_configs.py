@@ -19,6 +19,7 @@ API_SUFFIX = ".API.md"
 """`mocks/<name>.API.md`, next to `mocks/<name>.yaml`."""
 BODY_FILE = "body_file"
 BODY = "body"
+STREAM = "stream"
 OPENING = "{{"
 _REFERENCE = (
     r"(?:request\.(?:method|path|body(?:\.[A-Za-z0-9_-]+)*"
@@ -93,11 +94,19 @@ def response_fields(files: MockFiles) -> Iterator[tuple[str, _Document]]:
 
 def response_texts(fields: _Document, files: MockFiles) -> Iterator[str]:
     """Every text of a response's fields that may name run-time values: each string of its body,
-    or the text of its `body_file`."""
+    the text of its `body_file`, and each event's `data` or `raw`."""
     yield from _json_strings(fields.get(BODY))
     body_file = fields.get(BODY_FILE)
     if isinstance(body_file, str):
         yield from _json_strings(files.bodies.get(body_file))
+    for chunk in _stream(fields):
+        yield from _json_strings(chunk.get("data"))
+        yield from _json_strings(chunk.get("raw"))
+
+
+def stream_wait_ms(fields: _Document) -> int:
+    """What a stream's events wait, together, from the headers to the last one."""
+    return sum(cast(int, chunk.get("after_ms", 0)) for chunk in _stream(fields))
 
 
 def malformed_run_time_value(text: str) -> str | None:
@@ -112,7 +121,8 @@ def malformed_run_time_value(text: str) -> str | None:
 
 
 def scenario_waits_ms(scenario: _Document) -> list[int]:
-    """What each entry of a scenario makes the app wait: its delay, then what `Retry-After` asks."""
+    """What each entry of a scenario makes the app wait: its delay and its stream's events, then
+    what `Retry-After` asks."""
     return [_entry_wait_ms(entry) for entry in _entries(scenario)]
 
 
@@ -183,8 +193,12 @@ def _entries(scenario: _Document) -> tuple[_Document, ...]:
     return tuple(cast(list[_Document], sequence)) if sequence is not None else (scenario,)
 
 
+def _stream(fields: _Document) -> tuple[_Document, ...]:
+    return tuple(cast(list[_Document], fields.get(STREAM, [])))
+
+
 def _entry_wait_ms(entry: _Document) -> int:
-    delay = cast(int, entry.get("delay_ms", 0))
+    delay = cast(int, entry.get("delay_ms", 0)) + stream_wait_ms(entry)
     return delay + _retry_after_ms(cast(Mapping[str, str], entry.get("headers", {})))
 
 

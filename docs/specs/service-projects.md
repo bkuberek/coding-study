@@ -493,7 +493,7 @@ Reading a log answers `{"mock": "room-vendor", "entries": [...], "truncated": fa
 
 ### Extensions
 
-R33, for P11. They let a config mock a streaming API, an LLM provider among them. Matching on bodies and run-time values are built; the rest of this section is recommended, to confirm.
+R33, for P11. They let a config mock a streaming API, an LLM provider among them. Matching on bodies, run-time values and streaming are built; the rest of this section is recommended, to confirm.
 
 #### Matching on bodies
 
@@ -541,12 +541,54 @@ response:
 |------|--------|
 | References | `{{request.method}}`, `{{request.path}}`, `{{request.body}}` and `{{request.body.<dotted path>}}`, where a number names a list element, as in `messages.0.content`; `{{request.query.<name>}}`, its first value; `{{request.headers.<name>}}`, the name in any case; and `{{seq}}`, the request's number at its mock server since the last reset, as the [log](#request-log) counts it |
 | Functions | `len(<reference>)`: a text's characters, a list's elements or an object's fields, else 0. `words(<reference>)`: the whitespace-separated words of every text in the value, at any depth, keys not counted, else 0, a deterministic stand-in for a token count. `json(<reference>)`: the value's compact JSON text, `null` when it is missing |
-| Where | Every string of a `body`, a mapping's or list's or a text, and the text of a `body_file`, in a route's response or a scenario's. Not in headers, and not on a [pass-through](#pass-through)'s answer |
+| Where | Every string of a `body`, a mapping's or list's or a text, the text of a `body_file`, and a [streamed](#streaming) event's `data` and `raw`, in a route's response or a scenario's. Not in headers, and not on a [pass-through](#pass-through)'s answer |
 | In a JSON body | A string that is one value and nothing else takes that value with its own JSON type, a missing field as `null`, so `"{{len(request.body.messages)}}"` sends a number. Any other string is filled in as text. Keys are never filled in |
 | In a text | A string goes in as it is, anything else as its compact JSON, and a missing field as nothing. A text that holds JSON names a string with `json(...)`, which quotes and escapes it |
 | Missing | A field the body lacks, or a body that is not JSON, is missing, never an error: a mock server answers what it can |
 | Anything else | Anything else in braces is sent as written, and S20 refuses a `{{` that opens no value, since that is a typo far more often than it is meant. So a mock cannot send a literal `{{` |
 | No clock | No value reads the clock or a random source, so a case can compare a filled-in body exactly |
+
+#### Streaming
+
+Built at P11 (R33). A response can be a stream of server-sent events, `text/event-stream`, in place of a body, with a wait before each event, and a scenario can cut it short or break it.
+
+```yaml
+routes:
+  - id: chat-stream
+    method: POST
+    path: /v1/chat/completions
+    match: {body: {stream: true}}
+    response:
+      status: 200
+      stream:
+        - {data: '{"delta": "Desk "}', after_ms: 20}
+        - {event: usage, data: '{"tokens": {{words(request.body.messages)}}}'}
+        - {data: "[DONE]"}
+scenarios:
+  dropped_mid_stream:
+    visible: true
+    route: chat-stream
+    drop_after_chunks: 1             # one event, then the connection closes, with no [DONE]
+  stalled:
+    route: chat-stream
+    stall_after_chunks: 1            # one event, then silence until the app gives up
+  malformed_event:
+    route: chat-stream
+    stream:
+      - {data: '{"delta": "Des'}     # JSON cut short
+      - {raw: "dta: no such field\n\n"}   # a frame sent as written
+```
+
+| Rule | Detail |
+|------|--------|
+| `stream` | A list of events in place of `body` or `body_file`. Each is `data`, sent as one `data:` line per line of it, under an optional `event` name, or `raw`, text sent as written, for a frame that breaks the format. `after_ms` waits before the event, after the headers for the first. [Run-time values](#run-time-values) fill in `data` and `raw` |
+| The answer | `Content-Type: text/event-stream` unless the headers name one, and no `Content-Length`: like every answer it is HTTP/1.0, so closing the connection ends the stream. `HEAD`, 204 and 304 send no events |
+| `drop_after_chunks` | In a scenario or a sequence entry: sends that many events, then closes the connection cleanly, with no terminator. An HTTP/1.0 answer ends at its close either way, so the app learns of the drop by the end event that never came, `[DONE]` or whatever its API names |
+| `stall_after_chunks` | Sends that many events, then nothing, and holds the connection open until the app closes it, or for 10 s, the program's bound on a client that stopped reading. A stall tests the app's own timeout; a case whose app has none times out |
+| A malformed event | A scenario's own `stream`, with `data` that is not JSON, or a `raw` frame |
+| Overrides | A body and a stream are one field. A scenario's `stream` replaces the route's body or stream, and its `body` replaces a route's stream: a 429 that gives `body` answers with that body and no events, while one that gives only `status` and `headers` keeps the route's stream. `drop_after_chunks` and `stall_after_chunks` are ignored on an answer with no stream, so one scenario can apply to every route |
+| Waits | A stream's `after_ms` add up to at most 3 s (S20), and count with `delay_ms` toward a case's [hang guard](runners.md#hang-guard-and-restarts) |
+| Log | An entry's `responded_ms` is set when the stream ends: after its last event, its drop, or its stall. The log's [bounds](#request-log) are unchanged |
 
 #### Still to confirm
 
@@ -573,7 +615,6 @@ scenarios:
 
 | Feature | Rule |
 |---------|------|
-| SSE streaming | `stream` lists chunks, each with `data` and `after_ms`. `drop_after_chunks` in a scenario closes the connection mid-stream |
 | Logged bodies | A case's `log` entry gains `body`, a JSON subset the logged body must contain, and `body_prefix_stable: true`: each request's body bytes start with the previous request's whole body, which is what a cache-stable history needs. A body truncated at the log's limit is a content error for that assertion, so such a route raises its own limit up to 1 MiB |
 | A mock LLM provider | Just config data on this format, with no key and no cost. A fake key goes in `project.env`, and a `log` entry can assert the header carried it |
 | Shape drift | Provider response shapes drift, so a config modeling a real API records `shape_version`, an authoring rule that no check can detect. It is a record for authors, and cstudy never checks it against a live API |
@@ -1197,7 +1238,7 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | S5 (changed) | An example marks a visible case with `<!-- case: <id> -->`, in the `## Level` it belongs to |
 | S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md` and its lock file, and no `.env` or `.env.local`, since `cstudy` writes `.env` from `project.env`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks). A `request` in a case belongs to a service project |
 | S19 (new) | `commands` holds only the standard names; `run` and `test` are declared, `install` with `requires.lock`, `bootstrap` with `services`; each is a non-empty list of strings; `{problem}` only in `grade_setup`, whose script lies outside the starter; `image` pinned by digest; `app` complete; `env` holds `port_env` with `app.port`; a URL in `env` names a declared mock server on 8080 or a service of the compose file; each `grader_reach` entry names a service of the compose file or a mock server on 8080, and none of the stack's own containers; at most 4 mock servers with unique names, none reserved |
-| S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; each `{{` in a body opens a [run-time value](#run-time-values); every scenario's `delay_ms` and `Retry-After` are at most 3 s, and `Retry-After` is whole seconds; an `upstream` names a service of the compose file; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
+| S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; each `{{` in a body opens a [run-time value](#run-time-values); every scenario's `delay_ms`, `Retry-After` and stream `after_ms` in all are at most 3 s, and `Retry-After` is whole seconds; an `upstream` names a service of the compose file; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
 | S21 (new) | Nothing in the compose file reaches past the sandbox, and a stack holds the file to it before it starts. The file holds only `services`, at least one, and their `volumes`. A service sets only `image`, `command`, `entrypoint`, `environment`, `healthcheck`, `mem_limit`, `pids_limit`, `volumes`, `tmpfs`, `user`, `working_dir`, `read_only`, `depends_on`, `stop_grace_period`, `stop_signal`, `shm_size` and `init`, so `privileged`, `cap_add`, `network_mode`, `pid`, `ipc`, `devices`, `ports`, `networks`, `env_file`, `extends`, hooks, `build` and anything else are refused, including what compose adds later. Its image is pinned by digest; `mem_limit` is a size and `pids_limit` a positive number, both required; its `healthcheck` has a test and is not disabled; it waits only for the file's own services; its name is lowercase letters, digits and `-`, neither reserved nor a mock server's. A mount is a bind inside the problem, never the Docker socket, a named volume the file declares, or a tmpfs; no anonymous volume. A volume takes no settings, no `external`, driver, options, name or labels, and is not named `data` or `cache` |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image. Static only: a stack does not refuse a list that disagrees |
 | S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. In a [multi-step case](#multi-step-cases), each `{{name}}` was captured before it is used, each `{{` opens a name, and each `url` written out names your app's origin or a `grader_reach` entry's. In a [parallel case](#parallel-cases), `expected_statuses` adds up to `count`, and `repeat` comes with `fresh`; the schema holds `count` from 2 to 64 |

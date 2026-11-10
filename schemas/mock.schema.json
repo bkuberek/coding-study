@@ -83,8 +83,11 @@
         { "required": ["headers"] },
         { "required": ["body"] },
         { "required": ["body_file"] },
+        { "required": ["stream"] },
         { "required": ["delay_ms"] },
         { "required": ["jwt"] },
+        { "required": ["drop_after_chunks"] },
+        { "required": ["stall_after_chunks"] },
         { "required": ["sequence"] }
       ],
       "if": { "required": ["sequence"] },
@@ -94,8 +97,11 @@
           "headers": false,
           "body": false,
           "body_file": false,
+          "stream": false,
           "delay_ms": false,
-          "jwt": false
+          "jwt": false,
+          "drop_after_chunks": false,
+          "stall_after_chunks": false
         }
       },
       "properties": {
@@ -120,10 +126,21 @@
       }
     },
     "entryFields": {
-      "description": "A scenario entry: a route's response fields, plus a JWT to spoil",
+      "description": "A scenario entry: a route's response fields, plus a JWT to spoil and a stream to cut short",
       "type": "object",
       "$ref": "#/$defs/responseFields",
+      "not": { "required": ["drop_after_chunks", "stall_after_chunks"] },
       "properties": {
+        "drop_after_chunks": {
+          "description": "Sends this many events of the stream, then closes the connection with no terminator. An answer with no stream ignores it",
+          "type": "integer",
+          "minimum": 0
+        },
+        "stall_after_chunks": {
+          "description": "Sends this many events of the stream, then nothing more, holding the connection open until the app closes it, for at most 10 s. An answer with no stream ignores it",
+          "type": "integer",
+          "minimum": 0
+        },
         "jwt": {
           "description": "Spoils the JWT at a JSON field of the answer, passed through or the route's own: alg_none gives it the header {\"alg\":\"none\"} and no signature, bad_signature changes one character of its signature. A body with no JWT there goes out unchanged",
           "type": "object",
@@ -140,10 +157,39 @@
         }
       }
     },
+    "streamChunk": {
+      "description": "One event: data, under an optional event name, or raw text sent as written, which may break the format on purpose",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "data": { "description": "Sent as one data line per line", "type": "string" },
+        "event": { "type": "string", "minLength": 1, "pattern": "^[^\\r\\n]*$" },
+        "raw": { "type": "string" },
+        "after_ms": {
+          "description": "How long after the event before it, or after the headers for the first",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "oneOf": [
+        { "required": ["data"], "not": { "required": ["raw"] } },
+        { "required": ["raw"], "not": { "anyOf": [{ "required": ["data"] }, { "required": ["event"] }] } }
+      ]
+    },
     "responseFields": {
       "type": "object",
-      "not": { "required": ["body", "body_file"] },
+      "allOf": [
+        { "not": { "required": ["body", "body_file"] } },
+        { "not": { "required": ["body", "stream"] } },
+        { "not": { "required": ["body_file", "stream"] } }
+      ],
       "properties": {
+        "stream": {
+          "description": "Server-sent events in place of a body, as text/event-stream unless the headers name a type, with no Content-Length: the connection's close ends them",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/streamChunk" }
+        },
         "status": { "type": "integer", "minimum": 200, "maximum": 599 },
         "headers": {
           "description": "Values are strings, so Retry-After is written \"2\"",

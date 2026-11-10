@@ -143,6 +143,11 @@ def test_a_retry_after_that_is_no_number_is_no_wait():
     assert scenario_waits_ms({"headers": {"Retry-After": "Wed, 21 Oct"}}) == [0]
 
 
+def test_a_streams_events_add_their_waits_to_the_delay():
+    stream = [{"data": "a", "after_ms": 300}, {"raw": "b"}, {"data": "c", "after_ms": 200}]
+    assert scenario_waits_ms({"delay_ms": 100, "stream": stream}) == [600]
+
+
 def pass_through() -> MockFiles:
     return MockFiles(
         {

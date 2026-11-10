@@ -11,6 +11,9 @@ from coding_study.adapters.mock_server.config import (
     JwtTamper,
     ResponseFields,
     StackConfig,
+    StreamChunk,
+    StreamCut,
+    StreamCutKind,
     TamperKind,
     load_stack_config,
 )
@@ -208,6 +211,48 @@ def test_a_body_file_with_run_time_values_keeps_its_template(tmp_path: Path):
     assert template_of(document, tmp_path) == '{"n": {{seq}}}'
 
 
+def streaming_document() -> dict[str, Any]:
+    document = valid_document()
+    route_of(document)["response"] = {
+        "status": 200,
+        "stream": [
+            {"event": "delta", "data": '{"t": "Desk"}', "after_ms": 20},
+            {"raw": ": keep-alive\n\n"},
+            {"data": "[DONE]"},
+        ],
+    }
+    return document
+
+
+def test_a_response_keeps_its_stream_in_order(tmp_path: Path):
+    stream = first_response(load(streaming_document(), tmp_path)).stream
+    assert stream == (
+        StreamChunk(data='{"t": "Desk"}', event="delta", after_ms=20),
+        StreamChunk(raw=": keep-alive\n\n"),
+        StreamChunk(data="[DONE]"),
+    )
+
+
+def test_a_scenario_keeps_where_it_drops_a_stream(tmp_path: Path):
+    document = streaming_document()
+    scenarios_of(document)["dropped"] = {"drop_after_chunks": 1}
+    entry = load(document, tmp_path).mocks[0].scenarios["dropped"].entries[0]
+    assert entry.cut == StreamCut(StreamCutKind.DROP, 1)
+
+
+def test_a_scenario_keeps_where_it_stalls_a_stream(tmp_path: Path):
+    document = streaming_document()
+    scenarios_of(document)["stalled"] = {"sequence": [{"stall_after_chunks": 0}]}
+    entry = load(document, tmp_path).mocks[0].scenarios["stalled"].entries[0]
+    assert entry.cut == StreamCut(StreamCutKind.STALL, 0)
+
+
+def streams(document: dict[str, Any], chunks: list[dict[str, Any]]) -> None:
+    response = response_of(document)
+    del response["body"]
+    response["stream"] = chunks
+
+
 def test_a_route_keeps_its_body_match(tmp_path: Path):
     document = valid_document()
     route_of(document)["match"] = {"body": {"stream": True}, "body_contains": "refund"}
@@ -221,6 +266,30 @@ def test_a_route_matches_any_body_unless_it_says_otherwise(tmp_path: Path):
 
 
 REFUSED: dict[str, tuple[Mutation, str]] = {
+    "body and stream": (
+        lambda doc: response_of(doc).update(stream=[{"data": "x"}]),
+        "stream",
+    ),
+    "empty stream": (lambda doc: streams(doc, []), "stream"),
+    "chunk with neither data nor raw": (lambda doc: streams(doc, [{"event": "delta"}]), "data"),
+    "chunk with raw and data": (lambda doc: streams(doc, [{"raw": "x", "data": "y"}]), "raw"),
+    "event with a line break": (
+        lambda doc: streams(doc, [{"event": "a\nb", "data": "y"}]),
+        "event",
+    ),
+    "negative after_ms": (lambda doc: streams(doc, [{"data": "y", "after_ms": -1}]), "after_ms"),
+    "drop and stall together": (
+        lambda doc: scenarios_of(doc).update(cut={"drop_after_chunks": 1, "stall_after_chunks": 1}),
+        "stall_after_chunks",
+    ),
+    "negative drop": (
+        lambda doc: scenarios_of(doc).update(cut={"drop_after_chunks": -1}),
+        "drop_after_chunks",
+    ),
+    "drop in a route's response": (
+        lambda doc: response_of(doc).update(drop_after_chunks=1),
+        "drop_after_chunks",
+    ),
     "match with no condition": (lambda doc: route_of(doc).update(match={}), "match"),
     "unknown match field": (lambda doc: route_of(doc).update(match={"headers": {}}), "headers"),
     "match body not a mapping": (lambda doc: route_of(doc).update(match={"body": [1]}), "body"),

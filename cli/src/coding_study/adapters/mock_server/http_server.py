@@ -6,6 +6,7 @@ every connection after its answer, so no idle client keeps a thread.
 """
 
 import io
+import select
 import socket
 import threading
 import time
@@ -43,6 +44,9 @@ LISTEN_QUEUE_SIZE = 128
 SOCKET_TIMEOUT_S = 10.0
 """How long a client that stopped sending or reading can hold a thread, and how long the control
 port gives a whole request."""
+STALL_LIMIT_S = SOCKET_TIMEOUT_S
+"""How long a stalled stream holds its connection, waiting for the app to close it: a thread holds
+no longer for a stall than for a client that stopped reading."""
 STATUSES_WITHOUT_A_BODY = frozenset({204, 304})
 CONTENT_LENGTH = "content-length"
 
@@ -84,11 +88,25 @@ class _JsonHandler(BaseHTTPRequestHandler):
         for name, value in headers:
             self.send_header(name, value)
         carries_a_body = reply.status not in STATUSES_WITHOUT_A_BODY
+        if reply.stream is not None:
+            self.end_headers()
+            if carries_a_body and self.command != "HEAD":
+                self._write_stream(reply)
+            return
         if carries_a_body and not _names_a_length(headers):
             self.send_header("Content-Length", str(len(reply.body)))
         self.end_headers()
         if carries_a_body and self.command != "HEAD":
             self.wfile.write(reply.body)
+
+    def _write_stream(self, reply: Reply) -> None:
+        """Each event as it is due, with no length: closing the connection ends the stream, so a
+        drop is a close after fewer events, and a stall holds the connection instead."""
+        for frame in reply.stream or ():
+            time.sleep(frame.after_ms / MILLISECONDS_PER_SECOND)
+            self.wfile.write(frame.content)
+        if reply.holds_open:
+            select.select([self.connection], [], [], STALL_LIMIT_S)
 
     def read_body(self, limit: int) -> bytes:
         """The request's body, by its `Content-Length`."""

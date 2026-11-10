@@ -1,4 +1,12 @@
-from coding_study.adapters.mock_server.config import Body, ResponseFields, Route, Scenario
+from coding_study.adapters.mock_server.config import (
+    Body,
+    ResponseFields,
+    Route,
+    Scenario,
+    StreamChunk,
+    StreamCut,
+    StreamCutKind,
+)
 from coding_study.adapters.mock_server.matching import (
     MockRequest,
     find_route,
@@ -7,7 +15,7 @@ from coding_study.adapters.mock_server.matching import (
     scenario_applies,
     scenario_entry,
 )
-from coding_study.adapters.mock_server.replies import Reply
+from coding_study.adapters.mock_server.replies import Frame, Reply
 from coding_study.adapters.mock_server.templates import RequestValues
 
 JSON_BODY = Body(content=b'{"rooms":[]}', content_type="application/json")
@@ -260,6 +268,91 @@ def test_a_scenarios_body_fills_in_the_requests_values_too():
     request_values = RequestValues(posted(b"{}"), 2)
     override = ResponseFields(body=Body(b"unused", template="retry {{seq}}"))
     assert reply_for(chat_route(), override, request_values).body == b"retry 2"
+
+
+DESK = StreamChunk(data='{"t": "Desk"}', event="delta", after_ms=20)
+DONE = StreamChunk(data="[DONE]")
+
+
+def streaming(*chunks: StreamChunk, headers: dict[str, str] | None = None) -> Route:
+    response = ResponseFields(status=200, headers=headers, stream=chunks or (DESK, DONE))
+    return chat_route(response=response)
+
+
+def test_a_stream_sends_each_chunk_as_an_event():
+    assert answered(streaming()).stream == (
+        Frame(b'event: delta\ndata: {"t": "Desk"}\n\n', 20),
+        Frame(b"data: [DONE]\n\n", 0),
+    )
+
+
+def only_frame(reply: Reply) -> bytes:
+    assert reply.stream is not None
+    (frame,) = reply.stream
+    return frame.content
+
+
+def test_a_chunk_of_several_lines_sends_a_data_line_each():
+    assert only_frame(answered(streaming(StreamChunk(data="a\nb")))) == b"data: a\ndata: b\n\n"
+
+
+def test_a_raw_chunk_is_sent_as_written():
+    assert only_frame(answered(streaming(StreamChunk(raw='data: {"t": ')))) == b'data: {"t": '
+
+
+def test_a_chunk_fills_in_the_requests_values():
+    chunk = StreamChunk(data="{{json(request.body.model)}}")
+    request_values = RequestValues(posted(b'{"model": "chat-small"}'), 1)
+    reply = reply_for(streaming(chunk), None, request_values)
+    assert only_frame(reply) == b'data: "chat-small"\n\n'
+
+
+def test_a_stream_defaults_its_content_type():
+    assert answered(streaming()).headers == {"Content-Type": "text/event-stream"}
+
+
+def test_an_authors_content_type_wins_over_a_streams():
+    headers = {"content-type": "text/plain"}
+    assert answered(streaming(headers=headers)).headers == headers
+
+
+def test_a_stream_sends_no_body():
+    assert answered(streaming()).body == b""
+
+
+def test_a_drop_keeps_the_chunks_before_it():
+    override = ResponseFields(cut=StreamCut(StreamCutKind.DROP, 1))
+    assert [frame.after_ms for frame in answered(streaming(), override).stream or ()] == [20]
+
+
+def test_a_drop_closes_without_holding_the_connection():
+    override = ResponseFields(cut=StreamCut(StreamCutKind.DROP, 1))
+    assert not answered(streaming(), override).holds_open
+
+
+def test_a_stall_keeps_the_chunks_before_it_and_holds_the_connection():
+    reply = answered(streaming(), ResponseFields(cut=StreamCut(StreamCutKind.STALL, 0)))
+    assert (reply.stream, reply.holds_open) == ((), True)
+
+
+def test_a_cut_on_an_answer_with_no_stream_changes_nothing():
+    reply = answered(chat_route(), ResponseFields(cut=StreamCut(StreamCutKind.STALL, 0)))
+    assert (reply.stream, reply.holds_open) == (None, False)
+
+
+def test_a_scenario_status_keeps_the_routes_stream():
+    assert answered(streaming(), ResponseFields(status=500)).stream is not None
+
+
+def test_a_scenario_body_replaces_the_routes_stream():
+    reply = answered(streaming(), ResponseFields(status=429, body=Body(b"slow down")))
+    assert (reply.stream, reply.body) == (None, b"slow down")
+
+
+def test_a_scenario_stream_replaces_the_routes_body():
+    with_body = chat_route(response=ResponseFields(status=200, body=Body(b"whole")))
+    reply = answered(with_body, ResponseFields(stream=(DONE,)))
+    assert (reply.body, len(reply.stream or ())) == (b"", 1)
 
 
 def test_a_plain_string_body_gets_no_content_type():

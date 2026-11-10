@@ -32,6 +32,7 @@ from coding_study.domain.mock_configs import (
     scenario_documents,
     scenario_names,
     scenario_waits_ms,
+    stream_wait_ms,
     visible_scenario_names,
 )
 from coding_study.domain.precedence import DEFAULT_HANG_GUARD_MS
@@ -144,6 +145,9 @@ def _waits(mock: ServiceMock, files: MockFiles) -> _Found:
         delay = fields.get("delay_ms", 0)
         if isinstance(delay, int) and delay > MAX_WAIT_S * MILLISECONDS_PER_SECOND:
             yield location, f"delay_ms is {delay}: a wait is at most {MAX_WAIT_S} s"
+        streamed = stream_wait_ms(fields)
+        if streamed > MAX_WAIT_S * MILLISECONDS_PER_SECOND:
+            yield location, f"stream waits {streamed} ms in all: a wait is at most {MAX_WAIT_S} s"
         text = retry_after_text(cast(Mapping[str, str], fields.get("headers", {})))
         if text is None:
             continue
