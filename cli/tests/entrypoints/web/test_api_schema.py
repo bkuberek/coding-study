@@ -28,12 +28,23 @@ from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, rep
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, SCHEMAS_DIRECTORY, copy_catalog_problems
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.sandbox_fakes import FakeSandbox
-from tests.scripted_runs import PASSING_RUN, QUICK, WAIT_S, Script, eventually, frames, outs
+from tests.scripted_runs import (
+    PASSING_RUN,
+    QUICK,
+    WAIT_S,
+    Script,
+    answers_interrupt,
+    event,
+    eventually,
+    frames,
+    outs,
+)
 from tests.service_problems import SLUG as SERVICE_SLUG
 from tests.service_problems import make_content, write_problem
 from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, web_app
 
 SCHEMA = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
+DEV = "/api/v1/dev"
 DOCUMENTS = (
     "session",
     "about",
@@ -66,6 +77,8 @@ DOCUMENTS = (
     "job",
     "run",
     "runs",
+    "dev",
+    "devs",
     "closed",
     "job_line",
     "mock_state",
@@ -137,13 +150,28 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
 
 
 def _needs(root: Path, record: Recorder) -> None:
-    """What a service project depends on, and the null of a problem that is not one."""
+    """What a service project depends on, and the null of a problem that is not one; its dev
+    stack, a switch, its stop, and the conflict of a second one."""
     content = make_content(root)
     write_problem(content)
     environment = make_environment(content, sandbox=FakeSandbox())
-    with session_client(web_app(root, environment)) as client:
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt.id
+    script = Script(root / "script.json")
+    ready = event("dev_ready", app_url="http://127.0.0.1:56223", startup_s=2.5, mocks=[])
+    script.play(answers_interrupt(), *outs(ready))
+    app = web_app(root, environment, script.child, Children(QUICK))
+    with session_client(app) as client:
         record("needs", client.get(f"/api/v1/problems/{SERVICE_SLUG}/needs"))
         record("needs", client.get("/api/v1/problems/two-sum/needs"))
+        body = {"attempt_id": attempt}
+        dev = record("child_started", client.post(DEV, json=body, headers=WRITE_HEADERS)).json()["id"]
+        record("error", client.post(DEV, json=body, headers=WRITE_HEADERS))
+        switch = {"mock": "room-vendor", "scenario": None}
+        switched = client.post(f"{DEV}/{dev}/scenario", json=switch, headers=WRITE_HEADERS)
+        record("child_started", switched)
+        record("dev", client.get(f"{DEV}/{dev}"))
+        record("child_started", client.post(f"{DEV}/{dev}/stop", json={}, headers=WRITE_HEADERS))
+        record("devs", client.get(f"{DEV}?attempt_id={attempt}"))
 
 
 def _practice(root: Path, record: Recorder) -> dict[str, Any]:
