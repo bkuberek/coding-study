@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0304"
+slug: search-box-navigation
+title: Search Box with Keyboard Navigation
+summary: "Build SearchBox, the logic behind a search input with a list of results under it: it reacts to key presses, arriving results and typing, and reports the list and its highlighted result."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+domains: [backend]
+job_roles: [general]
+scope: function
+levels:
+  - {level: 1, title: Keyboard navigation}
+  - {level: 2, title: Matching names}
+  - {level: 3, title: Typing and stale responses}
+  - {level: 4, title: Selecting with Enter}
+signature:
+  class:
+    name: SearchBox
+    constructor: {params: [{name: names, type: "list<string>"}]}
+    methods:
+      - {name: keydown, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: void}}
+      - {name: keyup, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: void}}
+      - {name: resultsArrived, level: 1, params: [{name: timestamp, type: long}, {name: items, type: "list<string>"}], returns: {type: void}}
+      - {name: results, level: 1, params: [{name: timestamp, type: long}], returns: {type: "list<string>"}}
+      - {name: highlighted, level: 1, params: [{name: timestamp, type: long}], returns: {type: int}}
+      - {name: highlightedText, level: 1, params: [{name: timestamp, type: long}], returns: {type: string}}
+      - {name: search, level: 2, params: [{name: timestamp, type: long}, {name: query, type: string}], returns: {type: void}}
+      - {name: inputChanged, level: 3, params: [{name: timestamp, type: long}, {name: text, type: string}], returns: {type: int}}
+      - {name: responseArrived, level: 3, params: [{name: timestamp, type: long}, {name: requestId, type: int}, {name: items, type: "list<string>"}], returns: {type: void}}
+      - {name: inputText, level: 3, params: [{name: timestamp, type: long}], returns: {type: string}}
+      - {name: selections, level: 4, params: [{name: timestamp, type: long}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: event-state, name: One state updated by every event, role: optimal, time: "O(1) per key event; O(r) per list shown or read; O(c) per search", space: "O(c + r + s)", time_class: "n", space_class: "n"}
+related: [search-suggestions, debug-stale-closure-callbacks, in-memory-database]
+estimate_minutes: 90
