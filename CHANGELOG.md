@@ -2,6 +2,117 @@
 
 <!-- version list -->
 
+## v0.37.0 (2026-11-10)
+
+### Bug Fixes
+
+- **problems**: Keep the 0300 and 0303 summaries within the 200-character header cap
+  ([`dfd85a4`](https://github.com/bkuberek/coding-study/commit/dfd85a49a807418d49719a07bf9847f668425549))
+
+- **web**: Keep the dev stack panel's heading on one line
+  ([`2ac693e`](https://github.com/bkuberek/coding-study/commit/2ac693e6a9872777781fd9b2078faff25946a22e))
+
+### Code Style
+
+- **problems**: Wrap long lines in the 0299 and 0301 references
+  ([`81c3a94`](https://github.com/bkuberek/coding-study/commit/81c3a94284ac43d2d0a8fae9b798f5e8db06c43e))
+
+### Continuous Integration
+
+- Run the browser job on the sandbox fakes and the sandbox job on the dev stack and sidecar modules
+  ([`a80ac5a`](https://github.com/bkuberek/coding-study/commit/a80ac5ac149641d34199f66e9325f27345760eeb))
+
+### Documentation
+
+- Catalog at 318 with 0293 to 0303, P9 ticked, and P12 to P14 next
+  ([`47e01bf`](https://github.com/bkuberek/coding-study/commit/47e01bfc40396b51bf376321c917e9c13c456230))
+
+- Code intelligence for service projects runs in a sidecar, built in P9
+  ([`e88a4c0`](https://github.com/bkuberek/coding-study/commit/e88a4c0171a87255bdf3ba7ed74267670fd697be))
+
+- Mark P9 built, with its code intelligence and Web UI in ADR 0019 and the spec
+  ([`e001550`](https://github.com/bkuberek/coding-study/commit/e00155035d1d552bfbef85879937d9066e094243))
+
+- Name cstudy dev's --events flag in its synopsis and flag table
+  ([`5736930`](https://github.com/bkuberek/coding-study/commit/57369307f7161d529e9770d8e02c126b27d1edb2))
+
+### Features
+
+- **cli**: Stream a service project's cstudy test as events and JSON
+  ([`20307ba`](https://github.com/bkuberek/coding-study/commit/20307ba69397dffa33fb8b6f82fa0eb64edb91db))
+
+- **code-intelligence**: Judge a service project's servers as its sidecar runs them
+  ([`68bbd15`](https://github.com/bkuberek/coding-study/commit/68bbd153395cc513c6b32fe51f05a7681ed98566))
+
+- **code-intelligence**: Run a service project's TypeScript and Python servers in a sidecar
+  ([`9834de5`](https://github.com/bkuberek/coding-study/commit/9834de580fa3edebb9940616ad2258891a899cfa))
+
+- **code-intelligence**: Show a service project's waiting server calmly in the editor
+  ([`f2ffe6c`](https://github.com/bkuberek/coding-study/commit/f2ffe6cac731d04277c642040e52ecfa6d8861cf))
+
+- **problems**: Add 0293 memory store, a four-level progressive practice set
+  ([`a4b8efb`](https://github.com/bkuberek/coding-study/commit/a4b8efb380ca8608bef3732b37b11ec1df62fb87))
+
+- **problems**: Add 0294 chat history index, a four-level progressive practice set
+  ([`951969e`](https://github.com/bkuberek/coding-study/commit/951969e0e25cc5895a84610d6a9208bfe04b0f65))
+
+- **problems**: Add 0295 context packer, a four-level progressive practice set
+  ([`95f4950`](https://github.com/bkuberek/coding-study/commit/95f49500cbf5bf6aa4192daf829e668b9acbb9ad))
+
+- **problems**: Add 0296 memory facts with merge, a four-level progressive store
+  ([`3c708f3`](https://github.com/bkuberek/coding-study/commit/3c708f3cbd7cae12b2f31d0328ffab9d98f72599))
+
+- **problems**: Add 0297 forgettable inverted index with BM25 over live statistics
+  ([`a6668c9`](https://github.com/bkuberek/coding-study/commit/a6668c92dc56c9f228048d6719026884655191ef))
+
+- **problems**: Add 0298 memory write sanitizer, a defensive step before storing
+  ([`6294a62`](https://github.com/bkuberek/coding-study/commit/6294a62cf881fc053941f33e93109ec86939cba7))
+
+- **problems**: Add 0299 cosine top k with a bounded heap, oracle and ladder
+  ([`a71857f`](https://github.com/bkuberek/coding-study/commit/a71857f1375a24992840b63f97259da1064c2c39))
+
+- **problems**: Add 0300 chunking with overlap and sentence-aware cuts
+  ([`87bd951`](https://github.com/bkuberek/coding-study/commit/87bd951ccbddf361ca5728980b742400d73af952))
+
+- **problems**: Add 0301 retrieval metrics with recall, MRR and graded nDCG
+  ([`f2f8dc6`](https://github.com/bkuberek/coding-study/commit/f2f8dc64458afb2b948eb6ce6c9c8bc55f2ea064))
+
+- **problems**: Add 0302 freshness reranker with half-life decay and copy removal
+  ([`b308b43`](https://github.com/bkuberek/coding-study/commit/b308b438804bdfa63e97c8c23b45ab120832e5b0))
+
+- **problems**: Add 0303 versioned memory store with compare-and-set writes
+  ([`7dff0c5`](https://github.com/bkuberek/coding-study/commit/7dff0c59a7e65758242da328fe709598917c8224))
+
+- **web**: List what a service project needs and say when Docker cannot run it
+  ([`91e6142`](https://github.com/bkuberek/coding-study/commit/91e6142cfe8fc0b1e39c598a5ea840d645f0a188))
+
+- **web**: Run a service project's dev stack from the page
+  ([`9aa88e5`](https://github.com/bkuberek/coding-study/commit/9aa88e58a42818cf14a1edaacdff7daa9eecf55d))
+
+- **web**: Run tests and submit service projects from the page
+  ([`6f9fdae`](https://github.com/bkuberek/coding-study/commit/6f9fdae4277615df81749b6155da34e36a576441))
+
+### Testing
+
+- A definition from the sidecar leads into the project's installed dependencies
+  ([`4c7b3f3`](https://github.com/bkuberek/coding-study/commit/4c7b3f35a644b9676f282935a6a446ed27f82052))
+
+- A service project's server answers from inside its sidecar on a real engine
+  ([`fefd34e`](https://github.com/bkuberek/coding-study/commit/fefd34e4e841c653de1928b2daf5b8d8ba89251c))
+
+- Check the dev stack's API documents against the web API schema
+  ([`8ad92c6`](https://github.com/bkuberek/coding-study/commit/8ad92c6cf337ea3a3e284e2babcc5ea8a29c8131))
+
+- Keep the real sidecar tests where the sandbox CI job runs them
+  ([`803ff8c`](https://github.com/bkuberek/coding-study/commit/803ff8cf79cd59cdeb5b26783340996e5566a90f))
+
+- Keep the schema test's dev stack lines within the line length
+  ([`842ef67`](https://github.com/bkuberek/coding-study/commit/842ef6715f57ca3cf5a74a02a0bfa2c998eb7b03))
+
+- Stream a real service project's cstudy test as events
+  ([`887d437`](https://github.com/bkuberek/coding-study/commit/887d437954a1e9911bf458c87bda4299849d072c))
+
+
 ## v0.36.0 (2026-11-10)
 
 ### Documentation
