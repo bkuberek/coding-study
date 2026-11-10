@@ -238,7 +238,7 @@ The team `legal` has a budget of 9 and a streamed answer used all 9: its next re
 
 ## Constraints
 
-- A piece of text reaches the caller as soon as the provider sends it: the hidden cases include a stream that takes 2.5 s and one that goes quiet after its first event.
+- A piece of text reaches the caller as soon as the provider sends it: the hidden cases include a stream that takes 2 s, whose first byte must reach the caller within 1 s, and one that goes quiet after its first event.
 - At most 3 requests to the primary and 1 to the secondary for one request to your gateway, and none after a piece of text has reached the caller.
 - A wait never comes up short: the hidden cases measure the gap between a 429 and your next request.
 - A provider's 200 is not a finished answer: only its end of stream is.

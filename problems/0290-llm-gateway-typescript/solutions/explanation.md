@@ -86,7 +86,7 @@ The pieces are a deliberately small shape, text or usage. A real gateway would c
 
 | What it does | Why it is wrong | What catches it |
 |--------------|-----------------|-----------------|
-| Buffers the whole stream with `await response.text()` and sends it at the end | The caller sees nothing until the provider has finished, and a stalled provider loses the pieces already sent: under a limit on the whole request, a healthy 2.5 s stream is cut too | `h13`, `h14`, `h23`: the body, and `secondary: expected 0 requests, saw 1` when the gateway falls back, thinking nothing was sent |
+| Buffers the whole stream with `await response.text()` and sends it at the end | The caller sees nothing until the provider has finished, and a stalled provider loses the pieces already sent: under a limit on the whole request, a healthy 2 s stream is cut too | `h14`: `first body byte after 2050 ms, expected within 1000 ms`, the same bytes sent too late; `h13`, `h23`: the body, and `secondary: expected 0 requests, saw 1` when the gateway falls back, thinking nothing was sent |
 | Retries a stream that broke after it started | The caller reads the first words twice | `v3`, `h12`, `v8`: `"Badges renew "` twice, and `primary chat-stream: expected 1 request, saw 3` |
 | Sends `[DONE]` whenever the provider's connection closes | A dropped stream looks like a whole answer | `v3`, `h7`, `h25`: the body |
 | Passes on an event that is not JSON | The caller's parser breaks on it, and the gateway's record of usage with it | `h7` |

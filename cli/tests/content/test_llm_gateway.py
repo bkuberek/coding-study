@@ -266,3 +266,24 @@ def test_each_budget_case_has_teams_no_other_case_touches():
 
 def test_the_price_table_names_both_providers():
     assert set(PRICES) == {PRIMARY, SECONDARY}
+
+
+SLOW_STREAM = "slow_stream"
+TIMING_MARGIN_MS = 500
+"""What a busy machine may add to a stream's first byte, or take from a held-back one's lead."""
+
+
+def slow_stream_events() -> list[Document]:
+    config = yaml.safe_load((PROBLEM / "mocks" / f"{PRIMARY}.yaml").read_text(encoding="utf-8"))
+    return config["scenarios"][SLOW_STREAM]["stream"]
+
+
+def test_the_slow_stream_s_first_byte_limit_lies_well_between_its_first_event_and_its_end():
+    """A gateway that streams sends its first byte soon after the first event, and one that holds
+    the stream back sends it after the last, so the limit tells them apart on a busy machine."""
+    events = slow_stream_events()
+    first_event_ms = events[0].get("after_ms", 0)
+    end_ms = sum(event.get("after_ms", 0) for event in events)
+    (case,) = [case for case in CASES if case.get("mocks", {}).get(PRIMARY) == SLOW_STREAM]
+    limit_ms = case["expected"]["first_byte_ms_max"]
+    assert first_event_ms + TIMING_MARGIN_MS <= limit_ms <= end_ms - TIMING_MARGIN_MS

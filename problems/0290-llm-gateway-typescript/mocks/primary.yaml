@@ -113,9 +113,9 @@ scenarios:
       - data: "[DONE]"
   slow_stream:
     route: chat-stream
-    stream:                              # healthy, with half a second between events: 2.5 s in all
+    stream:                              # healthy: the first event at once, then half a second between events, 2 s in all
       - data: '{"id": "chat-{{seq}}", "model": {{json(request.body.model)}}, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Badges "}}]}'
-        after_ms: 500
+        after_ms: 50
       - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "renew "}}]}'
         after_ms: 500
       - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "every June."}, "finish_reason": "stop"}]}'

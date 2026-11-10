@@ -802,7 +802,7 @@
     {
       "id": "h14",
       "level": 2,
-      "note": "a healthy stream that takes 2.5 s in all, half a second between events: each piece goes on as it comes",
+      "note": "a healthy stream whose first event comes at once and whose end comes 2 s later: each piece goes on as it comes, so the first byte reaches the caller within 1 s",
       "mocks": {
         "primary": "slow_stream"
       },
@@ -827,7 +827,8 @@
         "headers": {
           "Content-Type": "text/event-stream"
         },
-        "body": "data: {\"delta\":\"Badges \"}\n\ndata: {\"delta\":\"renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+        "body": "data: {\"delta\":\"Badges \"}\n\ndata: {\"delta\":\"renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n",
+        "first_byte_ms_max": 1000
       },
       "log": [
         {
