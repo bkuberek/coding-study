@@ -24,6 +24,7 @@ from coding_study.application.service_lifecycle import (
 )
 from coding_study.application.service_stacks import (
     graded_stack_plan,
+    install_plan,
     practice_stack_plan,
     service_project,
 )
@@ -222,18 +223,26 @@ class _ServiceChecks:
                         )
                         return
 
+    def _installed_bytes(self, reference: str) -> int | None:
+        """What the install left: the install cache of an app that keeps its dependencies there,
+        else the folder its lock installs into; None when neither can be measured."""
+        if self._service.app.install_cache:
+            plan = install_plan(self._environment, self._problem, reference)
+            return self._environment.sandbox.install_cache_bytes(plan)
+        installed = INSTALLED_DIRECTORIES.get(self._service.requires.lock or "")
+        if installed is None:
+            return None
+        return self._environment.workspace.folder_bytes(f"{reference}/{installed}")
+
     def _size(self, reference: str) -> Iterator[str]:
         """Measured, and printed for the author to copy; cstudy never writes to the content root.
         Image sizes and memory are only for showing, since they depend on the registry and on what
         else the machine holds."""
-        requires = self._service.requires
-        installed = INSTALLED_DIRECTORIES.get(requires.lock or "")
-        declared = requires.sizes.install_mb
-        if installed is None or declared is None:
+        declared = self._service.requires.sizes.install_mb
+        installed_bytes = self._installed_bytes(reference)
+        if installed_bytes is None or declared is None:
             return
-        measured = (
-            self._environment.workspace.folder_bytes(f"{reference}/{installed}") / BYTES_PER_MB
-        )
+        measured = installed_bytes / BYTES_PER_MB
         self._notify(f"measured: requires.sizes.install_mb is about {measured:.0f}")
         if abs(measured - declared) > declared * SIZE_TOLERANCE:
             yield (

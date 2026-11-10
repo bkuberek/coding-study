@@ -128,7 +128,9 @@ def require_service_engine(environment: Environment, problem: Problem) -> None:
 
 def needs_install(environment: Environment, problem: Problem) -> bool:
     """Whether the lock file differs from what the last install recorded, or what it installed is
-    gone. A problem with no install needs none."""
+    gone: a folder of the project's, or the install cache of an app that keeps its dependencies
+    there. A problem with no install needs none. Asks the engine only about such a cache, once the
+    lock is as recorded."""
     service = service_project(problem)
     lock = service.requires.lock
     if service.commands.install is None or lock is None:
@@ -138,9 +140,13 @@ def needs_install(environment: Environment, problem: Problem) -> bool:
     installed = INSTALLED_DIRECTORIES.get(lock)
     if installed is not None and not workspace.exists(f"{folder}/{installed}"):
         return True
-    return _recorded_lock(environment, problem.meta.slug) != workspace.content_hash(
-        f"{folder}/{lock}"
-    )
+    recorded = _recorded_lock(environment, problem.meta.slug)
+    if recorded != workspace.content_hash(f"{folder}/{lock}"):
+        return True
+    if not service.app.install_cache:
+        return False
+    plan = install_plan(environment, problem, folder)
+    return not environment.sandbox.install_cache_present(plan)
 
 
 def install_dependencies(

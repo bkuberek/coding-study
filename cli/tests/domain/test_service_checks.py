@@ -18,6 +18,7 @@ from coding_study.domain.problem import (
 from coding_study.domain.project import NO_ENTRY, Project, ProjectFile, ProjectTree
 from coding_study.domain.service_checks import service_issues, service_settings_issues
 from coding_study.domain.service_project import (
+    GRADLE_LOCK,
     ServiceApp,
     ServiceCommands,
     ServiceMock,
@@ -476,3 +477,145 @@ def test_a_python_module_may_not_hide_the_standard_library():
     meta = meta_of(python_service(), languages=(Language.PYTHON,))
 
     assert any("random" in message for _, message in service_issues(meta, python_service(), files))
+
+
+GRADLE_INSTALL = ("gradle", "--quiet", "resolveDependencies")
+GRADLE_TEST = ("gradle", "--offline", "--quiet", "test")
+
+
+def gradle_service(**commands: tuple[str, ...]) -> ServiceProject:
+    fields = {"run": ("sh", "scripts/run.sh"), "test": GRADLE_TEST, "install": GRADLE_INSTALL}
+    return service(
+        commands=ServiceCommands(**{**fields, **commands}),
+        app=ServiceApp("PORT", 8000, "/health", install_cache=True),
+        requires=ServiceRequires(lock=GRADLE_LOCK, sizes=SIZES),
+    )
+
+
+def gradle_starter(**changes: str | None) -> ProjectTree:
+    """A starter by real path; a path given None is left out."""
+    files: dict[str, str | None] = {
+        "README.md": "x",
+        "settings.gradle.kts": 'rootProject.name = "app"\n',
+        "build.gradle.kts": "plugins { application }\n",
+        "gradle.properties": "org.gradle.daemon=false\n",
+        GRADLE_LOCK: "<verification-metadata/>\n",
+        **changes,
+    }
+    return ProjectTree(
+        tuple(
+            ProjectFile(path, len(text.encode()), text)
+            for path, text in files.items()
+            if text is not None
+        )
+    )
+
+
+def test_a_gradle_service_project_is_fine():
+    assert settings(gradle_service()) == []
+
+
+def test_a_gradle_starter_is_fine():
+    assert tree_issues(gradle_service(), gradle_starter()) == []
+
+
+def test_an_app_keeps_its_dependencies_in_the_install_cache_only_with_an_install():
+    project = service(
+        commands=ServiceCommands(run=("r",), test=("t",)),
+        app=ServiceApp("PORT", 8000, "/health", install_cache=True),
+        requires=ServiceRequires(sizes=SIZES),
+    )
+
+    assert any("install_cache" in text for text in settings(project))
+
+
+@pytest.mark.parametrize("name", ["test", "bootstrap", "reset"])
+def test_gradle_runs_offline_outside_install(name):
+    project = gradle_service(**{name: ("gradle", "--quiet", "test")})
+
+    assert f"project.commands.{name}: gradle needs --offline: only install has the network" in (
+        settings(project)
+    )
+
+
+def test_gradle_downloads_at_install():
+    project = gradle_service(install=("gradle", "--offline", "resolveDependencies"))
+
+    assert any("no --offline" in text for text in settings(project))
+
+
+@pytest.mark.parametrize(
+    "word",
+    ["--write-verification-metadata", "-M", "--dependency-verification=off", "-F", "--write-locks"],
+)
+def test_a_gradle_install_neither_writes_its_lock_nor_checks_less(word):
+    project = gradle_service(install=("gradle", word, "resolveDependencies"))
+
+    assert any(f"no {word}" in text for text in settings(project))
+
+
+def test_a_gradle_at_a_full_path_is_gradle_too():
+    project = gradle_service(test=("/opt/gradle/bin/gradle", "test"))
+
+    assert any("needs --offline" in text for text in settings(project))
+
+
+def test_a_script_that_runs_gradle_is_judged_by_what_it_does():
+    assert settings(gradle_service(run=("sh", "scripts/run.sh"))) == []
+
+
+def test_gradles_lock_lies_where_gradle_reads_it():
+    found = tree_issues(gradle_service(), gradle_starter())
+
+    assert not any("lies at the starter's root" in text for text in found)
+
+
+def test_another_nested_lock_is_refused():
+    project = service(requires=ServiceRequires(lock="deps/pnpm-lock.yaml", sizes=SIZES))
+
+    assert any("lies at the starter's root" in text for text in tree_issues(project))
+
+
+def test_another_gradle_lock_file_is_refused():
+    files = gradle_starter(**{"gradle.lockfile": "empty=\n"})
+
+    assert any("gradle.lockfile" in text for text in tree_issues(gradle_service(), files))
+
+
+@pytest.mark.parametrize("name", ["settings.gradle.kts", "settings.gradle"])
+def test_a_gradle_starter_may_name_its_settings_in_either_language(name):
+    files = gradle_starter(**{"settings.gradle.kts": None, name: 'rootProject.name = "app"\n'})
+
+    assert tree_issues(gradle_service(), files) == []
+
+
+def test_a_gradle_starter_needs_its_settings():
+    files = gradle_starter(**{"settings.gradle.kts": None})
+
+    found = tree_issues(gradle_service(), files)
+    assert any("settings.gradle.kts: missing" in text for text in found)
+
+
+@pytest.mark.parametrize("path", ["gradlew", "gradle/wrapper/gradle-wrapper.properties"])
+def test_a_gradle_starter_holds_no_wrapper(path):
+    files = gradle_starter(**{path: "distributionUrl=x\n"})
+
+    assert any("a wrapper would download" in text for text in tree_issues(gradle_service(), files))
+
+
+@pytest.mark.parametrize(
+    "properties", ["", "org.gradle.daemon=true\n", "# org.gradle.daemon=false\n"]
+)
+def test_a_gradle_starter_turns_the_daemon_off(properties):
+    files = gradle_starter(**{"gradle.properties": properties})
+
+    assert any("org.gradle.daemon=false" in text for text in tree_issues(gradle_service(), files))
+
+
+@pytest.mark.parametrize(
+    "line", ["org.gradle.daemon = false", "org.gradle.daemon: false", "org.gradle.daemon false"]
+)
+def test_the_daemon_setting_may_take_any_form_gradle_reads(line):
+    files = gradle_starter(**{"gradle.properties": f"# builds\n{line}\n"})
+
+    assert tree_issues(gradle_service(), files) == []

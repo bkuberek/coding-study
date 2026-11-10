@@ -491,7 +491,11 @@
             "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
             "health": { "description": "A path that answers 2xx when the app is ready", "type": "string", "pattern": "^/" },
             "ready_timeout_s": { "description": "How long the app may take to answer health, on the startup clock", "$ref": "#/$defs/positiveInteger" },
-            "mem_limit": { "description": "The app container's memory limit, such as 512m", "type": "string", "pattern": "^[0-9]+[mg]$" }
+            "mem_limit": { "description": "The app container's memory limit, such as 512m", "type": "string", "pattern": "^[0-9]+[mg]$" },
+            "install_cache": {
+              "description": "true: the app's containers mount the install cache at /cache too, for a toolchain that keeps the dependencies there rather than in the project folder, as Gradle does in its user home (docs/specs/service-projects.md#mounts)",
+              "type": "boolean"
+            }
           }
         },
         "env": { "description": "The whole environment of the app; cstudy writes it into the project folder's .env", "$ref": "#/$defs/environment" },
@@ -522,7 +526,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "lock": { "description": "The lock file at the starter's root", "type": "string", "minLength": 1 },
+            "lock": { "description": "The lock file at the starter's root, or Gradle's gradle/verification-metadata.xml", "type": "string", "minLength": 1 },
             "services": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
             "sizes": {
               "type": "object",

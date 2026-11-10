@@ -67,6 +67,8 @@ class FakeSandbox:
     app_output: str = ""
     app_output_error: SandboxError | None = None
     sidecar_error: SandboxError | None = None
+    cache_present: bool = True
+    cache_bytes: int | None = None
 
     def state(self) -> EngineState:
         self.calls.append(("state", None))
@@ -204,6 +206,14 @@ class FakeSandbox:
     def stop_install(self, plan: InstallPlan) -> str | None:
         self.calls.append(("stop_install", plan.identity.name))
         return None
+
+    def install_cache_present(self, plan: InstallPlan) -> bool:
+        self.calls.append(("install_cache_present", plan.cache_volume))
+        return self.cache_present
+
+    def install_cache_bytes(self, plan: InstallPlan) -> int | None:
+        self.calls.append(("install_cache_bytes", plan.cache_volume))
+        return self.cache_bytes
 
     @contextmanager
     def sidecar(self, plan: SidecarPlan) -> Generator[None]:

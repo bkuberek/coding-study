@@ -79,6 +79,8 @@ HOME_DIRECTORY = "/tmp/home"
 TEMPORARY_DIRECTORY = "/tmp"
 DATA_DIRECTORY = "/data"
 CACHE_DIRECTORY = "/cache"
+_CACHE_MOUNT = f"{CACHE_VOLUME}:{CACHE_DIRECTORY}"
+_MOUNTED_BY_CSTUDY = frozenset({TEMPORARY_DIRECTORY, DATA_DIRECTORY, CACHE_DIRECTORY})
 PROBLEM_DIRECTORY = "/cstudy/problem"
 """What `{problem}` in a `grade_setup` command expands to."""
 FORWARDER_FILE = "forward.py"
@@ -140,6 +142,8 @@ SIDECAR_TMPFS_MB = 64
 APP_TMPFS_MB = 128
 INSTALL_TMPFS_MB = 256
 HELPER_TMPFS_MB = 16
+IMAGE_VOLUME_TMPFS_MB = 16
+"""Over each path an image declares as a volume, which nothing of cstudy's writes to."""
 NOBODY = "65534:65534"
 STOP_GRACE = "2s"
 """Without `init: true` and a short grace, Node as PID 1 ignores SIGTERM and each `down` costs
@@ -271,6 +275,11 @@ def install_stack_name(slug: str, workspace: str) -> str:
     return f"cstudy-i-{slug}-{workspace}"
 
 
+def cache_volume_of(install_stack: str) -> str:
+    """The install cache, as compose names the `cache` volume of the install stack."""
+    return f"{install_stack}_{CACHE_VOLUME}"
+
+
 def is_stack_name(name: str) -> bool:
     """Whether `name` has the form cstudy gives a stack, or a network or a volume compose named
     after one. A compose label says whatever the container's creator wrote: anything else is no
@@ -357,6 +366,13 @@ class AppContainer:
     """The path `cstudy` asks through the published port until it answers 2xx."""
     port_env: str = "PORT"
     """The variable the app reads for its port, for the message when it does not answer."""
+    install_cache: str | None = None
+    """The install cache's volume, at `/cache` in every container of the app's image too, for a
+    toolchain whose dependencies live in its cache, such as Gradle's user home; None keeps the cache
+    in `install` containers alone."""
+    image_volumes: tuple[str, ...] = ()
+    """What the image declares as volumes, each covered by a tmpfs: Docker would otherwise make an
+    anonymous volume there, which carries no label of cstudy's and outlives a dev stack."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -447,6 +463,12 @@ class InstallPlan:
     image: str
     command: tuple[str, ...]
     environment: Mapping[str, str]
+    image_volumes: tuple[str, ...] = ()
+    """As for `AppContainer.image_volumes`."""
+
+    @property
+    def cache_volume(self) -> str:
+        return cache_volume_of(self.identity.name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -527,12 +549,16 @@ def stack_document(plan: StackPlan) -> dict[str, object]:
         "driver_opts": NO_ADDRESS_ON_THIS_MACHINE,
         "labels": labels,
     }
-    volumes = [DATA_VOLUME, *_backing_volumes_of(document)]
+    volumes: dict[str, object] = {
+        volume: {"labels": labels} for volume in (DATA_VOLUME, *_backing_volumes_of(document))
+    }
+    if plan.app.install_cache is not None:
+        volumes[CACHE_VOLUME] = {"external": True, "name": plan.app.install_cache}
     return {
         "name": plan.identity.name,
         "services": services,
         "networks": {SANDBOX_NETWORK: sandbox, "edge": {"labels": labels}},
-        "volumes": {volume: {"labels": labels} for volume in volumes},
+        "volumes": volumes,
     }
 
 
@@ -607,8 +633,11 @@ def install_document(plan: InstallPlan) -> dict[str, object]:
             "TMPDIR": TEMPORARY_DIRECTORY,
             **plan.environment,
         },
-        "tmpfs": [_tmpfs(INSTALL_TMPFS_MB, plan.user)],
-        "volumes": [*_project_mounts(plan.paths), f"cache:{CACHE_DIRECTORY}"],
+        "tmpfs": [
+            _tmpfs(INSTALL_TMPFS_MB, plan.user),
+            *_image_volume_tmpfs(plan.image_volumes, plan.user),
+        ],
+        "volumes": [*_project_mounts(plan.paths), _CACHE_MOUNT],
         "networks": ["egress"],
         "mem_limit": INSTALL_MEMORY,
         "pids_limit": INSTALL_PIDS,
@@ -617,11 +646,13 @@ def install_document(plan: InstallPlan) -> dict[str, object]:
     return {
         "name": plan.identity.name,
         "services": {
-            CACHE_OWNER_SERVICE: _volume_owner(plan.identity, plan.user, "cache", CACHE_DIRECTORY),
+            CACHE_OWNER_SERVICE: _volume_owner(
+                plan.identity, plan.user, CACHE_VOLUME, CACHE_DIRECTORY
+            ),
             INSTALL_SERVICE: install,
         },
         "networks": {"egress": {"labels": labels}},
-        "volumes": {"cache": {"labels": labels}},
+        "volumes": {CACHE_VOLUME: {"labels": labels}},
     }
 
 
@@ -655,6 +686,20 @@ def _hardened(identity: StackIdentity) -> dict[str, object]:
 
 def _tmpfs(size_mb: int, user: SandboxUser) -> str:
     return f"{TEMPORARY_DIRECTORY}:size={size_mb}m,uid={user.uid},gid={user.gid},mode=1777"
+
+
+def _image_volume_tmpfs(paths: Iterable[str], user: SandboxUser) -> list[str]:
+    """A small tmpfs over each path the image declares as a volume, but one cstudy mounts itself."""
+    return [
+        f"{path}:size={IMAGE_VOLUME_TMPFS_MB}m,uid={user.uid},gid={user.gid},mode=0700"
+        for path in paths
+        if path not in _MOUNTED_BY_CSTUDY
+    ]
+
+
+def _cache_mounts(app: AppContainer) -> list[str]:
+    """The install cache, where the app's dependencies live in it; nothing otherwise."""
+    return [_CACHE_MOUNT] if app.install_cache is not None else []
 
 
 def _bind(source: str, target: str, *, read_only: bool = False) -> dict[str, object]:
@@ -703,8 +748,15 @@ def _app_like(plan: StackPlan) -> dict[str, object]:
         "user": plan.user.spec,
         "working_dir": plan.paths.project,
         "environment": _app_environment(plan.app.environment),
-        "tmpfs": [_tmpfs(APP_TMPFS_MB, plan.user)],
-        "volumes": [*_project_mounts(plan.paths), f"data:{DATA_DIRECTORY}"],
+        "tmpfs": [
+            _tmpfs(APP_TMPFS_MB, plan.user),
+            *_image_volume_tmpfs(plan.app.image_volumes, plan.user),
+        ],
+        "volumes": [
+            *_project_mounts(plan.paths),
+            f"data:{DATA_DIRECTORY}",
+            *_cache_mounts(plan.app),
+        ],
         "networks": [SANDBOX_NETWORK],
         "mem_limit": plan.app.mem_limit,
         "pids_limit": APP_PIDS,
@@ -780,6 +832,7 @@ def _grade_setup(plan: StackPlan, setup: GradeSetup) -> dict[str, object]:
             _bind(setup.grading_directory, f"{PROBLEM_DIRECTORY}/grading", read_only=True),
             _bind(paths.in_run(PASSWD_FILE), "/etc/passwd", read_only=True),
             f"data:{DATA_DIRECTORY}",
+            *_cache_mounts(plan.app),
         ],
         "depends_on": _ready_for_commands(plan),
     }

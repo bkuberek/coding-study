@@ -959,7 +959,7 @@ def test_install_runs_its_one_off_with_its_limit(tmp_path, paths):
 
     call = docker.ran("run")[0]
     assert call[call.index("run") :] == ("run", "--rm", "-T", "--pull", "never", "install")
-    assert docker.timeouts[0] == 600
+    assert docker.timeouts[docker.commands.index(call)] == 600
     assert outcome.exit_code == 0
 
 
@@ -969,6 +969,78 @@ def test_stop_install_keeps_the_cache(tmp_path, paths):
     sandbox(docker, tmp_path).stop_install(install_plan_of(paths))
 
     assert docker.commands[-1][-1] == "down"
+
+
+GRADLE_VOLUMES = ProbeResult(0, '{"/home/gradle/.gradle":{}}\n')
+"""What `docker image inspect` says of an image that declares a volume, as Gradle's does."""
+VOLUME_TMPFS = "/home/gradle/.gradle:size=16m,uid=501,gid=20,mode=0700"
+
+
+def test_start_covers_a_volume_the_image_declares_with_a_tmpfs(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("image", "inspect"), GRADLE_VOLUMES)
+    published(docker)
+
+    sandbox(docker, tmp_path).start(plan_of(paths), BUDGET)
+
+    stack = json.loads(Path(paths.in_run("stack.yaml")).read_text(encoding="utf-8"))
+    assert VOLUME_TMPFS in stack["services"]["app"]["tmpfs"]
+
+
+def test_install_covers_a_volume_the_image_declares_with_a_tmpfs(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("image", "inspect"), GRADLE_VOLUMES)
+
+    sandbox(docker, tmp_path).install(install_plan_of(paths), 600, None)
+
+    stack = json.loads(Path(paths.in_run("stack.yaml")).read_text(encoding="utf-8"))
+    assert VOLUME_TMPFS in stack["services"]["install"]["tmpfs"]
+
+
+def test_an_image_that_cannot_be_read_declares_no_volume(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("image", "inspect"), ProbeResult(1, "No such image\n"))
+    published(docker)
+
+    sandbox(docker, tmp_path).start(plan_of(paths), BUDGET)
+
+    stack = json.loads(Path(paths.in_run("stack.yaml")).read_text(encoding="utf-8"))
+    assert stack["services"]["app"]["tmpfs"] == ["/tmp:size=128m,uid=501,gid=20,mode=1777"]
+
+
+def test_the_install_cache_is_present_when_docker_knows_its_volume(tmp_path, paths):
+    docker = ScriptedDocker()
+
+    present = sandbox(docker, tmp_path).install_cache_present(install_plan_of(paths))
+
+    assert present
+    assert docker.ran("volume", "inspect")[0][-1] == "cstudy-i-rooms-d_cache"
+
+
+def test_the_install_cache_is_absent_when_docker_knows_no_such_volume(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("volume", "inspect"), ProbeResult(1, "no such volume\n"))
+
+    assert not sandbox(docker, tmp_path).install_cache_present(install_plan_of(paths))
+
+
+def test_the_install_cache_is_counted_read_only_with_no_network(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("run",), ProbeResult(0, "201444\t/cache\n"))
+
+    counted = sandbox(docker, tmp_path).install_cache_bytes(install_plan_of(paths))
+
+    call = docker.ran("run", "--rm")[0]
+    assert counted == 201444 * 1024
+    assert call[call.index("--network") + 1] == "none"
+    assert "cstudy-i-rooms-d_cache:/cache:ro" in call
+
+
+def test_an_install_cache_that_cannot_be_counted_has_no_size(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("run",), ProbeResult(125, "Unable to find image\n"))
+
+    assert sandbox(docker, tmp_path).install_cache_bytes(install_plan_of(paths)) is None
 
 
 def test_the_inventory_asks_for_labelled_things_only(tmp_path):

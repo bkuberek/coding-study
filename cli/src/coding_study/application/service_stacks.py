@@ -30,6 +30,7 @@ from coding_study.domain.sandbox import (
     StackKind,
     StackPlan,
     backing_images,
+    cache_volume_of,
     dev_stack_name,
     install_stack_name,
     run_stack_name,
@@ -183,12 +184,20 @@ def _plan(
             mem_limit=service.app.mem_limit or APP_MEMORY,
             health=service.app.health,
             port_env=service.app.port_env,
+            install_cache=_install_cache(identity, service),
         ),
         mocks=_mock_server(problem, service, reach),
         bootstrap=OneShot(commands.bootstrap) if commands.bootstrap is not None else None,
         backing=_backing(environment, problem, service),
         reach=service.grader_reach if identity.kind.serves_the_grader else (),
     )
+
+
+def _install_cache(identity: StackIdentity, service: ServiceProject) -> str | None:
+    """The project's install cache, for an app that keeps its dependencies there."""
+    if not service.app.install_cache:
+        return None
+    return cache_volume_of(install_stack_name(identity.slug, identity.workspace))
 
 
 def _backing(

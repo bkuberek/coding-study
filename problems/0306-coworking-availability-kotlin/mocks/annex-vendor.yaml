@@ -1,0 +1,55 @@
+# The vendor of the building next door, with a shape and failures of its own. A day with no route
+# has no spaces, so an earlier level's case answers the same once the annex is asked too.
+routes:
+  - id: march-8
+    method: GET
+    path: /v2/spaces/open
+    query: {day: "20270308"}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/annex-vendor-march-8.json
+  - id: march-22
+    method: GET
+    path: /v2/spaces/open
+    query: {day: "20270322"}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/annex-vendor-march-22.json
+  - id: other-days
+    method: GET
+    path: /v2/spaces/open
+    response:
+      status: 200
+      body: {ok: true, result: {spaces: []}}
+scenarios:
+  maintenance:
+    visible: true
+    status: 503
+    headers: {Content-Type: application/json}
+    body: {message: down for maintenance}
+  busy:
+    visible: true
+    status: 200
+    headers: {Content-Type: application/json}
+    body: {ok: false, error: {code: BUSY, retry_after_ms: 1000}}
+  busy_once:
+    route: march-8
+    sequence:
+      - {status: 200, headers: {Content-Type: application/json}, body: {ok: false, error: {code: BUSY, retry_after_ms: 1000}}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/annex-vendor-march-8.json}
+  day_closed:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: {ok: false, error: {code: DAY_CLOSED}}
+  stalled:
+    delay_ms: 3000
+  garbled:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: '{"ok": true, "result": {'
+  wrong_fields:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: {ok: true, result: {rooms: []}}

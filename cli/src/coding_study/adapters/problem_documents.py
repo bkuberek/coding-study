@@ -203,6 +203,7 @@ def _service(project: Document) -> ServiceProject:
             health=app["health"],
             ready_timeout_s=app.get("ready_timeout_s", DEFAULT_READY_S),
             mem_limit=app.get("mem_limit"),
+            install_cache=app.get("install_cache", False),
         ),
         env=dict(project.get("env", {})),
         requires=ServiceRequires(

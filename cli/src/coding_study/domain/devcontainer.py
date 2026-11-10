@@ -4,8 +4,9 @@
 VS Code and IntelliJ start your IDE's container from it: the dev stack's image, the project folder
 at its same path, and the dev stack's `sandbox` network, so its mock servers and backing services
 answer by their names there as they do to your app, and nothing beyond the stack does. The network
-is there only while `cstudy dev` runs. The container runs as you, as the stack does, so what you
-write there is yours on your machine too.
+is there only while `cstudy dev` runs. An app that keeps its dependencies in the install cache, as
+Gradle does, finds that cache at `/cache` there too. The container runs as you, as the stack does,
+so what you write there is yours on your machine too.
 
 Both IDEs read the file as JSON with comments. Its first line says `cstudy` wrote it, and `cstudy`
 writes it again while that line is there: delete the line, and your edits stay.
@@ -14,6 +15,7 @@ writes it again while that line is there: delete the line, and your edits stay.
 import json
 
 from coding_study.domain.sandbox import (
+    CACHE_DIRECTORY,
     DEVCONTAINER_DIRECTORY,
     HOME_DIRECTORY,
     NO_NEW_PRIVILEGES,
@@ -43,6 +45,9 @@ def devcontainer_text(plan: StackPlan) -> str:
         ],
         "containerEnv": {**plan.app.environment, "HOME": HOME_DIRECTORY},
     }
+    cache = plan.app.install_cache
+    if cache is not None:
+        document["mounts"] = [f"source={cache},target={CACHE_DIRECTORY},type=volume"]
     return f"{GENERATED_LINE}\n{json.dumps(document, indent=INDENT)}\n"
 
 

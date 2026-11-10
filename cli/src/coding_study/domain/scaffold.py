@@ -54,6 +54,12 @@ class TemplateName(StrEnum):
     """A service project in TypeScript: a running app in the sandbox, with a lock file."""
     PROJECT_PYTHON_SERVICE = "project-python-service"
     """A service project in Python: a running app in the sandbox, with a lock file."""
+    PROJECT_JAVA_SERVICE = "project-java-service"
+    """A service project in Java: a Gradle build in the sandbox, with Gradle's verification file
+    as its lock."""
+    PROJECT_KOTLIN_SERVICE = "project-kotlin-service"
+    """A service project in Kotlin: a Gradle build in the sandbox, with Gradle's verification file
+    as its lock."""
 
 
 PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
@@ -65,10 +71,17 @@ PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
     TemplateName.PROJECT_RUST: Language.RUST,
     TemplateName.PROJECT_TYPESCRIPT_SERVICE: Language.TYPESCRIPT,
     TemplateName.PROJECT_PYTHON_SERVICE: Language.PYTHON,
+    TemplateName.PROJECT_JAVA_SERVICE: Language.JAVA,
+    TemplateName.PROJECT_KOTLIN_SERVICE: Language.KOTLIN,
 }
 """The one language of each project template."""
 SERVICE_TEMPLATES = frozenset(
-    {TemplateName.PROJECT_TYPESCRIPT_SERVICE, TemplateName.PROJECT_PYTHON_SERVICE}
+    {
+        TemplateName.PROJECT_TYPESCRIPT_SERVICE,
+        TemplateName.PROJECT_PYTHON_SERVICE,
+        TemplateName.PROJECT_JAVA_SERVICE,
+        TemplateName.PROJECT_KOTLIN_SERVICE,
+    }
 )
 """Judged over HTTP on the real clock, so `--virtual-clock` and `--stress` do not apply."""
 CLOCK_TEMPLATE_SUFFIX = "-clock"

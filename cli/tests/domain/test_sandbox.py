@@ -1,6 +1,7 @@
 """The generated compose file, stack names and what counts as a leftover."""
 
 import json
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -31,6 +32,7 @@ from coding_study.domain.sandbox import (
     StackKind,
     StackPlan,
     StackResource,
+    cache_volume_of,
     dev_stack_name,
     install_document,
     install_stack_name,
@@ -491,6 +493,73 @@ def test_install_waits_for_its_cache_to_be_owned():
 
 def test_the_install_cache_carries_stable_labels():
     assert install_of()["volumes"]["cache"]["labels"]["cstudy.kind"] == ("install")
+
+
+def test_the_install_cache_is_named_after_its_install_stack():
+    assert cache_volume_of("cstudy-i-rooms-d1g3st") == "cstudy-i-rooms-d1g3st_cache"
+
+
+def test_an_install_plan_names_its_cache_volume():
+    assert install_plan().cache_volume == "cstudy-i-rooms-d1g3st_cache"
+
+
+CACHED_APP = replace(APP, install_cache="cstudy-i-rooms-d1g3st_cache")
+"""An app whose dependencies live in the install cache, as Gradle's do."""
+
+
+def test_an_app_keeps_out_of_the_install_cache_by_default():
+    assert "cache:/cache" not in services()[APP_SERVICE]["volumes"]
+
+
+@pytest.mark.parametrize("service", [APP_SERVICE, BOOTSTRAP_SERVICE, RESET_PREPARE_SERVICE])
+def test_an_app_that_keeps_its_dependencies_in_the_cache_mounts_it(service):
+    found = services(
+        app=CACHED_APP,
+        bootstrap=OneShot(("java", "Seed.java")),
+        reset_prepare=OneShot(("java", "Reset.java")),
+    )
+
+    assert "cache:/cache" in found[service]["volumes"]
+
+
+def test_grade_setup_mounts_the_cache_of_an_app_that_keeps_its_dependencies_there():
+    setup = GradeSetup(("java", "{problem}/grading/Load.java"), "/problems/rooms/grading", 1)
+
+    found = services(app=CACHED_APP, grade_setup=setup)[GRADE_SETUP_SERVICE]
+
+    assert "cache:/cache" in found["volumes"]
+
+
+def test_a_stack_refers_to_the_install_cache_and_never_owns_it():
+    volume = document_of(app=CACHED_APP)["volumes"]["cache"]
+
+    assert volume == {"external": True, "name": "cstudy-i-rooms-d1g3st_cache"}
+
+
+def test_a_stack_declares_no_cache_for_an_app_that_keeps_out_of_it():
+    assert "cache" not in document_of()["volumes"]
+
+
+def test_a_volume_the_image_declares_gets_a_small_tmpfs_of_the_user():
+    app = services(app=replace(APP, image_volumes=("/home/gradle/.gradle",)))[APP_SERVICE]
+
+    assert "/home/gradle/.gradle:size=16m,uid=501,gid=20,mode=0700" in app["tmpfs"]
+
+
+@pytest.mark.parametrize("path", ["/tmp", "/data", "/cache"])
+def test_a_declared_volume_that_cstudy_mounts_itself_gets_no_second_mount(path):
+    app = services(app=replace(APP, image_volumes=(path,)))[APP_SERVICE]
+
+    assert app["tmpfs"] == ["/tmp:size=128m,uid=501,gid=20,mode=1777"]
+
+
+def test_install_covers_a_volume_the_image_declares_with_a_tmpfs():
+    covered = replace(install_plan(), image_volumes=("/home/gradle/.gradle",))
+    document: dict[str, Any] = install_document(covered)
+
+    install = document["services"][INSTALL_SERVICE]
+
+    assert "/home/gradle/.gradle:size=16m,uid=501,gid=20,mode=0700" in install["tmpfs"]
 
 
 def test_a_run_name_holds_its_kind_and_its_owner():

@@ -27,7 +27,14 @@ TEST_LIMIT_S = 120
 RESET_LIMIT_S = 30
 PROBLEM_PLACEHOLDER = "{problem}"
 """The one placeholder an argument list may use, and only in `grade_setup`."""
-LOCK_MANAGERS: Mapping[str, str] = {"pnpm-lock.yaml": "pnpm", "uv.lock": "uv"}
+GRADLE_LOCK = "gradle/verification-metadata.xml"
+"""Gradle's dependency verification file, where Gradle reads it: the checksum of every artifact the
+install may download, which makes it the lock of a Java or Kotlin service project."""
+LOCK_MANAGERS: Mapping[str, str] = {
+    "pnpm-lock.yaml": "pnpm",
+    "uv.lock": "uv",
+    GRADLE_LOCK: "gradle",
+}
 """The package manager a lock file names, for the list of what a problem depends on."""
 INSTALLED_DIRECTORIES: Mapping[str, str] = {"pnpm-lock.yaml": "node_modules", "uv.lock": ".venv"}
 """Where the install of a lock file leaves its packages: gone with `--fresh`, so installed again."""
@@ -70,6 +77,9 @@ class ServiceApp:
     health: str
     ready_timeout_s: int = DEFAULT_READY_S
     mem_limit: str | None = None
+    install_cache: bool = False
+    """The app's containers mount the install cache too: the toolchain keeps the dependencies there,
+    as Gradle does in its user home, instead of in the project folder."""
 
 
 @dataclass(frozen=True, slots=True)
