@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0294"
+slug: chat-history-index
+title: Chat History Index
+summary: "Build ChatHistory, which stores each user's conversations with an assistant, searches them by keyword, deletes messages and whole chats for good, and scopes searches to projects."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+domains: [ai-llm, backend]
+job_roles: [backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Conversations}
+  - {level: 2, title: Keyword search}
+  - {level: 3, title: Deletion}
+  - {level: 4, title: Projects}
+signature:
+  class:
+    name: ChatHistory
+    constructor: {params: []}
+    methods:
+      - {name: append, level: 1, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: conversationId, type: string}, {name: text, type: string}], returns: {type: int}}
+      - {name: getConversation, level: 1, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: conversationId, type: string}], returns: {type: "list<string>"}}
+      - {name: search, level: 2, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: query, type: string}], returns: {type: "list<string>"}}
+      - {name: deleteMessage, level: 3, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: conversationId, type: string}, {name: messageNumber, type: int}], returns: {type: bool}}
+      - {name: deleteConversation, level: 3, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: conversationId, type: string}], returns: {type: bool}}
+      - {name: moveToProject, level: 4, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: conversationId, type: string}, {name: projectId, type: string}], returns: {type: bool}}
+      - {name: searchProject, level: 4, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: projectId, type: string}, {name: query, type: string}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: tombstoned-conversations, name: Per-user conversations with tombstones, role: optimal, time: "O(1) per append or deletion; O(n q + c log c) per search", space: "O(n w)", time_class: "n log n", space_class: "n"}
+related: [memory-store, context-packer]
+estimate_minutes: 90
