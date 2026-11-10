@@ -1233,26 +1233,44 @@ There is no `cstudy reset` and no command that removes a problem; verified again
 
 ## Code intelligence and editors
 
-**The riskiest part of the design.** The spike measured that it works, close to the host's speed. It is planned for P9.
+**The riskiest part of the design.** The spike measured that it works, close to the host's speed. The language servers are built (P9, 2026-11-10); your own IDE's files are planned.
 
 ### Language servers
 
-Planned, for P9 (R28). Until then a service project has no language server at all: sandboxed code writes its folder, and basedpyright or tsserver on your machine would read it. The attempt's status says so, `no_code_intelligence`: `service_project` ([`cstudy status --json`](cli.md#cstudy-status)), so the page reads no list of languages, opens no session and shows `code intelligence for service projects comes later` ([Status bar](web-ui.md#status-bar)). A session asked for anyway is refused as for a language with no server, 422 `usage` with `no code intelligence for python yet`. With P9, a language server runs in a small `lsp` sidecar through `docker exec -i`, the same Node image for both languages, `network_mode: none`, with the project and `.cs/lsp/` mounted, and paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
+Built in P9 (R28). Sandboxed code writes a service project's folder, so no server on your machine reads it: basedpyright or tsserver there would run what the folder names. A code-intelligence session on a TypeScript or Python service project runs its server in a sidecar of its own instead, and talks to it through `docker exec`, exactly as the broker talks to a server on your machine ([Code intelligence sessions](web-ui.md#code-intelligence-sessions)).
+
+| Item | Rule |
+|------|------|
+| The sidecar | One per session: a compose project of its own, `cstudy-l-<pid of cstudy serve>-<id>`, so it needs no mock server or backing service and does not wait for the dev stack. One `lsp` service, named after the stack, idling on `sleep infinity` with `init` |
+| Image | `node:24-slim` pinned by digest, the same for both languages: the servers in `.cs/lsp/` are Node programs, and a TypeScript project's own image is this one. A session never pulls it, and never starts Docker |
+| Isolation | `network_mode: none`, the app's hardening (read-only root, `cap_drop: ALL`, `no-new-privileges`, your UID and GID, a 64 MiB `/tmp`), 768 MiB of memory and 128 processes. The project folder and `.cs/lsp/` are mounted read-only, each at the path the session names it by, from the path with its links resolved, so the server's URIs are the page's |
+| Servers | The workspace's own `.cs/lsp/`, the same files and versions as on your machine (typescript-language-server 6.0.3, basedpyright 1.40.2): the install does not grow. TypeScript runs the project's own compiler, `<project>/node_modules/typescript/lib`, so the workspace's `typescript/` is not needed; basedpyright reads the project's `[tool.pyright]`, whose `venv = ".venv"` the template writes, and finds the `.venv`'s packages without Python, which the image does not have |
+| Session | `docker exec --interactive --workdir <project> <sidecar> node <.cs/lsp>/<script> --stdio`, with the Docker client's environment and none of the variables that hide directories: nothing hidden is mounted, and no variable crosses `docker exec`. `initialize` names no `processId`, since the sidecar cannot see `cstudy serve` and the servers would exit at once; they stop at the end of their input instead |
+| Start | Once the page's CSRF message arrives: Docker's state and the image are asked first, then `docker compose up --detach`, about 0.3 s, then the server |
+| Stop | With the session: the server's stop sequence, then `docker compose down` and the run's folder. A guard takes the sidecar down if `cstudy serve` dies, and the sweep knows the stack by its name and owner |
+| Docker not usable | The socket closes with 4004 and a calm reason: `Docker is not running`, `Docker is not installed`, `Docker has no compose v2`, `Docker refuses this user`, or `needs the node image: docker pull <node:24-slim@sha256:…>` for a Python project whose `cstudy start` did not pull it. The status bar shows the reason with Restart, in its usual colour ([Status bar](web-ui.md#status-bar)) |
+| Other languages | A service project in a language whose server runs in no sidecar yet keeps `no_code_intelligence`: `service_project` ([`cstudy status --json`](cli.md#cstudy-status)); the page shows `code intelligence for <Language> service projects comes later` and a session is refused with 422 `usage`, `no code intelligence for go service projects yet` |
+
+Measured on the catalog's first service projects, on macOS with Docker Desktop: TypeScript's first diagnostics 1.4 s after `didOpen` (1.6 s after the server started), 366 MiB in the sidecar, 386 MiB at peak; basedpyright's 0.8 s, 129 MiB, 140 MiB at peak. The spike measured TypeScript at 504 MiB at peak on an Express project, which the 768 MiB limit holds.
+
+A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
 
 | Item | Where it is | Covered by |
 |------|-------------|------------|
-| Mock configs, compose files, `grading/`, `tests.json` | The problem's files | Not mounted in `app` |
-| A graded run's generated files and rendered configs | `.cs/runs/<run>/` | Not mounted in `app`; rendered configs in `cstudy-mocks` only |
+| Mock configs, compose files, `grading/`, `tests.json` | The problem's files | Not mounted in `app`, nor in the sidecar |
+| A graded run's generated files and rendered configs | `.cs/runs/<run>/` | Not mounted in `app`, nor in the sidecar; rendered configs in `cstudy-mocks` only |
 | A reference's copy and install | `.cs/build/projects/<slug>/` | Not mounted, unless it is the folder under `cstudy verify` |
 
-What the spike answered:
+What the spike answered, and P9 kept:
 
 - **Where the server comes from.** `.cs/lsp/` mounted read-only in the sidecar. basedpyright needs no Node in a Python image then.
 - **Which container.** The sidecar, not the app's, since TypeScript alone took 468 MiB of anonymous memory.
 - **Stopping it.** Killing the `docker exec` client stops both servers, because they exit on end of input.
-- **Definitions outside the folder.** None in the sidecar design, for these two servers.
+- **Definitions outside the folder.** None in the sidecar design, for these two servers: a definition into `node_modules`, the `.venv`'s `site-packages` or typeshed in `.cs/lsp/` names a file of the bind-mounted folders, which the library tab reads on your machine at the same path ([Definitions and library files](web-ui.md#definitions-and-library-files)).
 
 Otherwise service projects use existing roots: the session's root is the project folder, basedpyright resolves imports through the folder's `.venv`, and tsserver through its `node_modules`. Non-Node servers come with their languages' phases.
+
+The page reads the list of languages for its attempt (`GET /api/v1/code-intelligence/languages?attempt_id=N`, [Code intelligence](web-ui.md#code-intelligence)), which judges a service project's servers as its sidecar runs them: TypeScript is installed once `.cs/lsp/` holds it, whether or not the workspace's `typescript/` has its `node_modules`.
 
 ### Your own IDE
 
@@ -1274,7 +1292,7 @@ Planned, for P9 (R29).
 | `.env` is an ordinary file in the tree | P4, built |
 | The dependency list, and Start's summary and confirmation | P9 |
 | The Docker messages in Start and the [Health view](web-ui.md#health-view) | P9 |
-| Code intelligence through the [container](#language-servers) | P9 |
+| Code intelligence through the [container](#language-servers), in TypeScript and Python | P9, built |
 
 If a terminal holds the dev stack, the page shows that and does not start a second.
 
