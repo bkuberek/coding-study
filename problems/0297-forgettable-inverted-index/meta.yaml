@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0297"
+slug: forgettable-inverted-index
+title: Forgettable Inverted Index
+summary: "Implement ForgettableIndex: a keyword index over an assistant's memories that ranks them with BM25, where an updated or forgotten memory can never be found by its old words again."
+status: ready
+difficulty: medium
+track: practical
+kind: design
+domains: [ai-llm]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  class:
+    name: ForgettableIndex
+    constructor:
+      params: [{name: k1, type: double}, {name: b, type: double}]
+    methods:
+      - {name: add, params: [{name: docId, type: string}, {name: tokens, type: "string[]"}], returns: {type: bool}}
+      - {name: update, params: [{name: docId, type: string}, {name: tokens, type: "string[]"}], returns: {type: bool}}
+      - {name: forget, params: [{name: docId, type: string}], returns: {type: bool}}
+      - {name: search, params: [{name: query, type: "string[]"}, {name: topN, type: int}], returns: {type: "string[]"}}
+      - {name: score, params: [{name: query, type: "string[]"}, {name: docId, type: string}], returns: {type: double}}
+comparator: {type: ops, per_method: {score: float}}
+approaches:
+  - {id: incremental-postings, name: Keep the postings and the totals current on every change, role: optimal, time: "O(t) per add, update or forget; O(q + p + m log m) per search; O(q + p) per score", space: "O(s)", time_class: "n log n", space_class: "n"}
+related: [bm25-hybrid-ranker]
+estimate_minutes: 40
