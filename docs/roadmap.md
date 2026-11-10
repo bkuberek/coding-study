@@ -187,7 +187,7 @@ The pilots are written with the next project problems.
 
 ## Phase 12: Service projects
 
-**Status.** In progress: the tooling is built through P8, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem, with `0278` its Python version, and `0279` and `0281` follow on mock servers alone. It runs after or around the releases of Phase 11, unless the owner reorders it.
+**Status.** In progress: the tooling is built through P11, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem, with `0278` its Python version, and `0279` and `0281` follow on mock servers alone. It runs after or around the releases of Phase 11, unless the owner reorders it.
 
 **Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that always run in a Docker sandbox, with their own dependencies, standard lifecycle commands, one Python mock server, optional backing services, grading over HTTP, and a list of what each problem depends on. Existing problems stay native and need no Docker. One step per ADR phase, each with its docs and a website message at release: P1 the spike; P2 the environment allowlist, for all problems; P3 the sandbox runtime; P4 lifecycle commands, TypeScript and Python templates, install and lock rules; P5 the mock server and `cstudy dev`; P6 the HTTP grader with `verify` and CI; P7 the first problem in TypeScript; P8 its Python version; P9 code intelligence in the container and the Web UI; P10 data-driven problems; P11 mock server extensions and multi-step cases, with project-size security and AI problems; P12 Kotlin and Java; P13 Go; P14 Rust (maybe, decided when reached).
 
