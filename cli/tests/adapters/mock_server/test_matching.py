@@ -17,9 +17,17 @@ def route(path: str = "/v1/rooms", **fields) -> Route:
     return Route(path=path, **{**defaults, **fields})
 
 
-def request(target: str = "/v1/rooms", method: str = "GET") -> MockRequest:
+def request(target: str = "/v1/rooms", method: str = "GET", body: bytes = b"") -> MockRequest:
     path, query = parse_target(target)
-    return MockRequest(method=method, path=path, query=query, headers={}, body=b"")
+    return MockRequest(method=method, path=path, query=query, headers={}, body=body)
+
+
+def posted(body: bytes) -> MockRequest:
+    return request("/v1/chat", "POST", body)
+
+
+def chat_route(**fields) -> Route:
+    return route("/v1/chat", method="POST", **fields)
 
 
 def scenario(*entries: ResponseFields, route_id: str | None = None) -> Scenario:
@@ -88,6 +96,49 @@ def test_the_first_match_wins():
 def test_an_earlier_query_route_falls_through_to_a_later_plain_one():
     plain = route(id="plain")
     assert find_route((route(query={"date": "x"}), plain), request()) is plain
+
+
+def test_a_body_subset_matches_a_request_that_holds_its_fields():
+    streaming = chat_route(match_body={"stream": True})
+    assert find_route((streaming,), posted(b'{"model": "m", "stream": true}')) is streaming
+
+
+def test_a_body_subset_does_not_match_another_value():
+    streaming = chat_route(match_body={"stream": True})
+    assert find_route((streaming,), posted(b'{"stream": false}')) is None
+
+
+def test_a_body_subset_does_not_match_a_missing_field():
+    assert find_route((chat_route(match_body={"stream": True}),), posted(b"{}")) is None
+
+
+def test_a_body_subset_does_not_match_a_body_that_is_not_json():
+    assert find_route((chat_route(match_body={"stream": True}),), posted(b"stream")) is None
+
+
+def test_a_body_subset_does_not_match_an_empty_body():
+    assert find_route((chat_route(match_body={"stream": True}),), posted(b"")) is None
+
+
+def test_a_body_subset_falls_through_to_a_later_route():
+    plain = chat_route(id="plain")
+    routes = (chat_route(match_body={"stream": True}), plain)
+    assert find_route(routes, posted(b'{"stream": false}')) is plain
+
+
+def test_body_contains_matches_text_anywhere_in_the_body():
+    refunds = chat_route(match_body_contains="refund")
+    assert find_route((refunds,), posted(b'{"input": "desk pass refunds"}')) is refunds
+
+
+def test_body_contains_does_not_match_a_body_without_the_text():
+    refunds = chat_route(match_body_contains="refund")
+    assert find_route((refunds,), posted(b'{"input": "opening hours"}')) is None
+
+
+def test_a_body_match_needs_both_of_its_conditions():
+    both = chat_route(match_body={"stream": True}, match_body_contains="refund")
+    assert find_route((both,), posted(b'{"stream": true, "input": "hours"}')) is None
 
 
 def test_a_blank_query_value_is_kept():

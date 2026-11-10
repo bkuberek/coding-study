@@ -92,6 +92,12 @@ def test_a_broken_json_body_is_allowed_by_design():
     assert violations(config) == []
 
 
+def test_a_route_may_match_on_its_body():
+    config = valid_config()
+    first_route(config)["match"] = {"body": {"stream": True}, "body_contains": "refund"}
+    assert violations(config) == []
+
+
 def pass_through_config() -> dict[str, Any]:
     return {
         "upstream": "http://keycloak:8080",
@@ -183,6 +189,10 @@ INVALID: dict[str, Mutation] = {
     ),
     "unknown scenario field": lambda config: config["scenarios"]["outage"].update(extra=1),
     "visible as a string": lambda config: config["scenarios"]["outage"].update(visible="yes"),
+    "match with no condition": lambda config: first_route(config).update(match={}),
+    "match body as a list": lambda config: first_route(config).update(match={"body": [1]}),
+    "empty body_contains": lambda config: first_route(config).update(match={"body_contains": ""}),
+    "unknown match field": lambda config: first_route(config).update(match={"headers": {}}),
 }
 
 

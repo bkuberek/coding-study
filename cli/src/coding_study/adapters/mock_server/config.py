@@ -26,7 +26,8 @@ HEADER_ENCODING = "latin-1"
 
 STACK_FIELDS = frozenset({"control_token", "mocks"})
 MOCK_FIELDS = frozenset({"upstream", "routes", "scenarios"})
-ROUTE_FIELDS = frozenset({"id", "method", "path", "query", "response"})
+ROUTE_FIELDS = frozenset({"id", "method", "path", "query", "match", "response"})
+MATCH_FIELDS = frozenset({"body", "body_contains"})
 RESPONSE_FIELDS = frozenset({"status", "headers", "body", "body_file", "delay_ms"})
 ENTRY_FIELDS = RESPONSE_FIELDS | {"jwt"}
 """A scenario entry's fields: a route's response, plus a JWT to tamper with."""
@@ -82,6 +83,10 @@ class Route:
     query: Mapping[str, str]
     response: ResponseFields | None
     """None passes the request through to the mock server's upstream."""
+    match_body: Mapping[str, object] | None = None
+    """A JSON subset the request's body must hold; None matches any body."""
+    match_body_contains: str | None = None
+    """A text the request's body must hold anywhere; None matches any body."""
 
 
 @dataclass(frozen=True)
@@ -186,12 +191,17 @@ class _Reader:
         response = fields.optional("response", self._response_fields)
         if response is not None and response.status is None:
             raise ConfigError(f"{where}.response.status: required")
+        match = _Fields(fields.optional("match", _mapping) or {}, MATCH_FIELDS, f"{where}.match")
+        if fields.has("match") and not match.among(MATCH_FIELDS):
+            raise ConfigError(f"{where}.match: expected body or body_contains")
         return Route(
             id=fields.required("id", _string),
             method=fields.required("method", _method),
             path=fields.required("path", _path),
             query=fields.optional("query", _string_mapping) or {},
             response=response,
+            match_body=match.optional("body", _mapping),
+            match_body_contains=match.optional("body_contains", _text),
         )
 
     def _scenarios(self, raw: object, where: str) -> dict[str, Scenario]:
@@ -316,6 +326,14 @@ def _string(raw: object, where: str) -> str:
     if not isinstance(raw, str):
         raise ConfigError(f"{where}: expected a string")
     return raw
+
+
+def _text(raw: object, where: str) -> str:
+    """A string that is not empty."""
+    text = _string(raw, where)
+    if not text:
+        raise ConfigError(f"{where}: must not be empty")
+    return text
 
 
 def _integer(raw: object, where: str) -> int:

@@ -451,7 +451,7 @@ scenarios:
 
 | Rule | Detail |
 |------|--------|
-| Matching | Method exact, and path exact except that a `{name}` segment matches any one non-empty segment, whose value is not kept. A repeated query key matches on any of its values. First match wins. No state beyond sequence counters |
+| Matching | Method exact, and path exact except that a `{name}` segment matches any one non-empty segment, whose value is not kept. A repeated query key matches on any of its values. A route's `match` narrows it by the request's body ([below](#matching-on-bodies)). Routes are tried in the order the config lists them, and the first match wins. No state beyond sequence counters |
 | Unmatched | A clear 404 that names the mock server: `{"error": "no route", "mock": "room-vendor", "method": "GET", "path": "/v1/other"}`, and a log entry with `matched: false` |
 | Scenarios | The default is no scenario. A scenario overrides the matched response; a field it leaves out comes from the route, and a field it gives replaces the route's whole, `headers` included. So a 429 keeps the route's body unless it says `body: ""`. It never applies to an unmatched request |
 | Responses | A mapping or list gets `Content-Type: application/json` unless the headers name one. `Content-Length` is computed unless the headers name one, so a config can lie about it on purpose. 204, 304 and `HEAD` send no body. No `Date` or `Server` header is added |
@@ -493,7 +493,38 @@ Reading a log answers `{"mock": "room-vendor", "entries": [...], "truncated": fa
 
 ### Extensions
 
-Recommended, to confirm (R33), for P11. They let a config mock a streaming API, an LLM provider among them.
+R33, for P11. They let a config mock a streaming API, an LLM provider among them. Matching on bodies is built; the rest of this section is recommended, to confirm.
+
+#### Matching on bodies
+
+Built at P11 (R33). A route can match on what the request's body holds, beside its method, path and query, so one path answers a streaming request and a plain one differently, or an embeddings request by its text.
+
+```yaml
+routes:
+  - id: chat-stream
+    method: POST
+    path: /v1/chat/completions
+    match: {body: {stream: true}}         # a JSON subset of the request's body
+    response: {status: 200, body: {note: streamed}}
+  - id: embed-refunds
+    method: POST
+    path: /v1/embeddings
+    match: {body_contains: refund}        # a text anywhere in the body
+    response: {status: 200, body: {data: [{embedding: [0.9, 0.1]}]}}
+  - id: chat                              # no match: any other body
+    method: POST
+    path: /v1/chat/completions
+    response: {status: 200, body: {note: whole}}
+```
+
+| Rule | Detail |
+|------|--------|
+| `match.body` | A JSON subset. Each field it lists must be in the body, at any depth; a list must have as many elements as the body's, each holding its own; anything else must be equal, where `true` is not `1` and `1` is `1.0`. A body that is not JSON, or is empty, never matches |
+| `match.body_contains` | A text the body's bytes must hold anywhere |
+| Both | A route that gives both needs both |
+| Order | Deterministic: routes are tried in the order listed and the first match wins, so a route that matches on its body comes before one on the same path that does not. A request no route matches gets the usual 404 |
+
+#### Still to confirm
 
 ```yaml
 shape_version: "2026-11"             # the shape this config records, for a real API's shape
@@ -519,7 +550,6 @@ scenarios:
 | Feature | Rule |
 |---------|------|
 | SSE streaming | `stream` lists chunks, each with `data` and `after_ms`. `drop_after_chunks` in a scenario closes the connection mid-stream |
-| Matching on bodies | `match.body` is a JSON subset, or `match.body_contains` a string. Listed before a route that does not match on bodies, since the first match wins |
 | Logged bodies | A case's `log` entry gains `body`, a JSON subset the logged body must contain, and `body_prefix_stable: true`: each request's body bytes start with the previous request's whole body, which is what a cache-stable history needs. A body truncated at the log's limit is a content error for that assertion, so such a route raises its own limit up to 1 MiB |
 | Run-time values | `{{request.*}}` from the current request, `{{seq}}` for the mock server's request counter, `{{now_s}}` for the clock. Cases never compare them literally, and D11's determinism run covers what remains |
 | A mock LLM provider | Just config data on this format, with no key and no cost. A fake key goes in `project.env`, and a `log` entry can assert the header carried it |

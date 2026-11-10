@@ -175,7 +175,26 @@ def test_a_scenario_keeps_its_jwt_tamper(tmp_path: Path):
     assert entry.jwt == JwtTamper(("tokens", "id"), TamperKind.ALG_NONE)
 
 
+def test_a_route_keeps_its_body_match(tmp_path: Path):
+    document = valid_document()
+    route_of(document)["match"] = {"body": {"stream": True}, "body_contains": "refund"}
+    route = load(document, tmp_path).mocks[0].routes[0]
+    assert (route.match_body, route.match_body_contains) == ({"stream": True}, "refund")
+
+
+def test_a_route_matches_any_body_unless_it_says_otherwise(tmp_path: Path):
+    route = load(valid_document(), tmp_path).mocks[0].routes[0]
+    assert (route.match_body, route.match_body_contains) == (None, None)
+
+
 REFUSED: dict[str, tuple[Mutation, str]] = {
+    "match with no condition": (lambda doc: route_of(doc).update(match={}), "match"),
+    "unknown match field": (lambda doc: route_of(doc).update(match={"headers": {}}), "headers"),
+    "match body not a mapping": (lambda doc: route_of(doc).update(match={"body": [1]}), "body"),
+    "empty body_contains": (
+        lambda doc: route_of(doc).update(match={"body_contains": ""}),
+        "body_contains",
+    ),
     "no token": (lambda doc: doc.pop("control_token"), "control_token"),
     "empty token": (lambda doc: doc.update(control_token=""), "control_token"),
     "no mock servers": (lambda doc: doc.update(mocks={}), "mocks"),

@@ -48,6 +48,23 @@
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
+        "match": {
+          "description": "What the request's body must hold, beside the method, path and query. A route that matches on its body is listed before one that does not, since the first match wins",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "body": {
+              "description": "A JSON subset: each field listed must be in the body, at any depth; a list must have as many elements, each holding its own; anything else is equal, and true is not 1. A body that is not JSON never matches",
+              "type": "object"
+            },
+            "body_contains": {
+              "description": "A text the body must hold anywhere",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
         "response": {
           "description": "Left out, the request passes through to the mock server's upstream",
           "$ref": "#/$defs/responseFields",

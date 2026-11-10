@@ -2,9 +2,11 @@
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import cached_property
 from urllib.parse import parse_qs
 
 from .config import Body, ResponseFields, Route, Scenario
+from .json_values import contains, parsed
 from .replies import Reply
 
 DEFAULT_STATUS = 200
@@ -21,6 +23,11 @@ class MockRequest:
     query: Mapping[str, tuple[str, ...]]
     headers: Mapping[str, str]
     body: bytes
+
+    @cached_property
+    def json_body(self) -> object:
+        """The body as JSON, read once for every route that asks; MISSING when it is not."""
+        return parsed(self.body)
 
 
 def parse_target(target: str) -> tuple[str, dict[str, tuple[str, ...]]]:
@@ -88,7 +95,15 @@ def _matches(route: Route, request: MockRequest) -> bool:
         route.method == request.method
         and _path_matches(route.path, request.path)
         and _query_matches(route.query, request.query)
+        and _body_matches(route, request)
     )
+
+
+def _body_matches(route: Route, request: MockRequest) -> bool:
+    subset, text = route.match_body, route.match_body_contains
+    if text is not None and text.encode() not in request.body:
+        return False
+    return subset is None or contains(request.json_body, subset)
 
 
 def _path_matches(pattern: str, path: str) -> bool:
