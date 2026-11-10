@@ -350,7 +350,9 @@ def test_a_folder_without_test_files_reports_no_tests(tmp_path):
 
 
 def test_a_missing_root_is_a_load_error(tmp_path):
-    launch = RunnerLaunch(("node", str(RUNNER_SCRIPT)), tmp_path, 5_000)
+    launch = RunnerLaunch(
+        ("node", str(RUNNER_SCRIPT)), tmp_path, HELLO_TIMEOUT_MS[Language.TYPESCRIPT]
+    )
     job = SuiteJob("gone/suite", SuiteFramework.NODE_TEST, str(tmp_path / "gone"), HANG_GUARD_MS)
     report = SubprocessRunner(tmp_path / "runs").run_suite(launch, job)
     assert report.load_error is not None

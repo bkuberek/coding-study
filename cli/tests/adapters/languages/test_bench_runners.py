@@ -44,7 +44,7 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
-from coding_study.domain.runs import FileTarget, Raised, RunTarget
+from coding_study.domain.runs import HELLO_TIMEOUT_MS, FileTarget, Raised, RunTarget
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import ArrayType, Scalar, ScalarType
 from tests.helpers import REPOSITORY_ROOT
@@ -294,14 +294,16 @@ class PythonLaunch:
 
     def __call__(self, meta: ProblemMeta, files: Mapping[str, Path]) -> RunnerLaunch:
         interpreter = self._workspace / "python" / ".venv" / "bin" / "python"
-        return RunnerLaunch((str(interpreter), "-m", "cs_runner"), self._workspace, 5_000)
+        command = (str(interpreter), "-m", "cs_runner")
+        return RunnerLaunch(command, self._workspace, HELLO_TIMEOUT_MS[Language.PYTHON])
 
 
 def typescript_launch(meta: ProblemMeta, files: Mapping[str, Path]) -> RunnerLaunch:
     if shutil.which("node") is None:
         pytest.skip("node is not installed")
     script = REPOSITORY_ROOT / "runners" / "typescript" / "runner.ts"
-    return RunnerLaunch(("node", "--expose-gc", str(script)), REPOSITORY_ROOT, 5_000)
+    command = ("node", "--expose-gc", str(script))
+    return RunnerLaunch(command, REPOSITORY_ROOT, HELLO_TIMEOUT_MS[Language.TYPESCRIPT])
 
 
 class JvmLaunches:
