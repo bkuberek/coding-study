@@ -1,0 +1,2477 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "note": "a whole answer",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "provider": "primary",
+          "content": "Badges renew every June.",
+          "usage": {
+            "prompt_tokens": 5,
+            "completion_tokens": 4
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1,
+          "headers": {
+            "Authorization": "Bearer cs-fake-primary-key"
+          },
+          "body": {
+            "model": "brisk-1",
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "max_tokens": 256,
+            "stream": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "a streamed answer",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "headers": {
+            "Authorization": "Bearer cs-fake-primary-key"
+          },
+          "body": {
+            "model": "brisk-1",
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "max_tokens": 256,
+            "stream": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "note": "the primary's stream drops after one event: an error event, never [DONE]",
+      "mocks": {
+        "primary": "dropped_mid_stream"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\nevent: error\ndata: {\"error\":\"the provider's stream ended early\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "the key, the model, the caller's max_tokens and its messages go to the primary",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "You answer questions about the office."
+            },
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true,
+          "max_tokens": 100
+        },
+        "headers": {
+          "X-Team": "support"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "headers": {
+            "Authorization": "Bearer cs-fake-primary-key"
+          },
+          "body": {
+            "model": "brisk-1",
+            "messages": [
+              {
+                "role": "system",
+                "content": "You answer questions about the office."
+              },
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "max_tokens": 100,
+            "stream": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "a conversation's history goes to the primary as it came, in order",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Where is the quiet room?"
+            },
+            {
+              "role": "assistant",
+              "content": "On the third floor."
+            },
+            {
+              "role": "user",
+              "content": "Is it open on Fridays?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "support"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "provider": "primary",
+          "content": "Badges renew every June.",
+          "usage": {
+            "prompt_tokens": 17,
+            "completion_tokens": 4
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1,
+          "headers": {
+            "Authorization": "Bearer cs-fake-primary-key"
+          },
+          "body": {
+            "model": "brisk-1",
+            "messages": [
+              {
+                "role": "user",
+                "content": "Where is the quiet room?"
+              },
+              {
+                "role": "assistant",
+                "content": "On the third floor."
+              },
+              {
+                "role": "user",
+                "content": "Is it open on Fridays?"
+              }
+            ],
+            "max_tokens": 256,
+            "stream": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "no X-Team: refused before any provider hears of it",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "X-Team is required"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "an empty conversation is refused",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": []
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "messages must be a non-empty list"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a body that is not JSON is refused",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "headers": {
+          "X-Team": "search",
+          "Content-Type": "application/json"
+        },
+        "body": "{\"messages\": ["
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "the body must be a JSON object"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "max_tokens of 0 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "max_tokens": 0
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "max_tokens must be a positive integer"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "note": "an event that is not JSON is not passed on, and the stream ends with an error",
+      "mocks": {
+        "primary": "malformed_chunk"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\nevent: error\ndata: {\"error\":\"the provider sent a malformed event\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "a stream that fails before its first event: a plain 502, not a stream",
+      "mocks": {
+        "primary": "outage",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "note": "a 429 with Retry-After: 1, then the stream",
+      "mocks": {
+        "primary": "rate_limited_then_ok"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "level": 2,
+      "visible": true,
+      "note": "429 to every request: three requests a second apart, then 502",
+      "mocks": {
+        "primary": "rate_limited",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 3,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "note": "no answer within 1.5 s: give up, and do not ask again",
+      "mocks": {
+        "primary": "slow",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 2,
+      "note": "two 429s, then a whole answer",
+      "mocks": {
+        "primary": "limited_twice_then_ok"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "provider": "primary",
+          "content": "Badges renew every June.",
+          "usage": {
+            "prompt_tokens": 5,
+            "completion_tokens": 4
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 3,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 2,
+      "note": "a 429 with no Retry-After waits half a second",
+      "mocks": {
+        "primary": "limited_no_header_then_ok"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 2,
+          "min_gap_ms": 450
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 2,
+      "note": "Retry-After: 3 is longer than the gateway waits: give up at once",
+      "mocks": {
+        "primary": "limited_long",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 2,
+      "note": "a 429 is asked again, a stream that dropped after an event is not",
+      "mocks": {
+        "primary": "limited_then_dropped"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\nevent: error\ndata: {\"error\":\"the provider's stream ended early\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "note": "a stream quiet for a second after its first event: the caller already has it, then a stalled error",
+      "mocks": {
+        "primary": "stalled_stream"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\nevent: error\ndata: {\"error\":\"the provider's stream stalled\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 2,
+      "note": "a healthy stream that takes 2.5 s in all, half a second between events: each piece goes on as it comes",
+      "mocks": {
+        "primary": "slow_stream"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges \"}\n\ndata: {\"delta\":\"renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 2,
+      "note": "a whole answer that takes 2.5 s: give up at 1.5 s",
+      "mocks": {
+        "primary": "slow",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "note": "a 5xx is not asked again",
+      "mocks": {
+        "primary": "outage",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "note": "headers, then a second of silence before any event: stalled, so 502",
+      "mocks": {
+        "primary": "stalled_before_first_event",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "level": 3,
+      "visible": true,
+      "note": "the primary is down: the secondary answers, with the same messages",
+      "mocks": {
+        "primary": "outage"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\ndata: {\"delta\":\"each June.\"}\n\ndata: {\"provider\":\"secondary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1,
+          "headers": {
+            "X-Api-Key": "cs-fake-secondary-key"
+          },
+          "body": {
+            "model": "steady-2",
+            "max_output_tokens": 256,
+            "stream": true
+          },
+          "body_same_as": {
+            "mock": "primary",
+            "route": "chat-stream",
+            "fields": [
+              "messages"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 3,
+      "visible": true,
+      "note": "the primary's stream drops after an event reached the caller: no fallback",
+      "mocks": {
+        "primary": "dropped_mid_stream"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\nevent: error\ndata: {\"error\":\"the provider's stream ended early\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 3,
+      "visible": true,
+      "note": "the primary is down and the secondary's stream reports an error: 502",
+      "mocks": {
+        "primary": "outage",
+        "secondary": "error_event"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "search"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 3,
+      "note": "the primary does not answer in 1.5 s: the secondary, with the same messages",
+      "mocks": {
+        "primary": "slow"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "You answer questions about the office."
+            },
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\ndata: {\"delta\":\"each June.\"}\n\ndata: {\"provider\":\"secondary\",\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1,
+          "body_same_as": {
+            "mock": "primary",
+            "route": "chat-stream",
+            "fields": [
+              "messages"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 3,
+      "note": "the primary stalls before its first event: the secondary",
+      "mocks": {
+        "primary": "stalled_before_first_event"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\ndata: {\"delta\":\"each June.\"}\n\ndata: {\"provider\":\"secondary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 3,
+      "note": "the primary's stream closes before its first event: the secondary",
+      "mocks": {
+        "primary": "dropped_before_first_event"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\ndata: {\"delta\":\"each June.\"}\n\ndata: {\"provider\":\"secondary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h21",
+      "level": 3,
+      "note": "three 429s from the primary, then the secondary's whole answer",
+      "mocks": {
+        "primary": "rate_limited"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ]
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "provider": "secondary",
+          "content": "Renewals happen each June.",
+          "usage": {
+            "prompt_tokens": 5,
+            "completion_tokens": 3
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 3,
+          "min_gap_ms": 950
+        },
+        {
+          "mock": "secondary",
+          "route": "messages",
+          "count": 1,
+          "body_same_as": {
+            "mock": "primary",
+            "route": "chat",
+            "fields": [
+              "messages"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "note": "Retry-After: 3 from the primary: the secondary at once",
+      "mocks": {
+        "primary": "limited_long"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\ndata: {\"delta\":\"each June.\"}\n\ndata: {\"provider\":\"secondary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "note": "the primary stalls after its first event reached the caller: no fallback",
+      "mocks": {
+        "primary": "stalled_stream"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\nevent: error\ndata: {\"error\":\"the provider's stream stalled\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 3,
+      "note": "the primary's first event is malformed, so nothing reached the caller: the secondary",
+      "mocks": {
+        "primary": "malformed_first_chunk"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\ndata: {\"delta\":\"each June.\"}\n\ndata: {\"provider\":\"secondary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 3,
+      "note": "the secondary's stream drops after its first event: an error event",
+      "mocks": {
+        "primary": "outage",
+        "secondary": "dropped_mid_stream"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Renewals happen \"}\n\nevent: error\ndata: {\"error\":\"the provider's stream ended early\"}\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 3,
+      "note": "a fallback carries the caller's history and limit, as the secondary names it",
+      "mocks": {
+        "primary": "outage"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "Where is the quiet room?"
+            },
+            {
+              "role": "assistant",
+              "content": "On the third floor."
+            },
+            {
+              "role": "user",
+              "content": "Is it open on Fridays?"
+            }
+          ],
+          "max_tokens": 64
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "provider": "secondary",
+          "content": "Renewals happen each June.",
+          "usage": {
+            "prompt_tokens": 17,
+            "completion_tokens": 3
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages",
+          "count": 1,
+          "headers": {
+            "X-Api-Key": "cs-fake-secondary-key"
+          },
+          "body": {
+            "model": "steady-2",
+            "max_output_tokens": 64,
+            "stream": false
+          },
+          "body_same_as": {
+            "mock": "primary",
+            "route": "chat",
+            "fields": [
+              "messages"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 3,
+      "note": "both providers are down: 502",
+      "mocks": {
+        "primary": "outage",
+        "secondary": "overloaded"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "design"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no provider answered"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "level": 4,
+      "visible": true,
+      "note": "a budget of 100 caps max_tokens at 100",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/people/budget",
+          "json": {
+            "tokens": 100
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true,
+          "max_tokens": 4096
+        },
+        "headers": {
+          "X-Team": "people"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "body_max": {
+            "max_tokens": 100
+          }
+        }
+      ]
+    },
+    {
+      "id": "v11",
+      "level": 4,
+      "visible": true,
+      "note": "a team's usage and cost after a streamed and a whole answer",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/billing/budget",
+          "json": {
+            "tokens": 1000
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "billing"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ]
+          },
+          "headers": {
+            "X-Team": "billing"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/teams/billing/usage"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "team": "billing",
+          "prompt_tokens": 10,
+          "completion_tokens": 8,
+          "cost_micros": 68,
+          "remaining_tokens": 982
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        },
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v12",
+      "level": 4,
+      "visible": true,
+      "note": "a budget used up: refused before any provider is asked",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/legal/budget",
+          "json": {
+            "tokens": 9
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "legal"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "legal"
+        }
+      },
+      "expected": {
+        "status": 429,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "token budget exhausted"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h28",
+      "level": 4,
+      "note": "a streamed answer's usage counts: 9 of 20 used, so the next cap is 11",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/growth/budget",
+          "json": {
+            "tokens": 20
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "growth"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true,
+          "max_tokens": 4096
+        },
+        "headers": {
+          "X-Team": "growth"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 2
+        },
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "body": {
+            "max_tokens": 20
+          }
+        },
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "body": {
+            "max_tokens": 11
+          }
+        }
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 4,
+      "note": "a caller's max_tokens below the remaining budget stays as it is",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/research/budget",
+          "json": {
+            "tokens": 500
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "max_tokens": 50
+        },
+        "headers": {
+          "X-Team": "research"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "provider": "primary",
+          "content": "Badges renew every June.",
+          "usage": {
+            "prompt_tokens": 5,
+            "completion_tokens": 4
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat",
+          "count": 1,
+          "body": {
+            "max_tokens": 50
+          }
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 4,
+      "note": "a budget larger than the default leaves the default of 256",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/finance/budget",
+          "json": {
+            "tokens": 5000
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "finance"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "body": {
+            "max_tokens": 256
+          }
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 4,
+      "note": "the secondary's answer is priced at the secondary's rates",
+      "mocks": {
+        "primary": "outage"
+      },
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/data/budget",
+          "json": {
+            "tokens": 1000
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "data"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/teams/data/usage"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "team": "data",
+          "prompt_tokens": 5,
+          "completion_tokens": 3,
+          "cost_micros": 60,
+          "remaining_tokens": 992
+        }
+      },
+      "log": [
+        {
+          "mock": "secondary",
+          "route": "messages-stream",
+          "count": 1,
+          "body": {
+            "max_output_tokens": 256
+          }
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 4,
+      "note": "a request no provider answered costs nothing",
+      "mocks": {
+        "primary": "outage",
+        "secondary": "overloaded"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/v1/teams/mobile/budget",
+            "json": {
+              "tokens": 1000
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "team": "mobile",
+              "budget_tokens": 1000
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/chat",
+            "json": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "When do badges renew?"
+                }
+              ],
+              "stream": true
+            },
+            "headers": {
+              "X-Team": "mobile"
+            }
+          },
+          "expected": {
+            "status": 502,
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "error": "no provider answered"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/teams/mobile/usage"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "team": "mobile",
+              "prompt_tokens": 0,
+              "completion_tokens": 0,
+              "cost_micros": 0,
+              "remaining_tokens": 1000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 4,
+      "note": "a refused request costs nothing, and the budget stays used up",
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/v1/teams/sales/budget",
+            "json": {
+              "tokens": 9
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "team": "sales",
+              "budget_tokens": 9
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/chat",
+            "json": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "When do badges renew?"
+                }
+              ],
+              "stream": true
+            },
+            "headers": {
+              "X-Team": "sales"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "headers": {
+              "Content-Type": "text/event-stream"
+            },
+            "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/chat",
+            "json": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "When do badges renew?"
+                }
+              ],
+              "stream": true
+            },
+            "headers": {
+              "X-Team": "sales"
+            }
+          },
+          "expected": {
+            "status": 429,
+            "body": {
+              "error": "token budget exhausted"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/teams/sales/usage"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "team": "sales",
+              "prompt_tokens": 5,
+              "completion_tokens": 4,
+              "cost_micros": 34,
+              "remaining_tokens": 0
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h34",
+      "level": 4,
+      "note": "a team with no budget has usage and cost, and no remaining tokens",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "system",
+                "content": "You answer questions about the office."
+              },
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "ops"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/teams/ops/usage"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "team": "ops",
+          "prompt_tokens": 12,
+          "completion_tokens": 4,
+          "cost_micros": 48,
+          "remaining_tokens": null
+        }
+      }
+    },
+    {
+      "id": "h35",
+      "level": 4,
+      "note": "a budget of 0 refuses the first request",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/hr/budget",
+          "json": {
+            "tokens": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "hr"
+        }
+      },
+      "expected": {
+        "status": 429,
+        "body": {
+          "error": "token budget exhausted"
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 4,
+      "note": "an answer can pass the budget: what remains is 0, never less",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/infra/budget",
+          "json": {
+            "tokens": 10
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "system",
+                "content": "You answer questions about the office."
+              },
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "infra"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/teams/infra/usage"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "team": "infra",
+          "prompt_tokens": 12,
+          "completion_tokens": 4,
+          "cost_micros": 48,
+          "remaining_tokens": 0
+        }
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "body": {
+            "max_tokens": 10
+          }
+        }
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 4,
+      "note": "a budget that is not a non-negative integer is refused",
+      "request": {
+        "method": "PUT",
+        "path": "/v1/teams/security/budget",
+        "json": {
+          "tokens": -5
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "tokens must be a non-negative integer"
+        }
+      }
+    },
+    {
+      "id": "h38",
+      "level": 4,
+      "note": "one team's used-up budget does not touch another team",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/quality/budget",
+          "json": {
+            "tokens": 9
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "quality"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true
+        },
+        "headers": {
+          "X-Team": "docs"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 4,
+      "note": "a new budget counts what the team has used already: 9 of 30, so a cap of 21",
+      "before": [
+        {
+          "method": "PUT",
+          "path": "/v1/teams/platform/budget",
+          "json": {
+            "tokens": 9
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat",
+          "json": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "When do badges renew?"
+              }
+            ],
+            "stream": true
+          },
+          "headers": {
+            "X-Team": "platform"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/teams/platform/budget",
+          "json": {
+            "tokens": 30
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/chat",
+        "json": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "When do badges renew?"
+            }
+          ],
+          "stream": true,
+          "max_tokens": 4096
+        },
+        "headers": {
+          "X-Team": "platform"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"delta\":\"Badges renew \"}\n\ndata: {\"delta\":\"every June.\"}\n\ndata: {\"provider\":\"primary\",\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n"
+      },
+      "log": [
+        {
+          "mock": "primary",
+          "route": "chat-stream",
+          "count": 1,
+          "body": {
+            "max_tokens": 21
+          }
+        }
+      ]
+    }
+  ]
+}

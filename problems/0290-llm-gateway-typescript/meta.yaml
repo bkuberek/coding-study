@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0290"
+slug: llm-gateway-typescript
+title: LLM Gateway (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [ai-llm, backend]
+job_roles: [backend, ai-engineer]
+scope: project
+languages: [typescript]
+summary: A company's teams call language models through one internal gateway. Build it to stream answers as they come, wait out rate limits, fall back to a second provider with the same conversation, and keep each team in budget.
+levels:
+  - {level: 1, title: Proxy and stream}
+  - {level: 2, title: Rate limits and timeouts}
+  - {level: 3, title: Fallback}
+  - {level: 4, title: Budgets and cost}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    PRIMARY_LLM_URL: http://primary:8080
+    PRIMARY_LLM_KEY: cs-fake-primary-key
+    SECONDARY_LLM_URL: http://secondary:8080
+    SECONDARY_LLM_KEY: cs-fake-secondary-key
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: primary, config: mocks/primary.yaml}
+    - {name: secondary, config: mocks/secondary.yaml}
+  requires:
+    lock: pnpm-lock.yaml
+    sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "One stream reader per provider, a gateway that commits to a provider at the first event, and a ledger per team", role: optimal, time: "per request", space: "per event and per team"}
+related: [token-cost-reconciler, vendor-retry-client-typescript, coworking-availability-typescript]
+estimate_minutes: 180
