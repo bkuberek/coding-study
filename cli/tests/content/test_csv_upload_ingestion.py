@@ -121,6 +121,11 @@ def test_each_bulk_case_expects_one_import_per_upload_of_the_bulk_file(case_id: 
     assert answer_to(case_id, "/imports") == [bulk_import()] * uploads
 
 
+def test_the_case_after_the_crash_restarts_the_app_and_keeps_its_data():
+    """A reset would erase what the crash left, which is what `h25` judges."""
+    assert (CASES["h25"].get("restart"), "fresh" in CASES["h25"]) == ("app", False)
+
+
 def test_the_bulk_case_expects_a_report_line_for_each_bad_row_the_generator_writes():
     report = "".join(f"{line},invalid_quantity\n" for line in bad_bulk_lines())
 

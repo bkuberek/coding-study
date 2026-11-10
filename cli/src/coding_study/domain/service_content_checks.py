@@ -14,7 +14,13 @@ from dataclasses import dataclass
 from typing import cast
 
 from coding_study.domain.cases import Case
-from coding_study.domain.http_case import HttpCaseInput, ParallelBurst
+from coding_study.domain.http_case import (
+    HttpCaseInput,
+    HttpStep,
+    ParallelBurst,
+    ServiceStep,
+    SleepStep,
+)
 from coding_study.domain.http_case_checks import step_issues
 from coding_study.domain.http_grading import HTTP_COMPARATORS
 from coding_study.domain.http_origins import declared_origins
@@ -389,7 +395,10 @@ def _case(where: str, case: Case, rules: _CaseRules) -> _Found:
         yield where, f"the comparator {used.type} cannot judge a response body"
     yield from _scenarios(where, case, http, rules)
     yield from _logs(where, http, rules)
-    for message in _first_byte_issues(http, _hang_guard_ms(case, rules)):
+    limit_ms = _hang_guard_ms(case, rules)
+    for message in (*_first_byte_issues(http, limit_ms), *_sleep_issues(http, limit_ms)):
+        yield where, message
+    for message in _service_issues(http, rules.files.backing_services or _NO_COMPOSE):
         yield where, message
     origins = declared_origins(rules.service.app.port, rules.service.grader_reach)
     for message in step_issues(http, origins):
@@ -419,6 +428,8 @@ def _first_byte_issues(http: HttpCaseInput, limit_ms: int) -> Iterator[str]:
     """A first-byte limit at or past the hang guard could never fail: the case times out first."""
     after = (http.parallel.after,) if http.parallel and http.parallel.after else ()
     for step in (*http.exchange_steps(), *http.cleanup, *after):
+        if not isinstance(step, HttpStep):
+            continue
         allowed = step.expected.first_byte_ms_max if step.expected is not None else None
         if allowed is None or allowed < limit_ms:
             continue
@@ -427,6 +438,28 @@ def _first_byte_issues(http: HttpCaseInput, limit_ms: int) -> Iterator[str]:
             "so the case would time out first"
         )
         yield f"{step.label}: {problem}" if step.label else problem
+
+
+def _sleep_issues(http: HttpCaseInput, limit_ms: int) -> Iterator[str]:
+    """Sleeps that fill the hang guard leave the requests no time: the case would time out."""
+    slept = sum(step.ms for step in http.steps if isinstance(step, SleepStep))
+    if slept >= limit_ms:
+        yield (
+            f"the steps sleep {slept} ms in all, which is not under the hang guard of "
+            f"{limit_ms} ms, so the case would time out first"
+        )
+
+
+def _service_issues(http: HttpCaseInput, compose: Mapping[str, object]) -> Iterator[str]:
+    """A step changes only a service of the problem's compose file: never the app, the mock
+    server or the stack's own helpers."""
+    declared = sorted(backing_services_of(compose))
+    named = ", ".join(declared) or "none"
+    for step in http.steps:
+        service = step.change.service if isinstance(step, ServiceStep) else None
+        if service is not None and service not in declared:
+            problem = f"{service} is no backing service of the problem; it declares {named}"
+            yield f"{step.label}: {problem}"
 
 
 def _scenarios(where: str, case: Case, http: HttpCaseInput, rules: _CaseRules) -> _Found:

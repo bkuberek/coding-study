@@ -114,6 +114,30 @@ def test_a_fresh_case_restarts_before_its_scenarios_and_forgets_what_startup_cal
     ]
 
 
+def test_a_restarting_case_restarts_the_app_alone_before_its_scenarios():
+    rig = Rig()
+    grade(rig, http_case(restart_app=True, mocks={ROOM_VENDOR: "outage"}))
+    assert rig.journal == [
+        "mocks reset",
+        "restart app",
+        "mocks reset",
+        f"scenario {ROOM_VENDOR}=outage",
+        "send GET /a",
+    ]
+
+
+def test_a_restart_that_fails_before_a_case_is_an_error_that_ends_the_run():
+    rig = Rig()
+    rig.stack.restart_problem = "the app did not answer its health path"
+    judgement = grade(rig, http_case("h1", restart_app=True), http_case("h2"))
+    verdict = judgement.verdicts[0]
+    assert isinstance(verdict.outcome, Raised)
+    assert (verdict.outcome.error.type, statuses(judgement)) == (
+        "RestartFailed",
+        [CaseStatus.ERROR, CaseStatus.NOT_RUN],
+    )
+
+
 def test_a_right_answer_passes():
     rig = Rig()
     assert statuses(grade(rig, http_case())) == [CaseStatus.PASS]

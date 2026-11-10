@@ -1676,7 +1676,7 @@
     {
       "id": "h25",
       "level": 3,
-      "fresh": true,
+      "restart": "app",
       "hang_guard_ms": 90000,
       "note": "after a restart in the middle of the bulk file, its event comes back, and the second upload loads once, whole",
       "steps": [

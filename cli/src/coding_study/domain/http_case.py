@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 
 from coding_study.domain.cases import Expected, FunctionInput, JsonValue
 from coding_study.domain.problem import ComparatorSpec
+from coding_study.domain.sandbox import ServiceChange
 
 type QueryValue = str | tuple[str, ...]
 type ExpectedStatus = int | str
@@ -119,7 +120,14 @@ class TextBody:
     text: str
 
 
-type TemplateBody = JsonBody | FormBody | TextBody
+@dataclass(frozen=True, slots=True)
+class BytesBody:
+    """Sent byte for byte, as `body_base64` wrote it; it names no `{{captures}}`."""
+
+    data: bytes
+
+
+type TemplateBody = JsonBody | FormBody | TextBody | BytesBody
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +183,29 @@ class HttpStep:
 
 
 @dataclass(frozen=True, slots=True)
+class SleepStep:
+    """A wait between two steps of a multi-step case, which counts toward its limit."""
+
+    label: str
+    """`step 3 sleep 500 ms`."""
+    ms: int
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceStep:
+    """A backing service paused, unpaused, stopped or started mid-case. It runs on the stack's
+    clock, so it counts toward no limit, and the grader puts the service back after the case."""
+
+    label: str
+    """`step 2 pause store`."""
+    change: ServiceChange
+
+
+type CaseStep = HttpStep | SleepStep | ServiceStep
+"""A step of a multi-step case: a request, or one that sends nothing."""
+
+
+@dataclass(frozen=True, slots=True)
 class OutputPattern:
     regex: str
     """Python's regular expression syntax, searched for anywhere in the output."""
@@ -225,7 +256,9 @@ class HttpCaseInput(FunctionInput):
     log: tuple[LogAssertion, ...] = ()
     fresh: bool = False
     """Restart the app and reset its data first."""
-    steps: tuple[HttpStep, ...] = ()
+    restart_app: bool = False
+    """Restart the app first and keep its data, as a crash and a restart would."""
+    steps: tuple[CaseStep, ...] = ()
     """A multi-step case's steps, with every flow it uses written out."""
     cleanup: tuple[HttpStep, ...] = ()
     """Steps that run after the case whatever happened, to undo what it changed."""
@@ -238,8 +271,8 @@ class HttpCaseInput(FunctionInput):
         """How many times the case runs: a parallel case may repeat."""
         return self.parallel.repeat if self.parallel is not None else 1
 
-    def exchange_steps(self) -> tuple[HttpStep, ...]:
-        """Every step the case sends, in order: a single-request case's `before` requests, each of
+    def exchange_steps(self) -> tuple[CaseStep, ...]:
+        """Every step the case takes, in order: a single-request case's `before` requests, each of
         which must answer 2xx, then its request."""
         if self.steps or self.request is None:
             return self.steps

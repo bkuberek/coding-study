@@ -2,8 +2,19 @@ from typing import Any
 
 from coding_study.adapters.http_grader.case_document import http_case_input
 from coding_study.domain.cases import Expected
-from coding_study.domain.http_case import HttpExpected, HttpRequest, LogAssertion, SameBody
+from coding_study.domain.http_case import (
+    BytesBody,
+    HttpExpected,
+    HttpRequest,
+    HttpStep,
+    LogAssertion,
+    RequestTemplate,
+    SameBody,
+    ServiceStep,
+    SleepStep,
+)
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
+from coding_study.domain.sandbox import ServiceAction, ServiceChange
 
 
 def document(**fields: Any) -> dict[str, Any]:
@@ -69,6 +80,46 @@ def test_a_malformed_body_goes_out_byte_for_byte():
 
 def test_a_body_with_no_content_type_stays_without_one():
     assert request_of(body="plain").headers == {}
+
+
+BYTES_IN_BASE64 = "AAEC/w=="
+BYTES = b"\x00\x01\x02\xff"
+
+
+def test_a_base64_body_goes_out_as_its_bytes():
+    assert request_of(body_base64=BYTES_IN_BASE64).body == BYTES
+
+
+def test_a_steps_base64_body_goes_out_as_its_bytes():
+    step = {"request": {"method": "POST", "path": "/files", "body_base64": BYTES_IN_BASE64}}
+    case = {"id": "h1", "level": 1, "steps": [step]}
+    (parsed,) = http_case_input(case).steps
+    assert isinstance(parsed, HttpStep)
+    assert isinstance(parsed.request, RequestTemplate)
+    assert parsed.request.body == BytesBody(BYTES)
+
+
+def test_a_parallel_requests_base64_body_goes_out_as_its_bytes():
+    request = {"method": "POST", "path": "/files", "body_base64": BYTES_IN_BASE64}
+    case = {"id": "h1", "level": 1, "parallel": {"count": 2, "request": request}}
+    burst = http_case_input(case | {"expected_statuses": {"201": 2}}).parallel
+    assert burst is not None
+    assert [sent.body for sent in burst.requests] == [BYTES, BYTES]
+
+
+GET_A = {"request": {"method": "GET", "path": "/a"}}
+
+
+def test_a_sleep_step_names_its_place_and_its_wait():
+    case = {"id": "h1", "level": 1, "steps": [GET_A, {"sleep_ms": 500}]}
+    assert http_case_input(case).steps[1] == SleepStep("step 2 sleep 500 ms", 500)
+
+
+def test_a_service_step_names_its_place_its_action_and_its_service():
+    case = {"id": "h1", "level": 1, "steps": [GET_A, {"service": "store", "action": "pause"}]}
+    assert http_case_input(case).steps[1] == ServiceStep(
+        "step 2 pause store", ServiceChange("store", ServiceAction.PAUSE)
+    )
 
 
 def test_an_expected_body_may_be_null():
@@ -165,6 +216,19 @@ def test_a_case_is_not_fresh_unless_it_says_so():
 
 def test_a_fresh_case_says_so():
     assert http_case_input(document(fresh=True)).fresh is True
+
+
+def test_a_case_keeps_its_app_running_unless_it_says_so():
+    assert http_case_input(document()).restart_app is False
+
+
+def test_a_case_that_restarts_the_app_says_so():
+    assert http_case_input(document(restart="app")).restart_app is True
+
+
+def test_a_multi_step_case_may_restart_the_app():
+    case = {"id": "h1", "level": 1, "restart": "app", "steps": [GET_A]}
+    assert http_case_input(case).restart_app is True
 
 
 def test_reports_show_the_request_as_written():

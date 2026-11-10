@@ -30,6 +30,8 @@ def step_issues(http: HttpCaseInput, origins: frozenset[str]) -> Iterator[str]:
     """`origins` are those the problem declares, `http://<name>:<port>`."""
     captured: set[str] = set()
     for step in (*http.steps, *http.cleanup):
+        if not isinstance(step, HttpStep):
+            continue
         yield from _issues_of(step, captured, origins)
         captured |= set(step.captures)
     for assertion in http.log:

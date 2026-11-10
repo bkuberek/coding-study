@@ -106,6 +106,71 @@ def test_a_single_request_case_may_expect_a_class_of_statuses(validator: SchemaV
     assert violations(validator, case) == []
 
 
+def test_a_step_may_carry_a_binary_body_in_base64(validator: SchemaValidator):
+    assert violations(validator, with_request(method="PUT", body_base64="AAEC/w==")) == []
+
+
+def with_steps_around(middle: dict[str, Any]) -> dict[str, Any]:
+    """The case with `middle` between its first two steps."""
+    case = steps_case()
+    case["steps"].insert(1, middle)
+    return case
+
+
+def test_a_step_may_sleep_between_requests(validator: SchemaValidator):
+    assert violations(validator, with_steps_around({"sleep_ms": 500})) == []
+
+
+@pytest.mark.parametrize(
+    ("label", "middle"),
+    [
+        ("no wait", {"sleep_ms": 0}),
+        ("a wait past the cap", {"sleep_ms": 10_001}),
+        ("a wait that is no integer", {"sleep_ms": 1.5}),
+        ("a sleep with a request", {"sleep_ms": 1, "request": {"method": "GET", "path": "/"}}),
+    ],
+)
+def test_a_sleep_step_is_refused_for(
+    validator: SchemaValidator, label: str, middle: dict[str, Any]
+):
+    assert violations(validator, with_steps_around(middle)) != [], label
+
+
+def test_a_case_of_sleeps_alone_is_refused(validator: SchemaValidator):
+    assert violations(validator, refused_with(steps=[{"sleep_ms": 1}])) != []
+
+
+def test_a_cleanup_step_may_not_sleep(validator: SchemaValidator):
+    assert violations(validator, refused_with(cleanup=[{"sleep_ms": 1}])) != []
+
+
+@pytest.mark.parametrize("action", ["pause", "unpause", "stop", "start"])
+def test_a_step_may_change_a_backing_service(validator: SchemaValidator, action: str):
+    middle = {"service": "store", "action": action}
+    assert violations(validator, with_steps_around(middle)) == []
+
+
+@pytest.mark.parametrize(
+    ("label", "middle"),
+    [
+        ("an unknown action", {"service": "store", "action": "restart"}),
+        ("no action", {"service": "store"}),
+        ("no service", {"action": "pause"}),
+        ("a service that is no name", {"service": "Store DB", "action": "pause"}),
+        ("another field", {"service": "store", "action": "pause", "sleep_ms": 1}),
+    ],
+)
+def test_a_service_step_is_refused_for(
+    validator: SchemaValidator, label: str, middle: dict[str, Any]
+):
+    assert violations(validator, with_steps_around(middle)) != [], label
+
+
+def test_a_cleanup_step_may_not_change_a_service(validator: SchemaValidator):
+    cleanup = [{"service": "store", "action": "start"}]
+    assert violations(validator, refused_with(cleanup=cleanup)) != []
+
+
 def refused_with(**fields: Any) -> dict[str, Any]:
     return steps_case() | fields
 
@@ -143,6 +208,9 @@ def with_request(**fields: Any) -> dict[str, Any]:
         ("an https url", with_request(path=None, url="https://idp:8443/a")),
         ("a relative url", with_request(path=None, url="idp/a")),
         ("both form and json", with_request(form={"a": "b"}, json={})),
+        ("both body and body_base64", with_request(body="", body_base64="AA==")),
+        ("both form and body_base64", with_request(form={}, body_base64="AA==")),
+        ("a body_base64 that is no base64", with_request(body_base64="AAA")),
         ("a form value that is not text", with_request(form={"a": 1})),
         ("a jar that is no name", with_request(jar="two words")),
         ("an unknown capture", with_step(capture={"a": "cookie.x"})),

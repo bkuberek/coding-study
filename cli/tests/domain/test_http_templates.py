@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.domain.cases import Expected
 from coding_study.domain.http_case import (
+    BytesBody,
     FormBody,
     HttpExpected,
     JsonBody,
@@ -121,6 +122,12 @@ def test_a_content_type_the_step_names_wins():
 def test_a_text_body_goes_with_no_content_type():
     request = rendered_request(RequestTemplate("POST", "/a", body=TextBody("{{token}}")), VALUES)
     assert (request.body, request.headers) == (b"t/2", {})
+
+
+def test_a_binary_body_goes_byte_for_byte_with_no_content_type():
+    template = RequestTemplate("POST", "/files", body=BytesBody(b"\x00{{token}}\xff"))
+    request = rendered_request(template, VALUES)
+    assert (request.body, request.headers) == (b"\x00{{token}}\xff", {})
 
 
 def test_headers_and_the_jar_and_redirects_carry_over():

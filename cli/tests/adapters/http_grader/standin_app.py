@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import parse_qsl, urlsplit
 
 from coding_study.application.http_grading_ports import AppExit, StackEndpoints
+from coding_study.domain.sandbox import ServiceChange
 from tests.mock_server_support import SAMPLE_TOKEN
 
 ROOM_VENDOR = "room-vendor"
@@ -145,6 +146,9 @@ class StandInStack:
     def restart_app_with_fresh_data(self) -> None:
         time.sleep(self.restart_takes_s)
         self.restarts.append("fresh")
+
+    def change_service(self, change: ServiceChange) -> None:
+        self.restarts.append(f"{change.action} {change.service}")
 
     def app_exit(self, within_ms: int) -> AppExit | None:
         return self.app.exit

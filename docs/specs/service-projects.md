@@ -808,9 +808,8 @@ The contract between the stack and the grader's multi-step cases (P11). Some ser
 
 Engine gaps found while building `0283` to `0287`. None blocks a problem; each is worked around in the problem that met it.
 
-- **Backing services cannot be stopped or paused by a case.** No case can stop or pause a service, and the mock server's pass-through only proxies HTTP, so a problem cannot grade "the store went down" by taking the store away.
-- **A kept restart needs a no-op reset.** With services, S23 requires `commands.reset` for any `fresh` case. Restarting the app while keeping its data therefore needs a `reset` that does nothing, as `0284` declares.
-- **There is no sleep step.** A case waits with a long poll or a slow mock route.
+Four gaps found then are closed: a binary request body ([`body_base64`](#hidden-http-case)), a [sleep step and a change to a backing service](#steps-that-send-nothing) mid-case, and a restart that keeps the app's data ([`restart`](#hidden-http-case)). Problems that worked around them keep their workarounds, except `0284`, which restarts with `restart: "app"`.
+
 - **Parallel cases judge status counts only.** They never compare bodies.
 - **The `unordered` comparator applies to every step of a multi-step case.**
 - **Moto holds a whole S3 object in memory.** A large object needs a bigger memory limit on the Moto service and a disk-backed `/tmp` for it.
@@ -828,7 +827,6 @@ Found while building `0289` to `0292`:
 - **A mock cannot compute a vector per element of a batched embeddings request.** Run-time values fill in text, not one embedding per input, so a mock embeddings API is a table of exact batches matched with `match.body`, as `0291` does.
 - **A log assertion's label shows only the first 40 characters of its expected body.** A long `body` subset is cut in the reason, so the case's `note` says what was expected.
 - **A case cannot combine `steps` with `before`.** Setup requests become the first steps.
-- **A binary request body travels as base64 inside JSON.** A request's `body` is text, and there is no `body_base64` yet, so a case that uploads bytes sends them encoded in a JSON field, as `0289` does.
 
 **Valkey is the open store used.** `valkey/valkey:9.1.3-alpine`, the BSD-licensed fork of Redis that speaks its protocol, backs `0285` in place of Redis, so a Redis client reaches it unchanged and the problem carries no source-available license.
 
@@ -867,7 +865,7 @@ A case then names a problem-owned script as `write_data`, run as `grade_setup` i
 
 ### Reset
 
-Data resets per run. A problem that needs a reset between cases declares `commands.reset`, and a case asks for it with `fresh: true`. cstudy stops the app, runs `reset` with `CSTUDY_RESET_PHASE=apply`, and starts the app again. `CSTUDY_RESET_PHASE=prepare` runs once after `bootstrap`. PostgreSQL's `CREATE DATABASE ... TEMPLATE` is an example of such a command, not a core feature: the fixture's `prepare` copies the migrated database to a template, and its `apply` drops the database `WITH (FORCE)`, creates it again from the template and empties Redis with `FLUSHALL`. On Postgres 17.11 with the fixture's tables, the copy took 31 ms and putting it back 87 ms (69 to drop, 18 to create). Without `commands.reset`, `fresh: true` only restarts the app.
+Data resets per run. A problem that needs a reset between cases declares `commands.reset`, and a case asks for it with `fresh: true`. cstudy stops the app, runs `reset` with `CSTUDY_RESET_PHASE=apply`, and starts the app again. `CSTUDY_RESET_PHASE=prepare` runs once after `bootstrap`. PostgreSQL's `CREATE DATABASE ... TEMPLATE` is an example of such a command, not a core feature: the fixture's `prepare` copies the migrated database to a template, and its `apply` drops the database `WITH (FORCE)`, creates it again from the template and empties Redis with `FLUSHALL`. On Postgres 17.11 with the fixture's tables, the copy took 31 ms and putting it back 87 ms (69 to drop, 18 to create). Without `commands.reset`, `fresh: true` only restarts the app. A case that restarts the app and keeps its data, as after a crash, asks for `restart: "app"` instead, and needs no `commands.reset`.
 
 ### Parallel cases
 
@@ -910,8 +908,9 @@ The grader asks a stack for little, through `GradedStack` in `application/http_g
 | Member | What it is |
 |--------|------------|
 | `endpoints` | `app_url` and `control_url` on `127.0.0.1`, `control_token`, and the names in `mocks`. `control_url` is `None` without mock servers |
-| `restart_app()` | Stops your app and starts it again, for a case that hung it |
+| `restart_app()` | Stops your app and starts it again, for a case that hung it, or before one with `restart: "app"` |
 | `restart_app_with_fresh_data()` | For `fresh`: stops your app, runs `commands.reset` with `CSTUDY_RESET_PHASE=apply` if declared, starts your app |
+| `change_service(change)` | `docker compose pause`, `unpause`, `stop` or `start` on one backing service, for a [step](#steps-that-send-nothing). `start` returns once the service is healthy |
 | `app_exit(within_ms)` | Your app's exit code and stderr tail, or `None` if it still runs after waiting that long, since a container's exit shows a moment after its connections drop |
 | `app_output(since_s)` | What your app printed, standard output and error together, since a moment in seconds since the epoch, for an [output check](#output-check). One `docker compose logs --since` call, through `SandboxEngine.app_output_since`; a read that fails is a stack failure, not a verdict |
 
@@ -932,7 +931,7 @@ A case's limit runs from its first request to the last byte of its last answer, 
 3. With `grade_setup`, the from-empty check: a stack of its own, under a fresh name, brings up the mock and service containers and runs `bootstrap` on empty data, with the app idle, then goes with its data (`down -v`). A failure is a [migration failure](#failure-reporting) that says it was from empty, and it shows its output even in a mock attempt, since no hidden data is there. Without `grade_setup`, the `bootstrap` of the next step is itself this check.
 4. Bring up a fresh stack (`up --wait`), with its one-shots in order before `app`: `grade_setup` if declared, `bootstrap` if declared, `reset` with `prepare` if declared. The app's start depends on them and on the mock container being healthy, which P1 measured faster than separate steps, with one failure path.
 5. `app` runs `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`, each try limited to 5 s as a whole, so an answer that never ends still counts as no answer. The second clock starts here.
-6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
+6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data, or if `restart` is `"app"`, restart the app alone and keep its data, then `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, put back any backing service the steps left paused or stopped, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
 7. `down -v`.
 
 Each `cstudy submit` has a stack of its own, under a fresh name, so two at once cannot collide, and `.cs/runs/` holds the run's generated files until it ends. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
@@ -957,7 +956,7 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 |-------|------|
 | `mocks` | The scenario per mock server; a mock server it leaves out has none. A visible case names visible scenarios only (S23) |
 | `before` | Requests sent first, each of which must answer 2xx, for a case that needs state. They share the case's limit, and the one that fails names itself in the reason. Optional |
-| `request` | `method`, `path`, optional `query`, `headers`, and `json` or `body`. A `query` value is a string, or a list sent once per value. `json` is encoded and sends `Content-Type: application/json` unless `headers` name one. `body` goes out byte for byte, so it can be malformed |
+| `request` | `method`, `path`, optional `query`, `headers`, and one of `json`, `body` and `body_base64`. A `query` value is a string, or a list sent once per value. `json` is encoded and sends `Content-Type: application/json` unless `headers` name one. `body` goes out byte for byte, so it can be malformed. `body_base64` is a binary body, such as a file upload, in standard padded base64: the grader decodes it and sends the bytes raw, with no `Content-Type` unless `headers` name one: `{"method": "PUT", "path": "/files/a.png", "headers": {"Content-Type": "image/png"}, "body_base64": "iVBORw0KGgo="}`. The schema refuses two of these together |
 | `expected.status` | Required: a status, or a class of them such as `"4xx"`, which holds every status of its hundred |
 | `expected.body` | Optional; left out, any body passes. A string is the body's exact text. Anything else is compared parsed, by `comparator`, so key order and whitespace cannot fail a correct answer, and `null` asks for a JSON null. An object must hold exactly the fields expected: an extra one fails and is named. `NaN` and `Infinity` are not JSON |
 | `expected.headers` | Optional. Each listed header must match, its name in any case. A `Content-Type` that names no parameter ignores the answer's, so a framework's `; charset=utf-8` cannot fail it |
@@ -965,6 +964,7 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 | `comparator` | Overrides the problem's: `{"type": ...}`, with `tolerance` for `float`. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
 | `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers. `headers` and `form` narrow what counts to the requests that carried each header, by its name in any case, or each field of a form-encoded body, such as `{"form": {"refresh_token": "{{rt2}}"}}` with `count: 1`. Their values may name [captures](#multi-step-cases). A log that overflowed fails them too, and so does a body cut at the log's 64 KiB, whose form cannot be read. `body`, `body_max`, `body_same_as` and `body_prefix_stable` judge a JSON body ([Logged bodies](#logged-bodies)) |
 | `fresh` | Restart the app and run `commands.reset` first |
+| `restart` | `"app"`: restart the app first and keep its data, as a crash and a restart would, with no `commands.reset`, so S23 asks for none. Not beside `fresh: true`, which resets the data as well: `{"id": "h25", "level": 3, "restart": "app", "steps": [...]}`, as `0284` restarts its app in the middle of a load |
 | `app_output` | What your app may not print while the case runs: `{"absent": [...]}` ([Output check](#output-check)) |
 
 A case has a `level`, or no graded run would reach it. `project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.
@@ -1003,8 +1003,8 @@ Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a
 
 | Rule | Detail |
 |------|--------|
-| `steps` | In place of `request`, `expected` and `before`; at least one. A step is a `request` with an optional `expected` and `capture`, or a `use` of a flow. A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was sent, the last step's answer is judged together with `log`, as a single request's is |
-| `request` | As a single request's, plus: `url` in place of `path`, `form`, `jar` and `follow_redirects`. `form` is sent as `application/x-www-form-urlencoded` unless `headers` name a `Content-Type`; one of `json`, `form` and `body` at most |
+| `steps` | In place of `request`, `expected` and `before`; at least one request. A step is a `request` with an optional `expected` and `capture`, a `use` of a flow, or a step that sends nothing: a [sleep, or a change to a backing service](#steps-that-send-nothing). A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was taken, the last request's answer is judged together with `log`, as a single request's is, even when steps that send nothing follow it |
+| `request` | As a single request's, plus: `url` in place of `path`, `form`, `jar` and `follow_redirects`. `form` is sent as `application/x-www-form-urlencoded` unless `headers` name a `Content-Type`; one of `json`, `form`, `body` and `body_base64` at most. A `body_base64` names no capture |
 | `path` and `url` | A `path` goes to your app, as every single request does. A `url` is `http://<name>:<port>/<path>`, an origin as the stack's network names it, or a capture that holds one. The grader dials the address the stack publishes for that origin and sends its name as `Host`, so the app and a provider see the same names a container would. The origins a case may name are your app's own, `http://app:<app.port>`, and each entry of [`grader_reach`](#grader-reach), a backing service or a mock server, such as `http://idp:8080` ([below](#reaching-an-origin)). `https` is not sent: nothing in a stack has a certificate |
 | `expected` | A single request's fields, with a status class such as `"4xx"`, and the case's comparator. Left out, any answer passes, which a step that only captures or a cleanup step may want. `first_byte_ms_max` times each step on its own, from writing that step's request, and a late byte names the step: `step 2 POST /v1/chat: first body byte after 2140 ms, expected within 1000 ms`. A parallel case's `after` request takes it too |
 | `capture` | A name per value read from the answer: `status`; `header.<name>`; `header.<name>.query.<parameter>`, a query parameter of a header that holds a URL, such as `Location`; `body.<dotted path>`, where a number names a list element and a value that is not a string is kept as its JSON text; `form.<id>.<attribute>`, an attribute of the HTML `<form>` with that `id`; `input.<name>.<attribute>`, of the `<input>` with that `name`. HTML entities are unescaped, as a browser would. A value missing from a right answer fails the step and names where it looked. A wrong answer captures nothing |
@@ -1013,12 +1013,64 @@ Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a
 | Redirects | Not followed unless `follow_redirects: true`, so a flow can capture each `Location`. A followed 301, 302 or 303 becomes a GET with no body and none of the step's headers; a 307 or 308 repeats the request. Up to 10 hops, within the case's limit. A redirect to an origin the stack does not publish is not followed: it is the step's answer |
 | `flows` | Named step lists at the top of tests.json, such as `login`, written once and used by any case with `{"use": "login"}`. `with` fills each `{{name}}` of the flow's steps with its text, which may name a capture itself; a name it leaves out is a capture. A flow may use another flow, not itself. Captures in a flow are the case's, as if its steps were written in place: a flow's step is named `step 1, login step 3` |
 | `cleanup` | Steps after the case whatever happened, even after a failure or a timeout, to undo what it changed in a provider: a mapper, a key, a lifespan. They get the case's limit afresh, and each runs whatever the others did. One that names a value no step captured is passed over, since what it would undo never happened. One that fails, or gets no answer, fails a case that passed, with the step named, since later cases would meet what it left. No cleanup runs once your app has exited or hung too often |
-| Limits | The case's limit covers every step, as it covers `before` requests |
+| Limits | The case's limit covers every step, sleeps included, as it covers `before` requests |
 | Verdict | `fail`, `timeout`, `error` and `invalid` as for a single request, from the step where it happened. A step that cannot be sent, for a URL no stack publishes, fails the case with the step named |
 
 Provider state persists across the cases of a run, since restarting a service such as Keycloak per case would cost seconds. A case that changes it undoes the change in `cleanup`.
 
 S23 checks a multi-step case before any run: each `{{name}}` is captured by an earlier step, or by a step at all for a cleanup step and `log`; each `{{` opens a name; each `url` written out names a declared origin, your app's or a `grader_reach` entry's, while a `url` that is itself a capture is checked when it is sent; each step's `first_byte_ms_max` is under the case's hang guard. A step that uses a flow tests.json lacks, or a flow that uses itself, fails loading, naming the case and the step.
+
+#### Steps that send nothing
+
+Built after P11. A multi-step case can wait between two requests, or after the last one before its `log` is read, for an app that should act on its own meanwhile: a retry in the background, a cache entry that expires.
+
+```json
+{"id": "h7", "level": 2, "note": "the cached price expires after 1 s",
+ "steps": [
+   {"request": {"method": "GET", "path": "/prices/oak"}, "expected": {"status": 200}},
+   {"sleep_ms": 1200},
+   {"request": {"method": "GET", "path": "/prices/oak"}, "expected": {"status": 200}}],
+ "log": [{"mock": "price-vendor", "route": "price", "count": 2}]}
+```
+
+| Rule | Detail |
+|------|--------|
+| `sleep_ms` | 1 to 10,000 ms. It counts toward the case's limit as a request does, so the next request has that much less left. One that outlasts what is left ends the case as `timeout`, as an answer that came too late would. Its label reads `step 2 sleep 1200 ms` |
+| S23 | The sleeps of a case add up to less than its hang guard, or the case would time out first |
+| Where | In a case's `steps` only: not in a flow, a cleanup step or a parallel case |
+
+A sleep replaces the slow mock route some problems wait with; those problems keep theirs.
+
+A case can also take a backing service away mid-case and bring it back, to grade what the app does when its store goes down: a timeout, a fallback, an error it reports rather than hangs on.
+
+```json
+{"id": "h9", "level": 3, "note": "a store that stops answering: the app answers 503 within its own timeout",
+ "hang_guard_ms": 8000,
+ "steps": [
+   {"service": "store", "action": "pause"},
+   {"request": {"method": "GET", "path": "/prices/oak"},
+    "expected": {"status": 503, "first_byte_ms_max": 3000}},
+   {"service": "store", "action": "unpause"},
+   {"request": {"method": "GET", "path": "/prices/oak"}, "expected": {"status": 200}}]}
+```
+
+| Rule | Detail |
+|------|--------|
+| `service` and `action` | `pause`, `unpause`, `stop` or `start`, run as `docker compose <action> <service>` on the case's own stack. `start` waits until the service's healthcheck passes again, as `up --wait` does. Its label reads `step 1 pause store` |
+| S23 | `service` names a service of the problem's compose file: never the app, a mock server or the stack's own containers |
+| Clock | A change runs on the first clock, as a restart does, so it counts toward no limit |
+| Put back | After the case's steps, whatever happened, even a failure or a timeout, the grader unpauses each service the case left paused and starts each it left stopped, before the cleanup steps and before an app that hung restarts. A case that brings its service back itself is left as it is |
+| Failure | A change the engine cannot make, or cannot undo, is no verdict on your code: the case is `error` with the engine's output, and the remaining cases are `not_run` |
+| Where | In a case's `steps` only, as a sleep |
+
+What a client meets, measured on Docker 29.9.2 and Compose 5.6.1 with the Redis of the fixture `5903`: a new connection by a client with a 1.5 s timeout, as `tests/adapters/test_service_steps_real.py` grades it, and an open one by a probe that held its connection across the change:
+
+| Action | A new connection | An open connection |
+|--------|------------------|--------------------|
+| `pause` | Accepted, since the kernel completes the handshake, then no answer: the client waits until its own timeout. Never refused | A request waits, and is answered the moment the service is unpaused: 1.1 s later in a probe that unpaused it then |
+| `stop` | The name no longer resolves: `Name or service not known` after about 200 ms. Not refused either | Closed by the service as it stops: the next read finds the end of the stream at once |
+
+So `pause` is how a case teaches a timeout: a client with none hangs until the case's limit ends it as `timeout`. `stop` teaches an outage the client can see at once.
 
 #### Output check
 

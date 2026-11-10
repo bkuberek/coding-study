@@ -14,6 +14,7 @@ from coding_study.domain.sandbox import (
     RESET_PHASE_APPLY,
     RESET_PHASE_VARIABLE,
     ReadyStack,
+    ServiceChange,
     StackPlan,
     StackStartError,
 )
@@ -61,6 +62,12 @@ class SandboxGradedStack:
             self._engine.stop_app(self._plan)
             self._reset(reset)
             self._engine.start_app(self._plan, self._ready, self._service.startup_budget)
+        except StackStartError as failed:
+            raise StackStepError(str(failed), failed.output) from failed
+
+    def change_service(self, change: ServiceChange) -> None:
+        try:
+            self._engine.change_service(self._plan, change, self._service.startup_budget)
         except StackStartError as failed:
             raise StackStepError(str(failed), failed.output) from failed
 

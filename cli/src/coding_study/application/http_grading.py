@@ -1,12 +1,13 @@
 """Grading a service project over HTTP (docs/specs/service-projects.md#http-grading).
 
 Given a stack that is ready, runs each case of the graded levels in tests.json order: resets the
-mock servers, restarts the app with fresh data if the case asks, sets its scenarios, sends its
-requests or steps within its limit, then judges the answer and the mock servers' logs, and runs its
-cleanup steps. A parallel case sends its burst all at once, and one that repeats runs again from
-its reset. Nothing before the first request counts toward the limit. An app that dies leaves
-the remaining cases not run, as does one that hangs too often. The result is a `Judgement` like a
-runner's, so levels, tallies, submissions and events need no code of their own.
+mock servers, restarts the app with fresh data, or keeping its data, if the case asks, sets its
+scenarios, sends its requests or steps within its limit, puts back any backing service a step left
+paused or stopped, then judges the answer and the mock servers' logs, and runs its cleanup steps.
+A parallel case sends its burst all at once, and one that repeats runs again from its reset.
+Nothing before the first request counts toward the limit. An app that dies leaves the remaining
+cases not run, as does one that hangs too often. The result is a `Judgement` like a runner's, so
+levels, tallies, submissions and events need no code of their own.
 """
 
 import time
@@ -20,7 +21,6 @@ from coding_study.application.http_grading_ports import (
     GradedStack,
     OpenStackClients,
     StackClients,
-    StackEndpoints,
     StackStepError,
 )
 from coding_study.application.http_grading_steps import (
@@ -63,7 +63,21 @@ JUDGED_STATUSES = frozenset({CaseStatus.PASS, CaseStatus.FAIL})
 already says what went wrong."""
 TESTS_FILE = "tests.json"
 APP_EXITED = "AppExited"
-RESET_FAILED = "ResetFailed"
+
+
+@dataclass(frozen=True, slots=True)
+class _StackStep:
+    """What the stack failed to do for a case, as its error and the run's reason to stop."""
+
+    error: str
+    stops_the_run: str
+
+
+RESET_FAILED = _StackStep("ResetFailed", "the app's data could not be reset for an earlier case")
+RESTART_FAILED = _StackStep("RestartFailed", "the app could not be restarted for an earlier case")
+SERVICE_FAILED = _StackStep(
+    "ServiceFailed", "a backing service could not be changed or put back for an earlier case"
+)
 CONNECTION_ERRORS = {
     ExchangeFailure.REFUSED: "ConnectionRefused",
     ExchangeFailure.DROPPED: "ConnectionDropped",
@@ -95,14 +109,8 @@ def run_http_grading(
     stops answering."""
     endpoints = stack.endpoints
     cases = _checked_cases(run, endpoints.mocks)
-    grader = _Grader(_Stack(stack, endpoints), open_clients(endpoints), run.listener)
+    grader = _Grader(stack, open_clients(endpoints), run.listener)
     return Judgement(len(cases), tuple(grader.judged(case) for case in cases))
-
-
-@dataclass(frozen=True, slots=True)
-class _Stack:
-    graded: GradedStack
-    endpoints: StackEndpoints
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,10 +163,9 @@ class _Grader:
     """The run so far: whether it has stopped, and how many cases have hung the app."""
 
     def __init__(
-        self, stack: _Stack, clients: StackClients, listener: HttpCaseListener | None
+        self, stack: GradedStack, clients: StackClients, listener: HttpCaseListener | None
     ) -> None:
-        self._stack = stack.graded
-        self._endpoints = stack.endpoints
+        self._stack = stack
         self._app = clients.app
         self._mocks = clients.mocks
         self._listener = listener
@@ -195,18 +202,33 @@ class _Grader:
         try:
             self._prepare(checked)
         except StackStepError as failed:
-            self._stopped = "the app's data could not be reset for an earlier case"
-            error = UserError(RESET_FAILED, str(failed), failed.output_tail)
-            return CaseVerdict(checked.case, CaseStatus.ERROR, Raised(error, 0))
-        return self._exchanged(checked, started_s)
+            stack_step = RESET_FAILED if checked.http.fresh else RESTART_FAILED
+            return self._stack_failed(checked, failed, stack_step)
+        try:
+            return self._exchanged(checked, started_s)
+        except StackStepError as failed:
+            return self._stack_failed(checked, failed, SERVICE_FAILED)
+
+    def _stack_failed(
+        self, checked: _CheckedCase, failed: StackStepError, step: _StackStep
+    ) -> CaseVerdict:
+        """A stack that could not do what a case asks: the case is an error, and the rest are not
+        run, since the stack is no longer as the problem made it."""
+        self._stopped = step.stops_the_run
+        error = UserError(step.error, str(failed), failed.output_tail)
+        return CaseVerdict(checked.case, CaseStatus.ERROR, Raised(error, 0))
 
     def _prepare(self, checked: _CheckedCase) -> None:
-        """A fresh start comes between two resets: the first so that the app's startup meets no
-        scenario left by the last case, the second so that its log and counters hold this case's
-        requests alone."""
+        """A restart, fresh or keeping the app's data, comes between two resets: the first so that
+        the app's startup meets no scenario left by the last case, the second so that its log and
+        counters hold this case's requests alone."""
         self._mocks.reset()
-        if checked.http.fresh:
-            self._stack.restart_app_with_fresh_data()
+        http = checked.http
+        if http.fresh or http.restart_app:
+            if http.fresh:
+                self._stack.restart_app_with_fresh_data()
+            else:
+                self._stack.restart_app()
             self._mocks.reset()
         for mock, scenario in checked.http.mocks.items():
             if not self._mocks.set_scenario(mock, scenario):
@@ -214,16 +236,20 @@ class _Grader:
                 raise _content_error(checked.source, checked.case.id, message)
 
     def _exchanged(self, checked: _CheckedCase, started_s: float) -> CaseVerdict:
-        """The steps, then the cleanup, then what the app printed meanwhile."""
+        """The steps, then the backing services they changed put back, then the cleanup, then
+        what the app printed meanwhile. Raises StackStepError when a service cannot be changed."""
         http = checked.http
         self._app.clear_cookies()
         rules = StepRules(checked.comparator, checked.limit_ms)
-        runner = StepRunner(self._app, self._endpoints, rules)
-        ended = (
-            run_burst(runner, http, http.parallel)
-            if http.parallel is not None
-            else runner.run(http.exchange_steps())
-        )
+        runner = StepRunner(self._app, self._stack, rules)
+        try:
+            ended = (
+                run_burst(runner, http, http.parallel)
+                if http.parallel is not None
+                else runner.run(http.exchange_steps())
+            )
+        finally:
+            runner.put_services_back()
         verdict = self._judged(checked, ended, runner)
         if self._stopped is not None:
             return verdict

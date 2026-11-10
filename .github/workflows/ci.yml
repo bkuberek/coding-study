@@ -207,6 +207,7 @@ jobs:
             cli/src/coding_study/application/graded_stack.py
             cli/src/coding_study/application/http_grading.py
             cli/src/coding_study/application/http_grading_ports.py
+            cli/src/coding_study/application/http_grading_steps.py
             cli/src/coding_study/application/service_*.py
             cli/src/coding_study/application/verify_service.py
             cli/src/coding_study/application/code_intelligence.py
@@ -223,6 +224,7 @@ jobs:
             cli/src/coding_study/entrypoints/web/code_intelligence.py
             cli/tests/adapters/test_docker_sandbox_real.py
             cli/tests/adapters/test_backing_services_real.py
+            cli/tests/adapters/test_service_steps_real.py
             cli/tests/real_service_projects.py
             cli/tests/test_service_projects_real.py
             cli/tests/fixtures/service_projects
@@ -335,8 +337,8 @@ jobs:
   # the leftovers a killed owner leaves. One job, no matrix and no schedule, on a free account's
   # minutes: it takes a few minutes and runs only when the sandbox can have changed. It is also the
   # only Linux evidence: file ownership, the firewall and the bridge address differ from Docker
-  # Desktop's. Images come from the registry here: the mock server's before the tests that pull
-  # nothing, and the others through `cstudy start`. Installs are small and go through a volume on
+  # Desktop's. Images come from the registry here: the mock server's and the fixture's Redis before
+  # the tests that pull nothing, and the others through `cstudy start`. Installs are small and go through a volume on
   # the engine, so nothing is worth caching. Nothing waits for this job.
   sandbox:
     name: Sandbox tests (real Docker, Linux)
@@ -368,6 +370,9 @@ jobs:
 
       - name: Pull the mock server's image
         run: docker pull "$(uv run python -c 'from coding_study.domain.sandbox import PYTHON_IMAGE; print(PYTHON_IMAGE)')"
+
+      - name: Pull the Redis that the service-step tests pause and stop
+        run: docker pull "$(uv run python -c 'from tests.adapters.test_service_steps_real import REDIS; print(REDIS["image"])')"
 
       - name: Sandbox tests
         run: uv run pytest -q -rs -m docker

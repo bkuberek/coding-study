@@ -6,6 +6,7 @@ flow's steps, with each name its `with` gives filled in, so nothing after loadin
 A parallel case's burst is written out the same way, one request per index.
 """
 
+import base64
 import json
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ from coding_study.domain.cases import Expected
 from coding_study.domain.http_captures import CaptureSyntaxError, capture_source
 from coding_study.domain.http_case import (
     DEFAULT_JAR,
+    BytesBody,
+    CaseStep,
     ExpectedStatus,
     FormBody,
     HttpCaseInput,
@@ -29,11 +32,14 @@ from coding_study.domain.http_case import (
     QueryValue,
     RequestTemplate,
     SameBody,
+    ServiceStep,
+    SleepStep,
     TemplateBody,
     TextBody,
 )
 from coding_study.domain.http_templates import bound
 from coding_study.domain.problem import DEFAULT_FLOAT_TOLERANCE, ComparatorSpec, ComparatorType
+from coding_study.domain.sandbox import ServiceAction, ServiceChange
 
 type Document = Mapping[str, Any]
 type Flows = Mapping[str, Sequence[Document]]
@@ -43,6 +49,13 @@ JSON_CONTENT_TYPE = "application/json"
 _MOCKS_FIELD = "mocks"
 _STEPS_FIELD = "steps"
 _PARALLEL_FIELD = "parallel"
+_RESTART_FIELD = "restart"
+_APP = "app"
+"""What `restart` restarts, its one value."""
+_SLEEP_FIELD = "sleep_ms"
+_SERVICE_FIELD = "service"
+_BASE64_BODY_FIELD = "body_base64"
+"""A binary body, which a JSON string cannot hold byte for byte."""
 INDEX_PLACEHOLDER = "{i}"
 """Where each request of a parallel case's burst gets its index."""
 _BOUND_FIELDS = ("request", "expected", "with")
@@ -72,6 +85,7 @@ def http_case_input(case: Document, flows: Flows | None = None) -> HttpCaseInput
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        restart_app=case.get(_RESTART_FIELD) == _APP,
         app_output=_output_check(case),
     )
 
@@ -89,10 +103,16 @@ def _steps_case(case: Document, flows: Flows) -> HttpCaseInput:
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        restart_app=case.get(_RESTART_FIELD) == _APP,
         steps=expander.steps(steps, _Place("step")),
-        cleanup=expander.steps(case.get("cleanup", ()), _Place("cleanup")),
+        cleanup=_requests(expander.steps(case.get("cleanup", ()), _Place("cleanup"))),
         app_output=_output_check(case),
     )
+
+
+def _requests(steps: tuple[CaseStep, ...]) -> tuple[HttpStep, ...]:
+    """The schema holds cleanup steps to requests."""
+    return tuple(step for step in steps if isinstance(step, HttpStep))
 
 
 def _parallel_case(case: Document) -> HttpCaseInput:
@@ -123,6 +143,7 @@ def _parallel_case(case: Document) -> HttpCaseInput:
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        restart_app=case.get(_RESTART_FIELD) == _APP,
         app_output=_output_check(case),
         parallel=burst,
     )
@@ -166,17 +187,24 @@ class _Place:
 class _Expander:
     flows: Flows
 
-    def steps(self, documents: Sequence[Document], place: _Place) -> tuple[HttpStep, ...]:
+    def steps(self, documents: Sequence[Document], place: _Place) -> tuple[CaseStep, ...]:
         return tuple(self._expanded(documents, place))
 
-    def _expanded(self, documents: Sequence[Document], place: _Place) -> Iterator[HttpStep]:
+    def _expanded(self, documents: Sequence[Document], place: _Place) -> Iterator[CaseStep]:
         for number, document in enumerate(documents, start=1):
+            label = place.label(number)
             if "use" in document:
                 yield from self._used(document, place, number)
+            elif _SLEEP_FIELD in document:
+                waits_ms: int = document[_SLEEP_FIELD]
+                yield SleepStep(f"{label} sleep {waits_ms} ms", waits_ms)
+            elif _SERVICE_FIELD in document:
+                change = ServiceChange(document[_SERVICE_FIELD], ServiceAction(document["action"]))
+                yield ServiceStep(f"{label} {change.action} {change.service}", change)
             else:
-                yield _step(document, place.label(number))
+                yield _step(document, label)
 
-    def _used(self, document: Document, place: _Place, number: int) -> Iterator[HttpStep]:
+    def _used(self, document: Document, place: _Place, number: int) -> Iterator[CaseStep]:
         name: str = document["use"]
         if name not in self.flows:
             raise CaseDocumentError(f"{place.label(number)}: no flow named {name}")
@@ -239,6 +267,8 @@ def _template_body(request: Document) -> TemplateBody | None:
         return FormBody(dict(request["form"]))
     if "body" in request:
         return TextBody(request["body"])
+    if _BASE64_BODY_FIELD in request:
+        return BytesBody(_decoded(request))
     return None
 
 
@@ -268,8 +298,15 @@ def _with_json_type(headers: dict[str, str]) -> dict[str, str]:
 def _body(request: Document) -> bytes | None:
     if "json" in request:
         return json.dumps(request["json"]).encode()
+    if _BASE64_BODY_FIELD in request:
+        return _decoded(request)
     body: str | None = request.get("body")
     return body.encode() if body is not None else None
+
+
+def _decoded(request: Document) -> bytes:
+    """The schema holds `body_base64` to the standard alphabet, padded."""
+    return base64.b64decode(request[_BASE64_BODY_FIELD], validate=True)
 
 
 def _expected(expected: Document) -> HttpExpected:
