@@ -53,7 +53,14 @@ def require_engine() -> None:
         pytest.skip("no docker on PATH")
 
 
-@pytest.fixture(params=[TYPESCRIPT, PYTHON, JAVA], ids=["typescript", "python", "java"])
+@pytest.fixture(
+    params=[
+        TYPESCRIPT,
+        PYTHON,
+        pytest.param(JAVA, marks=pytest.mark.docker_jvm),
+    ],
+    ids=["typescript", "python", "java"],
+)
 def project(request: pytest.FixtureRequest, tmp_path: Path) -> Generator[FixtureProject]:
     found = fixture_project(request.param, tmp_path)
     try:
@@ -214,6 +221,7 @@ def java(tmp_path: Path) -> Generator[FixtureProject]:
         found.remove_all_it_left()
 
 
+@pytest.mark.docker_jvm
 def test_a_jvm_project_builds_from_its_install_cache_with_no_volume_of_the_images_own(
     java: FixtureProject,
 ):

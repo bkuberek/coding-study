@@ -23,7 +23,13 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "docker: drives a real Docker engine, and is also slow; CI runs these in a job of its own "
-        "(-m docker)",
+        "(-m 'docker and not docker_jvm')",
+    )
+    config.addinivalue_line(
+        "markers",
+        "docker_jvm: a docker test that builds a JVM project on a real engine, about ten minutes "
+        "under load; also marked docker, and run locally only: CI deselects it to keep its sandbox "
+        "job under 15 minutes",
     )
 
 

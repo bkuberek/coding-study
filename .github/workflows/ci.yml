@@ -337,8 +337,9 @@ jobs:
 
   # A real engine, for what no fake can show: compose's behavior, the network that has no way out and
   # the leftovers a killed owner leaves. One job, no matrix and no schedule, on a free account's
-  # minutes: it takes a few minutes and runs only when the sandbox can have changed. It is also the
-  # only Linux evidence: file ownership, the firewall and the bridge address differ from Docker
+  # minutes: it takes a few minutes and runs only when the sandbox can have changed. The real-engine
+  # JVM tests (marked docker_jvm, about ten minutes under load) stay a local gate to keep it under
+  # 15 minutes. It is also the only Linux evidence: file ownership, the firewall and the bridge address differ from Docker
   # Desktop's. Images come from the registry here: the mock server's and the fixture's Redis before
   # the tests that pull nothing, and the others through `cstudy start`. Installs are small and go through a volume on
   # the engine, so nothing is worth caching. Nothing waits for this job.
@@ -377,4 +378,4 @@ jobs:
         run: docker pull "$(uv run python -c 'from tests.adapters.test_service_steps_real import REDIS; print(REDIS["image"])')"
 
       - name: Sandbox tests
-        run: uv run pytest -q -rs -m docker
+        run: uv run pytest -q -rs -m "docker and not docker_jvm"
