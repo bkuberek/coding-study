@@ -92,6 +92,18 @@ def test_a_broken_json_body_is_allowed_by_design():
     assert violations(config) == []
 
 
+def test_a_config_may_record_its_shape_version():
+    config = valid_config()
+    config["shape_version"] = "generic chat-completions style, docs read 2026-11"
+    assert violations(config) == []
+
+
+def test_a_shape_version_is_a_text():
+    config = valid_config()
+    config["shape_version"] = 2026
+    assert violations(config) != []
+
+
 def test_a_route_may_match_on_its_body():
     config = valid_config()
     first_route(config)["match"] = {"body": {"stream": True}, "body_contains": "refund"}

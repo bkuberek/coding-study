@@ -1,6 +1,6 @@
 # Spec: Service projects
 
-**Status: built through P8, P10's backing services and P11's grader part: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop and [on Linux](#on-linux) with Docker Engine, and the first catalog problem, [coworking availability](#the-first-problem), uses them in TypeScript and in Python. [Backing services](#backing-services) such as Postgres and Redis run beside your app, with migrations, `grade_setup` and `reset`, and the grader can [reach a declared service](#grader-reach), which a [multi-step case](#multi-step-cases) names by its origin, through a mock server's [pass-through](#pass-through) or directly. What is still planned says so where it stands: code intelligence and the Web UI (P9), contract tables and the D7 check of parallel cases (P10's grader side), and SSE streaming with the rest of R33 (P11).** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: built through P8, P10's backing services and P11's engine work: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop and [on Linux](#on-linux) with Docker Engine, and the first catalog problem, [coworking availability](#the-first-problem), uses them in TypeScript and in Python. [Backing services](#backing-services) such as Postgres and Redis run beside your app, with migrations, `grade_setup` and `reset`, and the grader can [reach a declared service](#grader-reach), which a [multi-step case](#multi-step-cases) names by its origin, through a mock server's [pass-through](#pass-through) or directly. What is still planned says so where it stands: code intelligence and the Web UI (P9), contract tables and the D7 check of parallel cases (P10's grader side), and the AI catalog problems that use the [extensions](#extensions) (P11). The mock server streams server-sent events, matches on request bodies and fills in run-time values, and a case can judge what a request's JSON body carried, so a [mock LLM provider](#a-mock-llm-provider) is config data.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -493,7 +493,7 @@ Reading a log answers `{"mock": "room-vendor", "entries": [...], "truncated": fa
 
 ### Extensions
 
-R33, for P11. They let a config mock a streaming API, an LLM provider among them. Matching on bodies, run-time values, streaming and assertions on logged bodies are built; the rest of this section is recommended, to confirm.
+Built at P11 (R33). They let a config mock a streaming API, an LLM provider among them, with no second program: matching on request bodies, run-time values in a response, server-sent event streams that a scenario can drop, stall or break, and log assertions on what a request's JSON body carried. The code is in `adapters/mock_server/` (`json_values.py`, `templates.py`, `matching.py`, `http_server.py`) and, for the grader, `domain/http_bodies.py` and `domain/http_grading.py`.
 
 #### Matching on bodies
 
@@ -615,33 +615,43 @@ Built at P11 (R33). A case's [`log`](#hidden-http-case) entry can judge what a r
 
 **The byte-prefix check, read simply.** R33 asked for a byte-prefix check across requests, and the first sketch said each request's whole body bytes start with the previous request's whole body. A JSON body closes its brackets after its last message, so a growing conversation never does that, and a provider caches the prompt it reads from the JSON, not the body's bytes. So the check reads one field, the one that grows: a text by its characters, which are its bytes once encoded, and a list element by element, each compared as canonical JSON text. A system prompt that gains a timestamp, a history rewritten in place, or tools reordered between calls break it; another key order or spacing does not. A second `log` entry checks a second field, such as `system` or `tools`.
 
-#### Still to confirm
+#### A mock LLM provider
+
+Built at P11 (R33). A mock LLM provider is config data on this format, with no key and no cost, served by the same program as every other mock server. An example ships as `cli/tests/fixtures/mock_configs/llm-provider.yaml`: a generic chat-completions-style API, named after no vendor, which the mock server's tests serve on loopback and an end-to-end test grades a gateway through.
 
 ```yaml
-shape_version: "2026-11"             # the shape this config records, for a real API's shape
+shape_version: "generic chat-completions style, public docs of 2026-11"
 routes:
-  - id: completion-stream
+  - id: chat-stream
     method: POST
-    path: /v1/completions
-    match: {body: {stream: true}}    # a JSON subset of the request body
+    path: /v1/chat/completions
+    match: {body: {stream: true}}
     response:
       status: 200
-      headers: {Content-Type: text/event-stream}
       stream:
-        - {data: '{"id": "{{request.body.request_id}}", "delta": "Desk "}', after_ms: 20}
-        - {data: '{"delta": "passes"}', after_ms: 20}
-        - {data: "[DONE]"}
+        - data: '{"id": "chat-{{seq}}", "model": {{json(request.body.model)}}, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Oak "}}]}'
+          after_ms: 20
+        - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "is free."}, "finish_reason": "stop"}]}'
+          after_ms: 20
+        - data: '{"id": "chat-{{seq}}", "choices": [], "usage": {"prompt_tokens": {{words(request.body.messages)}}, "completion_tokens": 3}}'
+        - data: "[DONE]"
+  # chat: the same path without stream, a whole answer with usage
+  # embed-refund and embed: /v1/embeddings, a vector chosen by match.body_contains
 scenarios:
-  dropped_mid_stream:
+  rate_limited:
     visible: true
-    route: completion-stream
-    drop_after_chunks: 1             # closes the connection with no terminator
+    status: 429
+    headers: {Retry-After: "1"}
+    body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+  # rate_limited_then_ok, dropped_mid_stream, stalled_stream, malformed_chunk, overloaded
 ```
 
-| Feature | Rule |
-|---------|------|
-| A mock LLM provider | Just config data on this format, with no key and no cost. A fake key goes in `project.env`, and a `log` entry can assert the header carried it |
-| Shape drift | Provider response shapes drift, so a config modeling a real API records `shape_version`, an authoring rule that no check can detect. It is a record for authors, and cstudy never checks it against a live API |
+| Rule | Detail |
+|------|--------|
+| What the example covers | A streamed chat answer that ends in `[DONE]` with a last event of token usage; the same path answered whole when `stream` is not true; an embeddings endpoint whose vector is chosen by the text it embeds; a 429 with `Retry-After`, alone and before the stream; a stream dropped after one event, one stalled after one event, one with a malformed chunk; and a 503. Its model is echoed from the request, and `prompt_tokens` counts the words of the messages, roles included, a deterministic stand-in for a tokenizer. There is no `total_tokens`, since run-time values do no arithmetic |
+| A fake key | The problem's `project.env` gives the app a fake key, such as `LLM_API_KEY: cs-fake-llm-key`, which reaches no provider, since nothing in a stack can. A `log` entry asserts the app sent it: `{"mock": "llm", "route": "chat-stream", "count": 1, "headers": {"Authorization": "Bearer cs-fake-llm-key"}}` |
+| A problem owns its config | A problem copies the example into its own `mocks/`, edits it to the shape its statement and its `mocks/<name>.API.md` document, and owns it from then on. Nothing keeps a copy in step with the example |
+| Shape drift | Provider response shapes drift, so a config modeling a real API records `shape_version`: which shape it copies and from when. It is a record for authors, which the schema allows and a stack's rendering leaves out; no check can tell drift, and cstudy never compares a config with a live API |
 | Out of scope | Per-request token signing for a mock identity provider. Use a service container, decided at the first identity problem (R34) |
 
 ### Pass-through
@@ -810,6 +820,13 @@ Engine gaps found while building `0283` to `0287`. None blocks a problem; each i
 - **The `unordered` comparator applies to every step of a multi-step case.**
 - **Moto holds a whole S3 object in memory.** A large object needs a bigger memory limit on the Moto service and a disk-backed `/tmp` for it.
 - **Moto allows `PurgeQueue` once every 60 s.**
+
+Left by R33's [extensions](#extensions), each with its way around:
+
+- **Your app's streamed answer is judged as its whole text.** The grader reads an answer to its end and compares `expected.body` as an exact string; it parses no events, so a problem fixes its event format byte for byte, as the end-to-end test's gateway does.
+- **Run-time values do no arithmetic and fill in no header.** A `total_tokens` is left to the app, and a header that should echo the request is fixed text.
+- **A mock cannot send a literal `{{`.** S20 refuses one that opens no run-time value.
+- **A stall holds its connection for at most 10 s.** An app whose own timeout is longer meets the stream's end there, with no terminator.
 
 **Valkey is the open store used.** `valkey/valkey:9.1.3-alpine`, the BSD-licensed fork of Redis that speaks its protocol, backs `0285` in place of Redis, so a Redis client reaches it unchanged and the problem carries no source-available license.
 

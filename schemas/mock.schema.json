@@ -6,6 +6,11 @@
   "additionalProperties": false,
   "required": ["routes"],
   "properties": {
+    "shape_version": {
+      "description": "For a config that models a real API: which shape it copies, and from when, since response shapes drift. A record for authors that no check compares with a live API; a stack's rendering leaves it out",
+      "type": "string",
+      "minLength": 1
+    },
     "upstream": {
       "description": "A service on the stack's network, http://<name>:<port>. A route without a response passes through to it, as does a request no route matches; each is logged. The mock server never signs anything",
       "type": "string",
