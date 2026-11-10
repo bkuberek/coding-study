@@ -20,7 +20,7 @@ project:
     install: [gradle, --quiet, resolveDependencies]
     run: [sh, scripts/run.sh]
     test: [gradle, --offline, test, --rerun]
-  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 120, mem_limit: 768m, install_cache: true}
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 120, mem_limit: 1g, install_cache: true}
   env:
     PORT: "8000"
     GRADLE_USER_HOME: /cache/gradle
@@ -28,6 +28,6 @@ project:
     GRADLE_USER_HOME: /cache/gradle
   requires:
     lock: gradle/verification-metadata.xml
-    sizes: {install_mb: 5, images_mb: {app: 307}, memory_mb: 400}
+    sizes: {install_mb: 200, images_mb: {app: 307}, memory_mb: 700}
 approaches:
   - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}
