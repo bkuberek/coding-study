@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 107 non-DSA items (91 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 111 non-DSA items (95 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 54 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 11 service projects added) | `problems/` |
+| `practical` | 58 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 15 service projects added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **303** (287 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **307** (291 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -297,7 +297,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (54, `problems/`)
+### practical (58, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -405,6 +405,15 @@ Five more service projects, in TypeScript, on the backing services. `0283` build
 | 0286 | `multi-tenant-api-typescript` | Multi-Tenant API (TypeScript) | project | hard | `typescript` | `backend`, `security` | `backend`, `security-engineer` | project |
 | 0287 | `event-sourced-ledger-typescript` | Event-Sourced Ledger (TypeScript) | project | hard | `typescript` | `fintech`, `backend` | `backend` | project |
 
+Four service projects in TypeScript on P11's mock server extensions, the first project-size AI/LLM problems among them. `0289` stores uploads behind a mock malware scanner that fails, and `0290` is an LLM gateway that streams answers from two mock providers, waits out rate limits, falls back and keeps budgets. `0291` answers from documents with citations, through mock embeddings and chat APIs and vector search on pgvector, and `0292` runs a tool-calling agent loop against a mock model and the shop's tool APIs. Each has its own `tests.json` and mock servers; only `0291` has a backing service.
+
+| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|------|------------|-----------|---------|-----------|-------|
+| 0289 | `secure-file-upload-typescript` | Secure File Upload (TypeScript) | project | medium | `typescript` | `security`, `backend` | `backend`, `security-engineer` | project |
+| 0290 | `llm-gateway-typescript` | LLM Gateway (TypeScript) | project | hard | `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | project |
+| 0291 | `rag-citations-typescript` | RAG Service with Citations (TypeScript) | project | hard | `typescript` | `ai-llm` | `ai-engineer` | project |
+| 0292 | `tool-calling-agent-loop-typescript` | Tool-Calling Agent Loop (TypeScript) | project | hard | `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | project |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -458,7 +467,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-54-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-58-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|

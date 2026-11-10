@@ -823,10 +823,17 @@ Engine gaps found while building `0283` to `0287`. None blocks a problem; each i
 
 Left by R33's [extensions](#extensions), each with its way around:
 
-- **Your app's streamed answer is judged as its whole text.** The grader reads an answer to its end and compares `expected.body` as an exact string; it parses no events, so a problem fixes its event format byte for byte, as the end-to-end test's gateway does.
+- **Your app's streamed answer is judged as its whole text.** The grader reads an answer to its end and compares `expected.body` as an exact string; it parses no events, so a problem fixes its event format byte for byte, as the end-to-end test's gateway does. Only the first body byte is timed, by [`first_byte_ms_max`](#hidden-http-case); the gaps between later events are not.
 - **Run-time values do no arithmetic and fill in no header.** A `total_tokens` is left to the app, and a header that should echo the request is fixed text.
 - **A mock cannot send a literal `{{`.** S20 refuses one that opens no run-time value.
 - **A stall holds its connection for at most 10 s.** An app whose own timeout is longer meets the stream's end there, with no terminator.
+
+Found while building `0289` to `0292`:
+
+- **A mock cannot compute a vector per element of a batched embeddings request.** Run-time values fill in text, not one embedding per input, so a mock embeddings API is a table of exact batches matched with `match.body`, as `0291` does.
+- **A log assertion's label shows only the first 40 characters of its expected body.** A long `body` subset is cut in the reason, so the case's `note` says what was expected.
+- **A case cannot combine `steps` with `before`.** Setup requests become the first steps.
+- **A binary request body travels as base64 inside JSON.** A request's `body` is text, and there is no `body_base64` yet, so a case that uploads bytes sends them encoded in a JSON field, as `0289` does.
 
 **Valkey is the open store used.** `valkey/valkey:9.1.3-alpine`, the BSD-licensed fork of Redis that speaks its protocol, backs `0285` in place of Redis, so a Redis client reaches it unchanged and the problem carries no source-available license.
 

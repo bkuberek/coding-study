@@ -200,7 +200,7 @@ The pilots are written with the next project problems.
 - [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
 - [ ] P9: code intelligence and Web UI.
 - [x] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. [Parallel cases](specs/service-projects.md#parallel-cases) are built too. Still planned: D7 for them, and contract tables (R9). The data-driven problems are PP5 to PP10 below, and all six are built.
-- [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems. Grader part built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. PP3 is built as `0280`. Still open: SSE streaming and the rest of R33, and the AI problems.
+- [x] P11: mock server extensions, multi-step cases, project-size security and AI problems. Built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. R33 is done: SSE streaming with drops and stalls, matching on request bodies, log assertions on JSON bodies, run-time values and an example mock LLM provider, with a [first-byte check](specs/service-projects.md#hidden-http-case), `first_byte_ms_max`, added so that a case can tell a stream from an answer held back until it is whole. PP3 is built as `0280`, and the AI and security problems as PP11, PP12, PP13 and PP15 below; PP14 is on hold.
 - [ ] P12 to P14: Kotlin and Java, Go, Rust (maybe).
 
 ## Phase 13: Catalog labels and new catalogs
@@ -253,7 +253,7 @@ PP3 waited for P10's backing services and grader reach and for P11's multi-step 
 | PP14 | Fix the vulnerable service | security · security-engineer | A working app with broken authentication, IDOR, mass assignment and path traversal, graded by attack cases that must fail and normal cases that must keep passing | hard |
 | PP15 | Secure file upload | security, backend · backend, security-engineer | Size limits, content sniffing, path traversal, a mock malware-scan vendor that fails | medium |
 
-Suggested order: PP1 to PP10 are built. What is left is PP11 to PP15, which need P11's SSE streaming and LLM provider mocks (the rest of R33); then P9, code intelligence and the Web UI; then P12 to P14, the Kotlin and Java, Go and Rust templates. D7 and contract tables (R9) come in when a problem needs them.
+Suggested order: PP1 to PP13 and PP15 are built, and PP14 is on hold. P9, code intelligence and the Web UI, is next; then P12 to P14, which bring the service problems to the JVM and Go: Kotlin and Java, Go, and Rust (maybe). D7 and contract tables (R9) come in when a problem needs them.
 
 - [x] PP1: `0278-coworking-availability-python` (P8).
 - [x] PP2: `0279-payment-webhook-receiver-typescript`.
@@ -265,7 +265,11 @@ Suggested order: PP1 to PP10 are built. What is left is PP11 to PP15, which need
 - [x] PP8: `0286-multi-tenant-api-typescript`, on Postgres with row-level security.
 - [x] PP9: `0285-price-cache-rate-limits-typescript`, on Valkey (BSD-licensed and Redis-compatible), not Redis, behind a mock pricing vendor.
 - [x] PP10: `0287-event-sourced-ledger-typescript`, on Postgres. The catalog now has 303 entries.
-- [ ] PP11 to PP15, after P11.
+- [x] PP15: `0289-secure-file-upload-typescript`, behind a mock malware scanner.
+- [x] PP11: `0290-llm-gateway-typescript`, on two mock LLM providers, with a hidden case that times the first byte of a slow stream.
+- [x] PP12: `0291-rag-citations-typescript`, on pgvector with mock embeddings and chat APIs.
+- [x] PP13: `0292-tool-calling-agent-loop-typescript`, on a mock model and mock tool APIs. The catalog now has 307 entries.
+- [ ] PP14: on hold: deliberately vulnerable starter content was stopped by a safety check; the owner decides whether to drop it.
 
 ## Phase 14: AI-reviewed problems
 
