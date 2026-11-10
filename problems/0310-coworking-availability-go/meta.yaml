@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0310"
+slug: coworking-availability-go
+title: Coworking Availability (Go)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend, platform]
+scope: project
+languages: [go]
+summary: A coworking space sells hot desks it counts itself and meeting rooms from outside vendors. Build the one API that says what can be booked on a day, and that keeps answering when a vendor fails.
+levels:
+  - {level: 1, title: Desks by day}
+  - {level: 2, title: Rooms from the vendor}
+  - {level: 3, title: When the vendor fails}
+  - {level: 4, title: A second vendor}
+comparator: {type: exact}
+project:
+  grading: http
+  image: golang:1.27.3@sha256:e519d3b0a5b285e5aa53ab9eef02bc6bbb9cb04608389b743a136a9ce75f0d1e
+  commands:
+    install: [go, mod, download]
+    run: [sh, scripts/run.sh]
+    test: [go, test, -count=1, ./...]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 180, mem_limit: 512m, install_cache: true}
+  env:
+    PORT: "8000"
+    ROOM_VENDOR_URL: http://room-vendor:8080
+    ANNEX_VENDOR_URL: http://annex-vendor:8080
+    GOPROXY: "off"
+    GOFLAGS: -mod=readonly
+    GOMODCACHE: /cache/go/mod
+    GOCACHE: /cache/go/build
+    GOTMPDIR: /cache
+    GOWORK: "off"
+    CGO_ENABLED: "0"
+  install_env:
+    GOMODCACHE: /cache/go/mod
+    GOCACHE: /cache/go/build
+    GOFLAGS: -mod=readonly
+    GOWORK: "off"
+  mocks:
+    - {name: room-vendor, config: mocks/room-vendor.yaml}
+    - {name: annex-vendor, config: mocks/annex-vendor.yaml}
+  requires:
+    lock: go.sum
+    sizes: {install_mb: 120, images_mb: {app: 316, mocks: 43}, memory_mb: 500}
+approaches:
+  - {id: reference, name: One client per vendor behind one shape of answer, role: optimal, time: "per request", space: "per request"}
+related: [coworking-availability-typescript, coworking-availability-python, coworking-availability-java, coworking-availability-kotlin, vendor-retry-client-typescript]
+estimate_minutes: 150
