@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0303"
+slug: versioned-memory-store
+title: Versioned Memory Store
+summary: "Implement MemoryStore: a shared memory whose changes name the version their writer read and are refused, with the current version, when it has moved on, so that no writer silently erases another's update."
+status: ready
+difficulty: easy
+track: practical
+kind: design
+patterns: [arrays-hashing]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  class:
+    name: MemoryStore
+    constructor: {params: []}
+    methods:
+      - {name: get, params: [{name: key, type: string}], returns: {type: string}}
+      - {name: version, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: write, params: [{name: key, type: string}, {name: expectedVersion, type: int}, {name: value, type: string}], returns: {type: "int[]"}}
+      - {name: forget, params: [{name: key, type: string}, {name: expectedVersion, type: int}], returns: {type: "int[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: versioned-map, name: One map from each key to its version and value that keeps forgotten keys, role: optimal, time: "O(1) per call", space: "O(u)", time_class: "n", space_class: "n"}
+related: [refresh-token-rotation, freshness-reranker]
+estimate_minutes: 20
