@@ -46,6 +46,16 @@ def case_with(*steps: dict[str, Any], **fields: Any) -> dict[str, Any]:
     return {"id": "h1", "level": 1, "steps": list(steps), **fields}
 
 
+def requests_of(
+    case: dict[str, Any], flows: dict[str, list[dict[str, Any]]] | None = None
+) -> tuple[HttpStep, ...]:
+    """The case's steps, each of which sends a request."""
+    steps = http_case_input(case, flows).steps
+    requests = tuple(step for step in steps if isinstance(step, HttpStep))
+    assert requests == steps
+    return requests
+
+
 def me_step() -> dict[str, Any]:
     return {
         "request": {"method": "GET", "path": "/me", "jar": "second", "follow_redirects": True},
@@ -66,7 +76,7 @@ def test_a_step_is_read_as_a_template_with_what_it_expects_and_captures():
 
 
 def test_a_step_keeps_its_jar_its_redirects_and_a_status_class():
-    (step,) = http_case_input(case_with(me_step())).steps
+    (step,) = requests_of(case_with(me_step()))
     assert (step.request, step.expected) == (
         RequestTemplate("GET", "/me", jar="second", follow_redirects=True),
         HttpExpected("4xx", Expected({"code": "{{code}}"})),
@@ -75,19 +85,19 @@ def test_a_step_keeps_its_jar_its_redirects_and_a_status_class():
 
 def test_a_step_keeps_its_first_byte_limit():
     timed = {**me_step(), "expected": {"status": 200, "first_byte_ms_max": 1000}}
-    (step,) = http_case_input(case_with(timed)).steps
+    (step,) = requests_of(case_with(timed))
     assert step.expected == HttpExpected(200, first_byte_ms_max=1000)
 
 
 def test_a_json_body_stays_json_until_it_is_sent():
     step = {"request": {"method": "POST", "path": "/a", "json": {"n": "{{n}}"}}}
-    assert http_case_input(case_with(step)).steps[0].request == RequestTemplate(
+    assert requests_of(case_with(step))[0].request == RequestTemplate(
         "POST", "/a", body=JsonBody({"n": "{{n}}"})
     )
 
 
 def test_a_flow_is_written_out_with_what_with_gives_and_labels_that_say_where():
-    steps = http_case_input(case_with({"use": "login", "with": {"user": "learner"}}), FLOWS).steps
+    steps = requests_of(case_with({"use": "login", "with": {"user": "learner"}}), FLOWS)
     assert [(step.label, step.request.body) for step in steps] == [
         ("step 1, login step 1, page step 1 GET /login", None),
         (
@@ -98,7 +108,7 @@ def test_a_flow_is_written_out_with_what_with_gives_and_labels_that_say_where():
 
 
 def test_a_name_that_with_does_not_give_stays_for_a_capture():
-    steps = http_case_input(case_with({"use": "login"}), FLOWS).steps
+    steps = requests_of(case_with({"use": "login"}), FLOWS)
     assert steps[1].request == RequestTemplate(
         "POST", "{{form}}", body=FormBody({"username": "{{user}}", "password": "pass"})
     )

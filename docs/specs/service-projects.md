@@ -816,7 +816,6 @@ Engine gaps found while building `0283` to `0287`. None blocks a problem; each i
 
 - **Backing services cannot be stopped or paused by a case.** No case can stop or pause a service, and the mock server's pass-through only proxies HTTP, so a problem cannot grade "the store went down" by taking the store away.
 - **A kept restart needs a no-op reset.** With services, S23 requires `commands.reset` for any `fresh` case. Restarting the app while keeping its data therefore needs a `reset` that does nothing, as `0284` declares.
-- **There is no sleep step.** A case waits with a long poll or a slow mock route.
 - **Parallel cases judge status counts only.** They never compare bodies.
 - **The `unordered` comparator applies to every step of a multi-step case.**
 - **Moto holds a whole S3 object in memory.** A large object needs a bigger memory limit on the Moto service and a disk-backed `/tmp` for it.
@@ -1008,7 +1007,7 @@ Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a
 
 | Rule | Detail |
 |------|--------|
-| `steps` | In place of `request`, `expected` and `before`; at least one. A step is a `request` with an optional `expected` and `capture`, or a `use` of a flow. A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was sent, the last step's answer is judged together with `log`, as a single request's is |
+| `steps` | In place of `request`, `expected` and `before`; at least one request. A step is a `request` with an optional `expected` and `capture`, a `use` of a flow, or a step that sends nothing: a [sleep](#steps-that-send-nothing). A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was taken, the last request's answer is judged together with `log`, as a single request's is, even when steps that send nothing follow it |
 | `request` | As a single request's, plus: `url` in place of `path`, `form`, `jar` and `follow_redirects`. `form` is sent as `application/x-www-form-urlencoded` unless `headers` name a `Content-Type`; one of `json`, `form`, `body` and `body_base64` at most. A `body_base64` names no capture |
 | `path` and `url` | A `path` goes to your app, as every single request does. A `url` is `http://<name>:<port>/<path>`, an origin as the stack's network names it, or a capture that holds one. The grader dials the address the stack publishes for that origin and sends its name as `Host`, so the app and a provider see the same names a container would. The origins a case may name are your app's own, `http://app:<app.port>`, and each entry of [`grader_reach`](#grader-reach), a backing service or a mock server, such as `http://idp:8080` ([below](#reaching-an-origin)). `https` is not sent: nothing in a stack has a certificate |
 | `expected` | A single request's fields, with a status class such as `"4xx"`, and the case's comparator. Left out, any answer passes, which a step that only captures or a cleanup step may want. `first_byte_ms_max` times each step on its own, from writing that step's request, and a late byte names the step: `step 2 POST /v1/chat: first body byte after 2140 ms, expected within 1000 ms`. A parallel case's `after` request takes it too |
@@ -1018,12 +1017,33 @@ Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a
 | Redirects | Not followed unless `follow_redirects: true`, so a flow can capture each `Location`. A followed 301, 302 or 303 becomes a GET with no body and none of the step's headers; a 307 or 308 repeats the request. Up to 10 hops, within the case's limit. A redirect to an origin the stack does not publish is not followed: it is the step's answer |
 | `flows` | Named step lists at the top of tests.json, such as `login`, written once and used by any case with `{"use": "login"}`. `with` fills each `{{name}}` of the flow's steps with its text, which may name a capture itself; a name it leaves out is a capture. A flow may use another flow, not itself. Captures in a flow are the case's, as if its steps were written in place: a flow's step is named `step 1, login step 3` |
 | `cleanup` | Steps after the case whatever happened, even after a failure or a timeout, to undo what it changed in a provider: a mapper, a key, a lifespan. They get the case's limit afresh, and each runs whatever the others did. One that names a value no step captured is passed over, since what it would undo never happened. One that fails, or gets no answer, fails a case that passed, with the step named, since later cases would meet what it left. No cleanup runs once your app has exited or hung too often |
-| Limits | The case's limit covers every step, as it covers `before` requests |
+| Limits | The case's limit covers every step, sleeps included, as it covers `before` requests |
 | Verdict | `fail`, `timeout`, `error` and `invalid` as for a single request, from the step where it happened. A step that cannot be sent, for a URL no stack publishes, fails the case with the step named |
 
 Provider state persists across the cases of a run, since restarting a service such as Keycloak per case would cost seconds. A case that changes it undoes the change in `cleanup`.
 
 S23 checks a multi-step case before any run: each `{{name}}` is captured by an earlier step, or by a step at all for a cleanup step and `log`; each `{{` opens a name; each `url` written out names a declared origin, your app's or a `grader_reach` entry's, while a `url` that is itself a capture is checked when it is sent; each step's `first_byte_ms_max` is under the case's hang guard. A step that uses a flow tests.json lacks, or a flow that uses itself, fails loading, naming the case and the step.
+
+#### Steps that send nothing
+
+Built after P11. A multi-step case can wait between two requests, or after the last one before its `log` is read, for an app that should act on its own meanwhile: a retry in the background, a cache entry that expires.
+
+```json
+{"id": "h7", "level": 2, "note": "the cached price expires after 1 s",
+ "steps": [
+   {"request": {"method": "GET", "path": "/prices/oak"}, "expected": {"status": 200}},
+   {"sleep_ms": 1200},
+   {"request": {"method": "GET", "path": "/prices/oak"}, "expected": {"status": 200}}],
+ "log": [{"mock": "price-vendor", "route": "price", "count": 2}]}
+```
+
+| Rule | Detail |
+|------|--------|
+| `sleep_ms` | 1 to 10,000 ms. It counts toward the case's limit as a request does, so the next request has that much less left. One that outlasts what is left ends the case as `timeout`, as an answer that came too late would. Its label reads `step 2 sleep 1200 ms` |
+| S23 | The sleeps of a case add up to less than its hang guard, or the case would time out first |
+| Where | In a case's `steps` only: not in a flow, a cleanup step or a parallel case |
+
+A sleep replaces the slow mock route some problems wait with; those problems keep theirs.
 
 #### Output check
 

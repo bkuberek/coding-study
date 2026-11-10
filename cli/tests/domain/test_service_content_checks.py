@@ -14,6 +14,7 @@ from coding_study.domain.http_case import (
     ParallelBurst,
     RequestTemplate,
     SameBody,
+    SleepStep,
 )
 from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Level
@@ -784,5 +785,24 @@ def test_a_steps_first_byte_limit_names_the_step():
 
     assert found == [
         "step 1 GET /a: first_byte_ms_max 3000 ms is not under the hang guard of 2000 ms, "
+        "so the case would time out first"
+    ]
+
+
+def sleeping_case(*waits_ms: int) -> Case:
+    request = HttpStep("step 1 GET /a", RequestTemplate("GET", "/a"), HttpExpected(200))
+    sleeps = tuple(SleepStep(f"step {number} sleep", ms) for number, ms in enumerate(waits_ms, 2))
+    return Case("h1", HttpCaseInput({}, steps=(request, *sleeps)), None, level=1)
+
+
+def test_sleeps_under_the_hang_guard_are_allowed():
+    assert s23(sleeping_case(4000, 5999), http_case("h2", 2)) == []
+
+
+def test_sleeps_adding_up_to_the_hang_guard_are_refused():
+    found = s23(sleeping_case(4000, 6000), http_case("h2", 2))
+
+    assert found == [
+        "the steps sleep 10000 ms in all, which is not under the hang guard of 10000 ms, "
         "so the case would time out first"
     ]

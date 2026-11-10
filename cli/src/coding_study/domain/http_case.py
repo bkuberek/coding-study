@@ -182,6 +182,19 @@ class HttpStep:
 
 
 @dataclass(frozen=True, slots=True)
+class SleepStep:
+    """A wait between two steps of a multi-step case, which counts toward its limit."""
+
+    label: str
+    """`step 3 sleep 500 ms`."""
+    ms: int
+
+
+type CaseStep = HttpStep | SleepStep
+"""A step of a multi-step case: a request, or one that sends nothing."""
+
+
+@dataclass(frozen=True, slots=True)
 class OutputPattern:
     regex: str
     """Python's regular expression syntax, searched for anywhere in the output."""
@@ -232,7 +245,7 @@ class HttpCaseInput(FunctionInput):
     log: tuple[LogAssertion, ...] = ()
     fresh: bool = False
     """Restart the app and reset its data first."""
-    steps: tuple[HttpStep, ...] = ()
+    steps: tuple[CaseStep, ...] = ()
     """A multi-step case's steps, with every flow it uses written out."""
     cleanup: tuple[HttpStep, ...] = ()
     """Steps that run after the case whatever happened, to undo what it changed."""
@@ -245,8 +258,8 @@ class HttpCaseInput(FunctionInput):
         """How many times the case runs: a parallel case may repeat."""
         return self.parallel.repeat if self.parallel is not None else 1
 
-    def exchange_steps(self) -> tuple[HttpStep, ...]:
-        """Every step the case sends, in order: a single-request case's `before` requests, each of
+    def exchange_steps(self) -> tuple[CaseStep, ...]:
+        """Every step the case takes, in order: a single-request case's `before` requests, each of
         which must answer 2xx, then its request."""
         if self.steps or self.request is None:
             return self.steps

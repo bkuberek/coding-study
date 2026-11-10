@@ -110,6 +110,40 @@ def test_a_step_may_carry_a_binary_body_in_base64(validator: SchemaValidator):
     assert violations(validator, with_request(method="PUT", body_base64="AAEC/w==")) == []
 
 
+def with_steps_around(middle: dict[str, Any]) -> dict[str, Any]:
+    """The case with `middle` between its first two steps."""
+    case = steps_case()
+    case["steps"].insert(1, middle)
+    return case
+
+
+def test_a_step_may_sleep_between_requests(validator: SchemaValidator):
+    assert violations(validator, with_steps_around({"sleep_ms": 500})) == []
+
+
+@pytest.mark.parametrize(
+    ("label", "middle"),
+    [
+        ("no wait", {"sleep_ms": 0}),
+        ("a wait past the cap", {"sleep_ms": 10_001}),
+        ("a wait that is no integer", {"sleep_ms": 1.5}),
+        ("a sleep with a request", {"sleep_ms": 1, "request": {"method": "GET", "path": "/"}}),
+    ],
+)
+def test_a_sleep_step_is_refused_for(
+    validator: SchemaValidator, label: str, middle: dict[str, Any]
+):
+    assert violations(validator, with_steps_around(middle)) != [], label
+
+
+def test_a_case_of_sleeps_alone_is_refused(validator: SchemaValidator):
+    assert violations(validator, refused_with(steps=[{"sleep_ms": 1}])) != []
+
+
+def test_a_cleanup_step_may_not_sleep(validator: SchemaValidator):
+    assert violations(validator, refused_with(cleanup=[{"sleep_ms": 1}])) != []
+
+
 def refused_with(**fields: Any) -> dict[str, Any]:
     return steps_case() | fields
 

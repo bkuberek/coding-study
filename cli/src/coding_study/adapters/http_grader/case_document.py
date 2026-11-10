@@ -17,6 +17,7 @@ from coding_study.domain.http_captures import CaptureSyntaxError, capture_source
 from coding_study.domain.http_case import (
     DEFAULT_JAR,
     BytesBody,
+    CaseStep,
     ExpectedStatus,
     FormBody,
     HttpCaseInput,
@@ -31,6 +32,7 @@ from coding_study.domain.http_case import (
     QueryValue,
     RequestTemplate,
     SameBody,
+    SleepStep,
     TemplateBody,
     TextBody,
 )
@@ -45,6 +47,7 @@ JSON_CONTENT_TYPE = "application/json"
 _MOCKS_FIELD = "mocks"
 _STEPS_FIELD = "steps"
 _PARALLEL_FIELD = "parallel"
+_SLEEP_FIELD = "sleep_ms"
 _BASE64_BODY_FIELD = "body_base64"
 """A binary body, which a JSON string cannot hold byte for byte."""
 INDEX_PLACEHOLDER = "{i}"
@@ -94,9 +97,14 @@ def _steps_case(case: Document, flows: Flows) -> HttpCaseInput:
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
         steps=expander.steps(steps, _Place("step")),
-        cleanup=expander.steps(case.get("cleanup", ()), _Place("cleanup")),
+        cleanup=_requests(expander.steps(case.get("cleanup", ()), _Place("cleanup"))),
         app_output=_output_check(case),
     )
+
+
+def _requests(steps: tuple[CaseStep, ...]) -> tuple[HttpStep, ...]:
+    """The schema holds cleanup steps to requests."""
+    return tuple(step for step in steps if isinstance(step, HttpStep))
 
 
 def _parallel_case(case: Document) -> HttpCaseInput:
@@ -170,17 +178,21 @@ class _Place:
 class _Expander:
     flows: Flows
 
-    def steps(self, documents: Sequence[Document], place: _Place) -> tuple[HttpStep, ...]:
+    def steps(self, documents: Sequence[Document], place: _Place) -> tuple[CaseStep, ...]:
         return tuple(self._expanded(documents, place))
 
-    def _expanded(self, documents: Sequence[Document], place: _Place) -> Iterator[HttpStep]:
+    def _expanded(self, documents: Sequence[Document], place: _Place) -> Iterator[CaseStep]:
         for number, document in enumerate(documents, start=1):
+            label = place.label(number)
             if "use" in document:
                 yield from self._used(document, place, number)
+            elif _SLEEP_FIELD in document:
+                waits_ms: int = document[_SLEEP_FIELD]
+                yield SleepStep(f"{label} sleep {waits_ms} ms", waits_ms)
             else:
-                yield _step(document, place.label(number))
+                yield _step(document, label)
 
-    def _used(self, document: Document, place: _Place, number: int) -> Iterator[HttpStep]:
+    def _used(self, document: Document, place: _Place, number: int) -> Iterator[CaseStep]:
         name: str = document["use"]
         if name not in self.flows:
             raise CaseDocumentError(f"{place.label(number)}: no flow named {name}")

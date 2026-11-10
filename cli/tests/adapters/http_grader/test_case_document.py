@@ -10,6 +10,7 @@ from coding_study.domain.http_case import (
     LogAssertion,
     RequestTemplate,
     SameBody,
+    SleepStep,
 )
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
 
@@ -102,6 +103,14 @@ def test_a_parallel_requests_base64_body_goes_out_as_its_bytes():
     burst = http_case_input(case | {"expected_statuses": {"201": 2}}).parallel
     assert burst is not None
     assert [sent.body for sent in burst.requests] == [BYTES, BYTES]
+
+
+GET_A = {"request": {"method": "GET", "path": "/a"}}
+
+
+def test_a_sleep_step_names_its_place_and_its_wait():
+    case = {"id": "h1", "level": 1, "steps": [GET_A, {"sleep_ms": 500}]}
+    assert http_case_input(case).steps[1] == SleepStep("step 2 sleep 500 ms", 500)
 
 
 def test_an_expected_body_may_be_null():
