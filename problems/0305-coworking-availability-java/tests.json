@@ -1,0 +1,1825 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "note": "a day on sale",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "date": "2027-03-01",
+          "available": 12
+        }
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "no date",
+      "request": {
+        "method": "GET",
+        "path": "/desks"
+      },
+      "expected": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "date is required"
+        }
+      }
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "a day on sale with no desks left is a count, not an error",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-03-07"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-07",
+          "available": 0
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "the last day on sale",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-03-31"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-31",
+          "available": 7
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "an empty date is a missing one",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": ""
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date is required"
+        }
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "a word is not a day",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "soon"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a day with no zero padding is not this form",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-3-1"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "the right form, on a day that does not exist",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-02-30"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "note": "the right form, in a month that does not exist",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-13-01"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      }
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "a real day that is not on sale",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-04-01"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "no desks on sale for that date"
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "a leap day is real, and not on sale",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2028-02-29"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "no desks on sale for that date"
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "note": "no leap day in this year",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-02-29"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      }
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "note": "another method on a path it has",
+      "request": {
+        "method": "POST",
+        "path": "/desks",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 405,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "method not allowed"
+        }
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "note": "a path it does not have",
+      "request": {
+        "method": "GET",
+        "path": "/desk"
+      },
+      "expected": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "not found"
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 2,
+      "visible": true,
+      "note": "one answer with the desks and the vendor's open slots",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "note": "a day the vendor has nothing for",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-02"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-02",
+          "desks": {
+            "available": 8
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": []
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "note": "sorted by start then room, without what is booked",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-15"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-15",
+          "desks": {
+            "available": 5
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "08:30",
+                "end": "09:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "pine",
+                "start": "08:30",
+                "end": "09:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "pine",
+                "start": "15:00",
+                "end": "16:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 2,
+      "note": "no desks left, and rooms still to book",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-07"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-07",
+          "desks": {
+            "available": 0
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "14:00",
+                "end": "15:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      }
+    },
+    {
+      "id": "h15",
+      "level": 2,
+      "note": "no date: the vendor never hears of it",
+      "request": {
+        "method": "GET",
+        "path": "/availability"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date is required"
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "note": "not a real day: the vendor never hears of it",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-02-30"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "note": "not on sale: the vendor never hears of it",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-04-01"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "no desks on sale for that date"
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 2,
+      "note": "another method: the vendor never hears of it",
+      "request": {
+        "method": "DELETE",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 405,
+        "body": {
+          "error": "method not allowed"
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "level": 3,
+      "visible": true,
+      "note": "the vendor answers 500 to everything: three requests, then unavailable",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "outage"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "level": 3,
+      "visible": true,
+      "note": "a 429 that stays: wait for Retry-After each time, then unavailable",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "rate_limited"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 3,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "level": 3,
+      "visible": true,
+      "note": "too slow to wait for, and not asked again",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "slow"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 3,
+      "note": "a 500 that passes: one try is not enough",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "fails_once"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 2,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 3,
+      "note": "two failures that pass: the third request is the last one",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "fails_twice"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h21",
+      "level": 3,
+      "note": "a 429 with Retry-After: 1 that passes",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "limited_once"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "note": "a 429 with Retry-After: 2: the wait is the vendor's number, not a fixed one",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "limited_long"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 2,
+          "min_gap_ms": 1950
+        }
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "note": "a 429 with no Retry-After",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "limited_no_header"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 2,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 3,
+      "note": "a 500 then a 429 share the same three requests",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "elm",
+                "start": "09:00",
+                "end": "10:30",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "11:00",
+                "end": "12:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "mixed_failures"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 3,
+      "note": "a 403 will not change",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "refused"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 3,
+      "note": "a 200 whose body is not JSON",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "garbled"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 3,
+      "note": "a 200 whose JSON is not what the vendor documents",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "desks": {
+            "available": 12
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "wrong_shape"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h28",
+      "level": 3,
+      "note": "a failing vendor and no desks left: the count is still a count",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-07"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-07",
+          "desks": {
+            "available": 0
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "outage"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 3,
+      "note": "a bad date is still a bad date while the vendor is down",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "soon"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      },
+      "mocks": {
+        "room-vendor": "outage"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 3,
+      "note": "the desks need no vendor",
+      "request": {
+        "method": "GET",
+        "path": "/desks",
+        "query": {
+          "date": "2027-03-01"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-01",
+          "available": 12
+        }
+      },
+      "mocks": {
+        "room-vendor": "outage"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 4,
+      "visible": true,
+      "note": "both vendors, sorted together",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "A1",
+                "start": "08:00",
+                "end": "08:45",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "A2",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "A1",
+                "start": "09:30",
+                "end": "11:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        },
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 4,
+      "visible": true,
+      "note": "the annex is down, and its 5xx is not asked again",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": [
+              "annex-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "maintenance"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        },
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 4,
+      "note": "times as minutes past midnight, on a day only the annex has rooms",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-22"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-22",
+          "desks": {
+            "available": 9
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "A1",
+                "start": "07:05",
+                "end": "07:45",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "A1",
+                "start": "12:15",
+                "end": "12:45",
+                "vendor": "annex-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      }
+    },
+    {
+      "id": "h32",
+      "level": 4,
+      "note": "the first vendor fails, and the annex's slots are still there",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "A1",
+                "start": "08:00",
+                "end": "08:45",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "A2",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "A1",
+                "start": "09:30",
+                "end": "11:00",
+                "vendor": "annex-vendor"
+              }
+            ],
+            "unavailable": [
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "outage"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 3
+        },
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 4,
+      "note": "both fail: the desks are still there, and both are named in order",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [],
+            "unavailable": [
+              "annex-vendor",
+              "room-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "outage",
+        "annex-vendor": "maintenance"
+      }
+    },
+    {
+      "id": "h34",
+      "level": 4,
+      "note": "BUSY that passes: the wait is in the body, in milliseconds",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "A1",
+                "start": "08:00",
+                "end": "08:45",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "A2",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "A1",
+                "start": "09:30",
+                "end": "11:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "busy_once"
+      },
+      "log": [
+        {
+          "mock": "annex-vendor",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h35",
+      "level": 4,
+      "note": "BUSY that stays: two requests, then unavailable",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": [
+              "annex-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "busy"
+      },
+      "log": [
+        {
+          "mock": "annex-vendor",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 4,
+      "note": "ok: false with any other code is not asked again",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": [
+              "annex-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "day_closed"
+      },
+      "log": [
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 4,
+      "note": "the annex is too slow, and the other vendor's slots do not suffer",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": [
+              "annex-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "stalled"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 1
+        },
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h38",
+      "level": 4,
+      "note": "a 200 from the annex whose body is not JSON",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": [
+              "annex-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "garbled"
+      },
+      "log": [
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 4,
+      "note": "ok: true with the wrong fields",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": [
+              "annex-vendor"
+            ]
+          }
+        }
+      },
+      "mocks": {
+        "annex-vendor": "wrong_fields"
+      },
+      "log": [
+        {
+          "mock": "annex-vendor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h40",
+      "level": 4,
+      "note": "each vendor recovers by its own rules, in the same request",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-03-08"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "date": "2027-03-08",
+          "desks": {
+            "available": 20
+          },
+          "rooms": {
+            "slots": [
+              {
+                "room": "A1",
+                "start": "08:00",
+                "end": "08:45",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "A2",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "oak",
+                "start": "09:00",
+                "end": "10:00",
+                "vendor": "room-vendor"
+              },
+              {
+                "room": "A1",
+                "start": "09:30",
+                "end": "11:00",
+                "vendor": "annex-vendor"
+              },
+              {
+                "room": "elm",
+                "start": "13:00",
+                "end": "14:00",
+                "vendor": "room-vendor"
+              }
+            ],
+            "unavailable": []
+          }
+        }
+      },
+      "mocks": {
+        "room-vendor": "limited_on_march_8",
+        "annex-vendor": "busy_once"
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 2,
+          "min_gap_ms": 950
+        },
+        {
+          "mock": "annex-vendor",
+          "count": 2,
+          "min_gap_ms": 950
+        }
+      ]
+    },
+    {
+      "id": "h41",
+      "level": 4,
+      "note": "a bad date reaches neither vendor",
+      "request": {
+        "method": "GET",
+        "path": "/availability",
+        "query": {
+          "date": "2027-02-30"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "date must be a real day, as YYYY-MM-DD"
+        }
+      },
+      "log": [
+        {
+          "mock": "room-vendor",
+          "count": 0
+        },
+        {
+          "mock": "annex-vendor",
+          "count": 0
+        }
+      ]
+    }
+  ]
+}
