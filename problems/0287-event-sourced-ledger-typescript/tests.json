@@ -1,0 +1,2378 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "an account's balance comes from the history the store already holds",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ana",
+          "balance": 3000,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a deposit appends an event and answers the account after it",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 2500
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "ana",
+          "balance": 5500,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a withdrawal is an event in the account's stream",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/cleo/withdrawals",
+          "json": {
+            "amount": 200
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/cleo/events"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "version": 1,
+            "type": "deposited",
+            "data": {
+              "amount": 500
+            }
+          },
+          {
+            "version": 2,
+            "type": "withdrawn",
+            "data": {
+              "amount": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "v4",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a transfer moves money between two accounts",
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "json": {
+          "from": "ben",
+          "to": "cleo",
+          "amount": 1000
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "from": {
+            "account": "ben",
+            "balance": 1800,
+            "version": 3
+          },
+          "to": {
+            "account": "cleo",
+            "balance": 1500,
+            "version": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a withdrawal of more than the balance is refused",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/cleo/withdrawals",
+        "json": {
+          "amount": 501
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "insufficient_funds"
+        }
+      }
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "fresh": true,
+      "note": "an account the hidden events hold",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-dana"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-dana",
+          "balance": 5000,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "an account at zero still exists",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-eli"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-eli",
+          "balance": 0,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "an account's events come from the store, whoever appended them",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-dana/events"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "version": 1,
+            "type": "deposited",
+            "data": {
+              "amount": 7000
+            }
+          },
+          {
+            "version": 2,
+            "type": "withdrawn",
+            "data": {
+              "amount": 2500
+            }
+          },
+          {
+            "version": 3,
+            "type": "transferred_in",
+            "data": {
+              "amount": 1500,
+              "from": "x-eli"
+            }
+          },
+          {
+            "version": 4,
+            "type": "transferred_out",
+            "data": {
+              "amount": 1000,
+              "to": "x-eli"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "an account with no events",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/nobody"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_account"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a first deposit opens an account at version 1",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/dora/deposits",
+        "json": {
+          "amount": 1
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "dora",
+          "balance": 1,
+          "version": 1
+        }
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "fresh": true,
+      "note": "a deposit is in the store, not only in the balance",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ben/deposits",
+          "json": {
+            "amount": 300
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ben/events"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "version": 1,
+            "type": "deposited",
+            "data": {
+              "amount": 2000
+            }
+          },
+          {
+            "version": 2,
+            "type": "transferred_in",
+            "data": {
+              "amount": 800,
+              "from": "ana"
+            }
+          },
+          {
+            "version": 3,
+            "type": "deposited",
+            "data": {
+              "amount": 300
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "fresh": true,
+      "note": "a refused withdrawal appends nothing",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/accounts/ben/withdrawals",
+            "json": {
+              "amount": 2801
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "insufficient_funds"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/ben"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "account": "ben",
+              "balance": 2800,
+              "version": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/ben/events"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "version": 1,
+                "type": "deposited",
+                "data": {
+                  "amount": 2000
+                }
+              },
+              {
+                "version": 2,
+                "type": "transferred_in",
+                "data": {
+                  "amount": 800,
+                  "from": "ana"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "fresh": true,
+      "note": "a transfer of the whole balance",
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "json": {
+          "from": "ben",
+          "to": "ana",
+          "amount": 2800
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "from": {
+            "account": "ben",
+            "balance": 0,
+            "version": 3
+          },
+          "to": {
+            "account": "ana",
+            "balance": 5800,
+            "version": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "fresh": true,
+      "note": "a transfer appends one event to each account",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/transfers",
+            "json": {
+              "from": "ana",
+              "to": "cleo",
+              "amount": 700
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/cleo/events"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "version": 1,
+                "type": "deposited",
+                "data": {
+                  "amount": 500
+                }
+              },
+              {
+                "version": 2,
+                "type": "transferred_in",
+                "data": {
+                  "amount": 700,
+                  "from": "ana"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/ana/events"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "version": 1,
+                "type": "deposited",
+                "data": {
+                  "amount": 5000
+                }
+              },
+              {
+                "version": 2,
+                "type": "withdrawn",
+                "data": {
+                  "amount": 1200
+                }
+              },
+              {
+                "version": 3,
+                "type": "transferred_out",
+                "data": {
+                  "amount": 800,
+                  "to": "ben"
+                }
+              },
+              {
+                "version": 4,
+                "type": "transferred_out",
+                "data": {
+                  "amount": 700,
+                  "to": "cleo"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "fresh": true,
+      "note": "a transfer to an account with no events takes nothing",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/transfers",
+            "json": {
+              "from": "ana",
+              "to": "nobody",
+              "amount": 100
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_account"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/ana"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "account": "ana",
+              "balance": 3000,
+              "version": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "fresh": true,
+      "note": "a refused transfer credits nothing",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/transfers",
+            "json": {
+              "from": "cleo",
+              "to": "ana",
+              "amount": 600
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "insufficient_funds"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/ana/events"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "version": 1,
+                "type": "deposited",
+                "data": {
+                  "amount": 5000
+                }
+              },
+              {
+                "version": 2,
+                "type": "withdrawn",
+                "data": {
+                  "amount": 1200
+                }
+              },
+              {
+                "version": 3,
+                "type": "transferred_out",
+                "data": {
+                  "amount": 800,
+                  "to": "ben"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "note": "a withdrawal from an account with no events",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/nobody/withdrawals",
+        "json": {
+          "amount": 1
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_account"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "note": "a transfer to the same account",
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "json": {
+          "from": "ana",
+          "to": "ana",
+          "amount": 1
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "note": "an amount of 0",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 0
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "note": "an amount that is not whole",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 1.5
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h16",
+      "level": 1,
+      "note": "an amount given as text",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": "100"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h17",
+      "level": 1,
+      "note": "an amount over 10,000.00",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/withdrawals",
+        "json": {
+          "amount": 1000001
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h18",
+      "level": 1,
+      "note": "the largest amount",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/vault/deposits",
+        "json": {
+          "amount": 1000000
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "vault",
+          "balance": 1000000,
+          "version": 1
+        }
+      }
+    },
+    {
+      "id": "h19",
+      "level": 1,
+      "note": "a body that is not JSON",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "body": "{\"amount\": 5"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h20",
+      "level": 1,
+      "note": "an account id over 64 characters",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/deposits",
+        "json": {
+          "amount": 1
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 1,
+      "note": "a transfer with no account to reach",
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "json": {
+          "from": "ana",
+          "amount": 100
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "5 withdrawals of 10.00 at once from 28.00",
+      "parallel": {
+        "count": 5,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/ben/withdrawals",
+          "json": {
+            "amount": 1000
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 2,
+        "409": 3
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ben"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ben",
+            "balance": 800,
+            "version": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "v7",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "5 withdrawals at once, each expecting version 3",
+      "parallel": {
+        "count": 5,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/ana/withdrawals",
+          "json": {
+            "amount": 100,
+            "expected_version": 3
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "409": 4
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ana"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ana",
+            "balance": 2900,
+            "version": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "v8",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a deposit that expects a version the account has moved past",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ana/deposits",
+          "json": {
+            "amount": 100
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 100,
+          "expected_version": 3
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "version_conflict"
+        }
+      }
+    },
+    {
+      "id": "h30",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 withdrawals of 5.00 at once from 30.00",
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/ana/withdrawals",
+          "json": {
+            "amount": 500
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 6,
+        "409": 14
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ana"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ana",
+            "balance": 0,
+            "version": 9
+          }
+        }
+      }
+    },
+    {
+      "id": "h31",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 deposits at once: none lost and none refused",
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/cleo/deposits",
+          "json": {
+            "amount": 100
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 20
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/cleo"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "cleo",
+            "balance": 2500,
+            "version": 21
+          }
+        }
+      }
+    },
+    {
+      "id": "h32",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 first deposits at once to an account nobody opened",
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/nova/deposits",
+          "json": {
+            "amount": 50
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 20
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/nova"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "nova",
+            "balance": 1000,
+            "version": 20
+          }
+        }
+      }
+    },
+    {
+      "id": "h33",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 deposits at once, each expecting a new account",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/solo/deposits",
+          "json": {
+            "amount": 100,
+            "expected_version": 0
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/solo"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "solo",
+            "balance": 100,
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "h34",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 transfers of 5.00 at once from 30.00",
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 500
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 6,
+        "409": 14
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ben"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ben",
+            "balance": 5800,
+            "version": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "h35",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 transfers at once, half each way between two accounts",
+      "parallel": {
+        "count": 20,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/transfers",
+            "json": {
+              "from": "ana",
+              "to": "ben",
+              "amount": 100
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/transfers",
+            "json": {
+              "from": "ben",
+              "to": "ana",
+              "amount": 100
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "201": 20
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ana"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ana",
+            "balance": 3000,
+            "version": 23
+          }
+        }
+      }
+    },
+    {
+      "id": "h36",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "transfers and withdrawals at once from one account",
+      "parallel": {
+        "count": 20,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/transfers",
+            "json": {
+              "from": "ana",
+              "to": "cleo",
+              "amount": 200
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/accounts/ana/withdrawals",
+            "json": {
+              "amount": 200
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "201": 15,
+        "409": 5
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ana"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ana",
+            "balance": 0,
+            "version": 18
+          }
+        }
+      }
+    },
+    {
+      "id": "h37",
+      "level": 2,
+      "fresh": true,
+      "note": "a deposit that expects the version the account is at",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 10,
+          "expected_version": 3
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "ana",
+          "balance": 3010,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h38",
+      "level": 2,
+      "fresh": true,
+      "note": "a stale version is refused even when the money is there",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/withdrawals",
+        "json": {
+          "amount": 10,
+          "expected_version": 2
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "version_conflict"
+        }
+      }
+    },
+    {
+      "id": "h39",
+      "level": 2,
+      "fresh": true,
+      "note": "the right version and too little money",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/withdrawals",
+        "json": {
+          "amount": 5000,
+          "expected_version": 3
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "insufficient_funds"
+        }
+      }
+    },
+    {
+      "id": "h40",
+      "level": 2,
+      "fresh": true,
+      "note": "a stale version is checked before the money",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/withdrawals",
+        "json": {
+          "amount": 5000,
+          "expected_version": 1
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "version_conflict"
+        }
+      }
+    },
+    {
+      "id": "h41",
+      "level": 2,
+      "note": "a withdrawal that expects version 0 from an account with no events",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/nobody/withdrawals",
+        "json": {
+          "amount": 1,
+          "expected_version": 0
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_account"
+        }
+      }
+    },
+    {
+      "id": "h42",
+      "level": 2,
+      "fresh": true,
+      "note": "expecting a new account that already has events",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/cleo/deposits",
+        "json": {
+          "amount": 1,
+          "expected_version": 0
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "version_conflict"
+        }
+      }
+    },
+    {
+      "id": "h43",
+      "level": 2,
+      "note": "expecting version 0 opens a new account",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/zoe/deposits",
+        "json": {
+          "amount": 100,
+          "expected_version": 0
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "zoe",
+          "balance": 100,
+          "version": 1
+        }
+      }
+    },
+    {
+      "id": "h44",
+      "level": 2,
+      "note": "a negative expected version",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 1,
+          "expected_version": -1
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h45",
+      "level": 2,
+      "note": "an expected version given as text",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 1,
+          "expected_version": "3"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "v9",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a rebuild gives back what the appends made",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ana/deposits",
+          "json": {
+            "amount": 700
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/accounts/ana/withdrawals",
+          "json": {
+            "amount": 200
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 300
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ana",
+          "balance": 3200,
+          "version": 6
+        }
+      }
+    },
+    {
+      "id": "v10",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a deposit sent again with its event id",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/cleo/deposits",
+          "json": {
+            "amount": 250,
+            "event_id": "top-up-1"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/accounts/cleo/deposits",
+        "json": {
+          "amount": 250,
+          "event_id": "top-up-1"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "cleo",
+          "balance": 750,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "v11",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a rebuild answers once it is done",
+      "request": {
+        "method": "POST",
+        "path": "/admin/rebuild",
+        "json": {}
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "status": "rebuilt"
+        }
+      }
+    },
+    {
+      "id": "h50",
+      "level": 3,
+      "fresh": true,
+      "note": "a rebuild folds a transfer into the account it reached",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 300
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ben"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ben",
+          "balance": 3100,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "h51",
+      "level": 3,
+      "fresh": true,
+      "note": "a rebuild reads every event in the store, the hidden ones too",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-dana"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-dana",
+          "balance": 5000,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h52",
+      "level": 3,
+      "fresh": true,
+      "note": "a rebuilt account at zero",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-eli"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-eli",
+          "balance": 0,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h53",
+      "level": 3,
+      "fresh": true,
+      "note": "two rebuilds count nothing twice",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/cleo/deposits",
+          "json": {
+            "amount": 100
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        },
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/cleo"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "cleo",
+          "balance": 600,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "h54",
+      "level": 3,
+      "fresh": true,
+      "note": "after a rebuild, an account keeps its version",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/accounts/cleo/deposits",
+        "json": {
+          "amount": 100,
+          "expected_version": 1
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "cleo",
+          "balance": 600,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "h55",
+      "level": 3,
+      "fresh": true,
+      "note": "a rebuild leaves the events as they were",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ben/withdrawals",
+          "json": {
+            "amount": 100
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/admin/rebuild",
+          "json": {}
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ben/events"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "version": 1,
+            "type": "deposited",
+            "data": {
+              "amount": 2000
+            }
+          },
+          {
+            "version": 2,
+            "type": "transferred_in",
+            "data": {
+              "amount": 800,
+              "from": "ana"
+            }
+          },
+          {
+            "version": 3,
+            "type": "withdrawn",
+            "data": {
+              "amount": 100
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "h56",
+      "level": 3,
+      "fresh": true,
+      "note": "a refused withdrawal leaves nothing for a rebuild to find",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/accounts/cleo/withdrawals",
+            "json": {
+              "amount": 9999
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "insufficient_funds"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/admin/rebuild",
+            "json": {}
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/accounts/cleo"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "account": "cleo",
+              "balance": 500,
+              "version": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h57",
+      "level": 3,
+      "fresh": true,
+      "note": "a withdrawal sent again is applied once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ana/withdrawals",
+          "json": {
+            "amount": 300,
+            "event_id": "w-1"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/withdrawals",
+        "json": {
+          "amount": 300,
+          "event_id": "w-1"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ana",
+          "balance": 2700,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h58",
+      "level": 3,
+      "fresh": true,
+      "note": "a transfer sent again is applied once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 400,
+            "event_id": "t-1"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "json": {
+          "from": "ana",
+          "to": "ben",
+          "amount": 400,
+          "event_id": "t-1"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "from": {
+            "account": "ana",
+            "balance": 2600,
+            "version": 4
+          },
+          "to": {
+            "account": "ben",
+            "balance": 3200,
+            "version": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "h59",
+      "level": 3,
+      "fresh": true,
+      "note": "a transfer sent twice leaves one event in each account",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 400,
+            "event_id": "t-2"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 400,
+            "event_id": "t-2"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ben/events"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "version": 1,
+            "type": "deposited",
+            "data": {
+              "amount": 2000
+            }
+          },
+          {
+            "version": 2,
+            "type": "transferred_in",
+            "data": {
+              "amount": 800,
+              "from": "ana"
+            }
+          },
+          {
+            "version": 3,
+            "type": "transferred_in",
+            "data": {
+              "amount": 400,
+              "from": "ana"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "h60",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "the same deposit 10 times at once",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/accounts/cleo/deposits",
+          "json": {
+            "amount": 100,
+            "event_id": "burst-1"
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "200": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/cleo"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "cleo",
+            "balance": 600,
+            "version": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "h61",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "the same transfer 10 times at once",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 1000,
+            "event_id": "burst-t"
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "200": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/accounts/ana"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "account": "ana",
+            "balance": 2000,
+            "version": 4
+          }
+        }
+      }
+    },
+    {
+      "id": "h62",
+      "level": 3,
+      "fresh": true,
+      "note": "a replay is answered before its version is checked",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ana/deposits",
+          "json": {
+            "amount": 100,
+            "event_id": "e-7",
+            "expected_version": 3
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 100,
+          "event_id": "e-7",
+          "expected_version": 3
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ana",
+          "balance": 3100,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h63",
+      "level": 3,
+      "fresh": true,
+      "note": "a refused command does not take its event id",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/accounts/cleo/withdrawals",
+            "json": {
+              "amount": 9999,
+              "event_id": "w-9"
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "insufficient_funds"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/accounts/cleo/withdrawals",
+            "json": {
+              "amount": 100,
+              "event_id": "w-9"
+            }
+          },
+          "expected": {
+            "status": 201,
+            "body": {
+              "account": "cleo",
+              "balance": 400,
+              "version": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h64",
+      "level": 3,
+      "fresh": true,
+      "note": "an event id is unique within its stream, not across streams",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ana/deposits",
+          "json": {
+            "amount": 100,
+            "event_id": "same"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ben/deposits",
+        "json": {
+          "amount": 100,
+          "event_id": "same"
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "account": "ben",
+          "balance": 2900,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "h65",
+      "level": 3,
+      "fresh": true,
+      "note": "an event id the hidden events already used",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/x-dana/deposits",
+        "json": {
+          "amount": 999,
+          "event_id": "x-1"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-dana",
+          "balance": 5000,
+          "version": 4
+        }
+      }
+    },
+    {
+      "id": "h66",
+      "level": 3,
+      "note": "an event id with a space",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/ana/deposits",
+        "json": {
+          "amount": 1,
+          "event_id": "has space"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h67",
+      "level": 3,
+      "note": "an event id given as a number",
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "json": {
+          "from": "ana",
+          "to": "ben",
+          "amount": 1,
+          "event_id": 42
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "v12",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "ana's account as it stood in mid-February",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana",
+        "query": {
+          "as_of": "2026-02-15T00:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ana",
+          "balance": 3800,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "v13",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a deposit today is not in June's balance",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/ana/deposits",
+          "json": {
+            "amount": 1000
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana",
+        "query": {
+          "as_of": "2026-06-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ana",
+          "balance": 3000,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "v14",
+      "level": 4,
+      "visible": true,
+      "note": "an account before its first event",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ben",
+        "query": {
+          "as_of": "2026-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_account"
+        }
+      }
+    },
+    {
+      "id": "h80",
+      "level": 4,
+      "note": "an event recorded at that very moment counts",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-dana",
+        "query": {
+          "as_of": "2026-02-20T12:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-dana",
+          "balance": 6000,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "h81",
+      "level": 4,
+      "note": "a second before it, it does not",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-dana",
+        "query": {
+          "as_of": "2026-02-20T11:59:59Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-dana",
+          "balance": 4500,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "h82",
+      "level": 4,
+      "note": "a time with another offset is the same moment",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-eli",
+        "query": {
+          "as_of": "2026-03-15T13:00:00+01:00"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-eli",
+          "balance": 3500,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "h83",
+      "level": 4,
+      "note": "a second before that moment, in the same offset",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-eli",
+        "query": {
+          "as_of": "2026-03-15T12:59:59+01:00"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-eli",
+          "balance": 2500,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "h84",
+      "level": 4,
+      "note": "a time with a fraction of a second",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-dana",
+        "query": {
+          "as_of": "2026-03-15T11:59:59.999Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "x-dana",
+          "balance": 6000,
+          "version": 3
+        }
+      }
+    },
+    {
+      "id": "h85",
+      "level": 4,
+      "fresh": true,
+      "note": "a time after every event is the account now",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/accounts/cleo/deposits",
+          "json": {
+            "amount": 50
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/cleo",
+        "query": {
+          "as_of": "2999-01-01T00:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "cleo",
+          "balance": 550,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "h86",
+      "level": 4,
+      "fresh": true,
+      "note": "a transfer today stays out of a balance in March",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/transfers",
+          "json": {
+            "from": "ana",
+            "to": "ben",
+            "amount": 500
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ben",
+        "query": {
+          "as_of": "2026-03-02T12:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "account": "ben",
+          "balance": 2800,
+          "version": 2
+        }
+      }
+    },
+    {
+      "id": "h87",
+      "level": 4,
+      "note": "a hidden account before its first event",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/x-eli",
+        "query": {
+          "as_of": "2026-01-15T07:59:59Z"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_account"
+        }
+      }
+    },
+    {
+      "id": "h88",
+      "level": 4,
+      "note": "an account with no events at any time",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/nobody",
+        "query": {
+          "as_of": "2026-02-15T00:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_account"
+        }
+      }
+    },
+    {
+      "id": "h89",
+      "level": 4,
+      "note": "a date with no time",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana",
+        "query": {
+          "as_of": "2026-02-15"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h90",
+      "level": 4,
+      "note": "a time with no offset",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana",
+        "query": {
+          "as_of": "2026-02-15T00:00:00"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h91",
+      "level": 4,
+      "note": "a word for a time",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana",
+        "query": {
+          "as_of": "yesterday"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h92",
+      "level": 4,
+      "note": "30 February",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/ana",
+        "query": {
+          "as_of": "2026-02-30T00:00:00Z"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    }
+  ]
+}

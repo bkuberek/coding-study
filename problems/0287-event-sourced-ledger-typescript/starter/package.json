@@ -1,0 +1,15 @@
+{
+  "name": "event-sourced-ledger-typescript",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "dependencies": {
+    "node-pg-migrate": "9.0.0",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "typescript": "6.0.3"
+  }
+}
