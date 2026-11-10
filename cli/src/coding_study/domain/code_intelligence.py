@@ -33,6 +33,10 @@ LSP_INSTALL_COMMAND = ("pnpm", "install", "--frozen-lockfile", "--ignore-scripts
 script runs."""
 NOT_AVAILABLE_YET = "not available yet"
 NODE = "node"
+NO_ADDONS = "--no-addons"
+"""Node refuses native addons. A version check needs none, and basedpyright's file watcher loads
+`fsevents.node` on macOS, a binary each install of `LSP_DIRECTORY` writes anew: macOS scans it on
+its first load and the load waits, for seconds, or for minutes on a busy machine."""
 IDLE_SECONDS = 60
 """How long the page keeps a session whose files are all closed."""
 
@@ -190,7 +194,7 @@ def node_command(server: "LanguageServer", launch: Launch) -> tuple[str, ...]:
 
 
 def node_version_command(server: "LanguageServer", lsp_directory: str) -> tuple[str, ...]:
-    return (NODE, f"{lsp_directory}/{server.version_script}", "--version")
+    return (NODE, NO_ADDONS, f"{lsp_directory}/{server.version_script}", "--version")
 
 
 def _no_environment(_launch: Launch) -> dict[str, str]:

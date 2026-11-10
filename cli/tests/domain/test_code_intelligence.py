@@ -64,16 +64,29 @@ def test_the_language_server_runs_the_bin_script_of_the_package_with_node():
 
 def test_basedpyright_prints_its_version_from_its_command_line_script():
     command = BASEDPYRIGHT.version_command(f"{WORKSPACE}/{LSP_DIRECTORY}")
-    assert command == ("node", "/ws/.cs/lsp/node_modules/basedpyright/index.js", "--version")
+    assert command == (
+        "node",
+        "--no-addons",
+        "/ws/.cs/lsp/node_modules/basedpyright/index.js",
+        "--version",
+    )
 
 
 def test_typescript_language_server_prints_its_version_from_the_server_script():
     command = TYPESCRIPT.version_command(f"{WORKSPACE}/{LSP_DIRECTORY}")
     assert command == (
         "node",
+        "--no-addons",
         "/ws/.cs/lsp/node_modules/typescript-language-server/lib/cli.mjs",
         "--version",
     )
+
+
+@pytest.mark.parametrize("server", [BASEDPYRIGHT, TYPESCRIPT], ids=["basedpyright", "typescript"])
+def test_a_version_check_loads_no_native_addon(server):
+    """basedpyright's file watcher loads `fsevents.node`, which each install writes anew and macOS
+    scans on its first load: for seconds, or minutes on a busy machine."""
+    assert "--no-addons" in server.version_command(LSP)
 
 
 @pytest.mark.parametrize(

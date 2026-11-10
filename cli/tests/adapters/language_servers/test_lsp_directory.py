@@ -57,7 +57,8 @@ TODAY = date(2026, 11, 8)
 
 
 class RecordingTools:
-    """Answers a version command from a table; records every command it was asked to run."""
+    """Answers a version command from a table, by the first of its arguments the table names, such
+    as a Node server's script; records every command it was asked to run."""
 
     def __init__(self, answers: Mapping[str, ProbeResult | None] | None = None) -> None:
         self.answers = dict(answers or {})
@@ -65,7 +66,8 @@ class RecordingTools:
 
     def run(self, command: Sequence[str]) -> ProbeResult | None:
         self.ran.append(tuple(command))
-        return self.answers.get(command[1], ProbeResult(0, ""))
+        named = next((argument for argument in command[1:] if argument in self.answers), None)
+        return ProbeResult(0, "") if named is None else self.answers[named]
 
 
 class RecordingCommands:
@@ -124,7 +126,7 @@ def test_an_installed_server_prints_its_version_through_node(tmp_path):
     found = directory(tmp_path, tools).probe(BASEDPYRIGHT)
     assert (found, tools.ran) == (
         VersionPrinted("basedpyright 1.40.2\n"),
-        [("node", str(script), "--version")],
+        [("node", "--no-addons", str(script), "--version")],
     )
 
 
