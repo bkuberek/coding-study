@@ -6,6 +6,7 @@ import type { History } from "../src/page/types.ts";
 
 const LEVELS: NonNullable<History["levels"]> = {
   last: 4,
+  mastered: 2,
   languages: [
     { language: "python", best: 2, last_time: 2, try_level: 3 },
     { language: "kotlin", best: 4, last_time: 4, try_level: null },
@@ -34,7 +35,7 @@ test("the best line names each language passed, as cstudy history does", () => {
 });
 
 test("without a pass, or without levels, there is no best line", () => {
-  assert.equal(bestLine({ last: 4, languages: [] }), null);
+  assert.equal(bestLine({ last: 4, mastered: 0, languages: [] }), null);
   assert.equal(bestLine(null), null);
 });
 

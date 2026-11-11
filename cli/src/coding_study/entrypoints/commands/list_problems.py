@@ -12,6 +12,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.list_items import ListedItem, list_items
 from coding_study.application.list_problems import (
     JdkNote,
+    ListedLevels,
     ListedProblem,
     ListingContext,
     ProblemFilter,
@@ -27,6 +28,7 @@ from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import jdk_range_of
 from coding_study.domain.labels import LabelFilter, Labels
+from coding_study.domain.level_passes import status_cell
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, ProblemMeta, Track
 from coding_study.domain.scheduling import ProblemStatus
 from coding_study.domain.service_project import need_markers, service_of
@@ -40,7 +42,11 @@ ID_WIDTH = 4
 SLUG_WIDTH = 16
 DIFFICULTY_WIDTH = 6
 PATTERN_WIDTH = 15
-STATUS_WIDTH = max(len(status.label) for status in ProblemStatus)
+STATUS_WIDTH = max(
+    *(len(status.label) for status in ProblemStatus),
+    len(status_cell(ProblemStatus.MASTERED, (8, 9))),
+)
+"""Wide enough for `mastered 2/4`, a problem mastered through level 2 of 4."""
 DUE_WIDTH = 10
 NO_VALUE = "-"
 NO_MATCH = "no problems match"
@@ -241,6 +247,7 @@ def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, 
         "content": meta.status.value,
         "source": WORKSPACE_SOURCE if meta.workspace else CATALOG_SOURCE,
         "status": problem.status.value,
+        "levels": _levels_value(problem.levels),
         "due_on": problem.due_on.isoformat() if problem.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
         "jdk": _jdk_range_value(meta),
@@ -295,6 +302,7 @@ def item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue
         "content": meta.status.value,
         "source": CATALOG_SOURCE,
         "status": item.status.value,
+        "levels": None,
         "due_on": item.due_on.isoformat() if item.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
         "jdk": None,
@@ -324,10 +332,20 @@ def problem_cells(item: ListedProblem) -> tuple[str, ...]:
         meta.slug,
         meta.difficulty,
         meta.patterns[0] if meta.patterns else NO_VALUE,
-        item.status.label,
+        status_cell(item.status, _mastered_of(item.levels)),
         item.due_on.isoformat() if item.due_on else NO_VALUE,
         references or NO_VALUE,
     )
+
+
+def _mastered_of(levels: ListedLevels | None) -> tuple[int, int] | None:
+    return None if levels is None else (levels.mastered, levels.last)
+
+
+def _levels_value(levels: ListedLevels | None) -> JsonValue:
+    if levels is None:
+        return None
+    return {"last": levels.last, "passed": levels.passed, "mastered": levels.mastered}
 
 
 def _needs_cell(item: ListedProblem) -> str:

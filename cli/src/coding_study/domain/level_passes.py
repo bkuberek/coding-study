@@ -23,9 +23,17 @@ from coding_study.domain.attempts import (
     passed_every_case,
 )
 from coding_study.domain.cases import Case
+from coding_study.domain.config import ScheduleSettings
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, Problem, ProblemKind
+from coding_study.domain.scheduling import (
+    LevelReview,
+    ProblemStatus,
+    ReviewState,
+    ScheduleEntry,
+    next_review_state,
+)
 from coding_study.domain.submissions import (
     StressSlot,
     finished_levels,
@@ -164,6 +172,68 @@ def level_mastery(attempts: Iterable[Attempt], last: int) -> LevelMastery:
     ]
     through = (min(levels.passed, last) for _, levels in recorded if levels.passed >= FIRST_LEVEL)
     return LevelMastery(last, max(passed, default=None), next(through, None))
+
+
+def next_level_reviews(
+    previous: ScheduleEntry | None,
+    passed: LevelsPassed,
+    grade: Grade,
+    schedule: ScheduleSettings,
+) -> tuple[LevelReview, ...]:
+    """Each level after the first, once a graded attempt passed through `passed`
+    (docs/specs/progress-and-scheduling.md#mastery-per-level): a level it passed takes its grade,
+    from a fresh review the first time; a level reached before that it did not pass takes
+    `again`; a level never reached has no review yet. A schedule written before levels had
+    reviews counts every level reached, with the problem's own review."""
+    reviews: list[LevelReview] = []
+    for level in range(FIRST_LEVEL + 1, passed.last + 1):
+        before = _level_state(previous, level)
+        if passed.passed >= level:
+            taken = grade
+        elif before is not None:
+            taken = Grade.AGAIN
+        else:
+            continue
+        state = next_review_state(
+            before or ReviewState(), taken, schedule.max_interval_days, schedule.intervals
+        )
+        reviews.append(LevelReview(level, state, taken))
+    return tuple(reviews)
+
+
+def _level_state(previous: ScheduleEntry | None, level: int) -> ReviewState | None:
+    if previous is None:
+        return None
+    if previous.levels is None:
+        return previous.state
+    return next((review.state for review in previous.levels if review.level == level), None)
+
+
+type MasteredOf = tuple[int, int]
+"""A problem's levels mastered, and its last level."""
+
+
+def status_text(status: ProblemStatus, levels: MasteredOf | None) -> str:
+    """`mastered through level 2 of 4` for a problem mastered below its last level; else the
+    status as people read it (docs/specs/progress-and-scheduling.md#problem-status)."""
+    if not _mastered_below_last(status, levels):
+        return status.label
+    assert levels is not None
+    mastered, last = levels
+    return f"{status.label} through level {mastered} of {last}"
+
+
+def status_cell(status: ProblemStatus, levels: MasteredOf | None) -> str:
+    """`status_text` in a narrow column: `mastered 2/4`."""
+    if not _mastered_below_last(status, levels):
+        return status.label
+    assert levels is not None
+    mastered, last = levels
+    return f"{status.label} {mastered}/{last}"
+
+
+def _mastered_below_last(status: ProblemStatus, levels: MasteredOf | None) -> bool:
+    return status is ProblemStatus.MASTERED and levels is not None and levels[0] < levels[1]
 
 
 def masteries(attempts: Sequence[Attempt], last: int) -> tuple[tuple[Language, LevelMastery], ...]:

@@ -39,9 +39,9 @@ def invoke(*arguments: str):
 
 def test_list_track_shows_its_items(environment):
     assert invoke("list", "--track", "system-design").output.splitlines() == [
-        "ID    SLUG              DIFF    PATTERN          STATUS       DUE         REFS",
-        "-     url-shortener     medium  system-design    new          -           -",
-        "-     news-feed         hard    system-design    new          -           -",
+        "ID    SLUG              DIFF    PATTERN          STATUS        DUE         REFS",
+        "-     url-shortener     medium  system-design    new           -           -",
+        "-     news-feed         hard    system-design    new           -           -",
     ]
 
 

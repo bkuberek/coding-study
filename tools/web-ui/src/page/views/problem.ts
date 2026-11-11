@@ -49,7 +49,7 @@ export function problemView(context: PageContext, slug: string): Cleanup {
 }
 
 function header(problem: ProblemDocument): HTMLElement {
-  const status = problemBadge(problem.status);
+  const status = problemBadge(problem.status, problem.levels);
   const facts = [problem.id ? `#${problem.id}` : null, problem.track, ...problem.patterns, problem.kind].filter(Boolean);
   return h(
     "header",
@@ -167,7 +167,7 @@ function historySection(context: PageContext, slug: string, history: History): H
     { class: "side-block", "aria-labelledby": "history-heading" },
     h("h2", { id: "history-heading", class: "eyebrow" }, "history"),
     h("p", { class: "review-line" }, h("span", { class: "quiet" }, "review "), review),
-    best ? h("p", { class: "best-line" }, h("span", { class: "quiet" }, "best "), best) : null,
+    best ? h("p", { class: "best-line" }, h("span", { class: "quiet" }, "passed "), best) : null,
     history.attempts.length
       ? h("ol", { class: "plain attempts" }, ...history.attempts.map((attempt) => pastAttempt(context, slug, attempt)))
       : empty("no attempts yet", h("p", { class: "quiet" }, command(`cstudy history ${slug}`))),

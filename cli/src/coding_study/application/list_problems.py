@@ -11,6 +11,7 @@ from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import fit_of, listing_reason
 from coding_study.domain.labels import LabelFilter
+from coding_study.domain.levels import level_progress
 from coding_study.domain.problem import (
     ContentStatus,
     Difficulty,
@@ -94,6 +95,19 @@ class ListedProblem:
     blocked: tuple[Language, ...] = ()
     """The reference languages that the selected JDK cannot run for this problem: Java and Kotlin,
     when the JDK is outside the problem's range."""
+    levels: "ListedLevels | None" = None
+    """A progressive or project problem's levels; None for another."""
+
+
+@dataclass(frozen=True, slots=True)
+class ListedLevels:
+    """How far a problem with levels has come (progress-and-scheduling.md#mastery-per-level)."""
+
+    last: int
+    passed: int
+    """The most levels a pass reached, in any language."""
+    mastered: int
+    """The levels it is mastered through."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,4 +164,14 @@ def _listed(
 ) -> ListedProblem:
     due_on = progress.schedule.due_on if progress.schedule else None
     blocked = fit_of(selected, None, summary.meta.jdk).blocked(summary.reference_languages)
-    return ListedProblem(summary, progress.status(today), due_on, blocked)
+    return ListedProblem(
+        summary, progress.status(today), due_on, blocked, listed_levels(summary.meta, progress)
+    )
+
+
+def listed_levels(meta: ProblemMeta, progress: ProblemProgress) -> ListedLevels | None:
+    levels = level_progress(meta, None)
+    if levels is None:
+        return None
+    last = levels.last
+    return ListedLevels(last, progress.levels_passed(last), progress.mastered_levels(last))

@@ -95,6 +95,9 @@ class AttemptStanding:
     levels."""
     mastery: LevelMastery | None = None
     """The best and the goal over the finished attempts in this language; None without levels."""
+    mastered: int | None = None
+    """The levels the problem is mastered through, in any language
+    (progress-and-scheduling.md#mastery-per-level); None without levels."""
 
     @property
     def file(self) -> str | None:
@@ -167,6 +170,7 @@ class _ProblemStatus:
             service=service_mocks(self._problem),
             levels_passed=passed,
             mastery=language_mastery(self._environment, self._attempt, self._problem),
+            mastered=self._mastered(),
         )
 
     @property
@@ -205,6 +209,13 @@ class _ProblemStatus:
         if project is not None:
             return self._project_next_step(project)
         return self._single_file_next_step(last_run)
+
+    def _mastered(self) -> int | None:
+        levels = self._levels
+        if levels is None:
+            return None
+        progress = self._environment.progress.problem_progress().get(self._attempt.slug)
+        return progress.mastered_levels(levels.last) if progress else 0
 
     def _offer_done(self, step: str, passed: LevelsPassed | None) -> str:
         """Once a level below the last passed, `cstudy done` finishes as a pass, but in a mock."""

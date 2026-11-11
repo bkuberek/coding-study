@@ -88,13 +88,11 @@ def problem_document(entry: dict[str, JsonValue], details: ProblemDetails) -> di
         {"id": approach.id, "name": approach.name, "role": approach.role.value}
         for approach in details.approaches
     ]
-    last_level = details.last_level
     return {
         **entry,
         "languages": [language.value for language in details.languages],
         "approaches": approaches,
         "broken": list(details.broken),
-        "levels": None if last_level is None else {"last": last_level},
         "hints_total": details.hints_total,
         "bench": details.bench,
         "oracle": details.oracle,

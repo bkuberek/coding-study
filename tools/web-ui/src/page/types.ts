@@ -76,12 +76,23 @@ export interface ListEntry {
   readonly content: string;
   readonly source: string;
   readonly status: string;
+  /** A progressive or project problem's levels; null for another. */
+  readonly levels: EntryLevels | null;
   readonly due_on: string | null;
   readonly in_progress: readonly AttemptRef[];
   /** The releases its Java and Kotlin run on; null without either. */
   readonly jdk: JdkRange | null;
   /** What a service project depends on, as its manifest declares it; null for any other problem. */
   readonly requires: Requires | null;
+}
+
+/** `levels` of `cstudy list --json` (docs/specs/progress-and-scheduling.md#mastery-per-level). */
+export interface EntryLevels {
+  readonly last: number;
+  /** The most levels a pass reached, in any language. */
+  readonly passed: number;
+  /** The levels the problem is mastered through. */
+  readonly mastered: number;
 }
 
 /** `requires` of `cstudy list --json`. */
@@ -171,7 +182,6 @@ export interface Approach {
 export interface ProblemDocument extends ListEntry {
   readonly approaches: readonly Approach[];
   readonly broken: readonly string[];
-  readonly levels: { readonly last: number } | null;
   readonly hints_total: number;
   readonly bench: boolean;
   readonly oracle: boolean;
@@ -241,7 +251,7 @@ export interface History {
     readonly lapses: number;
   } | null;
   /** Null for a problem without levels. */
-  readonly levels: { readonly last: number; readonly languages: readonly LevelMastery[] } | null;
+  readonly levels: { readonly last: number; readonly mastered: number; readonly languages: readonly LevelMastery[] } | null;
   readonly attempts: readonly PastAttempt[];
 }
 
@@ -272,6 +282,8 @@ export interface AttemptStatus {
     readonly best: number | null;
     readonly last_time: number | null;
     readonly try_level: number | null;
+    /** The levels the problem is mastered through, in any language. */
+    readonly mastered: number;
   } | null;
   readonly timer: { readonly elapsed_s: number; readonly limit_s: number } | null;
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;

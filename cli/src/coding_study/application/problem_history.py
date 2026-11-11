@@ -54,6 +54,9 @@ class ProblemHistory:
     """The problem's levels now; None without levels."""
     masteries: tuple[tuple[Language, LevelMastery], ...] = ()
     """Each language's best and next goal, in `Language` order; empty without levels."""
+    mastered: int = 0
+    """The levels the problem is mastered through (progress-and-scheduling.md#mastery-per-level);
+    0 without levels."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +87,7 @@ def problem_history(environment: Environment, slug: str) -> ProblemHistory:
         attempts=tuple(_past_attempt(environment, attempt, header) for attempt in attempts),
         levels=header.levels,
         masteries=masteries(attempts, header.levels) if header.levels is not None else (),
+        mastered=problem_progress.mastered_levels(header.levels) if header.levels else 0,
     )
 
 

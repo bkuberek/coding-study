@@ -4,6 +4,7 @@ Numbered migrations in `migrations/` (`0001_init.sql`, ...) run in order on firs
 (`schema.py`). Timestamps are ISO 8601 UTC strings.
 """
 
+import json
 import sqlite3
 from collections import defaultdict
 from collections.abc import Callable, Generator, Mapping
@@ -32,6 +33,7 @@ from coding_study.domain.progress_export import ColumnValue, ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.scheduling import (
     MASTERED_INTERVAL_DAYS,
+    LevelReview,
     ProblemProgress,
     ReviewState,
     ScheduleEntry,
@@ -75,8 +77,12 @@ _HIGHEST_ATTEMPT_ID = (
 _NEXT_ATTEMPT_ID = f"SELECT {_HIGHEST_ATTEMPT_ID} + 1"
 _SCHEDULE_UPSERT = """
 INSERT OR REPLACE INTO schedule (slug, ease, interval_days, reps, lapses, due_on, last_grade,
-  updated_at)
-VALUES (:slug, :ease, :interval_days, :reps, :lapses, :due_on, :last_grade, :updated_at)
+  updated_at, levels)
+VALUES (:slug, :ease, :interval_days, :reps, :lapses, :due_on, :last_grade, :updated_at, :levels)
+"""
+_LEVELS_PASSED = """
+SELECT slug, MAX(levels_passed) AS best, SUM(levels_passed IS NULL) AS unrecorded FROM attempts
+WHERE status = 'passed' GROUP BY slug
 """
 
 
@@ -187,6 +193,7 @@ class SqliteProgressStore:
                     "due_on": entry.due_on.isoformat(),
                     "last_grade": int(entry.last_grade),
                     "updated_at": _instant_text(entry.updated_at),
+                    "levels": _level_reviews_text(entry.levels),
                 },
             )
 
@@ -194,13 +201,18 @@ class SqliteProgressStore:
         with self._connection() as connection:
             statuses = connection.execute("SELECT DISTINCT slug, status FROM attempts").fetchall()
             schedules = connection.execute("SELECT * FROM schedule").fetchall()
+            passes = connection.execute(_LEVELS_PASSED).fetchall()
         by_slug: defaultdict[str, set[AttemptStatus]] = defaultdict(set)
         for row in statuses:
             by_slug[row["slug"]].add(AttemptStatus(row["status"]))
         entries = {row["slug"]: _schedule_entry(row) for row in schedules}
+        reached = {row["slug"]: (row["best"] or 0, bool(row["unrecorded"])) for row in passes}
         return {
             slug: ProblemProgress(
-                frozenset(by_slug.get(slug, ())), entries.get(slug), self._mastered_interval_days
+                frozenset(by_slug.get(slug, ())),
+                entries.get(slug),
+                self._mastered_interval_days,
+                *reached.get(slug, (0, False)),
             )
             for slug in sorted(by_slug.keys() | entries.keys())
         }
@@ -469,4 +481,41 @@ def _schedule_entry(row: sqlite3.Row) -> ScheduleEntry:
         due_on=date.fromisoformat(row["due_on"]),
         last_grade=Grade(row["last_grade"]),
         updated_at=_required_instant(row["updated_at"]),
+        levels=_level_reviews(row["levels"]),
+    )
+
+
+def _level_reviews(text: str | None) -> tuple[LevelReview, ...] | None:
+    if text is None:
+        return None
+    return tuple(
+        LevelReview(
+            level=found["level"],
+            state=ReviewState(
+                ease=found["ease"],
+                interval_days=found["interval_days"],
+                reps=found["reps"],
+                lapses=found["lapses"],
+            ),
+            last_grade=Grade(found["last_grade"]),
+        )
+        for found in json.loads(text)
+    )
+
+
+def _level_reviews_text(levels: tuple[LevelReview, ...] | None) -> str | None:
+    if levels is None:
+        return None
+    return json.dumps(
+        [
+            {
+                "level": review.level,
+                "ease": review.state.ease,
+                "interval_days": review.state.interval_days,
+                "reps": review.state.reps,
+                "lapses": review.state.lapses,
+                "last_grade": int(review.last_grade),
+            }
+            for review in levels
+        ]
     )

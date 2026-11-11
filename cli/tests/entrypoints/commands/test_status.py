@@ -202,6 +202,7 @@ def test_json_lists_the_open_levels(environment):
         "best": None,
         "last_time": None,
         "try_level": None,
+        "mastered": 0,
     }
 
 

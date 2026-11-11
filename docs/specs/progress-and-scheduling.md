@@ -4,7 +4,7 @@ Progress lives in SQLite (`progress.db`, gitignored). The database stores only f
 
 ## Schema
 
-Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`; `0006_level_passes.sql` adds `attempts.levels_passed`, `attempts.levels_total` and `test_runs.levels_passed` for [level passes](#level-passes), NULL in the rows written before it. A script that adds a column the table already has, as one run again under a new number does, runs statement by statement, skipping that column. Processes that open a new database at the same time migrate it one after another, under a lock on its folder. A database migrates on the first command that opens it; `cstudy doctor` shows its schema (`progress database`: WARN when older, FAIL when newer than this `cstudy` knows) without migrating, and `cstudy doctor --fix` migrates it now, under the same lock ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`. [`cstudy reset`](cli.md#cstudy-reset) empties every table but `meta` in one transaction and records the highest attempt id it deleted there as `attempt_id_floor`; a new attempt's id is one above the higher of that and the table's own, since `.archive/<slug>/<attempt_id>-<lang>/`, which a reset keeps by default, names old attempts by id.
+Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`; `0006_level_passes.sql` adds `attempts.levels_passed`, `attempts.levels_total`, `test_runs.levels_passed` and `schedule.levels` for [level passes](#level-passes) and [mastery per level](#mastery-per-level), NULL in the rows written before it. A script that adds a column the table already has, as one run again under a new number does, runs statement by statement, skipping that column. Processes that open a new database at the same time migrate it one after another, under a lock on its folder. A database migrates on the first command that opens it; `cstudy doctor` shows its schema (`progress database`: WARN when older, FAIL when newer than this `cstudy` knows) without migrating, and `cstudy doctor --fix` migrates it now, under the same lock ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`. [`cstudy reset`](cli.md#cstudy-reset) empties every table but `meta` in one transaction and records the highest attempt id it deleted there as `attempt_id_floor`; a new attempt's id is one above the higher of that and the table's own, since `.archive/<slug>/<attempt_id>-<lang>/`, which a reset keeps by default, names old attempts by id.
 
 ```sql
 PRAGMA foreign_keys = ON;
@@ -62,7 +62,8 @@ CREATE TABLE schedule (
   lapses        INTEGER NOT NULL,
   due_on        TEXT NOT NULL,
   last_grade    INTEGER NOT NULL,
-  updated_at    TEXT NOT NULL
+  updated_at    TEXT NOT NULL,
+  levels        TEXT                 -- problems with levels: JSON [{level, ease, interval_days, reps, lapses, last_grade}] from level 2
 );
 
 CREATE TABLE bench_runs (
@@ -170,9 +171,23 @@ A progressive or project problem passes through level N of M: N is the largest l
 
 | Term | Over the finished attempts of one problem in one language |
 |------|-------------------------------------------------------------|
-| Mastery (`best`) | The most levels a `passed` attempt passed, at most the problem's levels now; none before a pass |
+| Best | The most levels a `passed` attempt passed, at most the problem's levels now; none before a pass |
 | Last time | N of the latest attempt, by start, that passed at least level 1, in any mode and status |
 | Goal | While last time is below M: `last time: through level 2 of 4; try level 3`. A new attempt, a review included, still starts at level 1 |
+
+## Mastery per level
+
+A problem with levels applies the recall test of `mastered` ([problem status](#problem-status)) to each level: an interval of at least `mastered_interval_days` after a grade of 2 or 3 ([ADR 0024](../decisions/0024-level-passes.md#mastery-per-level)).
+
+| Item | Rule |
+|------|------|
+| Level 1 | The problem's `schedule` row, as for every problem |
+| Levels 2 to M | `schedule.levels`, one review per level reached. At `cstudy done`, with the attempt's `levels_passed` N and grade G, each level L from 2 to M: L ≤ N takes G (from a fresh review the first time); L > N takes 0 when it has a review, and stays without one otherwise. The [scheduling algorithm](#scheduling-algorithm) and its settings apply to each |
+| Mastered through | The largest L such that each of levels 1 to L passes the recall test; 0 when level 1 does not. A level without a review is not mastered |
+| Older rows | A row with `levels` NULL was written before levels had reviews, by full passes, so every level follows the row's own review: mastered through M when the problem is mastered. The next `cstudy done` gives every level that review to start from |
+| Without levels | `levels` stays NULL and `mastered` reads as it always has |
+
+Levels mastered do not change the problem's status value: it is `mastered` exactly when level 1 is, so the `--status` filter, the weakness score, `cstudy next` and `cstudy stats` read it as before. Only the words change.
 
 ## Scheduling algorithm
 
@@ -225,7 +240,7 @@ Worked sequence with the defaults (ok, ok, ok, hard, again, ok):
 | `new` | No attempt with status `passed` or `failed`, and none open |
 | `attempted` | Finished attempts exist, none `passed` |
 | `passed` | At least one `passed` attempt; not mastered |
-| `mastered` | `schedule.interval_days >=` the config's `schedule.mastered_interval_days` (default 21) and `last_grade >= 2` |
+| `mastered` | `schedule.interval_days >=` the config's `schedule.mastered_interval_days` (default 21) and `last_grade >= 2`. A problem with levels is mastered through the levels each of which passes this test ([mastery per level](#mastery-per-level)), level 1 by this row, and reads `mastered through level 2 of 4` (`mastered 2/4` in the table of `cstudy list`) until it is mastered through its last |
 | `due` | `schedule.due_on <= today` (shown instead of `passed` or `mastered`) |
 
 Only the display of `cstudy list` and its web page, and the `--status` filter, read the status. People read `in_progress` as `in progress` (the table, the badge and the Status filter of the page, the first line of `cstudy history`); the value `in_progress` stays in `--json`, the API and the route's query. `cstudy next` and the weakness score read the attempts themselves: a problem with an attempt in progress is still left out of the picks and still counts in its group, and a problem with no finished attempt is still `new` there. A review in progress shows `in_progress` rather than `due`, so `cstudy list --status due` lists the due problems that have no attempt open.

@@ -384,7 +384,17 @@
         "levels": {
           "oneOf": [
             { "type": "null" },
-            { "type": "object", "additionalProperties": false, "required": ["last"], "properties": { "last": { "type": "integer", "minimum": 1 } } }
+            {
+              "description": "The problem's last level, the most levels a pass reached and the levels it is mastered through (docs/specs/progress-and-scheduling.md#mastery-per-level)",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["last", "passed", "mastered"],
+              "properties": {
+                "last": { "type": "integer", "minimum": 1 },
+                "passed": { "type": "integer", "minimum": 0 },
+                "mastered": { "type": "integer", "minimum": 0 }
+              }
+            }
           ]
         },
         "hints_total": { "type": "integer", "minimum": 0 },

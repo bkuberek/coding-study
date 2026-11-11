@@ -172,6 +172,7 @@ def test_json_lists_a_progressive_problems_levels_without_opening_times(progress
         "best": None,
         "last_time": None,
         "try_level": None,
+        "mastered": 0,
     }
 
 
@@ -185,20 +186,20 @@ def passed_before(environment: Environment, levels: int) -> None:
     start_attempt(environment, StartRequest("level-store", Language.PYTHON))
 
 
-def test_a_new_attempt_shows_the_level_to_try_and_the_best(progressive):
+def test_a_new_attempt_shows_the_level_to_try_and_the_levels_passed(progressive):
     passed_before(progressive, 2)
     assert lines()[2:5] == [
         "level      1 of 3: Put and get",
         "goal       last time: through level 2 of 3; try level 3",
-        "best       through level 2 of 3",
+        "passed     through level 2 of 3",
     ]
 
 
-def test_after_every_level_only_the_best_shows(progressive):
+def test_after_every_level_only_the_levels_passed_show(progressive):
     passed_before(progressive, 3)
     assert lines()[2:4] == [
         "level      1 of 3: Put and get",
-        "best       through level 3 of 3",
+        "passed     through level 3 of 3",
     ]
 
 

@@ -377,13 +377,13 @@ def test_a_pass_of_every_level_reads_passed(project):
     assert "through" not in lines(PROJECT_SLUG)[5]
 
 
-def test_the_best_level_of_each_language_follows_the_review_line(project):
+def test_the_levels_each_language_passed_follow_the_review_line(project):
     passed_through(project, 1)
-    assert lines(PROJECT_SLUG)[2] == "best       python through level 1 of 2"
+    assert lines(PROJECT_SLUG)[2] == "passed     python through level 1 of 2"
 
 
-def test_without_a_pass_there_is_no_best_line(project):
-    assert not any(line.startswith("best") for line in lines(PROJECT_SLUG))
+def test_without_a_pass_there_is_no_passed_line(project):
+    assert not any(line.startswith("passed ") for line in lines(PROJECT_SLUG))
 
 
 def test_json_gives_each_attempt_its_levels(project):
@@ -396,6 +396,7 @@ def test_json_gives_the_mastery_and_the_level_to_try_per_language(project):
     passed_through(project, 1)
     assert document(PROJECT_SLUG)["levels"] == {
         "last": 2,
+        "mastered": 0,
         "languages": [{"language": "python", "best": 1, "last_time": 1, "try_level": 2}],
     }
 

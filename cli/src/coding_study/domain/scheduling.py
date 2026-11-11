@@ -61,6 +61,16 @@ class ReviewState:
 
 
 @dataclass(frozen=True, slots=True)
+class LevelReview:
+    """One level's own review state, for a level after the first of a problem with levels
+    (docs/specs/progress-and-scheduling.md#mastery-per-level): level 1's is the problem's."""
+
+    level: int
+    state: ReviewState
+    last_grade: Grade
+
+
+@dataclass(frozen=True, slots=True)
 class ScheduleEntry:
     """One row of `schedule`."""
 
@@ -70,6 +80,10 @@ class ScheduleEntry:
     """A local calendar date."""
     last_grade: Grade
     updated_at: datetime
+    levels: tuple[LevelReview, ...] | None = None
+    """A problem with levels: the levels after the first that an attempt reached, each with its
+    own review. None for a problem without levels, and for a row written before levels had
+    reviews, whose every level follows `state`."""
 
 
 def next_review_state(
@@ -143,6 +157,11 @@ class ProblemProgress:
     attempt_statuses: frozenset[AttemptStatus] = frozenset()
     schedule: ScheduleEntry | None = None
     mastered_interval_days: int = MASTERED_INTERVAL_DAYS
+    best_levels: int = 0
+    """The most levels a `passed` attempt recorded passing."""
+    every_level_passed: bool = False
+    """A `passed` attempt recorded no levels: one passed before attempts recorded them, or of a
+    problem without levels, either way through every level it has."""
 
     def status(self, today: date) -> ProblemStatus:
         """docs/specs/progress-and-scheduling.md#problem-status"""
@@ -176,8 +195,32 @@ class ProblemProgress:
     def is_mastered(self) -> bool:
         """Mastered even while due: `due` only takes precedence when shown."""
         entry = self.schedule
-        return (
-            entry is not None
-            and entry.state.interval_days >= self.mastered_interval_days
-            and entry.last_grade >= Grade.OK
-        )
+        return entry is not None and self._recalled(entry.state, entry.last_grade)
+
+    def levels_passed(self, last: int) -> int:
+        """For a problem with `last` levels: the most levels a pass reached, in any language."""
+        return last if self.every_level_passed else min(self.best_levels, last)
+
+    def mastered_levels(self, last: int) -> int:
+        """For a problem with `last` levels: the largest L such that each of levels 1 to L is
+        mastered (docs/specs/progress-and-scheduling.md#mastery-per-level). Level 1 is mastered
+        as the problem is; each later level by its own review, and a level never reached is not.
+        A schedule written before levels had reviews masters every level with the problem."""
+        entry = self.schedule
+        if entry is None or not self.is_mastered:
+            return 0
+        if entry.levels is None:
+            return last
+        own = {review.level: review for review in entry.levels}
+        mastered = 1
+        for level in range(mastered + 1, last + 1):
+            review = own.get(level)
+            if review is None or not self._recalled(review.state, review.last_grade):
+                break
+            mastered = level
+        return mastered
+
+    def _recalled(self, state: ReviewState, last_grade: Grade) -> bool:
+        """The recall test: an interval of at least the mastered threshold, after a grade of
+        `ok` or `easy`."""
+        return state.interval_days >= self.mastered_interval_days and last_grade >= Grade.OK

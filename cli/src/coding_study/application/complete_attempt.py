@@ -28,12 +28,23 @@ from coding_study.domain.attempts import (
     passed_every_case,
     self_graded,
 )
+from coding_study.domain.config import ScheduleSettings
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import ItemMeta
-from coding_study.domain.level_passes import LevelOutcome, LevelsPassed, level_outcome
+from coding_study.domain.level_passes import (
+    LevelOutcome,
+    LevelsPassed,
+    level_outcome,
+    next_level_reviews,
+)
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
-from coding_study.domain.scheduling import ReviewState, ScheduleEntry, next_review_state
+from coding_study.domain.scheduling import (
+    LevelReview,
+    ReviewState,
+    ScheduleEntry,
+    next_review_state,
+)
 
 RATINGS = "|".join(Rating)
 FINISH_WITH_A_RATING = f"finish with --rating {RATINGS}"
@@ -211,6 +222,19 @@ def _reschedule(environment: Environment, attempt: Attempt) -> ScheduleEntry:
         due_on=ended_on + timedelta(days=state.interval_days),
         last_grade=attempt.grade,
         updated_at=attempt.ended_at,
+        levels=_level_reviews(previous, attempt, schedule),
     )
     environment.progress.save_schedule_entry(entry)
     return entry
+
+
+def _level_reviews(
+    previous: ScheduleEntry | None, attempt: Attempt, schedule: ScheduleSettings
+) -> tuple[LevelReview, ...] | None:
+    """Each level's own review after a problem with levels was graded
+    (progress-and-scheduling.md#mastery-per-level); None for another problem."""
+    if attempt.levels_passed is None or attempt.levels_total is None:
+        return None
+    assert attempt.grade is not None
+    passed = LevelsPassed(attempt.levels_passed, attempt.levels_total)
+    return next_level_reviews(previous, passed, attempt.grade, schedule)

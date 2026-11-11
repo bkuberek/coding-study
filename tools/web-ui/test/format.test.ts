@@ -61,6 +61,22 @@ test("an unknown problem status keeps its word", () => {
   assert.equal(problemBadge("archived").text, "archived");
 });
 
+test("a problem mastered below its last level says through which, as cstudy history writes it", () => {
+  assert.deepEqual(problemBadge("mastered", { last: 4, passed: 3, mastered: 2 }), {
+    glyph: "◆",
+    text: "mastered through level 2 of 4",
+    tone: "info",
+  });
+});
+
+test("a problem mastered through every level reads mastered", () => {
+  assert.equal(problemBadge("mastered", { last: 4, passed: 4, mastered: 4 }).text, "mastered");
+});
+
+test("a status other than mastered says nothing of levels", () => {
+  assert.equal(problemBadge("passed", { last: 4, passed: 3, mastered: 0 }).text, "passed");
+});
+
 test("a file without a state has no badge", () => {
   assert.equal(fileBadge(null), null);
 });

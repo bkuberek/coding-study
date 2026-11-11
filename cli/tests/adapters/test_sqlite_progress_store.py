@@ -22,7 +22,12 @@ from coding_study.domain.attempts import (
 )
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
+from coding_study.domain.scheduling import (
+    LevelReview,
+    ProblemProgress,
+    ReviewState,
+    ScheduleEntry,
+)
 
 STARTED = datetime(2026, 10, 24, 10, 0, tzinfo=UTC)
 
@@ -338,7 +343,9 @@ def test_problem_progress_collects_attempt_statuses_and_schedule(store):
     store.add_attempt(new_attempt())
     store.save_schedule_entry(schedule_entry())
     expected = ProblemProgress(
-        frozenset({AttemptStatus.PASSED, AttemptStatus.IN_PROGRESS}), schedule_entry()
+        frozenset({AttemptStatus.PASSED, AttemptStatus.IN_PROGRESS}),
+        schedule_entry(),
+        every_level_passed=True,
     )
     assert store.problem_progress() == {"two-sum": expected}
 
@@ -425,3 +432,34 @@ def test_a_clear_that_fails_midway_changes_nothing_and_leaves_the_database_whole
     check = connection.execute("PRAGMA integrity_check").fetchone()[0]
     connection.close()
     assert (rows, check, store.snapshot().row_counts()["attempts"]) == (1, "ok", 1)
+
+
+def test_saved_schedule_entries_keep_each_levels_review(store):
+    levels = (LevelReview(2, ReviewState(ease=2.5, interval_days=3, reps=1), Grade.OK),)
+    entry = replace(schedule_entry(), levels=levels)
+    store.save_schedule_entry(entry)
+    assert store.schedule_entry("two-sum") == entry
+
+
+def test_a_schedule_entry_saved_without_level_reviews_reads_none(store):
+    store.save_schedule_entry(schedule_entry())
+    found = store.schedule_entry("two-sum")
+    assert found is not None
+    assert found.levels is None
+
+
+def passed_through(store, levels: int | None) -> None:
+    attempt = store.add_attempt(new_attempt("level-store"))
+    store.update_attempt(replace(attempt, status=AttemptStatus.PASSED, levels_passed=levels))
+
+
+def test_problem_progress_knows_the_most_levels_a_pass_recorded(store):
+    passed_through(store, 2)
+    passed_through(store, 3)
+    assert store.problem_progress()["level-store"].levels_passed(4) == 3
+
+
+def test_a_pass_that_recorded_no_levels_passed_every_level(store):
+    passed_through(store, 2)
+    passed_through(store, None)
+    assert store.problem_progress()["level-store"].levels_passed(4) == 4

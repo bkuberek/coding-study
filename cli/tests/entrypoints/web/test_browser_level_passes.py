@@ -1,7 +1,8 @@
 """Level passes in a real browser (docs/specs/progress-and-scheduling.md#level-passes): a problem
-an earlier attempt passed through level 2 of 4 shows that attempt, its best and the level to try in
-the Problem view, a new attempt shows the goal in its statement, and Done after a run through level
-1 reads `passed · through level 1 of 4`, in each engine of `tests/browsers.py`.
+an earlier attempt passed through level 2 of 4, mastered through level 2, shows that attempt, its
+best, its mastery and the level to try in the Problem view, a new attempt shows the goal in its
+statement, and Done after a run through level 1 reads `passed · through level 1 of 4`, in each
+engine of `tests/browsers.py`.
 
 Progress is written to the workspace's progress.db as `cstudy done` and `cstudy test` would leave
 it, so no code runs. Playwright and its engines are set up as `tests/browsers.py` says; without
@@ -10,7 +11,7 @@ them the test is skipped.
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ from coding_study.domain.attempts import (
 )
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
+from coding_study.domain.scheduling import LevelReview, ReviewState, ScheduleEntry
 from tests.browsers import launched, watched
 from tests.helpers import mark_workspace
 from tests.serve_process import RunningServer, running_server
@@ -49,6 +51,7 @@ class Viewed:
     """What the browser saw of a problem passed through level 2 of 4, then of a new attempt."""
 
     practise: str = ""
+    badge: str = ""
     best: str = ""
     summary: str = ""
     statement: str = ""
@@ -79,6 +82,17 @@ def _passed_through_level_2(store: SqliteProgressStore) -> None:
             levels_total=LEVELS,
         )
     )
+    recalled = ReviewState(interval_days=45, reps=4)
+    store.save_schedule_entry(
+        ScheduleEntry(
+            PROBLEM,
+            recalled,
+            date(2099, 1, 1),
+            Grade.OK,
+            EARLIER,
+            (LevelReview(2, recalled, Grade.OK),),
+        )
+    )
 
 
 @pytest.fixture(scope="module")
@@ -95,6 +109,7 @@ def viewed(engine: str, server: RunningServer) -> Viewed:
         page.evaluate(f"location.hash = '#/problems/{PROBLEM}'")
         page.wait_for_selector(".practice-actions button.primary")
         seen.practise = page.locator(PRACTISE).inner_text()
+        seen.badge = page.locator(".problem-facts .badge").inner_text()
         seen.best = page.locator(f"{HISTORY} .best-line").inner_text()
         seen.summary = page.locator(f"{HISTORY} ol.attempts > li summary").first.inner_text()
         _start(page)
@@ -136,8 +151,12 @@ def test_the_practise_panel_names_the_level_to_try(viewed):
     assert f"python: {GOAL}" in viewed.practise
 
 
+def test_the_status_reads_mastered_through_level_2(viewed):
+    assert viewed.badge.endswith("mastered through level 2 of 4")
+
+
 def test_the_history_names_the_best_level(viewed):
-    assert viewed.best == "best python through level 2 of 4"
+    assert viewed.best == "passed python through level 2 of 4"
 
 
 def test_the_earlier_attempt_reads_passed_through_level_2(viewed):

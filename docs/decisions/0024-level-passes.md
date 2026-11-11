@@ -47,13 +47,14 @@ A `cstudy mock` attempt (mode `mock`) simulates an interview, so it keeps the ru
 
 ### What is stored
 
-Migration `0006_level_passes.sql` adds three nullable columns:
+Migration `0006_level_passes.sql` adds four nullable columns:
 
 | Column | Holds |
 |--------|-------|
 | `attempts.levels_passed` | N, set by `cstudy done` for a problem with levels |
 | `attempts.levels_total` | M, set by `cstudy done`, so a later change to the problem's levels does not rewrite the past |
 | `test_runs.levels_passed` | For a progressive problem: the highest level such that the run ran and passed every case of levels 1 to it. A stress case counts once per variant. 0 when level 1 did not pass, or when the code did not build |
+| `schedule.levels` | For a problem with levels: the review of each level after the first, as JSON ([mastery per level](#mastery-per-level)) |
 
 A test run had only its totals, which cannot say which levels passed when one case of level 3 failed. So the run stores its N when it is recorded.
 
@@ -65,33 +66,69 @@ Rows written before the migration keep NULL, and stay valid:
 - A `failed` one recorded no levels.
 - A test run with NULL counts every level when it passed every case, and none otherwise, which was the rule before.
 
-### Mastery and the next goal
+### The best level and the next goal
 
 Neither is stored. Both are read from the attempts of one problem in one language.
 
 | Term | Meaning |
 |------|---------|
-| Mastery (`best`) | The most levels a `passed` attempt passed, up to the problem's levels now |
+| Best | The most levels a `passed` attempt in that language passed, up to the problem's levels now |
 | Last time | N of the latest finished attempt that passed level 1, in any mode |
 | Goal | While last time is below M: `last time: through level 2 of 4; try level 3` |
 
 A review, or any new attempt, still starts at level 1, because a review means solving the problem again. The goal says how far to aim.
+
+### Mastery per level
+
+Added on 2026-11-11, after the owner's decision: mastery is "the ability to recall at your level".
+
+The recall test stays the one of the [problem status](../specs/progress-and-scheduling.md#problem-status): a review interval of at least `mastered_interval_days` (21 by default) after a grade of `ok` or `easy`. A problem with levels applies it to each level, and is **mastered through level L of M** for the largest L such that each of levels 1 to L passes it. It reads `mastered` with no qualifier only when L = M. Problems without levels are unchanged.
+
+| Rule | Detail |
+|------|--------|
+| Level 1 | Its review is the problem's own `schedule` row, which every graded attempt updates, as before. So the problem is `mastered`, in any status filter, the weakness score, `cstudy next` and `cstudy stats`, exactly when it was before, through level 1 at least |
+| Levels 2 to M | Each has a review of its own, kept on the `schedule` row as `levels` (JSON). A graded attempt that passed through level N gives each level up to N its grade, a level reached before but not passed now `again`, and leaves a level never reached without a review. A level's first review starts fresh, at the first interval |
+| Rows before this | A `schedule` row with no `levels`, written before levels had reviews, was earned by full passes only, so every level counts as reached with the problem's own review, and mastery reads as before |
+
+So climbing does not inherit mastery: a level's interval grows only from the reviews that reached it.
+
+Worked example, with the default intervals and every review graded `ok` on a problem of 4 levels:
+
+| Review | Passed through | Level 1 (the problem) | Level 2 | Level 3 | Reads |
+|--------|----------------|-----------------------|---------|---------|-------|
+| 1 | 2 | 3 days | 3 | - | passed through level 2 of 4 |
+| 2 | 2 | 7 | 7 | - | passed through level 2 of 4 |
+| 3 | 2 | 18 | 18 | - | passed through level 2 of 4 |
+| 4 | 2 | 45 | 45 | - | mastered through level 2 of 4 |
+| 5 | 3 | 113 | 113 | 3 | mastered through level 2 of 4, passed through level 3 |
+| 6 | 3 | 180 (the cap) | 180 | 7 | the same |
+| 7 | 3 | 180 | 180 | 18 | the same |
+| 8 | 3 | 180 | 180 | 45 | mastered through level 3 of 4 |
+
+Had review 6 passed through level 2 only, level 3 would have taken `again` (1 day) and started over, while levels 1 and 2 kept growing.
+
+| Alternative | Why not |
+|-------------|---------|
+| Replay the reviews of each level from the attempts each time | Needs the attempts, the problem's levels and the current intervals wherever a status shows, and a changed interval setting would rewrite past mastery, unlike the schedule, whose due dates never move |
+| The minimum level over the problem's current review streak | Passing level 3 after mastering level 2 would never master level 3 without a lapse first |
+| A table of level reviews | The `schedule` row already belongs to the problem and is what resets, exports and imports carry; one JSON column follows it at no extra cost |
 
 ### Where it shows
 
 | Where | What |
 |-------|------|
 | `cstudy done` | `passed · through level 2 of 4` when N < M |
-| `cstudy status` | `best` and `goal` lines, a `next` line that says `cstudy done` now passes through level N, and `levels.passed`, `best`, `last_time` and `try_level` in `--json` |
-| `cstudy history` | The status column reads `passed through level 2 of 4`, a `best` line per language, and `levels_passed` and `levels_total` on each attempt in `--json` |
+| `cstudy status` | `goal`, `passed` (the best) and `mastered` lines, a `next` line that says `cstudy done` now passes through level N, and `levels.passed`, `best`, `last_time`, `try_level` and `mastered` in `--json` |
+| `cstudy history` | The header reads `mastered through level 2 of 4`, the status column `passed through level 2 of 4`, a `passed` line gives the best per language, and `--json` adds `levels_passed` and `levels_total` to each attempt and `levels.mastered` |
+| `cstudy list` | The status column reads `mastered 2/4`, and `--json` gives each entry `levels`: `last`, `passed` (the best in any language) and `mastered` |
 | The statement | The goal, under the title, while an attempt is in progress |
-| The page | The Done dialog's line, the History of the Problem view, and the goal in its Practise panel; the Attempt view shows the goal through the statement |
+| The page | The Done dialog's line, the History of the Problem view, and the goal in its Practise panel; the Attempt view shows the goal through the statement; the status badge of the Problems, Problem and Sets views reads `mastered through level 2 of 4` |
 
 The done API keeps `levels_finished`, a project's levels finished, for compatibility, and adds `levels_passed` and `levels_total`, N and M for any problem with levels, which the page writes the done line from.
 
 ## Consequences
 
-- A problem passed through level 2 of 4 is `passed`, not `attempted`, and can become `mastered` once its interval is long enough. Mastery per level shows how far that goes.
+- A problem passed through level 2 of 4 is `passed`, not `attempted`, and becomes `mastered` through the levels its reviews keep reaching, as [mastery per level](#mastery-per-level) says.
 - `cstudy next`, the weakness score and the sets' `passed of total` follow, since they read the attempts' statuses and grades.
 - A run that passed every case of levels 1 and 2 counts, whatever selected it: a full run, `--level 2`, or `--case` naming each of those cases. Only a run that passes every unlocked level opens the next one, as before.
 - Data written by an older `cstudy` reads the same as before. An export from this version imports only into a `cstudy` at schema 6 or later.
@@ -102,6 +139,6 @@ The done API keeps `levels_finished`, a project's levels finished, for compatibi
 |--------|---------|
 | Keep the level cap, and only pass the attempt | A clean pass of the first levels would still come back the next day as `again`, which is the problem the owner raised |
 | Read N from `level_unlocked` | It records the highest level a run ever opened, not what the latest code passes; a later run that breaks level 1 would still count |
-| Store mastery per (problem, language) in a table | It can be read from the attempts at any time, and a table would need keeping in step with imports, resets and old rows |
+| Store the best per (problem, language) in a table | It can be read from the attempts at any time, and a table would need keeping in step with imports, resets and old rows |
 | Start a review at the level after last time | A review means solving again from the start. The goal tells you where to aim instead |
 | Apply level passes to mock attempts too | A mock simulates an interview, where an unfinished problem is not a pass |

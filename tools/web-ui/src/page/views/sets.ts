@@ -196,7 +196,7 @@ export function setView(context: PageContext, name: string): Cleanup {
 
   const rowOf = (found: SetDocument, row: SetRow): HTMLTableRowElement => {
     const entry = row.entry;
-    const status = entry === null ? { glyph: "?", text: "missing", tone: "warn" } : problemBadge(entry.status);
+    const status = entry === null ? { glyph: "?", text: "missing", tone: "warn" } : problemBadge(entry.status, entry.levels);
     return h(
       "tr",
       { class: entry?.kind === "item" ? "is-item" : null },

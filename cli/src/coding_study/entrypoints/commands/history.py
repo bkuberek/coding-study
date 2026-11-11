@@ -20,7 +20,7 @@ from coding_study.domain.attempts import Attempt, AttemptStatus, Grade, RunRecor
 from coding_study.domain.bench_records import BenchRunSummary
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import EntryKind
-from coding_study.domain.level_passes import LevelMastery
+from coding_study.domain.level_passes import LevelMastery, status_text
 from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ScheduleEntry
 from coding_study.domain.submissions import SubmissionRecord
@@ -83,7 +83,7 @@ def history(
     output.print(review)
     best = _best(found)
     if best:
-        line = Text("best".ljust(LABEL_WIDTH), style="dim")
+        line = Text("passed".ljust(LABEL_WIDTH), style="dim")
         line.append(best)
         output.print(line)
     output.print()
@@ -116,7 +116,7 @@ def _levels_value(found: ProblemHistory) -> JsonValue:
     languages: list[JsonValue] = [
         _mastery_value(language, mastery) for language, mastery in found.masteries
     ]
-    return {"last": found.levels, "languages": languages}
+    return {"last": found.levels, "mastered": found.mastered, "languages": languages}
 
 
 def _mastery_value(language: Language, mastery: LevelMastery) -> JsonValue:
@@ -140,7 +140,8 @@ def _best(found: ProblemHistory) -> str:
 def _header(found: ProblemHistory) -> str:
     """The primary pattern, or the track of a problem without patterns and of an item."""
     topic = found.patterns[0] if found.patterns else found.track.value
-    return " · ".join((found.slug, found.difficulty, topic, found.status.label))
+    mastered = None if found.levels is None else (found.mastered, found.levels)
+    return " · ".join((found.slug, found.difficulty, topic, status_text(found.status, mastered)))
 
 
 def _review(found: ProblemHistory) -> str:

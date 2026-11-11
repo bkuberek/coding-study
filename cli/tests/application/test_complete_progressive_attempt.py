@@ -16,6 +16,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.level_passes import LevelsPassed
 from coding_study.domain.problem import Language
+from coding_study.domain.scheduling import LevelReview, ReviewState
 from tests.application.test_progressive_practice import environment_for
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment
 from tests.fakes import repository_root as copy_repository
@@ -200,3 +201,21 @@ def test_a_problem_without_levels_records_no_levels(tmp_path):
     start_attempt(environment, StartRequest("two-sum"))
     attempt = done(environment, None).attempt
     assert (attempt.levels_passed, attempt.levels_total) == (None, None)
+
+
+def test_done_gives_each_level_passed_after_the_first_its_own_review(tmp_path):
+    environment = through_level_2(tmp_path)
+    done(environment)
+    entry = environment.progress.schedule_entry(SLUG)
+    assert entry is not None
+    assert entry.levels == (LevelReview(2, ReviewState(interval_days=3, reps=1), Grade.OK),)
+
+
+def test_done_of_a_problem_without_levels_keeps_no_level_reviews(tmp_path):
+    toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
+    environment = make_environment(copy_repository(tmp_path, PRACTICE), toolchains=toolchains)
+    start_attempt(environment, StartRequest("two-sum"))
+    done(environment, None)
+    entry = environment.progress.schedule_entry("two-sum")
+    assert entry is not None
+    assert entry.levels is None
