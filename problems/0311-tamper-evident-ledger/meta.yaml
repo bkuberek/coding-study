@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0311"
+slug: tamper-evident-ledger
+title: Tamper-Evident Ledger
+summary: "Build Ledger, an audit log: fingerprint batches of records, chain them so one digest stands for the whole history, find where two histories part, and prove that a record is in a batch."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing, binary-search]
+domains: [security, backend]
+job_roles: [security-engineer, backend]
+scope: function
+languages: [python, typescript, java, kotlin, go]
+levels:
+  - {level: 1, title: Batch fingerprint}
+  - {level: 2, title: Chain}
+  - {level: 3, title: Common prefix}
+  - {level: 4, title: Inclusion proofs}
+signature:
+  class:
+    name: Ledger
+    constructor: {params: []}
+    methods:
+      - {name: addBatch, level: 1, params: [{name: name, type: string}, {name: records, type: "list<list<string>>"}], returns: {type: void}}
+      - {name: batchDigest, level: 1, params: [{name: name, type: string}], returns: {type: string}}
+      - {name: sameBatch, level: 1, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: bool}}
+      - {name: newChain, level: 2, params: [{name: name, type: string}, {name: batchSize, type: int}], returns: {type: void}}
+      - {name: addRecord, level: 2, params: [{name: name, type: string}, {name: record, type: "list<string>"}], returns: {type: void}}
+      - {name: sealedCount, level: 2, params: [{name: name, type: string}], returns: {type: int}}
+      - {name: chainDigest, level: 2, params: [{name: name, type: string}], returns: {type: string}}
+      - {name: sameChain, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: bool}}
+      - {name: commonPrefix, level: 3, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: int}}
+      - {name: merkleRoot, level: 4, params: [{name: name, type: string}, {name: batchIndex, type: int}], returns: {type: string}}
+      - {name: proof, level: 4, params: [{name: name, type: string}, {name: batchIndex, type: int}, {name: recordIndex, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: verify, level: 4, params: [{name: root, type: string}, {name: record, type: "list<string>"}, {name: proof, type: "list<list<string>>"}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: precomputed-digests, name: Digests computed once and kept, role: optimal, time: "O(1) per comparison; O(log n) per commonPrefix; O(log b) per proof", space: "O(r)", time_class: "log n", space_class: "n"}
+related: [event-sourced-ledger-typescript, in-memory-database]
+estimate_minutes: 90

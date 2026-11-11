@@ -222,6 +222,7 @@ The pilots are written with the next project problems.
 - [x] Search box practice: `0304`, a search box with keyboard navigation, matching, stale responses and selection, in all six languages, as a plain class on an explicit clock. A browser-graded version waits for Phase 16. The catalog then had 319 entries.
 - [x] P12 problems and two DSA additions: `0305` and `0306`, the Java and Kotlin versions of `0277`, `0307`, the built PP14, and `0308` and `0309`, two DSA problems (all grid paths on backtracking, and finding every missing and duplicate number, with a cyclic-sort optimum) that take the next free ids outside the stream plan, listed under [later DSA additions](specs/catalog.md#later-dsa-additions). The catalog then had 324 entries.
 - [x] P13 problem: `0310`, the Go version of `0277`. The catalog then had 325 entries.
+- [x] Hash chaining practice: `0311`, a tamper-evident ledger in four levels (batch fingerprints with an exact byte encoding, a chain of batch digests, a common prefix found by bisection, and Merkle inclusion proofs), in Python, TypeScript, Java, Kotlin and Go. The catalog then had 326 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 
 ### Planned project problems
