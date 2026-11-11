@@ -130,7 +130,8 @@ def test_the_linux_build_imports_with_the_images_jdk_and_its_gradle_home_in_the_
 
 
 def test_the_linux_build_keeps_its_shared_data_in_the_data_folder_not_under_the_images_home():
-    """The build creates `$XDG_DATA_HOME/JetBrains` at startup; the image's `~/.local` is read-only."""
+    """The build creates `$XDG_DATA_HOME/JetBrains` at startup; the image's `~/.local` is
+    read-only."""
     launch = Launch("/work/.cs/lsp", "/data", platform="linux", java_home="/opt/java/openjdk")
 
     assert KOTLIN_LSP_LINUX.environment(launch)["XDG_DATA_HOME"] == "/data/share"
