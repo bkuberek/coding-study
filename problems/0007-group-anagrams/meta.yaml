@@ -30,4 +30,5 @@ perf:
 references:
   leetcode: {number: 49, url: "https://leetcode.com/problems/group-anagrams/"}
 related: [valid-anagram, top-k-frequent-elements]
+guides: [canonical-keys]
 estimate_minutes: 20

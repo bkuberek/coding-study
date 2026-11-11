@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 523, url: "https://leetcode.com/problems/continuous-subarray-sum/"}
 related: [subarray-sum-equals-k, range-sum-immutable]
+guides: [prefix-sums-with-hash-maps]
 order: 4
 estimate_minutes: 20

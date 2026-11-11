@@ -30,4 +30,5 @@ perf:
 references:
   leetcode: {number: 169, url: "https://leetcode.com/problems/majority-element/"}
 related: [top-k-frequent-elements, contains-duplicate]
+guides: [counting-and-frequency]
 estimate_minutes: 10

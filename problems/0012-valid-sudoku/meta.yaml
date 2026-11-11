@@ -30,4 +30,5 @@ perf:
 references:
   leetcode: {number: 36, url: "https://leetcode.com/problems/valid-sudoku/"}
 related: [contains-duplicate]
+guides: [canonical-keys]
 estimate_minutes: 20

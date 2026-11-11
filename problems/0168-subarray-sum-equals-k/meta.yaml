@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 560, url: "https://leetcode.com/problems/subarray-sum-equals-k/"}
 related: [continuous-subarray-sum, tree-path-sum-count, two-sum, range-sum-immutable]
+guides: [prefix-sums-with-hash-maps]
 order: 3
 estimate_minutes: 20
