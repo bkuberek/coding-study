@@ -1,0 +1,19 @@
+{
+  "name": "cstudy-guides-tools",
+  "private": true,
+  "description": "Author-time tools of the concept guides in guides/: draws each Mermaid diagram as text (docs/specs/guides.md#text-drawings)",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "render": "node render-text.ts",
+    "render:all": "node render-text.ts --force",
+    "check": "node render-text.ts --check"
+  },
+  "devDependencies": {
+    "beautiful-mermaid": "1.1.3"
+  }
+}
