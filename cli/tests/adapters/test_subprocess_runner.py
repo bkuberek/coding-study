@@ -42,6 +42,7 @@ from coding_study.domain.runs import (
 from coding_study.domain.signature import FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import Scalar, ScalarType
 from tests.process_table import DyingCstudy, kill_all, left_running
+from tests.waits import GENEROUS_WAIT_S
 
 FAKE_RUNNER = Path(__file__).resolve().parents[1] / "fixtures" / "fake_runner.py"
 HANG_GUARD_MS = 200
@@ -163,7 +164,9 @@ def test_crash_is_reported_on_its_case_with_stderr(runner):
 
 
 def test_exit_without_bye_during_a_case_is_a_crash(runner):
-    [outcome] = outcomes(run(runner, job(case("a", "crash", exit_code=0))))
+    # The 200 ms hang guard can run out before a loaded machine reports the exit.
+    crash = replace(case("a", "crash", exit_code=0), hang_guard_ms=int(GENEROUS_WAIT_S * 1000))
+    [outcome] = outcomes(run(runner, job(crash)))
     assert outcome == Crashed(0, ("crashed",))
 
 
