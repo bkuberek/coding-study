@@ -21,6 +21,7 @@
 | [`cstudy list`](#cstudy-list) | Browse problems with filters | 0 (status columns in 1) |
 | [`cstudy set`](#cstudy-set) | Make named lists of problems to study from | 15 |
 | [`cstudy show`](#cstudy-show) | Print the rendered statement | 0 |
+| [`cstudy learn`](#cstudy-learn) | Read concept guides and follow learning paths | 16 |
 | [`cstudy done`](#cstudy-done) | Finish an attempt and schedule review | 1 |
 | [`cstudy abort`](#cstudy-abort) | Stop working on a problem: the attempt ends as abandoned | 9 |
 | [`cstudy next`](#cstudy-next) | Pick what to practice | 1 |
@@ -35,7 +36,7 @@
 | [`cstudy reset`](#cstudy-reset) | Delete progress and state, after a preview and a typed word | 9 |
 | [`cstudy about`](#cstudy-about) | Show the version, license, links and credits | 9 |
 
-`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set` needs one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
+`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list`, `cstudy show` and `cstudy learn` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set` and `cstudy learn --done` need one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
 ## Solution file targets
 
@@ -1134,6 +1135,49 @@ cstudy show <slug|file> [--level N]
 `cstudy show` lists [what a problem depends on](service-projects.md#what-a-problem-depends-on) above the statement. It reads the engine's state and starts nothing.
 
 Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive or project problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one, and a project problem's statement uses its language's names and each level's `Methods to add` line; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error. A problem that declares a [`jdk`](problem-format.md#jdk-range) range adds it to the statement's metadata line, ahead of any level (`hard · concurrency · Java and Kotlin: JDK 24 or newer`): `JDK 24 or newer` for a `min`, `JDK 25 or older` for a `max`, `JDK 22 to 25` for both, and the language Java or Kotlin alone for a project problem; nothing for the default range.
+
+## cstudy learn
+
+```text
+cstudy learn [--json]
+cstudy learn <guide> [--done] [--json]
+cstudy learn --path <path> [--json]
+```
+
+Reads the [concept guides and learning paths](guides.md) of the content root ([ADR 0024](../decisions/0024-concept-guides-and-learning-paths.md)). Reading needs no workspace: outside one, nothing is read and no path step is done. `--done` needs one, since it records progress.
+
+| Form | Does | Says |
+|------|------|------|
+| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with steps done of total, and `next    cstudy learn --path <path>` for the first path not finished; with no `guides/`, `no guides in <content root>` |
+| `cstudy learn <guide>` | Prints the guide as Markdown text, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings) | The guide, then `examples  <folder>` when it has examples, and `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked |
+| `cstudy learn <guide> --done` | Marks the guide read; the first time is kept | `marked hash-functions read`, or `hash-functions was marked read on 2026-11-11`, which changes nothing and exits 0 |
+| `cstudy learn --path <path>` | The path's steps in order, with what is [done](guides.md#reading-progress) | The heading, the summary, `3 of 21 done`, the steps, and `next    cstudy learn <guide>` or `next    cstudy start <problem>` for the first step not done |
+
+```text
+$ cstudy learn --path hashing
+hashing  Hashing: from your first hash map to tamper-evident ledgers
+From what a hash function is to Merkle proofs, through the problems that practise each idea.
+3 of 21 done
+#   KIND     STEP                       TARGET   STATUS          TITLE
+1   guide    hash-functions                      read            What a hash function is
+2   guide    hash-maps-and-sets                  read            Hash maps and sets
+3   problem  contains-duplicate                  passed          Contains Duplicate
+4   problem  two-sum                             attempted       Two Sum
+20  problem  tamper-evident-ledger      level 2  level 1 passed  Tamper-Evident Ledger
+next    cstudy start two-sum
+```
+
+A problem step's status is `passed` once done, or for a level target `level N passed` once done; before that, `level N passed` for the levels an attempt has passed, else the problem's [status](progress-and-scheduling.md#problem-status) in words (`new`, `in progress`, `attempted`).
+
+| Case | Result |
+|------|--------|
+| A guide that does not exist | `unknown guide "hash-fn"; did you mean hash-functions?`, or `unknown guide "x"; cstudy learn lists the guides`, exit 3 |
+| A path that does not exist | `unknown path "hashin"; did you mean hashing?`, or the same with `cstudy learn lists the paths`, exit 3 |
+| A guide and `--path` | `give a guide or --path, not both`, exit 3 |
+| `--done` without a guide | `--done needs a guide: cstudy learn <guide> --done`, exit 3 |
+| A guide or path that does not load | What is wrong and which file, exit 5; `cstudy verify --static` names every problem |
+
+`--json` of the list prints `{"guides": [...], "paths": [...]}`: each guide `{"slug", "title", "summary", "level", "prerequisites", "related", "problems", "read", "read_at"}` (`read_at` an ISO 8601 UTC time or null) and each path `{"slug", "title", "summary", "done", "total"}`. `--json` of a guide prints the guide's fields with `"markdown"`, `guide.md` as written, `diagrams` and all, and `"examples"`, the absolute paths of its examples. `--json` of `--done` prints `{"slug", "read_at", "already"}`, `already` true when it was marked before. `--json` of a path prints `{"slug", "title", "summary", "done", "total", "next", "steps": [...]}`: `next` the first step not done or null, and each step `{"position", "kind", "slug", "title", "level", "done", "status", "level_passed"}`, `kind` `guide` or `problem`, `level` the target or null, `status` as the table writes it, and `level_passed` the highest level an attempt has passed, or null for a guide or a problem without levels.
 
 ## cstudy new
 

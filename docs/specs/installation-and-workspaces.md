@@ -17,16 +17,16 @@ When several installs exist, the first `cstudy` on `PATH` runs; Homebrew's cavea
 | Item | Rule |
 |------|------|
 | Distribution | `coding-study`, defined by the root `pyproject.toml` (hatchling); the `cstudy` script |
-| Wheel | `coding_study/` from `cli/src/coding_study/`, the web UI's built assets in `coding_study/entrypoints/web/static/` included ([Web UI assets](#web-ui-assets)), plus `coding_study/content/{problems,tracks,runners,schemas}` from the repository root |
+| Wheel | `coding_study/` from `cli/src/coding_study/`, the web UI's built assets in `coding_study/entrypoints/web/static/` included ([Web UI assets](#web-ui-assets)), plus `coding_study/content/{problems,tracks,guides,runners,schemas}` from the repository root |
 | Runtime dependencies | Those in `uv.lock`, which include starlette, uvicorn (without its `standard` extra), h11 and wsproto for `cstudy serve`: pure-Python wheels, so the Homebrew formula needs no change ([ADR 0015](../decisions/0015-local-web-ui.md)) |
 | Release files | The wheel and `requirements.txt` (the runtime dependencies from `uv.lock`, with hashes), attached to the GitHub release of each version ([versioning](versioning.md#github-release)) |
-| sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `tracks`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
+| sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `tracks`, `guides`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
 | Excluded | Build output and caches (`node_modules`, `build`, `.gradle`, `.kotlin`, `.venv`, `__pycache__`, `.pytest_cache`, `.ruff_cache`, `target`) and `runners/python/tests` |
 | Workspace templates | Package data in `coding_study/adapters/workspace_template/`: the practice projects with the Gradle wrapper and lock files, and the root `go.work` |
 
 ## Content root
 
-The content root holds `problems/`, `tracks/`, `runners/` and `schemas/`. `cstudy` reads it and never writes to it, except `cstudy new` in a checkout.
+The content root holds `problems/`, `tracks/`, `guides/` ([concept guides and learning paths](guides.md), which a root may leave out), `runners/` and `schemas/`. `cstudy` reads it and never writes to it, except `cstudy new` in a checkout.
 
 | Order | Source | Used for |
 |-------|--------|----------|
@@ -107,7 +107,7 @@ Every path `cstudy` prints for a workspace file is relative to the workspace roo
 
 | Path | Holds | A reset |
 |------|-------|---------|
-| `progress.db` | Attempts, test runs, scheduled reviews, bench runs, submissions, level unlocks | Empties every table in one transaction; the file, its schema and `meta` stay |
+| `progress.db` | Attempts, test runs, scheduled reviews, bench runs, submissions, level unlocks, guides read | Empties every table in one transaction; the file, its schema and `meta` stay |
 | `.cs/runs/` | The data of runs | Deletes each run's folder |
 | `.statements/` | Statements rendered for the attempts | Deletes them; `cstudy start` renders them again |
 | `python/practice/`, `typescript/practice/`, `jvm/*/src/main/*/practice/`, `go/practice/`, `rust/practice/` | Your practice files | With `--files`: deletes all but `.gitkeep`, and takes the problems out of `rust/Cargo.toml` |

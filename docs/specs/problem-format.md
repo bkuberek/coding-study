@@ -72,6 +72,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `concurrency` | object | `concurrent` (required); `project` (optional, with stress cases) | See [Concurrent problems](#concurrent-problems) and [Stress cases in projects](#stress-cases-in-projects) |
 | `references` | object | no | `leetcode: {number, url}`, `links: [url]` |
 | `related` | list of slugs | no | |
+| `guides` | list of guide slugs | no | The [concept guides](guides.md) to read before the problem; each must exist (S25) |
 | `order` | int | no | Curriculum order within the primary pattern (default 1000) |
 | `estimate_minutes` | int | no | Expected interview solve time |
 | `summary` | string, 1 to 240 characters | no | The summary in the [starter header](#starter-header), in place of the one taken from the statement; for a problem whose opening reads badly there, or gives away the approach |

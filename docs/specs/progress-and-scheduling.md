@@ -106,7 +106,14 @@ CREATE TABLE level_unlocks (           -- project problems: when each level open
   unlocked_at  TEXT NOT NULL,
   PRIMARY KEY (attempt_id, level)
 );
+
+CREATE TABLE guide_reads (             -- concept guides marked read with cstudy learn <guide> --done
+  slug     TEXT PRIMARY KEY,
+  read_at  TEXT NOT NULL               -- the first time it was marked
+);
 ```
+
+`0006_guide_reads.sql` adds `guide_reads`, with `IF NOT EXISTS`: a [concept guide](guides.md#reading-progress) is read once `cstudy learn <guide> --done` marks it, and a path's progress is computed from it and from the attempts.
 
 ## Attempt lifecycle
 
