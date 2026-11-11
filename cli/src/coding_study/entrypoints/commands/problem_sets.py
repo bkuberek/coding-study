@@ -120,14 +120,31 @@ def add(
     context: typer.Context,
     name: Annotated[str, typer.Argument(help=_NAME_HELP)],
     slugs: Annotated[list[str], typer.Argument(help=_SLUGS_HELP)],
+    level: Annotated[
+        int | None,
+        typer.Option(
+            "--level",
+            min=1,
+            help="Progressive and project problems: done in the set once a pass reaches this "
+            "level; every level without it.",
+        ),
+    ] = None,
 ) -> None:
     """Add problems or items to the end of a set."""
-    change = add_to_set(_environment(context), name, slugs)
+    change = add_to_set(_environment(context), name, slugs, level)
     output = console(context)
+    target = "" if level is None else f", {target_text(level)}"
     for slug in change.changed:
-        output.print(Text(f"added {slug} to {name}"))
+        output.print(Text(f"added {slug} to {name}{target}"))
+    for slug in change.retargeted:
+        output.print(Text(f"{slug} in {name} now targets level {level}"))
     for slug in change.unchanged:
         output.print(Text(f"{slug} is already in {name}"))
+
+
+def target_text(level: int) -> str:
+    """`through level 2 (target)`: what an entry is done at, as the Sets view says it."""
+    return f"through level {level} (target)"
 
 
 def remove(
@@ -196,7 +213,11 @@ def delete_question(problem_set: ProblemSet) -> str:
 def sets_document(environment: Environment) -> dict[str, JsonValue]:
     """`cstudy set list --json`."""
     sets: list[JsonValue] = [
-        {**_set_value(problem_set, standing), "slugs": list(problem_set.slugs)}
+        {
+            **_set_value(problem_set, standing),
+            "slugs": list(problem_set.slugs),
+            "levels": dict(problem_set.levels),
+        }
         for problem_set, standing in sets_with_standing(environment)
     ]
     return {"sets": sets}
@@ -237,6 +258,7 @@ def _row_value(row: SetRow, listing: ListingContext) -> dict[str, JsonValue]:
     return {
         "position": row.position,
         "slug": row.slug,
+        "level": row.level,
         "passed": row.passed,
         "missing": row.listed is None,
         "entry": entry,
@@ -265,6 +287,8 @@ def _print_view(output: Console, view: SetView) -> None:
         output.print(Text(_position("#") + table_row(TABLE_HEADER), style="bold"))
     for row in view.rows:
         output.print(Text(_position(str(row.position)) + table_row(_cells(row))))
+        if row.level is not None:
+            output.print(Text(f"{_position('')}target  through level {row.level}"))
     output.print(_labelled("next", f"cstudy next --set {problem_set.name}"))
 
 

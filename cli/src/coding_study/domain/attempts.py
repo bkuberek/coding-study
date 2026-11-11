@@ -97,6 +97,12 @@ class Attempt:
     stub_path: str | None = None
     archive_path: str | None = None
     notes: str | None = None
+    levels_passed: int | None = None
+    """Problems with levels: every case of levels 1 to this one passed when `cstudy done` closed
+    the attempt (domain/level_passes.py); None for other problems and before `cstudy done`
+    recorded it."""
+    levels_total: int | None = None
+    """The problem's levels when `cstudy done` closed the attempt."""
 
     def solve_time(self, ended_at: datetime) -> timedelta:
         """Wall clock since the start; there is no pause."""
@@ -125,11 +131,14 @@ class RunRecord:
     duration_ms: int
     time_limit: str | None = None
     """"5x", "1500ms", or None when time limits were off."""
+    levels_passed: int | None = None
+    """Progressive problems: the run ran and passed every case of levels 1 to this one, 0 when
+    level 1 did not pass; None for other problems and for runs recorded before levels were."""
 
 
 def passed_every_case(run: RunRecord | None, problem: Problem, language: Language) -> bool:
     """Whether a `cstudy test` run passed every case of the problem, as `cstudy done` needs for
-    a rating: a run of fewer cases (`--case`, an earlier level) never counts."""
+    a rating of a problem without levels: a run of fewer cases (`--case`) never counts."""
     if run is None:
         return False
     return run.tally.all_passed and run.tally.total == full_run_case_count(problem, language)

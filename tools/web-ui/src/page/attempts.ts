@@ -91,16 +91,23 @@ export function doneCommand(slug: string, choice: DoneChoice): string {
   return [`cstudy done ${slug}`, finish, notes].filter(Boolean).join(" ");
 }
 
-/** The two lines `cstudy done` prints; `levelsLast` is a project's last level. */
-export function doneLines(done: DoneDocument, levelsLast: number | null): [string, string] {
-  const levels = done.levels_finished === null ? null : `levels ${done.levels_finished} of ${levelsLast ?? "?"}`;
-  const parts = [done.slug, done.language, done.status, levels, solveTime(done.solve_s), ratingText(done), `hints ${done.hints_used}`];
+/** The two lines `cstudy done` prints. */
+export function doneLines(done: DoneDocument): [string, string] {
+  const parts = [done.slug, done.language, done.status, levelsText(done), solveTime(done.solve_s), ratingText(done), `hints ${done.hints_used}`];
   const review = done.next_review;
   const when = review.in_days === 1 ? "in 1 day" : `in ${review.in_days} days`;
   return [parts.filter(Boolean).join(" · "), `next review  ${review.due_on} (${when}) · ease ${review.ease.toFixed(2)}`];
 }
 
-/** `rating ok`; a project grade its levels capped below the rating says so, as `cstudy done` does. */
+/** `through level 2 of 4` for a pass below the last level; else a project's `levels 4 of 4`. */
+function levelsText(done: DoneDocument): string | null {
+  const { levels_passed: passed, levels_total: last } = done;
+  if (passed === null || last === null) return null;
+  if (done.status === "passed" && passed > 0 && passed < last) return `through level ${passed} of ${last}`;
+  return done.levels_finished === null ? null : `levels ${done.levels_finished} of ${last}`;
+}
+
+/** `rating ok`; a mock project's grade its levels capped below the rating says so, as `cstudy done` does. */
 function ratingText(done: DoneDocument): string {
   if (done.rating === null) return "gave up";
   const rating = `rating ${done.rating}`;

@@ -118,6 +118,7 @@ def test_list_json(environment, file):
                 "name": LOOP,
                 "description": None,
                 "slugs": ["two-sum", "gone"],
+                "levels": {},
                 "passed": 1,
                 "total": 1,
                 "missing": ["gone"],
@@ -238,7 +239,7 @@ def test_show_json_holds_each_row_with_its_list_entry(environment, file):
         document["total"],
         document["missing"],
         document["today"],
-        (first["position"], first["slug"], first["passed"], first["missing"]),
+        (first["position"], first["slug"], first["level"], first["passed"], first["missing"]),
         first["entry"]["status"],
         second,
     ) == (
@@ -247,9 +248,16 @@ def test_show_json_holds_each_row_with_its_list_entry(environment, file):
         1,
         ["gone"],
         NOW.date().isoformat(),
-        (1, "two-sum", True, False),
+        (1, "two-sum", None, True, False),
         "passed",
-        {"position": 2, "slug": "gone", "passed": False, "missing": True, "entry": None},
+        {
+            "position": 2,
+            "slug": "gone",
+            "level": None,
+            "passed": False,
+            "missing": True,
+            "entry": None,
+        },
     )
 
 
@@ -420,3 +428,55 @@ def test_a_bad_file_stops_list_set_and_next_set(environment, file):
         runner.invoke(cli.app, ["next", "--set", LOOP]).exit_code,
     ]
     assert codes == [ExitCode.ENVIRONMENT_ERROR, ExitCode.ENVIRONMENT_ERROR]
+
+
+# Target levels (docs/decisions/0024-level-passes.md#target-levels-in-sets)
+
+PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
+STORE = "level-store"
+
+
+@pytest.fixture
+def levelled(tmp_path, monkeypatch):
+    environment = make_environment(repository_root(tmp_path, PHASE4))
+    monkeypatch.setattr(problem_sets, "load_environment", lambda *_: environment)
+    invoke("create", LOOP)
+    return environment
+
+
+def test_add_with_a_level_says_the_target(levelled):
+    assert invoke("add", LOOP, STORE, "--level", "2").output.splitlines() == [
+        f"added {STORE} to {LOOP}, through level 2 (target)"
+    ]
+
+
+def test_a_new_target_on_an_entry_there_says_so(levelled):
+    invoke("add", LOOP, STORE)
+    assert invoke("add", LOOP, STORE, "--level", "2").output.splitlines() == [
+        f"{STORE} in {LOOP} now targets level 2"
+    ]
+
+
+def test_a_level_a_problem_lacks_exits_3(levelled):
+    result = invoke("add", LOOP, STORE, "--level", "9")
+    assert (result.exit_code, f"{STORE} has levels 1 to 3" in result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        True,
+    )
+
+
+def test_show_names_a_target_under_its_row(levelled):
+    invoke("add", LOOP, STORE, "--level", "2")
+    lines = invoke("show", LOOP).output.splitlines()
+    row = next(index for index, line in enumerate(lines) if STORE in line)
+    assert lines[row + 1] == "    target  through level 2"
+
+
+def test_show_json_gives_each_row_its_target(levelled):
+    invoke("add", LOOP, STORE, "--level", "2")
+    assert json.loads(invoke("show", LOOP, "--json").stdout)["rows"][0]["level"] == 2
+
+
+def test_list_json_gives_each_set_its_targets(levelled):
+    invoke("add", LOOP, STORE, "--level", "2")
+    assert json.loads(invoke("list", "--json").stdout)["sets"][0]["levels"] == {STORE: 2}

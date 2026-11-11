@@ -11,7 +11,7 @@ import type { Cleanup, PageContext } from "../context.ts";
 import { badge, h } from "../dom.ts";
 import { problemBadge } from "../format.ts";
 import { attemptHash, problemHash, problemsHash, setHash, SETS_HASH } from "../routes.ts";
-import { movesOf, setNameIssue, standingWords } from "../sets-model.ts";
+import { movesOf, setNameIssue, standingWords, targetWords } from "../sets-model.ts";
 import { askNames, confirmAction, openStartDialog } from "../sheets.ts";
 import { empty, failure, loading, messageOf, showFailure } from "../states.ts";
 import type { ListEntry, NextPick, ProblemDocument, SetDocument, SetList, SetRow, SetStanding, SetSummary } from "../types.ts";
@@ -196,7 +196,7 @@ export function setView(context: PageContext, name: string): Cleanup {
 
   const rowOf = (found: SetDocument, row: SetRow): HTMLTableRowElement => {
     const entry = row.entry;
-    const status = entry === null ? { glyph: "?", text: "missing", tone: "warn" } : problemBadge(entry.status);
+    const status = entry === null ? { glyph: "?", text: "missing", tone: "warn" } : problemBadge(entry.status, entry.levels);
     return h(
       "tr",
       { class: entry?.kind === "item" ? "is-item" : null },
@@ -205,10 +205,15 @@ export function setView(context: PageContext, name: string): Cleanup {
         ? h("td", { class: "title-cell" }, h("span", { class: "slug" }, row.slug))
         : h("td", { class: "title-cell" }, h("a", { href: problemHash(entry.slug), class: "slug" }, entry.slug), h("span", { class: "title" }, entry.title)),
       entry === null ? h("td", {}, "–") : h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
-      h("td", {}, badge(status.glyph, status.text, status.tone)),
+      h("td", {}, badge(status.glyph, status.text, status.tone), targetNote(row.level)),
       h("td", { class: "resume" }, ...(entry === null ? [] : practise(entry))),
       h("td", { class: "set-order" }, ...orderControls(found, row)),
     );
+  };
+
+  const targetNote = (level: number | null): HTMLElement | null => {
+    const words = targetWords(level);
+    return words === null ? null : h("span", { class: "quiet set-target" }, ` ${words}`);
   };
 
   const practise = (entry: ListEntry): Node[] =>

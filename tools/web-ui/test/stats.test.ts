@@ -33,6 +33,7 @@ function entry(slug: string, status: string, due_on: string | null): ListEntry {
     content: "ready",
     source: "catalog",
     status,
+    levels: null,
     due_on,
     in_progress: [],
     jdk: null,

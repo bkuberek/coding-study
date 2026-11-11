@@ -1,5 +1,7 @@
 /** How the page writes times and statuses: the terminal's wording, never colour alone. */
 
+import type { EntryLevels } from "./types.ts";
+
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;
 
@@ -69,9 +71,11 @@ function wordBadge(marks: Marks, word: string, unknown: string): Badge {
   return { glyph, text: statusWords(word), tone };
 }
 
-/** A `cstudy list` status. */
-export function problemBadge(status: string): Badge {
-  return wordBadge(PROBLEM_STATUSES, status, "·");
+/** A `cstudy list` status; a problem mastered below its last level says through which, as `cstudy history` does. */
+export function problemBadge(status: string, levels: EntryLevels | null = null): Badge {
+  const badge = wordBadge(PROBLEM_STATUSES, status, "·");
+  if (status !== "mastered" || levels === null || levels.mastered >= levels.last) return badge;
+  return { ...badge, text: `${badge.text} through level ${levels.mastered} of ${levels.last}` };
 }
 
 /** A project file's state against what `cstudy` provided, or none for other attempts. */

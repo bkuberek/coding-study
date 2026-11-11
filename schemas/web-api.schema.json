@@ -206,11 +206,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "description", "slugs", "passed", "total", "missing"],
+            "required": ["name", "description", "slugs", "levels", "passed", "total", "missing"],
             "properties": {
               "name": { "$ref": "#/$defs/set_name" },
               "description": { "type": ["string", "null"] },
               "slugs": { "description": "Every slug, in the set's order", "type": "array", "items": { "type": "string" } },
+              "levels": { "description": "The target level of each entry that names one, by slug", "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
               "passed": { "type": "integer", "minimum": 0 },
               "total": { "description": "The slugs the catalog has", "type": "integer", "minimum": 0 },
               "missing": { "description": "The slugs it does not", "type": "array", "items": { "type": "string" } }
@@ -237,11 +238,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["position", "slug", "passed", "missing", "entry"],
+            "required": ["position", "slug", "level", "passed", "missing", "entry"],
             "properties": {
               "position": { "type": "integer", "minimum": 1 },
               "slug": { "type": "string" },
-              "passed": { "type": "boolean" },
+              "level": { "description": "The entry's target level; null for every level", "type": ["integer", "null"], "minimum": 1 },
+              "passed": { "description": "Done: a pass reached the target level, every level by default", "type": "boolean" },
               "missing": { "type": "boolean" },
               "entry": { "description": "The entry of cstudy list --json; null for a slug the catalog no longer has", "type": ["object", "null"] }
             }
@@ -384,7 +386,17 @@
         "levels": {
           "oneOf": [
             { "type": "null" },
-            { "type": "object", "additionalProperties": false, "required": ["last"], "properties": { "last": { "type": "integer", "minimum": 1 } } }
+            {
+              "description": "The problem's last level, the most levels a pass reached and the levels it is mastered through (docs/specs/progress-and-scheduling.md#mastery-per-level)",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["last", "passed", "mastered"],
+              "properties": {
+                "last": { "type": "integer", "minimum": 1 },
+                "passed": { "type": "integer", "minimum": 0 },
+                "mastered": { "type": "integer", "minimum": 0 }
+              }
+            }
           ]
         },
         "hints_total": { "type": "integer", "minimum": 0 },
@@ -471,12 +483,14 @@
       "description": "POST /api/v1/attempts/{id}/done: the values of the two lines cstudy done prints",
       "type": "object",
       "additionalProperties": false,
-      "required": ["slug", "language", "status", "levels_finished", "solve_s", "rating", "grade", "caps", "hints_used", "next_review"],
+      "required": ["slug", "language", "status", "levels_finished", "levels_passed", "levels_total", "solve_s", "rating", "grade", "caps", "hints_used", "next_review"],
       "properties": {
         "slug": { "type": "string" },
         "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
         "status": { "type": "string" },
-        "levels_finished": { "type": ["integer", "null"], "minimum": 0 },
+        "levels_finished": { "description": "A project's levels finished; null for any other problem", "type": ["integer", "null"], "minimum": 0 },
+        "levels_passed": { "description": "A progressive or project problem's levels passed through (docs/specs/progress-and-scheduling.md#level-passes); null for any other", "type": ["integer", "null"], "minimum": 0 },
+        "levels_total": { "description": "The problem's levels when the attempt finished; null without levels", "type": ["integer", "null"], "minimum": 1 },
         "solve_s": { "type": "integer", "minimum": 0 },
         "rating": { "enum": ["easy", "ok", "hard", null] },
         "grade": { "type": ["string", "null"] },

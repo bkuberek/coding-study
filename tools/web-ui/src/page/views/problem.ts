@@ -13,6 +13,7 @@ import { solutionButton } from "../solution.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { localMinute, problemBadge, solveTime } from "../format.ts";
 import { openLazily } from "../lazy.ts";
+import { bestLine, goalLines, pastStatus } from "../levels.ts";
 import { needsList, readNeeds } from "../needs.ts";
 import { attemptHash, setHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
@@ -48,7 +49,7 @@ export function problemView(context: PageContext, slug: string): Cleanup {
 }
 
 function header(problem: ProblemDocument): HTMLElement {
-  const status = problemBadge(problem.status);
+  const status = problemBadge(problem.status, problem.levels);
   const facts = [problem.id ? `#${problem.id}` : null, problem.track, ...problem.patterns, problem.kind].filter(Boolean);
   return h(
     "header",
@@ -89,7 +90,7 @@ function side(context: PageContext, problem: ProblemDocument, history: History, 
     "aside",
     { class: "problem-side", "aria-label": "Practice" },
     needsSection(context, problem),
-    practice(context, problem, history.schedule !== null),
+    practice(context, problem, history),
     setsSection(context, problem.slug, sets),
     problem.approaches.length ? approaches(problem) : null,
     historySection(context, problem.slug, history),
@@ -108,7 +109,8 @@ function needsSection(context: PageContext, problem: ProblemDocument): HTMLEleme
   return section;
 }
 
-function practice(context: PageContext, problem: ProblemDocument, scheduled: boolean): HTMLElement {
+function practice(context: PageContext, problem: ProblemDocument, history: History): HTMLElement {
+  const scheduled = history.schedule !== null;
   const language = defaultLanguage(problem, context.session.default_lang);
   const start = h("button", { type: "button", class: "button primary", title: `${startCommand(problem.slug, language)} --no-open` }, "Start…");
   start.addEventListener("click", () => openLazily(context, () => import("../sheets.ts"), (dialog) => dialog.openStartDialog(context, problem, scheduled)));
@@ -134,6 +136,7 @@ function practice(context: PageContext, problem: ProblemDocument, scheduled: boo
     scheduled ? h("p", { class: "quiet" }, REVIEW_PRACTISE_NOTE) : null,
     problem.hints_total ? h("p", { class: "quiet" }, `${problem.hints_total} hints · any hint caps the review grade at ok`) : null,
     problem.levels ? h("p", { class: "quiet" }, `${problem.levels.last} levels, each opened by passing the one before`) : null,
+    ...goalLines(history.levels).map((goal) => h("p", { class: "level-goal" }, goal)),
   );
 }
 
@@ -158,11 +161,13 @@ function historySection(context: PageContext, slug: string, history: History): H
   const review = schedule
     ? `due ${schedule.due_on} · interval ${schedule.interval_days}d · ease ${schedule.ease.toFixed(2)} · reps ${schedule.reps} · lapses ${schedule.lapses}`
     : "not scheduled";
+  const best = bestLine(history.levels);
   return h(
     "section",
     { class: "side-block", "aria-labelledby": "history-heading" },
     h("h2", { id: "history-heading", class: "eyebrow" }, "history"),
     h("p", { class: "review-line" }, h("span", { class: "quiet" }, "review "), review),
+    best ? h("p", { class: "best-line" }, h("span", { class: "quiet" }, "passed "), best) : null,
     history.attempts.length
       ? h("ol", { class: "plain attempts" }, ...history.attempts.map((attempt) => pastAttempt(context, slug, attempt)))
       : empty("no attempts yet", h("p", { class: "quiet" }, command(`cstudy history ${slug}`))),
@@ -183,7 +188,7 @@ function pastAttempt(context: PageContext, slug: string, attempt: PastAttempt): 
       "summary",
       {},
       h("span", { class: "num" }, `#${attempt.attempt_id}`),
-      ` ${attempt.language ?? "-"} · ${attempt.mode} · ${attempt.status}`,
+      ` ${attempt.language ?? "-"} · ${attempt.mode} · ${pastStatus(attempt)}`,
       h("span", { class: "quiet" }, ` · ${localMinute(attempt.started_at)}`),
       attempt.solve_s !== null ? h("span", { class: "quiet" }, ` · ${solveTime(attempt.solve_s)}`) : null,
       grade ? h("span", { class: "quiet" }, ` · ${grade}`) : null,

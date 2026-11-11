@@ -13,6 +13,7 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import AttemptStatus, Grade, GradeCap, Rating
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
+from coding_study.domain.level_passes import LevelsPassed
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from tests.fakes import NOW
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
@@ -88,27 +89,33 @@ def test_every_level_finished_passes_the_attempt(environment):
     assert done(environment).attempt.status is AttemptStatus.PASSED
 
 
-def test_all_but_the_last_level_caps_at_hard(environment):
+def test_all_but_the_last_level_is_graded_from_the_rating(environment):
     submit(environment, PASSED_1, FAILED_2)
-    assert done(environment, Rating.EASY).attempt.grade is Grade.HARD
+    assert done(environment, Rating.EASY).attempt.grade is Grade.EASY
 
 
-def test_fewer_levels_finished_fail_the_attempt_even_with_a_rating(environment):
+def test_a_pass_through_a_level_below_the_last_passes_the_attempt(environment):
     submit(environment, PASSED_1, FAILED_2)
-    assert done(environment).attempt.status is AttemptStatus.FAILED
+    assert done(environment).attempt.status is AttemptStatus.PASSED
+
+
+def test_the_attempt_records_the_levels_finished(environment):
+    submit(environment, PASSED_1, FAILED_2)
+    attempt = done(environment).attempt
+    assert (attempt.levels_passed, attempt.levels_total) == (1, 2)
 
 
 def test_the_latest_counted_submission_stands(environment):
     submit(environment, PASSED_1, PASSED_2)
     submit(environment, PASSED_1, FAILED_2)
-    assert done(environment).attempt.grade is Grade.HARD
+    assert done(environment).attempt.levels_passed == 1
 
 
 def test_the_levels_finished_are_reported(environment):
     submit(environment, PASSED_1, FAILED_2)
-    project = done(environment).project
-    assert project is not None
-    assert (project.finished, project.last, project.cap) == (1, 2, Grade.HARD)
+    levels = done(environment).levels
+    assert levels is not None
+    assert (levels.levels, levels.cap) == (LevelsPassed(1, 2), None)
 
 
 def test_the_time_box_still_caps_the_grade(environment):
@@ -119,6 +126,32 @@ def test_the_time_box_still_caps_the_grade(environment):
     assert done(environment, Rating.EASY).attempt.grade is Grade.HARD
 
 
-def test_the_levels_cap_is_named(environment):
-    submit(environment, PASSED_1, FAILED_2)
-    assert done(environment, Rating.EASY).caps == (GradeCap.LEVELS,)
+# A mock keeps the rule of an interview: the levels cap the grade, and only every level passes
+
+
+@pytest.fixture
+def mock(tmp_path) -> Environment:
+    environment = project_environment(tmp_path, ScriptedProjectProcess())
+    start_attempt(environment, StartRequest(PROJECT_SLUG, mock=True))
+    return environment
+
+
+def test_a_mock_through_all_but_the_last_level_caps_at_hard(mock):
+    submit(mock, PASSED_1, FAILED_2)
+    assert done(mock, Rating.EASY).attempt.grade is Grade.HARD
+
+
+def test_a_mock_through_fewer_levels_fails_even_with_a_rating(mock):
+    submit(mock, PASSED_1, FAILED_2)
+    assert done(mock).attempt.status is AttemptStatus.FAILED
+
+
+def test_a_mock_names_the_levels_cap(mock):
+    submit(mock, PASSED_1, FAILED_2)
+    assert done(mock, Rating.EASY).caps == (GradeCap.LEVELS,)
+
+
+def test_a_mock_through_every_level_passes_without_a_cap(mock):
+    submit(mock, PASSED_1, PASSED_2)
+    attempt = done(mock).attempt
+    assert (attempt.status, attempt.grade) == (AttemptStatus.PASSED, Grade.OK)

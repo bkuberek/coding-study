@@ -35,7 +35,7 @@ def test_a_snapshot_names_every_table_but_meta(store):
 
 
 def test_a_snapshot_records_the_schema_version(store):
-    assert store.snapshot().schema_version == 5
+    assert store.snapshot().schema_version == 6
 
 
 def test_a_snapshot_holds_every_row(filled):
@@ -69,6 +69,8 @@ def test_a_snapshot_keeps_rows_as_stored(store):
         "stub_path": None,
         "archive_path": None,
         "notes": None,
+        "levels_passed": None,
+        "levels_total": None,
     }
 
 
@@ -106,9 +108,9 @@ def test_a_refused_restore_changes_nothing(filled):
 
 def test_a_snapshot_from_a_newer_schema_is_refused(store):
     with pytest.raises(
-        UsageError, match=re.escape("schema 6, which is newer than this cstudy (5)")
+        UsageError, match=re.escape("schema 7, which is newer than this cstudy (6)")
     ):
-        store.restore(ProgressSnapshot(6, {}))
+        store.restore(ProgressSnapshot(7, {}))
 
 
 def test_an_unknown_table_is_refused(store):

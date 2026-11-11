@@ -25,6 +25,7 @@ from coding_study.application.attempt_status import (
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import EntryKind
+from coding_study.domain.level_passes import LevelMastery, LevelsPassed
 from coding_study.domain.levels import LevelProgress
 from coding_study.domain.service_project import MockScenarios
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
@@ -145,11 +146,17 @@ def _levels_value(found: AttemptStanding) -> JsonValue:
         [_instant(level.opened_at) for level in found.opened] if found.project is not None else []
     )
     titles: list[JsonValue] = [level.title for level in found.opened]
+    mastery = found.mastery
     return {
         "unlocked": levels.unlocked,
         "last": levels.last,
         "titles": titles,
         "opened_at": opened_at,
+        "passed": found.levels_passed.passed if found.levels_passed else 0,
+        "best": mastery.best if mastery else None,
+        "last_time": mastery.last_time if mastery else None,
+        "try_level": mastery.try_level if mastery else None,
+        "mastered": found.mastered or 0,
     }
 
 
@@ -166,6 +173,10 @@ def _lines(found: AttemptStanding) -> Iterator[tuple[str, str]]:
         yield "file", found.file
     if found.levels is not None:
         yield "level", _level(found.levels, found)
+    if found.mastery is not None:
+        yield from _mastery_lines(found.mastery)
+    if found.levels is not None and found.mastered:
+        yield "mastered", LevelsPassed(found.mastered, found.levels.last).text
     attempt = found.attempt
     if attempt.time_limit_s is not None:
         elapsed = attempt.solve_time(found.now)
@@ -189,6 +200,14 @@ def _level(levels: LevelProgress, found: AttemptStanding) -> str:
     if current.opened_at is not None:
         level += f" (opened {_local_time(current.opened_at, found.now)})"
     return level
+
+
+def _mastery_lines(mastery: LevelMastery) -> Iterator[tuple[str, str]]:
+    """The level to try after last time, and the most levels a pass in this language reached."""
+    if mastery.goal is not None:
+        yield "goal", mastery.goal
+    if mastery.best_text is not None:
+        yield "passed", mastery.best_text
 
 
 def _hints(hints: HintCount) -> str:

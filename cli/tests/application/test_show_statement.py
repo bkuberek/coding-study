@@ -6,6 +6,7 @@ import pytest
 from coding_study.adapters.fs_study_guides import FsStudyGuides
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.domain.attempts import AttemptStatus
 from coding_study.domain.errors import UnknownProblemError, UsageError
 from coding_study.domain.problem import Language
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment
@@ -120,3 +121,41 @@ def test_an_item_without_a_study_guides_root_lists_none(items):
 def test_a_level_on_an_item_is_a_usage_error(items):
     with pytest.raises(UsageError, match="url-shortener has no levels"):
         show(items, "url-shortener", level=1)
+
+
+def passed_through_level_2(environment) -> None:
+    """A finished attempt that passed levels 1 and 2 of 3, then a new one in progress."""
+    attempt = start_attempt(environment, StartRequest("level-store")).attempt
+    environment.progress.update_attempt(
+        replace(attempt, status=AttemptStatus.PASSED, levels_passed=2, levels_total=3)
+    )
+    start_attempt(environment, StartRequest("level-store"))
+
+
+GOAL = "> last time: through level 2 of 3; try level 3"
+
+
+def test_the_statement_of_a_new_attempt_shows_the_level_to_try(environment):
+    passed_through_level_2(environment)
+    assert show(environment).startswith(
+        f"# Level Store\n\nmedium · practical · level 1 of 3\n\n{GOAL}\n\n"
+    )
+
+
+def test_the_statement_file_shows_the_level_to_try(environment):
+    passed_through_level_2(environment)
+    assert GOAL in environment.workspace.read_text(".statements/level-store.md")
+
+
+def test_without_an_attempt_in_progress_the_statement_shows_no_goal(environment):
+    passed_through_level_2(environment)
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, status=AttemptStatus.ABANDONED))
+    assert GOAL not in show(environment)
+
+
+def test_every_level_passed_last_time_shows_no_goal(environment):
+    attempt = start_attempt(environment, StartRequest("level-store")).attempt
+    environment.progress.update_attempt(replace(attempt, status=AttemptStatus.PASSED))
+    start_attempt(environment, StartRequest("level-store"))
+    assert "last time" not in show(environment)

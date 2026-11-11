@@ -22,7 +22,21 @@
             "description": "Slugs of problems and items, in study order. A slug the catalog no longer has is allowed and shows as missing",
             "type": ["array", "null"],
             "uniqueItems": true,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "oneOf": [
+                { "type": "string", "minLength": 1 },
+                {
+                  "description": "An entry with a target: a progressive or project problem is done in the set once a pass reaches this level, every level when it names none (docs/decisions/0024-level-passes.md#target-levels-in-sets). The same `level` as a learning path's problem step",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["slug"],
+                  "properties": {
+                    "slug": { "type": "string", "minLength": 1 },
+                    "level": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              ]
+            }
           }
         }
       }

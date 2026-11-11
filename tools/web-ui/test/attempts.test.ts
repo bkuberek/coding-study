@@ -18,6 +18,8 @@ const PASSED: DoneDocument = {
   language: "kotlin",
   status: "passed",
   levels_finished: null,
+  levels_passed: null,
+  levels_total: null,
   solve_s: 1120,
   rating: "ok",
   grade: "ok",
@@ -109,38 +111,55 @@ test("giving up finishes with --gave-up and the notes quoted", () => {
 });
 
 test("the outcome reads as the two lines cstudy done prints", () => {
-  assert.deepEqual(doneLines(PASSED, null), [
+  assert.deepEqual(doneLines(PASSED), [
     "two-sum · kotlin · passed · 18m 40s · rating ok · hints 0",
     "next review  2026-10-27 (in 3 days) · ease 2.50",
   ]);
 });
 
-test("a project's outcome names its levels and the levels cap", () => {
-  const capped = { ...PASSED, slug: "bank-project-python", language: "python", status: "failed", levels_finished: 3, solve_s: 5040, grade: "hard", caps: ["levels"] };
-  assert.equal(
-    doneLines(capped, 4)[0],
-    "bank-project-python · python · failed · levels 3 of 4 · 1h 24m · rating ok, capped at hard · hints 0",
-  );
+const PROJECT_DONE = { ...PASSED, slug: "bank-project-python", language: "python", solve_s: 5040, levels_total: 4 };
+
+test("a mock project's outcome names its levels and the levels cap", () => {
+  const capped = { ...PROJECT_DONE, status: "failed", levels_finished: 3, levels_passed: 3, grade: "hard", caps: ["levels"] };
+  assert.equal(doneLines(capped)[0], "bank-project-python · python · failed · levels 3 of 4 · 1h 24m · rating ok, capped at hard · hints 0");
+});
+
+test("a project passed below its last level reads through which", () => {
+  const through = { ...PROJECT_DONE, levels_finished: 3, levels_passed: 3 };
+  assert.equal(doneLines(through)[0], "bank-project-python · python · passed · through level 3 of 4 · 1h 24m · rating ok · hints 0");
+});
+
+test("a project passed through every level names its levels, as cstudy done does", () => {
+  assert.match(doneLines({ ...PROJECT_DONE, levels_finished: 4, levels_passed: 4 })[0] ?? "", / · passed · levels 4 of 4 · /);
+});
+
+test("a progressive problem passed below its last level reads through which", () => {
+  const through = { ...PASSED, slug: "level-store", language: "python", levels_passed: 2, levels_total: 3 };
+  assert.equal(doneLines(through)[0], "level-store · python · passed · through level 2 of 3 · 18m 40s · rating ok · hints 0");
+});
+
+test("a progressive problem passed through every level says nothing of levels", () => {
+  assert.equal(doneLines({ ...PASSED, levels_passed: 3, levels_total: 3 })[0], "two-sum · kotlin · passed · 18m 40s · rating ok · hints 0");
 });
 
 test("a hint cap leaves the rating as cstudy done words it", () => {
-  assert.match(doneLines({ ...PASSED, grade: "ok", rating: "easy", caps: ["hint"] }, null)[0] ?? "", / · rating easy · /);
+  assert.match(doneLines({ ...PASSED, grade: "ok", rating: "easy", caps: ["hint"] })[0] ?? "", / · rating easy · /);
 });
 
 test("giving up reads as gave up", () => {
-  assert.match(doneLines({ ...PASSED, status: "failed", rating: null, grade: "again" }, null)[0] ?? "", / · gave up · /);
+  assert.match(doneLines({ ...PASSED, status: "failed", rating: null, grade: "again" })[0] ?? "", / · gave up · /);
 });
 
 test("an item's outcome has no language", () => {
   assert.equal(
-    doneLines({ ...PASSED, slug: "url-shortener", language: null, solve_s: 42 }, null)[0],
+    doneLines({ ...PASSED, slug: "url-shortener", language: null, solve_s: 42 })[0],
     "url-shortener · passed · 42s · rating ok · hints 0",
   );
 });
 
 test("a review a day away reads in 1 day", () => {
   const tomorrow = { ...PASSED, next_review: { due_on: "2026-10-25", in_days: 1, ease: 2.36 } };
-  assert.equal(doneLines(tomorrow, null)[1], "next review  2026-10-25 (in 1 day) · ease 2.36");
+  assert.equal(doneLines(tomorrow)[1], "next review  2026-10-25 (in 1 day) · ease 2.36");
 });
 
 test("the Start dialog says a review moves the files, deletes nothing, and History keeps them readable", () => {

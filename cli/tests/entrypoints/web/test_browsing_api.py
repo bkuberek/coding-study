@@ -168,7 +168,10 @@ def test_a_project_names_its_last_level(tmp_path):
     environment = make_environment(repository_root(tmp_path, PROJECT_PROBLEMS))
     with session_client(web_app(tmp_path, environment)) as client:
         document = client.get("/api/v1/problems/bank-project-python").json()
-    assert (document["levels"], document["languages"]) == ({"last": 2}, ["python"])
+    assert (document["levels"], document["languages"]) == (
+        {"last": 2, "passed": 0, "mastered": 0},
+        ["python"],
+    )
 
 
 def test_an_item_has_empty_details(client):

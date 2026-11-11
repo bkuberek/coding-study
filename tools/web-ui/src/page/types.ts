@@ -76,12 +76,23 @@ export interface ListEntry {
   readonly content: string;
   readonly source: string;
   readonly status: string;
+  /** A progressive or project problem's levels; null for another. */
+  readonly levels: EntryLevels | null;
   readonly due_on: string | null;
   readonly in_progress: readonly AttemptRef[];
   /** The releases its Java and Kotlin run on; null without either. */
   readonly jdk: JdkRange | null;
   /** What a service project depends on, as its manifest declares it; null for any other problem. */
   readonly requires: Requires | null;
+}
+
+/** `levels` of `cstudy list --json` (docs/specs/progress-and-scheduling.md#mastery-per-level). */
+export interface EntryLevels {
+  readonly last: number;
+  /** The most levels a pass reached, in any language. */
+  readonly passed: number;
+  /** The levels the problem is mastered through. */
+  readonly mastered: number;
 }
 
 /** `requires` of `cstudy list --json`. */
@@ -123,6 +134,8 @@ export interface SetSummary extends SetStanding {
   readonly name: string;
   readonly description: string | null;
   readonly slugs: readonly string[];
+  /** The target level of each entry that names one, by slug. */
+  readonly levels: Readonly<Record<string, number>>;
 }
 
 export interface SetList {
@@ -132,6 +145,9 @@ export interface SetList {
 export interface SetRow {
   readonly position: number;
   readonly slug: string;
+  /** The level the entry is done at; null for every level. */
+  readonly level: number | null;
+  /** Done: a pass reached the target level, every level by default. */
   readonly passed: boolean;
   readonly missing: boolean;
   /** The entry of `cstudy list --json`; null for a slug the catalog no longer has. */
@@ -171,7 +187,6 @@ export interface Approach {
 export interface ProblemDocument extends ListEntry {
   readonly approaches: readonly Approach[];
   readonly broken: readonly string[];
-  readonly levels: { readonly last: number } | null;
   readonly hints_total: number;
   readonly bench: boolean;
   readonly oracle: boolean;
@@ -211,9 +226,23 @@ export interface PastAttempt {
   readonly grade: string | null;
   readonly hints_used: number;
   readonly solution_revealed: boolean;
+  /** What a finished attempt of a problem with levels passed through, of how many levels; null otherwise. */
+  readonly levels_passed: number | null;
+  readonly levels_total: number | null;
   readonly test_runs: readonly TestRun[];
   readonly submissions: readonly Submission[];
   readonly bench_runs: readonly BenchRun[];
+}
+
+/** A language's levels over its finished attempts (docs/specs/progress-and-scheduling.md#level-passes). */
+export interface LevelMastery {
+  readonly language: string;
+  /** The most levels a passed attempt passed; null before any pass. */
+  readonly best: number | null;
+  /** The levels the latest attempt that passed level 1 passed. */
+  readonly last_time: number | null;
+  /** The level after last time's, while it is not the last. */
+  readonly try_level: number | null;
 }
 
 /** `cstudy history --json`. */
@@ -226,6 +255,8 @@ export interface History {
     readonly reps: number;
     readonly lapses: number;
   } | null;
+  /** Null for a problem without levels. */
+  readonly levels: { readonly last: number; readonly mastered: number; readonly languages: readonly LevelMastery[] } | null;
   readonly attempts: readonly PastAttempt[];
 }
 
@@ -251,6 +282,13 @@ export interface AttemptStatus {
     readonly unlocked: number;
     readonly last: number;
     readonly titles: readonly string[];
+    /** The levels the latest run, or a project's counted submission, passed. */
+    readonly passed: number;
+    readonly best: number | null;
+    readonly last_time: number | null;
+    readonly try_level: number | null;
+    /** The levels the problem is mastered through, in any language. */
+    readonly mastered: number;
   } | null;
   readonly timer: { readonly elapsed_s: number; readonly limit_s: number } | null;
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;
@@ -317,7 +355,11 @@ export interface DoneDocument {
   readonly slug: string;
   readonly language: string | null;
   readonly status: string;
+  /** A project's levels finished; null for any other problem. */
   readonly levels_finished: number | null;
+  /** The levels a progressive or project problem passed through, of `levels_total`; null for any other. */
+  readonly levels_passed: number | null;
+  readonly levels_total: number | null;
   readonly solve_s: number;
   readonly rating: string | null;
   readonly grade: string | null;

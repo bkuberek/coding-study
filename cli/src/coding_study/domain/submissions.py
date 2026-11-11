@@ -69,12 +69,7 @@ class SubmissionRecord:
     @property
     def levels_finished(self) -> int:
         """The largest L such that every case of levels 1 to L passed; 0 when level 1 failed."""
-        finished = 0
-        for tally in self.levels:
-            if not tally.all_passed:
-                break
-            finished = tally.level
-        return finished
+        return finished_levels(self.levels)
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +125,17 @@ def _level_tally(
         hidden_total=len(hidden) + stress_total,
         hidden_passed=sum(1 for case in hidden if case.id in passed) + stress_passed,
     )
+
+
+def finished_levels(tallies: Iterable[LevelTally]) -> int:
+    """The largest L such that every case of levels 1 to L passed, `tallies` in level order; 0
+    when level 1 did not."""
+    finished = 0
+    for tally in tallies:
+        if not tally.all_passed:
+            break
+        finished = tally.level
+    return finished
 
 
 def counted_submission(submissions: Iterable[SubmissionRecord]) -> SubmissionRecord | None:

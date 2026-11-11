@@ -476,7 +476,7 @@ comparator: {type: ops}
 | Statement | `problem.md` has one `## Level <n>: <title>` section per level, in order, holding that level's operations, rules and `### Example` subsections; the example marker of a level-`L` visible case sits in the `## Level L` section. `## Statement`, `## Input`, `## Output` and `## Constraints` show at every level, so they describe only what holds for all levels (the class, absence values, timestamps) |
 | Rendering | The rendered statement shows levels 1 to the unlocked level; one notice line replaces the locked levels, whose titles stay hidden; the metadata line ends with `level <unlocked> of <last>` |
 | Unlock | `cstudy start` opens level 1 on a new attempt (`attempts.level_unlocked`); a resumed attempt keeps its level, a `--fresh` or review attempt starts again at level 1. `cstudy test` runs the cases of levels 1 to the unlocked level. A run of every one of those cases (no `--case`, no lower `--level`) that passes them all unlocks the next level and rewrites the statement; one run unlocks at most one level |
-| Full pass | Only a run that passes the cases of every level is a full pass (`first_pass_at`, `cstudy done --rating`) |
+| Full pass | Only a run that passes the cases of every level is a full pass (`first_pass_at`). `cstudy done --rating` takes a pass through level 1 or more, a [level pass](progress-and-scheduling.md#level-passes), and a mock attempt a full pass |
 | Missing values | Methods return `""` (string) or `-1` (number) for absence, stated in the level text |
 
 Project problems share these rules, except the stub, the unlock and the language of the rendered names: [Project problems](#project-problems).

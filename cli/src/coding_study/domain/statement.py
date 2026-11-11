@@ -28,6 +28,8 @@ HINTS_SECTION = "Hints"
 EXAMPLES_SECTION = "Examples"
 FOOTER = "<!-- Rendered by cstudy from the problem's problem.md; edits here are overwritten. -->"
 _EXAMPLE_MARKER = re.compile(r"\s*<!--\s*case:\s*(?P<case_id>\S+?)\s*-->\s*")
+_TITLE_AND_METADATA = 3
+"""The lines a statement opens with: its title, a blank line and the metadata line."""
 
 
 def example_marker(line: str) -> str | None:
@@ -53,6 +55,17 @@ def render_statement(
     while lines and not lines[-1].strip():
         lines.pop()
     return "\n".join((*lines, "", FOOTER)) + "\n"
+
+
+def with_goal(statement: str, goal: str) -> str:
+    """`statement` with `goal` quoted under its title and the metadata line below it
+    (docs/specs/progress-and-scheduling.md#level-passes); at the top without a title."""
+    lines = statement.split("\n")
+    title = next((index for index, line in enumerate(lines) if line.startswith("# ")), None)
+    if title is None:
+        return "\n".join((f"> {goal}", "", *lines))
+    at = title + _TITLE_AND_METADATA
+    return "\n".join((*lines[:at], "", f"> {goal}", *lines[at:]))
 
 
 def metadata_line(meta: ProblemMeta) -> str:

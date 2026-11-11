@@ -88,13 +88,11 @@ def problem_document(entry: dict[str, JsonValue], details: ProblemDetails) -> di
         {"id": approach.id, "name": approach.name, "role": approach.role.value}
         for approach in details.approaches
     ]
-    last_level = details.last_level
     return {
         **entry,
         "languages": [language.value for language in details.languages],
         "approaches": approaches,
         "broken": list(details.broken),
-        "levels": None if last_level is None else {"last": last_level},
         "hints_total": details.hints_total,
         "bench": details.bench,
         "oracle": details.oracle,
@@ -167,7 +165,9 @@ def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
         "slug": attempt.slug,
         "language": attempt.language.value if attempt.language else None,
         "status": attempt.status.value,
-        "levels_finished": finished.project.finished if finished.project else None,
+        "levels_finished": _project_levels(finished),
+        "levels_passed": attempt.levels_passed,
+        "levels_total": attempt.levels_total,
         "solve_s": int(attempt.solve_time(attempt.ended_at).total_seconds()),
         "rating": attempt.rating.value if attempt.rating else None,
         "grade": attempt.grade.name.lower() if attempt.grade is not None else None,
@@ -179,6 +179,14 @@ def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
             "ease": schedule.state.ease,
         },
     }
+
+
+def _project_levels(finished: FinishedAttempt) -> int | None:
+    """The levels a project's counted submission finished, as before level passes; None for any
+    other problem, whose levels are in `levels_passed`."""
+    meta = finished.meta
+    is_project = isinstance(meta, ProblemMeta) and meta.kind is ProblemKind.PROJECT
+    return finished.levels.levels.passed if finished.levels and is_project else None
 
 
 def abort_document(aborted: Attempt) -> dict[str, JsonValue]:

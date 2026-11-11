@@ -4,6 +4,7 @@ Numbered migrations in `migrations/` (`0001_init.sql`, ...) run in order on firs
 (`schema.py`). Timestamps are ISO 8601 UTC strings.
 """
 
+import json
 import sqlite3
 from collections import defaultdict
 from collections.abc import Callable, Generator, Mapping
@@ -32,6 +33,7 @@ from coding_study.domain.progress_export import ColumnValue, ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.scheduling import (
     MASTERED_INTERVAL_DAYS,
+    LevelReview,
     ProblemProgress,
     ReviewState,
     ScheduleEntry,
@@ -47,14 +49,15 @@ _ATTEMPT_UPDATE = """
 UPDATE attempts SET status = :status, ended_at = :ended_at, first_pass_at = :first_pass_at,
   time_limit_s = :time_limit_s, rating = :rating, grade = :grade, hints_used = :hints_used,
   solution_revealed = :solution_revealed, level_unlocked = :level_unlocked,
-  stub_path = :stub_path, archive_path = :archive_path, notes = :notes
+  stub_path = :stub_path, archive_path = :archive_path, notes = :notes,
+  levels_passed = :levels_passed, levels_total = :levels_total
 WHERE id = :id
 """
 _TEST_RUN_INSERT = """
 INSERT INTO test_runs (attempt_id, ran_at, code_hash, total, passed, failed, errored, timed_out,
-  tle, time_limit, duration_ms)
+  tle, time_limit, duration_ms, levels_passed)
 VALUES (:attempt_id, :ran_at, :code_hash, :total, :passed, :failed, :errored, :timed_out, :tle,
-  :time_limit, :duration_ms)
+  :time_limit, :duration_ms, :levels_passed)
 """
 _LATEST_USER_BENCHES = """
 SELECT slug, lang, verdict, ran_at FROM bench_runs AS run
@@ -74,8 +77,12 @@ _HIGHEST_ATTEMPT_ID = (
 _NEXT_ATTEMPT_ID = f"SELECT {_HIGHEST_ATTEMPT_ID} + 1"
 _SCHEDULE_UPSERT = """
 INSERT OR REPLACE INTO schedule (slug, ease, interval_days, reps, lapses, due_on, last_grade,
-  updated_at)
-VALUES (:slug, :ease, :interval_days, :reps, :lapses, :due_on, :last_grade, :updated_at)
+  updated_at, levels)
+VALUES (:slug, :ease, :interval_days, :reps, :lapses, :due_on, :last_grade, :updated_at, :levels)
+"""
+_LEVELS_PASSED = """
+SELECT slug, MAX(levels_passed) AS best, SUM(levels_passed IS NULL) AS unrecorded FROM attempts
+WHERE status = 'passed' GROUP BY slug
 """
 
 
@@ -139,6 +146,7 @@ class SqliteProgressStore:
                     "tle": tally.tle,
                     "time_limit": run.time_limit,
                     "duration_ms": run.duration_ms,
+                    "levels_passed": run.levels_passed,
                 },
             )
 
@@ -185,6 +193,7 @@ class SqliteProgressStore:
                     "due_on": entry.due_on.isoformat(),
                     "last_grade": int(entry.last_grade),
                     "updated_at": _instant_text(entry.updated_at),
+                    "levels": _level_reviews_text(entry.levels),
                 },
             )
 
@@ -192,13 +201,18 @@ class SqliteProgressStore:
         with self._connection() as connection:
             statuses = connection.execute("SELECT DISTINCT slug, status FROM attempts").fetchall()
             schedules = connection.execute("SELECT * FROM schedule").fetchall()
+            passes = connection.execute(_LEVELS_PASSED).fetchall()
         by_slug: defaultdict[str, set[AttemptStatus]] = defaultdict(set)
         for row in statuses:
             by_slug[row["slug"]].add(AttemptStatus(row["status"]))
         entries = {row["slug"]: _schedule_entry(row) for row in schedules}
+        reached = {row["slug"]: (row["best"] or 0, bool(row["unrecorded"])) for row in passes}
         return {
             slug: ProblemProgress(
-                frozenset(by_slug.get(slug, ())), entries.get(slug), self._mastered_interval_days
+                frozenset(by_slug.get(slug, ())),
+                entries.get(slug),
+                self._mastered_interval_days,
+                *reached.get(slug, (0, False)),
             )
             for slug in sorted(by_slug.keys() | entries.keys())
         }
@@ -407,6 +421,8 @@ def _attempt(row: sqlite3.Row) -> Attempt:
         stub_path=row["stub_path"],
         archive_path=row["archive_path"],
         notes=row["notes"],
+        levels_passed=row["levels_passed"],
+        levels_total=row["levels_total"],
     )
 
 
@@ -425,6 +441,8 @@ def _attempt_fields(attempt: Attempt) -> dict[str, object]:
         "stub_path": attempt.stub_path,
         "archive_path": attempt.archive_path,
         "notes": attempt.notes,
+        "levels_passed": attempt.levels_passed,
+        "levels_total": attempt.levels_total,
     }
 
 
@@ -447,6 +465,7 @@ def _run_record(row: sqlite3.Row) -> RunRecord:
         ),
         duration_ms=row["duration_ms"],
         time_limit=row["time_limit"],
+        levels_passed=row["levels_passed"],
     )
 
 
@@ -462,4 +481,41 @@ def _schedule_entry(row: sqlite3.Row) -> ScheduleEntry:
         due_on=date.fromisoformat(row["due_on"]),
         last_grade=Grade(row["last_grade"]),
         updated_at=_required_instant(row["updated_at"]),
+        levels=_level_reviews(row["levels"]),
+    )
+
+
+def _level_reviews(text: str | None) -> tuple[LevelReview, ...] | None:
+    if text is None:
+        return None
+    return tuple(
+        LevelReview(
+            level=found["level"],
+            state=ReviewState(
+                ease=found["ease"],
+                interval_days=found["interval_days"],
+                reps=found["reps"],
+                lapses=found["lapses"],
+            ),
+            last_grade=Grade(found["last_grade"]),
+        )
+        for found in json.loads(text)
+    )
+
+
+def _level_reviews_text(levels: tuple[LevelReview, ...] | None) -> str | None:
+    if levels is None:
+        return None
+    return json.dumps(
+        [
+            {
+                "level": review.level,
+                "ease": review.state.ease,
+                "interval_days": review.state.interval_days,
+                "reps": review.state.reps,
+                "lapses": review.state.lapses,
+                "last_grade": int(review.last_grade),
+            }
+            for review in levels
+        ]
     )

@@ -16,6 +16,7 @@ from coding_study.domain.jdk import DeclaredJdk, SelectedJdk
 from coding_study.domain.jdk_fit import fit_of
 from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.layout import JVM_LANGUAGES
+from coding_study.domain.levels import level_progress
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     DEFAULT_CURRICULUM_ORDER,
@@ -26,7 +27,7 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
-from coding_study.domain.problem_sets import ProblemSet
+from coding_study.domain.problem_sets import ProblemSet, target_reached
 from coding_study.domain.scheduling import ProblemProgress
 from coding_study.domain.weakness import GradedAttempt, Group, GroupHistory, group_of
 
@@ -56,6 +57,8 @@ class Candidate:
     project: bool = False
     """A project problem, which starts in its own language, not in `--lang`."""
     labels: Labels = field(default_factory=Labels)
+    levels: int | None = None
+    """A progressive or project problem's last level; None for anything else."""
 
     @property
     def autograded(self) -> bool:
@@ -95,7 +98,13 @@ def candidate_of(meta: ProblemMeta, progress: ProblemProgress) -> Candidate:
         jdk=meta.jdk,
         project=meta.kind is ProblemKind.PROJECT,
         labels=meta.labels,
+        levels=_last_level(meta),
     )
+
+
+def _last_level(meta: ProblemMeta) -> int | None:
+    levels = level_progress(meta, None)
+    return levels.last if levels else None
 
 
 def item_candidate_of(meta: ItemMeta, progress: ProblemProgress) -> Candidate:
@@ -319,9 +328,15 @@ class _Selection:
         entries = [slug for slug in problem_set.slugs if slug in known]
         for position, slug in enumerate(entries, start=1):
             candidate = idle.get(slug)
-            if candidate is not None and not candidate.progress.has_passed:
+            if candidate is not None and not self._done(candidate, problem_set):
                 return SetPick(candidate, problem_set.name, position, len(entries))
         return None
+
+    @staticmethod
+    def _done(candidate: Candidate, problem_set: ProblemSet) -> bool:
+        """A pass reached the entry's target level, every level by default."""
+        target = problem_set.target_of(candidate.slug)
+        return target_reached(candidate.progress, candidate.levels, target)
 
     def review(self, within: Collection[str] | None = None) -> ReviewPick | None:
         """The due review with the highest priority, of the slugs `within` when given."""

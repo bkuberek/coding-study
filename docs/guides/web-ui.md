@@ -44,7 +44,7 @@ The top bar holds the views, the attempts in progress while one is open, and the
 | View | Opens with | Shows |
 |------|------------|-------|
 | Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem) with a **Start…** or **Resume** button, a search by title or slug that narrows as you type (<kbd>/</kbd> focuses it), one slim row of the filters of `cstudy list` (status, difficulty, domain and language, and under **more** track, kind, role, scope, pattern, content status and set), a removable chip per active filter with a live count and **clear**, and every problem with its status (`in progress` while you have an attempt open) and due date. Each row has a button to add the problem to a set. The `columns` menu chooses what the table shows, and adds its kind, scope, domain and role |
-| Problem | A click on a row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over |
+| Problem | A click on a row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over. For a problem with levels, it also shows your best level in each language and, when you stopped below the last level, the level to try next. A problem whose reviews keep reaching level 2 of 4 reads *mastered through level 2 of 4*: each level is mastered on its own reviews, so a level you have just reached starts over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Sets | <kbd>Alt</kbd>+<kbd>2</kbd> | [Your own lists of problems](#problem-sets), with passed of total; one open shows its pick and its rows, to start, resume or reorder |
 | Mock | <kbd>Alt</kbd>+<kbd>3</kbd> | The start form, or the running mock's countdown and problems |
@@ -289,7 +289,7 @@ An attempt still in progress links to its Attempt view instead, where its files 
 |--------|--------------|
 | Hint | Shows the next hint under the statement. Any hint caps the review grade at `ok` |
 | Solution… | Asks first when an unsolved attempt is in progress, since the attempt is then graded as `again`; the reference opens in a read-only pane, never in your files |
-| Done… | Finishes the attempt with a rating (`easy`, `ok`, `hard`) or as given up, and optional notes; it shows the lines `cstudy done` prints, with the next review date. It grades the latest run, so it refuses while a tab has unsaved edits: save and run first |
+| Done… | Finishes the attempt with a rating (`easy`, `ok`, `hard`) or as given up, and optional notes; it shows the lines `cstudy done` prints, with the next review date. It grades the latest run, so it refuses while a tab has unsaved edits: save and run first. For a problem with levels, passing level 1 is enough for a rating: the attempt passes through the highest level you passed (`passed · through level 2 of 4`) and comes back on its normal review schedule. A mock still needs every level |
 | Abort… | Stops working on the problem, as `cstudy abort` does, after a question: the attempt ends as abandoned, leaves the menu of attempts in progress, and the page opens the problem. Your files stay, and your progress and review schedule do not change; a new Start begins a fresh attempt in the same file (for a problem with a review due, the file first moves to `.archive/`). It refuses while a run is active and while a tab has unsaved edits |
 
 ## Problem sets
@@ -309,7 +309,7 @@ cstudy next --set backend-loop
 cstudy list --set backend-loop
 ```
 
-Sets live in `sets.yaml` at the root of your workspace, so you can read it, edit it by hand and commit it. A change from `cstudy` or the page touches only the lines it must, so your comments stay. `cstudy reset` keeps your sets, with `--files` and `--archive` too. A problem the catalog no longer has shows as `missing` and stops nothing, and a file that does not parse shows as an error and is never overwritten. Every command: [`cstudy set`](../specs/cli.md#cstudy-set).
+Sets live in `sets.yaml` at the root of your workspace, so you can read it, edit it by hand and commit it. A change from `cstudy` or the page touches only the lines it must, so your comments stay. `cstudy reset` keeps your sets, with `--files` and `--archive` too. A problem the catalog no longer has shows as `missing` and stops nothing, and a file that does not parse shows as an error and is never overwritten. For a problem with levels, an entry may aim lower than every level: write `- {slug: tamper-evident-ledger, level: 2}` in the file, or run `cstudy set add <set> tamper-evident-ledger --level 2`, and the set counts it once you pass level 2; the row says `through level 2 (target)`. Every command: [`cstudy set`](../specs/cli.md#cstudy-set).
 
 ## Mock interviews
 

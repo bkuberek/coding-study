@@ -22,7 +22,12 @@ from coding_study.domain.attempts import (
 )
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
+from coding_study.domain.scheduling import (
+    LevelReview,
+    ProblemProgress,
+    ReviewState,
+    ScheduleEntry,
+)
 
 STARTED = datetime(2026, 10, 24, 10, 0, tzinfo=UTC)
 
@@ -139,6 +144,59 @@ def test_migrated_test_runs_still_require_an_existing_attempt(database):
         SqliteProgressStore(database).add_test_run(run_record(999))
 
 
+def database_before_level_passes(database: Path) -> None:
+    """A progress database at schema version 5, with a passed attempt and its test run."""
+    migrations = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY
+    scripts = sorted(
+        (entry for entry in migrations.iterdir() if entry.name.endswith(".sql")),
+        key=lambda entry: entry.name,
+    )
+    with sqlite3.connect(database) as connection:
+        for script in scripts[:5]:
+            connection.executescript(script.read_text(encoding="utf-8"))
+        connection.execute("INSERT INTO meta (key, value) VALUES ('schema_version', '5')")
+        connection.execute(
+            "INSERT INTO attempts (id, slug, lang, mode, status, started_at, ended_at, rating, "
+            "grade, level_unlocked) VALUES (7, 'level-store', 'python', 'new', 'passed', "
+            "'2026-10-24T10:00:00+00:00', '2026-10-24T10:30:00+00:00', 'ok', 2, 3)"
+        )
+        connection.execute(
+            "INSERT INTO test_runs (attempt_id, ran_at, code_hash, total, passed, failed, "
+            "errored, timed_out, tle, duration_ms) "
+            "VALUES (7, '2026-10-24T10:01:00+00:00', 'abc', 12, 12, 0, 0, 0, 0, 840)"
+        )
+
+
+def test_migrating_to_level_passes_keeps_an_old_pass_without_levels(database):
+    database_before_level_passes(database)
+    attempt = SqliteProgressStore(database).attempt(7)
+    assert attempt is not None
+    assert (attempt.status, attempt.levels_passed, attempt.levels_total) == (
+        AttemptStatus.PASSED,
+        None,
+        None,
+    )
+
+
+def test_migrating_to_level_passes_keeps_old_test_runs_without_levels(database):
+    database_before_level_passes(database)
+    run = SqliteProgressStore(database).latest_test_run(7)
+    assert run is not None
+    assert (run.tally.passed, run.levels_passed) == (12, None)
+
+
+def test_migration_0006_runs_again_without_error(store, database):
+    """Renumbered by a merge, a migration that adds columns may run on a database that has them."""
+    store.active_attempt()
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE meta SET value = '5' WHERE key = 'schema_version'")
+    reopened = SqliteProgressStore(database)
+    assert (reopened.active_attempt(), reopened.snapshot().schema_version) == (
+        None,
+        latest_schema_version(),
+    )
+
+
 def test_attempt_ids_increase(store):
     first, second = store.add_attempt(new_attempt()), store.add_attempt(new_attempt())
     assert second.id > first.id
@@ -214,6 +272,8 @@ def test_update_stores_every_mutable_field(store):
         hints_used=1,
         solution_revealed=True,
         level_unlocked=2,
+        levels_passed=2,
+        levels_total=4,
         archive_path=".archive/two-sum/1-python",
         notes="used a map",
     )
@@ -236,6 +296,13 @@ def test_no_test_run_yet(store):
 def test_test_runs_keep_the_time_limit(store):
     attempt = store.add_attempt(new_attempt())
     record = replace(run_record(attempt.id), time_limit="5x")
+    store.add_test_run(record)
+    assert store.latest_test_run(attempt.id) == record
+
+
+def test_test_runs_keep_the_levels_they_passed(store):
+    attempt = store.add_attempt(new_attempt())
+    record = replace(run_record(attempt.id), levels_passed=2)
     store.add_test_run(record)
     assert store.latest_test_run(attempt.id) == record
 
@@ -276,7 +343,9 @@ def test_problem_progress_collects_attempt_statuses_and_schedule(store):
     store.add_attempt(new_attempt())
     store.save_schedule_entry(schedule_entry())
     expected = ProblemProgress(
-        frozenset({AttemptStatus.PASSED, AttemptStatus.IN_PROGRESS}), schedule_entry()
+        frozenset({AttemptStatus.PASSED, AttemptStatus.IN_PROGRESS}),
+        schedule_entry(),
+        every_level_passed=True,
     )
     assert store.problem_progress() == {"two-sum": expected}
 
@@ -363,3 +432,34 @@ def test_a_clear_that_fails_midway_changes_nothing_and_leaves_the_database_whole
     check = connection.execute("PRAGMA integrity_check").fetchone()[0]
     connection.close()
     assert (rows, check, store.snapshot().row_counts()["attempts"]) == (1, "ok", 1)
+
+
+def test_saved_schedule_entries_keep_each_levels_review(store):
+    levels = (LevelReview(2, ReviewState(ease=2.5, interval_days=3, reps=1), Grade.OK),)
+    entry = replace(schedule_entry(), levels=levels)
+    store.save_schedule_entry(entry)
+    assert store.schedule_entry("two-sum") == entry
+
+
+def test_a_schedule_entry_saved_without_level_reviews_reads_none(store):
+    store.save_schedule_entry(schedule_entry())
+    found = store.schedule_entry("two-sum")
+    assert found is not None
+    assert found.levels is None
+
+
+def passed_through(store, levels: int | None) -> None:
+    attempt = store.add_attempt(new_attempt("level-store"))
+    store.update_attempt(replace(attempt, status=AttemptStatus.PASSED, levels_passed=levels))
+
+
+def test_problem_progress_knows_the_most_levels_a_pass_recorded(store):
+    passed_through(store, 2)
+    passed_through(store, 3)
+    assert store.problem_progress()["level-store"].levels_passed(4) == 3
+
+
+def test_a_pass_that_recorded_no_levels_passed_every_level(store):
+    passed_through(store, 2)
+    passed_through(store, None)
+    assert store.problem_progress()["level-store"].levels_passed(4) == 4

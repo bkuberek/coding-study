@@ -388,6 +388,8 @@ def test_a_file_with_windows_line_ends_takes_a_change(file, store):
         {"sets": {}},
         {"sets": {"backend-loop": None}},
         {"sets": {"backend-loop": {"description": "x", "problems": ["two-sum", "lru-cache"]}}},
+        {"sets": {"loop": {"problems": ["two-sum", {"slug": "ledger", "level": 2}]}}},
+        {"sets": {"loop": {"problems": [{"slug": "ledger"}]}}},
     ],
 )
 def test_the_schema_takes_what_the_store_takes(document):
@@ -405,6 +407,9 @@ def test_the_schema_takes_what_the_store_takes(document):
         {"sets": {"loop": {"problems": [1]}}},
         {"sets": {"loop": {"problems": ["a", "a"]}}},
         {"sets": {"loop": {"description": 1}}},
+        {"sets": {"loop": {"problems": [{"slug": "ledger", "level": 0}]}}},
+        {"sets": {"loop": {"problems": [{"level": 2}]}}},
+        {"sets": {"loop": {"problems": [{"slug": "ledger", "target": 2}]}}},
     ],
 )
 def test_the_schema_refuses_what_the_store_refuses(document):
@@ -413,3 +418,82 @@ def test_the_schema_refuses_what_the_store_refuses(document):
 
 def test_the_schema_is_a_schema():
     Draft202012Validator.check_schema(STORE_SCHEMA)
+
+
+# Target levels (docs/decisions/0024-level-passes.md#target-levels-in-sets)
+
+TARGETED = """\
+sets:
+  loop:
+    problems:
+      - two-sum
+      # aim for the chain
+      - {slug: tamper-evident-ledger, level: 2}
+      - slug: cloud-file-storage
+        level: 3
+      - lru-cache
+"""
+
+
+@pytest.fixture
+def targeted(file: Path, store: YamlProblemSets) -> YamlProblemSets:
+    file.write_text(TARGETED)
+    return store
+
+
+SLUGS = ("two-sum", "tamper-evident-ledger", "cloud-file-storage", "lru-cache")
+TARGETS = {"tamper-evident-ledger": 2, "cloud-file-storage": 3}
+
+
+def test_targets_read_in_either_mapping_form(targeted):
+    found = targeted.read()[0]
+    assert (found.slugs, dict(found.levels)) == (SLUGS, TARGETS)
+
+
+def test_a_new_slug_with_a_target_is_one_flow_mapping_line(file, targeted):
+    targeted.set_problems("loop", (*SLUGS, "new-one"), {**TARGETS, "new-one": 2})
+    gone, new = lines_gone_and_new(TARGETED, file.read_text())
+    assert (gone, new) == ([], ["      - {slug: new-one, level: 2}"])
+
+
+def test_moving_an_entry_with_a_target_carries_all_its_lines(file, targeted):
+    order = ("cloud-file-storage", "two-sum", "tamper-evident-ledger", "lru-cache")
+    targeted.set_problems("loop", order, TARGETS)
+    text = file.read_text()
+    assert (lines_gone_and_new(TARGETED, text), targeted.read()[0].slugs) == (([], []), order)
+
+
+def test_changing_a_target_rewrites_only_that_entry(file, targeted):
+    targeted.set_problems("loop", SLUGS, {**TARGETS, "tamper-evident-ledger": 3})
+    gone, new = lines_gone_and_new(TARGETED, file.read_text())
+    assert (gone, new) == (
+        ["      - {slug: tamper-evident-ledger, level: 2}"],
+        ["      - {slug: tamper-evident-ledger, level: 3}"],
+    )
+
+
+def test_clearing_a_target_writes_the_plain_slug(file, targeted):
+    targeted.set_problems("loop", SLUGS, {"tamper-evident-ledger": 2})
+    gone, new = lines_gone_and_new(TARGETED, file.read_text())
+    assert (gone, new) == (
+        ["        level: 3", "      - slug: cloud-file-storage"],
+        ["      - cloud-file-storage"],
+    )
+
+
+def test_removing_an_entry_with_a_target_takes_its_lines_and_the_comment_above(file, targeted):
+    targeted.set_problems("loop", ("two-sum", "cloud-file-storage", "lru-cache"), TARGETS)
+    gone, new = lines_gone_and_new(TARGETED, file.read_text())
+    assert (gone, new) == (
+        ["      # aim for the chain", "      - {slug: tamper-evident-ledger, level: 2}"],
+        [],
+    )
+
+
+def test_a_new_set_writes_its_targets(store):
+    store.add(
+        ProblemSet(
+            "loop", None, ("two-sum", "tamper-evident-ledger"), (("tamper-evident-ledger", 2),)
+        )
+    )
+    assert store.read()[0].target_of("tamper-evident-ledger") == 2

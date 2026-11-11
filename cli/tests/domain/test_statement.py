@@ -24,7 +24,7 @@ from coding_study.domain.signature import (
     Param,
     Returns,
 )
-from coding_study.domain.statement import render_statement
+from coding_study.domain.statement import render_statement, with_goal
 from coding_study.domain.type_dsl import ArrayType, ListType, Scalar, ScalarType, VoidType
 
 INT = ScalarType(Scalar.INT)
@@ -448,4 +448,12 @@ def test_the_range_comes_ahead_of_the_level():
     statement = render_statement(Problem(problem, LEVEL_CASES), PROGRESSIVE_MD, 2)
     assert statement.splitlines()[2] == (
         "easy · practical · Java and Kotlin: JDK 24 or newer · level 2 of 3"
+    )
+
+
+def test_a_goal_is_quoted_under_the_title_and_its_metadata():
+    statement = "# Level Store\n\nmedium · practical\n\n## Statement\n\nText.\n"
+    assert with_goal(statement, "last time: through level 2 of 3; try level 3") == (
+        "# Level Store\n\nmedium · practical\n\n"
+        "> last time: through level 2 of 3; try level 3\n\n## Statement\n\nText.\n"
     )

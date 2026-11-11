@@ -492,7 +492,7 @@ const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawi
   domain: (entry) => h("td", { class: "quiet" }, labelsOf(entry.domains)),
   role: (entry) => h("td", { class: "quiet" }, labelsOf(entry.job_roles)),
   status: (entry) => {
-    const status = problemBadge(entry.status);
+    const status = problemBadge(entry.status, entry.levels);
     const word = badge(status.glyph, status.text, status.tone);
     const [first, ...others] = entry.in_progress;
     if (first === undefined) return h("td", {}, word);
