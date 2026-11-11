@@ -1144,7 +1144,7 @@ cstudy learn <guide> [--done] [--open] [--json]
 cstudy learn --path <path> [--json]
 ```
 
-Reads the [concept guides and learning paths](guides.md) of the content root ([ADR 0024](../decisions/0024-concept-guides-and-learning-paths.md)). The web UI's Guides page is the recommended way to read them, with the diagrams drawn; the terminal reads every guide in full. Reading needs no workspace: outside one, nothing is read and no path step is done. `--done` needs one, since it records progress.
+Reads the [concept guides and learning paths](guides.md) of the content root ([ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)). The web UI's Guides page is the recommended way to read them, with the diagrams drawn; the terminal reads every guide in full. Reading needs no workspace: outside one, nothing is read and no path step is done. `--done` needs one, since it records progress.
 
 | Form | Does | Says |
 |------|------|------|

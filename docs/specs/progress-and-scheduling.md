@@ -113,7 +113,7 @@ CREATE TABLE guide_reads (             -- concept guides marked read with cstudy
 );
 ```
 
-`0006_guide_reads.sql` adds `guide_reads`, with `IF NOT EXISTS`: a [concept guide](guides.md#reading-progress) is read once `cstudy learn <guide> --done` marks it, and a path's progress is computed from it and from the attempts.
+`0007_guide_reads.sql` adds `guide_reads`, with `IF NOT EXISTS`: a [concept guide](guides.md#reading-progress) is read once `cstudy learn <guide> --done` marks it, and a path's progress is computed from it and from the attempts.
 
 ## Attempt lifecycle
 

@@ -1,4 +1,4 @@
-# ADR 0024: Concept guides and learning paths are content beside the problems, read with `cstudy learn`
+# ADR 0025: Concept guides and learning paths are content beside the problems, read with `cstudy learn`
 
 | Field | Value |
 |-------|-------|
@@ -63,7 +63,7 @@ Seven guides, from what a hash function is to Merkle proofs, around the thirteen
 - Authors run one more tool when they change a diagram: `pnpm install` and `pnpm render` in `tools/guides/`, which needs Node.js and pnpm, as the web UI's sources already do. Readers need neither.
 - beautiful-mermaid depends on elkjs (EPL-2.0 or GPL-3.0-or-later). It stays in `tools/guides/node_modules/`, a development tool that is never committed or shipped; only its output, the text drawings, is.
 - A guide's examples are content code that runs on the author's machine in tests, never in a user's workspace.
-- `progress.db` gains migration 0006, `CREATE TABLE IF NOT EXISTS`, so it is safe to renumber if another branch takes 0006 first. An older cstudy's `cstudy doctor` reports such a database as newer than it knows, as after every migration.
+- `progress.db` gains migration 0007, `CREATE TABLE IF NOT EXISTS`, so it is safe to renumber again. Its number leaves 0006 to the level-passes work, which takes it. An older cstudy's `cstudy doctor` reports such a database as newer than it knows, as after every migration.
 
 ## Later options
 
