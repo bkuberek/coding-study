@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Accepted. The pilot is built: the format, the checks, `cstudy learn` and the path "Hashing", with seven guides. The page's Guides view is next |
+| Status | Accepted. The pilot is built: the format, the checks, `cstudy learn` and the path "Hashing", with seven guides. The page's [Guides view](../specs/web-ui.md#guides-view) is built too, with Mermaid 11.17.2 in chunks of its own, and `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` land there |
 | Date | 2026-11-11 |
 | Spec | [guides](../specs/guides.md), [cli](../specs/cli.md#cstudy-learn), [authoring](../specs/authoring.md#guides-and-paths), [problem-format](../specs/problem-format.md#metayaml) (`guides`), [installation-and-workspaces](../specs/installation-and-workspaces.md#content-root), [progress-and-scheduling](../specs/progress-and-scheduling.md#schema) (`guide_reads`) |
 | Amends | [PRD](../prd.md): FR-18 joins |
@@ -69,7 +69,7 @@ Seven guides, from what a hash function is to Merkle proofs, around the thirteen
 
 | Option | What it would add |
 |--------|-------------------|
-| The page's Guides view (next) | Guides and paths in `cstudy serve`, drawing Mermaid with a locally bundled, lazily loaded renderer that follows the page's theme, and hiding the text drawings; `cstudy learn <guide> --open` opens a guide there |
+| The page's Guides view (built) | Guides and paths in `cstudy serve`, drawing Mermaid with a locally bundled, lazily loaded renderer that follows the page's theme, and hiding the text drawings; `cstudy learn <guide> --open` opens a guide there |
 | Concept checks | Short questions per guide on the review schedule |
 | Mastery per level | Path progress that reads per-level passes once they land |
 | `verify --changed` for guides | Only the guides and paths a branch changed |

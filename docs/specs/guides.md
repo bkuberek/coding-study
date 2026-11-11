@@ -2,7 +2,7 @@
 
 A **guide** is a short, original reading page that teaches one idea before you practise it: the plain idea, a worked example, when to use it, the traps, the complexity, notes for experts, the problems that practise it, and where to read more. A **path** orders guides and problems into a track, from a topic's first idea to an expert's. Both are content: they ship with `cstudy` like the problems, and [`cstudy learn`](cli.md#cstudy-learn) reads them ([ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)).
 
-The web UI is the recommended place to read them: the [Guides page](#guides-page-next) of `cstudy serve` draws the diagrams, links the guides to each other and shows a path's progress beside its steps. The terminal is fully supported: `cstudy learn` renders a guide's Markdown with Rich, shows each diagram as its [text drawing](#text-drawings), and has `--json` for scripts.
+The web UI is the recommended place to read them: the [Guides page](#guides-page) of `cstudy serve` draws the diagrams, links the guides to each other and shows a path's progress beside its steps. The terminal is fully supported: `cstudy learn` renders a guide's Markdown with Rich, shows each diagram as its [text drawing](#text-drawings), and has `--json` for scripts.
 
 A guide is written for everyone from beginner to expert, where a beginner is new to the topic, not to programming: it assumes the reader can write a function in one language and nothing about the topic. It starts plainly and goes deep.
 
@@ -90,7 +90,7 @@ Only these fences are examples: a plain ```` ```python ```` block without a path
 
 ### Diagrams
 
-A diagram is a fenced `mermaid` block in `guide.md`, and its source is the only source: there are no `.mmd` or image files. GitHub draws it, the page's [Guides view](#guides-page-next) will draw it, and the terminal shows its [text drawing](#text-drawings).
+A diagram is a fenced `mermaid` block in `guide.md`, and its source is the only source: there are no `.mmd` or image files. GitHub draws it, the page's [Guides view](#guides-page) draws it, and the terminal shows its [text drawing](#text-drawings).
 
 | Rule | Detail |
 |------|--------|
@@ -99,7 +99,7 @@ A diagram is a fenced `mermaid` block in `guide.md`, and its source is the only 
 | Accessibility | An `accTitle: <title>` line and an `accDescr: <description>` line |
 | Prose | A guide makes sense with its diagrams shown as source, as a terminal without the text drawing would show them: the prose says what each diagram shows |
 
-`cstudy verify` checks the type, the first line and the accessibility lines. It does not parse the rest: the renderer of `tools/guides/` does when it draws the text, and the page's tests will when the Guides view draws Mermaid.
+`cstudy verify` checks the type, the first line and the accessibility lines. It does not parse the rest: the renderer of `tools/guides/` does when it draws the text, and the page's browser tests do when the Guides view draws it.
 
 ### Text drawings
 
@@ -212,6 +212,8 @@ The path's next step is its first step that is not done.
 5. `cstudy verify --static`, then `uv run pytest tests/content/test_guide_examples.py` in `cli/`.
 6. List every fact about a language, library or standard with its source in a review page, as [the hashing guides' review](../reviews/guides-hashing.md) does, so that an independent review can check it.
 
-## Guides page (next)
+## Guides page
 
-The page of [`cstudy serve`](web-ui.md) will gain a Guides view, the recommended way to read: the guides and the paths with their progress, a guide drawn from its Markdown with its `mermaid` blocks drawn by a lazily loaded, locally bundled Mermaid chunk that follows the page's light or dark theme, the text drawings hidden, links between guides, and a control that marks a guide read through the same use case as `--done`. `cstudy learn <guide> --open` will open a guide there, as `cstudy serve --open` opens the page. It is not built yet, and will come after the page's current changes land; until then `--open` says so in one line and exits 0, and the terminal reads every guide in full.
+The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, its `mermaid` blocks drawn as SVG by Mermaid, which the page fetches from `cstudy serve` in chunks of their own only when a guide with a diagram opens and which follows the page's light or dark theme, the text drawings hidden, links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. Each drawn diagram keeps the `<title>` and `<desc>` that Mermaid makes of its `accTitle` and `accDescr`, so a screen reader names and describes it.
+
+`cstudy learn <guide> --open` and `cstudy learn --path <path> --open` run `cstudy serve --open` landing on the guide or the path ([cli](cli.md#cstudy-learn)). The terminal still reads every guide in full.
