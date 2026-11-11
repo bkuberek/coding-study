@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study learning path",
+  "description": "One learning path in guides/paths/<slug>.yaml; the file's name is the slug. Spec: docs/specs/guides.md#paths. coding_study.adapters.fs_guide_catalog reads the same shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "summary", "steps"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "steps": {
+      "description": "In order: each a guide or a problem",
+      "type": "array",
+      "minItems": 1,
+      "items": { "oneOf": [{ "$ref": "#/$defs/guideStep" }, { "$ref": "#/$defs/problemStep" }] }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "guideStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["guide"],
+      "properties": { "guide": { "$ref": "#/$defs/slug" } }
+    },
+    "problemStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problem"],
+      "properties": {
+        "problem": { "$ref": "#/$defs/slug" },
+        "level": {
+          "description": "A progressive or project problem's level target: the step is done once this level passes (check P3)",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

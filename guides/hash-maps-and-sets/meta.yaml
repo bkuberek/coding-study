@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Hash maps and sets
+summary: Why a lookup takes constant time on average, how separate chaining and open addressing resolve collisions, what resizing costs, and when it all goes wrong.
+level: intro
+prerequisites: [hash-functions]
+related: [counting-and-frequency, canonical-keys, designing-with-hash-maps]
+problems: [contains-duplicate, two-sum, valid-anagram]

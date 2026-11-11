@@ -29,4 +29,5 @@ perf:
 references:
   leetcode: {number: 1, url: "https://leetcode.com/problems/two-sum/"}
 related: [three-sum]
+guides: [hash-maps-and-sets]
 estimate_minutes: 15

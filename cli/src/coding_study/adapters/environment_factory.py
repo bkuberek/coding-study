@@ -18,6 +18,7 @@ from coding_study.adapters.document_index import INDEX_FILE, DocumentIndex
 from coding_study.adapters.env_editor import EnvEditorOpener
 from coding_study.adapters.fs_calibration_cache import FsCalibrationCache, local_machine_id
 from coding_study.adapters.fs_case_cache import FsGeneratedCaseCache
+from coding_study.adapters.fs_guide_catalog import FsGuideCatalog
 from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
@@ -134,6 +135,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         editor=EnvEditorOpener(user.environ),
         watcher=WatchfilesWatcher(),
         items=FsItemRepository(content.path, index),
+        guides=FsGuideCatalog(content.path),
         machine=SystemMachine(),
         new_problems=_new_problems(content, workspace),
         study_guides=FsStudyGuides.from_setting(config.study_guides.root, user.home),

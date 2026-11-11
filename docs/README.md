@@ -25,6 +25,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [versioning](specs/versioning.md) | Commit types and version bumps, the version workflow, `CHANGELOG.md`, `cstudy --version`, the GitHub release and the Homebrew tap | Committing, or changing how releases are versioned or published |
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
 | [web-ui](specs/web-ui.md) | `cstudy serve`: the local page, its API v1, runs and jobs as server-sent events, the security model, file API rules, code intelligence sessions with language servers, page behaviour, mocks, solutions, preferences and assets | Building or changing the web UI |
+| [guides](specs/guides.md) | Concept guides and learning paths: the `guides/` folder, `meta.yaml`, `guide.md`'s sections, tested examples, Mermaid diagrams with their text drawings, paths, the static checks, reading progress and `cstudy learn` | Writing a guide or a path, or building on them |
 | [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, project folders, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
 
 ## Guides
@@ -62,6 +63,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [0022](decisions/0022-settings-and-reset.md) | The Settings view edits the whole `config.toml` with tomlkit, keeping the user's comments, from a description of each key held by the parser; `cstudy reset` and a Danger section delete progress after a preview and a typed word |
 | [0023](decisions/0023-problem-sets.md) | Problem sets are a file in the workspace, `sets.yaml`, changed by the lines a change needs; `cstudy set`, `--set` on `cstudy list` and `cstudy next`, which goes in the set's order, and a Sets view; the whole-bundle budget rises |
 | [0024](decisions/0024-level-passes.md) | A pass through level N of M is a pass, graded from the rating with no level cap; a mock keeps the old rules; the best level per language is the problem's mastery, and the next attempt shows the level to try |
+| [0025](decisions/0025-concept-guides-and-learning-paths.md) | Concept guides and learning paths are content in `guides/`, checked by `cstudy verify` and read with `cstudy learn`; diagrams are Mermaid with text drawings made when a guide is written, examples are run by a test, and reading is marked in `progress.db` |
 
 ## Conventions
 

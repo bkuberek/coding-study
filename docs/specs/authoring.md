@@ -284,6 +284,7 @@ A service project (`project.grading: http`) has its [own manifest](service-proje
 | S18 | Virtual clock ([project problems](problem-format.md#asynchronous-code-and-the-virtual-clock)): `async` only on methods of a project in Python, TypeScript, Kotlin or Rust, and only with `project.clock: virtual`; `project.clock: virtual` only in Go, Python, TypeScript, Kotlin or Rust, and only in a language whose runner grades it ([scope and order](../decisions/0017-async-project-problems.md#scope-and-order)). Harness operations only with the virtual clock, with valid arguments: `@advance` from 1 to 2,147,483,647 ms (Node's largest timer delay); `@spawn` a task name unique in its case and a method of the case's level or below with its arguments, an asynchronous method outside Go; `@join` a task spawned earlier and not yet joined; `@now` none. Every spawned task is joined. Expected values: `null` for `@advance` and `@spawn`, the method's result type for `@join`, an integer for `@now`. Ties are content's to avoid; no static check finds them, and D10 finds those that Go and Python shuffle |
 | S19 to S23 | [Service projects](service-projects.md#static): the manifest, the mock configs, the compose file, `requires` and the HTTP cases. S14 to S16 read differently for one |
 | S24 | Labels ([content](content.md#labels)): a catalog problem has `domains`, `job_roles` and `scope`, and `scope` fits `kind`: `project` or `system` for `kind: project`, `function` for any other kind. A problem in your own workspace may leave all three out, and one that names a `scope` still has to fit it. An item has the same three, with `scope: system` for a `system-design` item and `function` for a `code-review` item ([items](#items)) |
+| S25 | `guides` names [concept guides](guides.md) that exist |
 
 ### Dynamic
 
@@ -347,6 +348,10 @@ System design and code review items (`tracks/<track>/<slug>/`, format in [conten
 | 3 | Write `rubric.md` from the reference: one criterion per point a strong answer makes | `--static` |
 | 4 | Write `template.md` with the reference's sections | `--static` |
 | 5 | Link public sources in `references.links` and, optionally, study-guide sections in `references.study_guides`; set `status: ready` | `cstudy verify <slug> --require-ready` |
+
+## Guides and paths
+
+[Concept guides and learning paths](guides.md) run no code in `cstudy verify`: it applies their static checks, G1 to G9 and P1 to P5, when it verifies the whole catalog, and they do not count towards the coverage report. Their examples run in a content test instead ([examples](guides.md#examples)). [Writing a guide](guides.md#writing-a-guide) lists the steps.
 
 ## Quality gate
 

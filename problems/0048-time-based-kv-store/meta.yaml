@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 981, url: "https://leetcode.com/problems/time-based-key-value-store/"}
 related: [binary-search, first-last-position]
+guides: [designing-with-hash-maps]
 order: 6
 estimate_minutes: 25

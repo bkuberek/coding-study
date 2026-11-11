@@ -115,6 +115,12 @@
       }
     },
     "related": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/slug" } },
+    "guides": {
+      "description": "Concept guides to read before the problem (docs/specs/guides.md); each must exist (check S25)",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/slug" }
+    },
     "order": { "description": "Curriculum order within the primary pattern (default 1000)", "type": "integer" },
     "estimate_minutes": { "$ref": "#/$defs/positiveInteger" },
     "summary": { "type": "string", "minLength": 1, "maxLength": 240 },

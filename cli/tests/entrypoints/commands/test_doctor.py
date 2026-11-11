@@ -342,7 +342,7 @@ def test_fix_migrates_an_older_progress_database(monkeypatch, tmp_path):
     stub_report(monkeypatch)
     monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
     lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
-    assert "migrated progress.db from schema 4 to 6" in lines
+    assert f"migrated progress.db from schema 4 to {latest_schema_version()}" in lines
     assert (
         SqliteProgressDatabase(workspace / "progress.db").schema().found == latest_schema_version()
     )

@@ -31,4 +31,5 @@ perf:
 references:
   leetcode: {number: 380, url: "https://leetcode.com/problems/insert-delete-getrandom-o1/"}
 related: [contains-duplicate, min-stack]
+guides: [designing-with-hash-maps]
 estimate_minutes: 25

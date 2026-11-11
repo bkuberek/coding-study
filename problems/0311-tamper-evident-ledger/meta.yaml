@@ -38,4 +38,5 @@ comparator: {type: ops}
 approaches:
   - {id: precomputed-digests, name: Digests computed once and kept, role: optimal, time: "O(1) per comparison; O(log n) per commonPrefix; O(log b) per proof", space: "O(r)", time_class: "log n", space_class: "n"}
 related: [event-sourced-ledger-typescript, in-memory-database]
+guides: [cryptographic-hashes]
 estimate_minutes: 90

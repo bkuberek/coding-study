@@ -31,4 +31,5 @@ perf:
 references:
   leetcode: {number: 242, url: "https://leetcode.com/problems/valid-anagram/"}
 related: [group-anagrams, contains-duplicate]
+guides: [hash-maps-and-sets]
 estimate_minutes: 10

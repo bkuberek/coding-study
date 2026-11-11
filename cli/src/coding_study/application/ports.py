@@ -21,6 +21,7 @@ from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.code_intelligence import Archive, GoInstall, LanguageServer, License
 from coding_study.domain.comparators import Checker
+from coding_study.domain.concept_guides import GuideMeta, LearningPath
 from coding_study.domain.config import Config
 from coding_study.domain.config_keys import ConfigView
 from coding_study.domain.debugging import DebugSession
@@ -96,6 +97,51 @@ class ItemRepository(Protocol):
 
     def file_names(self, slug: str, directory: str = "") -> tuple[str, ...]:
         """Sorted names of the files (not directories) in an item subdirectory."""
+        ...
+
+
+class GuideCatalog(Protocol):
+    """The concept guides and learning paths in `guides/` (docs/specs/guides.md). Unknown slugs
+    are the caller's to refuse: it asks `slugs` and `path_slugs` first."""
+
+    def slugs(self) -> tuple[str, ...]:
+        """Every guide folder's name, sorted; none without `guides/`."""
+        ...
+
+    def guide_directory(self, slug: str) -> str:
+        """Repository-relative, e.g. `guides/hash-functions`."""
+        ...
+
+    def load(self, slug: str) -> GuideMeta:
+        """Raises ContentError for a meta.yaml that does not parse or fails its schema (G1)."""
+        ...
+
+    def read_guide(self, slug: str) -> str | None:
+        """guide.md; None when it is missing."""
+        ...
+
+    def files(self, slug: str) -> tuple[str, ...]:
+        """Every file under the guide's folder, relative to it, sorted; hidden ones left out."""
+        ...
+
+    def examples(self, slug: str) -> Mapping[str, str]:
+        """The text of every file under `examples/`, by its path relative to the guide."""
+        ...
+
+    def examples_folder(self, slug: str) -> Path:
+        """The absolute folder of the guide's examples, which may not exist."""
+        ...
+
+    def path_slugs(self) -> tuple[str, ...]:
+        """Every path's slug, sorted: the names of `guides/paths/*.yaml`."""
+        ...
+
+    def path_file(self, slug: str) -> str:
+        """Repository-relative, e.g. `guides/paths/hashing.yaml`."""
+        ...
+
+    def load_path(self, slug: str) -> LearningPath:
+        """Raises ContentError for a file that does not parse or fails its schema (P1)."""
         ...
 
 
@@ -462,6 +508,15 @@ class ProgressStore(Protocol):
     def schedule_entry(self, slug: str) -> ScheduleEntry | None: ...
 
     def save_schedule_entry(self, entry: ScheduleEntry) -> None: ...
+
+    def mark_guide_read(self, slug: str, at: datetime) -> datetime | None:
+        """Records the concept guide `slug` read at `at` unless it already is: None when this call
+        marked it, else when it was first marked."""
+        ...
+
+    def guide_reads(self) -> Mapping[str, datetime]:
+        """When each guide marked read was first marked, by slug."""
+        ...
 
     def problem_progress(self) -> Mapping[str, ProblemProgress]:
         """Every slug with at least one attempt or schedule entry."""

@@ -101,6 +101,18 @@ The editor can also show errors as you type, documentation on hover, go to defin
 
 [Practise in your browser](docs/guides/web-ui.md) covers the views, editing and runs, [code intelligence and autocomplete](docs/guides/web-ui.md#code-intelligence-and-autocomplete), the keyboard, and what keeps the page private to you.
 
+## Learn before you practise
+
+Concept guides teach an idea before you practise it: the plain idea, a worked example traced step by step, when to use it, the common traps, the complexity with its conditions, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, and the diagrams are Mermaid. Learning paths order guides and problems into a track; the first, "Hashing: from your first hash map to tamper-evident ledgers", has seven guides and thirteen problems ([guides](docs/specs/guides.md)).
+
+```bash
+cstudy learn                       # the guides and the paths, with what you have read
+cstudy learn --path hashing        # a path's steps and the next one
+cstudy learn hash-functions        # read a guide; add --done once you have
+```
+
+The web UI is the recommended way to read guides: its Guides page, which draws the diagrams and shows a path's progress beside its steps, is in progress. The terminal is fully supported in the meantime and after: `cstudy learn` renders a guide's Markdown, shows each diagram as a text drawing, and has `--json` for scripts.
+
 ## Your workspace is your repository
 
 The workspace holds your practice files, notes, previous attempts (`.archive/`), your own problems and your problem sets (`sets.yaml`). Version it in a git repository of your own, separately from this one: its `.gitignore` already excludes per-machine state such as `progress.db` and build output. Back up progress with `cstudy export`, which writes a JSON file you can commit. On another machine, clone your workspace and run `cstudy doctor --fix`.
@@ -121,6 +133,7 @@ Run `cstudy` anywhere inside the workspace, or point at it with `cstudy --worksp
 | `cstudy done --rating easy\|ok\|hard` | Finishes the attempt and schedules the review |
 | `cstudy bench` | Measures how your solution scales and compares it with the reference approaches |
 | `cstudy list`, `cstudy show <slug>` | Browses the catalog; prints a statement |
+| `cstudy learn [<guide>] [--path P]` | Reads the concept guides and follows a learning path ([guides](docs/specs/guides.md)) |
 | `cstudy set create <name>`, `cstudy set add <name> <slug>...` | Makes your own named lists of problems, a problem may be in several; `cstudy next --set <name>` then picks from one in its order ([sets](docs/guides/web-ui.md#problem-sets)) |
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
 | `cstudy serve [--open]` | Serves the practice page on your computer, at `127.0.0.1` ([guide](docs/guides/web-ui.md)) |

@@ -197,6 +197,8 @@ class ProblemMeta:
     hang_guard_ms: int | None = None
     references: References = References()
     related: tuple[str, ...] = ()
+    guides: tuple[str, ...] = ()
+    """Concept guides to read before the problem (docs/specs/guides.md); check S25."""
     order: int = DEFAULT_CURRICULUM_ORDER
     estimate_minutes: int | None = None
     summary: str | None = None

@@ -9,6 +9,7 @@ from pathlib import Path
 from coding_study.adapters.content_code_loader import ContentCodeLoader
 from coding_study.adapters.fs_calibration_cache import FsCalibrationCache
 from coding_study.adapters.fs_case_cache import FsGeneratedCaseCache
+from coding_study.adapters.fs_guide_catalog import FsGuideCatalog
 from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
@@ -314,6 +315,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "editor": RecordingEditor(),
         "watcher": ScriptedWatcher(),
         "items": FsItemRepository(root),
+        "guides": FsGuideCatalog(root),
         "machine": FakeMachine(),
         "new_problems": ProblemDestination(FsProblemFiles(root), WorkspaceFs(root)),
         "study_guides": FsStudyGuides(None),

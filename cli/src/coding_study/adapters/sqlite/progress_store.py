@@ -41,7 +41,15 @@ from coding_study.domain.scheduling import (
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 
 META_TABLE = "meta"
-TABLE_ORDER = ("attempts", "test_runs", "schedule", "bench_runs", "submissions", "level_unlocks")
+TABLE_ORDER = (
+    "attempts",
+    "test_runs",
+    "schedule",
+    "bench_runs",
+    "submissions",
+    "level_unlocks",
+    "guide_reads",
+)
 """Snapshot and restore order: attempts before the rows that reference them."""
 
 _LATEST_FIRST = "ORDER BY started_at DESC, id DESC LIMIT 1"
@@ -196,6 +204,24 @@ class SqliteProgressStore:
                     "levels": _level_reviews_text(entry.levels),
                 },
             )
+
+    def mark_guide_read(self, slug: str, at: datetime) -> datetime | None:
+        with self._connection() as connection:
+            inserted = connection.execute(
+                "INSERT OR IGNORE INTO guide_reads (slug, read_at) VALUES (?, ?)",
+                (slug, _instant_text(at)),
+            ).rowcount
+            if inserted:
+                return None
+            row = connection.execute(
+                "SELECT read_at FROM guide_reads WHERE slug = ?", (slug,)
+            ).fetchone()
+        return datetime.fromisoformat(row["read_at"])
+
+    def guide_reads(self) -> Mapping[str, datetime]:
+        with self._connection() as connection:
+            rows = connection.execute("SELECT slug, read_at FROM guide_reads").fetchall()
+        return {row["slug"]: datetime.fromisoformat(row["read_at"]) for row in rows}
 
     def problem_progress(self) -> Mapping[str, ProblemProgress]:
         with self._connection() as connection:
