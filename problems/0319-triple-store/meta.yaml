@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0319"
+slug: triple-store
+title: Triple Store
+summary: "Build TripleStore, an in-memory store of (subject, predicate, object) facts: indexed pattern matching, joined queries with shared variables, one-or-more-hop paths that survive cycles, and answers as of a past time with their sources."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, graphs]
+domains: [algorithms, backend, ai-llm]
+job_roles: [general, backend, ai-engineer]
+scope: function
+levels:
+  - {level: 1, title: Facts and patterns}
+  - {level: 2, title: Joined queries}
+  - {level: 3, title: Paths through the graph}
+  - {level: 4, title: Sources and time}
+signature:
+  class:
+    name: TripleStore
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}], returns: {type: bool}}
+      - {name: remove, level: 1, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}], returns: {type: bool}}
+      - {name: size, level: 1, params: [], returns: {type: int}}
+      - {name: match, level: 1, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: query, level: 2, params: [{name: patterns, type: "list<list<string>>"}, {name: columns, type: "list<string>"}], returns: {type: "list<list<string>>"}}
+      - {name: record, level: 4, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}, {name: source, type: string}, {name: time, type: long}], returns: {type: bool}}
+      - {name: retract, level: 4, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}, {name: time, type: long}], returns: {type: bool}}
+      - {name: queryAsOf, level: 4, params: [{name: patterns, type: "list<list<string>>"}, {name: columns, type: "list<string>"}, {name: time, type: long}], returns: {type: "list<list<string>>"}}
+      - {name: sourcesAsOf, level: 4, params: [{name: patterns, type: "list<list<string>>"}, {name: columns, type: "list<string>"}, {name: time, type: long}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: six-indexes, name: Six hash indexes over numbered triples with spans, role: optimal, time: "O(1) per add, remove or record; O(k log k) per match of k triples; per query, the candidates examined plus the nodes walked", space: "O(n) with six index entries per triple", time_class: "n", space_class: "n"}
+perf:
+  size_param: triples recorded in the generated case
+  size_ladder: [1000, 10000, 100000]
+  budget_ms: 20000
+  expected_from: six-indexes
+related: [in-memory-database, time-based-kv-store, versioned-memory-store, taxonomy]
+estimate_minutes: 120
