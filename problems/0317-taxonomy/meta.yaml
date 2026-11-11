@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0317"
+slug: taxonomy
+title: Taxonomy
+summary: "Build Taxonomy, a SKOS-style concept hierarchy with several parents: ancestors, cycle-free links, lowest common ancestors, label search with facet expansion, and stable ids across renames, replacements and two schemes."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs]
+domains: [algorithms, backend]
+job_roles: [general, backend]
+scope: function
+levels:
+  - {level: 1, title: Concepts and parents}
+  - {level: 2, title: "No cycles, common ancestors"}
+  - {level: 3, title: Labels and facet expansion}
+  - {level: 4, title: Stable ids and two schemes}
+signature:
+  class:
+    name: Taxonomy
+    constructor: {params: []}
+    methods:
+      - {name: addConcept, level: 1, params: [{name: concept, type: string}, {name: label, type: string}, {name: parents, type: "list<string>"}], returns: {type: string}}
+      - {name: addBroader, level: 1, params: [{name: narrower, type: string}, {name: broader, type: string}], returns: {type: string}}
+      - {name: prefLabel, level: 1, params: [{name: concept, type: string}], returns: {type: string}}
+      - {name: broader, level: 1, params: [{name: concept, type: string}], returns: {type: "list<string>"}}
+      - {name: narrower, level: 1, params: [{name: concept, type: string}], returns: {type: "list<string>"}}
+      - {name: ancestors, level: 1, params: [{name: concept, type: string}], returns: {type: "list<string>"}}
+      - {name: descendants, level: 1, params: [{name: concept, type: string}], returns: {type: "list<string>"}}
+      - {name: roots, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: lowestCommonAncestors, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: "list<string>"}}
+      - {name: addAltLabel, level: 3, params: [{name: concept, type: string}, {name: label, type: string}], returns: {type: string}}
+      - {name: altLabels, level: 3, params: [{name: concept, type: string}], returns: {type: "list<string>"}}
+      - {name: findByLabel, level: 3, params: [{name: label, type: string}], returns: {type: "list<string>"}}
+      - {name: expand, level: 3, params: [{name: labels, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: rename, level: 4, params: [{name: concept, type: string}, {name: label, type: string}], returns: {type: string}}
+      - {name: removeBroader, level: 4, params: [{name: narrower, type: string}, {name: broader, type: string}], returns: {type: string}}
+      - {name: deprecate, level: 4, params: [{name: concept, type: string}, {name: replacement, type: string}], returns: {type: string}}
+      - {name: resolve, level: 4, params: [{name: concept, type: string}], returns: {type: string}}
+      - {name: addExactMatch, level: 4, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: string}}
+      - {name: translate, level: 4, params: [{name: concepts, type: "list<string>"}, {name: scheme, type: string}], returns: {type: "list<string>"}}
+      - {name: unmapped, level: 4, params: [{name: concepts, type: "list<string>"}, {name: scheme, type: string}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: adjacency-walks, name: Parent and child sets with breadth-first walks, role: optimal, time: "O(parents) per insert; O(V + E) per walk, cycle check or expansion", space: "O(V + E)", time_class: "n", space_class: "n"}
+perf:
+  size_param: concepts in the main scheme of the generated case
+  size_ladder: [1000, 10000, 100000]
+  budget_ms: 20000
+  expected_from: adjacency-walks
+related: [org-chart-outline, lowest-common-ancestor, course-schedule, referral-rewards]
+estimate_minutes: 120
