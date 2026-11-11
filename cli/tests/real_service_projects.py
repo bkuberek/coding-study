@@ -18,6 +18,8 @@ MEMBERS = "5903-fixture-members-python"
 """Postgres and Redis as backing services, with `grade_setup` and `reset`."""
 JAVA = "5904-fixture-rooms-java"
 """Gradle in the image, its user home in the install cache, and every build offline."""
+GO = "5905-fixture-rooms-go"
+"""A module the install downloads into the install cache, and every build with `GOPROXY=off`."""
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
 COMMAND_WAIT_S = 3 * GENEROUS_WAIT_S
 """A command brings a stack up more than once, and may install."""

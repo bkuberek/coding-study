@@ -1,5 +1,5 @@
-"""The TypeScript, Python, Java and Kotlin versions of coworking availability are one problem in
-four languages: the same cases grade them all, against the same vendors, over the same seeded desks.
+"""The TypeScript, Python, Java, Kotlin and Go versions of coworking availability are one problem in
+five languages: the same cases grade them all, against the same vendors, over the same seeded desks.
 A service project reads only its own files, so each holds a copy, and these tests keep the copies
 the same as the TypeScript version's."""
 
@@ -15,6 +15,7 @@ OTHER_VERSIONS = {
     "python": PROBLEMS / "0278-coworking-availability-python",
     "java": PROBLEMS / "0305-coworking-availability-java",
     "kotlin": PROBLEMS / "0306-coworking-availability-kotlin",
+    "go": PROBLEMS / "0310-coworking-availability-go",
 }
 
 

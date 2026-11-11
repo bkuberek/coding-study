@@ -147,12 +147,12 @@ def test_the_sandbox_job_runs_only_when_the_sandbox_changed(sandbox: Job):
     )
 
 
-def test_the_sandbox_job_runs_every_test_marked_docker_but_the_jvm_ones_and_says_why_one_skipped(
+def test_the_sandbox_job_runs_the_docker_tests_but_the_jvm_and_go_ones_and_says_why_one_skipped(
     sandbox: Job,
 ):
-    assert any(
-        'pytest -q -rs -m "docker and not docker_jvm"' in command for command in _commands(sandbox)
-    )
+    selection = 'pytest -q -rs -m "docker and not docker_jvm and not docker_go"'
+
+    assert any(selection in command for command in _commands(sandbox))
 
 
 def test_the_sandbox_job_pulls_the_image_the_tests_will_not(sandbox: Job):

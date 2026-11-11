@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "result": {
+    "spaces": [
+      {
+        "code": "A1",
+        "open": [
+          {
+            "from_minute": 735,
+            "minutes": 30
+          },
+          {
+            "from_minute": 425,
+            "minutes": 40
+          }
+        ]
+      }
+    ]
+  }
+}

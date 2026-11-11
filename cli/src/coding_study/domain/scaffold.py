@@ -60,6 +60,8 @@ class TemplateName(StrEnum):
     PROJECT_KOTLIN_SERVICE = "project-kotlin-service"
     """A service project in Kotlin: a Gradle build in the sandbox, with Gradle's verification file
     as its lock."""
+    PROJECT_GO_SERVICE = "project-go-service"
+    """A service project in Go: a module on `net/http` in the sandbox, with `go.sum` as its lock."""
 
 
 PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
@@ -73,6 +75,7 @@ PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
     TemplateName.PROJECT_PYTHON_SERVICE: Language.PYTHON,
     TemplateName.PROJECT_JAVA_SERVICE: Language.JAVA,
     TemplateName.PROJECT_KOTLIN_SERVICE: Language.KOTLIN,
+    TemplateName.PROJECT_GO_SERVICE: Language.GO,
 }
 """The one language of each project template."""
 SERVICE_TEMPLATES = frozenset(
@@ -81,6 +84,7 @@ SERVICE_TEMPLATES = frozenset(
         TemplateName.PROJECT_PYTHON_SERVICE,
         TemplateName.PROJECT_JAVA_SERVICE,
         TemplateName.PROJECT_KOTLIN_SERVICE,
+        TemplateName.PROJECT_GO_SERVICE,
     }
 )
 """Judged over HTTP on the real clock, so `--virtual-clock` and `--stress` do not apply."""

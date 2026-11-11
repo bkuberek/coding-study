@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 198 DSA problems and 126 non-DSA items (110 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 198 DSA problems and 127 non-DSA items (111 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 198 (185 planned, 13 added) | `problems/` |
-| `practical` | 73 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 18 service projects added, 11 memory and retrieval problems added, 1 search box problem added) | `problems/` |
+| `practical` | 74 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 19 service projects added, 11 memory and retrieval problems added, 1 search box problem added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **324** (308 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **325** (309 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -444,6 +444,12 @@ Two service projects in Java and Kotlin, from P12 ([roadmap](../roadmap.md)): `0
 |----|------|-------|------|------------|-----------|---------|-----------|-------|
 | 0305 | `coworking-availability-java` | Coworking Availability (Java) | project | hard | `java` | `backend` | `backend`, `platform` | project |
 | 0306 | `coworking-availability-kotlin` | Coworking Availability (Kotlin) | project | hard | `kotlin` | `backend` | `backend`, `platform` | project |
+
+One service project in Go, from P13 ([roadmap](../roadmap.md)): `0310` is the Go version of `0277`, graded by the same cases and mock servers, built from scratch on Go's standard library, and lists the other versions in `related`.
+
+| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|------|------------|-----------|---------|-----------|-------|
+| 0310 | `coworking-availability-go` | Coworking Availability (Go) | project | hard | `go` | `backend` | `backend`, `platform` | project |
 
 One security service project in TypeScript, the built form of PP14 ([roadmap](../roadmap.md)): `0307` hands over a working service with four levels of flaw (notes that belong to someone else, names and fields taken from the request, text that becomes a query, and logs and errors), and grades the fix with attack cases that must fail and normal cases that must keep passing.
 

@@ -493,7 +493,7 @@
             "ready_timeout_s": { "description": "How long the app may take to answer health, on the startup clock", "$ref": "#/$defs/positiveInteger" },
             "mem_limit": { "description": "The app container's memory limit, such as 512m", "type": "string", "pattern": "^[0-9]+[mg]$" },
             "install_cache": {
-              "description": "true: the app's containers mount the install cache at /cache too, for a toolchain that keeps the dependencies there rather than in the project folder, as Gradle does in its user home (docs/specs/service-projects.md#mounts)",
+              "description": "true: the app's containers mount the install cache at /cache too, for a toolchain that keeps the dependencies there rather than in the project folder, as Gradle does in its user home and Go in its module and build caches (docs/specs/service-projects.md#mounts)",
               "type": "boolean"
             }
           }

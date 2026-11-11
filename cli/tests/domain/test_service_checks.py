@@ -1,5 +1,7 @@
 """S14, S15, S19 and S22 as they stand for a service project."""
 
+from dataclasses import replace
+
 import pytest
 
 from coding_study.domain.problem import (
@@ -18,6 +20,7 @@ from coding_study.domain.problem import (
 from coding_study.domain.project import NO_ENTRY, Project, ProjectFile, ProjectTree
 from coding_study.domain.service_checks import service_issues, service_settings_issues
 from coding_study.domain.service_project import (
+    GO_LOCK,
     GRADLE_LOCK,
     ServiceApp,
     ServiceCommands,
@@ -619,3 +622,172 @@ def test_the_daemon_setting_may_take_any_form_gradle_reads(line):
     files = gradle_starter(**{"gradle.properties": f"# builds\n{line}\n"})
 
     assert tree_issues(gradle_service(), files) == []
+
+
+GO_ENV = {
+    "PORT": "8000",
+    "GOPROXY": "off",
+    "GOFLAGS": "-mod=readonly",
+    "GOMODCACHE": "/cache/go/mod",
+    "GOCACHE": "/cache/go/build",
+    "GOTMPDIR": "/cache",
+}
+GO_INSTALL_ENV = {"GOMODCACHE": "/cache/go/mod", "GOCACHE": "/cache/go/build"}
+GO_TEST = ("go", "test", "-count=1", "./...")
+
+
+def go_service(
+    env: dict[str, str | None] | None = None, install_env: dict[str, str | None] | None = None
+) -> ServiceProject:
+    """A Go service project, with `env` and `install_env` changed; a variable given None is left
+    out."""
+    return service(
+        commands=ServiceCommands(
+            run=("sh", "scripts/run.sh"), test=GO_TEST, install=("go", "mod", "download")
+        ),
+        app=ServiceApp("PORT", 8000, "/health", install_cache=True),
+        env=_changed(GO_ENV, env),
+        install_env=_changed(GO_INSTALL_ENV, install_env),
+        requires=ServiceRequires(lock=GO_LOCK, sizes=SIZES),
+    )
+
+
+def _changed(variables: dict[str, str], changes: dict[str, str | None] | None) -> dict[str, str]:
+    merged = {**variables, **(changes or {})}
+    return {name: value for name, value in merged.items() if value is not None}
+
+
+def go_settings(project: ServiceProject) -> list[str]:
+    return settings(project, languages=(Language.GO,))
+
+
+def go_starter(**changes: str | None) -> ProjectTree:
+    """A starter by real path; a path given None is left out. The module needs only the standard
+    library, so its go.sum is empty."""
+    files: dict[str, str | None] = {
+        "README.md": "x",
+        "go.mod": "module rooms\n\ngo 1.25\n",
+        GO_LOCK: "",
+        "main.go": "package main\n\nfunc main() {}\n",
+        **changes,
+    }
+    return ProjectTree(
+        tuple(
+            ProjectFile(path, len(text.encode()), text)
+            for path, text in files.items()
+            if text is not None
+        )
+    )
+
+
+def test_a_go_service_project_is_fine():
+    assert go_settings(go_service()) == []
+
+
+def test_a_go_starter_with_an_empty_lock_is_fine():
+    assert tree_issues(go_service(), go_starter()) == []
+
+
+@pytest.mark.parametrize("proxy", [None, "https://proxy.golang.org", "direct"])
+def test_go_builds_with_no_proxy_outside_install(proxy):
+    found = go_settings(go_service(env={"GOPROXY": proxy}))
+
+    assert any(text.startswith("project.env.GOPROXY: needs off") for text in found)
+
+
+def test_go_downloads_at_install():
+    found = go_settings(go_service(install_env={"GOPROXY": "off"}))
+
+    assert any(text.startswith("project.install_env.GOPROXY:") for text in found)
+
+
+@pytest.mark.parametrize("flags", [None, "", "-mod=mod", "-mod=vendor", "-mod=readonly -mod=mod"])
+def test_go_builds_from_its_lock_as_it_is(flags):
+    found = go_settings(go_service(env={"GOFLAGS": flags}))
+
+    assert any(text.startswith("project.env.GOFLAGS: needs -mod=readonly") for text in found)
+
+
+def test_go_flags_may_say_more_than_the_lock():
+    assert go_settings(go_service(env={"GOFLAGS": "-mod=readonly -p=4"})) == []
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ("go", "test", "-mod=mod", "./..."),
+        ("go", "test", "-mod", "vendor", "./..."),
+        ("/usr/local/go/bin/go", "build", "--mod=mod", "."),
+    ],
+)
+def test_a_go_command_builds_from_its_lock_as_it_is(command):
+    project = replace(go_service(), commands=replace(go_service().commands, test=command))
+
+    found = go_settings(project)
+
+    assert any(text.startswith("project.commands.test: go builds from go.sum") for text in found)
+
+
+@pytest.mark.parametrize(
+    ("env", "install_env"),
+    [
+        ({"GOMODCACHE": None}, {}),
+        ({}, {"GOMODCACHE": None}),
+        ({"GOMODCACHE": "/cache/go/mod"}, {"GOMODCACHE": "/cache/mod"}),
+        ({"GOMODCACHE": "/go/pkg/mod"}, {"GOMODCACHE": "/go/pkg/mod"}),
+        ({"GOMODCACHE": "/cachet/mod"}, {"GOMODCACHE": "/cachet/mod"}),
+    ],
+)
+def test_go_reads_the_modules_from_where_install_wrote_them_in_the_cache(env, install_env):
+    found = go_settings(go_service(env=env, install_env=install_env))
+
+    assert any(text.startswith("project.env.GOMODCACHE:") for text in found)
+
+
+@pytest.mark.parametrize("name", ["GOCACHE", "GOTMPDIR"])
+@pytest.mark.parametrize("value", [None, "/tmp/go"])
+def test_go_builds_in_the_install_cache(name, value):
+    found = go_settings(go_service(env={name: value}))
+
+    assert any(text.startswith(f"project.env.{name}: needs a path in /cache") for text in found)
+
+
+def test_go_may_build_at_the_root_of_the_install_cache():
+    assert go_settings(go_service(env={"GOTMPDIR": "/cache"})) == []
+
+
+def test_a_go_project_keeps_its_modules_in_the_install_cache():
+    project = replace(go_service(), app=ServiceApp("PORT", 8000, "/health"))
+
+    assert any(text.startswith("project.app.install_cache:") for text in go_settings(project))
+
+
+def test_a_go_project_names_go_sum_as_its_lock():
+    project = replace(go_service(), requires=ServiceRequires(lock="go.mod", sizes=SIZES))
+
+    found = go_settings(project)
+
+    assert any(text.startswith("project.requires.lock: a Go project's lock") for text in found)
+
+
+def test_the_go_rules_hold_a_go_project_alone():
+    assert settings(service(env={"PORT": "8000", "GOPROXY": "direct"})) == []
+
+
+def test_a_go_starter_needs_its_module():
+    found = tree_issues(go_service(), go_starter(**{"go.mod": None}))
+
+    assert any(text.startswith("go.mod: missing") for text in found)
+
+
+@pytest.mark.parametrize("path", ["vendor/modules.txt", "vendor/example.com/m/m.go"])
+def test_a_go_starter_vendors_no_module(path):
+    found = tree_issues(go_service(), go_starter(**{path: "x\n"}))
+
+    assert "vendor: the install cache holds the modules, so a starter vendors none" in found
+
+
+def test_a_go_lock_elsewhere_in_the_starter_is_refused():
+    found = tree_issues(go_service(), go_starter(**{"tools/go.sum": ""}))
+
+    assert any(text.startswith("tools/go.sum: is a lock file") for text in found)

@@ -1,0 +1,274 @@
+{
+ "version": 1,
+ "cases": [
+  {
+   "id": "v1",
+   "level": 1,
+   "visible": true,
+   "note": "the day's desk passes",
+   "request": {
+    "method": "GET",
+    "path": "/desks",
+    "query": {
+     "date": "2027-03-01"
+    }
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "date": "2027-03-01",
+     "available": 12
+    }
+   }
+  },
+  {
+   "id": "v2",
+   "level": 1,
+   "visible": true,
+   "note": "no date is a bad request",
+   "request": {
+    "method": "GET",
+    "path": "/desks"
+   },
+   "expected": {
+    "status": 400,
+    "body": {
+     "error": "date is required"
+    }
+   }
+  },
+  {
+   "id": "h1",
+   "level": 1,
+   "note": "any day",
+   "request": {
+    "method": "GET",
+    "path": "/desks",
+    "query": {
+     "date": "2027-12-31"
+    }
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "date": "2027-12-31",
+     "available": 12
+    }
+   }
+  },
+  {
+   "id": "h2",
+   "level": 1,
+   "note": "a date that is no date",
+   "request": {
+    "method": "GET",
+    "path": "/desks",
+    "query": {
+     "date": "soon"
+    }
+   },
+   "expected": {
+    "status": 400,
+    "body": {
+     "error": "date is required"
+    }
+   }
+  },
+  {
+   "id": "h3",
+   "level": 1,
+   "note": "a booking takes a desk pass",
+   "before": [
+    {
+     "method": "POST",
+     "path": "/desks/book"
+    }
+   ],
+   "request": {
+    "method": "GET",
+    "path": "/desks",
+    "query": {
+     "date": "2027-03-01"
+    }
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "date": "2027-03-01",
+     "available": 11
+    }
+   }
+  },
+  {
+   "id": "h4",
+   "level": 1,
+   "fresh": true,
+   "note": "a fresh start forgets the bookings",
+   "request": {
+    "method": "GET",
+    "path": "/desks",
+    "query": {
+     "date": "2027-03-01"
+    }
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "date": "2027-03-01",
+     "available": 12
+    }
+   }
+  },
+  {
+   "id": "v3",
+   "level": 2,
+   "visible": true,
+   "note": "the vendor's rooms",
+   "request": {
+    "method": "GET",
+    "path": "/rooms"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "rooms": [
+      {
+       "room": "oak",
+       "slots": [
+        "09:00",
+        "10:00"
+       ]
+      }
+     ],
+     "degraded": false
+    }
+   },
+   "log": [
+    {
+     "mock": "room-vendor",
+     "route": "rooms",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "v4",
+   "level": 2,
+   "visible": true,
+   "note": "the vendor is down",
+   "mocks": {
+    "room-vendor": "outage"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/rooms"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "rooms": [],
+     "degraded": true
+    }
+   }
+  },
+  {
+   "id": "h5",
+   "level": 2,
+   "note": "a 429: wait for Retry-After, then retry once",
+   "mocks": {
+    "room-vendor": "rate_limited_then_ok"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/rooms"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "rooms": [
+      {
+       "room": "oak",
+       "slots": [
+        "09:00",
+        "10:00"
+       ]
+      }
+     ],
+     "degraded": false
+    }
+   },
+   "log": [
+    {
+     "mock": "room-vendor",
+     "route": "rooms",
+     "count": 2,
+     "min_gap_ms": 950
+    }
+   ]
+  },
+  {
+   "id": "h6",
+   "level": 2,
+   "note": "a 429 that stays: give up after one retry",
+   "mocks": {
+    "room-vendor": "rate_limited"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/rooms"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "rooms": [],
+     "degraded": true
+    }
+   },
+   "log": [
+    {
+     "mock": "room-vendor",
+     "route": "rooms",
+     "max_count": 2
+    }
+   ]
+  },
+  {
+   "id": "h7",
+   "level": 2,
+   "note": "an answer that is not JSON",
+   "mocks": {
+    "room-vendor": "malformed"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/rooms"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "rooms": [],
+     "degraded": true
+    }
+   }
+  },
+  {
+   "id": "h8",
+   "level": 2,
+   "note": "a vendor too slow to wait for",
+   "mocks": {
+    "room-vendor": "slow"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/rooms"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "rooms": [],
+     "degraded": true
+    }
+   }
+  }
+ ]
+}
