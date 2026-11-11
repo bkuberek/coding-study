@@ -64,10 +64,10 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.sdist]
-only-include = ["cli/src/coding_study", "problems", "tracks", "runners", "schemas"]
+only-include = ["cli/src/coding_study", "problems", "tracks", "guides", "runners", "schemas"]
 
 [tool.hatch.build.targets.wheel]
-only-include = ["cli/src/coding_study", "problems", "tracks", "runners", "schemas"]
+only-include = ["cli/src/coding_study", "problems", "tracks", "guides", "runners", "schemas"]
 # An editable install (`uv run cstudy` in a checkout) imports the package from cli/src and finds no
 # bundled content, so the checkout is the content root.
 dev-mode-dirs = ["cli/src"]
@@ -76,6 +76,7 @@ dev-mode-dirs = ["cli/src"]
 "cli/src/coding_study" = "coding_study"
 "problems" = "coding_study/content/problems"
 "tracks" = "coding_study/content/tracks"
+"guides" = "coding_study/content/guides"
 "runners" = "coding_study/content/runners"
 "schemas" = "coding_study/content/schemas"
 

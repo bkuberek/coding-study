@@ -34,6 +34,7 @@ from coding_study.application.reference_runs import (
 from coding_study.application.sandbox import ensure_engine
 from coding_study.application.stress_judging import without_stress
 from coding_study.application.verify_concurrency import ConcurrentVerifier
+from coding_study.application.verify_guides import GuideVerification, verify_guides
 from coding_study.application.verify_items import (
     ItemSelection,
     ItemVerification,
@@ -214,8 +215,22 @@ def verify_content(
     )
     problems = tuple(problem for problem in checked if problem is not None)
     items = verify_items(environment, _item_selection(request), all_slugs)
+    guides = verify_guides(environment, known) if _whole_catalog(request) else ()
     return VerifyReport(
-        (*problems, *map(_as_verification, items)), _coverage(problems, request.language)
+        (*problems, *map(_as_verification, items), *map(_guide_row, guides)),
+        _coverage(problems, request.language),
+    )
+
+
+def _whole_catalog(request: VerifyRequest) -> bool:
+    """Guides and paths are checked only with the whole catalog: no slugs and no `--track`."""
+    return not request.slugs and request.track is None
+
+
+def _guide_row(guide: GuideVerification) -> "ProblemVerification":
+    """Guides and paths run no code, so they have no meta, languages or coverage."""
+    return ProblemVerification(
+        directory=guide.directory, meta=None, static_errors=guide.static_errors
     )
 
 
@@ -298,6 +313,7 @@ class _ProblemVerifier:
         self._request = request
         self._notify = notify
         self._known_slugs = known_slugs
+        self._guide_slugs = frozenset(environment.guides.slugs())
 
     def verify(self, slug: str, duplicates: tuple[str, ...]) -> ProblemVerification | None:
         """None when the problem is outside `--track`, or a project outside `--lang`: a project
@@ -320,7 +336,10 @@ class _ProblemVerifier:
         verification = ProblemVerification(
             directory=directory,
             meta=problem.meta,
-            static_errors=(*duplicates, *(str(issue) for issue in static.errors)),
+            static_errors=(
+                *duplicates,
+                *(str(issue) for issue in (*static.errors, *self._unknown_guides(content))),
+            ),
             warnings=tuple(str(issue) for issue in (*static.warnings, *self._related(content))),
             reference_languages=_reference_languages(content),
             ready_errors=ready_problems(content) if self._request.require_ready else (),
@@ -330,6 +349,14 @@ class _ProblemVerifier:
         return _DynamicChecks(self._environment, self._request, self._notify, problem).apply(
             verification
         )
+
+    def _unknown_guides(self, content: ProblemContent) -> list[ContentIssue]:
+        """S25: `guides` names guides that exist."""
+        return [
+            ContentIssue(f"{content.directory}/{META_FILE}", "guides", f'"{slug}" is not a guide')
+            for slug in content.problem.meta.guides
+            if slug not in self._guide_slugs
+        ]
 
     def _related(self, content: ProblemContent) -> list[ContentIssue]:
         return [

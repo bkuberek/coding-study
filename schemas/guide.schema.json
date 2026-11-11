@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study concept guide meta.yaml",
+  "description": "Metadata of one concept guide in guides/<slug>/; the folder's name is the slug. Spec: docs/specs/guides.md#metayaml. coding_study.adapters.fs_guide_catalog reads the same shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "summary", "level"],
+  "properties": {
+    "title": {
+      "description": "The guide's # heading repeats it (check G3)",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "level": {
+      "description": "intro: the first idea of a topic; core: what working engineers use daily; advanced: designs and guarantees beyond the basics",
+      "enum": ["intro", "core", "advanced"]
+    },
+    "prerequisites": {
+      "description": "Guides to read first; they form no cycle (check G5)",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/slug" }
+    },
+    "related": {
+      "description": "Guides worth reading next",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/slug" }
+    },
+    "problems": {
+      "description": "Problems that practise the guide, in the order to try them; each is named in ## Practice (check G4)",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/slug" }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" }
+  }
+}

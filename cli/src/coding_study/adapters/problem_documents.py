@@ -159,6 +159,7 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         hang_guard_ms=document.get("limits", {}).get("hang_guard_ms"),
         references=_references(document.get("references", {})),
         related=tuple(document.get("related", ())),
+        guides=tuple(document.get("guides", ())),
         order=document.get("order", DEFAULT_CURRICULUM_ORDER),
         estimate_minutes=document.get("estimate_minutes"),
         summary=document.get("summary"),
