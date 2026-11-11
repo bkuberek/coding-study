@@ -37,6 +37,7 @@ TEMPLATE_FILES = {
             "project-python-service",
             "project-java-service",
             "project-kotlin-service",
+            "project-go-service",
         )
     ],
 )
@@ -314,6 +315,7 @@ def test_a_stress_overlay_on_the_real_clock_declares_no_clock(overlay):
         (TemplateName.PROJECT_PYTHON_SERVICE, "starter/uv.lock"),
         (TemplateName.PROJECT_JAVA_SERVICE, "starter/gradle/verification-metadata.xml"),
         (TemplateName.PROJECT_KOTLIN_SERVICE, "starter/gradle/verification-metadata.xml"),
+        (TemplateName.PROJECT_GO_SERVICE, "starter/go.sum"),
     ],
 )
 def test_a_service_template_ships_its_lock_and_no_env_file(template, lock):
@@ -343,3 +345,29 @@ def test_a_jvm_service_templates_run_script_builds_offline_then_runs_the_app_in_
 
     assert "gradle --offline --quiet installDist\n" in script
     assert script.endswith("exec build/install/app/bin/app\n")
+
+
+def go_service_file(path: str) -> str:
+    return PackagedProblemTemplates().files(TemplateName.PROJECT_GO_SERVICE)[path]
+
+
+def test_the_go_service_template_downloads_its_modules_at_install_alone():
+    meta = go_service_file("meta.yaml")
+
+    assert "install: [go, mod, download]\n" in meta
+    assert '    GOPROXY: "off"\n' in meta
+
+
+def test_the_go_service_templates_tests_run_every_time():
+    assert "test: [go, test, -count=1, ./...]\n" in go_service_file("meta.yaml")
+
+
+def test_the_go_service_template_needs_only_the_standard_library():
+    assert go_service_file("starter/go.sum") == ""
+
+
+def test_the_go_service_templates_run_script_builds_then_runs_the_app_in_its_place():
+    script = go_service_file("starter/scripts/run.sh")
+
+    assert "go build -o build/server .\n" in script
+    assert script.endswith("exec build/server\n")

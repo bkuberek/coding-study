@@ -1,0 +1,35 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "level": 1,
+      "visible": true,
+      "note": "the health path; write your first real case in its place",
+      "request": {
+        "method": "GET",
+        "path": "/health"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": "ex2",
+      "level": 2,
+      "visible": true,
+      "note": "the health path; write your first real case in its place",
+      "request": {
+        "method": "GET",
+        "path": "/health"
+      },
+      "expected": {
+        "status": 200
+      }
+    }
+  ]
+}

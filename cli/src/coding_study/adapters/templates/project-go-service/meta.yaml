@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: project
+{{patterns}}
+{{labels}}
+languages: [go]
+levels:
+  - {level: 1, title: Answer on one endpoint}
+  - {level: 2, title: Answer on a second endpoint}
+comparator: {type: exact}
+project:
+  grading: http
+  image: golang:1.27.3@sha256:e519d3b0a5b285e5aa53ab9eef02bc6bbb9cb04608389b743a136a9ce75f0d1e
+  commands:
+    install: [go, mod, download]
+    run: [sh, scripts/run.sh]
+    test: [go, test, -count=1, ./...]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 180, mem_limit: 512m, install_cache: true}
+  env:
+    PORT: "8000"
+    GOPROXY: "off"
+    GOFLAGS: -mod=readonly
+    GOMODCACHE: /cache/go/mod
+    GOCACHE: /cache/go/build
+    GOTMPDIR: /cache
+    GOWORK: "off"
+    CGO_ENABLED: "0"
+  install_env:
+    GOMODCACHE: /cache/go/mod
+    GOCACHE: /cache/go/build
+    GOFLAGS: -mod=readonly
+    GOWORK: "off"
+  requires:
+    lock: go.sum
+    sizes: {install_mb: 116, images_mb: {app: 316}, memory_mb: 450}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

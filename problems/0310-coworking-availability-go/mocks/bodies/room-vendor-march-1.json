@@ -1,0 +1,38 @@
+{
+  "rooms": [
+    {
+      "id": "oak",
+      "name": "Oak",
+      "seats": 6,
+      "slots": [
+        {
+          "start": "09:00",
+          "end": "10:00",
+          "status": "open"
+        },
+        {
+          "start": "10:00",
+          "end": "11:00",
+          "status": "booked"
+        },
+        {
+          "start": "11:00",
+          "end": "12:00",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "id": "elm",
+      "name": "Elm",
+      "seats": 4,
+      "slots": [
+        {
+          "start": "09:00",
+          "end": "10:30",
+          "status": "open"
+        }
+      ]
+    }
+  ]
+}

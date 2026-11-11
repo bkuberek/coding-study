@@ -11,15 +11,21 @@ import posixpath
 import re
 import sys
 import tomllib
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from typing import cast
 
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.project import PATH_SEPARATOR, ProjectFile, ProjectTree
-from coding_study.domain.sandbox import CONTROL_PORT, MOCK_PORT, RESERVED_SERVICES
+from coding_study.domain.sandbox import (
+    CACHE_DIRECTORY,
+    CONTROL_PORT,
+    MOCK_PORT,
+    RESERVED_SERVICES,
+)
 from coding_study.domain.service_project import (
     ENV_FILE,
     FROZEN_INSTALL_FLAGS,
+    GO_LOCK,
     GRADLE_LOCK,
     PROBLEM_PLACEHOLDER,
     ServiceCommands,
@@ -65,6 +71,20 @@ GRADLE_PROPERTIES_FILE = "gradle.properties"
 GRADLE_DAEMON = "org.gradle.daemon"
 _PROPERTY = re.compile(r"(?P<name>[^=:\s]+)\s*[=:\s]\s*(?P<value>.*)")
 _PROPERTY_COMMENTS = ("#", "!")
+GO = "go"
+GO_PROXY = "GOPROXY"
+GO_NO_PROXY = "off"
+GO_FLAGS = "GOFLAGS"
+GO_MODULE_CACHE = "GOMODCACHE"
+GO_MOD_FLAG = "mod"
+GO_READONLY = "readonly"
+GO_IN_CACHE: Mapping[str, str] = {
+    "GOCACHE": "the build cache outlives each container, and /tmp is too small for it",
+    "GOTMPDIR": "go test runs what it builds there, and /tmp runs no program",
+}
+"""Where go writes as it builds, which must be in the install cache, and why."""
+GO_MODULE_FILE = "go.mod"
+GO_VENDOR_DIRECTORY = "vendor"
 
 type _Found = Iterator[tuple[str, str]]
 
@@ -80,6 +100,7 @@ def service_settings_issues(
         *_environment(service),
         *_mocks(service),
         *_requires(service),
+        *(_go_settings(service) if Language.GO in meta.languages else ()),
     )
 
 
@@ -150,6 +171,78 @@ def _gradle_commands(commands: ServiceCommands) -> _Found:
         for word in command:
             if word.partition("=")[0] in GRADLE_LOCK_OVERRIDES:
                 yield where, f"gradle installs from the lock exactly: no {word}"
+
+
+def _go_settings(service: ServiceProject) -> _Found:
+    """Go reaches the network in `install` alone, which downloads into the install cache what
+    `go.sum` lists. Every other command builds with no proxy, from those modules as they are, and
+    writes its builds in the install cache too."""
+    env, install_env = service.env, service.install_env
+    if service.requires.lock != GO_LOCK:
+        yield "project.requires.lock", f"a Go project's lock is {GO_LOCK}, which install fills from"
+    if not service.app.install_cache:
+        yield (
+            "project.app.install_cache",
+            "needs true: a Go project's modules and builds live in the install cache",
+        )
+    if env.get(GO_PROXY) != GO_NO_PROXY:
+        yield (
+            f"project.env.{GO_PROXY}",
+            f"needs {GO_NO_PROXY}: only install has the network, and {GO_NO_PROXY} fails a "
+            "missing module at once",
+        )
+    if install_env.get(GO_PROXY) == GO_NO_PROXY:
+        yield f"project.install_env.{GO_PROXY}", f"install downloads the modules: not {GO_NO_PROXY}"
+    if _module_modes(env.get(GO_FLAGS, "").split()) != [GO_READONLY]:
+        yield (
+            f"project.env.{GO_FLAGS}",
+            f"needs -{GO_MOD_FLAG}={GO_READONLY}, alone: go builds from {GO_LOCK} as it is, and "
+            "from no vendor folder",
+        )
+    modules = env.get(GO_MODULE_CACHE, "")
+    if not _in_cache(modules) or install_env.get(GO_MODULE_CACHE) != modules:
+        yield (
+            f"project.env.{GO_MODULE_CACHE}",
+            f"needs a path in {CACHE_DIRECTORY}, the same in install_env: run and test read the "
+            "modules install downloaded",
+        )
+    for name, reason in GO_IN_CACHE.items():
+        if not _in_cache(env.get(name, "")):
+            yield f"project.env.{name}", f"needs a path in {CACHE_DIRECTORY}: {reason}"
+    yield from _go_commands(service.commands)
+
+
+def _go_commands(commands: ServiceCommands) -> _Found:
+    for name, command in commands.declared().items():
+        if posixpath.basename(command[0]) != GO:
+            continue
+        for mode in _module_modes(command[1:]):
+            if mode != GO_READONLY:
+                yield (
+                    f"project.commands.{name}",
+                    f"go builds from {GO_LOCK} as it is: no -{GO_MOD_FLAG}={mode}",
+                )
+
+
+def _module_modes(words: Sequence[str]) -> list[str]:
+    """The value of each `-mod` flag in `words`, in the forms go reads: `-mod=x`, `--mod=x` and
+    `-mod x`."""
+    modes: list[str] = []
+    for index, word in enumerate(words):
+        name, equals, value = word.lstrip("-").partition("=")
+        if not word.startswith("-") or name != GO_MOD_FLAG:
+            continue
+        if equals:
+            modes.append(value)
+        elif index + 1 < len(words):
+            modes.append(words[index + 1])
+    return modes
+
+
+def _in_cache(path: str) -> bool:
+    """Whether the absolute `path` lies in the install cache, or is the cache itself."""
+    normal = posixpath.normpath(path) if path else ""
+    return normal == CACHE_DIRECTORY or normal.startswith(f"{CACHE_DIRECTORY}{PATH_SEPARATOR}")
 
 
 def _placeholders(commands: ServiceCommands) -> _Found:
@@ -243,6 +336,8 @@ def _starter(meta: ProblemMeta, service: ServiceProject, starter: ProjectTree) -
         yield from _python_project(starter)
     if lock == GRADLE_LOCK:
         yield from _gradle_project(starter)
+    if lock == GO_LOCK:
+        yield from _go_project(starter)
     if Language.PYTHON in meta.languages:
         yield from _shadowed_modules(starter)
 
@@ -350,6 +445,16 @@ def _gradle_project(starter: ProjectTree) -> _Found:
             GRADLE_PROPERTIES_FILE,
             f"needs {GRADLE_DAEMON}=false: a daemon would outlive the build in the app's container",
         )
+
+
+def _go_project(starter: ProjectTree) -> _Found:
+    """The folder is the one module its `go.mod` declares, built from the modules in the install
+    cache rather than copies of its own."""
+    if GO_MODULE_FILE not in starter.paths:
+        yield GO_MODULE_FILE, f"missing: {GO_LOCK} is the lock of the module it declares"
+    vendored = f"{GO_VENDOR_DIRECTORY}{PATH_SEPARATOR}"
+    if any(path.startswith(vendored) for path in starter.paths):
+        yield GO_VENDOR_DIRECTORY, "the install cache holds the modules, so a starter vendors none"
 
 
 def _property(file: ProjectFile, name: str) -> str | None:

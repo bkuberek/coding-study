@@ -1,5 +1,5 @@
-"""A service project from `cstudy start` to the last `cstudy submit`, in TypeScript, Python and
-Java, on a real Docker engine, and its code intelligence from inside the sidecar. Run with
+"""A service project from `cstudy start` to the last `cstudy submit`, in TypeScript, Python, Java
+and Go, on a real Docker engine, and its code intelligence from inside the sidecar. Run with
 `uv run pytest -q -m docker`. The waits are generous for a busy machine: what these tests assert
 is what happened, not how fast."""
 
@@ -27,6 +27,7 @@ from tests.helpers import SCHEMAS_DIRECTORY
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import received, session
 from tests.real_service_projects import (
+    GO,
     JAVA,
     MEMBERS,
     PYTHON,
@@ -58,8 +59,9 @@ def require_engine() -> None:
         TYPESCRIPT,
         PYTHON,
         pytest.param(JAVA, marks=pytest.mark.docker_jvm),
+        pytest.param(GO, marks=pytest.mark.docker_go),
     ],
-    ids=["typescript", "python", "java"],
+    ids=["typescript", "python", "java", "go"],
 )
 def project(request: pytest.FixtureRequest, tmp_path: Path) -> Generator[FixtureProject]:
     found = fixture_project(request.param, tmp_path)
@@ -106,7 +108,8 @@ def assert_start_installs_and_starts_nothing(project: FixtureProject) -> None:
 
 
 def installed(project: FixtureProject) -> bool:
-    """`node_modules` or `.venv` in the folder, or Gradle's user home in the install cache."""
+    """`node_modules` or `.venv` in the folder, or Gradle's user home or Go's modules in the
+    install cache."""
     in_folder = any(project.folder.glob("node_modules")) or any(project.folder.glob(".venv"))
     return in_folder or bool(project.labelled("volumes"))
 
@@ -247,6 +250,40 @@ def test_a_jvm_project_builds_from_its_install_cache_with_no_volume_of_the_image
 
 def workspace_of(project: FixtureProject) -> str:
     return workspace_digest(str(project.root.resolve()))
+
+
+@pytest.fixture
+def go(tmp_path: Path) -> Generator[FixtureProject]:
+    found = fixture_project(GO, tmp_path)
+    try:
+        yield found
+    finally:
+        found.remove_all_it_left()
+
+
+WHERE_GO_CMP_LIVES = ("go", "list", "-m", "-f", "{{.Dir}}", "github.com/google/go-cmp")
+
+
+@pytest.mark.docker_go
+def test_a_go_project_builds_offline_from_the_modules_in_its_install_cache(go: FixtureProject):
+    """`install` downloads the starter's one module into the install cache, and every other
+    command reads it there with `GOPROXY=off`: a module cache with nothing in it fails at once,
+    with Go's own reason, rather than reaching for a proxy. What stays is what stays by design."""
+    assert go.cstudy("start", go.slug, "--yes", "--no-open").returncode == EXIT_OK
+
+    cached = go.cstudy("dev", "--exec", "--", *WHERE_GO_CMP_LIVES)
+    empty = go.cstudy("dev", "--exec", "--", "env", "GOMODCACHE=/tmp/none", "go", "vet", "./...")
+
+    assert cached.returncode == EXIT_OK, said(cached)
+    assert "/cache/go/mod/github.com/google/go-cmp@v0.7.0" in cached.stdout
+    assert empty.returncode != EXIT_OK, said(empty)
+    assert "module lookup disabled by GOPROXY=off" in said(empty)
+    stacks = (
+        f"cstudy-d-{go.slug}-{workspace_of(go)}",
+        f"cstudy-i-{go.slug}-{workspace_of(go)}",
+    )
+    assert sorted(go.labelled("volumes")) == [f"{stacks[0]}_data", f"{stacks[1]}_cache"]
+    nothing_running(go)
 
 
 @pytest.fixture

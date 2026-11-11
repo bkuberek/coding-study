@@ -19,6 +19,7 @@ from tests.application.http_grading_fakes import FakeApp, FakeMockControl
 from tests.fakes import make_environment
 from tests.real_service_projects import (
     FIXTURES,
+    GO,
     JAVA,
     MEMBERS,
     PYTHON,
@@ -294,7 +295,8 @@ def test_a_sandbox_that_fails_raises_since_it_says_nothing_about_the_problem(env
 
 
 @pytest.fixture(
-    params=[TYPESCRIPT, PYTHON, MEMBERS, JAVA], ids=["typescript", "python", "services", "java"]
+    params=[TYPESCRIPT, PYTHON, MEMBERS, JAVA, GO],
+    ids=["typescript", "python", "services", "java", "go"],
 )
 def fixture_problem(request, tmp_path, engine):
     root = make_content(tmp_path)

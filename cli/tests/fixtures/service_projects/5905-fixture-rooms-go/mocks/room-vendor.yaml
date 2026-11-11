@@ -1,0 +1,25 @@
+routes:
+  - id: rooms
+    method: GET
+    path: /v1/rooms
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/rooms.json
+scenarios:
+  outage:
+    visible: true
+    status: 503
+  rate_limited:
+    status: 429
+    headers: {Retry-After: "1"}
+  rate_limited_then_ok:
+    sequence:
+      - {status: 429, headers: {Retry-After: "1"}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/rooms.json}
+  malformed:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: '{"rooms": ['
+  slow:
+    delay_ms: 2500
