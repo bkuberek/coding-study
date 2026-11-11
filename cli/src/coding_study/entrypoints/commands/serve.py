@@ -67,6 +67,13 @@ def serve(
     ] = False,
 ) -> None:
     """Serve the local web UI on 127.0.0.1."""
+    run_server(context, port=port, open_browser=open_browser, view=None)
+
+
+def run_server(context: typer.Context, *, port: int, open_browser: bool, view: str | None) -> None:
+    """`cstudy serve`, which `cstudy learn --open` runs too: `view`, such as
+    `/guides/hash-functions`, is the view the printed URL and the browser open on; None for the
+    first one."""
     environ = command_environ(context)
     home = Path.home()
     root = load_environment(Path.cwd(), environ, home).root
@@ -107,7 +114,7 @@ def serve(
         )
         output = console(context)
         output.print(Text(f"cstudy serve {settings.version} · workspace {_shown(root, home)}"))
-        url = login_url(settings.port, secrets.token)
+        url = login_url(settings.port, secrets.token, view)
         output.print(_line("open", url))
         redirect = _open_in_browser(root, settings.port, url) if open_browser else None
         children = Children(report=lambda label, text: output.print(_line(label, text)))

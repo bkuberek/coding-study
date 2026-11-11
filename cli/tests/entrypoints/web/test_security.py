@@ -126,6 +126,33 @@ def test_the_token_page_sends_the_browser_on_to_the_page_without_the_token(app):
     assert '<meta http-equiv="refresh" content="0; url=/">' in page
 
 
+def test_the_login_url_can_name_the_view_to_land_on():
+    assert login_url(PORT, "abc", "/guides/hash-functions") == (
+        f"http://127.0.0.1:{PORT}/?token=abc&view=/guides/hash-functions"
+    )
+
+
+def test_the_token_page_sends_the_browser_on_to_the_view_it_names(app):
+    """`cstudy learn <guide> --open` lands on the guide: the fragment, which a page that sends the
+    browser on does not carry over, comes from `view`."""
+    with anonymous_client(app) as client:
+        page = client.get(f"/?token={SECRETS.token}&view=/guides/hash-functions").text
+    assert (
+        '<meta http-equiv="refresh" content="0; url=/#/guides/hash-functions">' in page,
+        '<a href="/#/guides/hash-functions">' in page,
+    ) == (True, True)
+
+
+@pytest.mark.parametrize(
+    "view",
+    ["//evil.example", "/guides/x%22%3E%3Cscript%3E", "javascript:alert(1)", "/Guides/X", ""],
+)
+def test_a_view_that_is_no_route_of_slugs_lands_on_the_page(app, view: str):
+    with anonymous_client(app) as client:
+        page = client.get(f"/?token={SECRETS.token}&view={view}").text
+    assert '<meta http-equiv="refresh" content="0; url=/">' in page
+
+
 def test_the_token_page_is_never_stored(app):
     with anonymous_client(app) as client:
         response = client.get(f"/?token={SECRETS.token}")
