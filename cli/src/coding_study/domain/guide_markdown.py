@@ -62,6 +62,11 @@ def text_marker(source: str) -> str:
     return f"<!-- text-of-mermaid sha256:{mermaid_digest(source)} -->"
 
 
+def is_text_marker(line: str) -> bool:
+    """Whether the line is a text drawing's marker, whatever its hash."""
+    return _MARKER.fullmatch(line.strip()) is not None
+
+
 class GuideMarkdown:
     def __init__(self, text: str) -> None:
         self.lines = tuple(text.splitlines())

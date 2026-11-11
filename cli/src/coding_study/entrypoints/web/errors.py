@@ -25,6 +25,7 @@ from coding_study.domain.errors import (
     ResetNotConfirmedError,
     UnknownAttemptError,
     UnknownFileError,
+    UnknownGuideError,
     UnknownProblemError,
     UnknownSetError,
     WorkspaceBusyError,
@@ -81,6 +82,7 @@ _HTTP_ERRORS: Mapping[int, ErrorCode] = {
 _LOOKUP_ERRORS: Mapping[type[Exception], ErrorCode] = {
     UnknownProblemError: ErrorCode.NOT_FOUND,
     UnknownSetError: ErrorCode.NOT_FOUND,
+    UnknownGuideError: ErrorCode.NOT_FOUND,
     UnknownAttemptError: ErrorCode.NOT_FOUND,
     UnknownFileError: ErrorCode.NOT_FOUND,
     AttemptEndedError: ErrorCode.ATTEMPT_ENDED,

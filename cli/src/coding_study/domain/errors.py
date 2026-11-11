@@ -107,6 +107,11 @@ class UnknownSetError(LookupError):
         self.name = name
 
 
+class UnknownGuideError(LookupError):
+    """No concept guide or learning path has the slug a command or the web UI asked for (exit
+    code 3); the message names the nearest ones."""
+
+
 class UnknownAttemptError(LookupError):
     """No attempt has the id the web UI asked for."""
 

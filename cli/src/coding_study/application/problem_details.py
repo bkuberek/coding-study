@@ -32,10 +32,12 @@ class ProblemDetails:
     """Whether `cstudy bench` applies."""
     oracle: bool
     """Whether `cstudy test --stress N` adds oracle inputs."""
+    guides: tuple[str, ...] = ()
+    """The concept guides to read before it (docs/specs/guides.md), as `meta.yaml` lists them."""
 
 
 ITEM_DETAILS = ProblemDetails((), (), (), None, 0, bench=False, oracle=False)
-"""A non-autograded item: no language, no references, levels, hints, bench or oracle."""
+"""A non-autograded item: no language, no references, levels, hints, bench, oracle or guides."""
 
 
 def problem_details(environment: Environment, slug: str) -> ProblemDetails:
@@ -53,6 +55,7 @@ def problem_details(environment: Environment, slug: str) -> ProblemDetails:
         hints_total=len(problem_hints(environment.files.read_text(slug, PROBLEM_FILE) or "")),
         bench=bench_issue(meta) is None,
         oracle=_takes_oracle_inputs(environment, meta),
+        guides=meta.guides,
     )
 
 

@@ -19,7 +19,7 @@ from coding_study.domain.concept_guides import (
     problem_step_progress,
     unknown_slug_message,
 )
-from coding_study.domain.errors import UsageError
+from coding_study.domain.errors import UnknownGuideError
 from coding_study.domain.guide_markdown import GuideMarkdown
 from coding_study.domain.problem import ProblemSummary
 from coding_study.domain.problem_sets import target_reached
@@ -100,7 +100,7 @@ def learn_listing(environment: Environment) -> LearnListing:
 
 
 def guide_page(environment: Environment, slug: str) -> GuidePage:
-    """Raises UsageError for a guide that does not exist, ContentError for one that does not
+    """Raises UnknownGuideError for a guide that does not exist, ContentError for one that does not
     load."""
     catalog = environment.guides
     _require(slug, catalog.slugs(), "guide")
@@ -124,16 +124,25 @@ def mark_read(environment: Environment, slug: str) -> MarkedRead:
 
 
 def path_view(environment: Environment, slug: str) -> PathView:
-    """Raises UsageError for a path that does not exist, ContentError for one that does not
+    """Raises UnknownGuideError for a path that does not exist, ContentError for one that does not
     load."""
     catalog = environment.guides
     _require(slug, catalog.path_slugs(), "path")
     return _path_view(environment, catalog.load_path(slug))
 
 
+def guide_entries(environment: Environment, slugs: tuple[str, ...]) -> tuple[GuideEntry, ...]:
+    """The guides of `slugs` that exist, in that order, each with whether it is read: a
+    problem's `guides` as the Problem view lists them."""
+    catalog = environment.guides
+    known = catalog.slugs()
+    reads = environment.progress.guide_reads()
+    return tuple(GuideEntry(catalog.load(slug), reads.get(slug)) for slug in slugs if slug in known)
+
+
 def _require(slug: str, known: tuple[str, ...], noun: str) -> None:
     if slug not in known:
-        raise UsageError(unknown_slug_message(noun, slug, known))
+        raise UnknownGuideError(unknown_slug_message(noun, slug, known))
 
 
 def _path_view(environment: Environment, path: LearningPath) -> PathView:

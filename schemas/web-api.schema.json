@@ -361,7 +361,7 @@
     "problem": {
       "description": "GET /api/v1/problems/{slug}: the problem's entry of cstudy list --json, which cli.md describes, with these fields added or replaced",
       "type": "object",
-      "required": ["slug", "jdk", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle"],
+      "required": ["slug", "jdk", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle", "guides"],
       "properties": {
         "slug": { "type": "string" },
         "jdk": {
@@ -401,10 +401,34 @@
         },
         "hints_total": { "type": "integer", "minimum": 0 },
         "bench": { "type": "boolean" },
-        "oracle": { "type": "boolean" }
+        "oracle": { "type": "boolean" },
+        "guides": {
+          "description": "The concept guides the problem's meta.yaml names (docs/specs/guides.md), in its order, each with its title and whether it is read; empty for an item",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "title", "read"],
+            "properties": {
+              "slug": { "type": "string" },
+              "title": { "type": "string" },
+              "read": { "type": "boolean" }
+            }
+          }
+        }
       }
     },
     "statement": { "description": "GET /api/v1/problems/{slug}/statement", "$ref": "#/$defs/markdown" },
+    "guide": {
+      "description": "GET /api/v1/guides/{slug}: cstudy learn <guide> --json, which cli.md describes, with the HTML the Guides view shows added. Each mermaid block is a <figure class=\"diagram\"> whose data-mermaid holds its source, with its text drawing in a hidden <pre class=\"diagram-text\">",
+      "type": "object",
+      "required": ["slug", "markdown", "html"],
+      "properties": {
+        "slug": { "type": "string" },
+        "markdown": { "type": "string" },
+        "html": { "type": "string" }
+      }
+    },
     "needs": {
       "description": "GET /api/v1/problems/{slug}/needs: what a service project depends on, as `cstudy show` lists it, each row with its state here; null for any other problem",
       "type": "object",

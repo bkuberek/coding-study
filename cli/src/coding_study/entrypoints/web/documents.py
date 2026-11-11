@@ -1,8 +1,11 @@
 """The documents of the API that no command prints (docs/specs/web-ui.md#endpoints)."""
 
+from collections.abc import Sequence
+
 from coding_study.application.attempt_files import AttemptTree, FileContent, ScopedFile
 from coding_study.application.complete_attempt import FinishedAttempt
 from coding_study.application.environment import Environment
+from coding_study.application.learn import GuideEntry
 from coding_study.application.mock_interview import (
     CurrentMock,
     MockAttempt,
@@ -81,12 +84,19 @@ def _credit_value(credit: Credit) -> dict[str, JsonValue]:
     return {"name": credit.name, "version": credit.version, "license": credit.license}
 
 
-def problem_document(entry: dict[str, JsonValue], details: ProblemDetails) -> dict[str, JsonValue]:
+def problem_document(
+    entry: dict[str, JsonValue], details: ProblemDetails, guides: Sequence[GuideEntry]
+) -> dict[str, JsonValue]:
     """`GET /api/v1/problems/{slug}`: the problem's `cstudy list --json` entry, its `languages`
-    the ones `cstudy start` accepts instead of the reference languages."""
+    the ones `cstudy start` accepts instead of the reference languages, and the concept guides it
+    names, each with whether it is read."""
     approaches: list[JsonValue] = [
         {"id": approach.id, "name": approach.name, "role": approach.role.value}
         for approach in details.approaches
+    ]
+    guide_links: list[JsonValue] = [
+        {"slug": guide.meta.slug, "title": guide.meta.title, "read": guide.read_at is not None}
+        for guide in guides
     ]
     return {
         **entry,
@@ -96,6 +106,7 @@ def problem_document(entry: dict[str, JsonValue], details: ProblemDetails) -> di
         "hints_total": details.hints_total,
         "bench": details.bench,
         "oracle": details.oracle,
+        "guides": guide_links,
     }
 
 

@@ -9,7 +9,7 @@ import pytest
 from coding_study.application.environment import Environment
 from coding_study.application.learn import guide_page, learn_listing, mark_read, path_view
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
-from coding_study.domain.errors import UsageError
+from coding_study.domain.errors import UnknownGuideError
 from coding_study.domain.problem import Language
 from tests.fakes import NOW, FakeClock, make_environment
 from tests.guide_builders import write_guide, write_hashing, write_path
@@ -75,7 +75,7 @@ def test_a_guide_page_names_its_examples(environment: Environment, content_root:
 
 
 def test_an_unknown_guide_suggests_the_nearest(environment: Environment):
-    with pytest.raises(UsageError, match='unknown guide "hash-map"; did you mean hash-maps'):
+    with pytest.raises(UnknownGuideError, match='unknown guide "hash-map"; did you mean hash-maps'):
         guide_page(environment, "hash-map")
 
 
@@ -94,7 +94,7 @@ def test_a_marked_guide_reads_as_read(environment: Environment):
 
 
 def test_marking_an_unknown_guide_records_nothing(environment: Environment):
-    with pytest.raises(UsageError):
+    with pytest.raises(UnknownGuideError):
         mark_read(environment, "nope")
     assert environment.progress.guide_reads() == {}
 
@@ -166,5 +166,5 @@ def test_a_failed_problem_reads_as_attempted(environment: Environment):
 
 
 def test_an_unknown_path_says_where_the_paths_are(environment: Environment):
-    with pytest.raises(UsageError, match='unknown path "zzz"; cstudy learn lists the paths'):
+    with pytest.raises(UnknownGuideError, match='unknown path "zzz"; cstudy learn lists the paths'):
         path_view(environment, "zzz")

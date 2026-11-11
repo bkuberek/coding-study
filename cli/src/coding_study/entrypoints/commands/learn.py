@@ -149,12 +149,7 @@ def _print_guide(output: Console, page: GuidePage, as_json: bool) -> None:
 
 def _print_marked(output: Console, marked: MarkedRead, as_json: bool) -> None:
     if as_json:
-        document = {
-            "slug": marked.slug,
-            "read_at": marked.read_at.isoformat(),
-            "already": marked.already,
-        }
-        typer.echo(json.dumps(document, indent=2))
+        typer.echo(json.dumps(marked_document(marked), indent=2))
     elif marked.already:
         output.print(Text(f"{marked.slug} was marked read on {marked.read_at.date().isoformat()}"))
     else:
@@ -222,6 +217,10 @@ def guide_document(page: GuidePage) -> dict[str, JsonValue]:
         "markdown": page.markdown,
         "examples": [str(example) for example in page.examples],
     }
+
+
+def marked_document(marked: MarkedRead) -> dict[str, JsonValue]:
+    return {"slug": marked.slug, "read_at": marked.read_at.isoformat(), "already": marked.already}
 
 
 def path_document(view: PathView) -> dict[str, JsonValue]:
