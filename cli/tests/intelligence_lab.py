@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.toml_config import CONFIG_FILE
 from coding_study.domain.preferences import Preferences, preferences_document
 from tests.language_server_scripts import (
     ScriptedServer,
@@ -77,6 +78,7 @@ def intelligence_lab(
     jdk: int | None = None,
     go_and_rust: bool = False,
     kotlin_license: bool | None = None,
+    warm_up: bool = False,
 ) -> Iterator[Lab]:
     """A server over a copy of the practice workspace with the Python practice problem started,
     a basedpyright that is the fake playing `steps` (or what `steps` makes of the workspace's
@@ -86,8 +88,15 @@ def intelligence_lab(
     With `jdk`, JDT LS is installed too and the server selects a JDK of that release whose `java`
     is the same fake. With `go_and_rust`, gopls is installed too, a `go` on PATH says Go 1.27 is
     selected, and a `rust-analyzer` on PATH is the same fake. With `kotlin_license`, the Kotlin
-    LSP is installed too, its launcher the same fake, and its license accepted when it is true."""
+    LSP is installed too, its launcher the same fake, and its license accepted when it is true.
+    Without `warm_up`, the config's default language is TypeScript, whose server no lab installs,
+    so `cstudy serve` starts none ahead of time and every server is a session's; with it, Python,
+    whose fake it starts as it starts (docs/specs/web-ui.md#warm-up)."""
     workspace = workspace_like(practice_workspace, base / "workspace")
+    config = workspace.parent / "config" / CONFIG_FILE
+    config.parent.mkdir(parents=True, exist_ok=True)
+    default_language = "python" if warm_up else "typescript"
+    config.write_text(f'default_lang = "{default_language}"\n', encoding="utf-8")
     script = ScriptedServer(base / "server.json")
     java: dict[str, str] = {}
     if jdk is not None:
