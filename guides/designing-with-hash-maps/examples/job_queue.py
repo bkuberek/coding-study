@@ -20,13 +20,16 @@ class JobQueue:
         self.head.after, self.tail.before = self.tail, self.head
         self.nodes: dict[str, Node] = {}
 
-    def submit(self, job: str) -> None:
+    def submit(self, job: str) -> bool:
+        if job in self.nodes:  # one node per id, or the map would lose the first one
+            return False
         node = Node(job)
         last = self.tail.before
         assert last is not None
         node.before, node.after = last, self.tail
         last.after = self.tail.before = node
         self.nodes[job] = node
+        return True
 
     def cancel(self, job: str) -> bool:
         node = self.nodes.pop(job, None)
@@ -58,5 +61,6 @@ print("waiting:", queue.waiting())
 print("cancel email:", queue.cancel("email"), "->", queue.waiting())
 print("cancel email again:", queue.cancel("email"))
 print("take:", queue.take(), "->", queue.waiting())
+print("submit resize again:", queue.submit("resize"), "->", queue.waiting())
 queue.submit("email")
 print("submit email:", queue.waiting())

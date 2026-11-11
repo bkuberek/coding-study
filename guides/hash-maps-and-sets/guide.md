@@ -122,7 +122,7 @@ get('cy') = 32 | get('zed') = None
  100000 puts: 262144 buckets, 1.97 moves per put, longest chain 4
 ```
 
-The trace shows the resize: after the fourth `put`, four entries in four buckets is a load factor of 1.0, over 0.75, so the table doubles to eight buckets. Then look at the cost. A single resize copies every entry, so that one `put` is O(n). But resizes are rare: they happen at sizes 4, 8, 16 and so on, and the copies add up to about `n + n/2 + n/4 + ...`, which is less than `2n`. Spread over all `n` puts, that is fewer than 2 copies per put: 1.54 at 1,000 puts and 1.97 at 100,000, never 2. This is an **amortized** O(1): any single put may be slow, but any sequence of `n` puts costs O(n) in total. And the chains stay short: the longest of 262,144 buckets holds 4 entries.
+The trace shows the resize: after the fourth `put`, four entries in four buckets is a load factor of 1.0, over 0.75, so the table doubles to eight buckets. Then look at the cost. A single resize copies every entry, so that one `put` is O(n). But resizes are rare: with a limit of 0.75 they happen when the table holds 4, 7, 13, 25, 49 entries and so on, each about twice the last, so the copies add up to less than `n + n/2 + n/4 + ...`, which is less than `2n`. Spread over all `n` puts, that is fewer than 2 copies per put: 1.54 at 1,000 puts and 1.97 at 100,000, never 2. This is an **amortized** O(1): any single put may be slow, but any sequence of `n` puts costs O(n) in total. And the chains stay short: the longest of 262,144 buckets holds 4 entries.
 
 ### Open addressing
 
@@ -242,7 +242,7 @@ remove 11 by emptying its slot, contains 19? (False, [3, 4])
 
 Keys 3, 11 and 19 all have home slot 3, so each one probes further than the last. Removing 11 with a tombstone keeps 19 reachable; emptying the slot instead loses it. Tombstones have a price: they fill the table like live entries, so a table with many deletions resizes or rebuilds to clear them.
 
-Open addressing keeps entries in one contiguous array, which is friendly to CPU caches and avoids a separate allocation per entry. It is also more sensitive to the load factor: as the table fills, runs of occupied slots merge into long clusters. Knuth's analysis of linear probing gives about `(1 + 1/(1 - α)) / 2` probes for a successful search and `(1 + 1/(1 - α)²) / 2` for an unsuccessful one, so at α = 0.5 a miss takes about 2.5 probes, and at α = 0.9 about 50. Open-addressing tables therefore resize at lower load factors than chaining tables do.
+Open addressing keeps entries in one contiguous array, which is friendly to CPU caches and avoids a separate allocation per entry. It is also more sensitive to the load factor: as the table fills, runs of occupied slots merge into long clusters. Knuth's analysis of linear probing gives about `(1 + 1/(1 - α)) / 2` probes for a successful search and `(1 + 1/(1 - α)²) / 2` for an unsuccessful one, so at α = 0.5 a miss takes about 2.5 probes, and at α = 0.9 about 50. Classic linear-probing tables therefore resize at lower load factors than chaining tables do; newer open-addressing designs, such as the Swiss tables of the expert notes, keep probe sequences short in other ways and can run fuller.
 
 ### What may be a key
 
@@ -350,7 +350,7 @@ The list's hash code is defined from its elements, so adding `"gym"` changes it.
 
 - **"Have I seen this before?"** A set of what you have seen turns a quadratic scan of pairs into one pass. Each step asks the set and adds to it.
 - **"What goes with this key?"** A map from a key to a value, a count, an index or a list: a lookup table, a cache, a group.
-- **"Where was it?"** A map from a value to its position answers "which earlier element would complete this one?" in one lookup.
+- **"Where was it?"** A map from a value to the position where it was seen.
 - **Exact matches only.** For ranges, order or "the nearest key", use a sorted structure: a balanced tree (`TreeMap` in Java, `BTreeMap` in Rust) or a sorted array with binary search. A hash map has no order to search by.
 
 A set or a map costs memory, a few times the size of the keys and values themselves. When the keys are small integers in a known range, such as letters `a` to `z`, a plain array indexed by the key does the same job with less memory and no hashing.
@@ -361,7 +361,7 @@ A set or a map costs memory, a few times the size of the keys and values themsel
 - **Defining equality without the hash.** Override both or neither, and derive both from the same fields.
 - **Relying on order.** Python's `dict` and JavaScript's `Map` keep insertion order, but Python's `set` and Java's `HashMap` promise no order at all, and Go makes map iteration order unpredictable on purpose. Sort the keys when the output must be stable.
 - **Treating "not found" as a value.** `ages.get("zed")` returns `None` in Python and `null` in Java, which may also be a stored value. Use `in` or `containsKey` when the difference matters.
-- **Modifying a map while iterating over it.** Python raises `RuntimeError: dictionary changed size during iteration`; a Java `HashMap` changed during a loop over its keys throws `ConcurrentModificationException`; Go allows it but does not say whether an entry added during the loop will be visited. Collect the changes, then apply them.
+- **Modifying a map while iterating over it.** Python raises `RuntimeError: dictionary changed size during iteration`; a Java `HashMap` that gains or loses a key during a loop over its keys throws `ConcurrentModificationException`, on a best-effort basis, while changing the value of an existing key is allowed; Go allows it but does not say whether an entry added during the loop will be visited. Collect the changes, then apply them.
 - **Assuming the worst case cannot happen.** A poor hash, or keys chosen by someone hostile, can put everything in one bucket. See the expert notes.
 
 ## Complexity
@@ -381,18 +381,18 @@ Why the worst case is O(n): nothing stops all keys from landing in one bucket. C
 
 ## Expert notes
 
-- **Java `HashMap`.** Default capacity 16 buckets, default load factor 0.75, and the table rehashes into about twice as many buckets when entries exceed capacity times load factor, all as its documentation states. The capacity is a power of two, and the hash is spread first with `h ^ (h >>> 16)` so that the high bits influence the bucket. A bin is a linked list until it holds 8 entries (`TREEIFY_THRESHOLD`); then, if the table has at least 64 buckets (`MIN_TREEIFY_CAPACITY`), it becomes a red-black tree, which turns back into a list when it shrinks to 6 (`UNTREEIFY_THRESHOLD`). Below 64 buckets the table resizes instead. These constants are implementation details of OpenJDK's source, not guarantees of the API. The documentation only promises that when keys are `Comparable`, the class may use their order to break ties.
+- **Java `HashMap`.** Default capacity 16 buckets, default load factor 0.75, and the table rehashes into about twice as many buckets when entries exceed capacity times load factor, all as its documentation states. The capacity is a power of two, and the hash is spread first with `h ^ (h >>> 16)` so that the high bits influence the bucket. A bin is a linked list; adding an entry to a bin that already holds 8 (`TREEIFY_THRESHOLD`) turns it into a red-black tree, if the table has at least 64 buckets (`MIN_TREEIFY_CAPACITY`), and below that the table resizes instead. A tree bin becomes a list again when a resize splits it into a part of 6 entries or fewer (`UNTREEIFY_THRESHOLD`), or when removals leave the tree too small by a check of its shape. These constants are implementation details of OpenJDK's source, not guarantees of the API. The documentation only promises that when keys are `Comparable`, the class may use their order to break ties.
 - **Python `dict` and `set`.** CPython's dict is an open-addressing table (its source says open addressing is preferred over chaining to avoid the link overhead), made compact and ordered in 3.6, with insertion order a language guarantee since 3.7. Its `set` is a separate hash table and keeps no order. `str` and `bytes` hashes are salted per process, so a set of strings iterates in a different order from run to run.
 - **Go `map`.** The language specification says the iteration order over maps is not specified and is not guaranteed to be the same from one iteration to the next, and Go 1 made it unpredictable on purpose so that no program could come to depend on it. Since Go 1.12, `fmt` prints maps sorted by key, which makes test output stable without changing iteration. Go 1.24 rebuilt the built-in map on Swiss Tables, an open-addressing design.
 - **JavaScript `Map` versus plain objects.** An object's keys are strings or symbols, so `obj[1]` and `obj["1"]` are the same property, and an object inherits keys from its prototype unless made with `Object.create(null)`. A `Map` takes any value as a key, compares keys with SameValueZero (so `NaN` finds `NaN`), iterates in insertion order, has a `size`, and is the one built for frequent additions and removals.
-- **Rust `HashMap`.** It uses a randomly seeded SipHash 1-3 by default, chosen to resist HashDoS: an attacker who cannot see the seed cannot compute which keys collide. The documentation says other hashers outperform it for small keys such as integers, but typically give up that protection; the table itself is a port of Google's SwissTable.
+- **Rust `HashMap`.** Its default hasher is currently SipHash 1-3, randomly seeded, which the documentation says is subject to change, chosen to resist HashDoS: an attacker who cannot see the seed cannot compute which keys collide. The documentation says other hashers outperform it for small keys such as integers, but typically give up that protection; the table itself is a port of Google's SwissTable.
 - **Robin Hood and Swiss tables.** Modern open-addressing tables attack long probes in two ways. Robin Hood hashing lets an inserted key take the slot of one that sits closer to its own home slot, which evens out probe lengths. Swiss tables keep one byte of metadata per slot, holding 7 bits of the key's hash and whether the slot is empty, full or deleted, and use SIMD instructions to narrow 16 candidates down to the few whose 7 bits match before comparing any key.
-- **Resizing has a latency cost.** Amortized O(1) still means one insert in a while copies the whole table. Systems that cannot afford the pause resize incrementally, moving a few buckets on each operation, or size the table up front when they know how many entries are coming, as Java's `HashMap(int initialCapacity)` constructor allows.
+- **Resizing has a latency cost.** Amortized O(1) still means one insert in a while copies the whole table. Systems that cannot afford the pause resize incrementally, moving a few buckets on each operation, or size the table up front when they know how many entries are coming. In Java, `new HashMap<>(100)` is not enough for 100 entries: it makes 128 buckets, which resize past 96. `HashMap.newHashMap(100)`, since Java 19, sizes the table for 100 entries at the default load factor.
 
 ## Practice
 
 - `cstudy start contains-duplicate`: the plainest "have I seen this before?". Compare the set against sorting, and against checking every pair.
-- `cstudy start two-sum`: decide what to remember about the numbers already seen, so that the partner of each new number is one lookup away.
+- `cstudy start two-sum`: find two numbers that add up to a target, faster than by checking every pair.
 - `cstudy start valid-anagram`: two strings, one question about their letters. A map of counts works for any alphabet; a fixed array works when the alphabet is small.
 
 ## Further reading

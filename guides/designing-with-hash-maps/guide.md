@@ -2,7 +2,7 @@
 
 ## The idea
 
-A hash map does one thing superbly: it finds a key in O(1) on average. It does nothing else. It keeps no useful order, it cannot hand you a random member, it cannot answer "what was the value last Tuesday?". Each of those is easy for some other structure, and hopeless for that structure alone, because it cannot **find** things fast.
+A hash map does one thing superbly: it finds a key in O(1) on average. It does nothing else. It keeps no useful order, it cannot tell you what came between two moments, it does not number its keys. Each of those is easy for some other structure, and hopeless for that structure alone, because it cannot **find** things fast.
 
 So many designs pair a hash map with a second structure. The second structure provides the order, the positions or the history; the map provides the **index into it**, so that any element of the second structure can be reached in O(1) without searching. The map's values are not the data: they are pointers to where the data lives.
 
@@ -11,8 +11,8 @@ This guide builds three such pairs:
 | Pair | The second structure gives | The map gives |
 |------|----------------------------|---------------|
 | Map + doubly linked list | An order, with O(1) insertion and removal anywhere | O(1) access to any node, so it can be unlinked or moved |
-| Map + dynamic array | Dense storage: no gaps, members reachable by position | Each member's position, so it can be removed in O(1) |
-| Map + sorted list per key | Every past value, in order | O(1) access to one key's history, then binary search in it |
+| Map + dynamic array | Dense positions: elements numbered 0, 1, 2 and so on, without gaps | Each element's position, so it is reached both ways in O(1) |
+| Map + sorted list per key | Every past event of a key, in time order | O(1) access to one key's list, then binary search in it |
 
 The skill is the same each time: write down the operations and the bound each needs, notice that no single structure meets them all, and give each structure the job it does in O(1).
 
@@ -75,13 +75,16 @@ class JobQueue:
         self.head.after, self.tail.before = self.tail, self.head
         self.nodes: dict[str, Node] = {}
 
-    def submit(self, job: str) -> None:
+    def submit(self, job: str) -> bool:
+        if job in self.nodes:  # one node per id, or the map would lose the first one
+            return False
         node = Node(job)
         last = self.tail.before
         assert last is not None
         node.before, node.after = last, self.tail
         last.after = self.tail.before = node
         self.nodes[job] = node
+        return True
 
     def cancel(self, job: str) -> bool:
         node = self.nodes.pop(job, None)
@@ -113,6 +116,7 @@ print("waiting:", queue.waiting())
 print("cancel email:", queue.cancel("email"), "->", queue.waiting())
 print("cancel email again:", queue.cancel("email"))
 print("take:", queue.take(), "->", queue.waiting())
+print("submit resize again:", queue.submit("resize"), "->", queue.waiting())
 queue.submit("email")
 print("submit email:", queue.waiting())
 ```
@@ -124,162 +128,154 @@ waiting: ['backup', 'resize', 'email', 'report']
 cancel email: True -> ['backup', 'resize', 'report']
 cancel email again: False
 take: backup -> ['resize', 'report']
+submit resize again: False -> ['resize', 'report']
 submit email: ['resize', 'report', 'email']
 ```
 
-The second cancel returns `False`, because the map no longer holds `email`, and `take` serves the oldest job in O(1) from the head's side. Each operation keeps the two structures in step: whatever touches the list also touches the map.
+The second cancel returns `False`, because the map no longer holds `email`, and `take` serves the oldest job in O(1) from the head's side. Submitting `resize` again is refused: a second node for the same id would replace the first in the map and leave it in the list, where nothing could reach it to cancel it. Each operation keeps the two structures in step: whatever touches the list also touches the map.
 
-The same pair is the classic shape of a cache that evicts the entry used least recently; working out which operations move which nodes is the first practice problem. Python's `collections.OrderedDict` packages the pair, with `move_to_end` and `popitem(last=...)`.
+Caches that evict by recency are built on this same pair; the first practice problem asks you to design one, and to work out which operations move which nodes.
 
-### A map and an array: removal without a hole
+### A map and an array: dense ids
 
-A registry of active sessions needs to add a session, remove one by id, and walk all of them quickly, or reach one by its position. An array is ideal for walking and for positions, but removing from its middle shifts the tail: O(n). A hash set removes in O(1), but it has no positions.
-
-The trick: when order does not matter, **move the last element into the hole**, then shrink the array by one. A map from each member to its position tells you where the hole is, and only one other member, the one that moved, needs its position updated.
+A program that handles many words, user names or URLs often wants to refer to each one by a small integer instead: integers are cheap to store, to compare and to use as array indexes. A **symbol table** gives each distinct string the next id, 0, 1, 2 and so on, the first time it is seen. A map from string to id answers "what is this word's id?"; an array from id to string answers "which word has this id?". Both are O(1).
 
 ```mermaid
 flowchart LR
-  accTitle: Removing s2 by moving the last member into its slot
-  accDescr: The array holds s1, s2, s3 and s4. To remove s2 at position 1, the map gives its position, s4 is moved from the last position into position 1, the map records s4 at 1, and the array shrinks by one, leaving s1, s4 and s3.
-  find["map: s2 is at 1"] --> move["copy s4 from the end into 1"] --> fix["map: s4 is at 1"] --> pop["drop the last slot"]
+  accTitle: Interning a word
+  accDescr: A word is looked up in the map. If the map has it, its id is returned. If not, the word is appended to the array, and its position becomes its id in the map.
+  word["word"] --> ask["map: known?"] --> new["append to the array"] --> id["its position is its id"]
 ```
 
-<!-- text-of-mermaid sha256:943b4c25f4bd0af7376aad448f814c9aa022ec613861969bd91cb5810cffc639 -->
+<!-- text-of-mermaid sha256:a067f883847a085e012c240b97f23c907dee277cac06829460facd175a86bd99 -->
 ```text
-┌───────────────┐    ┌───────────────────────────┐    ┌───────────────┐    ┌──────────────────┐
-│map: s2 is at 1├───►│copy s4 from the end into 1├───►│map: s4 is at 1├───►│drop the last slot│
-└───────────────┘    └───────────────────────────┘    └───────────────┘    └──────────────────┘
+┌────┐    ┌───────────┐    ┌───────────────────┐    ┌──────────────────────┐
+│word├───►│map: known?├───►│append to the array├───►│its position is its id│
+└────┘    └───────────┘    └───────────────────┘    └──────────────────────┘
 ```
 
-The four steps in the drawing are all O(1): a map lookup, one array write, one map write, and removing the last element, which an array does without shifting anything.
+The drawing shows the path of a word seen for the first time: the map does not know it, so it goes to the end of the array, and its position there becomes its id. A word seen before stops at the map, which returns its id.
 
-```python examples/dense_registry.py
-"""A registry of active sessions: add and remove by id in O(1), and keep every member in a dense
-array, so it can be walked without gaps or reached by position.
+```python examples/interning.py
+"""A symbol table: each distinct word gets a small, dense integer id, in O(1) both ways.
 
-Removing from the middle of an array costs O(n) because the tail shifts left. When order does
-not matter, move the last member into the hole instead, and fix that one member's index.
+The map turns a word into its id; the array turns an id back into its word. Because ids run from
+0 without gaps, any data about the words can live in plain arrays indexed by id.
 """
 
 
-class DenseRegistry:
+class SymbolTable:
     def __init__(self) -> None:
-        self.members: list[str] = []
-        self.index: dict[str, int] = {}  # member -> its position in `members`
+        self.ids: dict[str, int] = {}  # word -> id
+        self.words: list[str] = []  # id -> word
 
-    def add(self, member: str) -> bool:
-        if member in self.index:
-            return False
-        self.index[member] = len(self.members)
-        self.members.append(member)
-        return True
-
-    def remove(self, member: str) -> bool:
-        position = self.index.pop(member, None)
-        if position is None:
-            return False
-        last = self.members.pop()
-        if last != member:  # fill the hole with the last member
-            self.members[position] = last
-            self.index[last] = position
-        return True
+    def intern(self, word: str) -> int:
+        """The word's id, assigning the next one the first time the word is seen."""
+        known = self.ids.get(word)
+        if known is not None:
+            return known
+        self.ids[word] = len(self.words)
+        self.words.append(word)
+        return self.ids[word]
 
 
-sessions = DenseRegistry()
-for session in ("s1", "s2", "s3", "s4"):
-    sessions.add(session)
-print("members:", sessions.members, "index:", sessions.index)
-sessions.remove("s2")
-print("remove s2:", sessions.members, "index:", sessions.index)
-sessions.remove("s4")
-print("remove s4:", sessions.members, "index:", sessions.index)
-print("add s1 again:", sessions.add("s1"), "| remove s9:", sessions.remove("s9"))
-print("position 1 holds", sessions.members[1], "| any position from 0 to", len(sessions.members) - 1)
+symbols = SymbolTable()
+text = "to be or not to be that is the question"
+ids = [symbols.intern(word) for word in text.split()]
+print("ids:", ids)
+print("words by id:", symbols.words)
+
+counts = [0] * len(symbols.words)  # per-word data in an array, indexed by id
+for word_id in ids:
+    counts[word_id] += 1
+print("counts by id:", counts)
+print("id of 'be':", symbols.ids["be"], "| word with id 4:", symbols.words[4])
 ```
 
 It prints:
 
-```output examples/dense_registry.py
-members: ['s1', 's2', 's3', 's4'] index: {'s1': 0, 's2': 1, 's3': 2, 's4': 3}
-remove s2: ['s1', 's4', 's3'] index: {'s1': 0, 's3': 2, 's4': 1}
-remove s4: ['s1', 's3'] index: {'s1': 0, 's3': 1}
-add s1 again: False | remove s9: False
-position 1 holds s3 | any position from 0 to 1
+```output examples/interning.py
+ids: [0, 1, 2, 3, 0, 1, 4, 5, 6, 7]
+words by id: ['to', 'be', 'or', 'not', 'that', 'is', 'the', 'question']
+counts by id: [2, 2, 1, 1, 1, 1, 1, 1]
+id of 'be': 1 | word with id 4: that
 ```
 
-After removing `s2`, the array is `s1, s4, s3`: `s4` moved and its index says 1. Removing a member that happens to be last needs no move. And because the members sit in a dense array, the member at any position from 0 to `len - 1` is one index away, which is what makes "pick a member uniformly at random" an O(1) operation: draw a position.
+The ten words of the line get eight ids: `to` and `be` keep the ids they got the first time. Because the ids are **dense**, from 0 with no gaps, anything you want to know per word can live in a plain array indexed by id, as the counts do here: no second hash map, no hashing per access. Compilers intern identifiers this way, databases encode repeated strings as small integers, and graph code turns names into node numbers before building adjacency arrays.
 
-### A map and a sorted history: values that change over time
+The pair has one hard operation: removing a string. An array cannot drop an element from the middle in O(1) without either leaving a hole or renumbering everything after it. Doing it in O(1), when order does not matter, is exactly what the second practice problem asks.
 
-Feature flags change from release to release, and support needs to know what a flag was in the release a customer runs. Storing a full copy of every flag for every release would answer in O(1) but costs memory for every flag times every release. Instead, store each flag's **history**: the list of `(release, value)` changes, in the order they happened.
+### A map and a sorted list per key: events in a window
+
+A site records each user's page views as they happen, and analysts ask what a user viewed between two moments. The map finds the user's list in O(1). Views are appended in time order, so each list is **already sorted** by time, and two binary searches find where the window starts and where it ends.
 
 ```mermaid
 flowchart LR
-  accTitle: Looking up a flag's value in release 6
-  accDescr: The map finds the history of dark-mode, which holds off at release 1, on at release 4 and off at release 9. Binary search finds the last change at or before release 6, which is release 4, so the value is on.
-  map["map: dark-mode"] --> history["1 off, 4 on, 9 off"] --> search["last change at or before 6"] --> answer["release 4: on"]
+  accTitle: Finding the views of ana between minutes 5 and 15
+  accDescr: The map finds ana's views at minutes 3, 8, 8, 15 and 42. Binary search finds the first view at or after minute 5 and the first at or after minute 15. The views between those two positions, at minutes 8 and 8, are the answer.
+  map["map: ana"] --> views["3, 8, 8, 15, 42"] --> search["two binary searches, 5 and 15"] --> slice["views at 8 and 8"]
 ```
 
-<!-- text-of-mermaid sha256:7c7bb96ebfe75d5a86e43e7481f4fc101de02b64f9e301d6cfcd95d19b469277 -->
+<!-- text-of-mermaid sha256:b1a11abbc149365116b5446b2dc81e21f77e33124b8841313f6d65ec18d5f5e9 -->
 ```text
-┌──────────────┐    ┌──────────────────┐    ┌──────────────────────────┐    ┌─────────────┐
-│map: dark-mode├───►│1 off, 4 on, 9 off├───►│last change at or before 6├───►│release 4: on│
-└──────────────┘    └──────────────────┘    └──────────────────────────┘    └─────────────┘
+┌────────┐    ┌───────────────┐    ┌─────────────────────────────┐    ┌────────────────┐
+│map: ana├───►│3, 8, 8, 15, 42├───►│two binary searches, 5 and 15├───►│views at 8 and 8│
+└────────┘    └───────────────┘    └─────────────────────────────┘    └────────────────┘
 ```
 
-The map finds the flag's history in O(1). Changes are appended with increasing release numbers, so the history is already sorted, and binary search finds the last change at or before a release in O(log h) for a history of `h` changes.
+The drawing follows one question: the window from minute 5 up to, but not including, minute 15. The first binary search lands on the view at minute 8, the second on the view at minute 15, and the views between the two positions are the answer.
 
-```python examples/versioned_flags.py
-"""Feature flags with history: each change is recorded at a release number, and a question asks
-what a flag was set to in a given release.
+```python examples/event_ranges.py
+"""Page views per user, and the views of one user inside a time window.
 
-A hash map finds the flag in O(1). Its history is a list of (release, value) appended in
-increasing release order, so it is already sorted, and binary search finds the last change at or
-before the release asked about in O(log h) for h changes.
+A hash map finds the user's list in O(1). Views arrive in time order, so each list is already
+sorted, and two binary searches find where the window starts and ends: O(log h) for a list of h
+views, however long the window is.
 """
 
-from bisect import bisect_right
+from bisect import bisect_left
 
 
-class FlagHistory:
+class ViewLog:
     def __init__(self) -> None:
-        self.changes: dict[str, list[tuple[int, bool]]] = {}
+        self.views: dict[str, list[tuple[int, str]]] = {}
 
-    def set(self, flag: str, release: int, value: bool) -> None:
-        history = self.changes.setdefault(flag, [])
-        if history and release <= history[-1][0]:
-            raise ValueError("releases must increase")
-        history.append((release, value))
+    def record(self, user: str, minute: int, page: str) -> None:
+        history = self.views.setdefault(user, [])
+        if history and minute < history[-1][0]:
+            raise ValueError("views must arrive in time order")
+        history.append((minute, page))
 
-    def value_at(self, flag: str, release: int) -> bool | None:
-        history = self.changes.get(flag, [])
-        position = bisect_right(history, release, key=lambda change: change[0])
-        return history[position - 1][1] if position > 0 else None
+    def between(self, user: str, start: int, end: int) -> list[tuple[int, str]]:
+        """The user's views with start <= minute < end."""
+        history = self.views.get(user, [])
+        first = bisect_left(history, start, key=lambda view: view[0])
+        stop = bisect_left(history, end, key=lambda view: view[0])
+        return history[first:stop]
 
 
-flags = FlagHistory()
-flags.set("dark-mode", 1, False)
-flags.set("dark-mode", 4, True)
-flags.set("dark-mode", 9, False)
-for release in (0, 1, 3, 4, 6, 9, 12):
-    print(f"dark-mode in release {release:>2}:", flags.value_at("dark-mode", release))
-print("an unknown flag:", flags.value_at("beta-search", 5))
+log = ViewLog()
+for minute, page in ((3, "home"), (8, "pricing"), (8, "signup"), (15, "docs"), (42, "home")):
+    log.record("ana", minute, page)
+log.record("ben", 5, "home")
+print("ana, minutes 5 to 15:", log.between("ana", 5, 15))
+print("ana, minutes 8 to 9:", log.between("ana", 8, 9))
+print("ana, minutes 16 to 40:", log.between("ana", 16, 40))
+print("cy, who never visited:", log.between("cy", 0, 60))
 ```
 
 It prints:
 
-```output examples/versioned_flags.py
-dark-mode in release  0: None
-dark-mode in release  1: False
-dark-mode in release  3: False
-dark-mode in release  4: True
-dark-mode in release  6: True
-dark-mode in release  9: False
-dark-mode in release 12: False
-an unknown flag: None
+```output examples/event_ranges.py
+ana, minutes 5 to 15: [(8, 'pricing'), (8, 'signup')]
+ana, minutes 8 to 9: [(8, 'pricing'), (8, 'signup')]
+ana, minutes 16 to 40: []
+cy, who never visited: []
 ```
 
-Before release 1 the flag did not exist, so the answer is `None`. In release 3 it still holds the value set in release 1, and from release 9 on, the value set in release 9. `bisect_right` with `key=` (Python 3.10 and later) returns the position just after the last change whose release is at most the one asked, so the change wanted is the one before that position.
+`bisect_left` with `key=` (Python 3.10 and later) returns the position of the first view whose minute is at least the one given, so the window's views are the slice between the two positions, `start` included and `end` excluded. Both views at minute 8 are found, an empty window returns an empty list, and an unknown user has no list at all. Each query costs O(log h) for a history of `h` views, plus the size of the answer.
+
+The same shape answers other questions about histories: what changed in a release range, how many events fell in the last hour. The third practice problem asks a different question of a history: which value was current at a given moment.
 
 ## When to use it
 
@@ -291,19 +287,18 @@ What to reach for, by need:
 
 | Need | Pair |
 |------|------|
-| Insertion order, with removal or reordering by key | Map + doubly linked list (or a language's ordered map) |
-| Random member, or iteration without gaps | Map + array with swap-with-last removal |
-| The value at a past time or version | Map + sorted list per key, with binary search |
-| The smallest or largest key, or keys in a range | A balanced tree or a sorted structure, not a hash map |
+| Arrival order, with removal or reordering by key | Map + doubly linked list, or a language's ordered map |
+| Small dense ids, and per-item data in arrays | Map + array |
+| Events of a key in a range of times or versions | Map + sorted list per key, with binary search |
+| The smallest or largest key overall, or keys in a range across all keys | A balanced tree or a sorted structure, not a hash map |
 
 ## Common traps
 
-- **Updating one structure and not the other.** Every operation must leave the map and the second structure describing the same set of elements. Write each operation as "change the structure, then fix the map", and test removals of the first, last and only element.
-- **Forgetting the moved element's index.** In swap-with-last removal, the element that moved has a new position; skip that update and the next removal of it corrupts the array.
-- **Removing the last element with the swap.** If the element removed is the last one, there is nothing to move; code that moves it anyway can re-insert what it just deleted into the map.
+- **Updating one structure and not the other.** Every operation must leave the map and the second structure describing the same set of elements. Write each operation as "change the structure, then fix the map", and test the first, last and only element.
+- **Duplicate keys.** If a key may arrive twice, decide what happens: refuse it, as the job queue does, or update the existing entry. Adding a second element silently strands the first.
 - **No sentinels.** A doubly linked list without sentinel nodes needs special cases for the head, the tail and the empty list, and each one is a place for a null-pointer bug.
-- **Histories that are not in order.** Binary search needs a sorted list. If writes can arrive out of order, insert in sorted position, or sort before searching, or refuse them, as the example does.
-- **Off-by-one in binary search.** "Last change at or before `t`" is `bisect_right(..., t) - 1`; `bisect_left` gives "before `t`" and misses a change made exactly at `t`.
+- **Histories that are not in order.** Binary search needs a sorted list. If events can arrive out of order, insert in sorted position, or sort before searching, or refuse them, as the example does.
+- **Off-by-one in binary search.** Decide whether each end of a window is included, and pick `bisect_left` or `bisect_right` for each end to match: they differ exactly on elements equal to the value searched.
 - **Storing values where references would do.** If the map holds copies of the elements instead of positions or nodes, the two structures drift apart as soon as one copy changes.
 
 ## Complexity
@@ -313,21 +308,19 @@ All bounds for the map are averages, under the usual assumption of a well-spread
 | Design | Operation | Time | Space |
 |--------|-----------|------|-------|
 | Map + doubly linked list | Add at an end, remove any, move any to an end, take from an end | O(1) average | O(n) |
-| Map + array | Add, remove by key | O(1) average, plus the array's amortized O(1) append | O(n) |
-| Map + array | Member at a position, random member | O(1) | |
-| Map + sorted history | Record a change in increasing order | O(1) average, amortized | O(total changes) |
-| Map + sorted history | Value at a time or version | O(1) average to find the key, then O(log h) | |
+| Map + array (symbol table) | Id of a string, string of an id | O(1) average, plus the array's amortized O(1) append | O(n) |
+| Map + sorted lists | Record an event in time order | O(1) average, amortized | O(total events) |
+| Map + sorted lists | Events of one key in a window | O(1) average to find the key, then O(log h + answer) | |
 
-The array's append is **amortized** O(1): it doubles its capacity when full, like a hash table's resize. A doubly linked list costs about two pointers of memory per element beyond the element itself, plus the map's entry; the array design costs one integer per element in the map.
+The array's append is **amortized** O(1): when it is full it grows by a constant factor and copies itself, like a hash table's resize. The factor differs between languages, and Java's `ArrayList` documentation only promises that adding an element has constant amortized cost; any constant factor greater than 1 gives that bound. A doubly linked list costs about two pointers of memory per element beyond the element itself, plus the map's entry; the symbol table stores each string once, in the array, and once more as a map key reference.
 
 ## Expert notes
 
-- **Ordered maps are this pair, built in.** Python's `dict` has kept insertion order since 3.7, and `collections.OrderedDict` adds `move_to_end(key, last=True)` and `popitem(last=...)`, which return pairs in LIFO order when `last` is true and FIFO order when it is false. Java's `LinkedHashMap` keeps insertion order, unaffected when a key is put again, or, through a special constructor, access order from least to most recently accessed, which its documentation calls well suited to building LRU caches; `removeEldestEntry` decides whether to drop the eldest entry after each insertion. Knowing how to build the pair by hand is what lets you change the rules, and explains the costs of the built-in one.
+- **Ordered maps are the first pair, built in.** Python's `dict` has kept insertion order since 3.7, and Java's `LinkedHashMap` keeps insertion order with a linked list running through its entries. Knowing how to build the pair by hand is what lets you change its rules, and explains the memory and time the built-in one costs.
 - **Intrusive lists.** In systems code, the list pointers often live inside the element itself, an intrusive list, so that one allocation serves both structures and an element can be in several lists at once.
-- **Memory and the cache.** A linked list scatters nodes across the heap, so walking it misses the CPU cache often. The array design keeps members contiguous and is usually faster to iterate. Some LRU caches approximate recency with an array and a clock hand instead of a list.
-- **Histories at scale.** Version stores keep histories sorted by time and often also keep periodic snapshots, so that a read never replays more than a bounded number of changes. Old versions are dropped by a retention rule, which a per-key list makes easy: drop from the front.
+- **Memory and the cache.** A linked list scatters nodes across the heap, so walking it misses the CPU cache often. Arrays keep elements contiguous and are usually faster to walk, which is one reason dense ids pay off: per-item data in arrays beats per-item data in maps.
+- **Histories at scale.** Event and version stores keep histories sorted by time and often also keep periodic snapshots, so that a read never replays more than a bounded number of changes. Old entries are dropped by a retention rule, which a per-key list makes easy: drop from the front.
 - **Concurrency.** A pair of structures is two places to update, so a concurrent version needs one lock around both, or a design whose updates are a single atomic step. Updating the map and the list under separate locks lets another thread see them disagree.
-- **Uniform random members need density.** A hash table's buckets are not dense: some are empty, and walking to a random non-empty bucket does not pick members with equal probability when chains differ in length. A dense array of members makes every member exactly one of `n` equally likely positions.
 
 ## Practice
 
@@ -337,7 +330,6 @@ The array's append is **amortized** O(1): it doubles its capacity when full, lik
 
 ## Further reading
 
-- [Python `collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict): `move_to_end` and `popitem(last=...)`.
 - [Python `bisect`](https://docs.python.org/3/library/bisect.html): `bisect_left` and `bisect_right`, and the `key` parameter added in 3.10.
 - [Python `dict`](https://docs.python.org/3/library/stdtypes.html#mapping-types-dict): insertion order since 3.7.
-- [Java `LinkedHashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/LinkedHashMap.html): insertion order or access order, and `removeEldestEntry`.
+- [Java `ArrayList`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html): capacity grows automatically, with constant amortized cost per added element.

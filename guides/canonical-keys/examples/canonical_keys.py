@@ -42,12 +42,3 @@ for key, members in group(fractions, reduced).items():
 glued = {"ab" + "c", "a" + "bc"}
 print("glued keys for ('ab', 'c') and ('a', 'bc'):", glued)
 print("tuple keys keep them apart:", len({("ab", "c"), ("a", "bc")}), "keys")
-
-# 5. One set, tagged keys: a room or a teacher may not be booked twice in one slot.
-bookings = [("room 1", "kim", 9), ("room 2", "lee", 9), ("room 1", "lee", 10), ("room 2", "lee", 10)]
-taken: set[tuple[str, str, int]] = set()
-for room, teacher, hour in bookings:
-    for key in (("room", room, hour), ("teacher", teacher, hour)):
-        if key in taken:
-            print("conflict:", key)
-        taken.add(key)

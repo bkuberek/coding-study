@@ -192,7 +192,7 @@ Let `n` be the number of items, `d` the number of distinct items, and `k` how ma
 | Rank with buckets | O(n) | O(n) |
 | Most common single item | O(d) | O(1) |
 
-The counting pass is O(n) **on average**, under the usual assumption that the hash function spreads the items; with adversarial collisions it degrades like any hash map. The rankings are worst-case bounds. Since `d ≤ n`, every method is O(n log n) at worst overall, and the bucket method is O(n) overall.
+The counting pass is O(n) **on average**, under the usual assumption that the hash function spreads the items; with adversarial collisions it degrades like any hash map. The rankings are worst-case bounds. Since `d ≤ n`, given an O(n) count every method is O(n log n) at worst overall, and the bucket method is O(n) overall.
 
 Python's `heapq.nlargest(k, items, key=...)` is documented as equivalent to `sorted(items, key=key, reverse=True)[:k]`, and the documentation advises it for small `k`, `sorted` for large `k`, and `max` when `k` is 1.
 
@@ -201,7 +201,7 @@ Python's `heapq.nlargest(k, items, key=...)` is documented as equivalent to `sor
 - **`Counter` is a dict.** Python's `collections.Counter` is a dict subclass for counting hashable objects. A missing key reads as 0 instead of raising `KeyError`, and `most_common(n)` lists the items from most to least common, with equal counts in the order first encountered. Two counters compare equal when they hold the same counts, so `Counter(a) == Counter(b)` is a one-line multiset comparison.
 - **Partial selection.** Quickselect finds the `k`-th largest count in O(d) average time and partitions the rest around it, without sorting: another way to get the top `k`, unordered, in linear average time. Its worst case is O(d²) unless the pivot is chosen with care.
 - **Majority without a map.** When one value is known to occupy more than half the positions, there is a voting algorithm that finds it in one pass with O(1) extra space, because the majority value survives every cancellation of a pair of different values. The counter is O(d) space; the vote is O(1). The problem below lets you compare them.
-- **Streams that do not fit.** When `d` is too large to keep a count per item, sketches estimate counts in fixed memory. A Count-Min sketch hashes each item into one counter per row of a small table and reports the smallest of its counters, which can overestimate but never underestimate; the Misra-Gries summary keeps `k - 1` counters and finds every item that occurs more than `n / k` times. Both trade exactness for memory.
+- **Streams that do not fit.** When `d` is too large to keep a count per item, sketches estimate counts in fixed memory. A Count-Min sketch hashes each item into one counter per row of a small table and reports the smallest of its counters, which can overestimate but never underestimate; the Misra-Gries summary keeps `k - 1` counters, and every item that occurs more than `n / k` times is among the survivors, though some survivors may not be: a second pass over the data counts them exactly and drops the false positives. Both trade exactness for memory.
 - **Counting in parallel.** Counts are easy to split: count each chunk on its own, then add the maps together. Addition is associative and commutative, so the chunks can be merged in any order. This is the shape of word count in every map-reduce system.
 
 ## Practice

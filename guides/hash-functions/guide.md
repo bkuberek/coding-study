@@ -14,30 +14,28 @@ That is the whole trick behind hash maps and hash sets. Instead of searching thr
 ```mermaid
 flowchart LR
   accTitle: Keys pass through a hash function into buckets
-  accDescr: The keys pear, plum and fig each go through the same hash function. Pear lands in bucket 6, plum and fig both land in bucket 4, which is a collision.
-  pear["pear"] --> hash["hash(key) mod 8"]
-  plum["plum"] --> hash
-  fig["fig"] --> hash
-  hash --> b6["bucket 6: pear"]
-  hash --> b4["bucket 4: plum, fig"]
+  accDescr: The key pear hashes to bucket 6. The keys plum and fig both hash to bucket 4, so fig lands in a bucket that plum already uses, which is a collision.
+  pear["pear"] --> h1["hash(pear) mod 8 = 6"] --> b1["bucket 6"]
+  plum["plum"] --> h2["hash(plum) mod 8 = 4"] --> b2["bucket 4"]
+  fig["fig"] --> h3["hash(fig) mod 8 = 4"] --> b3["bucket 4 again: a collision"]
 ```
 
-<!-- text-of-mermaid sha256:8df9f9808eb16936ea87419f6089e851e1dc2e32761ab8d90ad1089fdaed1ee6 -->
+<!-- text-of-mermaid sha256:d6b6a7036ac49fbdf56158e98bfe7b8a598eaea9a216273207b182b6e1c5818f -->
 ```text
-┌────┐    ┌───────────────┐    ┌───────────────────┐
-│pear├───►│hash(key) mod 8├───►│   bucket 6: pear  │
-└────┘    └───────┬───────┘    └───────────────────┘
-                  ▲
-┌────┐            │            ┌───────────────────┐
-│plum├────────────┼───────────►│bucket 4: plum, fig│
-└────┘            │            └───────────────────┘
-                  │
-┌────┐            │
-│fig ├────────────┘
-└────┘
+┌────┐    ┌────────────────────┐    ┌───────────────────────────┐
+│pear├───►│hash(pear) mod 8 = 6├───►│          bucket 6         │
+└────┘    └────────────────────┘    └───────────────────────────┘
+
+┌────┐    ┌────────────────────┐    ┌───────────────────────────┐
+│plum├───►│hash(plum) mod 8 = 4├───►│          bucket 4         │
+└────┘    └────────────────────┘    └───────────────────────────┘
+
+┌────┐    ┌────────────────────┐    ┌───────────────────────────┐
+│fig ├───►│hash(fig) mod 8 = 4 ├───►│bucket 4 again: a collision│
+└────┘    └────────────────────┘    └───────────────────────────┘
 ```
 
-The diagram shows three keys going through one hash function into a table of eight buckets. `pear` lands alone in bucket 6, while `plum` and `fig` both land in bucket 4. When two different keys land in the same bucket, that is a **collision**.
+The diagram shows three keys going through the same hash function into a table of eight buckets. `pear` lands alone in bucket 6, while `plum` and `fig` both land in bucket 4. When two different keys land in the same bucket, that is a **collision**.
 
 ### Collisions cannot be avoided
 
@@ -162,6 +160,8 @@ pear = "'pear'"
 print("str, same seed:", hash_in_new_process(pear, "1") == hash_in_new_process(pear, "1"))
 print("str, other seed:", hash_in_new_process(pear, "1") == hash_in_new_process(pear, "2"))
 print("int, other seed:", hash_in_new_process("12345", "1") == hash_in_new_process("12345", "2"))
+pair = "('pear', 'plum')"
+print("tuple of str, other seed:", hash_in_new_process(pair, "1") == hash_in_new_process(pair, "2"))
 ```
 
 It prints:
@@ -174,11 +174,12 @@ a list is not hashable: TypeError
 str, same seed: True
 str, other seed: False
 int, other seed: True
+tuple of str, other seed: False
 ```
 
 - **Equal values hash alike.** `1`, `1.0` and `True` compare equal, so they must have the same hash, and they are the same key in a dict. This is the one rule every hash function must keep: if `a == b`, then `hash(a) == hash(b)`. The reverse is not required, since collisions exist.
 - **Mutable containers are not hashable.** A list can change after you store it, which would move it to another bucket while the table still has it in the old one, so Python refuses to hash it. A tuple of hashable values is hashable.
-- **String hashes change between runs.** Python salts the hashes of `str` and `bytes` with a random value chosen when the interpreter starts. Within one process they never change; between processes they differ, unless the environment variable `PYTHONHASHSEED` fixes the seed. Integers are not salted, so `hash(12345)` is the same in every process.
+- **String hashes change between runs.** Python salts the hashes of `str` and `bytes` with a random value chosen when the interpreter starts. Within one process they never change; between processes they differ, unless the environment variable `PYTHONHASHSEED` fixes the seed. Anything whose hash is built from strings changes with them, such as a tuple of strings. Integers are not salted, so `hash(12345)` is the same in every process.
 
 ## When to use it
 
@@ -194,7 +195,7 @@ You will rarely write a hash function yourself. Every language ships good ones f
 
 - **Equal but different hashes.** If you redefine equality for a type, say two `Point`s are equal when their coordinates are, but keep the default hash, which depends on the object's identity, then equal points land in different buckets and lookups miss. Python protects you here: a class that overrides `__eq__` without `__hash__` gets its `__hash__` set to `None`, so its instances are not hashable at all.
 - **Hashing what can change.** A key's hash must not change while it is stored. If you hash a mutable object and then mutate it, the table looks in the wrong bucket. [Hash maps and sets](../hash-maps-and-sets/guide.md) shows this happening in Java.
-- **Relying on hash values across runs.** Python's string hashes differ between processes, so never store `hash(text)` in a file or a database to compare later, and never use it as a checksum. Use a [cryptographic hash](../cryptographic-hashes/guide.md) such as SHA-256, whose output is fixed by a standard.
+- **Relying on hash values across runs.** Python's string hashes, and the hashes of tuples and other values built from strings, differ between processes, so never store `hash(text)` in a file or a database to compare later, and never use it as a checksum. Use a [cryptographic hash](../cryptographic-hashes/guide.md) such as SHA-256, whose output is fixed by a standard.
 - **Ignoring part of the key.** `letter_sum` ignores order. A hash of a record that skips a field, or that truncates long strings, collides on everything that differs only there.
 - **Thinking a collision is a bug.** Two keys with the same hash are expected. The table must compare the keys themselves with `==` after finding the bucket.
 
@@ -214,7 +215,7 @@ The memory a hash function needs is O(1): it keeps a running value and nothing e
 
 - **Uniform hashing is an assumption, not a fact.** The O(1) average of hash tables is proven under the assumption that each key is equally likely to land in any bucket, independently of the others. Real keys are not random: they share prefixes, they are multiples of 1,000, they are generated in sequences. A good hash function makes such structured keys behave as if they were random. **Universal hashing** goes further: the table picks its hash function at random from a family designed so that any two distinct keys collide with probability at most `1/m`. The average then holds for every set of keys, because the randomness is in the function, not the data.
 - **Low bits matter when `m` is a power of two.** Many tables use `m = 2^k` so that `hash mod m` becomes a cheap bit mask that keeps only the lowest `k` bits. A hash whose low bits vary little then crowds a few buckets. Java's `HashMap` guards against this by mixing the high half of the hash into the low half before masking: its source computes `h ^ (h >>> 16)`.
-- **Hash flooding.** If an attacker can predict your hash function, they can send keys that all land in one bucket, turning every insert into a scan and n inserts into O(n²) work. oCERT advisory 2011-003 described it in 2011 for the web platforms of Java, PHP, Python, Ruby and others, where a single request with many crafted form parameters could keep a CPU busy for hours. Java's `String.hashCode()` is a documented formula, so collisions are easy to build: `"Aa"` and `"BB"` both hash to 2112, and any string built from those two blocks collides with every other string of the same number of blocks, as the Java example shows. The defenses are to randomize the hash function per process, which Python has done by default for `str` and `bytes` since 3.3 and Rust does with its default randomly seeded hasher, or to make a crowded bucket cheap to search, which Java's `HashMap` does with tree bins.
+- **Hash flooding.** If an attacker can predict your hash function, they can send keys that all land in one bucket, turning every insert into a scan and n inserts into O(n²) work. oCERT advisory 2011-003 described it in 2011 for the web platforms of Java, PHP, Python, Ruby and others, where a single request with many crafted form parameters could keep a CPU busy for hours. Java's `String.hashCode()` is a documented formula, so collisions are easy to build: `"Aa"` and `"BB"` both hash to 2112, and any string built from those two blocks collides with every other string of the same number of blocks, as the Java example shows. The defenses are to randomize the hash function, which Python has done by default for `str` and `bytes` since 3.3, once per process, and which Rust does for every map: its default hasher takes random keys, generated once per thread and changed for each new map, so even two maps in one program iterate in different orders. The other defense is to make a crowded bucket cheap to search, which Java's `HashMap` does with tree bins.
 - **Strides and low bits.** A hash that leaves integer keys almost as they are is fast and fine for random integers, but keys with a common stride defeat a table that keeps only the low bits: multiples of 64 all land in bucket 0 of a 64-bucket table. Mixing the bits first, as Java does, or choosing a prime number of buckets, spreads such keys out again.
 - **A table hash is not a fingerprint.** The functions in this guide are fast and good at spreading keys, but nothing stops someone from finding two inputs with the same output. When you need that to be infeasible, for checksums, signatures or tamper evidence, you need a cryptographic hash, which is a different tool with different costs: see [cryptographic hashes and integrity](../cryptographic-hashes/guide.md).
 

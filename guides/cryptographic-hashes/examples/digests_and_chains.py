@@ -35,26 +35,38 @@ for encode in (joined, with_separator, length_prefixed):
     print(f"{encode.__name__:>15}: collisions {collisions}")
 
 
-# 3. A hash chain: each head covers its entry and every head before it.
-def heads(entries: list[str]) -> list[bytes]:
-    head = sha256(b"audit-log v1")  # a fixed starting value
+# 3. A hash chain: each chain digest covers its entry and every chain digest before it.
+def chain_digests(entries: list[str]) -> list[bytes]:
+    digest = sha256(b"audit-log v1")  # a fixed starting value
     chain = []
     for entry in entries:
-        head = sha256(head + sha256(entry.encode()))
-        chain.append(head)
+        digest = sha256(digest + sha256(entry.encode()))
+        chain.append(digest)
     return chain
 
 
 log = ["alice logs in", "alice reads report", "bob logs in", "alice logs out"]
 tampered = [*log]
 tampered[1] = "alice deletes report"
-original, edited = heads(log), heads(tampered)
-print("heads equal per entry:", [a == b for a, b in zip(original, edited, strict=True)])
+original, edited = chain_digests(log), chain_digests(tampered)
+print("chain digests equal per entry:", [a == b for a, b in zip(original, edited, strict=True)])
 
-# 4. Anyone can recompute a plain hash after editing. A keyed MAC needs the secret.
-key = b"server-secret"
-tag = hmac.new(key, b"amount=10", hashlib.sha256).digest()
-forged = hmac.new(b"guessed-key", b"amount=99", hashlib.sha256).digest()
-genuine = hmac.new(key, b"amount=10", hashlib.sha256).digest()
-print("MAC of the edit with a guessed key accepted:", hmac.compare_digest(tag, forged))
-print("MAC recomputed with the real key accepted:", hmac.compare_digest(tag, genuine))
+# 4. Anyone can recompute a plain hash after editing. A MAC needs the secret key: the receiver
+# recomputes the tag of the message it received and compares it with the tag it received.
+KEY = b"server-secret"
+
+
+def tag_of(message: bytes, key: bytes = KEY) -> bytes:
+    return hmac.new(key, message, hashlib.sha256).digest()
+
+
+def accept(received_message: bytes, received_tag: bytes) -> bool:
+    return hmac.compare_digest(tag_of(received_message), received_tag)
+
+
+message = b"amount=10"
+tag = tag_of(message)
+edited = b"amount=99"
+print("edited message, tag made with a guessed key:", accept(edited, tag_of(edited, b"guess")))
+print("edited message, the original tag:", accept(edited, tag))
+print("the original message and tag:", accept(message, tag))

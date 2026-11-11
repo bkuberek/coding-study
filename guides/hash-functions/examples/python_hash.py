@@ -25,3 +25,5 @@ pear = "'pear'"
 print("str, same seed:", hash_in_new_process(pear, "1") == hash_in_new_process(pear, "1"))
 print("str, other seed:", hash_in_new_process(pear, "1") == hash_in_new_process(pear, "2"))
 print("int, other seed:", hash_in_new_process("12345", "1") == hash_in_new_process("12345", "2"))
+pair = "('pear', 'plum')"
+print("tuple of str, other seed:", hash_in_new_process(pair, "1") == hash_in_new_process(pair, "2"))

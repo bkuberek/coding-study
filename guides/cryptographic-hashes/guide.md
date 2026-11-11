@@ -4,7 +4,7 @@
 
 The [hash functions](../hash-functions/guide.md) of hash tables only need to spread keys out. Nobody minds if two keys share a hash: the table compares the keys anyway. A **cryptographic hash function**, such as SHA-256, makes a much stronger promise: it is infeasible for anyone, even someone trying hard with a lot of computing power, to find two inputs with the same output. That promise turns a hash into a **fingerprint**: a short value that stands for data of any size, so that comparing fingerprints is as good as comparing the data.
 
-The output is called a **digest**. SHA-256's is always 256 bits, 32 bytes, usually written as 64 hexadecimal characters, whether the input is one byte or a terabyte. Three properties define a cryptographic hash, from weakest to strongest requirement on the attacker:
+The output is called a **digest**. SHA-256's is always 256 bits, 32 bytes, usually written as 64 hexadecimal characters, whether the input is one byte or a terabyte. Three properties define a cryptographic hash, listed from the hardest attack to the easiest:
 
 | Property | The attacker gets | It must be infeasible to find | Generic cost for an `n`-bit digest |
 |----------|-------------------|-------------------------------|------------------------------------|
@@ -12,7 +12,7 @@ The output is called a **digest**. SHA-256's is always 256 bits, 32 bytes, usual
 | **Second-preimage resistance** | An input `x` | A different `y` with `H(y) = H(x)` | About 2ⁿ tries |
 | **Collision resistance** | Nothing | Any two different `x`, `y` with `H(x) = H(y)` | About 2^(n/2) tries, by the birthday bound |
 
-Collisions are the cheapest to find, because the attacker may choose both inputs: among about 2^(n/2) random inputs, two will likely share a digest, the same birthday effect that makes hash tables collide early. For SHA-256 that is still about 2¹²⁸ tries, far beyond any computer. The table hashes of the earlier guides offer none of these properties: `"Aa"` and `"BB"` share Java's `String.hashCode()`, by arithmetic anyone can do.
+Collisions are the cheapest to find, because the attacker may choose both inputs: among 2^(n/2) random inputs, two share a digest with a probability of about 39%, and about 1.18 · 2^(n/2) inputs bring it to one half, the same birthday effect that makes hash tables collide early. For SHA-256 that is still about 2¹²⁸ tries, far beyond any computer. The table hashes of the earlier guides offer none of these properties: `"Aa"` and `"BB"` share Java's `String.hashCode()`, by arithmetic anyone can do.
 
 With a fingerprint in hand, three tools follow, and this guide builds each:
 
@@ -62,29 +62,41 @@ for encode in (joined, with_separator, length_prefixed):
     print(f"{encode.__name__:>15}: collisions {collisions}")
 
 
-# 3. A hash chain: each head covers its entry and every head before it.
-def heads(entries: list[str]) -> list[bytes]:
-    head = sha256(b"audit-log v1")  # a fixed starting value
+# 3. A hash chain: each chain digest covers its entry and every chain digest before it.
+def chain_digests(entries: list[str]) -> list[bytes]:
+    digest = sha256(b"audit-log v1")  # a fixed starting value
     chain = []
     for entry in entries:
-        head = sha256(head + sha256(entry.encode()))
-        chain.append(head)
+        digest = sha256(digest + sha256(entry.encode()))
+        chain.append(digest)
     return chain
 
 
 log = ["alice logs in", "alice reads report", "bob logs in", "alice logs out"]
 tampered = [*log]
 tampered[1] = "alice deletes report"
-original, edited = heads(log), heads(tampered)
-print("heads equal per entry:", [a == b for a, b in zip(original, edited, strict=True)])
+original, edited = chain_digests(log), chain_digests(tampered)
+print("chain digests equal per entry:", [a == b for a, b in zip(original, edited, strict=True)])
 
-# 4. Anyone can recompute a plain hash after editing. A keyed MAC needs the secret.
-key = b"server-secret"
-tag = hmac.new(key, b"amount=10", hashlib.sha256).digest()
-forged = hmac.new(b"guessed-key", b"amount=99", hashlib.sha256).digest()
-genuine = hmac.new(key, b"amount=10", hashlib.sha256).digest()
-print("MAC of the edit with a guessed key accepted:", hmac.compare_digest(tag, forged))
-print("MAC recomputed with the real key accepted:", hmac.compare_digest(tag, genuine))
+# 4. Anyone can recompute a plain hash after editing. A MAC needs the secret key: the receiver
+# recomputes the tag of the message it received and compares it with the tag it received.
+KEY = b"server-secret"
+
+
+def tag_of(message: bytes, key: bytes = KEY) -> bytes:
+    return hmac.new(key, message, hashlib.sha256).digest()
+
+
+def accept(received_message: bytes, received_tag: bytes) -> bool:
+    return hmac.compare_digest(tag_of(received_message), received_tag)
+
+
+message = b"amount=10"
+tag = tag_of(message)
+edited = b"amount=99"
+print("edited message, tag made with a guessed key:", accept(edited, tag_of(edited, b"guess")))
+print("edited message, the original tag:", accept(edited, tag))
+print("the original message and tag:", accept(message, tag))
 ```
 
 It prints:
@@ -95,9 +107,10 @@ one letter changed: 113 of 256 bits differ
          joined: collisions [True, False]
  with_separator: collisions [False, True]
 length_prefixed: collisions [False, False]
-heads equal per entry: [True, False, False, False]
-MAC of the edit with a guessed key accepted: False
-MAC recomputed with the real key accepted: True
+chain digests equal per entry: [True, False, False, False]
+edited message, tag made with a guessed key: False
+edited message, the original tag: False
+the original message and tag: True
 ```
 
 The first two lines show what a digest looks like: 32 bytes, and a one-letter change in the input flips 113 of the 256 output bits, close to the half you would expect from unrelated values. This **avalanche** is what makes a digest useless for guessing what changed, and useful for noticing that something did.
@@ -110,62 +123,59 @@ The next three lines show the trap that breaks more integrity checks than any we
 
 ### Hash chains
 
-A log is a list of entries, appended over time. To make it tamper-evident, keep a running digest, the **head**: start from a fixed value, and for each entry set `head = H(head + H(entry))`. Each head covers its own entry and, through the previous head, every entry before it.
+A log is a list of entries, appended over time. To make it tamper-evident, keep a running digest, the **chain digest**: start from a fixed value, and for each entry set `digest = H(digest + H(entry))`. Each chain digest covers its own entry and, through the previous one, every entry before it.
 
 ```mermaid
 flowchart LR
   accTitle: A hash chain over four log entries
-  accDescr: A fixed starting value feeds head 1, which hashes it with entry e1. Head 2 hashes head 1 with entry 2, and so on to head 4. Each head depends on every entry before it.
-  start["fixed start"] --> h1["head 1 = H(start, e1)"] --> h2["head 2 = H(head 1, e2)"] --> h3["head 3"] --> h4["head 4"]
+  accDescr: A fixed starting value feeds chain digest 1, which hashes it with entry e1. Chain digest 2 hashes chain digest 1 with entry e2, and so on to chain digest 4. Each depends on every entry before it.
+  start["fixed start"] --> c1["C1 = H(start, e1)"] --> c2["C2 = H(C1, e2)"] --> c3["C3 = H(C2, e3)"] --> c4["C4 = H(C3, e4)"]
 ```
 
-<!-- text-of-mermaid sha256:957cdfd3e8c4ec80fbb705324bf3f5e52458f5abcb44bd403fc659b840925aca -->
+<!-- text-of-mermaid sha256:0feb9af2baa6a2759c12ce247de48adabf9b0d06903f252a007093d42915c67e -->
 ```text
-┌───────────┐    ┌─────────────────────┐    ┌──────────────────────┐    ┌──────┐    ┌──────┐
-│fixed start├───►│head 1 = H(start, e1)├───►│head 2 = H(head 1, e2)├───►│head 3├───►│head 4│
-└───────────┘    └─────────────────────┘    └──────────────────────┘    └──────┘    └──────┘
+┌───────────┐    ┌─────────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│fixed start├───►│C1 = H(start, e1)├───►│C2 = H(C1, e2)├───►│C3 = H(C2, e3)├───►│C4 = H(C3, e4)│
+└───────────┘    └─────────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
-In the example, changing entry 2 leaves head 1 equal and changes heads 2, 3 and 4. So:
+The drawing names the chain digests C1 to C4. In the example, changing entry 2 leaves C1 equal and changes C2, C3 and C4. So:
 
-- **One digest stands for the whole history.** Two parties that agree on head 4 agree on every entry, in order. Comparing two histories of any length costs one comparison of 32 bytes.
-- **The heads tell you where histories part.** Heads agree up to some entry and differ from there on, never agreeing again by accident. Agreement is a prefix, so binary search over the heads finds the first difference with O(log n) comparisons.
-- **Detection needs an anchor.** Someone who can rewrite the whole log can recompute every head. A chain proves nothing unless the latest head is kept where the attacker cannot change it: published, sent to another party, or signed.
+- **One digest stands for the whole history.** Two parties that agree on C4 agree on every entry, in order. Comparing two histories of any length costs one comparison of 32 bytes.
+- **The chain digests tell you where histories part.** They agree up to some entry and differ from there on, never agreeing again by accident. Agreement is a prefix, so binary search over the chain digests finds the first difference with O(log n) comparisons.
+- **Detection needs an anchor.** Someone who can rewrite the whole log can recompute every chain digest. A chain proves nothing unless the latest chain digest is kept where the attacker cannot change it: published, sent to another party, or signed.
 
-The last two lines of the example show the tool for that last case. A plain digest can be recomputed by anyone who changes the data. An **HMAC** mixes a secret key into the hash, so only someone who holds the key can produce a valid tag; Python's `hmac` module implements RFC 2104, and `hmac.compare_digest` compares tags without leaking, through timing, how many bytes matched.
+The last three lines of the example show the tool for that last case. A plain digest can be recomputed by anyone who changes the data. An **HMAC** mixes a secret key into the hash, so only someone who holds the key can produce a valid tag. The receiver, who shares the key, recomputes the tag of the message it received and compares it with the tag that came with it: an edited message fails, whether it carries a tag made with a guessed key or the original tag, and only the original pair passes. Python's `hmac` module implements RFC 2104, and `hmac.compare_digest` compares tags without leaking, through timing, how many bytes matched.
 
 ### Merkle trees and inclusion proofs
 
-A chain answers "is this the same history?", but proving that **one** entry belongs to a set of a million would mean handing over every entry to recompute the digest. A **Merkle tree** fixes that. Hash each item into a leaf; hash pairs of leaves into nodes; hash pairs of nodes, up to a single **root**. The root stands for every item, like a chain's head, and any item's membership can be proven with only the siblings along its path to the root.
+A chain answers "is this the same history?", but proving that **one** entry belongs to a set of a million would mean handing over every entry to recompute the digest. A **Merkle tree** fixes that. Hash each item into a leaf; hash pairs of leaves into nodes; hash pairs of nodes, up to a single **root**. The root stands for every item, like a chain's last digest, and any item's membership can be proven with only the siblings along its path to the root.
 
 ```mermaid
-flowchart TD
-  accTitle: A Merkle tree over four items
-  accDescr: Four leaves L0 to L3 are hashes of the items. Node N01 hashes L0 and L1, node N23 hashes L2 and L3, and the root hashes N01 and N23.
-  root["root = H(N01, N23)"] --> n01["N01 = H(L0, L1)"]
-  root --> n23["N23 = H(L2, L3)"]
-  n01 --> l0["L0 = H(item 0)"]
-  n01 --> l1["L1 = H(item 1)"]
-  n23 --> l2["L2 = H(item 2)"]
-  n23 --> l3["L3 = H(item 3)"]
+flowchart LR
+  accTitle: A Merkle tree over four items, one subtree per row
+  accDescr: Leaves L0 and L1, the hashes of items 0 and 1, combine into node N01, the left child of the root. Leaves L2 and L3 combine into node N23, the right child. The root hashes N01 and N23.
+  left["L0 = H(item 0), L1 = H(item 1)"] --> n01["N01 = H(L0, L1)"] --> lc["left child of the root"]
+  right["L2 = H(item 2), L3 = H(item 3)"] --> n23["N23 = H(L2, L3)"] --> rc["right child of the root"]
+  both["N01 and N23"] --> root["root = H(N01, N23)"]
 ```
 
-<!-- text-of-mermaid sha256:eaa4e057e1ba93231958a4c111b99cc7165d218532e571afd671fd4ef8af6900 -->
+<!-- text-of-mermaid sha256:67038c391571c389336e05298f2d65e61f4dca9d14d67c6cdaa880644d059627 -->
 ```text
-┌──────────────────┐
-│root = H(N01, N23)│
-└──────────────────┘
-          ▼─────────────────────▼
-┌──────────────────┐    ┌───────────────┐
-│ N01 = H(L0, L1)  │    │N23 = H(L2, L3)│
-└──────────────────┘    └───────────────┘
-          ▼─────────────────────▼────────────────────▼───────────────────▼
-┌──────────────────┐    ┌───────────────┐    ┌──────────────┐    ┌──────────────┐
-│  L0 = H(item 0)  │    │ L1 = H(item 1)│    │L2 = H(item 2)│    │L3 = H(item 3)│
-└──────────────────┘    └───────────────┘    └──────────────┘    └──────────────┘
+┌──────────────────────────────┐    ┌──────────────────┐    ┌───────────────────────┐
+│L0 = H(item 0), L1 = H(item 1)├───►│ N01 = H(L0, L1)  ├───►│ left child of the root│
+└──────────────────────────────┘    └──────────────────┘    └───────────────────────┘
+
+┌──────────────────────────────┐    ┌──────────────────┐    ┌───────────────────────┐
+│L2 = H(item 2), L3 = H(item 3)├───►│ N23 = H(L2, L3)  ├───►│right child of the root│
+└──────────────────────────────┘    └──────────────────┘    └───────────────────────┘
+
+┌──────────────────────────────┐    ┌──────────────────┐
+│         N01 and N23          ├───►│root = H(N01, N23)│
+└──────────────────────────────┘    └──────────────────┘
 ```
 
-To prove that item 2 is in the tree, send its siblings on the way up: `L3`, then `N01`. The verifier hashes item 2 into `L2`, combines it with `L3` into `N23`, combines `N01` with that into a root, and compares the result with the published root.
+The drawing gives one subtree per row: `N01` hashes leaves `L0` and `L1`, `N23` hashes `L2` and `L3`, and the root hashes the two nodes. To prove that item 2 is in the tree, send its siblings on the way up: `L3`, then `N01`. The verifier hashes item 2 into `L2`, combines it with `L3` into `N23`, combines `N01` with that into a root, and compares the result with the published root.
 
 ```mermaid
 flowchart LR
@@ -261,7 +271,7 @@ Five files give a proof of 3 steps for `notes.txt`: its sibling on the right, a 
 
 - **Integrity of data you received**: compare the digest of a download with one published by a source you trust.
 - **Comparing large things cheaply**: two files, two batches or two histories are equal exactly when their digests are, with overwhelming probability. Compute each digest once, then compare 32 bytes.
-- **Tamper evidence for logs**: a hash chain whose latest head is published or signed.
+- **Tamper evidence for logs**: a hash chain whose latest chain digest is published or signed.
 - **Proving membership**: a Merkle root published once, and short proofs per item, as Certificate Transparency logs do for TLS certificates.
 - **Not for hash tables**: a cryptographic hash is far slower than a table hash and buys nothing there. For hash-flooding resistance, a keyed fast hash such as SipHash, Rust's default, is the right tool.
 - **Not for passwords on its own**: a fast hash lets an attacker try billions of guesses. Use a deliberately slow, salted key-derivation function; Python's `hashlib` provides `pbkdf2_hmac` and `scrypt`.
@@ -272,7 +282,7 @@ Five files give a proof of 3 steps for `notes.txt`: its sibling on the right, a 
 - **Hashing text whose bytes vary.** The same visible text can be different bytes: Unicode normalization forms, line endings, trailing whitespace, key order in JSON. Decide on one canonical form and hash that.
 - **Comparing hex strings carelessly.** `"AB"` and `"ab"` are the same digest in different case; compare raw bytes, or normalize. When the comparison guards a secret, use a constant-time comparison such as `hmac.compare_digest`.
 - **Trusting a digest from the same place as the data.** An attacker who can replace a file can replace the digest next to it. The digest must come from a more trusted channel, or be signed.
-- **Duplicating the odd node.** A Merkle tree that pairs an odd last node with a copy of itself gives some different lists the same root, unless the design also fixes the number of leaves. Bitcoin's block Merkle tree duplicates the last hash on odd levels, and its source code explains that this let the transaction lists `[1,2,3,4,5,6]` and `[1,2,3,4,5,6,5,6]` share a root (CVE-2012-2459).
+- **Duplicating the odd node without the count.** Pairing an odd last node with a copy of itself is simple, and common, but it gives `[a, b, c]` and `[a, b, c, c]` the same root. That is harmless when the number of leaves is fixed or committed elsewhere, and a hole when it is not: Bitcoin's block Merkle tree duplicates the last hash on odd levels, and its source code explains that this let the transaction lists `[1,2,3,4,5,6]` and `[1,2,3,4,5,6,5,6]` share a root (CVE-2012-2459).
 - **Mixing leaves and nodes.** Without separate prefixes, a node can be presented as a leaf. Domain-separate every kind of input.
 - **Using broken hashes.** MD5 and SHA-1 have known collision weaknesses, as Python's `hashlib` documentation notes. Use SHA-256, SHA-512, SHA-3 or BLAKE2 for anything that must resist collisions.
 
@@ -284,9 +294,9 @@ For `n` items or entries, each of size at most `L`, and a digest of fixed size:
 |-----------|------|-------|
 | Digest of data of size `L` | O(L) | O(1) |
 | Compare two stored digests | O(1) | |
-| Append to a hash chain | O(L) for the entry, O(1) to extend the head | O(1) per stored head |
-| Compare two histories by their heads | O(1) | |
-| First difference between two histories, heads kept | O(log n) comparisons | O(n) heads |
+| Append to a hash chain | O(L) for the entry, O(1) to extend the chain digest | O(1) per stored chain digest |
+| Compare two histories by their chain digests | O(1) | |
+| First difference between two histories, chain digests kept | O(log n) comparisons | O(n) chain digests |
 | Build a Merkle tree | O(n L) | O(n) nodes |
 | Inclusion proof: size, and time to verify | O(log n) digests, O(L + log n) | O(log n) |
 
@@ -296,10 +306,10 @@ These costs assume the hash is never broken in the ways it is designed against; 
 
 - **Generic bounds and digest length.** Because of the birthday bound, an `n`-bit hash offers at most `n/2` bits of collision resistance. That is why 128-bit digests are too short for collision resistance today, and why SHA-256's 256 bits give about 128 bits of it.
 - **Preimage does not imply collision.** A hash can resist preimages and still have practical collisions, which is the situation of MD5 and SHA-1: fine as checksums against accidents, broken as fingerprints against attackers.
-- **Merkle tree shapes.** RFC 9162's split at the largest power of two gives every list exactly one tree, and makes proofs of consistency between an older and a newer tree possible, so a log can prove it only appended. Other designs pad to a power of two, or promote the odd node unchanged; the one shape to avoid is duplicating it without fixing the leaf count.
+- **Merkle tree shapes.** RFC 9162's split at the largest power of two gives every list exactly one tree, and makes proofs of consistency between an older and a newer tree possible, so a log can prove it only appended. Other designs pad to a power of two, promote the odd node unchanged, or duplicate it. Each is a trade-off: duplication keeps every level a list of pairs, at the price of the `[a, b, c]` and `[a, b, c, c]` ambiguity, which the record count, hashed in beside the root, removes. The tamper-evident ledger problem duplicates, and its follow-ups ask about exactly this.
 - **What a proof proves.** An inclusion proof shows that an item is in the tree whose root you hold, nothing more. Whether that root is the right one is a separate question, answered by signatures or by publishing roots where many parties can compare them.
 - **Chains, trees and both.** Version control systems name every snapshot by a hash of its content and of its parents, a chain of trees; append-only logs combine a growing Merkle tree with signed roots. The building blocks are the two in this guide.
-- **Hash tables and cryptographic hashes meet in the middle.** SipHash, the default hasher of Rust's `HashMap`, is a keyed pseudorandom function: it is fast enough for tables, and an attacker without the per-process key cannot predict which keys collide. It is designed for that, not to be a collision-resistant fingerprint.
+- **Hash tables and cryptographic hashes meet in the middle.** SipHash, the default hasher of Rust's `HashMap`, is a keyed pseudorandom function: it is fast enough for tables, and an attacker without the key cannot predict which keys collide. Rust generates the keys randomly once per thread and changes them for every new map, so two maps in one program do not even iterate in the same order. It is designed for that, not to be a collision-resistant fingerprint.
 
 ## Practice
 

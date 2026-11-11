@@ -36,7 +36,7 @@ In the drawing, `paper` and `title` look nothing alike, but both repeat their fi
 
 ## A worked example
 
-Here are five canonical keys, each ignoring something different.
+Here are four canonical keys, each ignoring something different, and one key that goes wrong.
 
 ```python examples/canonical_keys.py
 """Choosing a key so that the things you call equal collide on purpose."""
@@ -83,15 +83,6 @@ for key, members in group(fractions, reduced).items():
 glued = {"ab" + "c", "a" + "bc"}
 print("glued keys for ('ab', 'c') and ('a', 'bc'):", glued)
 print("tuple keys keep them apart:", len({("ab", "c"), ("a", "bc")}), "keys")
-
-# 5. One set, tagged keys: a room or a teacher may not be booked twice in one slot.
-bookings = [("room 1", "kim", 9), ("room 2", "lee", 9), ("room 1", "lee", 10), ("room 2", "lee", 10)]
-taken: set[tuple[str, str, int]] = set()
-for room, teacher, hour in bookings:
-    for key in (("room", room, hour), ("teacher", teacher, hour)):
-        if key in taken:
-            print("conflict:", key)
-        taken.add(key)
 ```
 
 It prints:
@@ -106,7 +97,6 @@ value (2, 3) -> [(2, 3), (4, 6)]
 value (-1, 2) -> [(3, -6)]
 glued keys for ('ab', 'c') and ('a', 'bc'): {'abc'}
 tuple keys keep them apart: 2 keys
-conflict: ('teacher', 'lee', 10)
 ```
 
 Trace each one.
@@ -115,7 +105,6 @@ Trace each one.
 2. **Word shapes.** The key replaces each letter with the position at which that letter was first seen. For `paper`: `p` is new, 0; `a` is new, 1; `p` was seen first at 0; `e` is new, 2; `r` is new, 3. So `paper` becomes `(0, 1, 0, 2, 3)`, and `title` gives the same tuple: `t`, `i`, `t` again, `l`, `e`. `apple` repeats its second letter instead and gets `(0, 1, 1, 2, 3)`. The key ignores which letters are used and keeps where they repeat.
 3. **Fractions.** Dividing by the greatest common divisor turns `2/4` into `1/2`. Equal values can still differ in sign, `-1/-2` against `1/2`, so the key also moves the sign to the top: the divisor takes the sign of the bottom, which leaves every bottom positive. `3/-6` becomes `-1/2`, a different value, in a group of its own.
 4. **A key that loses information.** Gluing strings, `"ab" + "c"` and `"a" + "bc"`, gives the same `"abc"`: two different pairs collide by accident. A tuple keeps the boundary between its parts, so `("ab", "c")` and `("a", "bc")` stay two keys. If you must build a string key, put a separator that cannot occur in the parts between them, or the length of each part in front of it. [Cryptographic hashes](../cryptographic-hashes/guide.md) meets the same trap with higher stakes.
-5. **Tagged keys in one set.** A room may not be booked twice in the same hour, and neither may a teacher. Rather than one set per rule, one set holds tuples tagged with the rule they belong to: `("room", "room 1", 9)` and `("teacher", "kim", 9)` can never be confused, because the tag differs. The fourth booking puts Lee in two rooms at 10, and the teacher key catches it.
 
 ### The same idea in JavaScript
 
@@ -159,20 +148,20 @@ plain object keys: [ 'paris,lyon', '[object Object]' ]
 Map finds NaN with NaN: not a number
 ```
 
-The `Map` with array keys counts two different routes, because each array is its own object. `JSON.stringify` turns each array into a canonical string, and the two visits now share a key. The plain object shows the opposite danger: an array key becomes `"paris,lyon"`, and **every** object key becomes the same string `"[object Object]"`, so the second object silently overwrote the first. A `Map` also finds `NaN` with `NaN`, which `===` never does.
+The `Map` with array keys counts two different routes, because each array is its own object. `JSON.stringify` turns each array into a string, and the two visits now share a key. That string is canonical only for arrays of primitives: for objects, `JSON.stringify` writes the keys in the order the object has them, so `{a: 1, b: 2}` and `{b: 2, a: 1}` give different strings. Sort object keys first, or build the key from the fields in a fixed order. The plain object shows the opposite danger: an array key becomes `"paris,lyon"`, and **every** object key becomes the same string `"[object Object]"`, so the second object silently overwrote the first. A `Map` also finds `NaN` with `NaN`, which `===` never does.
 
 ## When to use it
 
 - **Grouping**: put together everything that is "the same" in some loose sense: words with the same letters, files with the same content, points on the same line.
 - **Deduplicating** by a looser equality: store keys in a set and keep an item only if its key is new.
-- **Detecting conflicts**: two things that may not share a slot collide on a key built from the slot. Tagged tuples check several rules with one set.
+- **Detecting conflicts**: two things that may not share a slot collide on a key built from the slot.
 - **Caching** the result of a function whose answer does not depend on some detail of the input: key the cache by the input with that detail removed.
 
 The sign that you need a canonical key: you are about to compare every item with every other item using some custom notion of equality. Comparing all pairs is O(n²); computing a key per item and hashing it is O(n) keys, each as costly as its computation.
 
 ## Common traps
 
-- **A key that ignores too much.** Lowercasing an identifier where case matters, or sorting the letters of words when the question was about the order of letters, makes different things collide.
+- **A key that ignores too much.** Lowercasing an identifier where case matters, or sorting a list whose order matters, makes different things collide.
 - **A key that keeps too much.** Leaving trailing whitespace, a sign, or a scale factor in the key keeps equal things apart. Test the key with pairs you know should match.
 - **Ambiguous concatenation.** Joining parts with no separator, or with one that can appear inside the parts, makes unequal tuples share a string. Use a real tuple, or encode lengths.
 - **Unhashable keys.** A list or a dict cannot be a key in Python; a mutable list as a key in Java breaks when it changes. Convert to a tuple or a frozenset, or build an immutable string.
@@ -189,21 +178,19 @@ For `n` items, each of size `L`, with a key that costs `K(L)` to compute:
 | Group or deduplicate with a hash map | O(n) hashes and comparisons on average, each O(size of a key) | O(n) |
 | Compare every pair instead | O(n² · cost of one comparison) | O(1) extra |
 
-Typical key costs: sorting the characters of a word is O(L log L); counting letters over a fixed alphabet of size `A` is O(L + A), and the count tuple itself has `A` entries; normalizing case or whitespace is O(L); reducing a fraction is O(log of the numbers) with Euclid's algorithm. The hash map is O(1) per key **on average**, with the usual assumption of a well-spread hash; hashing a key of size `s` costs O(s), so long keys make each step slower without changing the count of steps.
+Typical key costs: sorting the parts of an item is O(L log L); computing a word's shape or normalizing case or whitespace is O(L); reducing a fraction is O(log of the numbers) with Euclid's algorithm. The hash map is O(1) per key **on average**, with the usual assumption of a well-spread hash; hashing a key of size `s` costs O(s), so long keys make each step slower without changing the count of steps.
 
 ## Expert notes
 
-- **Canonical form versus invariant.** A canonical form is a key that is itself a member of the class, such as the reduced fraction `1/2` or the sorted edge `('lyon', 'paris')`. An invariant only has to be equal for equal items: a letter count is an invariant of an anagram class. Either works as a key, provided it is also different for different classes. An invariant that is equal for some different classes, such as the length of a word, makes a fine **pre-filter** but a wrong key.
-- **Counting keys beat sorting keys on long inputs.** For words over a fixed alphabet, a tuple of 26 counts is computed in O(L), while sorting is O(L log L). For short words the sort is often faster in practice, because building and hashing a 26-entry tuple has a fixed cost.
+- **Canonical form versus invariant.** A canonical form is a key that is itself a member of the class, such as the reduced fraction `1/2` or the sorted edge `('lyon', 'paris')`. An invariant only has to be equal for equal items: the number of distinct letters is an invariant of a word's shape, 4 for both `paper` and `title`. It is not a key, because different shapes share it: `apple` has 4 distinct letters too. An invariant like that, or the length of a word, makes a fine **pre-filter**, which rules out pairs cheaply before the real key decides, but a wrong key.
 - **Unicode makes "the same text" hard.** The same accented letter can be stored as one code point or as a letter followed by a combining mark, and case folding is more than lowercasing in some languages. Python's `unicodedata.normalize` and `str.casefold` exist for these cases; decide which equality the problem means before choosing one.
-- **Floating-point keys.** `0.1 + 0.2 == 0.3` is false, so values computed in different ways may never share a key. Round to a fixed number of digits, or work in integers or exact fractions, before using numbers as keys.
+- **Floating-point keys.** `0.1 + 0.2 == 0.3` is false, so values computed in different ways may never share a key. Rounding to a fixed number of digits helps, but still splits two close values that fall on either side of a rounding boundary; exact values, such as integers or fractions, avoid the problem.
 - **Keys for geometry.** A line through two integer points can be keyed by its reduced direction and offset, the same gcd-and-sign normalization as the fractions above. Without it, the slope `dy/dx` in floating point splits one line into several keys.
-- **Tagged keys scale.** One set of tagged tuples replaces several sets, and adding a rule is one more tag. The tag must make keys of different rules unequal, so use a tuple, never a glued string.
 
 ## Practice
 
-- `cstudy start group-anagrams`: choose the key that makes anagrams collide. Compare sorting each word with counting its letters.
-- `cstudy start valid-sudoku`: several rules over one board. Decide what each key must hold, so that a repeated digit collides with the digit it repeats.
+- `cstudy start group-anagrams`: decide what two words that belong together have in common, and make it the key.
+- `cstudy start valid-sudoku`: several rules over one board, each a question of "have I seen this before?".
 
 ## Further reading
 

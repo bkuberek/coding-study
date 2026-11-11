@@ -63,7 +63,6 @@ What the map stores depends on the question:
 |--------------------------|--------------------------|-----------------------------|
 | How many have sum `k`? | How many times that prefix has occurred | `{0: 1}` |
 | What is the longest with sum `k`? | The **first** position where that prefix occurred | `{0: 0}` |
-| Does any have a sum divisible by `m`? | Prefix **remainders** modulo `m`, with first positions | `{0: 0}` |
 
 The seed stands for the empty prefix, the zero you have before reading anything. Without it, stretches that start at the very first value are never found.
 
@@ -150,7 +149,7 @@ The first two lines show a range sum answered with one subtraction. Then the lon
 ## When to use it
 
 - The question is about **contiguous** stretches: subarrays, windows, runs. Not subsequences, which may skip elements.
-- The stretch's property is a **sum** or something that behaves like one: a count of matches, a balance of +1 and -1, a remainder modulo `m`, a running XOR. What matters is that the property of a stretch can be computed from two prefixes, by subtraction, or by XOR, which undoes itself.
+- The stretch's property is a **sum** or something that behaves like one: a count of matches, a balance of +1 and -1, a running XOR. What matters is that the property of a stretch can be computed from two prefixes, by subtraction, or by XOR, which undoes itself.
 - The values may be **negative** or zero. That rules out a sliding window: a window grows while its sum is too small and shrinks while it is too big, which only works when every value is positive, so that growing always adds and shrinking always removes. With negative values, a prefix map is the tool.
 - You need range sums many times on data that does not change: build the prefix array once in O(n), then answer each query in O(1).
 
@@ -160,9 +159,7 @@ The first two lines show a range sum answered with one subtraction. Then the lon
 - **Recording before asking.** At each step, ask about `p - k` first and record `p` second. Recording first lets a stretch of length zero match itself when `k` is 0.
 - **Overwriting the first position.** For the longest stretch, store a prefix's position only the first time it appears. Updating it to the latest position makes stretches shorter.
 - **Off-by-one between prefixes and positions.** `prefix[i]` is the sum of the first `i` values, so the stretch between two equal prefixes at `i < j` covers values `i` to `j - 1`. Draw the table once and the indices follow.
-- **Remainders of negative numbers.** In Python, `-7 % 5` is `3`; in Java, Go and JavaScript, `-7 % 5` is `-2`. When a problem needs prefix remainders, normalize with `((p % m) + m) % m` in those languages, or equal remainders will look different.
 - **Overflow.** Prefix sums grow. In a language with fixed-size integers, 10⁵ values of up to 10⁹ need 64-bit sums.
-- **A minimum length.** If a stretch must hold at least two values, keep first positions and check the distance, rather than counting every pair.
 
 ## Complexity
 
@@ -172,7 +169,7 @@ The first two lines show a range sum answered with one subtraction. Then the lon
 | Prefix array, then answer `q` range-sum queries | O(n + q) | O(n) |
 | One pass with a running sum and a hash map | O(n) on average | O(n) for up to `n + 1` distinct prefixes |
 
-The one-pass bound is an **average**: each of the `n` steps does a constant number of hash map operations, each O(1) on average under the usual assumption of a well-spread hash. The worst case of a hash map, O(n) per operation, would make it O(n²); a sorted map instead of a hash map gives O(n log n) in the worst case. The space is O(n) because the map holds at most one entry per distinct prefix; for remainders modulo `m` it holds at most `m` entries, so O(min(n, m)).
+The one-pass bound is an **average**: each of the `n` steps does a constant number of hash map operations, each O(1) on average under the usual assumption of a well-spread hash. The worst case of a hash map, O(n) per operation, would make it O(n²); a sorted map instead of a hash map gives O(n log n) in the worst case. The space is O(n) because the map holds at most one entry per distinct prefix, and there are `n + 1` prefixes.
 
 ## Expert notes
 
@@ -180,16 +177,14 @@ The one-pass bound is an **average**: each of the `n` steps does a constant numb
 - **Encode a condition as a sum.** "As many vowels as consonants" is +1 and -1. "Equal counts of three letters" is a key of two differences, `(count_a - count_b, count_b - count_c)`, stored in the map as a tuple: a [canonical key](../canonical-keys/guide.md) for "the stretch between these two points is balanced".
 - **Two dimensions.** A 2D prefix table `S[i][j]`, the sum of the rectangle above and left of `(i, j)`, answers any rectangle sum with four lookups: `S[r2][c2] - S[r1][c2] - S[r2][c1] + S[r1][c1]`. Combined with a hash map over one dimension, it counts submatrices with a target sum in O(rows² × columns).
 - **Difference arrays are the inverse.** To add `v` to every value in a range many times, add `v` at the start and subtract it after the end of a difference array, then take its prefix sums once at the end. Each update is O(1) instead of O(length of the range).
+- **An array instead of the map.** The map holds up to `n + 1` distinct prefix values. When the values are small bounded integers, the prefixes are bounded too: the balances of `n` games lie between `-n` and `n`, so an array of `2n + 1` slots, indexed by `balance + n`, replaces the hash map with no hashing and a worst case equal to its average.
 - **When the data changes.** A prefix array must be rebuilt after an update, which costs O(n). A Fenwick tree (binary indexed tree) or a segment tree supports both updates and prefix queries in O(log n).
 
 ## Practice
 
 - `cstudy start subarray-sum-equals-k`: count the stretches with a given sum, with negative values allowed, so no sliding window.
-- `cstudy start continuous-subarray-sum`: a sum that is a multiple of `k`, and a stretch of at least two values. Think about what the map should hold, and what the seed's position should be.
+- `cstudy start continuous-subarray-sum`: the same running sum, asked a different question, with a rule about the stretch's length.
 
 ## Further reading
 
 - [Python `itertools.accumulate`](https://docs.python.org/3/library/itertools.html#itertools.accumulate): running sums in one call; `initial=0` adds the empty prefix.
-- [Python `%` on negative numbers](https://docs.python.org/3/reference/expressions.html#binary-arithmetic-operations): the result has the sign of the divisor.
-- [The Go specification: integer operators](https://go.dev/ref/spec#Integer_operators): integer division truncates towards zero, so in Go, as in Java, `-7 % 5` is `-2`.
-- [MDN: remainder (`%`)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Remainder): the result takes the sign of the dividend.
