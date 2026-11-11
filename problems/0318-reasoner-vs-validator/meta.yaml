@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0318"
+slug: reasoner-vs-validator
+title: Reasoner vs Validator
+summary: "Build KnowledgeBase, which reads facts two ways: an open-world reasoner that infers types, links and clashes, and a closed-world validator that reports missing data. Then compare their answers."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs]
+domains: [algorithms, backend, ai-llm]
+job_roles: [general, backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Classes and inherited types}
+  - {level: 2, title: "Domain, range and the open world"}
+  - {level: 3, title: "Transitive, inverse and disjoint"}
+  - {level: 4, title: Shapes and the closed world}
+signature:
+  class:
+    name: KnowledgeBase
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}], returns: {type: bool}}
+      - {name: closure, level: 1, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: types, level: 1, params: [{name: resource, type: string}], returns: {type: "list<string>"}}
+      - {name: instances, level: 1, params: [{name: className, type: string}], returns: {type: "list<string>"}}
+      - {name: superClasses, level: 1, params: [{name: className, type: string}], returns: {type: "list<string>"}}
+      - {name: ask, level: 2, params: [{name: subject, type: string}, {name: predicate, type: string}, {name: obj, type: string}], returns: {type: string}}
+      - {name: inconsistencies, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: addShape, level: 4, params: [{name: shape, type: string}, {name: targetClass, type: string}], returns: {type: bool}}
+      - {name: addProperty, level: 4, params: [{name: shape, type: string}, {name: path, type: string}, {name: minCount, type: int}, {name: maxCount, type: int}, {name: valueClass, type: string}], returns: {type: bool}}
+      - {name: validate, level: 4, params: [], returns: {type: "list<list<string>>"}}
+      - {name: contrast, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: fixpoint-closure, name: Forward chaining to a fixed point and a check on the asserted graph, role: optimal, time: "O(J) to saturate, J the rule joins; O(F V) to validate", space: "O(T) for the T triples of the closure", time_class: "n^2", space_class: "n^2"}
+related: [triple-store, taxonomy, in-memory-database]
+estimate_minutes: 120
