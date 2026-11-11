@@ -210,6 +210,7 @@ The path's next step is its first step that is not done.
 3. Write the examples, run them, and paste each one's output into its `output` block.
 4. Draw the diagrams in Mermaid, then `pnpm install` and `pnpm render` in `tools/guides/`.
 5. `cstudy verify --static`, then `uv run pytest tests/content/test_guide_examples.py` in `cli/`.
+6. List every fact about a language, library or standard with its source in a review page, as [the hashing guides' review](../reviews/guides-hashing.md) does, so that an independent review can check it.
 
 ## Guides page (next)
 
