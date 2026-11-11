@@ -1306,7 +1306,7 @@ Built in P9 (R28). Sandboxed code writes a service project's folder, so no serve
 | Start | Once the page's CSRF message arrives: Docker's state and the image are asked first, then `docker compose up --detach`, about 0.3 s, then the server |
 | Stop | With the session: the server's stop sequence, then `docker compose down` and the run's folder. A guard takes the sidecar down if `cstudy serve` dies, and the sweep knows the stack by its name and owner |
 | Docker not usable | The socket closes with 4004 and a calm reason: `Docker is not running`, `Docker is not installed`, `Docker has no compose v2`, `Docker refuses this user`, or `needs the node image: docker pull <node:24-slim@sha256:…>` for a Python project whose `cstudy start` did not pull it. The status bar shows the reason with Restart, in its usual colour ([Status bar](web-ui.md#status-bar)) |
-| Other languages | A service project in a language whose server runs in no sidecar yet keeps `no_code_intelligence`: `service_project` ([`cstudy status --json`](cli.md#cstudy-status)); the page shows `code intelligence for <Language> service projects comes later` and a session is refused with 422 `usage`, `no code intelligence for go service projects yet` |
+| Other languages | A service project in a language whose server runs in no sidecar yet, as [the route table](web-ui.md#where-each-server-runs) says with its reason, keeps `no_code_intelligence`: `service_project` ([`cstudy status --json`](cli.md#cstudy-status)); the page shows `code intelligence for <Language> service projects comes later` and a session is refused with 422 `usage`, `no code intelligence for go service projects yet: pending P13: …`, the table's reason after the colon |
 
 Measured on the catalog's first service projects, on macOS with Docker Desktop: TypeScript's first diagnostics 1.4 s after `didOpen` (1.6 s after the server started), 366 MiB in the sidecar, 386 MiB at peak; basedpyright's 0.8 s, 129 MiB, 140 MiB at peak. The spike measured TypeScript at 504 MiB at peak on an Express project, which the 768 MiB limit holds.
 
@@ -1326,6 +1326,15 @@ What the spike answered, and P9 kept:
 - **Definitions outside the folder.** None in the sidecar design, for these two servers: a definition into `node_modules`, the `.venv`'s `site-packages` or typeshed in `.cs/lsp/` names a file of the bind-mounted folders, which the library tab reads on your machine at the same path ([Definitions and library files](web-ui.md#definitions-and-library-files)).
 
 Otherwise service projects use existing roots: the session's root is the project folder, basedpyright resolves imports through the folder's `.venv`, and tsserver through its `node_modules`. Non-Node servers come with their languages' phases.
+
+The languages whose service projects run no server yet, from [the route table](web-ui.md#where-each-server-runs), and what a sidecar of theirs would need:
+
+| Language | Route | What its sidecar would need |
+|----------|-------|-----------------------------|
+| Java | pending | JDT LS runs on a JDK and imports the project's Gradle build, which the Node image lacks |
+| Kotlin | pending | The Kotlin LSP that `cstudy doctor --fix` fetches is the build of this machine, with its own JetBrains Runtime and a native launcher: on a Mac it cannot run in the project's Linux image, and on Linux its runtime needs the glibc that the project's Alpine image lacks. Two routes are left: start its `lib/` jars on the image's JDK 25 with the options its `product-info.json` names, which adds nothing to the disk, or fetch the Linux build for the engine's processor beside this machine's (360 MB, 1.1 GB unpacked) and run it on a glibc image with the project's Gradle and JDK, another pull. Either way its Gradle import must find the image's Gradle, since the project has no wrapper. Choosing between them means running the server, which needs its license accepted by you (`CSTUDY_ACCEPT_LICENSE=kotlin-lsp` for the real-server tests) |
+| Go | pending P13 | P13 builds Go service projects. The gopls in `.cs/lsp/bin/` is built for this machine, so a sidecar needs one built for Linux on the engine's processor (`GOOS=linux GOARCH=<arm64 or amd64> go install` into a folder of its own under `.cs/lsp/`, by `cstudy doctor --fix`), run on the project's own Go image with the install cache's module cache read-only, `GOFLAGS=-mod=readonly`, `GOPROXY=off` and `GOTOOLCHAIN=local` |
+| Rust | not applicable | The catalog has no Rust service project. One would need a Linux rust-analyzer in its sidecar and the crates its install fetched |
 
 The page reads the list of languages for its attempt (`GET /api/v1/code-intelligence/languages?attempt_id=N`, [Code intelligence](web-ui.md#code-intelligence)), which judges a service project's servers as its sidecar runs them: TypeScript is installed once `.cs/lsp/` holds it, whether or not the workspace's `typescript/` has its `node_modules`.
 

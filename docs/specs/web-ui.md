@@ -642,6 +642,27 @@ A server that is not a Node program, such as JDT LS in phase 2 and gopls and rus
 | Offline | No server reaches the network (NFR-6): tsserver's automatic type acquisition is off; JDT LS imports Gradle offline over what `cstudy doctor --fix` warmed up, imports no Maven project, downloads no sources, and finds an empty list of Gradle versions in its data directory, so its check of the root's Gradle wrapper fetches no checksum from `services.gradle.org`; the Kotlin LSP checks for no update and shares no data (`--data-sharing` is `none` by default), and its import finds the sources it reads in Gradle's cache, which `cstudy doctor --fix` filled online |
 | No imports added | Completions that add an import are off in both servers, since adding an import is a quick fix, which stays out of scope |
 
+### Where each server runs
+
+Once `code_intelligence` is on, every kind of problem gets code intelligence in every language by the route this table names. `domain/code_intelligence.py` holds it as data (`route_for`, and `SERVICE_PROJECT_ROUTES` for service projects, with a reason for each cell that runs no server), and `tests/domain/test_code_intelligence_routes.py` fails when a kind of `ProblemKind` or a language of `Language` has no route, when a cell loses or gains a server without the test's list of gaps changing, and when this table says something else than the data. A debugging problem is one of the debugging track, whatever its kind; a service project is a project with a `service` block ([service projects](service-projects.md)).
+
+| Kind | Python | TypeScript | Java | Kotlin | Go | Rust |
+|------|--------|------------|------|--------|----|------|
+| function | native | native | native | native | native | native |
+| progressive | native | native | native | native | native | native |
+| design | native | native | native | native | native | native |
+| concurrent | native | native | native | native | native | native |
+| debugging | native | native | native | native | native | native |
+| project | native | native | native | native | native | native |
+| service project | sidecar | sidecar | pending | pending | pending | not applicable |
+
+| Route | Meaning |
+|-------|---------|
+| native | The language's server of [Language servers](#language-servers) runs on this machine, rooted in the practice project or the project folder |
+| sidecar | The server runs in a container of its own beside the service project, through `docker exec` ([Language servers](service-projects.md#language-servers)): sandboxed code writes the folder, so no server on this machine reads it |
+| pending | No server yet, and the page says `code intelligence for <Language> service projects comes later`. Java: JDT LS runs on a JDK and imports Gradle, which the Node image of the sidecars lacks. Kotlin: the Kotlin LSP is a build per machine with its own runtime and launcher, which the project's Linux image cannot run, and trying another route means running the server, which needs JetBrains' license accepted by you ([Kotlin](service-projects.md#language-servers)). Go: pending P13, which builds Go service projects; gopls in their sidecar comes after them ([Go](service-projects.md#language-servers)) |
+| not applicable | The catalog has no problem of the kind in the language: there is no Rust service project. The cell is data too: the change that adds a Rust service project gives it a route, or a reason, and the test's list of gaps changes with it |
+
 ## Page
 
 One page, with views addressed by the URL's fragment, so the server serves only `/`. Every view works with the keyboard alone.

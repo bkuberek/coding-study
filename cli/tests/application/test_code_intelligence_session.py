@@ -349,6 +349,18 @@ def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(t
         target(environment, attempt)
 
 
+@pytest.mark.parametrize(
+    ("language", "reason"),
+    [("go", "pending P13"), ("kotlin", "its license"), ("rust", "no Rust service project")],
+)
+def test_the_refusal_says_why_from_the_route_table(tmp_path, language, reason):
+    environment = service_environment(tmp_path, language)
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+
+    with pytest.raises(UsageError, match=reason):
+        target(environment, attempt)
+
+
 class WithoutPracticeProjects(FakeLanguageServers):
     """Every server is installed in `.cs/lsp/`, and the workspace's `typescript/` has no
     `node_modules`, as for a learner who works on service projects only."""

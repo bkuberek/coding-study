@@ -39,7 +39,7 @@ from coding_study.domain.code_intelligence import (
     SIDECAR_SERVERS,
     LanguageServer,
     License,
-    no_code_intelligence,
+    route_of,
     server_for,
     sidecar_server,
 )
@@ -293,14 +293,20 @@ def _language_of(attempt: Attempt) -> Language:
 
 
 def _server_of(meta: ProblemMeta, language: Language) -> LanguageServer:
-    """A service project's folder is written by sandboxed code, and a server on this machine would
-    read it, so its server runs in a sidecar, in the languages whose servers run there
+    """The route table says where the server runs (docs/specs/web-ui.md#where-each-server-runs): a
+    service project's folder is written by sandboxed code, and a server on this machine would read
+    it, so its server runs in a sidecar, in the languages whose servers run there
     (docs/specs/service-projects.md#language-servers)."""
     server = server_for(language)
     if server is None:
         raise UsageError(f"no code intelligence for {language.value} yet")
-    if no_code_intelligence(meta, language) is not None:
-        raise UsageError(f"no code intelligence for {language.value} service projects yet")
+    route = route_of(meta, language)
+    if route is None:
+        raise UsageError(f"no code intelligence for {meta.kind.value} problems yet")
+    if not route.runs:
+        raise UsageError(
+            f"no code intelligence for {language.value} service projects yet: {route.reason}"
+        )
     return server
 
 

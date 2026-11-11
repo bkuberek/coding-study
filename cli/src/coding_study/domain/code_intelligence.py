@@ -21,7 +21,7 @@ from coding_study.domain.layout import (
     RUST_PROJECT,
     TYPESCRIPT_PROJECT,
 )
-from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 from coding_study.domain.server_builds import Build, License, Releases
 from coding_study.domain.service_project import service_of
 
@@ -770,6 +770,98 @@ def sidecar_server(server: LanguageServer, folder: str) -> LanguageServer:
     return replace(server, initialization_options=options, requirement=None)
 
 
+class RouteKind(StrEnum):
+    """The kinds of problem that the route table tells apart (docs/specs/web-ui.md#where-each-
+    server-runs): each `ProblemKind`, a debugging problem, and a project that is a service
+    project."""
+
+    FUNCTION = "function"
+    PROGRESSIVE = "progressive"
+    DESIGN = "design"
+    CONCURRENT = "concurrent"
+    DEBUGGING = "debugging"
+    PROJECT = "project"
+    SERVICE_PROJECT = "service_project"
+
+
+_ROUTE_KINDS: Mapping[ProblemKind, RouteKind] = {
+    ProblemKind.FUNCTION: RouteKind.FUNCTION,
+    ProblemKind.PROGRESSIVE: RouteKind.PROGRESSIVE,
+    ProblemKind.DESIGN: RouteKind.DESIGN,
+    ProblemKind.CONCURRENT: RouteKind.CONCURRENT,
+    ProblemKind.PROJECT: RouteKind.PROJECT,
+}
+"""A new `ProblemKind` has no route until it is named here."""
+
+
+def route_kind(meta: ProblemMeta) -> RouteKind | None:
+    """A service project first, then a problem of the debugging track, then the problem's kind;
+    None for a kind the table does not know."""
+    if service_of(meta) is not None:
+        return RouteKind.SERVICE_PROJECT
+    if meta.track is Track.DEBUGGING:
+        return RouteKind.DEBUGGING
+    return _ROUTE_KINDS.get(meta.kind)
+
+
+class Placement(StrEnum):
+    NATIVE = "native"
+    """The server runs on this machine, from `.cs/lsp/` or `PATH`."""
+    SIDECAR = "sidecar"
+    """The server runs in a container of its own, through `docker exec`: sandboxed code writes the
+    folder, and a server on this machine would run what it names."""
+    PENDING = "pending"
+    """No server yet; the reason names the work it waits for."""
+    NOT_APPLICABLE = "not_applicable"
+    """The catalog has no problem of this kind in this language."""
+
+
+@dataclass(frozen=True, slots=True)
+class Route:
+    placement: Placement
+    reason: str = ""
+    """Why there is no server, for a route that runs none."""
+
+    @property
+    def runs(self) -> bool:
+        return self.placement in (Placement.NATIVE, Placement.SIDECAR)
+
+
+NATIVE = Route(Placement.NATIVE)
+IN_SIDECAR = Route(Placement.SIDECAR)
+SERVICE_PROJECT_ROUTES: Mapping[Language, Route] = {
+    Language.PYTHON: IN_SIDECAR,
+    Language.TYPESCRIPT: IN_SIDECAR,
+    Language.JAVA: Route(
+        Placement.PENDING, "JDT LS runs on a JDK and imports Gradle, which the Node image lacks"
+    ),
+    Language.KOTLIN: Route(
+        Placement.PENDING,
+        "the Kotlin LSP is a build per machine with its own runtime and launcher, which the "
+        "project's Linux image cannot run; its sidecar waits for a spike that accepts its license",
+    ),
+    Language.GO: Route(
+        Placement.PENDING,
+        "pending P13: Go service projects come with P13, and gopls in their sidecar after them",
+    ),
+    Language.RUST: Route(Placement.NOT_APPLICABLE, "the catalog has no Rust service project"),
+}
+"""Where a service project's server runs, by language: a key for every language, so a new one
+says where it stands. Every other kind runs its language's server on this machine."""
+
+
+def route_for(kind: RouteKind, language: Language) -> Route | None:
+    """None where nothing says how the combination gets code intelligence: a gap."""
+    if kind is RouteKind.SERVICE_PROJECT:
+        return SERVICE_PROJECT_ROUTES.get(language)
+    return NATIVE if server_for(language) is not None else None
+
+
+def route_of(meta: ProblemMeta, language: Language) -> Route | None:
+    kind = route_kind(meta)
+    return None if kind is None else route_for(kind, language)
+
+
 class NoCodeIntelligence(StrEnum):
     """Why an attempt has no code intelligence whatever its language's server."""
 
@@ -782,5 +874,5 @@ def no_code_intelligence(meta: ProblemMeta, language: Language | None) -> NoCode
     """A service project in a language whose server runs in no sidecar yet has none."""
     if service_of(meta) is None:
         return None
-    in_sidecar = any(server.language is language for server in SIDECAR_SERVERS)
-    return None if in_sidecar else NoCodeIntelligence.SERVICE_PROJECT
+    route = None if language is None else route_of(meta, language)
+    return None if route is not None and route.runs else NoCodeIntelligence.SERVICE_PROJECT
