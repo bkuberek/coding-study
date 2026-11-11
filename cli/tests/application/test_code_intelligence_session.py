@@ -408,16 +408,16 @@ def test_a_practice_java_attempt_still_needs_a_jdk_25_or_26(tmp_path):
 
 
 def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):
-    environment = service_environment(tmp_path, "go")
+    environment = service_environment(tmp_path, "kotlin")
     attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
 
-    with pytest.raises(UsageError, match="no code intelligence for go service projects yet"):
+    with pytest.raises(UsageError, match="no code intelligence for kotlin service projects yet"):
         target(environment, attempt)
 
 
 @pytest.mark.parametrize(
     ("language", "reason"),
-    [("go", "pending P13"), ("kotlin", "its license"), ("rust", "no Rust service project")],
+    [("kotlin", "its license"), ("rust", "no Rust service project")],
 )
 def test_the_refusal_says_why_from_the_route_table(tmp_path, language, reason):
     environment = service_environment(tmp_path, language)

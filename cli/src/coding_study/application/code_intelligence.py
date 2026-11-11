@@ -30,6 +30,7 @@ from coding_study.application.ports import (
     VersionFailed,
     VersionPrinted,
 )
+from coding_study.application.service_lifecycle import server_in_install_cache
 from coding_study.application.service_stacks import RUN_ID_BYTES, workspace_id
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.code_intelligence import (
@@ -39,6 +40,7 @@ from coding_study.domain.code_intelligence import (
     SIDECAR_SERVERS,
     LanguageServer,
     License,
+    cache_install,
     route_of,
     server_for,
     sidecar_image,
@@ -79,6 +81,10 @@ NO_DOCKER: Mapping[EngineStatus, str] = {
 NO_SIDECAR_IMAGE = f"needs the node image: docker pull {NODE_IMAGE}"
 """A TypeScript project's `cstudy start` pulled the image, a Python project's did not. The status
 bar shows what comes before the colon, and its tooltip the rest."""
+NOT_IN_INSTALL_CACHE = "not in the project's install cache"
+INSTALL_CACHE_FIX = "cstudy test"
+"""A run installs again while the install cache lacks the server, now that code intelligence is
+on, and builds it there."""
 NO_PROJECT_IMAGE = "needs the project's image: run cstudy test or cstudy dev, which pull it"
 """A Java project's server runs on the project's image, which a run pulls. Its name and digest
 would not fit in a close reason, whose 123 bytes would cut the digest."""
@@ -134,23 +140,45 @@ def session_server_states(
 ) -> tuple[LanguageServerState, ...]:
     """The states as a session of the attempt judges its servers, which the page reads before it
     connects: a service project's TypeScript runs the project's own compiler in its sidecar, so it
-    needs nothing of the workspace's `typescript/`. Without an attempt, or for one that is no
-    service project's, these are `language_server_states`."""
+    needs nothing of the workspace's `typescript/`, and its gopls is the one its install built into
+    its install cache. Without an attempt, or for one that is no service project's, these are
+    `language_server_states`."""
     locator, jdk = environment.language_servers, environment.jdk
-    folder = _service_folder(environment, attempt_id)
-    if folder is None:
+    slug = _service_slug(environment, attempt_id)
+    if slug is None:
         return language_server_states(locator, jdk)
-    return tuple(_state(language, locator, jdk, folder) for language in Language)
+    folder = str(environment.root / project_folder(slug))
+    return tuple(
+        _cache_state_of(environment, slug, language) or _state(language, locator, jdk, folder)
+        for language in Language
+    )
 
 
-def _service_folder(environment: Environment, attempt_id: int | None) -> str | None:
-    """The absolute project folder of a service project's attempt; None for any other."""
+def _service_slug(environment: Environment, attempt_id: int | None) -> str | None:
+    """The slug of a service project's attempt; None for any other."""
     attempt = None if attempt_id is None else environment.progress.attempt(attempt_id)
     if attempt is None or attempt.language is None:
         return None
     if service_of(environment.problems.load(attempt.slug).meta) is None:
         return None
-    return str(environment.root / project_folder(attempt.slug))
+    return attempt.slug
+
+
+def _cache_state_of(
+    environment: Environment, slug: str, language: Language
+) -> LanguageServerState | None:
+    """For a server that a service project's install builds into its install cache, whether the
+    last install built the version cstudy pins; None for any other server."""
+    server = server_for(language)
+    install = None if server is None else cache_install(server)
+    if server is None or install is None:
+        return None
+    built = server_in_install_cache(environment, slug, install.name)
+    if built == install.version:
+        return _state_of(server, built, f"{server.name} {built}", None)
+    row = f"{server.name} {install.version} is not in the project's install cache"
+    problem = _Problem(row, NOT_IN_INSTALL_CACHE, fix=INSTALL_CACHE_FIX)
+    return _state_of(server, install.version, f"{problem.reason}: run {problem.fix}", problem)
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,7 +250,9 @@ def session_target(
     if sidecar is not None:
         server = sidecar_server(server, sidecar.project.path)
     jdk = environment.jdk
-    state = _located(server, environment.language_servers, jdk)
+    state = None if sidecar is None else _cache_state_of(environment, meta.slug, language)
+    if state is None:
+        state = _located(server, environment.language_servers, jdk)
     if state.problem is not None:
         raise LanguageServerNotInstalledError(state.problem, state.fix or FIX_COMMAND)
     java_home = jdk.selected_home() if server.jdks is not None else None

@@ -9,13 +9,14 @@ result. The limit on `commands.test`, and the run time this reports, start at th
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
-from typing import Protocol
+from typing import Protocol, cast
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
 from coding_study.application.http_grading import HttpCaseListener, HttpGradingRun, run_http_grading
 from coding_study.application.ports import ContainerCommand, ProgressNotice
+from coding_study.application.preferences import read_preferences
 from coding_study.application.sandbox import (
     ensure_engine,
     missing_images,
@@ -32,6 +33,7 @@ from coding_study.application.service_stacks import (
     workspace_id,
 )
 from coding_study.domain.attempts import Attempt
+from coding_study.domain.code_intelligence import CacheInstall, cache_install_of
 from coding_study.domain.docker_engine import INSTALL_REACHES, EngineStatus, engine_problem
 from coding_study.domain.errors import SandboxError, UsageError
 from coding_study.domain.judging import Judgement
@@ -58,6 +60,8 @@ from coding_study.domain.workspace_projects import project_folder
 
 INSTALL_RECORD_SUFFIX = ".install.json"
 RECORD_LOCK_KEY = "lock_sha256"
+RECORD_SERVERS_KEY = "servers"
+"""The language servers the install built into the install cache, by name, with their version."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +149,8 @@ def needs_install(environment: Environment, problem: Problem) -> bool:
         return True
     if not service.app.install_cache:
         return False
+    if _misses_its_language_server(environment, problem):
+        return True
     plan = install_plan(environment, problem, folder)
     return not environment.sandbox.install_cache_present(plan)
 
@@ -152,14 +158,68 @@ def needs_install(environment: Environment, problem: Problem) -> bool:
 def install_dependencies(
     environment: Environment, problem: Problem, notify: ProgressNotice
 ) -> None:
-    """`commands.install` in the project folder, and the record of the lock file it installed, only
-    after it succeeded. Raises as `install_in_folder`."""
+    """`commands.install` in the project folder, then the language server its sidecar runs where the
+    install builds it, and the record of the lock file it installed and of that server, only after
+    each succeeded. Raises as `install_in_folder`."""
     slug = problem.meta.slug
-    digest = install_in_folder(environment, problem, project_folder(slug), notify)
-    if digest is not None:
-        environment.workspace.write_text(
-            _record_path(slug), json.dumps({RECORD_LOCK_KEY: digest}) + "\n"
-        )
+    folder = project_folder(slug)
+    digest = install_in_folder(environment, problem, folder, notify)
+    if digest is None:
+        return
+    record: dict[str, object] = {RECORD_LOCK_KEY: digest}
+    server = _install_language_server(environment, problem, folder, notify)
+    if server is not None:
+        record[RECORD_SERVERS_KEY] = {server.name: server.version}
+    environment.workspace.write_text(_record_path(slug), json.dumps(record) + "\n")
+
+
+def server_in_install_cache(environment: Environment, slug: str, name: str) -> str | None:
+    """The version of the server called `name` that the last install of `slug` built into its
+    install cache; None if it built none (docs/specs/service-projects.md#language-servers)."""
+    servers = _record(environment, slug).get(RECORD_SERVERS_KEY)
+    found = servers.get(name) if isinstance(servers, dict) else None  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+    return found if isinstance(found, str) else None
+
+
+def _wanted_server(environment: Environment, problem: Problem) -> CacheInstall | None:
+    """The server the install builds into the install cache: only while `code_intelligence` is
+    on, since a learner who never turns it on downloads nothing for it."""
+    if not read_preferences(environment.preferences).code_intelligence:
+        return None
+    return cache_install_of(problem.meta)
+
+
+def _misses_its_language_server(environment: Environment, problem: Problem) -> bool:
+    wanted = _wanted_server(environment, problem)
+    if wanted is None:
+        return False
+    built = server_in_install_cache(environment, problem.meta.slug, wanted.name)
+    return built != wanted.version
+
+
+def _install_language_server(
+    environment: Environment, problem: Problem, folder: str, notify: ProgressNotice
+) -> CacheInstall | None:
+    """`go install` of gopls into the install cache, with the install's network, where the
+    sidecar finds it. A failure is said and leaves the project as installed: code intelligence
+    then says the server is missing, and the next install builds it again."""
+    wanted = _wanted_server(environment, problem)
+    if wanted is None:
+        return None
+    service = service_project(problem)
+    plan = install_plan(environment, problem, folder)
+    plan = replace(
+        plan, command=wanted.command, environment={**plan.environment, **wanted.environment}
+    )
+    notify(f"installing {wanted.name} {wanted.version} for code intelligence")
+    outcome = run_install_plan(environment, plan, service.timeouts.install, notify)
+    if outcome.exit_code == 0:
+        return wanted
+    notify(
+        f"{wanted.name} {wanted.version} was not installed, so code intelligence has none for "
+        f"this project: exit {outcome.exit_code}"
+    )
+    return None
 
 
 def install_in_folder(
@@ -237,17 +297,20 @@ def _record_path(slug: str) -> str:
 
 
 def _recorded_lock(environment: Environment, slug: str) -> str | None:
+    recorded = _record(environment, slug).get(RECORD_LOCK_KEY)
+    return recorded if isinstance(recorded, str) else None
+
+
+def _record(environment: Environment, slug: str) -> dict[str, object]:
+    """What the last install recorded; empty without a record, or for one that is not JSON."""
     path = _record_path(slug)
     if not environment.workspace.exists(path):
-        return None
+        return {}
     try:
         document: object = json.loads(environment.workspace.read_text(path))
     except json.JSONDecodeError:
-        return None
-    if isinstance(document, dict):
-        recorded = document.get(RECORD_LOCK_KEY)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
-        return recorded if isinstance(recorded, str) else None
-    return None
+        return {}
+    return cast(dict[str, object], document) if isinstance(document, dict) else {}
 
 
 def environment_of_test_command(plan: StackPlan) -> dict[str, str]:

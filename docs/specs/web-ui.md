@@ -654,13 +654,13 @@ Once `code_intelligence` is on, every kind of problem gets code intelligence in 
 | concurrent | native | native | native | native | native | native |
 | debugging | native | native | native | native | native | native |
 | project | native | native | native | native | native | native |
-| service project | sidecar | sidecar | sidecar | pending | pending | not applicable |
+| service project | sidecar | sidecar | sidecar | pending | sidecar | not applicable |
 
 | Route | Meaning |
 |-------|---------|
 | native | The language's server of [Language servers](#language-servers) runs on this machine, rooted in the practice project or the project folder |
-| sidecar | The server runs in a container of its own beside the service project, through `docker exec` ([Language servers](service-projects.md#language-servers)): sandboxed code writes the folder, so no server on this machine reads it. Python and TypeScript run on the pinned Node image; Java's JDT LS runs on the project's own image, whose JDK and Gradle import the project's build |
-| pending | No server yet, and the page says `code intelligence for <Language> service projects comes later`. Kotlin: the Kotlin LSP is a build per machine with its own runtime and launcher, which the project's Linux image cannot run, and trying another route means running the server, which needs JetBrains' license accepted by you ([Kotlin](service-projects.md#language-servers)). Go: pending P13, which builds Go service projects; gopls in their sidecar comes after them ([Go](service-projects.md#language-servers)) |
+| sidecar | The server runs in a container of its own beside the service project, through `docker exec` ([Language servers](service-projects.md#language-servers)): sandboxed code writes the folder, so no server on this machine reads it. Python and TypeScript run on the pinned Node image; Java's JDT LS runs on the project's own image, whose JDK and Gradle import the project's build; Go's gopls runs on the project's own image too, built into the project's install cache by its install |
+| pending | No server yet, and the page says `code intelligence for <Language> service projects comes later`. Kotlin: the Kotlin LSP is a build per machine with its own runtime and launcher, which the project's Linux image cannot run, and trying another route means running the server, which needs JetBrains' license accepted by you ([Kotlin](service-projects.md#language-servers)). |
 | not applicable | The catalog has no problem of the kind in the language: there is no Rust service project. The cell is data too: the change that adds a Rust service project gives it a route, or a reason, and the test's list of gaps changes with it |
 
 ## Page
@@ -955,7 +955,7 @@ The status bar shows the active file's code intelligence while `code_intelligenc
 | License not accepted | `no code intelligence for Kotlin: kotlin-lsp's license is not accepted · Health`, linking to the Health view, whose `code intelligence kotlin` row names the license and `cstudy doctor --fix --accept-license kotlin-lsp`; the segment's tooltip names the command too |
 | No server yet | `no code intelligence for <language> yet`, for a language the catalog has no server for; every language has one since Kotlin's |
 | Service project, waiting for Docker | `typescript · typescript-language-server · Docker is not running · Restart`, or another reason of the 4004 close ([Sessions](#sessions)), in the segment's usual colour: nothing failed. The tooltip carries the whole reason, such as the `docker pull` that brings the sidecar's image, and Restart tries again once Docker answers. A service project in TypeScript or Python otherwise shows the states above, its server running in a [sidecar](service-projects.md#language-servers) |
-| Service project in another language | `code intelligence for Go service projects comes later`, for each file in the attempt's language, from the attempt's `no_code_intelligence`: the page reads no list of languages and opens no session, so the segment does not change and has no Restart |
+| Service project in another language | `code intelligence for Kotlin service projects comes later`, for each file in the attempt's language, from the attempt's `no_code_intelligence`: the page reads no list of languages and opens no session, so the segment does not change and has no Restart |
 | No definition | `no definition found`, for 3 s after a jump that found none |
 
 The segment is text in the status bar, not a live region. Restart is a button after the text, and `Health` a link to the Health view; a stopped session's tooltip carries the whole close reason (`exit 1: Error: Cannot find module …`). A file in a language without a server works as it does without code intelligence.

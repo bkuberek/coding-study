@@ -27,7 +27,6 @@ SPEC = Path(__file__).resolve().parents[3] / "docs" / "specs" / "web-ui.md"
 TABLE_HEADING = "### Where each server runs"
 EXPECTED_GAPS = {
     Language.KOTLIN: Placement.PENDING,
-    Language.GO: Placement.PENDING,
     Language.RUST: Placement.NOT_APPLICABLE,
 }
 """The service projects without a server, each with its reason in the catalog's data: a cell that
@@ -85,8 +84,8 @@ def test_the_service_projects_without_a_server_are_the_expected_ones():
     assert gaps == EXPECTED_GAPS
 
 
-def test_go_service_projects_wait_for_p13():
-    assert SERVICE_PROJECT_ROUTES[Language.GO].reason.startswith("pending P13")
+def test_no_cell_waits_for_p13_any_more():
+    assert not any("P13" in route.reason for route in SERVICE_PROJECT_ROUTES.values())
 
 
 @pytest.mark.parametrize("language", Language)

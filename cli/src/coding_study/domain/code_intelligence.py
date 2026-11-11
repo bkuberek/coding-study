@@ -23,6 +23,9 @@ from coding_study.domain.layout import (
 )
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 from coding_study.domain.sandbox import (
+    CACHE_DIRECTORY as INSTALL_CACHE,
+)
+from coding_study.domain.sandbox import (
     JVM_SIDECAR_MEMORY,
     JVM_SIDECAR_PIDS,
     NODE_IMAGE,
@@ -758,12 +761,21 @@ def server_for(language: Language) -> LanguageServer | None:
     return next((server for server in LANGUAGE_SERVERS if server.language is language), None)
 
 
-SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS)
+SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS, GOPLS)
 """The servers that run in a service project's sidecar (docs/specs/service-projects.md#language-
-servers): the Node programs on the sidecar's Node image, for both of their languages, and JDT LS on
-the project's own image, whose JDK and Gradle build the project."""
+servers): the Node programs on the sidecar's Node image, for both of their languages; JDT LS on the
+project's own image, whose JDK and Gradle build the project; and gopls on the project's own image,
+whose Go loads the project, built into the project's install cache by its install."""
 SIDECAR_PLATFORM = "linux"
 """What a sidecar runs on, whatever this machine is: JDT LS takes the archive's `config_linux`."""
+GO_BUILD_IN_SIDECAR = "go-build"
+"""Go's build cache in a sidecar's data folder, which the install cache, read-only there, cannot
+hold."""
+SIDECAR_PIDS_FOR_GO = 256
+"""gopls and the `go list` processes it starts took 93 processes, threads included."""
+GO_VARIABLES_LEFT_OUT = frozenset({"GOCACHE", "GOTMPDIR"})
+"""The project's Go variables that name places to write, which the read-only install cache is
+not in a sidecar."""
 GRADLE_HOME_IN_SIDECAR = "gradle"
 """Gradle's user home in a sidecar's data folder: its daemon, its scripts' compiled classes, and
 what it would otherwise lock in the install cache."""
@@ -781,11 +793,74 @@ def runs_on_a_jdk(server: LanguageServer) -> bool:
     return server.jdks is not None
 
 
+def is_built_by_go(server: LanguageServer) -> bool:
+    return server.go_install is not None
+
+
 def sidecar_image(server: LanguageServer, project_image: str) -> str:
     """Where `server` runs in a service project's sidecar: a Node server on the pinned Node image,
-    whatever the project's; a server that needs a JDK on the project's own image, which holds the
-    JDK and the Gradle the project builds with, and which `cstudy start` pulled."""
-    return project_image if runs_on_a_jdk(server) else NODE_IMAGE
+    whatever the project's; a server that needs a JDK, or Go, on the project's own image, which
+    holds the toolchain the project builds with, and which `cstudy start` pulled."""
+    if runs_on_a_jdk(server) or is_built_by_go(server):
+        return project_image
+    return NODE_IMAGE
+
+
+@dataclass(frozen=True, slots=True)
+class CacheInstall:
+    """A server that a service project's install builds into the project's install cache, online,
+    while `code_intelligence` is on: the one `cstudy doctor --fix` builds into `.cs/lsp/` is built
+    for this machine, and a sidecar runs Linux. Its modules and its build go to a scratch folder of
+    the cache that `go clean` empties, so only the binary stays."""
+
+    name: str
+    version: str
+    command: tuple[str, ...]
+    environment: Mapping[str, str]
+    executable: str
+    """Its absolute path in the sidecar, which mounts the install cache at `INSTALL_CACHE`."""
+
+
+def cache_install(server: LanguageServer) -> CacheInstall | None:
+    """For a server that Go builds: the newest version its table pins, which builds with the Go of
+    every service project's image (1.27). None for any other server."""
+    install = server.go_install
+    if install is None:
+        return None
+    version = install.version_for(None)
+    directory = f"{INSTALL_CACHE}/{server.name}/{version}"
+    scratch = f"{INSTALL_CACHE}/{server.name}/scratch"
+    script = 'mkdir -p "$GOTMPDIR" && go install "$1" && go clean -cache -modcache'
+    return CacheInstall(
+        name=server.name,
+        version=version,
+        command=("sh", "-c", script, "sh", f"{install.module}@v{version}"),
+        environment={
+            "GOBIN": directory,
+            "GOMODCACHE": f"{scratch}/mod",
+            "GOCACHE": f"{scratch}/build",
+            "GOPATH": f"{scratch}/path",
+            "GOTMPDIR": f"{scratch}/tmp",
+            "CGO_ENABLED": "0",
+        },
+        executable=f"{directory}/{server.name}",
+    )
+
+
+def cache_install_of(meta: ProblemMeta) -> CacheInstall | None:
+    """The server a service project's install builds into its cache: its language's, when that
+    server is one Go builds. None for every other problem."""
+    if service_of(meta) is None or not meta.languages:
+        return None
+    server = server_for(meta.languages[0])
+    return None if server is None else cache_install(server)
+
+
+def _from_the_install_cache(server: LanguageServer, _launch: Launch) -> tuple[str, ...]:
+    install = cache_install(server)
+    if install is None:
+        raise ValueError(f"{server.name} is not built into an install cache")
+    return (install.executable,)
 
 
 def sidecar_toolchain(
@@ -794,8 +869,11 @@ def sidecar_toolchain(
     """What `server` needs of the project's toolchain in its sidecar, whose data folder is the
     absolute `data`: for JDT LS, the image's Gradle (which it finds through the image's
     `GRADLE_HOME`) with its user home and project cache in `data`, and the dependencies of the
-    install cache as Gradle's read-only cache, which Gradle neither locks nor writes. None for a
-    Node server."""
+    install cache as Gradle's read-only cache, which Gradle neither locks nor writes; for gopls,
+    the project's own Go variables, with the build cache and gopls's file cache in `data`, since
+    the install cache is read-only there. None for a Node server."""
+    if is_built_by_go(server):
+        return _go_toolchain(service, data, cache_volume)
     if not runs_on_a_jdk(server):
         return None
     environment = {"GRADLE_USER_HOME": f"{data}/{GRADLE_HOME_IN_SIDECAR}"}
@@ -813,16 +891,33 @@ def sidecar_toolchain(
     )
 
 
+def _go_toolchain(service: ServiceProject, data: str, cache_volume: str | None) -> SidecarToolchain:
+    kept = {
+        name: value
+        for name, value in service.env.items()
+        if (name.startswith("GO") or name == "CGO_ENABLED") and name not in GO_VARIABLES_LEFT_OUT
+    }
+    environment = {
+        **kept,
+        "GOCACHE": f"{data}/{GO_BUILD_IN_SIDECAR}",
+        "XDG_CACHE_HOME": f"{data}/{CACHE_DIRECTORY}",
+    }
+    return SidecarToolchain(cache_volume, environment, pids=SIDECAR_PIDS_FOR_GO)
+
+
 def sidecar_server(server: LanguageServer, folder: str) -> LanguageServer:
     """`server` as it runs in a service project's sidecar, on the dependencies installed in the
     absolute `folder`. TypeScript's compiler is the folder's own, so the workspace's `typescript/`
     is not needed; basedpyright is the catalog's, since it reads the folder's `[tool.pyright]`,
     whose `venv` it finds without asking Python; JDT LS runs on the image's JDK, so the JDK this
-    machine selects does not matter. Raises ValueError for a server of no sidecar."""
+    machine selects does not matter; gopls is the one the install built into the project's install
+    cache. Raises ValueError for a server of no sidecar."""
     if server not in SIDECAR_SERVERS:
         raise ValueError(f"{server.name} runs in no sidecar")
     if runs_on_a_jdk(server):
         return replace(server, jdks=None)
+    if is_built_by_go(server):
+        return replace(server, launcher=_from_the_install_cache)
     if server is not TYPESCRIPT_LANGUAGE_SERVER:
         return server
     options = partial(_compiler_options, folder)
@@ -897,10 +992,7 @@ SERVICE_PROJECT_ROUTES: Mapping[Language, Route] = {
         "the Kotlin LSP is a build per machine with its own runtime and launcher, which the "
         "project's Linux image cannot run; its sidecar waits for a spike that accepts its license",
     ),
-    Language.GO: Route(
-        Placement.PENDING,
-        "pending P13: Go service projects come with P13, and gopls in their sidecar after them",
-    ),
+    Language.GO: IN_SIDECAR,
     Language.RUST: Route(Placement.NOT_APPLICABLE, "the catalog has no Rust service project"),
 }
 """Where a service project's server runs, by language: a key for every language, so a new one

@@ -378,9 +378,11 @@ class Opened:
     defined_at: dict[str, int]
     defined_in: str
     """Where in the project folder the definition's file is."""
-    library_jar: str | None = None
-    """For a definition in a jar, which is no file: the jar the `jdt://` URI names, which the
-    library tab refuses to read, naming the class."""
+    defined_elsewhere: str | None = None
+    """The start of the definition's URI when it is outside the project folder: a `jdt://` URI of
+    a class in a jar, or a file of the install cache, which only the sidecar has."""
+    library_refusal: dict[str, str] | None = None
+    """What the library tab says of such a definition, which it cannot read on this machine."""
 
 
 TYPESCRIPT_FILE = Opened(
@@ -421,11 +423,32 @@ JAVA_FILE = Opened(
     hovered="JsonMapper",
     defined_at={"line": 12, "character": 26},
     defined_in="",
-    library_jar="jackson-databind-3.3.0.jar",
+    defined_elsewhere="jdt://contents/jackson-databind-3.3.0.jar/",
+    library_refusal={
+        "reason": "not_a_file_uri",
+        "path": "jackson-databind-3.3.0.jar/tools.jackson.databind.json/JsonMapper.java",
+    },
 )
 """`JsonMapper` comes from jackson-databind, which the install put in the install cache: JDT LS
 imports the Gradle build offline over it, read-only."""
-FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE, JAVA: JAVA_FILE}
+GO_TEST = Path(__file__).parent / "fixtures/service_projects" / GO / "starter/main_test.go"
+GO_FILE = Opened(
+    path="main_test.go",
+    language_id="go",
+    text=GO_TEST.read_text().replace(
+        "var body map[string]string", "var body map[string]string = 3"
+    ),
+    error="cannot use 3",
+    hover_at={"line": 25, "character": 16},
+    hovered="Diff",
+    defined_at={"line": 25, "character": 16},
+    defined_in="",
+    defined_elsewhere="file:///cache/go/mod/github.com/google/go-cmp@v0.7.0/cmp/",
+    library_refusal={"reason": "missing"},
+)
+"""`cmp.Diff` comes from go-cmp, which the install put in the install cache, where the sidecar's
+gopls reads it and this machine has no file."""
+FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE, JAVA: JAVA_FILE, GO: GO_FILE}
 
 
 def patient_language_servers(root: Path) -> LspDirectory:
@@ -450,7 +473,10 @@ def jdtls_in_cache(pytestconfig: pytest.Config) -> Path:
 
 def install_servers(project: FixtureProject, pytestconfig: pytest.Config) -> None:
     """The workspace's `.cs/lsp/`, as `cstudy doctor --fix` fills it: JDT LS is copied, not
-    linked, since the sidecar mounts `.cs/lsp/` and a link would point outside it."""
+    linked, since the sidecar mounts `.cs/lsp/` and a link would point outside it. Go's gopls
+    needs none: `cstudy start` built it into the install cache, code intelligence being on."""
+    if project.directory == GO:
+        return
     if project.directory == JAVA:
         unpacked = jdtls_in_cache(pytestconfig)
         shutil.copytree(unpacked, project.root / LSP_DIRECTORY / JDTLS_DIRECTORY)
@@ -462,8 +488,13 @@ def install_servers(project: FixtureProject, pytestconfig: pytest.Config) -> Non
 
 @pytest.fixture(
     scope="module",
-    params=[TYPESCRIPT, PYTHON, pytest.param(JAVA, marks=pytest.mark.docker_jvm)],
-    ids=["typescript", "python", "java"],
+    params=[
+        TYPESCRIPT,
+        PYTHON,
+        pytest.param(JAVA, marks=pytest.mark.docker_jvm),
+        pytest.param(GO, marks=pytest.mark.docker_go),
+    ],
+    ids=["typescript", "python", "java", "go"],
 )
 def sidecar_project(
     request: pytest.FixtureRequest,
@@ -472,12 +503,12 @@ def sidecar_project(
 ) -> Generator[FixtureProject]:
     found = fixture_project(request.param, tmp_path_factory.mktemp("sidecar"))
     try:
-        started = found.cstudy("start", found.slug, "--yes", "--no-open")
-        assert started.returncode == 0, f"{started.stdout}\n{started.stderr}"
-        install_servers(found, pytestconfig)
         FsPreferencesStore(found.root).write(
             preferences_document(Preferences(code_intelligence=True))
         )
+        started = found.cstudy("start", found.slug, "--yes", "--no-open")
+        assert started.returncode == 0, f"{started.stdout}\n{started.stderr}"
+        install_servers(found, pytestconfig)
         yield found
     finally:
         found.remove_all_it_left()
@@ -576,11 +607,7 @@ def test_a_definition_leads_into_the_projects_installed_dependencies(
     sidecar_project, sidecar_session
 ):
     opened = FILES[sidecar_project.directory]
-    within = (
-        f"jdt://contents/{opened.library_jar}/"
-        if opened.library_jar is not None
-        else (sidecar_project.folder / opened.defined_in).as_uri()
-    )
+    within = opened.defined_elsewhere or (sidecar_project.folder / opened.defined_in).as_uri()
 
     assert sidecar_session.definition.startswith(within)
 
@@ -588,13 +615,12 @@ def test_a_definition_leads_into_the_projects_installed_dependencies(
 def test_the_library_tab_reads_that_file_at_the_same_path_on_this_machine(
     sidecar_project, sidecar_session
 ):
-    """A class in a jar is no file: the tab refuses it, naming the class."""
-    jar = FILES[sidecar_project.directory].library_jar
-    if jar is not None:
-        assert sidecar_session.library["error"]["data"] == {
-            "reason": "not_a_file_uri",
-            "path": f"{jar}/tools.jackson.databind.json/JsonMapper.java",
-        }
+    """A class in a jar is no file, and a file of the install cache is not on this machine: the
+    tab refuses them, saying why."""
+    refusal = FILES[sidecar_project.directory].library_refusal
+    if refusal is not None:
+        data = sidecar_session.library["error"]["data"]
+        assert {name: data[name] for name in refusal} == refusal
     else:
         assert sidecar_session.library["result"]["text"]
 

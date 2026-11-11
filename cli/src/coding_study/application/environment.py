@@ -15,6 +15,7 @@ from coding_study.application.ports import (
     JdkSelector,
     LanguageServerLocator,
     MachineProbe,
+    PreferencesStore,
     ProblemFiles,
     ProblemRepository,
     ProblemSetStore,
@@ -76,3 +77,6 @@ class Environment:
     """Opens the HTTP clients of a ready stack, for the grader and for `cstudy dev`."""
     problem_sets: ProblemSetStore
     """The workspace's `sets.yaml`."""
+    preferences: PreferencesStore
+    """The web UI's preferences: a service project's install builds the server its sidecar runs,
+    if that server is not the one of `.cs/lsp/`, only while `code_intelligence` is on."""
