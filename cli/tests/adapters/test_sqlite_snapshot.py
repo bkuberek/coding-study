@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
+from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.domain.attempts import AttemptMode, NewAttempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
@@ -14,7 +15,16 @@ from coding_study.domain.submissions import LevelUnlock
 from tests.fakes import NOW, make_environment
 from tests.stats_fixture import fill_progress
 
-TABLES = ("attempts", "test_runs", "schedule", "bench_runs", "submissions", "level_unlocks")
+TABLES = (
+    "attempts",
+    "test_runs",
+    "schedule",
+    "bench_runs",
+    "submissions",
+    "level_unlocks",
+    "guide_reads",
+)
+NEWER = latest_schema_version() + 1
 
 
 @pytest.fixture
@@ -35,7 +45,7 @@ def test_a_snapshot_names_every_table_but_meta(store):
 
 
 def test_a_snapshot_records_the_schema_version(store):
-    assert store.snapshot().schema_version == 5
+    assert store.snapshot().schema_version == latest_schema_version()
 
 
 def test_a_snapshot_holds_every_row(filled):
@@ -46,6 +56,7 @@ def test_a_snapshot_holds_every_row(filled):
         "bench_runs": 3,
         "submissions": 0,
         "level_unlocks": 0,
+        "guide_reads": 0,
     }
 
 
@@ -106,9 +117,12 @@ def test_a_refused_restore_changes_nothing(filled):
 
 def test_a_snapshot_from_a_newer_schema_is_refused(store):
     with pytest.raises(
-        UsageError, match=re.escape("schema 6, which is newer than this cstudy (5)")
+        UsageError,
+        match=re.escape(
+            f"schema {NEWER}, which is newer than this cstudy ({latest_schema_version()})"
+        ),
     ):
-        store.restore(ProgressSnapshot(6, {}))
+        store.restore(ProgressSnapshot(NEWER, {}))
 
 
 def test_an_unknown_table_is_refused(store):
