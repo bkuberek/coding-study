@@ -1,0 +1,99 @@
+# The partner that grants bonus points, and how it can fail. Hidden scenarios are what a graded run
+# adds: a dev or test stack holds only those marked visible. Members ana, ben and cy have a record;
+# anyone else has none.
+routes:
+  - id: bonus-ana
+    method: GET
+    path: /v1/bonus
+    query: {member: ana}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body: {bonus_points: 25}
+  - id: bonus-ben
+    method: GET
+    path: /v1/bonus
+    query: {member: ben}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body: {bonus_points: 40}
+  - id: bonus-cy
+    method: GET
+    path: /v1/bonus
+    query: {member: cy}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body: {bonus_points: 0}
+  - id: no-record
+    method: GET
+    path: /v1/bonus
+    response:
+      status: 404
+      headers: {Content-Type: application/json}
+      body: {error: no_record}
+scenarios:
+  outage:
+    visible: true
+    status: 503
+    headers: {Content-Type: application/json}
+    body: {error: unavailable}
+  ana_flaky:
+    visible: true
+    route: bonus-ana
+    sequence:
+      - {status: 503, headers: {Content-Type: application/json}, body: {error: unavailable}}
+      - {status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+  ana_slow:
+    visible: true
+    route: bonus-ana
+    delay_ms: 2000
+  ana_down_twice:
+    route: bonus-ana
+    sequence:
+      - {status: 503, headers: {Content-Type: application/json}, body: {error: unavailable}}
+      - {status: 500, headers: {Content-Type: application/json}, body: {error: internal error}}
+      - {status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+  ana_limited_once:
+    route: bonus-ana
+    sequence:
+      - {status: 429, headers: {Content-Type: application/json, Retry-After: "1"}, body: {error: too many requests}}
+      - {status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+  ana_garbled_once:
+    route: bonus-ana
+    sequence:
+      - {status: 200, headers: {Content-Type: application/json}, body: '{"bonus_points": '}
+      - {status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+  ana_wrong_shape:
+    route: bonus-ana
+    status: 200
+    headers: {Content-Type: application/json}
+    body: {points: 25}
+  ana_refused:
+    route: bonus-ana
+    status: 403
+    headers: {Content-Type: application/json}
+    body: {error: not allowed}
+  ana_always_failing:
+    route: bonus-ana
+    status: 500
+    headers: {Content-Type: application/json}
+    body: {error: internal error}
+  ana_slow_once:
+    route: bonus-ana
+    sequence:
+      - {delay_ms: 2000, status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+      - {status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+  ana_recovers_later:
+    route: bonus-ana
+    sequence:
+      - {status: 503, headers: {Content-Type: application/json}, body: {error: unavailable}}
+      - {status: 503, headers: {Content-Type: application/json}, body: {error: unavailable}}
+      - {status: 503, headers: {Content-Type: application/json}, body: {error: unavailable}}
+      - {status: 200, headers: {Content-Type: application/json}, body: {bonus_points: 25}}
+  ben_broken:
+    route: bonus-ben
+    status: 500
+    headers: {Content-Type: application/json}
+    body: {error: internal error}
