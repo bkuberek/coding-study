@@ -16,6 +16,7 @@ from collections.abc import Callable
 from datetime import date
 from importlib import resources
 from pathlib import Path
+from typing import cast
 
 from coding_study.adapters.workspace_marker import accepted_license, record_license
 from coding_study.application.ports import (
@@ -34,17 +35,23 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.code_intelligence import (
     GO_RELEASE_COMMAND,
+    KOTLIN_LSP,
     LSP_DIRECTORY,
     LSP_INSTALL_COMMAND,
+    SIDECAR_PLATFORM,
     Archive,
     GoInstall,
     LanguageServer,
     Launch,
     License,
     build_archive,
+    build_place,
     go_release,
     machine_of,
+    sidecar_machine,
 )
+from coding_study.domain.problem import Language
+from coding_study.domain.project_manifest import MANIFESTS_DIRECTORY
 from coding_study.domain.server_builds import (
     checksum_in,
     expired_already,
@@ -52,7 +59,9 @@ from coding_study.domain.server_builds import (
     license_of,
     newest_build,
 )
+from coding_study.domain.service_project import INSTALL_RECORD_LANGUAGE, INSTALL_RECORD_SUFFIX
 
+GRADLE_BUILD_RECEIPT = "org/gradle/build-receipt.properties"
 MANIFEST_PACKAGE = "coding_study.adapters.language_servers"
 MANIFEST_FILES = ("package.json", "pnpm-lock.yaml")
 LOCAL_TOOLCHAIN = {"GOTOOLCHAIN": "local"}
@@ -108,16 +117,18 @@ class LspDirectory:
 
     def newest_build(self, server: LanguageServer) -> NewestBuild | NoBuild:
         """Reads the server's releases list, the `.sha256` file of the newest build for this
-        machine and the license at its release's tag; nothing is downloaded yet."""
+        machine, or for a sidecar's Linux on this machine's processor, and the license at its
+        release's tag; nothing is downloaded yet."""
         releases, known = server.releases, server.license
         if releases is None or known is None:
             return NoBuild(f"{server.name} publishes no builds of its own")
+        machine = sidecar_machine(platform.machine()) if server.linux_build else self.machine
         try:
             listed = json.loads(self._fetch(releases.api_url))
-            build = newest_build(listed, releases, self.machine)
+            build = newest_build(listed, releases, machine)
             if build is None:
                 reason = f"no release of {server.name} at {releases.api_url} has a build for"
-                return NoBuild(f"{reason} {self.machine} with a published SHA-256")
+                return NoBuild(f"{reason} {machine} with a published SHA-256")
             sha256 = checksum_in(self._fetch(build.checksum_url).decode(), build.file_name)
             if sha256 is None:
                 return NoBuild(f"{build.checksum_url} holds no SHA-256 of {build.file_name}")
@@ -127,7 +138,8 @@ class LspDirectory:
             return NoBuild(f"cannot read the releases of {server.name}: {error}")
         if license is None:
             return NoBuild(f"cannot read the license of {build.tag} at {license_url}")
-        return NewestBuild(build, build_archive(build, sha256, self.machine), license)
+        archive = build_archive(build, sha256, machine, build_place(server))
+        return NewestBuild(build, archive, license)
 
     def install_build(self, server: LanguageServer, newest: NewestBuild) -> ProbeResult:
         """Downloads and checks the build as `download` does, then asks it the last day it runs
@@ -136,12 +148,18 @@ class LspDirectory:
         downloaded = self.download(newest.archive)
         if downloaded.exit_code != 0:
             return downloaded
-        status = self._status(server)
         version = newest.build.version
-        if expired_already(status):
-            return ProbeResult(1, f"{server.name} {version}, JetBrains' newest, has expired\n")
-        last = last_day(status)
-        self._record(server, newest, last)
+        if server.linux_build:
+            last = self._last_day_of_this_machines(version)
+            build = self._directory / newest.archive.directory / newest.archive.into
+            tooling = _gradle_tooling(build)
+            self._record(server, newest, last, tooling)
+        else:
+            status = self._status(server)
+            if expired_already(status):
+                return ProbeResult(1, f"{server.name} {version}, JetBrains' newest, has expired\n")
+            last = last_day(status)
+            self._record(server, newest, last)
         until = "" if last is None else f", runs until {last.isoformat()}"
         return ProbeResult(
             0, f"{server.name} {version} in {LSP_DIRECTORY}/{newest.archive.directory}{until}\n"
@@ -155,14 +173,28 @@ class LspDirectory:
             result = self._commands.run(command, self._directory, server.environment(launch))
         return "" if result is None else result.output
 
-    def _record(self, server: LanguageServer, newest: NewestBuild, last: date | None) -> None:
-        record = {
+    def _last_day_of_this_machines(self, version: str) -> date | None:
+        """The last day of a Linux build, which cannot run here to say it: that of this machine's
+        build of the same version, which `--fix` fetches first; None without one."""
+        probe = self._fetched(KOTLIN_LSP)
+        return probe.last_day if isinstance(probe, Fetched) and probe.version == version else None
+
+    def _record(
+        self,
+        server: LanguageServer,
+        newest: NewestBuild,
+        last: date | None,
+        gradle_tooling: str | None = None,
+    ) -> None:
+        record: dict[str, object] = {
             "version": newest.build.version,
             "last_day": None if last is None else last.isoformat(),
             "license": {"name": newest.license.name, "url": newest.license.url},
             "url": newest.archive.url,
             "sha256": newest.archive.sha256,
         }
+        if gradle_tooling is not None:
+            record["gradle_tooling"] = gradle_tooling
         (self._directory / str(server.script)).write_text(json.dumps(record, indent=2) + "\n")
 
     def _fetched(self, server: LanguageServer) -> ServerProbe:
@@ -178,16 +210,33 @@ class LspDirectory:
                 known.summary if known else "",
             )
             ends = None if last is None else date.fromisoformat(last)
-        except (OSError, ValueError, KeyError, TypeError):
+            tooling = record.get("gradle_tooling")
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
             return NotInstalled()
-        launcher = server.command(Launch(str(self._directory), platform=sys.platform))[0]
+        on = SIDECAR_PLATFORM if server.linux_build else sys.platform
+        launcher = server.command(Launch(str(self._directory), platform=on))[0]
         if not isinstance(version, str) or not Path(launcher).is_file():
             return NotInstalled()
-        return Fetched(version, ends, license)
+        return Fetched(version, ends, license, tooling if isinstance(tooling, str) else None)
 
     @property
     def machine(self) -> str:
         return machine_of(sys.platform, platform.machine())
+
+    def installed_service_languages(self) -> frozenset[Language]:
+        """The languages of the service projects whose dependencies are installed here, as their
+        install records name them (`.cs/projects/<slug>.install.json`)."""
+        languages: set[Language] = set()
+        for path in (self._workspace / MANIFESTS_DIRECTORY).glob(f"*{INSTALL_RECORD_SUFFIX}"):
+            try:
+                record: object = json.loads(path.read_text())
+            except (OSError, ValueError):
+                continue
+            fields = cast(dict[str, object], record) if isinstance(record, dict) else {}
+            named = fields.get(INSTALL_RECORD_LANGUAGE)
+            if isinstance(named, str) and named in tuple(Language):
+                languages.add(Language(named))
+        return frozenset(languages)
 
     def license_accepted(self, license: License) -> bool:
         return accepted_license(self._workspace, license.key) == (license.name, license.url)
@@ -273,14 +322,36 @@ def _unpacked(archive: Archive, scratch: Path, target: Path) -> ProbeResult:
     build = extracted / archive.strip if archive.strip else extracted
     if not build.is_dir():
         return ProbeResult(1, f"the archive holds no {archive.strip}/\n")
-    unpacked = scratch / "unpacked"
-    place = unpacked / archive.into if archive.into else unpacked
-    place.parent.mkdir(parents=True, exist_ok=True)
-    build.rename(place)
-    if target.exists():
-        target.rename(scratch / "earlier")
-    unpacked.rename(target)
+    if archive.into:
+        _replace(build, target / archive.into, scratch / "earlier")
+    else:
+        _replace(build, target, scratch / "earlier")
     return ProbeResult(0, f"unpacked into {LSP_DIRECTORY}/{archive.directory}\n")
+
+
+def _replace(build: Path, place: Path, earlier: Path) -> None:
+    """`build` in place of whatever `place` held, which goes to `earlier`; what is beside `place`
+    stays, such as another build of the same server and its record."""
+    place.parent.mkdir(parents=True, exist_ok=True)
+    if place.exists():
+        place.rename(earlier)
+    build.rename(place)
+
+
+def _gradle_tooling(directory: Path) -> str | None:
+    """The version of the Gradle tooling API a build bundles, as the build receipt in one of its
+    jars says; None when none says it."""
+    for jar in sorted(directory.rglob("*gradle*tooling*.jar")):
+        try:
+            with zipfile.ZipFile(jar) as archive:
+                receipt = archive.read(GRADLE_BUILD_RECEIPT).decode()
+        except (OSError, KeyError, zipfile.BadZipFile):
+            continue
+        for line in receipt.splitlines():
+            name, _, value = line.partition("=")
+            if name.strip() == "versionNumber" and value.strip():
+                return value.strip()
+    return None
 
 
 def _unzip(archive: Path, directory: Path) -> None:

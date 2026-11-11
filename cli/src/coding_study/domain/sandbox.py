@@ -29,6 +29,16 @@ multi-architecture index holds on arm64 and amd64."""
 NODE_IMAGE = "node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9"
 """The language-server sidecar's, for every language: the servers in `.cs/lsp/` are Node programs,
 and a TypeScript project's own image is this one."""
+GRADLE_GLIBC_IMAGE = (
+    "gradle:9.8.2-jdk25@sha256:e46e15353757ef9c9be0197a243653e88d25ebcd4c3c841057cf839c11fcf898"
+)
+"""The Kotlin LSP's sidecar: the glibc variant of the Kotlin service projects' Gradle 9.8.2 and
+JDK 25 image, since the Linux build of the Kotlin LSP and its runtime need glibc, which the
+projects' Alpine image lacks. The digest is the multi-architecture index's."""
+IMAGE_GRADLE_HOME = "/opt/gradle"
+"""Where the official Gradle images keep their Gradle, as their `GRADLE_HOME` says."""
+IMAGE_JAVA_HOME = "/opt/java/openjdk"
+"""Where the official Gradle images keep their JDK, as their `JAVA_HOME` says."""
 
 APP_SERVICE = "app"
 BOOTSTRAP_SERVICE = "bootstrap"
@@ -502,6 +512,9 @@ class SidecarToolchain:
     the data folder instead."""
     memory: str = SIDECAR_MEMORY
     pids: int = SIDECAR_PIDS
+    links: Mapping[str, str] = field(default_factory=dict[str, str])
+    """Symbolic links made in the data folder before the sidecar comes up, by their path in it, to
+    a path in the sidecar, such as the image's own Gradle."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -590,6 +603,15 @@ def sidecar_files(plan: SidecarPlan) -> dict[str, str]:
     if plan.toolchain is None or data is None:
         return {}
     return {f"{data}/{path}": content for path, content in plan.toolchain.files.items()}
+
+
+def sidecar_links(plan: SidecarPlan) -> dict[str, str]:
+    """The symbolic links made before the sidecar comes up, by their absolute path, to where they
+    point in the sidecar: the toolchain's, in the data folder."""
+    data = plan.data_directory
+    if plan.toolchain is None or data is None:
+        return {}
+    return {f"{data}/{path}": target for path, target in plan.toolchain.links.items()}
 
 
 def _shared(folder: SharedFolder) -> dict[str, object]:

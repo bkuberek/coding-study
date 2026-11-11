@@ -195,4 +195,4 @@ def test_the_record_stays_json_with_the_lock(on):
     install(on)
 
     record = json.loads((on.root / ".cs" / "projects" / f"{SLUG}.install.json").read_text())
-    assert set(record) == {"lock_sha256", "servers"}
+    assert (set(record), record["language"]) == ({"lock_sha256", "language", "servers"}, "go")

@@ -2,7 +2,7 @@
 
 import shutil
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -367,6 +367,8 @@ NEWEST_KOTLIN = NewestBuild(
     KOTLIN_BUILD, build_archive(KOTLIN_BUILD, KOTLIN_SHA256, "darwin-arm64"), KOTLIN_LSP_LICENSE
 )
 FETCHED_KOTLIN = Fetched("263.7084.0", KOTLIN_LAST_DAY, KOTLIN_LSP_LICENSE)
+FETCHED_KOTLIN_LINUX = replace(FETCHED_KOTLIN, gradle_tooling="9.7.0")
+"""The Linux build a Kotlin service project's sidecar runs, with the tooling API it bundles."""
 
 
 class FakeLanguageServers:
@@ -385,8 +387,11 @@ class FakeLanguageServers:
         warm_up: ProbeResult | None = WARMED_UP,
         newest: NewestBuild | NoBuild = NEWEST_KOTLIN,
         today: date = FAKE_TODAY,
+        service_languages: frozenset[Language] = frozenset(),
     ) -> None:
         self.probes = dict(probes or {})
+        self.service_languages = service_languages
+        """The languages of the service projects installed in the workspace."""
         self.accepted = set(accepted)
         """The names of the licenses the workspace's marker records as accepted."""
         self.machine = machine
@@ -426,6 +431,9 @@ class FakeLanguageServers:
         self.go_installs.append((install, version))
         return self.go_install_result
 
+    def installed_service_languages(self) -> frozenset[Language]:
+        return self.service_languages
+
     def license_accepted(self, license: License) -> bool:
         return license.name in self.accepted
 
@@ -456,6 +464,7 @@ INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
     "typescript-language-server": VersionPrinted("6.0.3\n"),
     "jdtls": Unpacked(),
     "kotlin-lsp": FETCHED_KOTLIN,
+    "kotlin-lsp-linux": FETCHED_KOTLIN_LINUX,
     "gopls": VersionPrinted("golang.org/x/tools/gopls v0.24.0\n"),
     "rust-analyzer": VersionPrinted("rust-analyzer 1.91.0 (f8297e35 2025-10-28)\n"),
 }

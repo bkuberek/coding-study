@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from coding_study.domain.sandbox import workspace_digest
 from tests.waits import GENEROUS_WAIT_S
 
 FIXTURES = Path(__file__).parent / "fixtures" / "service_projects"
@@ -18,6 +19,8 @@ MEMBERS = "5903-fixture-members-python"
 """Postgres and Redis as backing services, with `grade_setup` and `reset`."""
 JAVA = "5904-fixture-rooms-java"
 """Gradle in the image, its user home in the install cache, and every build offline."""
+KOTLIN = "0306-coworking-availability-kotlin"
+"""The catalog's Kotlin service project, which a workspace's content root holds already."""
 GO = "5905-fixture-rooms-go"
 """A module the install downloads into the install cache, and every build with `GOPROXY=off`."""
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
@@ -93,15 +96,22 @@ class FixtureProject:
         self.use_overlay(self.problem / "solutions" / "reference")
 
     def labelled(self, kind: str) -> list[str]:
-        """What Docker holds of this slug, by label; never anything else."""
-        label = f"label={LABEL_SLUG}={self.slug}"
+        """What Docker holds of this slug in this workspace, by label; never anything else, so
+        a catalog problem's stacks in another workspace stay."""
+        workspace = workspace_digest(str(self.root.resolve()))
+        filters = (
+            "--filter",
+            f"label={LABEL_SLUG}={self.slug}",
+            "--filter",
+            f"label={LABEL_WORKSPACE}={workspace}",
+        )
         match kind:
             case "containers":
-                arguments = ("ps", "-aq", "--filter", label)
+                arguments = ("ps", "-aq", *filters)
             case "networks":
-                arguments = ("network", "ls", "-q", "--filter", label)
+                arguments = ("network", "ls", "-q", *filters)
             case _:
-                arguments = ("volume", "ls", "-q", "--filter", label)
+                arguments = ("volume", "ls", "-q", *filters)
         return docker(*arguments).stdout.split()
 
     def remove_all_it_left(self) -> None:
@@ -126,6 +136,20 @@ def fixture_project(directory: str, scratch: Path) -> FixtureProject:
         timeout=GENEROUS_WAIT_S,
     )
     copy_fixture(directory, project.problem)
+    return project
+
+
+def catalog_project(directory: str, scratch: Path) -> FixtureProject:
+    """A workspace of its own, made by `cstudy init`, for a problem of the catalog."""
+    root = scratch.resolve() / "workspace"
+    project = FixtureProject(directory, root)
+    subprocess.run(
+        [CSTUDY, "init", str(root), "--no-ide"],
+        check=True,
+        capture_output=True,
+        env=project.environment(),
+        timeout=GENEROUS_WAIT_S,
+    )
     return project
 
 

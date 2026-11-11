@@ -11,6 +11,7 @@ from datetime import date
 from coding_study.application.doctor import CheckResult, fix_workspace
 from coding_study.application.ports import NoBuild, NotInstalled, ProbeResult
 from coding_study.domain.code_intelligence import KOTLIN_LSP_LICENSE, LanguageServer, License
+from coding_study.domain.problem import Language
 from coding_study.domain.server_builds import Build
 from tests.application.test_doctor import BUNDLED, JDK_HOME, OK, WARN, FakeJdk, workspace_with
 from tests.application.test_doctor_code_intelligence import OFF, code_intelligence_rows
@@ -321,3 +322,75 @@ def test_no_warm_up_while_the_preference_is_off():
     servers = FakeLanguageServers(INSTALLED_SERVERS)
     fixed(servers, preferences=OFF)
     assert servers.warm_ups == []
+
+
+# The Linux build of a Kotlin service project's sidecar
+
+SIDECAR_ROW = "code intelligence kotlin service projects"
+LINUX_FETCH_STEP = "fetch the newest kotlin-lsp-linux (in .cs/lsp/kotlin-lsp-linux)"
+WITHOUT_LINUX = {
+    name: probe for name, probe in INSTALLED_SERVERS.items() if name != "kotlin-lsp-linux"
+}
+"""This machine's build in place, the sidecar's Linux build not fetched yet."""
+KOTLIN_SERVICE = frozenset({Language.KOTLIN})
+
+
+def test_without_a_kotlin_service_project_no_linux_build_is_fetched():
+    servers = FakeLanguageServers(WITHOUT_LINUX)
+    fixed(servers)
+    assert servers.installed_builds == []
+
+
+def test_once_a_kotlin_service_project_is_installed_fix_fetches_the_linux_build():
+    servers = FakeLanguageServers(WITHOUT_LINUX, service_languages=KOTLIN_SERVICE)
+    notes: list[str] = []
+    fixed(servers, notes=notes)
+    assert (servers.installed_builds, f"running {LINUX_FETCH_STEP}" in notes) == (
+        ["263.7084.0"],
+        True,
+    )
+
+
+def test_an_expired_build_is_fetched_again_for_this_machine_and_for_the_sidecar():
+    """Both early-access builds stop on the same day, so `--fix` refreshes both."""
+    servers = FakeLanguageServers(
+        INSTALLED_SERVERS, today=date(2026, 11, 13), service_languages=KOTLIN_SERVICE
+    )
+    fixed(servers)
+    assert servers.installed_builds == ["263.7084.0", "263.7084.0"]
+
+
+def test_the_linux_build_is_not_fetched_while_the_license_is_not_accepted():
+    servers = FakeLanguageServers(
+        WITHOUT_LINUX, accepted=frozenset(), service_languages=KOTLIN_SERVICE
+    )
+    fixed(servers)
+    assert servers.installed_builds == []
+
+
+def test_the_linux_build_is_not_fetched_while_code_intelligence_is_off():
+    servers = FakeLanguageServers(WITHOUT_LINUX, service_languages=KOTLIN_SERVICE)
+    fixed(servers, preferences=OFF)
+    assert servers.installed_builds == []
+
+
+def sidecar_rows(servers: FakeLanguageServers) -> list[CheckResult]:
+    return [row for row in code_intelligence_rows(servers) if row.name == SIDECAR_ROW]
+
+
+def test_the_sidecar_build_has_a_row_once_a_kotlin_service_project_is_installed():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, service_languages=KOTLIN_SERVICE)
+    assert sidecar_rows(servers) == [
+        CheckResult(SIDECAR_ROW, OK, "kotlin-lsp-linux 263.7084.0, runs until 2026-11-12")
+    ]
+
+
+def test_a_sidecar_build_not_fetched_yet_warns_with_the_fix():
+    servers = FakeLanguageServers(WITHOUT_LINUX, service_languages=KOTLIN_SERVICE)
+    assert sidecar_rows(servers) == [
+        CheckResult(SIDECAR_ROW, WARN, "kotlin-lsp-linux is not installed", FIX)
+    ]
+
+
+def test_without_a_kotlin_service_project_there_is_no_sidecar_row():
+    assert sidecar_rows(FakeLanguageServers(INSTALLED_SERVERS)) == []

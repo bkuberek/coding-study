@@ -37,6 +37,7 @@ from coding_study.domain.code_intelligence import (
     EXPIRY_WARNING_DAYS,
     LSP_DIRECTORY,
     NOT_AVAILABLE_YET,
+    SIDECAR_BUILDS,
     SIDECAR_SERVERS,
     LanguageServer,
     License,
@@ -54,6 +55,7 @@ from coding_study.domain.layout import BUILD_DIRECTORY, CASES_DIRECTORY, RUNS_DI
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.sandbox import (
+    GRADLE_GLIBC_IMAGE,
     NODE_IMAGE,
     SIDECAR_DATA,
     SharedFolder,
@@ -85,6 +87,11 @@ NOT_IN_INSTALL_CACHE = "not in the project's install cache"
 INSTALL_CACHE_FIX = "cstudy test"
 """A run installs again while the install cache lacks the server, now that code intelligence is
 on, and builds it there."""
+NO_KOTLIN_IMAGE = (
+    f"needs the Kotlin image: docker pull gradle@{GRADLE_GLIBC_IMAGE.partition('@')[2]}"
+)
+"""The Kotlin LSP's sidecar runs on an image of its own, which no run pulls: you pull it once, by
+its digest, which fits in a close reason where its tag beside it would not."""
 NO_PROJECT_IMAGE = "needs the project's image: run cstudy test or cstudy dev, which pull it"
 """A Java project's server runs on the project's image, which a run pulls. Its name and digest
 would not fit in a close reason, whose 123 bytes would cut the digest."""
@@ -288,6 +295,8 @@ def sidecar_unavailable(engine: SidecarEngine, image: str = NODE_IMAGE) -> str |
         return NO_DOCKER[state.status]
     if engine.image_present(image):
         return None
+    if image == GRADLE_GLIBC_IMAGE:
+        return NO_KOTLIN_IMAGE
     return NO_SIDECAR_IMAGE if image == NODE_IMAGE else NO_PROJECT_IMAGE
 
 
@@ -395,15 +404,38 @@ def _sidecar(
     cache = None
     if service.app.install_cache:
         cache = cache_volume_of(install_stack_name(slug, workspace))
+    project = _shared(environment.root / root)
+    tooling = _gradle_tooling(environment, sidecar_server(server, project.path))
+    data = f"{run}/{SIDECAR_DATA}"
     return SidecarPlan(
         identity=identity,
         user=engine.host_user(),
-        project=_shared(environment.root / root),
+        project=project,
         servers=_shared(environment.root / LSP_DIRECTORY),
         run=run,
         image=sidecar_image(server, service.image),
-        toolchain=sidecar_toolchain(server, service, f"{run}/{SIDECAR_DATA}", cache),
+        toolchain=sidecar_toolchain(server, service, data, cache, tooling),
     )
+
+
+def _gradle_tooling(environment: Environment, server: LanguageServer) -> str | None:
+    """The Gradle tooling API a fetched Linux build bundles, as its record says; None for any
+    other server."""
+    if not server.linux_build:
+        return None
+    probe = environment.language_servers.probe(server)
+    return probe.gradle_tooling if isinstance(probe, Fetched) else None
+
+
+def sidecar_build_states(
+    locator: LanguageServerLocator, jdk: JdkSelector
+) -> tuple[LanguageServerState, ...]:
+    """The state of each build that `cstudy doctor --fix` fetches for a sidecar and not for this
+    machine, for the languages of the service projects installed in the workspace: the Kotlin
+    LSP's Linux build, once a Kotlin service project is installed."""
+    languages = locator.installed_service_languages()
+    builds = (server for server in SIDECAR_BUILDS if server.language in languages)
+    return tuple(_located(server, locator, jdk) for server in builds)
 
 
 def _shared(folder: Path) -> SharedFolder:

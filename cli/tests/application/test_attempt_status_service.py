@@ -42,9 +42,9 @@ def test_a_typescript_service_project_has_code_intelligence_in_its_sidecar(servi
 
 def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):
     root = make_content(tmp_path)
-    write_problem(root, {**meta_document(), "languages": ["kotlin"]})
+    write_problem(root, {**meta_document(), "languages": ["rust"]})
     environment = make_environment(root, sandbox=FakeSandbox())
-    start_attempt(environment, StartRequest(SLUG, Language.KOTLIN))
+    start_attempt(environment, StartRequest(SLUG, Language.RUST))
 
     assert attempt_status(environment, None, None).no_code_intelligence is (
         NoCodeIntelligence.SERVICE_PROJECT

@@ -39,6 +39,7 @@ from coding_study.domain.code_intelligence import (
     JDTLS,
     KOTLIN_LSP,
     KOTLIN_LSP_LICENSE,
+    KOTLIN_LSP_LINUX,
     LANGUAGE_SERVERS,
     LSP_INSTALL_COMMAND,
     RUST_ANALYZER,
@@ -47,6 +48,7 @@ from coding_study.domain.code_intelligence import (
     LanguageServer,
     machine_of,
 )
+from coding_study.domain.problem import Language
 
 TYPESCRIPT = TYPESCRIPT_LANGUAGE_SERVER
 NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.version_script is not None]
@@ -872,3 +874,122 @@ def test_an_unreadable_record_is_not_installed(tmp_path):
 
 def test_today_is_the_clock_it_was_given(tmp_path):
     assert directory(tmp_path).today() == TODAY
+
+
+def linux_file() -> str:
+    """The Linux archive for this machine's processor, which a sidecar runs."""
+    releases = KOTLIN_LSP.releases
+    assert releases is not None
+    suffix = releases.suffixes[machine_of("linux", platform.machine())]
+    return f"kotlin-server-263.9000.0{suffix}"
+
+
+def tooling_jar(directory: Path, version: str = "9.7.0") -> bytes:
+    """A jar of the Gradle tooling API with its build receipt, as the Kotlin LSP bundles it."""
+    jar = directory / "tooling.jar"
+    with zipfile.ZipFile(jar, "w") as archive:
+        archive.writestr("org/gradle/build-receipt.properties", f"versionNumber={version}\n")
+    return jar.read_bytes()
+
+
+class TestLinuxBuild:
+    """The Linux build of the Kotlin LSP, for a Kotlin service project's sidecar: fetched as this
+    machine's is, put beside it, never run here."""
+
+    def installed(self, tmp_path: Path, host_version: str | None = "263.9000.0"):
+        workspace = tmp_path / "ws"
+        if host_version is not None:
+            this_machines_build(workspace, host_version)
+        members = [
+            ("kotlin-server-263.9000.0/bin/intellij-server", b"#!/bin/sh\n", EXECUTABLE),
+            (
+                "kotlin-server-263.9000.0/plugins/kotlin.lsp/lib/modules/"
+                "intellij.libraries.gradle.tooling.jar",
+                tooling_jar(tmp_path),
+                0o644,
+            ),
+        ]
+        served = zip_of(tmp_path, members)
+        https = FakeHttps(releases_answers(linux_file(), served.sha256))
+        commands = RecordingEnvironments(ProbeResult(0, STATUS))
+        lsp = fetching(workspace, https, commands)
+        newest = lsp.newest_build(KOTLIN_LSP_LINUX)
+        assert isinstance(newest, NewestBuild)
+        local = replace(newest, archive=replace(newest.archive, url=served.url))
+        return lsp, lsp.install_build(KOTLIN_LSP_LINUX, local), commands, workspace
+
+    def test_the_newest_build_is_linuxs_for_this_machines_processor(self, tmp_path):
+        https = FakeHttps(releases_answers(linux_file(), "a" * 64))
+        found = fetching(tmp_path, https).newest_build(KOTLIN_LSP_LINUX)
+        assert isinstance(found, NewestBuild)
+        assert (found.archive.url.endswith(linux_file()), found.archive.into) == (True, "linux")
+
+    def test_it_goes_beside_this_machines_build_which_stays(self, tmp_path):
+        _lsp, result, _commands, workspace = self.installed(tmp_path)
+        builds = workspace / ".cs" / "lsp" / "kotlin-lsp"
+        assert (result.exit_code, sorted(entry.name for entry in builds.iterdir())) == (
+            0,
+            ["installed.json", "linux", "linux.json", "server"],
+        )
+
+    def test_it_is_never_run_on_this_machine(self, tmp_path):
+        _lsp, _result, commands, _workspace = self.installed(tmp_path)
+        assert commands.ran == []
+
+    def test_its_last_day_is_that_of_this_machines_build_of_the_same_version(self, tmp_path):
+        lsp, _result, _commands, _workspace = self.installed(tmp_path)
+        expected = Fetched("263.9000.0", date(2026, 11, 12), KOTLIN_LSP_LICENSE, "9.7.0")
+        assert lsp.probe(KOTLIN_LSP_LINUX) == expected
+
+    def test_without_this_machines_build_of_its_version_it_names_no_last_day(self, tmp_path):
+        lsp, _result, _commands, _workspace = self.installed(tmp_path, "263.8000.0")
+        probe = lsp.probe(KOTLIN_LSP_LINUX)
+        assert isinstance(probe, Fetched)
+        assert probe.last_day is None
+
+    def test_its_record_names_the_gradle_tooling_api_it_bundles(self, tmp_path):
+        _lsp, _result, _commands, workspace = self.installed(tmp_path)
+        record = json.loads((workspace / ".cs/lsp/kotlin-lsp/linux.json").read_text())
+        assert record["gradle_tooling"] == "9.7.0"
+
+    def test_the_tooling_api_of_this_machines_build_is_not_taken_for_its_own(self, tmp_path):
+        server = tmp_path / "ws" / ".cs/lsp/kotlin-lsp/server/lib"
+        server.mkdir(parents=True)
+        older = tmp_path / "older"
+        older.mkdir()
+        (server / "a-gradle-tooling.jar").write_bytes(tooling_jar(older, "8.0.0"))
+        _lsp, _result, _commands, workspace = self.installed(tmp_path)
+        record = json.loads((workspace / ".cs/lsp/kotlin-lsp/linux.json").read_text())
+        assert record["gradle_tooling"] == "9.7.0"
+
+
+def this_machines_build(workspace: Path, version: str) -> None:
+    """This machine's Kotlin LSP build in place, as `--fix` records it, running until
+    2026-11-12."""
+    lsp = workspace / ".cs" / "lsp" / "kotlin-lsp"
+    launcher = lsp / "server" / "bin" / "intellij-server"
+    launcher.parent.mkdir(parents=True)
+    launcher.write_text("#!/bin/sh\n")
+    named = {"name": KOTLIN_LSP_LICENSE.name, "url": KOTLIN_LSP_LICENSE.url}
+    record = {"version": version, "last_day": "2026-11-12", "license": named}
+    (lsp / "installed.json").write_text(json.dumps(record))
+
+
+def install_record(workspace: Path, slug: str, document: object) -> None:
+    record = workspace / ".cs" / "projects" / f"{slug}.install.json"
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(json.dumps(document))
+
+
+def test_the_service_languages_are_those_the_install_records_name(tmp_path):
+    install_record(tmp_path, "rooms-kotlin", {"lock_sha256": "x", "language": "kotlin"})
+    install_record(tmp_path, "rooms-go", {"lock_sha256": "x", "language": "go"})
+    install_record(tmp_path, "old", {"lock_sha256": "x"})
+    assert directory(tmp_path).installed_service_languages() == {Language.KOTLIN, Language.GO}
+
+
+def test_an_unreadable_install_record_names_no_language(tmp_path):
+    record = tmp_path / ".cs" / "projects" / "broken.install.json"
+    record.parent.mkdir(parents=True)
+    record.write_text("{")
+    assert directory(tmp_path).installed_service_languages() == frozenset()

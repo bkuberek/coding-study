@@ -26,7 +26,6 @@ from tests.service_problems import meta_document
 SPEC = Path(__file__).resolve().parents[3] / "docs" / "specs" / "web-ui.md"
 TABLE_HEADING = "### Where each server runs"
 EXPECTED_GAPS = {
-    Language.KOTLIN: Placement.PENDING,
     Language.RUST: Placement.NOT_APPLICABLE,
 }
 """The service projects without a server, each with its reason in the catalog's data: a cell that

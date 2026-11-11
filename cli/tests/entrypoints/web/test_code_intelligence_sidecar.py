@@ -4,6 +4,7 @@ goes with the session; Docker that does not answer, or a sidecar image that is n
 the socket calmly with 4004 and starts nothing. A fake engine's sidecar runs the scripted server
 here."""
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -11,12 +12,16 @@ import pytest
 from starlette.testclient import TestClient
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
-from coding_study.application.code_intelligence import NO_PROJECT_IMAGE, NO_SIDECAR_IMAGE
+from coding_study.application.code_intelligence import (
+    NO_KOTLIN_IMAGE,
+    NO_PROJECT_IMAGE,
+    NO_SIDECAR_IMAGE,
+)
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.preferences import preferences_document
-from coding_study.domain.sandbox import NODE_IMAGE
+from coding_study.domain.sandbox import GRADLE_GLIBC_IMAGE, NODE_IMAGE
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.language_server import LanguageServerCommand
 from tests.fakes import INSTALLED_SERVERS, FakeLanguageServers, make_environment
@@ -259,6 +264,45 @@ def test_a_projects_image_that_is_not_here_closes_calmly_with_4004_naming_what_p
 def test_the_java_sidecar_asks_for_the_projects_image(tmp_path):
     sandbox = FakeSandbox(every_image_present=False, present={GRADLE_IMAGE})
     lab = java_rig(tmp_path, sandbox)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        eventually(lab.server.ready, bool)
+    assert sidecar_steps(sandbox)[:2] == ["sidecar", "sidecar_command"]
+
+
+def kotlin_rig(tmp_path: Path, sandbox: FakeSandbox) -> Rig:
+    """A Kotlin service project, whose Kotlin LSP runs its Linux build on the glibc image."""
+    document = {**java_meta_document(), "languages": ["kotlin"]}
+    return service_rig(tmp_path, sandbox, document=document)
+
+
+def test_the_kotlin_lsp_imports_with_the_images_jdk_and_its_gradle_home_in_the_data_folder(
+    tmp_path, sandbox
+):
+    lab = kotlin_rig(tmp_path, sandbox)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        eventually(lab.server.ready, bool)
+    options = sandbox.exec_environments[0]["IJ_JAVA_OPTIONS"]
+    runs = re.escape(str((lab.root / ".cs" / "runs").resolve()))
+    home = rf"gradleUserHome={runs}/cstudy-l-[^/]+/data/gradle"
+    assert (
+        "-Dcom.jetbrains.ls.imports.gradle.java.home=/opt/java/openjdk" in options,
+        re.search(home, options) is not None,
+    ) == (True, True)
+
+
+def test_a_missing_kotlin_image_closes_calmly_naming_its_pull_by_digest(tmp_path):
+    sandbox = FakeSandbox(every_image_present=False, present={GRADLE_IMAGE})
+    lab = kotlin_rig(tmp_path, sandbox)
+    with session_client(lab.app) as page, session(page, lab.query) as websocket:
+        assert closed_with(websocket) == (NEEDS_DOCKER, NO_KOTLIN_IMAGE)
+    assert (sidecar_steps(sandbox), sandbox.called("pull")) == ([], [])
+
+
+def test_the_kotlin_sidecar_asks_for_the_glibc_image_only(tmp_path):
+    sandbox = FakeSandbox(every_image_present=False, present={GRADLE_GLIBC_IMAGE})
+    lab = kotlin_rig(tmp_path, sandbox)
     lab.server.play()
     with session_client(lab.app) as page, session(page, lab.query):
         eventually(lab.server.ready, bool)

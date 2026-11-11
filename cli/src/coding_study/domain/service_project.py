@@ -40,6 +40,10 @@ LOCK_MANAGERS: Mapping[str, str] = {
     GO_LOCK: "go",
 }
 """The package manager a lock file names, for the list of what a problem depends on."""
+INSTALL_RECORD_SUFFIX = ".install.json"
+"""`.cs/projects/<slug>.install.json`: what the last install of a service project recorded."""
+INSTALL_RECORD_LANGUAGE = "language"
+"""The record's key for the project's language, which says what its sidecar needs."""
 INSTALLED_DIRECTORIES: Mapping[str, str] = {"pnpm-lock.yaml": "node_modules", "uv.lock": ".venv"}
 """Where the install of a lock file leaves its packages: gone with `--fresh`, so installed again."""
 FROZEN_INSTALL_FLAGS: Mapping[str, tuple[str, ...]] = {

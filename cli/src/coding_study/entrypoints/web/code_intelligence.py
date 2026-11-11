@@ -37,7 +37,7 @@ from coding_study.application.code_intelligence import SessionTarget, sidecar_un
 from coding_study.application.ports import SidecarEngine
 from coding_study.domain.code_intelligence import SIDECAR_PLATFORM, WARM_IDLE_S, Launch
 from coding_study.domain.errors import SandboxError
-from coding_study.domain.sandbox import SidecarPlan
+from coding_study.domain.sandbox import IMAGE_JAVA_HOME, SidecarPlan
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from coding_study.entrypoints.web.language_server import (
     LanguageServerCommand,
@@ -417,12 +417,13 @@ class LanguageSessions:
     def _launch(self, target: SessionTarget) -> Launch:
         """The places the target's command names; a server that keeps data gets the first data
         directory of its root that no running server of this `cstudy serve` holds, since two
-        servers cannot share one. A server in a sidecar runs on Linux, on the image's `java`, with
-        the sidecar's own data folder, which no other session sees."""
+        servers cannot share one. A server in a sidecar runs on Linux, on the image's `java` and
+        with the image's JDK as the JDK it builds with, in the sidecar's own data folder, which no
+        other session sees."""
         lsp = target.lsp_directory
         if target.sidecar is not None:
             data = target.sidecar.data_directory
-            return Launch(str(lsp), data, platform=SIDECAR_PLATFORM)
+            return Launch(str(lsp), data, platform=SIDECAR_PLATFORM, java_home=IMAGE_JAVA_HOME)
         home = None if target.java_home is None else str(target.java_home)
         java = None if target.java_home is None else str(target.java_home / "bin" / "java")
         data = None

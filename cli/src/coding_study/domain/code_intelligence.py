@@ -5,6 +5,7 @@ Paths are POSIX strings: relative to the workspace root, or to `.cs/lsp/` where 
 Commands take the absolute directories they run with (`Launch`), so no path type is needed here.
 """
 
+import hashlib
 import re
 import shlex
 from collections.abc import Callable, Mapping
@@ -26,6 +27,8 @@ from coding_study.domain.sandbox import (
     CACHE_DIRECTORY as INSTALL_CACHE,
 )
 from coding_study.domain.sandbox import (
+    GRADLE_GLIBC_IMAGE,
+    IMAGE_GRADLE_HOME,
     JVM_SIDECAR_MEMORY,
     JVM_SIDECAR_PIDS,
     NODE_IMAGE,
@@ -48,6 +51,9 @@ NO_ADDONS = "--no-addons"
 its first load and the load waits, for seconds, or for minutes on a busy machine."""
 IDLE_SECONDS = 60
 """How long the page keeps a session whose files are all closed."""
+SIDECAR_PLATFORM = "linux"
+"""What a sidecar runs on, whatever this machine is: JDT LS takes the archive's `config_linux`,
+and the Kotlin LSP's sidecar runs its Linux build."""
 WARM_IDLE_S = 600
 """How long a server that `cstudy serve` started ahead of time waits for an editor to take it over
 before it stops: about ten minutes (docs/specs/web-ui.md#warm-up)."""
@@ -272,6 +278,9 @@ class LanguageServer:
     """Set for a server whose vendor asks you to accept a license before it is downloaded."""
     warmup: Warmup | None = None
     """Set for a server whose sessions read what an online import fetches."""
+    linux_build: bool = False
+    """Set for a build that `cstudy doctor --fix` fetches for Linux on this machine's processor,
+    which a sidecar runs, rather than for this machine; it never runs on this machine."""
     releases: Releases | None = None
     """Set for a server whose newest build `cstudy doctor --fix` fetches rather than pins."""
 
@@ -545,6 +554,13 @@ its place."""
 KOTLIN_LSP_RECORD = f"{KOTLIN_LSP_DIRECTORY}/installed.json"
 """What `--fix` writes once the build is in place: its version, the last day it runs, the license
 it came under and where it came from (`InstalledBuild`)."""
+KOTLIN_LSP_BUILD = "server"
+"""This machine's build, in `kotlin-lsp/`."""
+KOTLIN_LSP_LINUX_BUILD = "linux"
+"""The Linux build for this machine's processor, beside it, which Kotlin service projects' sidecars
+run: this machine's build cannot run in a Linux container."""
+KOTLIN_LSP_LINUX_HOME = f"{KOTLIN_LSP_DIRECTORY}/{KOTLIN_LSP_LINUX_BUILD}"
+KOTLIN_LSP_LINUX_RECORD = f"{KOTLIN_LSP_DIRECTORY}/{KOTLIN_LSP_LINUX_BUILD}.json"
 KOTLIN_LSP_LICENSE = License(
     key="kotlin-lsp",
     name="JetBrains Free Plugin License Agreement 1.0",
@@ -582,13 +598,24 @@ EXPIRY_WARNING_DAYS = 7
 """How many days before an early-access build stops the doctor row warns."""
 
 
-def build_archive(build: Build, sha256: str, machine: str) -> Archive:
-    """The archive of a fetched build, unpacked into `kotlin-lsp/server/`: the Windows archives
-    hold the build at their top, the others in `kotlin-server-<version>/`."""
+def build_archive(build: Build, sha256: str, machine: str, into: str = KOTLIN_LSP_BUILD) -> Archive:
+    """The archive of a fetched build, unpacked into `kotlin-lsp/<into>/`, `server/` for this
+    machine's: the Windows archives hold the build at their top, the others in
+    `kotlin-server-<version>/`."""
     releases = KOTLIN_LSP_RELEASES
     flat = machine.startswith("win32")
     top = "" if flat else releases.top_directory.format(version=build.version)
-    return Archive(build.url, sha256, KOTLIN_LSP_DIRECTORY, into="server", strip=top)
+    return Archive(build.url, sha256, KOTLIN_LSP_DIRECTORY, into=into, strip=top)
+
+
+def build_place(server: "LanguageServer") -> str:
+    """Where in `kotlin-lsp/` a fetched build of `server` goes."""
+    return KOTLIN_LSP_LINUX_BUILD if server.linux_build else KOTLIN_LSP_BUILD
+
+
+def sidecar_machine(processor: str) -> str:
+    """The machine a sidecar runs on: Linux on this machine's processor, as Docker runs images."""
+    return machine_of(SIDECAR_PLATFORM, processor)
 
 
 def _kotlin_lsp_launcher(platform: str) -> str:
@@ -602,6 +629,22 @@ def _kotlin_lsp_command(server: LanguageServer, launch: Launch) -> tuple[str, ..
         "--stdio",
         f"--system-path={launch.data_directory}/system",
     )
+
+
+def _kotlin_lsp_linux_command(_server: LanguageServer, launch: Launch) -> tuple[str, ...]:
+    return (
+        f"{launch.lsp_directory}/{KOTLIN_LSP_LINUX_HOME}/bin/intellij-server",
+        "--stdio",
+        f"--system-path={launch.data_directory}/system",
+    )
+
+
+def _kotlin_lsp_linux_environment(launch: Launch) -> dict[str, str]:
+    """As this machine's build, with Gradle's user home in the sidecar's data folder, where the
+    import finds the image's Gradle as its tooling API's own distribution."""
+    options = _kotlin_lsp_environment(launch)["IJ_JAVA_OPTIONS"]
+    home = f"-Dcom.jetbrains.ls.imports.gradle.gradleUserHome={launch.data_directory}/gradle"
+    return {"IJ_JAVA_OPTIONS": f"{options} {home}"}
 
 
 def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
@@ -646,6 +689,26 @@ a refresh as its import and index progress. It reads the sources of the build's 
 Gradle's cache, which `cstudy doctor --fix` fills by warming it up once online. cstudy pins no
 build: `--fix` fetches JetBrains' newest, checked by the SHA-256 JetBrains publishes beside it,
 since each early-access build stops about a month after its release."""
+
+KOTLIN_LSP_LINUX = replace(
+    KOTLIN_LSP,
+    name="kotlin-lsp-linux",
+    script=KOTLIN_LSP_LINUX_RECORD,
+    launcher=_kotlin_lsp_linux_command,
+    environment=_kotlin_lsp_linux_environment,
+    jdks=None,
+    data=None,
+    warmup=None,
+    linux_build=True,
+)
+"""The Kotlin LSP as a Kotlin service project's sidecar runs it: JetBrains' Linux build for this
+machine's processor, which `cstudy doctor --fix` fetches beside this machine's once a Kotlin service
+project is installed, with its own runtime, on `GRADLE_GLIBC_IMAGE`, importing with the image's JDK.
+Never run on this machine, nor warmed up: the import reads the install cache."""
+
+SIDECAR_BUILDS = (KOTLIN_LSP_LINUX,)
+"""The builds that `cstudy doctor --fix` fetches for a sidecar beside this machine's, once a
+service project of their language is installed."""
 
 GOPLS_SETTINGS: dict[str, JsonValue] = {"linksInHover": False, "completeUnimported": False}
 """No web links on hover, and no completion of a package that is not imported, which adds its
@@ -764,13 +827,15 @@ def server_for(language: Language) -> LanguageServer | None:
     return next((server for server in LANGUAGE_SERVERS if server.language is language), None)
 
 
-SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS, GOPLS)
+SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS, GOPLS, KOTLIN_LSP)
 """The servers that run in a service project's sidecar (docs/specs/service-projects.md#language-
 servers): the Node programs on the sidecar's Node image, for both of their languages; JDT LS on the
-project's own image, whose JDK and Gradle build the project; and gopls on the project's own image,
-whose Go loads the project, built into the project's install cache by its install."""
-SIDECAR_PLATFORM = "linux"
-"""What a sidecar runs on, whatever this machine is: JDT LS takes the archive's `config_linux`."""
+project's own image, whose JDK and Gradle build the project; gopls on the project's own image,
+whose Go loads the project, built into the project's install cache by its install; and the Kotlin
+LSP's Linux build on the glibc variant of the project's image."""
+KOTLIN_SIDECAR_MEMORY = "3g"
+"""The Kotlin LSP and the Gradle daemon of its import took 1.88 GiB together on the catalog's
+Kotlin service project, under the server's 1 GB heap."""
 GO_BUILD_IN_SIDECAR = "go-build"
 """Go's build cache in a sidecar's data folder, which the install cache, read-only there, cannot
 hold."""
@@ -802,11 +867,34 @@ def is_built_by_go(server: LanguageServer) -> bool:
 
 def sidecar_image(server: LanguageServer, project_image: str) -> str:
     """Where `server` runs in a service project's sidecar: a Node server on the pinned Node image,
-    whatever the project's; a server that needs a JDK, or Go, on the project's own image, which
+    whatever the project's; the Kotlin LSP on the pinned glibc Gradle image, which its Linux build
+    and runtime need; another server that needs a JDK, or Go, on the project's own image, which
     holds the toolchain the project builds with, and which `cstudy start` pulled."""
+    if server.language is Language.KOTLIN:
+        return GRADLE_GLIBC_IMAGE
     if runs_on_a_jdk(server) or is_built_by_go(server):
         return project_image
     return NODE_IMAGE
+
+
+def tooling_distribution(version: str) -> tuple[str, str]:
+    """Where a Gradle tooling API of `version` looks for its own distribution in Gradle's user
+    home, for a build that names no wrapper, as Gradle's wrapper lays it out: the marker that says
+    it is unpacked, and the folder of the distribution. The Kotlin LSP's import finds the image's
+    Gradle there, linked, rather than downloading its tooling API's version."""
+    name = f"gradle-{version}-bin"
+    url = f"https://services.gradle.org/distributions/{name}.zip"
+    folder = f"wrapper/dists/{name}/{_base36(hashlib.md5(url.encode()).digest())}"
+    return f"{folder}/{name}.zip.ok", f"{folder}/gradle-{version}"
+
+
+def _base36(digest: bytes) -> str:
+    """As Java's `new BigInteger(1, digest).toString(36)` writes it."""
+    number, digits = int.from_bytes(digest, "big"), ""
+    while number:
+        number, remainder = divmod(number, 36)
+        digits = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder] + digits
+    return digits or "0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -867,30 +955,44 @@ def _from_the_install_cache(server: LanguageServer, _launch: Launch) -> tuple[st
 
 
 def sidecar_toolchain(
-    server: LanguageServer, service: ServiceProject, data: str, cache_volume: str | None
+    server: LanguageServer,
+    service: ServiceProject,
+    data: str,
+    cache_volume: str | None,
+    gradle_tooling: str | None = None,
 ) -> SidecarToolchain | None:
     """What `server` needs of the project's toolchain in its sidecar, whose data folder is the
     absolute `data`: for JDT LS, the image's Gradle (which it finds through the image's
     `GRADLE_HOME`) with its user home and project cache in `data`, and the dependencies of the
     install cache as Gradle's read-only cache, which Gradle neither locks nor writes; for gopls,
     the project's own Go variables, with the build cache and gopls's file cache in `data`, since
-    the install cache is read-only there. None for a Node server."""
+    the install cache is read-only there; for the Kotlin LSP, JDT LS's, with the image's Gradle
+    where its tooling API of version `gradle_tooling` looks for its own distribution, since the
+    project names no wrapper and the sidecar reaches no network. None for a Node server."""
     if is_built_by_go(server):
         return _go_toolchain(service, data, cache_volume)
-    if not runs_on_a_jdk(server):
+    if not runs_on_a_jdk(server) and not server.linux_build:
         return None
     environment = {"GRADLE_USER_HOME": f"{data}/{GRADLE_HOME_IN_SIDECAR}"}
     installed = service.env.get(GRADLE_USER_HOME)
     if cache_volume is not None and installed is not None:
         environment[GRADLE_READ_ONLY_CACHE] = f"{installed}/caches"
     properties = f"org.gradle.projectcachedir={data}/{PROJECT_CACHE_IN_SIDECAR}\n"
+    files = {f"{GRADLE_HOME_IN_SIDECAR}/gradle.properties": properties}
+    links: dict[str, str] = {}
+    kotlin = server.language is Language.KOTLIN
+    if kotlin and gradle_tooling is not None:
+        marker, distribution = tooling_distribution(gradle_tooling)
+        files[f"{GRADLE_HOME_IN_SIDECAR}/{marker}"] = ""
+        links[f"{GRADLE_HOME_IN_SIDECAR}/{distribution}"] = IMAGE_GRADLE_HOME
     return SidecarToolchain(
         cache_volume=cache_volume,
         environment=environment,
-        files={f"{GRADLE_HOME_IN_SIDECAR}/gradle.properties": properties},
+        files=files,
         writable_project=True,
-        memory=JVM_SIDECAR_MEMORY,
+        memory=KOTLIN_SIDECAR_MEMORY if kotlin else JVM_SIDECAR_MEMORY,
         pids=JVM_SIDECAR_PIDS,
+        links=links,
     )
 
 
@@ -914,9 +1016,11 @@ def sidecar_server(server: LanguageServer, folder: str) -> LanguageServer:
     is not needed; basedpyright is the catalog's, since it reads the folder's `[tool.pyright]`,
     whose `venv` it finds without asking Python; JDT LS runs on the image's JDK, so the JDK this
     machine selects does not matter; gopls is the one the install built into the project's install
-    cache. Raises ValueError for a server of no sidecar."""
+    cache; the Kotlin LSP is its Linux build. Raises ValueError for a server of no sidecar."""
     if server not in SIDECAR_SERVERS:
         raise ValueError(f"{server.name} runs in no sidecar")
+    if server is KOTLIN_LSP:
+        return KOTLIN_LSP_LINUX
     if runs_on_a_jdk(server):
         return replace(server, jdks=None)
     if is_built_by_go(server):
@@ -990,11 +1094,7 @@ SERVICE_PROJECT_ROUTES: Mapping[Language, Route] = {
     Language.PYTHON: IN_SIDECAR,
     Language.TYPESCRIPT: IN_SIDECAR,
     Language.JAVA: IN_SIDECAR,
-    Language.KOTLIN: Route(
-        Placement.PENDING,
-        "the Kotlin LSP is a build per machine with its own runtime and launcher, which the "
-        "project's Linux image cannot run; its sidecar waits for a spike that accepts its license",
-    ),
+    Language.KOTLIN: IN_SIDECAR,
     Language.GO: IN_SIDECAR,
     Language.RUST: Route(Placement.NOT_APPLICABLE, "the catalog has no Rust service project"),
 }

@@ -4,8 +4,11 @@ and Go, on a real Docker engine, and its code intelligence from inside the sidec
 `docker_go`, which CI deselects. The waits are generous for a busy machine: what these tests assert
 is what happened, not how fast."""
 
+import itertools
 import json
+import os
 import shutil
+import time
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -22,8 +25,16 @@ from coding_study.adapters.subprocess_tool_probe import (
     SubprocessCommandRunner,
     SubprocessToolProbe,
 )
-from coding_study.application.ports import Unpacked
-from coding_study.domain.code_intelligence import JDTLS, JDTLS_DIRECTORY, LSP_DIRECTORY
+from coding_study.adapters.workspace_marker import record_license
+from coding_study.application.ports import Fetched, NoBuild, Unpacked
+from coding_study.domain.code_intelligence import (
+    JDTLS,
+    JDTLS_DIRECTORY,
+    KOTLIN_LSP_DIRECTORY,
+    KOTLIN_LSP_LICENSE,
+    KOTLIN_LSP_LINUX,
+    LSP_DIRECTORY,
+)
 from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.sandbox import workspace_digest
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
@@ -33,10 +44,12 @@ from tests.language_sessions import received, session
 from tests.real_service_projects import (
     GO,
     JAVA,
+    KOTLIN,
     MEMBERS,
     PYTHON,
     TYPESCRIPT,
     FixtureProject,
+    catalog_project,
     docker,
     fixture_project,
 )
@@ -47,6 +60,8 @@ pytestmark = [pytest.mark.slow, pytest.mark.docker]
 
 EXIT_OK = 0
 EXIT_FAILURES = 1
+ACCEPT_LICENSE_VARIABLE = "CSTUDY_ACCEPT_LICENSE"
+PULL_PAUSE_S = 1.0
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -383,6 +398,8 @@ class Opened:
     a class in a jar, or a file of the install cache, which only the sidecar has."""
     library_refusal: dict[str, str] | None = None
     """What the library tab says of such a definition, which it cannot read on this machine."""
+    pulled: bool = False
+    """For a server that answers diagnostics only when asked, as the Kotlin LSP does."""
 
 
 TYPESCRIPT_FILE = Opened(
@@ -448,7 +465,45 @@ GO_FILE = Opened(
 )
 """`cmp.Diff` comes from go-cmp, which the install put in the install cache, where the sidecar's
 gopls reads it and this machine has no file."""
-FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE, JAVA: JAVA_FILE, GO: GO_FILE}
+KOTLIN_SOURCE = (
+    Path(__file__).resolve().parents[2]
+    / "problems"
+    / KOTLIN
+    / "starter/src/main/kotlin/coworking/DeskInventory.kt"
+)
+KOTLIN_TEXT = KOTLIN_SOURCE.read_text().replace(
+    "fun availableOn(day: String): Int? = byDay[day]",
+    "fun availableOn(day: String): String = byDay[day]",
+)
+KOTLIN_JSON_LINE = next(
+    index for index, line in enumerate(KOTLIN_TEXT.splitlines()) if "Json.decode" in line
+)
+KOTLIN_JSON = {
+    "line": KOTLIN_JSON_LINE,
+    "character": KOTLIN_TEXT.splitlines()[KOTLIN_JSON_LINE].index("Json") + 1,
+}
+KOTLIN_FILE = Opened(
+    path="src/main/kotlin/coworking/DeskInventory.kt",
+    language_id="kotlin",
+    text=KOTLIN_TEXT,
+    error="Return type mismatch",
+    hover_at=KOTLIN_JSON,
+    hovered="Json",
+    defined_at=KOTLIN_JSON,
+    defined_in="",
+    defined_elsewhere="jar:///cache/gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/",
+    library_refusal={"reason": "not_a_file_uri"},
+    pulled=True,
+)
+"""`Json` comes from kotlinx-serialization, which the install put in the install cache: the
+Kotlin LSP's import reads it there, read-only, with the image's Gradle, offline."""
+FILES = {
+    TYPESCRIPT: TYPESCRIPT_FILE,
+    PYTHON: PYTHON_FILE,
+    JAVA: JAVA_FILE,
+    GO: GO_FILE,
+    KOTLIN: KOTLIN_FILE,
+}
 
 
 def patient_language_servers(root: Path) -> LspDirectory:
@@ -471,11 +526,54 @@ def jdtls_in_cache(pytestconfig: pytest.Config) -> Path:
     return cache / LSP_DIRECTORY / JDTLS_DIRECTORY
 
 
+def kotlin_linux_build_in_cache(pytestconfig: pytest.Config) -> Path:
+    """JetBrains' newest Linux build of the Kotlin LSP for this processor, in pytest's cache,
+    fetched and checked by its published SHA-256 as `cstudy doctor --fix` fetches it, again once
+    a newer one is out; skipped unless you accept its license."""
+    accepted = os.environ.get(ACCEPT_LICENSE_VARIABLE, "").split(",")
+    if KOTLIN_LSP_LICENSE.key not in accepted:
+        pytest.skip(f"the Kotlin LSP's license is not accepted: set {ACCEPT_LICENSE_VARIABLE}")
+    assert pytestconfig.cache is not None
+    cache = pytestconfig.cache.mkdir("kotlin-lsp-sidecar")
+    directory = LspDirectory(cache, SubprocessToolProbe(), SubprocessCommandRunner())
+    newest = directory.newest_build(KOTLIN_LSP_LINUX)
+    if isinstance(newest, NoBuild):
+        pytest.skip(f"no Kotlin LSP build to fetch: {newest.reason}")
+    probe = directory.probe(KOTLIN_LSP_LINUX)
+    if not isinstance(probe, Fetched) or probe.version != newest.build.version:
+        result = directory.install_build(KOTLIN_LSP_LINUX, newest)
+        if result.exit_code != 0:
+            pytest.skip(f"the Kotlin LSP's Linux build could not be fetched: {result.output}")
+    return cache / LSP_DIRECTORY / KOTLIN_LSP_DIRECTORY
+
+
+def install_kotlin_linux_build(project: FixtureProject, pytestconfig: pytest.Config) -> None:
+    """The Linux build and its record in the workspace's `.cs/lsp/kotlin-lsp/`, linked hard from
+    pytest's cache, and the license accepted in the workspace's marker, as `--fix` leaves them."""
+    fetched = kotlin_linux_build_in_cache(pytestconfig)
+    builds = project.root / LSP_DIRECTORY / KOTLIN_LSP_DIRECTORY
+    builds.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(fetched / "linux", builds / "linux", copy_function=_linked, symlinks=True)
+    shutil.copy2(fetched / "linux.json", builds / "linux.json")
+    license_ = KOTLIN_LSP_LICENSE
+    record_license(project.root, license_.key, license_.name, license_.url)
+
+
+def _linked(source: str, target: str) -> None:
+    try:
+        os.link(source, target)
+    except OSError:
+        shutil.copy2(source, target)
+
+
 def install_servers(project: FixtureProject, pytestconfig: pytest.Config) -> None:
     """The workspace's `.cs/lsp/`, as `cstudy doctor --fix` fills it: JDT LS is copied, not
     linked, since the sidecar mounts `.cs/lsp/` and a link would point outside it. Go's gopls
     needs none: `cstudy start` built it into the install cache, code intelligence being on."""
     if project.directory == GO:
+        return
+    if project.directory == KOTLIN:
+        install_kotlin_linux_build(project, pytestconfig)
         return
     if project.directory == JAVA:
         unpacked = jdtls_in_cache(pytestconfig)
@@ -493,15 +591,20 @@ def install_servers(project: FixtureProject, pytestconfig: pytest.Config) -> Non
         PYTHON,
         pytest.param(JAVA, marks=pytest.mark.docker_jvm),
         pytest.param(GO, marks=pytest.mark.docker_go),
+        pytest.param(KOTLIN, marks=pytest.mark.docker_jvm),
     ],
-    ids=["typescript", "python", "java", "go"],
+    ids=["typescript", "python", "java", "go", "kotlin"],
 )
 def sidecar_project(
     request: pytest.FixtureRequest,
     tmp_path_factory: pytest.TempPathFactory,
     pytestconfig: pytest.Config,
 ) -> Generator[FixtureProject]:
-    found = fixture_project(request.param, tmp_path_factory.mktemp("sidecar"))
+    scratch = tmp_path_factory.mktemp("sidecar")
+    if request.param == KOTLIN:
+        found = catalog_project(request.param, scratch)
+    else:
+        found = fixture_project(request.param, scratch)
     try:
         FsPreferencesStore(found.root).write(
             preferences_document(Preferences(code_intelligence=True))
@@ -559,7 +662,13 @@ def sidecar_session(sidecar_project: FixtureProject) -> Played:
             "text": opened.text,
         }
         websocket.send_json(notification("textDocument/didOpen", {"textDocument": text}))
-        published = until(websocket, lambda message: _reports_on(message, document, opened.error))
+        diagnostics = (
+            _pulled(websocket, document, opened.error)
+            if opened.pulled
+            else until(websocket, lambda message: _reports_on(message, document, opened.error))[
+                "params"
+            ]["diagnostics"]
+        )
         position = {"textDocument": {"uri": document}, "position": opened.hover_at}
         websocket.send_json(request(2, "textDocument/hover", position))
         hover = until(websocket, lambda message: message.get("id") == 2)
@@ -568,7 +677,21 @@ def sidecar_session(sidecar_project: FixtureProject) -> Played:
         definition = _first_target(until(websocket, lambda message: message.get("id") == 3))
         websocket.send_json(request(4, "cstudy/libraryFile", {"uri": definition}))
         library = until(websocket, lambda message: message.get("id") == 4)
-    return Played(published["params"]["diagnostics"], hover, definition, library)
+    return Played(diagnostics, hover, definition, library)
+
+
+def _pulled(websocket: WebSocketTestSession, document: str, error: str) -> list[dict[str, Any]]:
+    """The document's diagnostics, asked for until they hold the error, as the page asks again
+    while the server imports and indexes."""
+    for request_id in itertools.count(100):
+        asked = {"textDocument": {"uri": document}}
+        websocket.send_json(request(request_id, "textDocument/diagnostic", asked))
+        answer = until(websocket, lambda message, wanted=request_id: message.get("id") == wanted)
+        items = (answer.get("result") or {}).get("items") or []
+        if any(error in found["message"] for found in items):
+            return items
+        time.sleep(PULL_PAUSE_S)
+    raise AssertionError("unreachable")
 
 
 def _first_target(answer: dict[str, Any]) -> str:
