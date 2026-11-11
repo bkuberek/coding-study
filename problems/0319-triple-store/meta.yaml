@@ -2,7 +2,7 @@
 id: "0319"
 slug: triple-store
 title: Triple Store
-summary: "Build TripleStore, an in-memory store of (subject, predicate, object) facts: indexed pattern matching, joined queries with shared variables, one-or-more-hop paths that survive cycles, and answers as of a past time with their sources."
+summary: "Build TripleStore, an in-memory store of (subject, predicate, object) facts: indexed matching, joined queries, one-or-more-hop paths that survive cycles, and answers as of a past time with sources."
 status: ready
 difficulty: hard
 track: practical

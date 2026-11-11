@@ -2,7 +2,7 @@
 id: "0317"
 slug: taxonomy
 title: Taxonomy
-summary: "Build Taxonomy, a SKOS-style concept hierarchy with several parents: ancestors, cycle-free links, lowest common ancestors, label search with facet expansion, and stable ids across renames, replacements and two schemes."
+summary: "Build Taxonomy, a SKOS-style concept hierarchy with several parents: ancestors, no cycles, lowest common ancestors, label search with facet expansion, and stable ids across renames and two schemes."
 status: ready
 difficulty: hard
 track: practical
