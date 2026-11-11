@@ -1,8 +1,8 @@
 """Level passes in a real browser (docs/specs/progress-and-scheduling.md#level-passes): a problem
 an earlier attempt passed through level 2 of 4, mastered through level 2, shows that attempt, its
 best, its mastery and the level to try in the Problem view, a new attempt shows the goal in its
-statement, and Done after a run through level 1 reads `passed · through level 1 of 4`, in each
-engine of `tests/browsers.py`.
+statement, and Done after a run through level 1 reads `passed · through level 1 of 4`; a set whose
+entry targets level 2 counts it passed and names the target; in each engine of `tests/browsers.py`.
 
 Progress is written to the workspace's progress.db as `cstudy done` and `cstudy test` would leave
 it, so no code runs. Playwright and its engines are set up as `tests/browsers.py` says; without
@@ -44,6 +44,8 @@ PRACTISE = "section[aria-labelledby=practice-heading]"
 HISTORY = "section[aria-labelledby=history-heading]"
 GOAL = "last time: through level 2 of 4; try level 3"
 EARLIER = datetime(2026, 11, 1, 9, 0, tzinfo=UTC)
+SET = "ledger-loop"
+SETS_YAML = f"sets:\n  {SET}:\n    problems:\n      - {{slug: {PROBLEM}, level: 2}}\n"
 
 
 @dataclass
@@ -56,6 +58,8 @@ class Viewed:
     summary: str = ""
     statement: str = ""
     outcome: str = ""
+    set_counts: str = ""
+    set_row: str = ""
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -63,6 +67,7 @@ class Viewed:
 def server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
     workspace = mark_workspace(tmp_path_factory.mktemp(f"levels-{engine}") / "workspace")
     _passed_through_level_2(SqliteProgressStore(workspace / "progress.db"))
+    (workspace / "sets.yaml").write_text(SETS_YAML)
     with running_server(Path(workspace)) as running:
         yield running
 
@@ -106,6 +111,10 @@ def viewed(engine: str, server: RunningServer) -> Viewed:
         page.set_default_timeout(WAIT_MS)
         page.goto(server.login_url)
         page.wait_for_selector("table.problems tbody tr")
+        page.evaluate(f"location.hash = '#/sets/{SET}'")
+        page.wait_for_selector("table.set-table tbody tr")
+        seen.set_counts = page.locator(".set-facts .num").inner_text()
+        seen.set_row = page.locator("table.set-table tbody tr").first.inner_text()
         page.evaluate(f"location.hash = '#/problems/{PROBLEM}'")
         page.wait_for_selector(".practice-actions button.primary")
         seen.practise = page.locator(PRACTISE).inner_text()
@@ -169,6 +178,14 @@ def test_the_statement_of_the_new_attempt_shows_the_goal(viewed):
 
 def test_done_after_a_run_through_level_1_is_a_pass_through_it(viewed):
     assert " · python · passed · through level 1 of 4 · " in viewed.outcome
+
+
+def test_the_set_counts_the_entry_that_reached_its_target(viewed):
+    assert viewed.set_counts == "1 of 1 passed"
+
+
+def test_the_set_row_names_its_target(viewed):
+    assert "through level 2 (target)" in viewed.set_row
 
 
 def test_no_console_error(viewed):

@@ -4,10 +4,11 @@
 The file is the user's, and PyYAML's dump would lose every comment in it. So a change edits the
 text, at the positions PyYAML reports when it composes the file, touching only the lines it must;
 then it parses what it would write and compares it with what it meant to write, and refuses, writing
-nothing, when they differ.
+nothing, when they differ. An entry with a target level is written as one flow mapping,
+`- {slug: tamper-evident-ledger, level: 2}`, so it keeps a line of its own, as a slug does.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 
 import yaml
@@ -17,9 +18,11 @@ from coding_study.application.ports import Workspace
 from coding_study.domain.errors import ConfigError
 from coding_study.domain.problem_sets import (
     DESCRIPTION_KEY,
+    LEVEL_KEY,
     PROBLEMS_KEY,
     SETS_FILE,
     SETS_KEY,
+    SLUG_KEY,
     ProblemSet,
     parse_sets,
 )
@@ -54,11 +57,13 @@ class YamlProblemSets:
         sets = _parsed(text)
         self._write(_with_new_set(text, problem_set, sets), (*sets, problem_set))
 
-    def set_problems(self, name: str, slugs: tuple[str, ...]) -> None:
+    def set_problems(
+        self, name: str, slugs: tuple[str, ...], levels: Mapping[str, int] | None = None
+    ) -> None:
         text = self._text()
         sets = _parsed(text)
         changed = next(found for found in sets if found.name == name)
-        wanted = replace(changed, slugs=slugs)
+        wanted = replace(changed, slugs=slugs, levels=()).with_targets(levels or {})
         expected = tuple(wanted if found is changed else found for found in sets)
         self._write(_with_problems(text, wanted), expected)
 
@@ -221,11 +226,18 @@ def _set_lines(problem_set: ProblemSet, indent: str) -> list[str]:
         lines.append(f"{inner}{DESCRIPTION_KEY}: {_scalar(problem_set.description)}\n")
     if not problem_set.slugs:
         return [*lines, f"{inner}{PROBLEMS_KEY}: []\n"]
-    return [*lines, f"{inner}{PROBLEMS_KEY}:\n", *_item_lines(problem_set.slugs, inner + _STEP)]
+    return [*lines, f"{inner}{PROBLEMS_KEY}:\n", *_item_lines(problem_set, inner + _STEP)]
 
 
-def _item_lines(slugs: Sequence[str], indent: str) -> list[str]:
-    return [f"{indent}- {_scalar(slug)}\n" for slug in slugs]
+def _item_lines(problem_set: ProblemSet, indent: str) -> list[str]:
+    return [_item_line(slug, problem_set.target_of(slug), indent) for slug in problem_set.slugs]
+
+
+def _item_line(slug: str, level: int | None, indent: str) -> str:
+    """`- two-sum`, or `- {slug: tamper-evident-ledger, level: 2}` for an entry with a target."""
+    if level is None:
+        return f"{indent}- {_scalar(slug)}\n"
+    return f"{indent}- {{{SLUG_KEY}: {_scalar(slug)}, {LEVEL_KEY}: {level}}}\n"
 
 
 def _with_new_set(text: str, problem_set: ProblemSet, sets: Sequence[ProblemSet]) -> str:
@@ -265,11 +277,9 @@ def _with_problems(text: str, wanted: ProblemSet) -> str:
         return _rewritten_set(lines, block, wanted)
     key, value = entry
     if isinstance(value, SequenceNode) and not value.flow_style and value.value:
-        return _with_items(lines, value, wanted.slugs)
+        return _with_items(lines, value, wanted)
     indent = " " * key.start_mark.column + _STEP
-    return _lines_after_key(
-        _without_value(text, key, value), key, _item_lines(wanted.slugs, indent)
-    )
+    return _lines_after_key(_without_value(text, key, value), key, _item_lines(wanted, indent))
 
 
 def _problems_of(value: Node) -> _Pair | None:
@@ -288,25 +298,55 @@ def _rewritten_set(lines: Sequence[str], block: _Block, wanted: ProblemSet) -> s
     return "".join([*lines[:at], *_set_lines(wanted, indent), *lines[end:]])
 
 
-def _with_items(lines: Sequence[str], sequence: SequenceNode, slugs: Sequence[str]) -> str:
-    """The list's lines in the new order. A slug keeps its own line and the comments above it; a
-    comment after the last slug stays where it is."""
+@dataclass(frozen=True, slots=True)
+class _Item:
+    """An entry of a set's list in the text: the comments above it, then its own lines."""
+
+    comments: Sequence[str]
+    own: Sequence[str]
+    level: int | None
+
+
+def _with_items(lines: Sequence[str], sequence: SequenceNode, wanted: ProblemSet) -> str:
+    """The list's lines in the new order. An entry keeps its own lines and the comments above
+    them, unless its target changed, which writes its line again; a comment after the last entry
+    stays where it is."""
     items: list[Node] = sequence.value  # type: ignore[assignment]
     first = _above_comments(lines, items[0].start_mark.line)
-    kept: dict[str, Sequence[str]] = {}
+    kept: dict[str, _Item] = {}
     end = first
     for item in items:
-        chunk_end = item.end_mark.line + 1
-        kept[_key_text(item)] = lines[end:chunk_end]
+        start, chunk_end = item.start_mark.line, _last_line(item) + 1
+        slug, level = _item_entry(item)
+        kept[slug] = _Item(lines[end:start], lines[start:chunk_end], level)
         end = chunk_end
     item_line = lines[items[0].start_mark.line]
     indent = item_line[: len(item_line) - len(item_line.lstrip())]
-    ordered = [
-        line
-        for slug in slugs
-        for line in (kept[slug] if slug in kept else _item_lines((slug,), indent))
-    ]
+    ordered = [line for slug in wanted.slugs for line in _lines_of(kept, wanted, slug, indent)]
     return "".join([*lines[:first], *ordered, *lines[end:]])
+
+
+def _lines_of(kept: Mapping[str, _Item], wanted: ProblemSet, slug: str, indent: str) -> list[str]:
+    level = wanted.target_of(slug)
+    found = kept.get(slug)
+    if found is None:
+        return [_item_line(slug, level, indent)]
+    if found.level == level:
+        return [*found.comments, *found.own]
+    return [*found.comments, _item_line(slug, level, indent)]
+
+
+def _item_entry(item: Node) -> tuple[str, int | None]:
+    """An entry's slug, and its target level when it names one."""
+    if not isinstance(item, MappingNode):
+        return _key_text(item), None
+    fields = {_key_text(key): value for key, value in _pairs(item)}
+    level = fields.get(LEVEL_KEY)
+    slug = fields.get(SLUG_KEY)
+    return (
+        _key_text(slug) if slug is not None else "",
+        int(level.value) if isinstance(level, ScalarNode) else None,
+    )
 
 
 def _without_set(text: str, name: str) -> str:

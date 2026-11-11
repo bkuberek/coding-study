@@ -4,8 +4,8 @@
 |-------|-------|
 | Status | Accepted |
 | Date | 2026-11-11 |
-| Spec | [progress-and-scheduling](../specs/progress-and-scheduling.md#level-passes), [cli](../specs/cli.md#cstudy-done) ([`cstudy status`](../specs/cli.md#cstudy-status), [`cstudy history`](../specs/cli.md#cstudy-history)), [web-ui](../specs/web-ui.md#problem-view) |
-| Amends | [ADR 0014](0014-project-problems.md): a project's levels cap the grade, and fail the attempt, only in a mock |
+| Spec | [progress-and-scheduling](../specs/progress-and-scheduling.md#level-passes) ([mastery per level](../specs/progress-and-scheduling.md#mastery-per-level)), [cli](../specs/cli.md#cstudy-done) ([`cstudy status`](../specs/cli.md#cstudy-status), [`cstudy history`](../specs/cli.md#cstudy-history), [`cstudy list`](../specs/cli.md#cstudy-list), [`cstudy set`](../specs/cli.md#cstudy-set)), [web-ui](../specs/web-ui.md#problem-view) |
+| Amends | [ADR 0014](0014-project-problems.md): a project's levels cap the grade, and fail the attempt, only in a mock. [ADR 0023](0023-problem-sets.md): a set's entry may name a target level |
 | Builds on | [ADR 0014](0014-project-problems.md), [ADR 0015](0015-local-web-ui.md) |
 
 ## Context
@@ -112,6 +112,26 @@ Had review 6 passed through level 2 only, level 3 would have taken `again` (1 da
 | Replay the reviews of each level from the attempts each time | Needs the attempts, the problem's levels and the current intervals wherever a status shows, and a changed interval setting would rewrite past mastery, unlike the schedule, whose due dates never move |
 | The minimum level over the problem's current review streak | Passing level 3 after mastering level 2 would never master level 3 without a lapse first |
 | A table of level reviews | The `schedule` row already belongs to the problem and is what resets, exports and imports carry; one JSON column follows it at no extra cost |
+
+### Target levels in sets
+
+Added on 2026-11-11 with mastery per level. An entry of a [set](0023-problem-sets.md) may name the level a progressive or project problem is done at, beside the plain slug, whose target is every level:
+
+```yaml
+sets:
+  ledger-loop:
+    problems:
+      - two-sum
+      - {slug: tamper-evident-ledger, level: 2}
+```
+
+| Rule | Detail |
+|------|--------|
+| Done | An entry is done once a `passed` attempt, in any language, passed through its target level: every level without one, and at most the problem's last. An entry without levels, or an item, is done once it passed, as before |
+| Counts | A set's `passed of total`, the Sets view's bar and the pick of `cstudy next --set` (the first entry not done) follow it |
+| Writing | `cstudy set add <name> <slug>... --level N` adds each slug done at level N, or changes the target of one already there. A level the problem lacks, or a problem without levels, is refused. The writer keeps a targeted entry on one line, as a flow mapping, so a change still touches only the lines it must; an entry written by hand as a block mapping keeps its lines when it moves |
+| Showing | `cstudy set show` writes `target  through level 2` under the row, its `--json` gives each row `level`, and `cstudy set list --json` each set `levels` by slug; the Sets view says `through level 2 (target)` beside the row's status |
+| The same `level` as a path | A learning path's problem step carries the same optional `level`, "done once this level passes". A set's entry names its problem with `slug`, since a set holds only slugs, where a path's step needs `problem` to tell it from a `guide` step |
 
 ### Where it shows
 

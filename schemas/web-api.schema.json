@@ -206,11 +206,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "description", "slugs", "passed", "total", "missing"],
+            "required": ["name", "description", "slugs", "levels", "passed", "total", "missing"],
             "properties": {
               "name": { "$ref": "#/$defs/set_name" },
               "description": { "type": ["string", "null"] },
               "slugs": { "description": "Every slug, in the set's order", "type": "array", "items": { "type": "string" } },
+              "levels": { "description": "The target level of each entry that names one, by slug", "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
               "passed": { "type": "integer", "minimum": 0 },
               "total": { "description": "The slugs the catalog has", "type": "integer", "minimum": 0 },
               "missing": { "description": "The slugs it does not", "type": "array", "items": { "type": "string" } }
@@ -237,11 +238,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["position", "slug", "passed", "missing", "entry"],
+            "required": ["position", "slug", "level", "passed", "missing", "entry"],
             "properties": {
               "position": { "type": "integer", "minimum": 1 },
               "slug": { "type": "string" },
-              "passed": { "type": "boolean" },
+              "level": { "description": "The entry's target level; null for every level", "type": ["integer", "null"], "minimum": 1 },
+              "passed": { "description": "Done: a pass reached the target level, every level by default", "type": "boolean" },
               "missing": { "type": "boolean" },
               "entry": { "description": "The entry of cstudy list --json; null for a slug the catalog no longer has", "type": ["object", "null"] }
             }

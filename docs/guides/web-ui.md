@@ -309,7 +309,7 @@ cstudy next --set backend-loop
 cstudy list --set backend-loop
 ```
 
-Sets live in `sets.yaml` at the root of your workspace, so you can read it, edit it by hand and commit it. A change from `cstudy` or the page touches only the lines it must, so your comments stay. `cstudy reset` keeps your sets, with `--files` and `--archive` too. A problem the catalog no longer has shows as `missing` and stops nothing, and a file that does not parse shows as an error and is never overwritten. Every command: [`cstudy set`](../specs/cli.md#cstudy-set).
+Sets live in `sets.yaml` at the root of your workspace, so you can read it, edit it by hand and commit it. A change from `cstudy` or the page touches only the lines it must, so your comments stay. `cstudy reset` keeps your sets, with `--files` and `--archive` too. A problem the catalog no longer has shows as `missing` and stops nothing, and a file that does not parse shows as an error and is never overwritten. For a problem with levels, an entry may aim lower than every level: write `- {slug: tamper-evident-ledger, level: 2}` in the file, or run `cstudy set add <set> tamper-evident-ledger --level 2`, and the set counts it once you pass level 2; the row says `through level 2 (target)`. Every command: [`cstudy set`](../specs/cli.md#cstudy-set).
 
 ## Mock interviews
 

@@ -18,6 +18,11 @@ export function standingWords(standing: SetStanding): string {
   return standing.missing.length ? `${counts} · ${standing.missing.length} missing` : counts;
 }
 
+/** `through level 2 (target)`, as `cstudy set add --level` says it; null for every level. */
+export function targetWords(level: number | null): string | null {
+  return level === null ? null : `through level ${level} (target)`;
+}
+
 /** The positions a row can move to, one step up or down; null at either end. */
 export function movesOf(position: number, count: number): { readonly up: number | null; readonly down: number | null } {
   return { up: position > 1 ? position - 1 : null, down: position < count ? position + 1 : null };

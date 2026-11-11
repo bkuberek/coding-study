@@ -1,7 +1,8 @@
 """Problem sets: a name, an optional description and an ordered list of slugs, of problems and
 items alike, and the shape of `sets.yaml`, which schemas/sets.schema.json states too
 (docs/decisions/0023-problem-sets.md). What the catalog holds is not this file's concern: a slug it
-no longer has stays in the set and shows as missing."""
+no longer has stays in the set and shows as missing. An entry may name the level a progressive or
+project problem is done at (docs/decisions/0024-level-passes.md#target-levels-in-sets)."""
 
 import difflib
 import re
@@ -10,15 +11,19 @@ from dataclasses import dataclass, replace
 from typing import cast
 
 from coding_study.domain.errors import ConfigError, UsageError
+from coding_study.domain.scheduling import ProblemProgress
 
 SETS_FILE = "sets.yaml"
 SETS_KEY = "sets"
 DESCRIPTION_KEY = "description"
 PROBLEMS_KEY = "problems"
+SLUG_KEY = "slug"
+LEVEL_KEY = "level"
 EXAMPLE_NAME = "backend-loop"
 _NAME = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 _NAME_LENGTH = 64
 _SET_KEYS = (DESCRIPTION_KEY, PROBLEMS_KEY)
+_ENTRY_KEYS = (SLUG_KEY, LEVEL_KEY)
 _SUGGESTIONS = 3
 _SUGGESTION_CUTOFF = 0.75
 
@@ -28,9 +33,23 @@ class ProblemSet:
     name: str
     description: str | None = None
     slugs: tuple[str, ...] = ()
+    levels: tuple[tuple[str, int], ...] = ()
+    """The entries that name a target level, by slug, in the set's order. Another entry of a
+    problem with levels is done at its last level."""
 
     def holds(self, slug: str) -> bool:
         return slug in self.slugs
+
+    @property
+    def targets(self) -> dict[str, int]:
+        return dict(self.levels)
+
+    def target_of(self, slug: str) -> int | None:
+        return self.targets.get(slug)
+
+    def with_targets(self, targets: Mapping[str, int]) -> "ProblemSet":
+        """These entries done at these levels; the others keep theirs."""
+        return replace(self, levels=_in_order(self.slugs, {**self.targets, **targets}))
 
     def position_of(self, slug: str) -> int:
         """Where a slug it holds stands, from 1."""
@@ -41,7 +60,8 @@ class ProblemSet:
         return replace(self, slugs=(*self.slugs, *slugs))
 
     def without_slugs(self, slugs: Collection[str]) -> "ProblemSet":
-        return replace(self, slugs=tuple(slug for slug in self.slugs if slug not in slugs))
+        kept = tuple(slug for slug in self.slugs if slug not in slugs)
+        return replace(self, slugs=kept, levels=_in_order(kept, self.targets))
 
     def moved(self, slug: str, position: int) -> "ProblemSet":
         """`slug` at `position`, from 1. Raises UsageError for a slug it does not hold or a
@@ -53,7 +73,11 @@ class ProblemSet:
             raise UsageError(issue)
         others = [other for other in self.slugs if other != slug]
         others.insert(position - 1, slug)
-        return replace(self, slugs=tuple(others))
+        return replace(self, slugs=tuple(others), levels=_in_order(others, self.targets))
+
+
+def _in_order(slugs: Iterable[str], targets: Mapping[str, int]) -> tuple[tuple[str, int], ...]:
+    return tuple((slug, targets[slug]) for slug in slugs if slug in targets)
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,9 +96,19 @@ class SetStanding:
         return self.total > 0 and self.passed == self.total
 
 
+def target_reached(progress: ProblemProgress, last: int | None, target: int | None) -> bool:
+    """Whether a set entry is done: for a problem with `last` levels, once a pass reached its
+    target level, the last by default and at most; for anything else, once it passed."""
+    if last is None:
+        return progress.has_passed
+    goal = last if target is None else min(target, last)
+    return progress.levels_passed(last) >= goal
+
+
 def standing_of(
     problem_set: ProblemSet, catalog: Collection[str], passed: Collection[str]
 ) -> SetStanding:
+    """`passed`: the slugs done, as `target_reached` judges each."""
     present = [slug for slug in problem_set.slugs if slug in catalog]
     missing = tuple(slug for slug in problem_set.slugs if slug not in catalog)
     return SetStanding(
@@ -164,21 +198,51 @@ def _set(name: object, entry: object, issues: list[str]) -> ProblemSet:
     if description is not None and not isinstance(description, str):
         issues.append(f"set {name}: {DESCRIPTION_KEY} must be text")
         description = None
-    return ProblemSet(name, description, _slugs(name, fields.get(PROBLEMS_KEY), issues))
+    slugs, targets = _entries(name, fields.get(PROBLEMS_KEY), issues)
+    return ProblemSet(name, description, slugs, _in_order(slugs, targets))
 
 
-def _slugs(name: str, listed: object, issues: list[str]) -> tuple[str, ...]:
+def _entries(
+    name: str, listed: object, issues: list[str]
+) -> tuple[tuple[str, ...], dict[str, int]]:
+    """The slugs, and the target level of each entry that names one."""
     if listed is None:
-        return ()
+        return (), {}
     if not isinstance(listed, list):
         issues.append(f"set {name}: {PROBLEMS_KEY} must be a list of slugs")
-        return ()
+        return (), {}
     slugs: list[str] = []
-    for slug in cast(list[object], listed):
-        if not isinstance(slug, str) or not slug:
-            issues.append(f'set {name}: "{slug}" is not a slug')
-        elif slug in slugs:
+    targets: dict[str, int] = {}
+    for entry in cast(list[object], listed):
+        slug, level = _entry(name, entry, issues)
+        if slug is None:
+            continue
+        if slug in slugs:
             issues.append(f"set {name} lists {slug} twice")
-        else:
-            slugs.append(slug)
-    return tuple(slugs)
+            continue
+        slugs.append(slug)
+        if level is not None:
+            targets[slug] = level
+    return tuple(slugs), targets
+
+
+def _entry(name: str, entry: object, issues: list[str]) -> tuple[str | None, int | None]:
+    """A slug, or `{slug: ..., level: ...}`; (None, None) for an entry that is neither."""
+    if not isinstance(entry, Mapping):
+        if isinstance(entry, str) and entry:
+            return entry, None
+        issues.append(f'set {name}: "{entry}" is not a slug')
+        return None, None
+    fields = cast(Mapping[object, object], entry)
+    issues.extend(f"set {name}: {issue}" for issue in _unknown_keys(fields, _ENTRY_KEYS))
+    slug = fields.get(SLUG_KEY)
+    if not isinstance(slug, str) or not slug:
+        issues.append(f'set {name}: an entry needs "{SLUG_KEY}", the slug of a problem or item')
+        return None, None
+    level = fields.get(LEVEL_KEY)
+    if level is None:
+        return slug, None
+    if isinstance(level, bool) or not isinstance(level, int) or level < 1:
+        issues.append(f"set {name}: the level of {slug} must be a whole number from 1")
+        return slug, None
+    return slug, level

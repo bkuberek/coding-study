@@ -1088,7 +1088,7 @@ On JDK 27, the same list marks the languages and adds its footer:
 cstudy set list [--json]
 cstudy set show <name> [--json]
 cstudy set create <name> [--description TEXT]
-cstudy set add <name> <slug>...
+cstudy set add <name> <slug>... [--level N]
 cstudy set remove <name> <slug>...
 cstudy set move <name> <slug> <position>
 cstudy set rename <name> <new-name>
@@ -1100,9 +1100,9 @@ Your own named lists of problems and items, in the order you put them, so you st
 | Subcommand | Does | Says |
 |------------|------|------|
 | `list` | Each set in the file's order, with passed of total | `backend-loop  1 of 3 passed · 1 missing  The backend loop on the 12th`; with none, `no sets yet: create one with cstudy set create <name>` |
-| `show <name>` | The set's rows, in its order, with what `cstudy list` shows of each and a `missing` row for a slug the catalog no longer has | The heading, the counts, the rows and `next    cstudy next --set <name>` |
+| `show <name>` | The set's rows, in its order, with what `cstudy list` shows of each and a `missing` row for a slug the catalog no longer has, and under a row with a target level `    target  through level 2` | The heading, the counts, the rows and `next    cstudy next --set <name>` |
 | `create <name>` | A new, empty set | `created backend-loop` and `next    cstudy set add backend-loop <slug>` |
-| `add <name> <slug>...` | Appends the slugs, in the order given | `added two-sum to backend-loop`, and for a slug already there `two-sum is already in backend-loop`, which changes nothing and exits 0 |
+| `add <name> <slug>...` | Appends the slugs, in the order given; with `--level N`, each is done at level N ([target levels](../decisions/0024-level-passes.md#target-levels-in-sets)), which also changes the target of one already there | `added two-sum to backend-loop`, `added tamper-evident-ledger to backend-loop, through level 2 (target)`, `tamper-evident-ledger in backend-loop now targets level 2`, and for a slug already there `two-sum is already in backend-loop`, which changes nothing and exits 0 |
 | `remove <name> <slug>...` | Takes the slugs out; a missing slug can be removed | `removed two-sum from backend-loop`, and for a slug not there `two-sum is not in backend-loop`, which changes nothing and exits 0 |
 | `move <name> <slug> <position>` | Puts the slug at the position, from 1 | `moved two-sum to 2 of 3 in backend-loop` |
 | `rename <name> <new-name>` | Changes the name, keeping the rows | `renamed backend-loop to platform-loop` |
@@ -1115,7 +1115,7 @@ backend-loop  The backend loop on the 12th
 #   ID    SLUG              DIFF    PATTERN          STATUS        DUE         REFS
 1   0001  two-sum           easy    arrays-hashing   passed        2026-11-09  py ts java kt go rs
 2   -     url-shortener     medium  system-design    new           -           -
-3   -     old-problem       -       -                missing      -           -
+3   -     old-problem       -       -                missing       -           -
 next    cstudy next --set backend-loop
 ```
 
@@ -1125,12 +1125,13 @@ next    cstudy next --set backend-loop
 | `create` or `rename` to a name that exists | `set backend-loop already exists`, exit 3; nothing merges |
 | A set that does not exist | `unknown set "backend-lop"; your sets: backend-loop`, or `unknown set "backend-loop"; create it with cstudy set create backend-loop`, exit 3 |
 | `add` of a slug that is in no catalog | `unknown problem "two-summ"; did you mean two-sum?`, exit 3, and none of the slugs is added |
+| `add --level` of a level the problem lacks, or of a problem without levels | `tamper-evident-ledger has levels 1 to 4`, or `two-sum has no levels; --level is for progressive and project problems`, exit 3, and nothing is added |
 | `move` outside the list, or of a slug not in it | `position 9 is outside backend-loop, which holds 3`, or `two-sum is not in backend-loop`, exit 3 |
 | `sets.yaml` does not parse or is invalid | `sets.yaml: <what is wrong>`, exit 4, in every command that reads it. It is never overwritten; `cstudy list` and `cstudy next` without `--set` do not read it |
 | A change the writer can't make and keep the file as written | `sets.yaml: cstudy can't make this change and keep the file as you wrote it, so it wrote nothing; edit the file by hand`, exit 4 |
 | `sets.yaml` is a symbolic link | Read through it; a change is refused with `sets.yaml: it is a symbolic link, so cstudy won't write through it`, exit 4 |
 
-`--json` of `list` prints `{"sets": [{"name", "description", "slugs", "passed", "total", "missing"}]}`: `slugs` every slug in the set's order, `missing` those the catalog does not have, `total` the others, and `passed` those of them with a passed attempt, whatever the review schedule says now. `--json` of `show` prints `{"name", "description", "today", "passed", "total", "missing", "rows": [{"position", "slug", "passed", "missing", "entry"}]}`, each `entry` an entry of [`cstudy list --json`](#cstudy-list), or null for a missing slug.
+`--json` of `list` prints `{"sets": [{"name", "description", "slugs", "levels", "passed", "total", "missing"}]}`: `slugs` every slug in the set's order, `levels` the target level of each entry that names one, by slug, `missing` those the catalog does not have, `total` the others, and `passed` those of them done, whatever the review schedule says now: a passed attempt, through the target level for a progressive or project problem, every level without one. `--json` of `show` prints `{"name", "description", "today", "passed", "total", "missing", "rows": [{"position", "slug", "level", "passed", "missing", "entry"}]}`, `level` the row's target or null, each `entry` an entry of [`cstudy list --json`](#cstudy-list), or null for a missing slug.
 
 ## cstudy show
 

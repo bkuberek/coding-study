@@ -134,6 +134,8 @@ export interface SetSummary extends SetStanding {
   readonly name: string;
   readonly description: string | null;
   readonly slugs: readonly string[];
+  /** The target level of each entry that names one, by slug. */
+  readonly levels: Readonly<Record<string, number>>;
 }
 
 export interface SetList {
@@ -143,6 +145,9 @@ export interface SetList {
 export interface SetRow {
   readonly position: number;
   readonly slug: string;
+  /** The level the entry is done at; null for every level. */
+  readonly level: number | null;
+  /** Done: a pass reached the target level, every level by default. */
   readonly passed: boolean;
   readonly missing: boolean;
   /** The entry of `cstudy list --json`; null for a slug the catalog no longer has. */

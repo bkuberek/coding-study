@@ -287,7 +287,7 @@ The printed reason names the step, the overdue days or the weakness value.
 | Step | Pick |
 |------|------|
 | 0: resume (skipped with `--new` or `--review`) | As above, among the attempts in progress on the set's entries; the others in progress there are listed after it |
-| 1: the set's order (skipped with `--review`) | The first entry in the set's order that is in scope, has no attempt in progress and has no passed attempt. An entry with only failed attempts isn't passed, so it stays the pick until it passes or moves |
+| 1: the set's order (skipped with `--review`) | The first entry in the set's order that is in scope, has no attempt in progress and is not done: no passed attempt, or for a progressive or project problem none through its [target level](../decisions/0024-level-passes.md#target-levels-in-sets), every level by default. An entry with only failed attempts isn't passed, so it stays the pick until it passes or moves |
 | 2: reviews (skipped with `--new`) | The due entries of the set, ranked as in step 1 above |
 | 3 | The set is finished, or empty, or the scope holds nothing to pick: see [the messages](cli.md#cstudy-next) |
 

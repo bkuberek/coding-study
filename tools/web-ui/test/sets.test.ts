@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { membershipLabel, membershipWords, setsHolding } from "../src/page/setControl.ts";
-import { movesOf, setNameIssue, standingWords } from "../src/page/sets-model.ts";
+import { movesOf, setNameIssue, standingWords, targetWords } from "../src/page/sets-model.ts";
 
 const SETS = [
-  { name: "backend-loop", description: null, slugs: ["two-sum", "lru-cache"], passed: 0, total: 2, missing: [] },
-  { name: "data-loop", description: "Later", slugs: ["two-sum"], passed: 1, total: 1, missing: [] },
-  { name: "empty", description: null, slugs: [], passed: 0, total: 0, missing: [] },
+  { name: "backend-loop", description: null, slugs: ["two-sum", "lru-cache"], levels: {}, passed: 0, total: 2, missing: [] },
+  { name: "data-loop", description: "Later", slugs: ["two-sum"], levels: {}, passed: 1, total: 1, missing: [] },
+  { name: "empty", description: null, slugs: [], levels: {}, passed: 0, total: 0, missing: [] },
 ];
 
 test("a problem may be in several sets", () => {
@@ -80,4 +80,12 @@ test("the last row moves up only", () => {
 
 test("a row on its own does not move", () => {
   assert.deepEqual(movesOf(1, 1), { up: null, down: null });
+});
+
+test("an entry with a target level names it, as cstudy set show does", () => {
+  assert.equal(targetWords(2), "through level 2 (target)");
+});
+
+test("an entry without a target, which is every level, says nothing", () => {
+  assert.equal(targetWords(null), null);
 });

@@ -112,8 +112,11 @@ class ProblemSetStore(Protocol):
         """Adds a set after the others, making the file when missing."""
         ...
 
-    def set_problems(self, name: str, slugs: tuple[str, ...]) -> None:
-        """Gives the set named `name`, which must exist, these slugs in this order."""
+    def set_problems(
+        self, name: str, slugs: tuple[str, ...], levels: Mapping[str, int] | None = None
+    ) -> None:
+        """Gives the set named `name`, which must exist, these slugs in this order, and these
+        target levels by slug; an entry not in `levels` names none."""
         ...
 
     def rename(self, name: str, new_name: str) -> None: ...
