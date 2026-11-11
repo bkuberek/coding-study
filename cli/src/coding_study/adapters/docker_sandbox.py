@@ -94,6 +94,7 @@ from coding_study.domain.sandbox import (
     render_compose,
     sidecar_document,
     sidecar_files,
+    sidecar_links,
     stack_document,
 )
 
@@ -848,6 +849,9 @@ def _prepare_sidecar(plan: SidecarPlan) -> None:
     for path, content in sidecar_files(plan).items():
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         _write_file(Path(path), content)
+    for path, target in sidecar_links(plan).items():
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).symlink_to(target)
     if plan.toolchain is not None and plan.toolchain.writable_project:
         devcontainer = Path(plan.project.path) / DEVCONTAINER_DIRECTORY
         _refuse_link(devcontainer)

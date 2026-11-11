@@ -1122,6 +1122,9 @@ class Fetched:
     """The last day the build runs, as the build said once in place; None when it named none."""
     license: License
     """The license its release came under, which you accepted."""
+    gradle_tooling: str | None = None
+    """For a Linux build a sidecar runs, the version of the Gradle tooling API it bundles, whose
+    own distribution its import looks for; None when unknown."""
 
 
 type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed | Unpacked | Fetched
@@ -1159,6 +1162,11 @@ class LanguageServerLocator(Protocol):
     def go_release(self) -> str | None:
         """The release of the selected Go, `1.27.3`, which pins the gopls it builds; None
         without a Go that runs."""
+        ...
+
+    def installed_service_languages(self) -> frozenset[Language]:
+        """The languages of the service projects whose dependencies are installed in the
+        workspace, which say what their sidecars need of `.cs/lsp/`."""
         ...
 
     def license_accepted(self, license: License) -> bool:

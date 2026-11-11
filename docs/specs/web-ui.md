@@ -668,13 +668,13 @@ Once `code_intelligence` is on, every kind of problem gets code intelligence in 
 | concurrent | native | native | native | native | native | native |
 | debugging | native | native | native | native | native | native |
 | project | native | native | native | native | native | native |
-| service project | sidecar | sidecar | sidecar | pending | sidecar | not applicable |
+| service project | sidecar | sidecar | sidecar | sidecar | sidecar | not applicable |
 
 | Route | Meaning |
 |-------|---------|
 | native | The language's server of [Language servers](#language-servers) runs on this machine, rooted in the practice project or the project folder |
-| sidecar | The server runs in a container of its own beside the service project, through `docker exec` ([Language servers](service-projects.md#language-servers)): sandboxed code writes the folder, so no server on this machine reads it. Python and TypeScript run on the pinned Node image; Java's JDT LS runs on the project's own image, whose JDK and Gradle import the project's build; Go's gopls runs on the project's own image too, built into the project's install cache by its install |
-| pending | No server yet, and the page says `code intelligence for <Language> service projects comes later`. Kotlin: the Kotlin LSP is a build per machine with its own runtime and launcher, which the project's Linux image cannot run, and trying another route means running the server, which needs JetBrains' license accepted by you ([Kotlin](service-projects.md#language-servers)). |
+| sidecar | The server runs in a container of its own beside the service project, through `docker exec` ([Language servers](service-projects.md#language-servers)): sandboxed code writes the folder, so no server on this machine reads it. Python and TypeScript run on the pinned Node image; Java's JDT LS runs on the project's own image, whose JDK and Gradle import the project's build; Go's gopls runs on the project's own image too, built into the project's install cache by its install; the Kotlin LSP is JetBrains' Linux build, fetched beside this machine's once a Kotlin service project is installed, on the glibc variant of the project's Gradle image |
+| pending | No server yet: the page says `code intelligence for <Language> service projects comes later`, and the data names the work the cell waits for. No cell is pending now |
 | not applicable | The catalog has no problem of the kind in the language: there is no Rust service project. The cell is data too: the change that adds a Rust service project gives it a route, or a reason, and the test's list of gaps changes with it |
 
 ## Page

@@ -26,6 +26,7 @@ from coding_study.application.code_intelligence import (
     is_unpacked,
     is_usable,
     language_server_states,
+    sidecar_build_states,
 )
 from coding_study.application.installs import (
     INSTALLS_CHECK,
@@ -73,6 +74,7 @@ from coding_study.domain.code_intelligence import (
     LSP_BIN,
     LSP_DIRECTORY,
     LSP_INSTALL_COMMAND,
+    SIDECAR_BUILDS,
     Archive,
     GoInstall,
     LanguageServer,
@@ -363,10 +365,16 @@ def _fetch_step(server: LanguageServer) -> FixStep:
     )
 
 
-FETCH_STEPS = {_fetch_step(server): server for server in LANGUAGE_SERVERS if server.releases}
+FETCH_STEPS = {
+    _fetch_step(server): server
+    for server in (*LANGUAGE_SERVERS, *SIDECAR_BUILDS)
+    if server.releases
+}
 """Fetch the newest build of the servers whose vendor publishes early-access builds that stop,
 such as the Kotlin LSP, while the `code_intelligence` preference is on: the releases list, the
-SHA-256 published beside the build, its license, and the build unless it is the one there."""
+SHA-256 published beside the build, its license, and the build unless it is the one there. The
+Linux build of a sidecar comes after this machine's, and only once a service project of its
+language is installed."""
 
 
 def _warm_up_step(server: LanguageServer, root: str) -> FixStep:
@@ -707,7 +715,12 @@ def _fix_plan(
         plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
         plan += [(step, files.root / step.project) for step in DOWNLOAD_STEPS]
         plan += [(step, files.root / step.project) for step in GO_INSTALL_STEPS]
-        plan += [(step, files.root / step.project) for step in FETCH_STEPS]
+        needed = workspace.language_servers.installed_service_languages()
+        plan += [
+            (step, files.root / step.project)
+            for step, server in FETCH_STEPS.items()
+            if not server.linux_build or server.language in needed
+        ]
     if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
         if _code_intelligence_on(workspace):
@@ -1289,11 +1302,16 @@ def _language_servers(workspace: PracticeWorkspace, jdk: JdkSelector) -> list[Ch
     if not _code_intelligence_on(workspace):
         return []
     states = language_server_states(workspace.language_servers, jdk)
-    return [_language_server_row(state) for state in states if state.server is not None]
+    rows = [_language_server_row(state) for state in states if state.server is not None]
+    for state in sidecar_build_states(workspace.language_servers, jdk):
+        rows.append(_language_server_row(state, f"{state.language} service projects"))
+    return rows
 
 
-def _language_server_row(state: LanguageServerState) -> CheckResult:
-    name = f"code intelligence {state.language}"
+def _language_server_row(state: LanguageServerState, scope: str | None = None) -> CheckResult:
+    """`code intelligence kotlin`; `code intelligence kotlin service projects` for the build a
+    sidecar runs."""
+    name = f"code intelligence {scope or state.language}"
     if state.status is ServerStatus.INSTALLED and state.warning is not None:
         return CheckResult(name, CheckStatus.WARN, state.warning, fix=FIX_COMMAND)
     if state.status is ServerStatus.INSTALLED:

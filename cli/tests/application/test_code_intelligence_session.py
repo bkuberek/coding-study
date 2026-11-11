@@ -33,7 +33,13 @@ from coding_study.domain.errors import (
 )
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language
-from coding_study.domain.sandbox import SandboxUser, SidecarPlan, StackKind, workspace_digest
+from coding_study.domain.sandbox import (
+    GRADLE_GLIBC_IMAGE,
+    SandboxUser,
+    SidecarPlan,
+    StackKind,
+    workspace_digest,
+)
 from tests.fakes import (
     INSTALLED_SERVERS,
     JDK_HOME,
@@ -407,23 +413,54 @@ def test_a_practice_java_attempt_still_needs_a_jdk_25_or_26(tmp_path):
     assert java.status is ServerStatus.NEEDS_JDK
 
 
-def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):
-    environment = service_environment(tmp_path, "kotlin")
+KOTLIN_LINUX = "kotlin-lsp-linux"
+
+
+def kotlin_service_environment(tmp_path: Path, servers: FakeLanguageServers) -> Environment:
+    root = make_content(tmp_path)
+    write_problem(root, {**java_meta_document(), "languages": ["kotlin"]})
+    return make_environment(root, sandbox=FakeSandbox(), language_servers=servers)
+
+
+def kotlin_target(tmp_path: Path, probes=INSTALLED_SERVERS) -> SessionTarget:
+    return service_target(kotlin_service_environment(tmp_path, FakeLanguageServers(probes)))
+
+
+def test_a_kotlin_service_project_runs_the_kotlin_lsps_linux_build_on_the_glibc_image(tmp_path):
+    found = kotlin_target(tmp_path)
+
+    assert (found.server.name, sidecar_of(found).image) == ("kotlin-lsp-linux", GRADLE_GLIBC_IMAGE)
+
+
+def test_the_kotlin_sidecars_import_finds_the_images_gradle_as_its_tooling_apis_own(tmp_path):
+    toolchain = sidecar_of(kotlin_target(tmp_path)).toolchain
+
+    assert toolchain is not None
+    assert list(toolchain.links.values()) == ["/opt/gradle"]
+
+
+def test_a_kotlin_service_project_without_the_linux_build_says_how_to_fetch_it(tmp_path):
+    probes = {name: found for name, found in INSTALLED_SERVERS.items() if name != KOTLIN_LINUX}
+    environment = kotlin_service_environment(tmp_path, FakeLanguageServers(probes))
     attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
 
-    with pytest.raises(UsageError, match="no code intelligence for kotlin service projects yet"):
+    with pytest.raises(LanguageServerNotInstalledError, match="kotlin-lsp-linux is not installed"):
         target(environment, attempt)
 
 
-@pytest.mark.parametrize(
-    ("language", "reason"),
-    [("kotlin", "its license"), ("rust", "no Rust service project")],
-)
-def test_the_refusal_says_why_from_the_route_table(tmp_path, language, reason):
-    environment = service_environment(tmp_path, language)
+def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):
+    environment = service_environment(tmp_path, "rust")
     attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
 
-    with pytest.raises(UsageError, match=reason):
+    with pytest.raises(UsageError, match="no code intelligence for rust service projects yet"):
+        target(environment, attempt)
+
+
+def test_the_refusal_says_why_from_the_route_table(tmp_path):
+    environment = service_environment(tmp_path, "rust")
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+
+    with pytest.raises(UsageError, match="no Rust service project"):
         target(environment, attempt)
 
 

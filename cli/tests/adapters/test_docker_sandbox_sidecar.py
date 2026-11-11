@@ -202,6 +202,19 @@ def test_the_toolchains_files_are_in_the_data_folder_while_the_sidecar_is_up(jvm
     assert written == ["org.gradle.projectcachedir=x\n"]
 
 
+def test_the_toolchains_links_point_where_the_sidecar_has_the_target(jvm_plan):
+    """The image's Gradle exists only in the sidecar, so the link dangles on this machine."""
+    toolchain = jvm_plan.toolchain
+    assert toolchain is not None
+    linked = replace(jvm_plan, toolchain=replace(toolchain, links={"gradle/dist": "/opt/gradle"}))
+    targets: list[str] = []
+
+    with DockerSandbox(ScriptedDocker()).sidecar(linked):
+        targets.append(str((Path(linked.run) / "data/gradle/dist").readlink()))
+
+    assert targets == ["/opt/gradle"]
+
+
 def test_a_writable_projects_devcontainer_folder_is_there_for_its_read_only_mount(jvm_plan):
     with DockerSandbox(ScriptedDocker()).sidecar(jvm_plan):
         pass

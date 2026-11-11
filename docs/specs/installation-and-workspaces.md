@@ -73,7 +73,7 @@ created_with = "0.1.0"
   .cs/lsp/                # language servers for the web UI's code intelligence, installed by cstudy doctor --fix while it is on (ignored)
   .cs/lsp/jdtls/          # JDT LS, the Java server: a milestone downloaded and checked by SHA-256 (ignored)
   .cs/lsp/jdtls-data/     # JDT LS's configuration, index and caches, per root and session (ignored)
-  .cs/lsp/kotlin-lsp/     # the Kotlin LSP's newest build in server/ and its record, installed.json, once its license is accepted (ignored)
+  .cs/lsp/kotlin-lsp/     # the Kotlin LSP's newest build in server/ and its record, installed.json, once its license is accepted, and beside it, once a Kotlin service project is installed, its Linux build in linux/ and linux.json, which that project's sidecar runs (ignored)
   .cs/lsp/kotlin-lsp-data/  # the Kotlin LSP's index, configuration and logs, per root and session (ignored)
   .cs/lsp/bin/            # gopls, built by go install at the version the selected Go pins (ignored)
   .cs/lsp/rust-library/   # links to the toolchain's standard library, per root, for rust-analyzer (ignored)

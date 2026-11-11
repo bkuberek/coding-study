@@ -12,6 +12,7 @@ from coding_study.domain.code_intelligence import (
     GOPLS,
     JDTLS,
     KOTLIN_LSP,
+    KOTLIN_LSP_LINUX,
     RUST_ANALYZER,
     TYPESCRIPT_LANGUAGE_SERVER,
     Launch,
@@ -22,9 +23,10 @@ from coding_study.domain.code_intelligence import (
     sidecar_image,
     sidecar_server,
     sidecar_toolchain,
+    tooling_distribution,
 )
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.sandbox import NODE_IMAGE, SidecarToolchain
+from coding_study.domain.sandbox import GRADLE_GLIBC_IMAGE, NODE_IMAGE, SidecarToolchain
 from coding_study.domain.service_project import ServiceProject, service_of
 from tests.service_problems import (
     GO_IMAGE,
@@ -74,32 +76,114 @@ def service_meta(language: str) -> ProblemMeta:
 
 
 @pytest.mark.parametrize(
-    "language", [Language.TYPESCRIPT, Language.PYTHON, Language.JAVA, Language.GO]
+    "language",
+    [Language.TYPESCRIPT, Language.PYTHON, Language.JAVA, Language.GO, Language.KOTLIN],
 )
 def test_a_service_project_with_a_sidecar_server_has_code_intelligence(language):
     assert no_code_intelligence(service_meta(language.value), language) is None
 
 
 def test_a_service_project_in_another_language_has_none_yet():
-    meta = service_meta("kotlin")
+    meta = service_meta("rust")
 
-    assert no_code_intelligence(meta, Language.KOTLIN) is NoCodeIntelligence.SERVICE_PROJECT
+    assert no_code_intelligence(meta, Language.RUST) is NoCodeIntelligence.SERVICE_PROJECT
 
 
 def test_the_service_meta_of_these_tests_is_a_service_project():
-    assert service_of(service_meta("kotlin")) is not None
+    assert service_of(service_meta("rust")) is not None
 
 
 def test_a_problem_that_is_no_service_project_has_its_servers_say():
-    meta = replace(service_meta("kotlin"), project=None)
+    meta = replace(service_meta("rust"), project=None)
 
-    assert no_code_intelligence(meta, Language.KOTLIN) is None
+    assert no_code_intelligence(meta, Language.RUST) is None
 
 
-@pytest.mark.parametrize("server", [KOTLIN_LSP, RUST_ANALYZER])
-def test_a_server_of_no_sidecar_has_no_sidecar_variant_to_offer(server):
-    with pytest.raises(ValueError, match=f"{server.name} runs in no sidecar"):
-        sidecar_server(server, FOLDER)
+def test_a_server_of_no_sidecar_has_no_sidecar_variant_to_offer():
+    with pytest.raises(ValueError, match="rust-analyzer runs in no sidecar"):
+        sidecar_server(RUST_ANALYZER, FOLDER)
+
+
+def test_the_kotlin_lsp_in_a_sidecar_is_its_linux_build():
+    assert sidecar_server(KOTLIN_LSP, FOLDER) is KOTLIN_LSP_LINUX
+
+
+def test_the_linux_build_runs_its_own_launcher_from_kotlin_lsp_linux():
+    launch = Launch("/work/.cs/lsp", "/data", platform="linux", java_home="/opt/java/openjdk")
+
+    assert KOTLIN_LSP_LINUX.command(launch) == (
+        "/work/.cs/lsp/kotlin-lsp/linux/bin/intellij-server",
+        "--stdio",
+        "--system-path=/data/system",
+    )
+
+
+def test_the_linux_build_imports_with_the_images_jdk_and_its_gradle_home_in_the_data_folder():
+    launch = Launch("/work/.cs/lsp", "/data", platform="linux", java_home="/opt/java/openjdk")
+    options = KOTLIN_LSP_LINUX.environment(launch)["IJ_JAVA_OPTIONS"]
+
+    assert (
+        "-Dcom.jetbrains.ls.imports.gradle.java.home=/opt/java/openjdk" in options,
+        "-Dcom.jetbrains.ls.imports.gradle.gradleUserHome=/data/gradle" in options,
+        "-Dintellij.updates.enabled=false" in options,
+    ) == (True, True, True)
+
+
+def test_the_linux_build_needs_no_jdk_of_this_machine_and_no_warm_up():
+    assert (KOTLIN_LSP_LINUX.jdks, KOTLIN_LSP_LINUX.warmup) == (None, None)
+
+
+def test_the_linux_build_keeps_the_license_of_this_machines():
+    assert KOTLIN_LSP_LINUX.license == KOTLIN_LSP.license
+
+
+def test_the_kotlin_lsp_runs_on_the_glibc_gradle_image_whatever_the_projects():
+    assert sidecar_image(KOTLIN_LSP, GRADLE_IMAGE) == GRADLE_GLIBC_IMAGE
+
+
+def test_the_glibc_gradle_image_is_pinned_by_digest():
+    assert GRADLE_GLIBC_IMAGE.startswith("gradle:9.8.2-jdk25@sha256:")
+
+
+def test_the_tooling_apis_own_distribution_is_where_gradles_wrapper_puts_it():
+    """The folder's name is the base-36 MD5 of the distribution's URL, as Gradle's wrapper
+    writes it: measured on the tooling API 9.7.0 that the Kotlin LSP 263.7084.0 bundles."""
+    assert tooling_distribution("9.7.0") == (
+        "wrapper/dists/gradle-9.7.0-bin/d4tj7w02tcgubx9zk9hbippn6/gradle-9.7.0-bin.zip.ok",
+        "wrapper/dists/gradle-9.7.0-bin/d4tj7w02tcgubx9zk9hbippn6/gradle-9.7.0",
+    )
+
+
+def kotlin_toolchain(tooling: str | None = "9.7.0") -> SidecarToolchain:
+    service = service_of(meta_from_document(java_meta_document(), "meta.yaml"))
+    assert service is not None
+    toolchain = sidecar_toolchain(KOTLIN_LSP_LINUX, service, DATA, CACHE, tooling)
+    assert toolchain is not None
+    return toolchain
+
+
+def test_the_kotlin_lsps_import_finds_the_images_gradle_as_its_tooling_apis_distribution():
+    marker, distribution = tooling_distribution("9.7.0")
+    toolchain = kotlin_toolchain()
+
+    assert (toolchain.links, toolchain.files[f"gradle/{marker}"]) == (
+        {f"gradle/{distribution}": "/opt/gradle"},
+        "",
+    )
+
+
+def test_without_a_known_tooling_api_nothing_is_linked():
+    assert kotlin_toolchain(None).links == {}
+
+
+def test_the_kotlin_lsp_gets_jdt_lss_gradle_toolchain_with_more_memory():
+    toolchain = kotlin_toolchain()
+
+    assert (
+        toolchain.environment["GRADLE_RO_DEP_CACHE"],
+        toolchain.writable_project,
+        toolchain.memory,
+    ) == ("/cache/gradle/caches", True, "3g")
 
 
 def test_a_go_service_project_has_code_intelligence():

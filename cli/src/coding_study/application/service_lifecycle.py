@@ -49,6 +49,8 @@ from coding_study.domain.sandbox import (
     StackStartError,
 )
 from coding_study.domain.service_project import (
+    INSTALL_RECORD_LANGUAGE,
+    INSTALL_RECORD_SUFFIX,
     INSTALLED_DIRECTORIES,
     NeedRow,
     ServiceProject,
@@ -58,7 +60,6 @@ from coding_study.domain.service_project import (
 from coding_study.domain.stack_progress import StackStage
 from coding_study.domain.workspace_projects import project_folder
 
-INSTALL_RECORD_SUFFIX = ".install.json"
 RECORD_LOCK_KEY = "lock_sha256"
 RECORD_SERVERS_KEY = "servers"
 """The language servers the install built into the install cache, by name, with their version."""
@@ -159,14 +160,16 @@ def install_dependencies(
     environment: Environment, problem: Problem, notify: ProgressNotice
 ) -> None:
     """`commands.install` in the project folder, then the language server its sidecar runs where the
-    install builds it, and the record of the lock file it installed and of that server, only after
-    each succeeded. Raises as `install_in_folder`."""
+    install builds it, and the record of the lock file it installed, of the project's language and
+    of that server, only after each succeeded. Raises as `install_in_folder`."""
     slug = problem.meta.slug
     folder = project_folder(slug)
     digest = install_in_folder(environment, problem, folder, notify)
     if digest is None:
         return
     record: dict[str, object] = {RECORD_LOCK_KEY: digest}
+    if problem.meta.languages:
+        record[INSTALL_RECORD_LANGUAGE] = problem.meta.languages[0].value
     server = _install_language_server(environment, problem, folder, notify)
     if server is not None:
         record[RECORD_SERVERS_KEY] = {server.name: server.version}
