@@ -109,6 +109,9 @@ VIEWS = (
     "new set dialog",
     "open set",
     "add to set dialog",
+    "guides",
+    "guide with diagrams",
+    "path",
     "mock",
     "mock running",
     "progress",
@@ -472,6 +475,9 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "new set dialog", lambda: _sheet(page, ".view-head button:has-text('New set')")
     yield "open set", lambda: _open(page, "#/sets/backend-loop", "#set-add-slug")
     yield "add to set dialog", lambda: _set_dialog(page)
+    yield "guides", lambda: _open(page, "#/guides", ".path-card")
+    yield "guide with diagrams", lambda: _guide(page)
+    yield "path", lambda: _open(page, "#/paths/hashing", ".path-steps li")
     yield "mock", lambda: _open(page, "#/mock", ".mock-form")
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)
@@ -480,6 +486,13 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "reset dialog", lambda: _reset_dialog(page)
     yield "mock running", lambda: _mock_running(page)
     yield "about", lambda: _open(page, "#/about", ".about-facts")
+
+
+def _guide(page: Any) -> None:
+    """A guide whose diagrams are drawn: each SVG is named and described by its `accTitle` and
+    `accDescr`."""
+    _open(page, "#/guides/hash-maps-and-sets", "figure.diagram > svg")
+    page.wait_for_function("() => !document.querySelector('figure.diagram[aria-busy]')")
 
 
 def _problems_menu(page: Any, menu: str) -> None:

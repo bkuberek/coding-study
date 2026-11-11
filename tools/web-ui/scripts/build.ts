@@ -29,6 +29,8 @@ const MARKED_STAND_IN = path.join(ROOT, "src/code-intelligence/marked-stand-in.t
 const MANIFEST = "manifest.json";
 const LICENSES = "THIRD_PARTY_LICENSES.txt";
 const LICENSE_FILE = /^(licen[cs]e|copying)(\.(md|txt))?$/i;
+const README_FILE = /^readme(\.md)?$/i;
+const LICENSE_HEADING = /^#{1,6}\s+licen[cs]e\s*$/i;
 const RULE = "-".repeat(78);
 
 const output = path.resolve(process.argv[2] ?? PACKAGE_STATIC);
@@ -51,15 +53,28 @@ const { metafile } = await esbuild.build({
   legalComments: "none",
   metafile: true,
   logLevel: "warning",
-  // The server renders all documentation, so the client's Markdown renderer is never wanted.
-  alias: { marked: MARKED_STAND_IN },
-  plugins: [chunkStylesheets(output, stylesheetImports)],
+  plugins: [markedStandIn(), chunkStylesheets(output, stylesheetImports)],
 });
 requireLinkedLater(metafile, stylesheetImports);
 await writeFile(path.join(output, LICENSES), await licenseNotice(metafile));
 const files = await digests(output);
 await writeFile(path.join(output, MANIFEST), `${JSON.stringify({ entry: ENTRY, files }, null, 2)}\n`);
 await printSizes(output, Object.keys(files));
+
+/**
+ * Gives `@codemirror/lsp-client`'s import of `marked` the stand-in: the server renders all
+ * documentation, so that Markdown renderer is never wanted. Mermaid's import gets the package,
+ * which reads the Markdown a diagram's label may hold.
+ */
+function markedStandIn(): esbuild.Plugin {
+  const lspClient = `${path.sep}@codemirror${path.sep}lsp-client${path.sep}`;
+  return {
+    name: "marked-stand-in",
+    setup(build) {
+      build.onResolve({ filter: /^marked$/ }, (args) => (args.importer.includes(lspClient) ? { path: MARKED_STAND_IN } : undefined));
+    },
+  };
+}
 
 /** Empties the output directory, refusing one that holds files but no manifest of an earlier build. */
 async function clearPreviousBuild(directory: string): Promise<void> {
@@ -149,12 +164,29 @@ async function licenseNotice(meta: esbuild.Metafile): Promise<string> {
   const packages = [...bundledPackages(meta)].sort(([a], [b]) => (a < b ? -1 : 1));
   for (const [name, directory] of packages) {
     const manifest = JSON.parse(await readFile(path.join(directory, "package.json"), "utf8"));
-    const licenseFile = (await readdir(directory)).find((file) => LICENSE_FILE.test(file));
-    if (licenseFile === undefined) throw new Error(`${name} ships no license file in ${directory}`);
-    const text = (await readFile(path.join(directory, licenseFile), "utf8")).trim();
-    sections.push("", RULE, `${name} ${manifest.version} (${manifest.license})`, RULE, "", text);
+    const text = await licenseText(name, directory);
+    // A package.json may name no license, as khroma's does; its license file still follows.
+    const license = manifest.license ?? "license below";
+    sections.push("", RULE, `${name} ${manifest.version} (${license})`, RULE, "", text);
   }
   return `${sections.join("\n")}\n`;
+}
+
+/** The package's license file, or the License section of its README for a package that ships no
+ * license file but its README, as fastdom does. */
+async function licenseText(name: string, directory: string): Promise<string> {
+  const files = await readdir(directory);
+  const licenseFile = files.find((file) => LICENSE_FILE.test(file));
+  if (licenseFile !== undefined) return (await readFile(path.join(directory, licenseFile), "utf8")).trim();
+  const readme = files.find((file) => README_FILE.test(file));
+  const lines = readme === undefined ? [] : (await readFile(path.join(directory, readme), "utf8")).split("\n");
+  const start = lines.findIndex((line) => LICENSE_HEADING.test(line));
+  if (start < 0) throw new Error(`${name} ships no license file in ${directory}, nor a License section in a README`);
+  const end = lines.findIndex((line, index) => index > start && /^#{1,6}\s/.test(line));
+  return lines
+    .slice(start + 1, end < 0 ? undefined : end)
+    .join("\n")
+    .trim();
 }
 
 /** Every file under the directory by its `/`-separated relative path, sorted, with its SHA-256. */

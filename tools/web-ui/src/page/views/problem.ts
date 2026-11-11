@@ -15,7 +15,7 @@ import { localMinute, problemBadge, solveTime } from "../format.ts";
 import { openLazily } from "../lazy.ts";
 import { bestLine, goalLines, pastStatus } from "../levels.ts";
 import { needsList, readNeeds } from "../needs.ts";
-import { attemptHash, setHash } from "../routes.ts";
+import { attemptHash, guideHash, setHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, showFailure } from "../states.ts";
 import type { History, PastAttempt, ProblemDocument, Rendered, SetList } from "../types.ts";
@@ -90,10 +90,26 @@ function side(context: PageContext, problem: ProblemDocument, history: History, 
     "aside",
     { class: "problem-side", "aria-label": "Practice" },
     needsSection(context, problem),
+    guidesSection(problem),
     practice(context, problem, history),
     setsSection(context, problem.slug, sets),
     problem.approaches.length ? approaches(problem) : null,
     historySection(context, problem.slug, history),
+  );
+}
+
+/** The concept guides that teach what the problem practises, each a link to its Guides view; null for none. */
+function guidesSection(problem: ProblemDocument): HTMLElement | null {
+  if (problem.guides.length === 0) return null;
+  return h(
+    "section",
+    { class: "side-block", "aria-labelledby": "guides-heading" },
+    h("h2", { id: "guides-heading", class: "eyebrow" }, "read first"),
+    h(
+      "ul",
+      { class: "plain problem-guides" },
+      ...problem.guides.map((guide) => h("li", {}, h("a", { href: guideHash(guide.slug) }, guide.title), guide.read ? h("span", { class: "quiet" }, " · read") : null)),
+    ),
   );
 }
 
