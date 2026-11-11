@@ -15,6 +15,7 @@ You need Node 24 or later and pnpm 9.15.9 (`corepack enable` runs the version `p
 cd tools/guides
 pnpm install --frozen-lockfile
 pnpm render      # draws each diagram whose marker is missing or stale; leaves the rest as it is
+pnpm render:all  # draws every diagram again, after a change to the renderer or its options
 pnpm check       # writes nothing; exits 1 when a drawing is missing, stale or wider than 100 columns
 ```
 

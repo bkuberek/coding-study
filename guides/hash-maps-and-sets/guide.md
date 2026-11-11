@@ -359,7 +359,7 @@ A set or a map costs memory, a few times the size of the keys and values themsel
 
 - **Mutating a key.** As the Java example shows, the entry becomes unreachable. Use immutable keys: strings, numbers, tuples, records, frozen dataclasses.
 - **Defining equality without the hash.** Override both or neither, and derive both from the same fields.
-- **Relying on order.** Python's `dict` and JavaScript's `Map` keep insertion order, but Python's `set` and Java's `HashMap` promise no order at all, and Go randomizes map iteration on purpose. Sort the keys when the output must be stable.
+- **Relying on order.** Python's `dict` and JavaScript's `Map` keep insertion order, but Python's `set` and Java's `HashMap` promise no order at all, and Go makes map iteration order unpredictable on purpose. Sort the keys when the output must be stable.
 - **Treating "not found" as a value.** `ages.get("zed")` returns `None` in Python and `null` in Java, which may also be a stored value. Use `in` or `containsKey` when the difference matters.
 - **Modifying a map while iterating over it.** Python raises `RuntimeError: dictionary changed size during iteration`; a Java `HashMap` changed during a loop over its keys throws `ConcurrentModificationException`; Go allows it but does not say whether an entry added during the loop will be visited. Collect the changes, then apply them.
 - **Assuming the worst case cannot happen.** A poor hash, or keys chosen by someone hostile, can put everything in one bucket. See the expert notes.
@@ -377,7 +377,7 @@ With a hash function that spreads keys evenly and a load factor kept below a con
 
 Why the average is O(1): with α kept at most, say, 0.75, the expected number of entries in a bucket is at most 0.75 under uniform hashing, so a lookup does the hash plus a constant expected number of comparisons. Hashing itself costs O(L) for a key of length L, so "O(1)" means O(1) hash computations and comparisons; for long strings, the hash and the final `==` comparison each cost O(L).
 
-Why the worst case is O(n): nothing stops all keys from landing in one bucket. Chaining then walks one list of n entries, and linear probing walks one run of n slots. Some implementations bound this: since Java 8, a `HashMap` bucket that grows past 8 entries turns into a balanced tree once the table has at least 64 buckets, so a crowded bucket of keys that are `Comparable` costs O(log n), not O(n).
+Why the worst case is O(n): nothing stops all keys from landing in one bucket. Chaining then walks one list of n entries, and linear probing walks one run of n slots. Some implementations bound this: in OpenJDK, a `HashMap` bucket that grows past 8 entries turns into a red-black tree once the table has at least 64 buckets, so a crowded bucket of keys that are `Comparable` costs O(log n), not O(n).
 
 ## Expert notes
 
