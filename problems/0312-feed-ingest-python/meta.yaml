@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0312"
+slug: feed-ingest-python
+title: Feed Ingest (Python)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend, fintech]
+job_roles: [backend, platform]
+scope: project
+languages: [python]
+summary: A loyalty program gets a file of purchases from its shops each day. Load it into Postgres once however often it is sent, report the rows you refuse, work out points in whole cents, and ask a flaky partner for bonuses without failing.
+levels:
+  - {level: 1, title: Load a feed}
+  - {level: 2, title: "Clean rows, loaded once"}
+  - {level: 3, title: Points}
+  - {level: 4, title: When the partner stumbles}
+comparator: {type: exact}
+project:
+  grading: http
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
+  commands:
+    install: [uv, sync, --frozen, --no-build]
+    bootstrap: [.venv/bin/python, scripts/migrate.py]
+    run: [.venv/bin/python, src/server.py]
+    test: [.venv/bin/python, -P, -m, pytest]
+    reset: [.venv/bin/python, scripts/reset.py]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://app:app@db:5432/app
+    BONUS_URL: http://bonus-partner:8080
+  install_env:
+    UV_CACHE_DIR: /cache/uv
+    UV_PYTHON_DOWNLOADS: never
+    UV_LINK_MODE: copy
+  mocks:
+    - {name: bonus-partner, config: mocks/bonus-partner.yaml}
+  services: services/compose.yaml
+  requires:
+    lock: uv.lock
+    services: [postgres]
+    sizes: {install_mb: 11, images_mb: {app: 62, postgres: 117, mocks: 43}, memory_mb: 300}
+approaches:
+  - {id: reference, name: "Validate in code, load by id in one transaction, derive points on read, retry within bounds", role: optimal, time: "per feed", space: "per feed"}
+related: [csv-upload-ingestion-typescript, vendor-retry-client-typescript, coworking-availability-python, inventory-reservations-typescript]
+estimate_minutes: 240

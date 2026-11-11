@@ -1,0 +1,5036 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "note": "three good rows load, and each member lists their own purchases",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march-1.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1001,ana,2027-03-01,grocery,42.50\nT1002,ana,2027-03-02,fuel,30\nT1003,ben,2027-03-02,dining,18.9\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march-1.csv",
+              "rows": 3,
+              "loaded": 3,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T1001",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "grocery",
+                "amount_cents": 4250
+              },
+              {
+                "id": "T1002",
+                "member": "ana",
+                "date": "2027-03-02",
+                "category": "fuel",
+                "amount_cents": 3000
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T1003",
+                "member": "ben",
+                "date": "2027-03-02",
+                "category": "dining",
+                "amount_cents": 1890
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "Windows line endings, an empty line, no line break at the end, and amounts of every form",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/windows.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\r\nT2001,cy,2027-03-05,travel,120\r\n\r\nT2002,cy,2027-03-05,other,0.07"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "windows.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "cy"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T2001",
+                "member": "cy",
+                "date": "2027-03-05",
+                "category": "travel",
+                "amount_cents": 12000
+              },
+              {
+                "id": "T2002",
+                "member": "cy",
+                "date": "2027-03-05",
+                "category": "other",
+                "amount_cents": 7
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "a feed with a header and no rows loads nothing",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/empty.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "empty.csv",
+              "rows": 0,
+              "loaded": 0,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "purchases are listed by date and then by id as plain text: P1, P10, P10X, P9",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/order.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nP9,ana,2027-03-02,other,1\nP10,ana,2027-03-01,other,2\nP10X,ana,2027-03-02,other,3\nP1,ana,2027-03-02,other,4\nQ1,ben,2027-03-02,other,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "order.csv",
+              "rows": 5,
+              "loaded": 5,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "P10",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 200
+              },
+              {
+                "id": "P1",
+                "member": "ana",
+                "date": "2027-03-02",
+                "category": "other",
+                "amount_cents": 400
+              },
+              {
+                "id": "P10X",
+                "member": "ana",
+                "date": "2027-03-02",
+                "category": "other",
+                "amount_cents": 300
+              },
+              {
+                "id": "P9",
+                "member": "ana",
+                "date": "2027-03-02",
+                "category": "other",
+                "amount_cents": 100
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "Q1",
+                "member": "ben",
+                "date": "2027-03-02",
+                "category": "other",
+                "amount_cents": 500
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "a member with nothing is an empty list, and a missing member is a bad request",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/one.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,other,1\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "one.csv",
+              "rows": 1,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "nobody"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "member_required"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": ""
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "member_required"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "amounts become whole cents without a float: 0.29 is 29 cents and 4.35 is 435",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/amounts.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nA1,cy,2027-03-01,other,0.29\nA2,cy,2027-03-01,other,1.15\nA3,cy,2027-03-01,other,4.35\nA4,cy,2027-03-01,other,5\nA5,cy,2027-03-01,other,5.5\nA6,cy,2027-03-01,other,0.01\nA7,cy,2027-03-01,other,1234567.89\nA8,cy,2027-03-01,other,0\nA9,cy,2027-03-01,other,0.00\nA10,cy,2027-03-01,other,999999999.99\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "amounts.csv",
+              "rows": 10,
+              "loaded": 10,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "cy"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "A1",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 29
+              },
+              {
+                "id": "A10",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 99999999999
+              },
+              {
+                "id": "A2",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 115
+              },
+              {
+                "id": "A3",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 435
+              },
+              {
+                "id": "A4",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 500
+              },
+              {
+                "id": "A5",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 550
+              },
+              {
+                "id": "A6",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 1
+              },
+              {
+                "id": "A7",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 123456789
+              },
+              {
+                "id": "A8",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 0
+              },
+              {
+                "id": "A9",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a second feed adds to what the first loaded",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/first.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,grocery,10\nT2,ben,2027-03-01,fuel,20\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "first.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/second.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT3,ana,2027-03-03,dining,30\nT4,ana,2027-02-28,travel,40\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "second.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T4",
+                "member": "ana",
+                "date": "2027-02-28",
+                "category": "travel",
+                "amount_cents": 4000
+              },
+              {
+                "id": "T1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "grocery",
+                "amount_cents": 1000
+              },
+              {
+                "id": "T3",
+                "member": "ana",
+                "date": "2027-03-03",
+                "category": "dining",
+                "amount_cents": 3000
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T2",
+                "member": "ben",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 2000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "every category the table holds, and a leap day",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/kinds.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nC1,ana,2027-03-01,dining,1\nC2,ana,2027-03-02,fuel,2\nC3,ana,2027-03-03,grocery,3\nC4,ana,2027-03-04,other,4\nC5,ana,2027-03-05,travel,5\nLEAP,ana,2028-02-29,other,1.50\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "kinds.csv",
+              "rows": 6,
+              "loaded": 6,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "C1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "dining",
+                "amount_cents": 100
+              },
+              {
+                "id": "C2",
+                "member": "ana",
+                "date": "2027-03-02",
+                "category": "fuel",
+                "amount_cents": 200
+              },
+              {
+                "id": "C3",
+                "member": "ana",
+                "date": "2027-03-03",
+                "category": "grocery",
+                "amount_cents": 300
+              },
+              {
+                "id": "C4",
+                "member": "ana",
+                "date": "2027-03-04",
+                "category": "other",
+                "amount_cents": 400
+              },
+              {
+                "id": "C5",
+                "member": "ana",
+                "date": "2027-03-05",
+                "category": "travel",
+                "amount_cents": 500
+              },
+              {
+                "id": "LEAP",
+                "member": "ana",
+                "date": "2028-02-29",
+                "category": "other",
+                "amount_cents": 150
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "level": 2,
+      "visible": true,
+      "note": "three bad rows are reported by line and reason, and the two good ones load",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/mixed.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT2001,ana,2027-03-01,grocery,42.50\nT2002,ana,2027-02-30,grocery,10\nT2003,ben,2027-03-02,Grocery,10\nT2004,ben,2027-03-02,fuel,-5.00\nT2005,ben,2027-03-03,fuel,12\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "mixed.csv",
+              "rows": 5,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 3
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/mixed.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 3,
+                "reason": "bad_date"
+              },
+              {
+                "line": 4,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 5,
+                "reason": "negative_amount"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T2001",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "grocery",
+                "amount_cents": 4250
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T2005",
+                "member": "ben",
+                "date": "2027-03-03",
+                "category": "fuel",
+                "amount_cents": 1200
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "note": "sending the same file again loads nothing new, and its report is the same report",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/twice.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT3001,cy,2027-03-01,other,5\nT3002,cy,2027-03-02,other,6\nT3001,cy,2027-03-03,other,7\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "twice.csv",
+              "rows": 3,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/twice.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT3001,cy,2027-03-01,other,5\nT3002,cy,2027-03-02,other,6\nT3001,cy,2027-03-03,other,7\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "twice.csv",
+              "rows": 3,
+              "loaded": 0,
+              "existing": 2,
+              "rejected": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/twice.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 4,
+                "reason": "duplicate_id"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "cy"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "T3001",
+                "member": "cy",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 500
+              },
+              {
+                "id": "T3002",
+                "member": "cy",
+                "date": "2027-03-02",
+                "category": "other",
+                "amount_cents": 600
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 2,
+      "note": "only a real day written as YYYY-MM-DD is a date: not 20270301, not 2027-W09-1, not full-width digits",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/dates.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nD1,ana,2028-02-29,other,1\nD2,ana,2027-02-29,other,1\nD3,ana,2027-13-01,other,1\nD4,ana,2027-00-10,other,1\nD5,ana,2027-04-31,other,1\nD6,ana,20270301,other,1\nD7,ana,2027-3-1,other,1\nD8,ana,03/01/2027,other,1\nD9,ana,,other,1\nD10,ana,\uff12\uff10\uff12\uff17-03-01,other,1\nD11,ana,2027-03-01T10:00,other,1\nD12,ana, 2027-03-01,other,1\nD13,ana,2027-W09-1,other,1\nD14,ana,0000-01-01,other,1\nD15,ana,2027-12-31,other,1\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "dates.csv",
+              "rows": 15,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 13
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/dates.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 3,
+                "reason": "bad_date"
+              },
+              {
+                "line": 4,
+                "reason": "bad_date"
+              },
+              {
+                "line": 5,
+                "reason": "bad_date"
+              },
+              {
+                "line": 6,
+                "reason": "bad_date"
+              },
+              {
+                "line": 7,
+                "reason": "bad_date"
+              },
+              {
+                "line": 8,
+                "reason": "bad_date"
+              },
+              {
+                "line": 9,
+                "reason": "bad_date"
+              },
+              {
+                "line": 10,
+                "reason": "bad_date"
+              },
+              {
+                "line": 11,
+                "reason": "bad_date"
+              },
+              {
+                "line": 12,
+                "reason": "bad_date"
+              },
+              {
+                "line": 13,
+                "reason": "bad_date"
+              },
+              {
+                "line": 14,
+                "reason": "bad_date"
+              },
+              {
+                "line": 15,
+                "reason": "bad_date"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "D15",
+                "member": "ana",
+                "date": "2027-12-31",
+                "category": "other",
+                "amount_cents": 100
+              },
+              {
+                "id": "D1",
+                "member": "ana",
+                "date": "2028-02-29",
+                "category": "other",
+                "amount_cents": 100
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 2,
+      "note": "an amount is digits with at most two decimals: not 1e3, not 1,000, and any minus sign is a negative amount",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/amounts.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nA1,ana,2027-03-01,other,5\nA2,ana,2027-03-01,other,5.5\nA3,ana,2027-03-01,other,abc\nA4,ana,2027-03-01,other,\nA5,ana,2027-03-01,other,12.345\nA6,ana,2027-03-01,other,1,000\nA7,ana,2027-03-01,other,+5\nA8,ana,2027-03-01,other,5.\nA9,ana,2027-03-01,other,.5\nA10,ana,2027-03-01,other,1e3\nA11,ana,2027-03-01,other, 5\nA12,ana,2027-03-01,other,5 \nA13,ana,2027-03-01,other,\uff11\uff12\nA14,ana,2027-03-01,other,1234567890\nA15,ana,2027-03-01,other,NaN\nA16,ana,2027-03-01,other,-5\nA17,ana,2027-03-01,other,-0.00\nA18,ana,2027-03-01,other,-12.5\nA19,ana,2027-03-01,other,123456789.99\nA20,ana,2027-03-01,other,0.0\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "amounts.csv",
+              "rows": 20,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 16
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/amounts.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 4,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 5,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 6,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 7,
+                "reason": "wrong_field_count"
+              },
+              {
+                "line": 8,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 9,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 10,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 11,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 12,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 13,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 14,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 15,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 16,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 17,
+                "reason": "negative_amount"
+              },
+              {
+                "line": 18,
+                "reason": "negative_amount"
+              },
+              {
+                "line": 19,
+                "reason": "negative_amount"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "A1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 500
+              },
+              {
+                "id": "A19",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 12345678999
+              },
+              {
+                "id": "A2",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 550
+              },
+              {
+                "id": "A20",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "other",
+                "amount_cents": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 2,
+      "note": "wrong field counts, empty ids and members, and categories that are not in the table; only \\n ends a line",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/kinds.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nE1,ana,2027-03-01,fuel\nE2,ana,2027-03-01,fuel,5,extra\nE3\n \n,ana,2027-03-01,fuel,5\nE5,,2027-03-01,fuel,5\nE6,ana,2027-03-01,gas,5\nE7,ana,2027-03-01,,5\nE8,ana,2027-03-01,FUEL,5\nE9,ana,2027-03-01,fuel ,5\nE10,ana,2027-03-01,fuel\u000b,5\nE11,ana,2027-03-01,fuel,5\u2028\nE12,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "kinds.csv",
+              "rows": 13,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 12
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/kinds.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 2,
+                "reason": "wrong_field_count"
+              },
+              {
+                "line": 3,
+                "reason": "wrong_field_count"
+              },
+              {
+                "line": 4,
+                "reason": "wrong_field_count"
+              },
+              {
+                "line": 5,
+                "reason": "wrong_field_count"
+              },
+              {
+                "line": 6,
+                "reason": "empty_field"
+              },
+              {
+                "line": 7,
+                "reason": "empty_field"
+              },
+              {
+                "line": 8,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 9,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 10,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 11,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 12,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 13,
+                "reason": "bad_amount"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "E12",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 500
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 2,
+      "note": "a row with several problems is reported for the first rule it breaks, in the order of the rules",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/order.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\n,ana,bad,nope,abc\nF2,ana,bad,nope,abc\nF3,ana,2027-03-01,nope,abc\nF4,ana,2027-03-01,fuel,abc\nF5,ana,2027-03-01,fuel,-1\nF6,ana,bad,nope\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "order.csv",
+              "rows": 6,
+              "loaded": 0,
+              "existing": 0,
+              "rejected": 6
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/order.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 2,
+                "reason": "empty_field"
+              },
+              {
+                "line": 3,
+                "reason": "bad_date"
+              },
+              {
+                "line": 4,
+                "reason": "unknown_category"
+              },
+              {
+                "line": 5,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 6,
+                "reason": "negative_amount"
+              },
+              {
+                "line": 7,
+                "reason": "wrong_field_count"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 2,
+      "note": "a row repeats an id only if an earlier line with that id was good; the first good one is kept",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/dups.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nG1,ana,2027-13-01,fuel,5\nG1,ana,2027-03-01,fuel,5\nG1,ana,2027-03-02,fuel,6\nG2,ana,2027-03-01,fuel,5\nG2,ben,2027-03-09,dining,50\nG3,ben,2027-03-09,dining,-50\nG3,ben,2027-03-09,dining,50\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "dups.csv",
+              "rows": 7,
+              "loaded": 3,
+              "existing": 0,
+              "rejected": 4
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/dups.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 2,
+                "reason": "bad_date"
+              },
+              {
+                "line": 4,
+                "reason": "duplicate_id"
+              },
+              {
+                "line": 6,
+                "reason": "duplicate_id"
+              },
+              {
+                "line": 7,
+                "reason": "negative_amount"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "G1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 500
+              },
+              {
+                "id": "G2",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 500
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "G3",
+                "member": "ben",
+                "date": "2027-03-09",
+                "category": "dining",
+                "amount_cents": 5000
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 2,
+      "note": "empty lines are not rows but they are lines: the report counts them",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/gaps.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\r\n\r\nH1,ana,2027-03-01,fuel,1\r\n\r\n\r\nH2,ana,2027-03-32,fuel,1\r\nH3,ana,2027-03-01,fuel,x\r\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "gaps.csv",
+              "rows": 3,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/gaps.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 6,
+                "reason": "bad_date"
+              },
+              {
+                "line": 7,
+                "reason": "bad_amount"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "note": "a feed whose first line is not exactly the header is refused with 400 and nothing is loaded",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category\nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "member,id,date,category,amount\nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount \nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "ID,member,date,category,amount\nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "\nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "\ufeffid,member,date,category,amount\nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "T1,ana,2027-03-01,fuel,5\nT1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/bad.csv/rejects"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_feed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 2,
+      "note": "a refused feed changes nothing: the report of the earlier load stays",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/keep.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nK1,ana,2027-03-01,fuel,5\nK2,ana,nope,fuel,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "keep.csv",
+              "rows": 2,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/keep.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,total\nK3,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_header"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/keep.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 3,
+                "reason": "bad_date"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "K1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 500
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 2,
+      "note": "an id that is already stored keeps the row it first had, even when another feed sends it differently",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/a.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nM1,ana,2027-03-01,fuel,10.00\nM2,ana,2027-03-02,fuel,20.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "a.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/b.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nM1,ben,2027-04-01,dining,99.00\nM3,ana,2027-03-03,fuel,30.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "b.csv",
+              "rows": 2,
+              "loaded": 1,
+              "existing": 1,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "M1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 1000
+              },
+              {
+                "id": "M2",
+                "member": "ana",
+                "date": "2027-03-02",
+                "category": "fuel",
+                "amount_cents": 2000
+              },
+              {
+                "id": "M3",
+                "member": "ana",
+                "date": "2027-03-03",
+                "category": "fuel",
+                "amount_cents": 3000
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "note": "a corrected file under the same name replaces the report and loads the rows that were refused",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/daily.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nN1,ana,2027-03-01,fuel,5\nN2,ana,2027-03-01,fuel,abc\nN3,ana,2027-03-01,gas,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "daily.csv",
+              "rows": 3,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/daily.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 3,
+                "reason": "bad_amount"
+              },
+              {
+                "line": 4,
+                "reason": "unknown_category"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/daily.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nN1,ana,2027-03-01,fuel,5\nN2,ana,2027-03-01,fuel,6\nN3,ana,2027-03-01,fuel,7\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "daily.csv",
+              "rows": 3,
+              "loaded": 2,
+              "existing": 1,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/daily.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/purchases",
+            "query": {
+              "member": "ana"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "N1",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 500
+              },
+              {
+                "id": "N2",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 600
+              },
+              {
+                "id": "N3",
+                "member": "ana",
+                "date": "2027-03-01",
+                "category": "fuel",
+                "amount_cents": 700
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "note": "a feed where every row is bad loads nothing, and a feed of empty lines has no rows",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/all-bad.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\n1,ana,x,fuel,5\n2,ana,2027-03-01,fuel\n3,,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "all-bad.csv",
+              "rows": 3,
+              "loaded": 0,
+              "existing": 0,
+              "rejected": 3
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/blank.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\n\n\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "blank.csv",
+              "rows": 0,
+              "loaded": 0,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/blank.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 2,
+      "note": "a feed never loaded has no report",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/never.csv/rejects"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_feed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 2,
+      "note": "the first line of an id that is already stored is existing, and a later line of the same id is a duplicate",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/one.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nX1,ana,2027-03-01,fuel,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "one.csv",
+              "rows": 1,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/two.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nX1,ana,2027-03-01,fuel,5\nX1,ana,2027-03-01,fuel,5\nX2,ana,2027-03-02,fuel,6\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "two.csv",
+              "rows": 3,
+              "loaded": 1,
+              "existing": 1,
+              "rejected": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/feeds/two.csv/rejects"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "line": 3,
+                "reason": "duplicate_id"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "six copies of one file arrive at the same moment: all are answered, and every purchase is stored once",
+      "parallel": {
+        "count": 6,
+        "request": {
+          "method": "PUT",
+          "path": "/feeds/rush.csv",
+          "headers": {
+            "Content-Type": "text/csv"
+          },
+          "body": "id,member,date,category,amount\nR01,ana,2027-03-02,other,1.25\nR02,ana,2027-03-03,other,2.25\nR03,ana,2027-03-04,other,3.25\nR04,ana,2027-03-05,other,4.25\nR05,ana,2027-03-06,other,5.25\nR06,ana,2027-03-07,other,6.25\nR07,ana,2027-03-08,other,7.25\nR08,ana,2027-03-09,other,8.25\nR09,ana,2027-03-10,other,9.25\nR10,ana,2027-03-11,other,10.25\nR11,ana,2027-03-12,other,11.25\nR12,ana,2027-03-13,other,12.25\nR13,ana,2027-03-14,other,13.25\nR14,ana,2027-03-15,other,14.25\nR15,ana,2027-03-16,other,15.25\nR16,ana,2027-03-17,other,16.25\nR17,ana,2027-03-18,other,17.25\nR18,ana,2027-03-19,other,18.25\nR19,ana,2027-03-20,other,19.25\nR20,ana,2027-03-21,other,20.25\nR99,ana,nope,other,1\n"
+        }
+      },
+      "expected_statuses": {
+        "200": 6
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/purchases",
+          "query": {
+            "member": "ana"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "body": [
+            {
+              "id": "R01",
+              "member": "ana",
+              "date": "2027-03-02",
+              "category": "other",
+              "amount_cents": 125
+            },
+            {
+              "id": "R02",
+              "member": "ana",
+              "date": "2027-03-03",
+              "category": "other",
+              "amount_cents": 225
+            },
+            {
+              "id": "R03",
+              "member": "ana",
+              "date": "2027-03-04",
+              "category": "other",
+              "amount_cents": 325
+            },
+            {
+              "id": "R04",
+              "member": "ana",
+              "date": "2027-03-05",
+              "category": "other",
+              "amount_cents": 425
+            },
+            {
+              "id": "R05",
+              "member": "ana",
+              "date": "2027-03-06",
+              "category": "other",
+              "amount_cents": 525
+            },
+            {
+              "id": "R06",
+              "member": "ana",
+              "date": "2027-03-07",
+              "category": "other",
+              "amount_cents": 625
+            },
+            {
+              "id": "R07",
+              "member": "ana",
+              "date": "2027-03-08",
+              "category": "other",
+              "amount_cents": 725
+            },
+            {
+              "id": "R08",
+              "member": "ana",
+              "date": "2027-03-09",
+              "category": "other",
+              "amount_cents": 825
+            },
+            {
+              "id": "R09",
+              "member": "ana",
+              "date": "2027-03-10",
+              "category": "other",
+              "amount_cents": 925
+            },
+            {
+              "id": "R10",
+              "member": "ana",
+              "date": "2027-03-11",
+              "category": "other",
+              "amount_cents": 1025
+            },
+            {
+              "id": "R11",
+              "member": "ana",
+              "date": "2027-03-12",
+              "category": "other",
+              "amount_cents": 1125
+            },
+            {
+              "id": "R12",
+              "member": "ana",
+              "date": "2027-03-13",
+              "category": "other",
+              "amount_cents": 1225
+            },
+            {
+              "id": "R13",
+              "member": "ana",
+              "date": "2027-03-14",
+              "category": "other",
+              "amount_cents": 1325
+            },
+            {
+              "id": "R14",
+              "member": "ana",
+              "date": "2027-03-15",
+              "category": "other",
+              "amount_cents": 1425
+            },
+            {
+              "id": "R15",
+              "member": "ana",
+              "date": "2027-03-16",
+              "category": "other",
+              "amount_cents": 1525
+            },
+            {
+              "id": "R16",
+              "member": "ana",
+              "date": "2027-03-17",
+              "category": "other",
+              "amount_cents": 1625
+            },
+            {
+              "id": "R17",
+              "member": "ana",
+              "date": "2027-03-18",
+              "category": "other",
+              "amount_cents": 1725
+            },
+            {
+              "id": "R18",
+              "member": "ana",
+              "date": "2027-03-19",
+              "category": "other",
+              "amount_cents": 1825
+            },
+            {
+              "id": "R19",
+              "member": "ana",
+              "date": "2027-03-20",
+              "category": "other",
+              "amount_cents": 1925
+            },
+            {
+              "id": "R20",
+              "member": "ana",
+              "date": "2027-03-21",
+              "category": "other",
+              "amount_cents": 2025
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "two feeds with the same 30 ids, one in ascending and one in descending order, arrive in turn eight at a time: none is refused",
+      "parallel": {
+        "count": 8,
+        "requests": [
+          {
+            "method": "PUT",
+            "path": "/feeds/up.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nS01,ana,2027-03-01,other,1\nS02,ana,2027-03-01,other,1\nS03,ana,2027-03-01,other,1\nS04,ana,2027-03-01,other,1\nS05,ana,2027-03-01,other,1\nS06,ana,2027-03-01,other,1\nS07,ana,2027-03-01,other,1\nS08,ana,2027-03-01,other,1\nS09,ana,2027-03-01,other,1\nS10,ana,2027-03-01,other,1\nS11,ana,2027-03-01,other,1\nS12,ana,2027-03-01,other,1\nS13,ana,2027-03-01,other,1\nS14,ana,2027-03-01,other,1\nS15,ana,2027-03-01,other,1\nS16,ana,2027-03-01,other,1\nS17,ana,2027-03-01,other,1\nS18,ana,2027-03-01,other,1\nS19,ana,2027-03-01,other,1\nS20,ana,2027-03-01,other,1\nS21,ana,2027-03-01,other,1\nS22,ana,2027-03-01,other,1\nS23,ana,2027-03-01,other,1\nS24,ana,2027-03-01,other,1\nS25,ana,2027-03-01,other,1\nS26,ana,2027-03-01,other,1\nS27,ana,2027-03-01,other,1\nS28,ana,2027-03-01,other,1\nS29,ana,2027-03-01,other,1\nS30,ana,2027-03-01,other,1\n"
+          },
+          {
+            "method": "PUT",
+            "path": "/feeds/down.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nS30,ana,2027-03-01,other,1\nS29,ana,2027-03-01,other,1\nS28,ana,2027-03-01,other,1\nS27,ana,2027-03-01,other,1\nS26,ana,2027-03-01,other,1\nS25,ana,2027-03-01,other,1\nS24,ana,2027-03-01,other,1\nS23,ana,2027-03-01,other,1\nS22,ana,2027-03-01,other,1\nS21,ana,2027-03-01,other,1\nS20,ana,2027-03-01,other,1\nS19,ana,2027-03-01,other,1\nS18,ana,2027-03-01,other,1\nS17,ana,2027-03-01,other,1\nS16,ana,2027-03-01,other,1\nS15,ana,2027-03-01,other,1\nS14,ana,2027-03-01,other,1\nS13,ana,2027-03-01,other,1\nS12,ana,2027-03-01,other,1\nS11,ana,2027-03-01,other,1\nS10,ana,2027-03-01,other,1\nS09,ana,2027-03-01,other,1\nS08,ana,2027-03-01,other,1\nS07,ana,2027-03-01,other,1\nS06,ana,2027-03-01,other,1\nS05,ana,2027-03-01,other,1\nS04,ana,2027-03-01,other,1\nS03,ana,2027-03-01,other,1\nS02,ana,2027-03-01,other,1\nS01,ana,2027-03-01,other,1\n"
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 8
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/purchases",
+          "query": {
+            "member": "ana"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "body": [
+            {
+              "id": "S01",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S02",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S03",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S04",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S05",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S06",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S07",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S08",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S09",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S10",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S11",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S12",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S13",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S14",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S15",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S16",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S17",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S18",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S19",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S20",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S21",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S22",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S23",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S24",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S25",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S26",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S27",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S28",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S29",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            },
+            {
+              "id": "S30",
+              "member": "ana",
+              "date": "2027-03-01",
+              "category": "other",
+              "amount_cents": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 3,
+      "visible": true,
+      "note": "42.50 of groceries earns 85 and 30.00 of fuel 45; 18.90 of dining earns 56.7, rounded down to 56",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march-1.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1001,ana,2027-03-01,grocery,42.50\nT1002,ana,2027-03-02,fuel,30\nT1003,ben,2027-03-02,dining,18.9\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march-1.csv",
+              "rows": 3,
+              "loaded": 3,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 130
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 56
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "level": 3,
+      "visible": true,
+      "note": "the second dinner starts at 95.00 of the month: 5.00 at 300% and 15.00 at 200%",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/dining.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ben,2027-03-01,dining,95.00\nT2,ben,2027-03-02,dining,20.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "dining.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 330
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "note": "a member nobody bought for is unknown, and so is one whose every row was refused",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/refused.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,nope,fuel,5\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "refused.csv",
+              "rows": 1,
+              "loaded": 0,
+              "existing": 0,
+              "rejected": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_member"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ghost/points"
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_member"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "note": "a purchase of nothing earns nothing and still makes a member",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/zero.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,zed,2027-03-01,travel,0\nT2,zed,2027-03-01,travel,0.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "zero.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/zed/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "zed",
+              "points": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 3,
+      "note": "each purchase is rounded down on its own: two of 1.50 earn 1 and 1, not 3",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/round.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,other,1.50\nT2,ana,2027-03-02,other,1.50\nT3,ben,2027-03-01,other,0.99\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "round.csv",
+              "rows": 3,
+              "loaded": 3,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 3,
+      "note": "right at the edge of a band: 200.00 of groceries fills the first band, and the next cent is paid at 100%",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/edge.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,grocery,200.00\nT2,ana,2027-03-02,grocery,0.01\nT3,ben,2027-03-01,grocery,199.99\nT4,ben,2027-03-02,grocery,0.02\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "edge.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 400
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 399
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 3,
+      "note": "one purchase that covers every band of its category: dining 850, travel 2150, fuel 375",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/big.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,dining,450.00\nT2,ben,2027-03-01,travel,600.00\nT3,cy,2027-03-01,fuel,300.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "big.csv",
+              "rows": 3,
+              "loaded": 3,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 850
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 2150
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/cy/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "cy",
+              "points": 375
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 3,
+      "note": "the bands start again with each calendar month, and with each year",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/months.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-31,grocery,200.00\nT2,ana,2027-04-01,grocery,100.00\nT3,ben,2027-12-31,grocery,200.00\nT4,ben,2028-01-01,grocery,100.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "months.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 600
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 600
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h28",
+      "level": 3,
+      "note": "a category and a member keep their own running totals: ana and ben earn the same, and cy crosses a band",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/kinds.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,grocery,150.00\nT2,ana,2027-03-02,dining,80.00\nT3,ben,2027-03-02,dining,80.00\nT4,ben,2027-03-03,grocery,150.00\nT5,cy,2027-03-01,grocery,150.00\nT6,cy,2027-03-04,grocery,100.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "kinds.csv",
+              "rows": 6,
+              "loaded": 6,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 540
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "points": 540
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/cy/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "cy",
+              "points": 450
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 3,
+      "note": "purchases of one day are taken in the order of their ids as plain text: P10 comes before P9",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/ids.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nP9,ana,2027-03-01,fuel,149.50\nP10,ana,2027-03-01,fuel,1.01\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "ids.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 224
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 3,
+      "note": "a purchase that arrives late is placed by its date: the total is what the month's order gives",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/late-1.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nL2,ana,2027-03-20,fuel,149.50\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "late-1.csv",
+              "rows": 1,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 224
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/late-2.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nL1,ana,2027-03-05,fuel,1.01\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "late-2.csv",
+              "rows": 1,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 224
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 3,
+      "note": "sending a purchase again, in the same file or another, does not earn it twice",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/again.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,grocery,42.50\nT2,ana,2027-03-02,fuel,30\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "again.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/again.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,grocery,42.50\nT2,ana,2027-03-02,fuel,30\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "again.csv",
+              "rows": 2,
+              "loaded": 0,
+              "existing": 2,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/other.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,grocery,42.50\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "other.csv",
+              "rows": 1,
+              "loaded": 0,
+              "existing": 1,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 130
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 3,
+      "note": "the largest amount a feed can hold, without losing a cent to a float",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/huge.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-03-01,travel,999999999.99\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "huge.csv",
+              "rows": 1,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 1500001249
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 3,
+      "note": "a member's points add up every month they bought in",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/two-months.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nT1,ana,2027-02-10,grocery,100.00\nT2,ana,2027-03-10,grocery,100.00\nT3,ana,2027-03-11,other,9.99\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "two-months.csv",
+              "rows": 3,
+              "loaded": 3,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 409
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "level": 4,
+      "visible": true,
+      "note": "the partner answers: both members are reconciled with their bonus",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-03",
+              "points": 56,
+              "bonus": 40,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 1
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 4,
+      "visible": true,
+      "note": "the partner is down: every lookup is tried three times, the run still ends with 200, and both members are pending",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "outage"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 0,
+              "pending": 2
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-03",
+              "points": 56,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 3,
+          "min_gap_ms": 150
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 4,
+      "visible": true,
+      "note": "one failure is retried after a pause, and the second try gets the bonus",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_flaky"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 2,
+          "min_gap_ms": 150
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h34",
+      "level": 4,
+      "note": "two failures and then an answer: the third try is the last one, and it is enough",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_down_twice"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 3,
+          "min_gap_ms": 150
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h35",
+      "level": 4,
+      "note": "a lookup that gets no answer within 1 s is given up on, three times, and that member is pending while the others finish",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_slow"
+      },
+      "hang_guard_ms": 12000,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 1,
+              "pending": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-03",
+              "points": 56,
+              "bonus": 40,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 3
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 4,
+      "note": "a 429 with Retry-After: 1 is waited for, and then asked again",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_limited_once"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 2,
+          "min_gap_ms": 950
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 4,
+      "note": "a 403 is not going to change: it is asked once, and that member is pending",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_refused"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 1,
+              "pending": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 1
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h38",
+      "level": 4,
+      "note": "a member the partner has no record of (404) has a bonus of 0, and is reconciled: nothing to retry",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/dee.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nD1,dee,2027-03-05,fuel,20.00\nD2,cy,2027-03-06,fuel,20.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "dee.csv",
+              "rows": 2,
+              "loaded": 2,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/dee/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "dee",
+              "month": "2027-03",
+              "points": 30,
+              "bonus": 0,
+              "status": "reconciled"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/cy/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "cy",
+              "month": "2027-03",
+              "points": 30,
+              "bonus": 0,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "no-record",
+          "count": 1
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-cy",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 4,
+      "note": "a 200 answer that is cut off is a failure like any other: retried",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_garbled_once"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 2,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h40",
+      "level": 4,
+      "note": "a 200 answer without a bonus is a failure too, and after three tries the member is pending",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_wrong_shape"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 1,
+              "pending": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h41",
+      "level": 4,
+      "note": "a pending member is asked again by the next run, a reconciled one is not",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_recovers_later"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 1,
+              "pending": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-03",
+              "points": 56,
+              "bonus": 40,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 4
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h42",
+      "level": 4,
+      "note": "one member's lookups keep failing: only that member is pending, and the others are not held up",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ben_broken"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 1,
+              "pending": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-03",
+              "points": 56,
+              "bonus": null,
+              "status": "pending"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 1
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    },
+    {
+      "id": "h43",
+      "level": 4,
+      "note": "running the reconciliation again when everyone is reconciled asks the partner nothing",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 1
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h44",
+      "level": 4,
+      "note": "a month must be written YYYY-MM with a month from 01 to 12",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-3"
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-13"
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-00"
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": 3
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": null
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "body": "not json"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {}
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement"
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-13"
+            }
+          },
+          "expected": {
+            "status": 400,
+            "body": {
+              "error": "invalid_month"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h45",
+      "level": 4,
+      "note": "a month nobody bought in has nothing to reconcile and asks the partner nothing",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-05"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-05",
+              "members": 0,
+              "reconciled": 0,
+              "pending": 0
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h46",
+      "level": 4,
+      "note": "before any reconciliation a statement is open: the month's points, no bonus; a month with no purchases is 0",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": null,
+              "status": "open"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-04"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-04",
+              "points": 10,
+              "bonus": null,
+              "status": "open"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-04"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-04",
+              "points": 0,
+              "bonus": null,
+              "status": "open"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ghost/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_member"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h47",
+      "level": 4,
+      "note": "a lookup that was too slow once is tried again, and the second try is enough",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "ana_slow_once"
+      },
+      "hang_guard_ms": 12000,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-03",
+              "points": 130,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h48",
+      "level": 4,
+      "note": "a bonus is separate from what purchases earn: the points of a member do not change",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 140
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 2,
+              "reconciled": 2,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/points"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "points": 140
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h49",
+      "level": 4,
+      "note": "only the members who bought in the month are asked: April has ana alone",
+      "fresh": true,
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-04"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-04",
+              "members": 1,
+              "reconciled": 1,
+              "pending": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ana/statement",
+            "query": {
+              "month": "2027-04"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ana",
+              "month": "2027-04",
+              "points": 10,
+              "bonus": 25,
+              "status": "reconciled"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members/ben/statement",
+            "query": {
+              "month": "2027-04"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "member": "ben",
+              "month": "2027-04",
+              "points": 0,
+              "bonus": null,
+              "status": "open"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 1
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h50",
+      "level": 4,
+      "note": "the whole partner is down for three members: the run still ends normally, and every member is pending",
+      "fresh": true,
+      "mocks": {
+        "bonus-partner": "outage"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/march.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nB1,ana,2027-03-03,grocery,42.50\nB2,ana,2027-03-10,fuel,30\nB3,ben,2027-03-04,dining,18.90\nB4,ana,2027-04-02,other,10\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "march.csv",
+              "rows": 4,
+              "loaded": 4,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/feeds/more.csv",
+            "headers": {
+              "Content-Type": "text/csv"
+            },
+            "body": "id,member,date,category,amount\nC1,cy,2027-03-07,other,5.00\n"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "feed": "more.csv",
+              "rows": 1,
+              "loaded": 1,
+              "existing": 0,
+              "rejected": 0
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reconcile",
+            "json": {
+              "month": "2027-03"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "month": "2027-03",
+              "members": 3,
+              "reconciled": 0,
+              "pending": 3
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ana",
+          "count": 3,
+          "min_gap_ms": 150
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-ben",
+          "count": 3,
+          "min_gap_ms": 150
+        },
+        {
+          "mock": "bonus-partner",
+          "route": "bonus-cy",
+          "count": 3,
+          "min_gap_ms": 150
+        }
+      ]
+    }
+  ]
+}
