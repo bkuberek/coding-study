@@ -5,11 +5,13 @@
 """
 
 import sqlite3
+from collections.abc import Iterator
 from importlib import resources
 from pathlib import Path
 
 from coding_study.adapters.sqlite.migration_lock import migration_lock
 
+_DUPLICATE_COLUMN = "duplicate column name"
 SCHEMA_VERSION_KEY = "schema_version"
 MIGRATIONS_PACKAGE = "coding_study.adapters.sqlite"
 MIGRATIONS_DIRECTORY = "migrations"
@@ -29,12 +31,43 @@ def migrate(connection: sqlite3.Connection) -> None:
     for number, script in _migrations():
         if number <= applied:
             continue
-        connection.executescript(script)
+        _apply(connection, script)
         with connection:
             connection.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
                 (SCHEMA_VERSION_KEY, str(number)),
             )
+
+
+def _apply(connection: sqlite3.Connection, script: str) -> None:
+    """Runs a migration script. SQLite has no `ADD COLUMN IF NOT EXISTS`, so a script that adds a
+    column the table already has, as one run again under a new number after a merge does, runs
+    statement by statement instead, skipping each column that is there."""
+    try:
+        connection.executescript(script)
+    except sqlite3.OperationalError as error:
+        if not _is_duplicate_column(error):
+            raise
+        for statement in _statements(script):
+            try:
+                connection.executescript(statement)
+            except sqlite3.OperationalError as skipped:
+                if not _is_duplicate_column(skipped):
+                    raise
+
+
+def _is_duplicate_column(error: sqlite3.OperationalError) -> bool:
+    return str(error).startswith(_DUPLICATE_COLUMN)
+
+
+def _statements(script: str) -> Iterator[str]:
+    """The script's statements, each complete as SQLite reads it."""
+    statement = ""
+    for line in script.splitlines(keepends=True):
+        statement += line
+        if sqlite3.complete_statement(statement):
+            yield statement
+            statement = ""
 
 
 def schema_version(connection: sqlite3.Connection) -> int:

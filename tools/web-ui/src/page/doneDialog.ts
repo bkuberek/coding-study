@@ -93,8 +93,7 @@ function capNotes(status: AttemptStatus): string[] {
 }
 
 function showOutcome(context: PageContext, body: HTMLElement, done: DoneDocument, status: AttemptStatus): void {
-  const levels = status.levels ? { last: status.levels.last, project: status.kind === "project" } : null;
-  const [summary, review] = doneLines(done, levels);
+  const [summary, review] = doneLines(done);
   const open = h("a", { href: problemHash(done.slug), class: "button primary" }, `Open ${done.slug}`);
   body.replaceChildren(
     h("p", { class: "eyebrow" }, "finished"),

@@ -180,6 +180,18 @@ def test_migrating_to_level_passes_keeps_old_test_runs_without_levels(database):
     assert (run.tally.passed, run.levels_passed) == (12, None)
 
 
+def test_migration_0006_runs_again_without_error(store, database):
+    """Renumbered by a merge, a migration that adds columns may run on a database that has them."""
+    store.active_attempt()
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE meta SET value = '5' WHERE key = 'schema_version'")
+    reopened = SqliteProgressStore(database)
+    assert (reopened.active_attempt(), reopened.snapshot().schema_version) == (
+        None,
+        latest_schema_version(),
+    )
+
+
 def test_attempt_ids_increase(store):
     first, second = store.add_attempt(new_attempt()), store.add_attempt(new_attempt())
     assert second.id > first.id

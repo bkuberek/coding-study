@@ -57,6 +57,8 @@ Migration `0006_level_passes.sql` adds three nullable columns:
 
 A test run had only its totals, which cannot say which levels passed when one case of level 3 failed. So the run stores its N when it is recorded.
 
+SQLite has no `ADD COLUMN IF NOT EXISTS`, so the migration runner runs a script that adds a column the table already has statement by statement, skipping that column. A merge that renumbers 0006 can then run it again on a database that has it.
+
 Rows written before the migration keep NULL, and stay valid:
 
 - A `passed` attempt with NULL passed every level, since that was the only way to pass.
@@ -85,7 +87,7 @@ A review, or any new attempt, still starts at level 1, because a review means so
 | The statement | The goal, under the title, while an attempt is in progress |
 | The page | The Done dialog's line, the History of the Problem view, and the goal in its Practise panel; the Attempt view shows the goal through the statement |
 
-`cstudy list` and the Problems view show no levels today, so they get no mastery column. The done API's `levels_finished`, a project's until now, holds N for a progressive problem too, so the page can write the done line without a new field in `schemas/web-api.schema.json`.
+The done API keeps `levels_finished`, a project's levels finished, for compatibility, and adds `levels_passed` and `levels_total`, N and M for any problem with levels, which the page writes the done line from.
 
 ## Consequences
 

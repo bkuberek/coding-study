@@ -91,26 +91,20 @@ export function doneCommand(slug: string, choice: DoneChoice): string {
   return [`cstudy done ${slug}`, finish, notes].filter(Boolean).join(" ");
 }
 
-/** A problem's last level, and whether it is a project. */
-export interface DoneLevels {
-  readonly last: number;
-  readonly project: boolean;
-}
-
-/** The two lines `cstudy done` prints; `levels` is null for a problem without levels. */
-export function doneLines(done: DoneDocument, levels: DoneLevels | null): [string, string] {
-  const parts = [done.slug, done.language, done.status, levelsText(done, levels), solveTime(done.solve_s), ratingText(done), `hints ${done.hints_used}`];
+/** The two lines `cstudy done` prints. */
+export function doneLines(done: DoneDocument): [string, string] {
+  const parts = [done.slug, done.language, done.status, levelsText(done), solveTime(done.solve_s), ratingText(done), `hints ${done.hints_used}`];
   const review = done.next_review;
   const when = review.in_days === 1 ? "in 1 day" : `in ${review.in_days} days`;
   return [parts.filter(Boolean).join(" · "), `next review  ${review.due_on} (${when}) · ease ${review.ease.toFixed(2)}`];
 }
 
 /** `through level 2 of 4` for a pass below the last level; else a project's `levels 4 of 4`. */
-function levelsText(done: DoneDocument, levels: DoneLevels | null): string | null {
-  const passed = done.levels_finished;
-  if (passed === null || levels === null) return null;
-  if (done.status === "passed" && passed > 0 && passed < levels.last) return `through level ${passed} of ${levels.last}`;
-  return levels.project ? `levels ${passed} of ${levels.last}` : null;
+function levelsText(done: DoneDocument): string | null {
+  const { levels_passed: passed, levels_total: last } = done;
+  if (passed === null || last === null) return null;
+  if (done.status === "passed" && passed > 0 && passed < last) return `through level ${passed} of ${last}`;
+  return done.levels_finished === null ? null : `levels ${done.levels_finished} of ${last}`;
 }
 
 /** `rating ok`; a mock project's grade its levels capped below the rating says so, as `cstudy done` does. */

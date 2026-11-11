@@ -338,8 +338,11 @@ export interface DoneDocument {
   readonly slug: string;
   readonly language: string | null;
   readonly status: string;
-  /** The levels a progressive or project problem passed through; null for any other. */
+  /** A project's levels finished; null for any other problem. */
   readonly levels_finished: number | null;
+  /** The levels a progressive or project problem passed through, of `levels_total`; null for any other. */
+  readonly levels_passed: number | null;
+  readonly levels_total: number | null;
   readonly solve_s: number;
   readonly rating: string | null;
   readonly grade: string | null;

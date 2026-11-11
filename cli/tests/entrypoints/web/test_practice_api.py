@@ -273,6 +273,8 @@ def test_done_answers_what_cstudy_done_prints(tmp_path, practice, passed):
         "language": "python",
         "status": "passed",
         "levels_finished": None,
+        "levels_passed": None,
+        "levels_total": None,
         "solve_s": 1120,
         "rating": "ok",
         "grade": "ok",
@@ -346,14 +348,11 @@ def test_a_projects_done_reports_the_levels_it_passed_through(tmp_path, project)
     assert (
         document["status"],
         document["levels_finished"],
+        document["levels_passed"],
+        document["levels_total"],
         document["grade"],
         document["caps"],
-    ) == (
-        "passed",
-        1,
-        "easy",
-        [],
-    )
+    ) == ("passed", 1, 1, 2, "easy", [])
 
 
 def test_a_project_mocks_done_reports_the_levels_cap(tmp_path, project):
