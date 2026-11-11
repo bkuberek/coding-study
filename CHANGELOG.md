@@ -2,6 +2,95 @@
 
 <!-- version list -->
 
+## v0.40.0 (2026-11-11)
+
+### Bug Fixes
+
+- **code-intelligence**: Check a Node server's version without native addons
+  ([`c5ca236`](https://github.com/bkuberek/coding-study/commit/c5ca23685b843acc841bbd9e4d81a68d01097e12))
+
+- **code-intelligence**: Read the tooling API version from the Linux build alone
+  ([`63068f9`](https://github.com/bkuberek/coding-study/commit/63068f935731507442aeda31a68b993093f0c40f))
+
+- **problems**: List 0310 among the related versions of 0278, 0305 and 0306
+  ([`6349a6a`](https://github.com/bkuberek/coding-study/commit/6349a6ab19ccc83f0fe6b73f5033a420caff17c8))
+
+- **runners**: Give Go and Rust runners a generous wait to say hello
+  ([`24d7bf8`](https://github.com/bkuberek/coding-study/commit/24d7bf8e84b1d0383a23aa471bd7f2e1708a60ba))
+
+### Documentation
+
+- Catalog at 325 with 0311 hash-chaining ledger
+  ([`dba6c62`](https://github.com/bkuberek/coding-study/commit/dba6c623299b1a3bf2371f79ce1ad24d9c0f1ba6))
+
+- Catalog at 331 with 0310 to 0316, P13 problems on the roadmap
+  ([`c63606f`](https://github.com/bkuberek/coding-study/commit/c63606f3a499a97363a6b14cbb0aeba25b3d5366))
+
+- Name the docker_go marker beside docker_jvm
+  ([`8e72aa6`](https://github.com/bkuberek/coding-study/commit/8e72aa6d396d3fd960e1e66b97c28a941ff6a144))
+
+- P13 built, with GOPROXY=off and the module cache settled
+  ([`d04d81c`](https://github.com/bkuberek/coding-study/commit/d04d81cffd211da8c0ae9fcd19cdcb766e92a8f2))
+
+### Features
+
+- **code-intelligence**: A route table for every kind of problem in every language
+  ([`687b22e`](https://github.com/bkuberek/coding-study/commit/687b22e140c033420e8c8c48b62c3ddfaeed4f4d))
+
+- **code-intelligence**: Gopls in a Go service project's sidecar
+  ([`14ef62d`](https://github.com/bkuberek/coding-study/commit/14ef62dce95b73bc7da4c8f30a0b4181fc8efd97))
+
+- **code-intelligence**: JDT LS in a Java service project's sidecar
+  ([`b666c68`](https://github.com/bkuberek/coding-study/commit/b666c685478ac354838c6de659d1d5390ab8f5ce))
+
+- **code-intelligence**: The Kotlin LSP's Linux build in a Kotlin service project's sidecar
+  ([`485d258`](https://github.com/bkuberek/coding-study/commit/485d258791e38f46e59e21665f35372184b1c878))
+
+- **code-intelligence**: Warm the default language's server up in cstudy serve
+  ([`b450131`](https://github.com/bkuberek/coding-study/commit/b45013119c0aa141930e180d6bf1073d14af1c7d))
+
+- **problems**: Add 0311 tamper-evident ledger
+  ([`c055498`](https://github.com/bkuberek/coding-study/commit/c055498b731ab4e3a9b992b24cce95b2df5c927d))
+
+- **problems**: Add 0312 feed-ingest-python service project
+  ([`1afccfe`](https://github.com/bkuberek/coding-study/commit/1afccfe16d2d2bd945e97cd1be2bf4f8af427482))
+
+- **problems**: Add 0313 org-chart-outline progressive problem
+  ([`21be234`](https://github.com/bkuberek/coding-study/commit/21be234946ab8cb44800f46c7e54721921f052ef))
+
+- **problems**: Add 0314 referral-rewards progressive problem
+  ([`5123e3f`](https://github.com/bkuberek/coding-study/commit/5123e3faad1ef8782c3664f202954ebca296daf5))
+
+- **problems**: Add 0315 safe-redaction-python project
+  ([`242eae0`](https://github.com/bkuberek/coding-study/commit/242eae0bef129a0344465865a0ead36b98315b6d))
+
+- **problems**: Add 0316 water-on-terrain progressive problem
+  ([`2d0d5ac`](https://github.com/bkuberek/coding-study/commit/2d0d5aceb3891193e0c07ec62b292762082aa89d))
+
+- **problems**: Coworking availability in Go
+  ([`e4d23e0`](https://github.com/bkuberek/coding-study/commit/e4d23e091c524d42c687d456f8cf2c25e0fcf228))
+
+- **project**: Go service template
+  ([`553778b`](https://github.com/bkuberek/coding-study/commit/553778b37f38323397f0ee6aae35a2100d927a2a))
+
+- **sandbox**: Go modules from the install cache, offline outside install
+  ([`fc6b72b`](https://github.com/bkuberek/coding-study/commit/fc6b72b578f4bfdb1b25a694ece89c1bcc1309f6))
+
+### Testing
+
+- A Go service fixture on a real engine
+  ([`412d58b`](https://github.com/bkuberek/coding-study/commit/412d58b39de6f201361853e4af594ba6045bd85f))
+
+- Browser labs opt into the warm-up, and one test in each engine proves it
+  ([`208bc1f`](https://github.com/bkuberek/coding-study/commit/208bc1fe1be1c394d50ed6c21f14c3b4d15f6931))
+
+- Give every language's runners the generous wait to start
+  ([`7611640`](https://github.com/bkuberek/coding-study/commit/76116400819c0d39c3f2735647d2b53436d4ff11))
+
+- Give the crash-without-bye case a generous hang guard
+  ([`e8eb0b3`](https://github.com/bkuberek/coding-study/commit/e8eb0b3f58a83124d302e28b8af5ee66602bd420))
+
+
 ## v0.39.0 (2026-11-10)
 
 ### Continuous Integration
