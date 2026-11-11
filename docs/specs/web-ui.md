@@ -611,7 +611,7 @@ A server that is not a Node program, such as JDT LS in phase 2 and gopls and rus
 | Step | Rule |
 |------|------|
 | Start | Once the CSRF message arrives, unless four servers already run in this `cstudy serve`: then the socket closes with 4003. The catalog's command runs with no shell, the root as its current directory, in a session of its own so its whole process group can be stopped, its standard input and output as the LSP stream, its standard error kept, in what `cstudy serve` lets user code inherit ([Process environment](runners.md#process-environment)), plus the variables that [hide the reference directories](#hidden-directories) from a Node server, and the server's own: JDT LS gets `XDG_CACHE_HOME` in its data directory; gopls `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOFLAGS=-mod=readonly` and `CGO_ENABLED=0`, as `cstudy test` builds Go; rust-analyzer `CARGO_NET_OFFLINE=true`. A server that keeps data, JDT LS, gets a data directory of its own under `.cs/lsp/<server data>/<root>/<n>/`: the first `<n>` from 1 that no running server of this `cstudy serve` holds, since two servers cannot share one; its files (JDT LS's empty list of Gradle versions) are written before the server starts, and it is kept for the next session of that root. A service project's server runs in a sidecar of its own instead, through `docker exec`, with `processId` null in `initialize`, and JDT LS there keeps its data directory in the sidecar's own data folder, `.cs/runs/<sidecar>/data/`, which goes with the session; Docker that does not answer, or a missing image, closes the socket with 4004, and the sidecar goes once the server has stopped ([Language servers](service-projects.md#language-servers)) |
-| Limit | At most four servers at once across every tab; a server counts until its process has exited |
+| Limit | At most four servers at once across every tab, the one started ahead of time included ([Warm-up](#warm-up)); a server counts until its process has exited |
 | End | When the socket closes, for any reason, the session sends `shutdown` (the request `cstudy-shutdown`), then `exit` once `shutdown` is answered or 1 s has passed, then closes standard input. Whatever the server writes meanwhile is read and dropped. 3 s after the socket closed, any process left in the server's process group gets SIGTERM, and 2 s after that SIGKILL, as [Cancel](#cancel) escalates, even when the server reads none of what is written to it: `shutdown`, `exit` and the closing of standard input must be done by then, or are given up; the group is checked and signalled even when the server itself has exited, since it may have left a process behind. The stop runs as a task of its own, so a socket that goes away mid-request never leaves a process behind |
 | Server exit | A server that exits while its socket is open closes the socket with 4002; its process group is still stopped as above |
 | Queues | Every message for a server waits in the session until the server has taken it, up to 32 MiB; more ends the session with 4002 (`stuck: the server does not read its input`) and stops the server as above. The server's messages wait for the page, up to 32 MiB; beyond that the waiting messages are dropped, the server's output is no longer read, and the session ends with 1008 (`the page does not read the server's messages`). A server that keeps up and a page that reads never come near either limit: the editor's traffic is a few kilobytes a keystroke |
@@ -620,6 +620,20 @@ A server that is not a Node program, such as JDT LS in phase 2 and gopls and rus
 | The attempt | Checked at the upgrade only: a session stays open after its attempt ends, until the page closes it |
 | Idle | The page closes (1000) a session whose files have all been closed for the language's `idle_s` (60 s for Python, TypeScript, Go and Rust, 300 s for Java, whose server imports the Gradle build again on a start), and every session of a hidden tab after 5 minutes; showing the tab opens them again |
 | Connections | A WebSocket takes none of the six HTTP/1.1 connections per host that [the streams](#server-sent-events) count in Chromium and Firefox; a browser test holds two visible tabs, each with its streams and a session, and saves a file from each, in every engine |
+
+### Warm-up
+
+`cstudy serve` may start one server before any page asks for it, so the first file of your default language opens with its server ready. Added on 2026-11-10, at the owner's request.
+
+| Rule | Detail |
+|------|--------|
+| Which server | The server of the config's `default_lang` (Settings' default language), rooted in its practice project (`python/`, `typescript/`, `jvm/`, `go/` or `rust/`), where a single-file attempt of that language runs it. Never another language's, never a project folder's, and never a sidecar's |
+| When | Once, as `cstudy serve` starts, while `code_intelligence` is on and that server is usable: installed, its license accepted, on a JDK it runs on. Otherwise nothing starts, and nothing is said |
+| How | As a session's server ([Lifecycle and limits](#lifecycle-and-limits)), with a broker of its own that sends the catalog's `initialize` under its own id (`cstudy-warm-up`), then `initialized`, and answers the server's requests while no page reads it; what would go to a page is dropped |
+| Taken over | The first session whose target is the same server in the same root takes it over with its broker: the page's `initialize` gets the server's answer under the page's id, at once or once the server answers, and the page's `initialized` is not sent again. From then on it is that session's server, and it ends with it |
+| Idle | With no session taking it over for `WARM_IDLE_S`, 600 s (about ten minutes), it stops as a session's server does |
+| Slots | It counts among the four servers. A session of another target that would find no slot stops it first and takes its slot |
+| Stop | Ctrl-C or SIGTERM stops it with the sessions |
 
 ### Language servers
 

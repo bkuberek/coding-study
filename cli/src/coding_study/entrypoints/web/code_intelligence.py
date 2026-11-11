@@ -8,7 +8,9 @@ session's broker's to say (`language_broker.py`). At most four servers run at on
 keeps data, JDT LS, gets a data directory of its root under `.cs/lsp/` that no running server
 holds, since two cannot share one. A service project's server runs in a sidecar container of its
 own, through `docker exec`, and the sidecar goes once the server has stopped
-(docs/specs/service-projects.md#language-servers). A session ends when the socket closes, the
+(docs/specs/service-projects.md#language-servers). One server may start ahead of any page, the
+default language's, which the first session of its target takes over
+(docs/specs/web-ui.md#warm-up). A session ends when the socket closes, the
 server exits or the server stops; the stop sequence of the server runs as a task of its own, so a
 socket that goes away mid-request never leaves a process behind. What waits for a side that stopped
 reading is bounded: a server that reads none of its input, or a page that reads none of the
@@ -19,7 +21,7 @@ import asyncio
 import itertools
 import json
 import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import ExitStack, suppress
 from dataclasses import dataclass
 from enum import IntEnum
@@ -33,7 +35,7 @@ from coding_study.adapters.process_environment import docker_environment, inheri
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget, sidecar_unavailable
 from coding_study.application.ports import SidecarEngine
-from coding_study.domain.code_intelligence import SIDECAR_PLATFORM, Launch
+from coding_study.domain.code_intelligence import SIDECAR_PLATFORM, WARM_IDLE_S, Launch
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import SidecarPlan
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
@@ -242,9 +244,24 @@ class LanguageSession:
             await self.websocket.send_text(json.dumps(reply))
 
 
+@dataclass(slots=True)
+class _WarmServer:
+    """A server started ahead of any page, initialized by its broker, until a session of its
+    target takes it over or `WARM_IDLE_S` pass (docs/specs/web-ui.md#warm-up)."""
+
+    target: SessionTarget
+    process: ServerProcess
+    broker: LanguageBroker
+    data_directory: str | None
+    draining: "asyncio.Task[None]"
+    """Reads what the server writes while no page does, and answers its requests."""
+    expiring: "asyncio.Task[None] | None" = None
+
+
 class LanguageSessions:
     """Every session of the server, and the servers' slots: at most `limit` run at once, and a
-    server holds its slot until its process has exited."""
+    server holds its slot until its process has exited. A server started ahead of time counts
+    among them, and gives up its slot to a session of another target that would find none."""
 
     def __init__(
         self,
@@ -253,12 +270,16 @@ class LanguageSessions:
         limit: int = MAX_SESSIONS,
         *,
         sidecars: SidecarEngine | None = None,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         self.command = command or LanguageServerCommand()
         self.timing = timing or LanguageTiming()
         self._limit = limit
         self._sidecars = sidecars or DockerSandbox()
         """Where a service project's server runs."""
+        self._sleep = sleep
+        """The clock of the warm server's idle time; a test's fake one returns when it says."""
+        self._warm: _WarmServer | None = None
         self._starting = asyncio.Lock()
         self._stopping = False
         self._servers: set[ServerProcess] = set()
@@ -287,11 +308,76 @@ class LanguageSessions:
         finally:
             self._release(session)
 
+    async def warm(self, target: SessionTarget, broker: LanguageBroker) -> bool:
+        """Starts the target's server ahead of any page and initializes it through `broker`, so
+        the first session of that target takes it over ready; it stops once `WARM_IDLE_S` pass
+        with none. One at most, never in a sidecar, and only while a slot is free. Whether it
+        started."""
+        async with self._starting:
+            if self._stopping or self._warm is not None or target.sidecar is not None:
+                return False
+            if self._refusal() is not None:
+                return False
+            launch = self._launch(target)
+            try:
+                process = await self._start_here(target, launch)
+            except ServerStartError:
+                return False
+            self._servers.add(process)
+            if launch.data_directory is not None:
+                self._held_data[launch.data_directory] = process
+            draining = asyncio.create_task(_drain(process, broker))
+            warm = _WarmServer(target, process, broker, launch.data_directory, draining)
+            warm.expiring = asyncio.create_task(self._expire(warm))
+            self._warm = warm
+            await process.send(json.dumps(broker.warm_up().to_server[0]))
+            return True
+
+    @property
+    def warm_target(self) -> SessionTarget | None:
+        """What the server started ahead of time serves, until a session takes it over."""
+        return None if self._warm is None else self._warm.target
+
+    async def _expire(self, warm: _WarmServer) -> None:
+        await self._sleep(WARM_IDLE_S)
+        async with self._starting:
+            if self._warm is warm:
+                await self._retire_warm()
+
+    async def _retire_warm(self) -> None:
+        """Stops the server started ahead of time; called with `_starting` held."""
+        warm, self._warm = self._warm, None
+        if warm is None:
+            return
+        for task in (warm.draining, warm.expiring):
+            if task is not None and task is not asyncio.current_task():
+                task.cancel()
+        await asyncio.gather(warm.draining, return_exceptions=True)
+        try:
+            await warm.process.stop()
+        finally:
+            self._servers.discard(warm.process)
+
+    async def _adopt(self, websocket: WebSocket, target: SessionTarget) -> LanguageSession | None:
+        """The session of the warm server's target takes it over, with the broker that initialized
+        it; called with `_starting` held."""
+        warm = self._warm
+        if warm is None or warm.target != target or not warm.process.running:
+            return None
+        self._warm = None
+        for task in (warm.draining, warm.expiring):
+            if task is not None:
+                task.cancel()
+        await asyncio.gather(warm.draining, return_exceptions=True)
+        session = LanguageSession(websocket, warm.process, warm.broker, warm.data_directory)
+        return self._admit(session)
+
     async def stop(self) -> None:
         """Closes every socket with 1001 and stops every server, waiting for the last of them;
         no session starts from now on."""
         async with self._starting:
             self._stopping = True
+            await self._retire_warm()
         sessions = list(self._sessions)
         for session in sessions:
             session.end(Closing(CloseCode.GOING_AWAY, STOPPING))
@@ -306,7 +392,13 @@ class LanguageSessions:
         self, websocket: WebSocket, target: SessionTarget, broker: LanguageBroker
     ) -> LanguageSession | None:
         async with self._starting:
+            adopted = await self._adopt(websocket, target)
+            if adopted is not None:
+                return adopted
             refusal = self._refusal()
+            if refusal is not None and self._warm is not None and not self._stopping:
+                await self._retire_warm()
+                refusal = self._refusal()
             if refusal is None:
                 launch = self._launch(target)
                 try:
@@ -442,6 +534,15 @@ class LanguageSessions:
             self._servers.discard(session.process)
             if session.sidecar is not None:
                 await asyncio.to_thread(session.sidecar.close)
+
+
+async def _drain(process: ServerProcess, broker: LanguageBroker) -> None:
+    """While no page reads the server, what it writes goes to its broker, whose answers to its
+    requests go back to it; what would go to a page is dropped, since the page that takes the
+    server over opens its documents and pulls their diagnostics then."""
+    while (text := await process.receive()) is not None:
+        for message in broker.from_server(text).to_server:
+            await process.send(json.dumps(message))
 
 
 async def _finished(sessions: list[LanguageSession]) -> None:

@@ -105,6 +105,8 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
 
 If a server is not installed, or starts slowly, the editor works as it does without code intelligence, and with Autocomplete on it falls back to the editor's own basic completion until the server is ready.
 
+While code intelligence is on, `cstudy serve` starts the server of your default language (Settings, **Default language**) as it starts, so the first practice file you open in that language has its server ready, which matters most for Java and Kotlin. It starts no other language's, and it stops after about ten minutes if no editor takes it over.
+
 ### What you see
 
 - **Errors and warnings.** They are underlined about half a second after you stop typing in Python and Go and about a second in TypeScript (Rust's compiler errors after each save), with a marker in the gutter and counts in the status bar. Unused code fades, deprecated code is struck through, and hints get no underline. The errors of your last run stay, marked `last run`, and a run error that the server repeats shows once.

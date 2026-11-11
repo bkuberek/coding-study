@@ -45,6 +45,9 @@ INVALID_PARAMS = -32602
 REQUEST_FAILED = -32803
 LIBRARY_FILE = "cstudy/libraryFile"
 INITIALIZE = "initialize"
+INITIALIZED = "initialized"
+WARM_UP_ID = f"{RESERVED_ID_PREFIX}warm-up"
+"""The id of the broker's own `initialize`, for a server started before any page connects."""
 RESOLVE = "completionItem/resolve"
 WATCHED_FILES = "workspace/didChangeWatchedFiles"
 CLIENT_NAME = "cstudy"
@@ -125,6 +128,21 @@ class LanguageBroker:
         hover documentation, outside the hidden directories."""
         self._watching: set[str] = set()
         """The ids of the server's `workspace/didChangeWatchedFiles` registrations."""
+        self._warmed = False
+        """Whether the broker initialized the server itself, before any page connected."""
+        self._warm_answer: Fields | None = None
+        """The server's answer to the broker's own `initialize`, which the page's gets."""
+        self._page_initialize: Id | None = None
+        """The id of the page's `initialize` of a server the broker initialized: answered at once or
+        once the broker's own `initialize` is. A second one is refused as for any session."""
+
+    def warm_up(self) -> Delivery:
+        """The broker's own `initialize`, for a server started ahead of any page
+        (docs/specs/web-ui.md#warm-up): the page that later takes the server over gets its
+        answer, and its own `initialized` is not sent again."""
+        self._initialized = True
+        self._warmed = True
+        return Delivery(to_server=(_request(WARM_UP_ID, INITIALIZE, self._initialize_params()),))
 
     async def from_page(self, message: Fields) -> Delivery:
         """A JSON object the page sent."""
@@ -169,7 +187,7 @@ class LanguageBroker:
     # from the page
 
     def _page_notification(self, message: Fields, method: str) -> Delivery:
-        if method not in NOTIFICATIONS:
+        if method not in NOTIFICATIONS or (method == INITIALIZED and self._warmed):
             return Delivery()
         if method in DOCUMENT_NOTIFICATIONS and not self._is_allowed_document(method, message):
             return Delivery()
@@ -207,21 +225,28 @@ class LanguageBroker:
 
     def _initialize(self, request_id: Id) -> Delivery:
         """The parameters are the broker's, not the page's: the PID of `cstudy serve`, the root,
-        the catalog's options and the capabilities the broker implements."""
+        the catalog's options and the capabilities the broker implements. A server the broker
+        initialized itself is not initialized again: the page gets the answer it gave."""
+        if self._warmed and self._page_initialize is None:
+            self._page_initialize = request_id
+            if self._warm_answer is None:
+                return Delivery()
+            return Delivery(to_page=({**self._warm_answer, "id": request_id},))
         if self._initialized:
             return _error(request_id, INVALID_REQUEST, "initialize was already sent")
         self._initialized = True
         self._pending[request_id] = _Sent(INITIALIZE)
-        server = self._target.server
-        params = {
+        return Delivery(to_server=(_request(request_id, INITIALIZE, self._initialize_params()),))
+
+    def _initialize_params(self) -> Fields:
+        return {
             "processId": self._pid,
             "rootUri": self._root_uri,
             "workspaceFolders": [self._folder()],
             "clientInfo": {"name": CLIENT_NAME, "version": self._version},
             "initializationOptions": self._initialization_options(),
-            "capabilities": server.capabilities,
+            "capabilities": self._target.server.capabilities,
         }
-        return Delivery(to_server=(_request(request_id, INITIALIZE, params),))
 
     async def _library_file(self, request_id: Id, params: object) -> Delivery:
         uri = _fields(params).get("uri")
@@ -355,6 +380,8 @@ class LanguageBroker:
 
     def _answer(self, message: Fields) -> Delivery:
         request_id = message["id"]
+        if request_id == WARM_UP_ID and self._warmed and self._warm_answer is None:
+            return self._warmed_up(message)
         if not _is_page_id(request_id):
             return Delivery()
         sent = self._pending.pop(request_id, None)
@@ -363,6 +390,15 @@ class LanguageBroker:
         if "result" in message:
             message = {**message, "result": self._rendered(sent, message["result"])}
         return Delivery(to_page=(message,))
+
+    def _warmed_up(self, message: Fields) -> Delivery:
+        """The server answered the broker's own `initialize`: it hears `initialized`, and a page
+        that asked meanwhile gets the answer under its own id."""
+        self._warm_answer = {name: value for name, value in message.items() if name != "id"}
+        to_page: tuple[Fields, ...] = ()
+        if self._page_initialize is not None:
+            to_page = ({**self._warm_answer, "id": self._page_initialize},)
+        return Delivery(to_server=(_notification(INITIALIZED, {}),), to_page=to_page)
 
     def _rendered(self, sent: _Sent, result: Any) -> Any:
         match sent.method:

@@ -103,6 +103,7 @@ def serve(
             preferences=FsPreferencesStore(root),
             config_file=TomlConfigFile(config_path(environ, home)),
             child=ChildCommand(content=context.ensure_object(GlobalOptions).content),
+            warm_up=True,
         )
         output = console(context)
         output.print(Text(f"cstudy serve {settings.version} · workspace {_shown(root, home)}"))

@@ -260,6 +260,25 @@ def session_target(
     return SessionTarget(server, environment.root, root, content_root, java_home, sidecar)
 
 
+def warm_up_target(environment: Environment, preferences: Preferences) -> SessionTarget | None:
+    """The server `cstudy serve` may start ahead of time (docs/specs/web-ui.md#warm-up): the one of
+    the default language, rooted in its practice project, where a single-file attempt of that
+    language runs it; on this machine, since a practice project needs no sidecar. None while code
+    intelligence is off, or the server is not usable now. No other language is warmed, and no
+    sidecar."""
+    if not preferences.code_intelligence:
+        return None
+    server = server_for(environment.config.default_lang)
+    if server is None:
+        return None
+    jdk = environment.jdk
+    if _located(server, environment.language_servers, jdk).problem is not None:
+        return None
+    java_home = jdk.selected_home() if server.jdks is not None else None
+    root, content_root = server.root_project, environment.content_root
+    return SessionTarget(server, environment.root, root, content_root, java_home)
+
+
 def sidecar_unavailable(engine: SidecarEngine, image: str = NODE_IMAGE) -> str | None:
     """Why a service project's server cannot start now, as the status bar says it; None once the
     engine answers and the sidecar's `image` is here. A session starts no engine and pulls

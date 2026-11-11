@@ -48,6 +48,9 @@ NO_ADDONS = "--no-addons"
 its first load and the load waits, for seconds, or for minutes on a busy machine."""
 IDLE_SECONDS = 60
 """How long the page keeps a session whose files are all closed."""
+WARM_IDLE_S = 600
+"""How long a server that `cstudy serve` started ahead of time waits for an editor to take it over
+before it stops: about ten minutes (docs/specs/web-ui.md#warm-up)."""
 
 _VERSION = re.compile(r"\d+(?:\.\d+)+")
 
