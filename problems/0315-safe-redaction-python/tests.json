@@ -1,0 +1,2961 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "level": 1,
+      "note": "an email and a phone number are written as their labels",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "Mail ana@example.com or call 555-123-4567.",
+          [
+            5,
+            29
+          ],
+          [
+            20,
+            41
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Mail [EMAIL] or call [PHONE]."
+      ]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "level": 1,
+      "note": "a label is longer than the words it replaces, so the second span must still land on Bo",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "Hi Al, meet Bo.",
+          [
+            3,
+            12
+          ],
+          [
+            5,
+            14
+          ],
+          [
+            "PERSON",
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Hi [PERSON], meet [PERSON]."
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "no spans leaves the text as it is, an empty text included",
+      "ops": [
+        "Redactor",
+        "redact",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "Nothing to hide here.",
+          [],
+          [],
+          []
+        ],
+        [
+          "",
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "Nothing to hide here.",
+        ""
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "spans at the very start and the very end",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "ana@x.io says call 555-123-4567",
+          [
+            0,
+            19
+          ],
+          [
+            8,
+            31
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[EMAIL] says call [PHONE]"
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "spans that touch are two spans",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "abcd",
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            "X",
+            "Y"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[X][Y]"
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "spans are not given in the order of the text",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "one two three four",
+          [
+            14,
+            0,
+            8
+          ],
+          [
+            18,
+            3,
+            13
+          ],
+          [
+            "D",
+            "A",
+            "C"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[A] two [C] [D]"
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "one span can be the whole text",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "secret",
+          [
+            0
+          ],
+          [
+            6
+          ],
+          [
+            "SECRET"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[SECRET]"
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "the same words twice: only the spans given are replaced, not every copy of the text",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "ana ana ana",
+          [
+            0,
+            8
+          ],
+          [
+            3,
+            11
+          ],
+          [
+            "PERSON",
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[PERSON] ana [PERSON]"
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "note": "offsets count characters, not bytes: an accent and an emoji come before the span",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "Caf\u00e9 \ud83d\ude00 Ada \ud83d\ude00",
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Caf\u00e9 \ud83d\ude00 [PERSON] \ud83d\ude00"
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "brackets that were already in the text are left alone",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "[draft] mail ana@x.io [end]",
+          [
+            13
+          ],
+          [
+            21
+          ],
+          [
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[draft] mail [EMAIL] [end]"
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "many one-character spans, each shorter than its label",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "a1b2c3d4e5",
+          [
+            1,
+            3,
+            5,
+            7,
+            9
+          ],
+          [
+            2,
+            4,
+            6,
+            8,
+            10
+          ],
+          [
+            "N",
+            "N",
+            "N",
+            "N",
+            "N"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "a[N]b[N]c[N]d[N]e[N]"
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "note": "a label is written as it is given: lowercase, digits and underscores included",
+      "ops": [
+        "Redactor",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "id 4417 here",
+          [
+            3
+          ],
+          [
+            7
+          ],
+          [
+            "id_number_2"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "id [id_number_2] here"
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "note": "the redactor keeps nothing from one call to the next",
+      "ops": [
+        "Redactor",
+        "redact",
+        "redact",
+        "redact"
+      ],
+      "args": [
+        [],
+        [
+          "call 555-123-4567",
+          [
+            5
+          ],
+          [
+            17
+          ],
+          [
+            "PHONE"
+          ]
+        ],
+        [
+          "call 555-123-4567",
+          [],
+          [],
+          []
+        ],
+        [
+          "xx",
+          [
+            0
+          ],
+          [
+            2
+          ],
+          [
+            "XX"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "call [PHONE]",
+        "call 555-123-4567",
+        "[XX]"
+      ]
+    },
+    {
+      "id": "ex3",
+      "visible": true,
+      "level": 2,
+      "note": "after the \u00e9 the extractor counts bytes, so its offsets are one too far to the right (extractor output)",
+      "ops": [
+        "Redactor",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Caf\u00e9: ana@example.com",
+          [
+            7
+          ],
+          [
+            22
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Caf\u00e9: [EMAIL]"
+      ]
+    },
+    {
+      "id": "ex4",
+      "visible": true,
+      "level": 2,
+      "note": "Hopper is proposed twice, once inside Grace Hopper; and the email is cut short at its first dot (extractor output)",
+      "ops": [
+        "Redactor",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Grace Hopper wrote to ana@mail.example.com.",
+          [
+            22,
+            0,
+            6
+          ],
+          [
+            38,
+            12,
+            12
+          ],
+          [
+            "EMAIL",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "ana@mail.example",
+            "Grace Hopper",
+            "Hopper"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[PERSON] wrote to [EMAIL].com."
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 2,
+      "note": "proposals that cut out their own quote are used as they are",
+      "ops": [
+        "Redactor",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Mail ana@example.com or call 555-123-4567, Ada Lovelace.",
+          [
+            5,
+            29,
+            43
+          ],
+          [
+            20,
+            41,
+            55
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON"
+          ],
+          [
+            "ana@example.com",
+            "555-123-4567",
+            "Ada Lovelace"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Mail [EMAIL] or call [PHONE], [PERSON]."
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "note": "offsets past the end of the text: the quote is found and the span moved there",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            900
+          ],
+          [
+            915
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            -6
+          ],
+          [
+            9
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            20
+          ],
+          [
+            20
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            30
+          ],
+          [
+            12
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Please write to [EMAIL] soon.",
+        "Please write to [EMAIL] soon.",
+        "Please write to [EMAIL] soon.",
+        "Please write to [EMAIL] soon."
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 2,
+      "note": "offsets in range but on other text: the quote decides",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            0
+          ],
+          [
+            6
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            25
+          ],
+          [
+            28
+          ],
+          [
+            "PERSON"
+          ],
+          [
+            "soon"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Please write to [EMAIL] soon.",
+        "Please write to ana@example.com [PERSON]."
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 2,
+      "note": "a quote that is nowhere in the text cannot be placed, and an empty one cannot either: both are dropped",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            16
+          ],
+          [
+            31
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "bob@example.com"
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            900
+          ],
+          [
+            915
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            ""
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [
+            16
+          ],
+          [
+            16
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            ""
+          ]
+        ],
+        [
+          "Please write to ana@example.com soon.",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "Please write to ana@example.com soon.",
+        "Please write to ana@example.com soon.",
+        "Please write to ana@example.com soon.",
+        "Please write to ana@example.com soon."
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "note": "a quote found several times is placed at the occurrence nearest to the start given, the earlier one on a tie",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "ana and ana and ana",
+          [
+            12
+          ],
+          [
+            13
+          ],
+          [
+            "A"
+          ],
+          [
+            "ana"
+          ]
+        ],
+        [
+          "ana and ana and ana",
+          [
+            40
+          ],
+          [
+            43
+          ],
+          [
+            "A"
+          ],
+          [
+            "ana"
+          ]
+        ],
+        [
+          "ana and ana and ana",
+          [
+            6
+          ],
+          [
+            7
+          ],
+          [
+            "A"
+          ],
+          [
+            "ana"
+          ]
+        ],
+        [
+          "ana and ana and ana",
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            "A"
+          ],
+          [
+            "ana"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "ana and [A] and ana",
+        "ana and ana and [A]",
+        "ana and [A] and ana",
+        "[A] and ana and ana"
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "note": "the same span proposed three times is hidden once",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "write to Ada Lovelace now",
+          [
+            9,
+            9,
+            9
+          ],
+          [
+            21,
+            21,
+            21
+          ],
+          [
+            "PERSON",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "Ada Lovelace",
+            "Ada Lovelace",
+            "Ada Lovelace"
+          ]
+        ],
+        [
+          "write to Ada Lovelace now",
+          [
+            9,
+            9,
+            9
+          ],
+          [
+            21,
+            21,
+            21
+          ],
+          [
+            "PERSON",
+            "PERSON",
+            "OTHER"
+          ],
+          [
+            "Ada Lovelace",
+            "Ada Lovelace",
+            "Ada Lovelace"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "write to [PERSON] now",
+        "write to [PERSON] now"
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 2,
+      "note": "a span inside another is part of it: the outer span stands, with the longer span's label",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "contact: ana.k@example.org please",
+          [
+            9,
+            9
+          ],
+          [
+            14,
+            26
+          ],
+          [
+            "PERSON",
+            "EMAIL"
+          ],
+          [
+            "ana.k",
+            "ana.k@example.org"
+          ]
+        ],
+        [
+          "contact: ana.k@example.org please",
+          [
+            9,
+            9
+          ],
+          [
+            26,
+            14
+          ],
+          [
+            "EMAIL",
+            "PERSON"
+          ],
+          [
+            "ana.k@example.org",
+            "ana.k"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "contact: [EMAIL] please",
+        "contact: [EMAIL] please"
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 2,
+      "note": "spans that overlap in a chain become one, even when the first and last do not touch",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "0123456789abcdef",
+          [
+            0,
+            4,
+            8
+          ],
+          [
+            5,
+            9,
+            16
+          ],
+          [
+            "A",
+            "B",
+            "C"
+          ],
+          [
+            "01234",
+            "45678",
+            "89abcdef"
+          ]
+        ],
+        [
+          "0123456789abcdef",
+          [
+            8,
+            0,
+            4
+          ],
+          [
+            16,
+            5,
+            9
+          ],
+          [
+            "C",
+            "A",
+            "B"
+          ],
+          [
+            "89abcdef",
+            "01234",
+            "45678"
+          ]
+        ],
+        [
+          "0123456789abcdef",
+          [
+            0,
+            4,
+            10
+          ],
+          [
+            5,
+            9,
+            12
+          ],
+          [
+            "A",
+            "B",
+            "C"
+          ],
+          [
+            "01234",
+            "45678",
+            "ab"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[C]",
+        "[C]",
+        "[A]9[C]cdef"
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 2,
+      "note": "spans that only touch share no character and stay two spans",
+      "ops": [
+        "Redactor",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "AdaLovelace",
+          [
+            0,
+            3
+          ],
+          [
+            3,
+            11
+          ],
+          [
+            "FIRST",
+            "LAST"
+          ],
+          [
+            "Ada",
+            "Lovelace"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[FIRST][LAST]"
+      ]
+    },
+    {
+      "id": "h21",
+      "level": 2,
+      "note": "the label of a merged span: the longest span's, then the one that starts first, then the first given",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "0123456789",
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            "A",
+            "B"
+          ],
+          [
+            "0123",
+            "34"
+          ]
+        ],
+        [
+          "0123456789",
+          [
+            0,
+            2
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            "A",
+            "B"
+          ],
+          [
+            "012",
+            "234"
+          ]
+        ],
+        [
+          "0123456789",
+          [
+            2,
+            0
+          ],
+          [
+            5,
+            3
+          ],
+          [
+            "B",
+            "A"
+          ],
+          [
+            "234",
+            "012"
+          ]
+        ],
+        [
+          "0123456789",
+          [
+            0,
+            0
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            "SECOND",
+            "FIRST"
+          ],
+          [
+            "012",
+            "012"
+          ]
+        ],
+        [
+          "0123456789",
+          [
+            0,
+            0
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            "FIRST",
+            "SECOND"
+          ],
+          [
+            "012",
+            "012"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "[A]56789",
+        "[A]56789",
+        "[A]56789",
+        "[SECOND]3456789",
+        "[FIRST]3456789"
+      ]
+    },
+    {
+      "id": "h22",
+      "level": 2,
+      "note": "a span that is moved to its quote may land on another span, and then they merge",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Caf\u00e9 ana@example.com and Ada Lovelace",
+          [
+            5,
+            9
+          ],
+          [
+            20,
+            21
+          ],
+          [
+            "EMAIL",
+            "PERSON"
+          ],
+          [
+            "ana@example.com",
+            "example"
+          ]
+        ],
+        [
+          "Caf\u00e9 ana@example.com and Ada Lovelace",
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            19
+          ],
+          [
+            "X",
+            "Y"
+          ],
+          [
+            "ana@example.com",
+            "na@example.co"
+          ]
+        ],
+        [
+          "Caf\u00e9 ana@example.com and Ada Lovelace",
+          [
+            0,
+            25
+          ],
+          [
+            4,
+            37
+          ],
+          [
+            "X",
+            "PERSON"
+          ],
+          [
+            "ana@example.com",
+            "Ada Lovelace"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Caf\u00e9 [EMAIL] and Ada Lovelace",
+        "Caf\u00e9 [X] and Ada Lovelace",
+        "Caf\u00e9 [X] and [PERSON]"
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 2,
+      "note": "an emoji pushes every byte offset further than the character offsets, and the quotes still find the way (extractor output)",
+      "ops": [
+        "Redactor",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "I was in \ud83d\ude00 Rome. Mail ada@lab.example.org or call 555-123-4567, thanks",
+          [
+            25,
+            53
+          ],
+          [
+            40,
+            65
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ],
+          [
+            "ada@lab.example",
+            "555-123-4567"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "I was in \ud83d\ude00 Rome. Mail [EMAIL].org or call [PHONE], thanks"
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 2,
+      "note": "no proposal can be believed: nothing is hidden",
+      "ops": [
+        "Redactor",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "Linus said call 555-123-4567 or write to Grace Hopper",
+          [
+            3,
+            60
+          ],
+          [
+            9,
+            70
+          ],
+          [
+            "PERSON",
+            "PHONE"
+          ],
+          [
+            "Torvalds",
+            "555-000-0000"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Linus said call 555-123-4567 or write to Grace Hopper"
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 2,
+      "note": "a quote that overlaps itself in the text is placed at the nearest start",
+      "ops": [
+        "Redactor",
+        "redactProposed",
+        "redactProposed",
+        "redactProposed"
+      ],
+      "args": [
+        [],
+        [
+          "aaaa",
+          [
+            1
+          ],
+          [
+            3
+          ],
+          [
+            "A"
+          ],
+          [
+            "aa"
+          ]
+        ],
+        [
+          "aaaa",
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            "A"
+          ],
+          [
+            "aa"
+          ]
+        ],
+        [
+          "aaaa",
+          [
+            9
+          ],
+          [
+            11
+          ],
+          [
+            "A"
+          ],
+          [
+            "aa"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "a[A]a",
+        "[A]aa",
+        "aa[A]"
+      ]
+    },
+    {
+      "id": "ex5",
+      "visible": true,
+      "level": 3,
+      "note": "the extractor reads ana+news@x.io as news@x.io and never sees the dotted number; the net finds both (extractor output)",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Reach me at 555.123.4567 or ana+news@x.io",
+          [
+            32
+          ],
+          [
+            41
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "news@x.io"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Reach me at [PHONE] or [EMAIL]"
+      ]
+    },
+    {
+      "id": "ex6",
+      "visible": true,
+      "level": 3,
+      "note": "the extractor cuts the email at lab.example; the net sees all of it, and the two become one span (extractor output)",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Mail ada@lab.example.com and Grace Hopper.",
+          [
+            5,
+            29,
+            35
+          ],
+          [
+            20,
+            41,
+            41
+          ],
+          [
+            "EMAIL",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "ada@lab.example",
+            "Grace Hopper",
+            "Hopper"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Mail [EMAIL] and [PERSON]."
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 3,
+      "note": "with no proposals at all the net still finds both",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Write to ana@example.com, or call 555-123-4567.",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "Write to [EMAIL], or call [PHONE]."
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 3,
+      "note": "an email at the end of a sentence stops before the full stop; so does a phone number",
+      "ops": [
+        "Redactor",
+        "redactSafely",
+        "redactSafely",
+        "redactSafely",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Write to ana@example.com.",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "Call 555-123-4567.",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "(ana@example.com)",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "a@x.io,b@y.io",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "Write to [EMAIL].",
+        "Call [PHONE].",
+        "([EMAIL])",
+        "[EMAIL],[EMAIL]"
+      ]
+    },
+    {
+      "id": "h28",
+      "level": 3,
+      "note": "every form of phone number the net knows",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "a 555-123-4567, b (555) 123-4567, c 555.123.4567, d 5551234567, e +1 555 123 4567, f 1-800-555-0199, g +44 207 123 4567",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "a [PHONE], b [PHONE], c [PHONE], d [PHONE], e [PHONE], f [PHONE], g [PHONE]"
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 3,
+      "note": "numbers that are not phone numbers are left alone",
+      "ops": [
+        "Redactor",
+        "redactSafely",
+        "redactSafely",
+        "redactSafely",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "order 5551234567890 shipped",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "on 2027-03-01 at 12:30",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "ref A5551234567 and 12345",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "ana@localhost and ana@x.c",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "order 5551234567890 shipped",
+        "on 2027-03-01 at 12:30",
+        "ref A5551234567 and 12345",
+        "ana@localhost and ana@x.c"
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 3,
+      "note": "when the extractor and the net find the same email it is hidden once",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Mail ana@example.com now",
+          [
+            5
+          ],
+          [
+            20
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Mail [EMAIL] now"
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 3,
+      "note": "a phone number inside an email: the longer span, the email, is what is hidden",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "send to 5551234567@sms.example.net today",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "send to [EMAIL] today"
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 3,
+      "note": "an extractor span longer than the net's find wins the label, and the phone number is not hidden twice",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Ask Ada Lovelace 555-123-4567 about it",
+          [
+            4
+          ],
+          [
+            29
+          ],
+          [
+            "PERSON"
+          ],
+          [
+            "Ada Lovelace 555-123-4567"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Ask [PERSON] about it"
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 3,
+      "note": "when the extractor's span and the net's are equally long the extractor's label is kept",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Mail ana@example.com now",
+          [
+            5
+          ],
+          [
+            20
+          ],
+          [
+            "CONTACT"
+          ],
+          [
+            "ana@example.com"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Mail [CONTACT] now"
+      ]
+    },
+    {
+      "id": "h34",
+      "level": 3,
+      "note": "letters outside ASCII are fine before the @, and a domain may have many parts",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "\u00e9crire \u00e0 jos\u00e9@correo.es ou \u00e0 ana@mail.example.co.uk",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "\u00e9crire \u00e0 [EMAIL] ou \u00e0 [EMAIL]"
+      ]
+    },
+    {
+      "id": "h35",
+      "level": 3,
+      "note": "proposals that cannot be placed are dropped, and the net still hides the email",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Linus Torvalds wrote to ana@example.com",
+          [
+            0,
+            200
+          ],
+          [
+            5,
+            209
+          ],
+          [
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "Linux",
+            "Torvaldz"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Linus Torvalds wrote to [EMAIL]"
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 3,
+      "note": "bytes, an emoji, a short email, a missed number and a double name, all at once (extractor output)",
+      "ops": [
+        "Redactor",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "Caf\u00e9 \ud83d\ude00 write ada@lab.example.com or 555.123.4567 / Grace Hopper",
+          [
+            17,
+            55,
+            61
+          ],
+          [
+            32,
+            67,
+            67
+          ],
+          [
+            "EMAIL",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "ada@lab.example",
+            "Grace Hopper",
+            "Hopper"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        "Caf\u00e9 \ud83d\ude00 write [EMAIL] or [PHONE] / [PERSON]"
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 3,
+      "note": "a country code and a bracketed area code belong to the number",
+      "ops": [
+        "Redactor",
+        "redactSafely",
+        "redactSafely"
+      ],
+      "args": [
+        [],
+        [
+          "x +1 (555) 123-4567 y",
+          [],
+          [],
+          [],
+          []
+        ],
+        [
+          "tel: 555 123 4567",
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        "x [PHONE] y",
+        "tel: [PHONE]"
+      ]
+    },
+    {
+      "id": "ex7",
+      "visible": true,
+      "level": 4,
+      "note": "two of the three spans to find were found, and nothing else was claimed",
+      "ops": [
+        "Redactor",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ],
+          [
+            0,
+            8,
+            30
+          ],
+          [
+            5,
+            20,
+            33
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.6666666666666666,
+          0.7142857142857143
+        ]
+      ]
+    },
+    {
+      "id": "ex8",
+      "visible": true,
+      "level": 4,
+      "note": "the extractor misses the number and cuts the email short; the safe pipeline fixes both and scores 1 (extractor output)",
+      "ops": [
+        "Redactor",
+        "evaluate"
+      ],
+      "args": [
+        [],
+        [
+          "Contact Grace Hopper at 555.123.4567 or ada@lab.example.com.",
+          [
+            40,
+            8,
+            14
+          ],
+          [
+            55,
+            20,
+            20
+          ],
+          [
+            "EMAIL",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "ada@lab.example",
+            "Grace Hopper",
+            "Hopper"
+          ],
+          [
+            8,
+            24,
+            40
+          ],
+          [
+            20,
+            36,
+            59
+          ],
+          [
+            "PERSON",
+            "PHONE",
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          1.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": "h38",
+      "level": 4,
+      "note": "nothing on either side is a perfect score",
+      "ops": [
+        "Redactor",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          1.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 4,
+      "note": "nothing found: no mistakes claimed, nothing found",
+      "ops": [
+        "Redactor",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [],
+          [],
+          [],
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "id": "h40",
+      "level": 4,
+      "note": "nothing to find, but spans claimed: all of them wrong",
+      "ops": [
+        "Redactor",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ],
+          [],
+          [],
+          []
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "id": "h41",
+      "level": 4,
+      "note": "a span matches only when start, end and label are all equal",
+      "ops": [
+        "Redactor",
+        "score",
+        "score",
+        "score",
+        "score",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ]
+        ],
+        [
+          [
+            1
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ]
+        ],
+        [
+          [
+            0
+          ],
+          [
+            6
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ]
+        ],
+        [
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "PHONE"
+          ],
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ]
+        ],
+        [
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "email"
+          ],
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "id": "h42",
+      "level": 4,
+      "note": "a span claimed twice is right once and wrong once",
+      "ops": [
+        "Redactor",
+        "score",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0,
+            0
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            "EMAIL",
+            "EMAIL"
+          ],
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ]
+        ],
+        [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            "EMAIL",
+            "EMAIL",
+            "EMAIL"
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            "EMAIL",
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          0.5,
+          1.0,
+          0.8333333333333334
+        ],
+        [
+          0.6666666666666666,
+          1.0,
+          0.9090909090909091
+        ]
+      ]
+    },
+    {
+      "id": "h43",
+      "level": 4,
+      "note": "a span to find twice is found once when claimed once",
+      "ops": [
+        "Redactor",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            "EMAIL",
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.5,
+          0.5555555555555556
+        ]
+      ]
+    },
+    {
+      "id": "h44",
+      "level": 4,
+      "note": "the order of the spans does not matter",
+      "ops": [
+        "Redactor",
+        "score",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            8,
+            30,
+            0
+          ],
+          [
+            20,
+            33,
+            5
+          ],
+          [
+            "PHONE",
+            "PERSON",
+            "EMAIL"
+          ],
+          [
+            0,
+            30,
+            8
+          ],
+          [
+            5,
+            33,
+            20
+          ],
+          [
+            "EMAIL",
+            "PERSON",
+            "PHONE"
+          ]
+        ],
+        [
+          [
+            30,
+            0
+          ],
+          [
+            33,
+            5
+          ],
+          [
+            "PERSON",
+            "EMAIL"
+          ],
+          [
+            8,
+            0,
+            30
+          ],
+          [
+            20,
+            5,
+            33
+          ],
+          [
+            "PHONE",
+            "EMAIL",
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          0.6666666666666666,
+          0.7142857142857143
+        ]
+      ]
+    },
+    {
+      "id": "h45",
+      "level": 4,
+      "note": "F2 is not F1: finding half of them with no mistakes scores lower than finding all of them among as many mistakes",
+      "ops": [
+        "Redactor",
+        "score",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            "EMAIL"
+          ],
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ]
+        ],
+        [
+          [
+            0,
+            8,
+            30,
+            40
+          ],
+          [
+            5,
+            20,
+            33,
+            45
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.5,
+          0.5555555555555556
+        ],
+        [
+          0.5,
+          1.0,
+          0.8333333333333334
+        ]
+      ]
+    },
+    {
+      "id": "h46",
+      "level": 4,
+      "note": "precision and recall swapped: finding half of the spans scores lower than claiming twice as many as there are",
+      "ops": [
+        "Redactor",
+        "score",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0,
+            8,
+            30
+          ],
+          [
+            5,
+            20,
+            33
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON"
+          ],
+          [
+            0,
+            8,
+            30,
+            40,
+            50,
+            60
+          ],
+          [
+            5,
+            20,
+            33,
+            44,
+            52,
+            62
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON",
+            "PERSON",
+            "PERSON",
+            "PERSON"
+          ]
+        ],
+        [
+          [
+            0,
+            8,
+            30,
+            40,
+            50,
+            60
+          ],
+          [
+            5,
+            20,
+            33,
+            44,
+            52,
+            62
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON",
+            "PERSON",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            0,
+            8,
+            30
+          ],
+          [
+            5,
+            20,
+            33
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.5,
+          0.5555555555555556
+        ],
+        [
+          0.5,
+          1.0,
+          0.8333333333333334
+        ]
+      ]
+    },
+    {
+      "id": "h47",
+      "level": 4,
+      "note": "a proposal repaired to the wrong words costs precision and recall, a dropped one is recovered by the net",
+      "ops": [
+        "Redactor",
+        "evaluate"
+      ],
+      "args": [
+        [],
+        [
+          "Write Ada Lovelace at ada@lab.example.com or 555.123.4567",
+          [
+            0,
+            200
+          ],
+          [
+            3,
+            210
+          ],
+          [
+            "PERSON",
+            "PHONE"
+          ],
+          [
+            "Ada",
+            "555-000-0000"
+          ],
+          [
+            6,
+            22,
+            45
+          ],
+          [
+            18,
+            41,
+            57
+          ],
+          [
+            "PERSON",
+            "EMAIL",
+            "PHONE"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          0.6666666666666666,
+          0.6666666666666666,
+          0.6666666666666666
+        ]
+      ]
+    },
+    {
+      "id": "h48",
+      "level": 4,
+      "note": "a name the extractor never heard of is missed, and nothing in the net can find it (extractor output)",
+      "ops": [
+        "Redactor",
+        "evaluate"
+      ],
+      "args": [
+        [],
+        [
+          "Linus and Priya met ada@lab.example.com",
+          [
+            20,
+            0
+          ],
+          [
+            35,
+            5
+          ],
+          [
+            "EMAIL",
+            "PERSON"
+          ],
+          [
+            "ada@lab.example",
+            "Linus"
+          ],
+          [
+            0,
+            10,
+            20
+          ],
+          [
+            5,
+            15,
+            39
+          ],
+          [
+            "PERSON",
+            "PERSON",
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.6666666666666666,
+          0.7142857142857143
+        ]
+      ]
+    },
+    {
+      "id": "h49",
+      "level": 4,
+      "note": "the second proposal for Hopper is merged away, so it costs no precision (extractor output)",
+      "ops": [
+        "Redactor",
+        "evaluate"
+      ],
+      "args": [
+        [],
+        [
+          "Ask Grace Hopper at 555-123-4567",
+          [
+            20,
+            4,
+            10
+          ],
+          [
+            32,
+            16,
+            16
+          ],
+          [
+            "PHONE",
+            "PERSON",
+            "PERSON"
+          ],
+          [
+            "555-123-4567",
+            "Grace Hopper",
+            "Hopper"
+          ],
+          [
+            4,
+            20
+          ],
+          [
+            16,
+            32
+          ],
+          [
+            "PERSON",
+            "PHONE"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          1.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": "h50",
+      "level": 4,
+      "note": "the right place with the wrong label is a mistake and a miss",
+      "ops": [
+        "Redactor",
+        "evaluate"
+      ],
+      "args": [
+        [],
+        [
+          "mail ana@example.com now",
+          [
+            5
+          ],
+          [
+            20
+          ],
+          [
+            "CONTACT"
+          ],
+          [
+            "ana@example.com"
+          ],
+          [
+            5
+          ],
+          [
+            20
+          ],
+          [
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "id": "h51",
+      "level": 4,
+      "note": "bytes offsets repaired, a spaced number found by the net, a name found by the extractor (extractor output)",
+      "ops": [
+        "Redactor",
+        "evaluate"
+      ],
+      "args": [
+        [],
+        [
+          "Caf\u00e9 Linus 555 123 4567 ada@x.io",
+          [
+            25,
+            6
+          ],
+          [
+            33,
+            11
+          ],
+          [
+            "EMAIL",
+            "PERSON"
+          ],
+          [
+            "ada@x.io",
+            "Linus"
+          ],
+          [
+            5,
+            11,
+            24
+          ],
+          [
+            10,
+            23,
+            32
+          ],
+          [
+            "PERSON",
+            "PHONE",
+            "EMAIL"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          1.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": "h52",
+      "level": 4,
+      "note": "a score is the same however many times it is asked",
+      "ops": [
+        "Redactor",
+        "score",
+        "score"
+      ],
+      "args": [
+        [],
+        [
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ],
+          [
+            0,
+            8,
+            30
+          ],
+          [
+            5,
+            20,
+            33
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON"
+          ]
+        ],
+        [
+          [
+            0,
+            8
+          ],
+          [
+            5,
+            20
+          ],
+          [
+            "EMAIL",
+            "PHONE"
+          ],
+          [
+            0,
+            8,
+            30
+          ],
+          [
+            5,
+            20,
+            33
+          ],
+          [
+            "EMAIL",
+            "PHONE",
+            "PERSON"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          1.0,
+          0.6666666666666666,
+          0.7142857142857143
+        ],
+        [
+          1.0,
+          0.6666666666666666,
+          0.7142857142857143
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0315"
+slug: safe-redaction-python
+title: Safe Redaction (Python)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [ai-llm, security]
+job_roles: [ai-engineer, security-engineer]
+scope: project
+languages: [python]
+summary: A model finds emails, phone numbers and names in text, and is not always right. Hide what it found, check its spans against the text, add a regex safety net for what it missed, and score the result with a recall-weighted F2.
+levels:
+  - {level: 1, title: Hide the spans}
+  - {level: 2, title: Do not trust the extractor}
+  - {level: 3, title: A safety net}
+  - {level: 4, title: Score it}
+signature:
+  class:
+    name: Redactor
+    constructor: {params: []}
+    methods:
+      - {name: redact, level: 1, params: [{name: text, type: string}, {name: starts, type: "int[]"}, {name: ends, type: "int[]"}, {name: labels, type: "string[]"}], returns: {type: string}}
+      - {name: redactProposed, level: 2, params: [{name: text, type: string}, {name: starts, type: "int[]"}, {name: ends, type: "int[]"}, {name: labels, type: "string[]"}, {name: quotes, type: "string[]"}], returns: {type: string}}
+      - {name: redactSafely, level: 3, params: [{name: text, type: string}, {name: starts, type: "int[]"}, {name: ends, type: "int[]"}, {name: labels, type: "string[]"}, {name: quotes, type: "string[]"}], returns: {type: string}}
+      - {name: score, level: 4, params: [{name: starts, type: "int[]"}, {name: ends, type: "int[]"}, {name: labels, type: "string[]"}, {name: goldStarts, type: "int[]"}, {name: goldEnds, type: "int[]"}, {name: goldLabels, type: "string[]"}], returns: {type: "double[]"}}
+      - {name: evaluate, level: 4, params: [{name: text, type: string}, {name: starts, type: "int[]"}, {name: ends, type: "int[]"}, {name: labels, type: "string[]"}, {name: quotes, type: "string[]"}, {name: goldStarts, type: "int[]"}, {name: goldEnds, type: "int[]"}, {name: goldLabels, type: "string[]"}], returns: {type: "double[]"}}
+comparator: {type: ops, per_method: {score: float, evaluate: float}}
+project:
+  entry: redaction.redactor
+  tests: tests
+approaches:
+  - {id: reference, name: "Rebuild the text around spans that were placed by their quotes, merged, and joined by two patterns", role: optimal, time: "O(p * n) per call for p proposals and n characters", space: "O(n + p)", time_class: "n", space_class: "n"}
+related: [memory-write-sanitizer, retrieval-metrics, feed-ingest-python]
+estimate_minutes: 120
