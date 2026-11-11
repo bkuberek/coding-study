@@ -5,7 +5,7 @@
  */
 
 import { ApiError } from "../api.ts";
-import { AttemptEnding } from "../attemptEnding.ts";
+import { AttemptEnding, type Finishing } from "../attemptEnding.ts";
 import { type AttemptFlows, attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h, rendered } from "../dom.ts";
@@ -90,7 +90,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       };
       tick();
       timer = window.setInterval(tick, TICK_MS);
-      const flows = attemptFlows(context, status);
+      const flows = attemptFlows(context, status, finishing);
       const files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
       tabs.onSaved(() => void files.refresh().catch(() => {}));
       shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
@@ -111,9 +111,10 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   };
 
   /** Reads the attempt again; once it is no longer in progress, or a reset deleted it, the view says
-   * so and stays read-only. Another failure keeps what shows and is announced, unless nothing shows yet. */
+   * so and stays read-only. Another failure keeps what shows and is announced, unless nothing shows yet.
+   * While this tab finishes the attempt, nothing reads it: it would answer that it ended. */
   const refresh = (statement: boolean) => {
-    if (ending.ended) return;
+    if (ending.holds()) return;
     load(statement).catch((error: unknown) => {
       if (error instanceof ApiError && (error.code === ATTEMPT_ENDED || (error.code === NOT_FOUND && shown !== null))) endedElsewhere();
       else if (shown === null) showFailure(page, error);
@@ -137,6 +138,14 @@ export function attemptView(context: PageContext, id: number): Cleanup {
         ),
       );
     });
+
+  const finishing: Finishing = {
+    begin: () => ending.finishing(),
+    failed: () => {
+      if (ending.failed()) refresh(false);
+    },
+    finished: endedElsewhere,
+  };
 
   const treeSoon = settle(() => void shown?.files.refresh().catch(() => {}));
   const statusSoon = settle(() => refresh(false));
