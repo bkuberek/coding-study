@@ -91,16 +91,29 @@ export function doneCommand(slug: string, choice: DoneChoice): string {
   return [`cstudy done ${slug}`, finish, notes].filter(Boolean).join(" ");
 }
 
-/** The two lines `cstudy done` prints; `levelsLast` is a project's last level. */
-export function doneLines(done: DoneDocument, levelsLast: number | null): [string, string] {
-  const levels = done.levels_finished === null ? null : `levels ${done.levels_finished} of ${levelsLast ?? "?"}`;
-  const parts = [done.slug, done.language, done.status, levels, solveTime(done.solve_s), ratingText(done), `hints ${done.hints_used}`];
+/** A problem's last level, and whether it is a project. */
+export interface DoneLevels {
+  readonly last: number;
+  readonly project: boolean;
+}
+
+/** The two lines `cstudy done` prints; `levels` is null for a problem without levels. */
+export function doneLines(done: DoneDocument, levels: DoneLevels | null): [string, string] {
+  const parts = [done.slug, done.language, done.status, levelsText(done, levels), solveTime(done.solve_s), ratingText(done), `hints ${done.hints_used}`];
   const review = done.next_review;
   const when = review.in_days === 1 ? "in 1 day" : `in ${review.in_days} days`;
   return [parts.filter(Boolean).join(" · "), `next review  ${review.due_on} (${when}) · ease ${review.ease.toFixed(2)}`];
 }
 
-/** `rating ok`; a project grade its levels capped below the rating says so, as `cstudy done` does. */
+/** `through level 2 of 4` for a pass below the last level; else a project's `levels 4 of 4`. */
+function levelsText(done: DoneDocument, levels: DoneLevels | null): string | null {
+  const passed = done.levels_finished;
+  if (passed === null || levels === null) return null;
+  if (done.status === "passed" && passed > 0 && passed < levels.last) return `through level ${passed} of ${levels.last}`;
+  return levels.project ? `levels ${passed} of ${levels.last}` : null;
+}
+
+/** `rating ok`; a mock project's grade its levels capped below the rating says so, as `cstudy done` does. */
 function ratingText(done: DoneDocument): string {
   if (done.rating === null) return "gave up";
   const rating = `rating ${done.rating}`;

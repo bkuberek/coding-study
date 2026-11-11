@@ -9,6 +9,7 @@ import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";
 import { command, h } from "./dom.ts";
 import { secondsSince } from "./format.ts";
+import { ratingRule } from "./levels.ts";
 import { problemHash } from "./routes.ts";
 import { unsavedPaths } from "./save.ts";
 import { failure } from "./states.ts";
@@ -43,7 +44,7 @@ export function openDoneDialog(context: PageContext, status: AttemptStatus): voi
     { class: "sheet-form" },
     h("fieldset", { class: "outcomes" }, h("legend", {}, isItem ? "how it went" : "how it went, or give up"), ...radios),
     h("ul", { class: "plain caps" }, ...capNotes(status).map((note) => h("li", { class: "tone-warn" }, note))),
-    h("p", { class: "quiet" }, isItem ? "an item takes a rating only, graded by it alone" : "a rating needs the latest run to pass every case; giving up grades again"),
+    h("p", { class: "quiet" }, ratingRule(status)),
     h("div", { class: "field" }, h("label", { for: "done-notes" }, "notes"), notes),
     h("p", { class: "sheet-command" }, line),
     problemArea,
@@ -92,7 +93,8 @@ function capNotes(status: AttemptStatus): string[] {
 }
 
 function showOutcome(context: PageContext, body: HTMLElement, done: DoneDocument, status: AttemptStatus): void {
-  const [summary, review] = doneLines(done, status.levels?.last ?? null);
+  const levels = status.levels ? { last: status.levels.last, project: status.kind === "project" } : null;
+  const [summary, review] = doneLines(done, levels);
   const open = h("a", { href: problemHash(done.slug), class: "button primary" }, `Open ${done.slug}`);
   body.replaceChildren(
     h("p", { class: "eyebrow" }, "finished"),

@@ -211,9 +211,23 @@ export interface PastAttempt {
   readonly grade: string | null;
   readonly hints_used: number;
   readonly solution_revealed: boolean;
+  /** What a finished attempt of a problem with levels passed through, of how many levels; null otherwise. */
+  readonly levels_passed: number | null;
+  readonly levels_total: number | null;
   readonly test_runs: readonly TestRun[];
   readonly submissions: readonly Submission[];
   readonly bench_runs: readonly BenchRun[];
+}
+
+/** A language's levels over its finished attempts (docs/specs/progress-and-scheduling.md#level-passes). */
+export interface LevelMastery {
+  readonly language: string;
+  /** The most levels a passed attempt passed; null before any pass. */
+  readonly best: number | null;
+  /** The levels the latest attempt that passed level 1 passed. */
+  readonly last_time: number | null;
+  /** The level after last time's, while it is not the last. */
+  readonly try_level: number | null;
 }
 
 /** `cstudy history --json`. */
@@ -226,6 +240,8 @@ export interface History {
     readonly reps: number;
     readonly lapses: number;
   } | null;
+  /** Null for a problem without levels. */
+  readonly levels: { readonly last: number; readonly languages: readonly LevelMastery[] } | null;
   readonly attempts: readonly PastAttempt[];
 }
 
@@ -251,6 +267,11 @@ export interface AttemptStatus {
     readonly unlocked: number;
     readonly last: number;
     readonly titles: readonly string[];
+    /** The levels the latest run, or a project's counted submission, passed. */
+    readonly passed: number;
+    readonly best: number | null;
+    readonly last_time: number | null;
+    readonly try_level: number | null;
   } | null;
   readonly timer: { readonly elapsed_s: number; readonly limit_s: number } | null;
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;
@@ -317,6 +338,7 @@ export interface DoneDocument {
   readonly slug: string;
   readonly language: string | null;
   readonly status: string;
+  /** The levels a progressive or project problem passed through; null for any other. */
   readonly levels_finished: number | null;
   readonly solve_s: number;
   readonly rating: string | null;
