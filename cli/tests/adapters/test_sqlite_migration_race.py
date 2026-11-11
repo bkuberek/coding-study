@@ -40,4 +40,4 @@ def test_processes_opening_a_new_database_together_all_succeed(tmp_path, round_n
 def test_the_raced_database_is_at_the_latest_schema(tmp_path):
     path = tmp_path / "progress.db"
     race_on_new_database(path)
-    assert SqliteProgressStore(path).snapshot().schema_version == 5
+    assert SqliteProgressStore(path).snapshot().schema_version == 6

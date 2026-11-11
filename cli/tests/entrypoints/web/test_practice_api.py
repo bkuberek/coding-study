@@ -331,15 +331,36 @@ def test_done_on_an_ended_attempt_gets_409(tmp_path, practice, python_attempt):
     assert error(response) == (409, "attempt_ended")
 
 
-def test_a_projects_done_reports_its_levels_and_the_levels_cap(tmp_path, project):
-    attempt = start_attempt(project, StartRequest(PROJECT_SLUG)).attempt
+def project_through_level_1(project, mock: bool = False) -> Attempt:
+    attempt = start_attempt(project, StartRequest(PROJECT_SLUG, mock=mock)).attempt
     levels = (LevelTally(1, 1, 1, 2, 2), LevelTally(2, 1, 0, 2, 2))
     project.progress.add_submission(
         SubmissionRecord(attempt.id, NOW, "abc", 2, True, levels, Tally(total=4), 300)
     )
+    return attempt
+
+
+def test_a_projects_done_reports_the_levels_it_passed_through(tmp_path, project):
+    attempt = project_through_level_1(project)
     document = post(tmp_path, project, finish(attempt), {"rating": "easy"}).json()
-    assert (document["levels_finished"], document["grade"], document["caps"]) == (
+    assert (
+        document["status"],
+        document["levels_finished"],
+        document["grade"],
+        document["caps"],
+    ) == (
+        "passed",
         1,
+        "easy",
+        [],
+    )
+
+
+def test_a_project_mocks_done_reports_the_levels_cap(tmp_path, project):
+    attempt = project_through_level_1(project, mock=True)
+    document = post(tmp_path, project, finish(attempt), {"rating": "easy"}).json()
+    assert (document["status"], document["grade"], document["caps"]) == (
+        "failed",
         "hard",
         ["levels"],
     )

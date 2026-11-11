@@ -6,6 +6,7 @@ import pytest
 
 from coding_study.application.run_tests import RunTestsRequest, run_tests
 from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.domain.attempts import RunRecord
 from coding_study.domain.cases import JsonValue, OperationSequence
 from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import LevelProgress, LevelRun
@@ -212,6 +213,58 @@ def test_the_last_level_unlocks_nothing_more(environment):
     for _ in range(3):
         run(environment)
     assert run(environment).levels == LevelRun(3, LevelProgress(LEVELS, 3))
+
+
+def latest_run(environment) -> RunRecord:
+    attempt = environment.progress.active_attempt("level-store")
+    found = environment.progress.latest_test_run(attempt.id)
+    assert found is not None
+    return found
+
+
+def test_a_run_records_the_levels_it_passed(environment):
+    run(environment)
+    assert latest_run(environment).levels_passed == 1
+
+
+def test_a_run_that_fails_the_newest_level_records_the_levels_below_it(tmp_path):
+    environment = environment_for(tmp_path, implemented=1)
+    start_attempt(environment, StartRequest("level-store"))
+    run(environment)
+    run(environment)
+    assert latest_run(environment).levels_passed == 1
+
+
+def test_a_run_that_fails_level_1_records_no_level(tmp_path):
+    environment = environment_for(tmp_path, implemented=0)
+    start_attempt(environment, StartRequest("level-store"))
+    run(environment)
+    assert latest_run(environment).levels_passed == 0
+
+
+def test_a_run_of_every_case_of_a_level_by_case_records_that_level(environment):
+    run(environment, case_ids=("ex1", "h1", "h2", "h3"))
+    assert latest_run(environment).levels_passed == 1
+
+
+def test_a_run_of_some_cases_of_level_1_records_no_level(environment):
+    run(environment, case_ids=("ex1",))
+    assert latest_run(environment).levels_passed == 0
+
+
+def test_a_run_of_a_problem_without_levels_records_no_levels(tmp_path):
+    root = copy_repository(tmp_path, PRACTICE)
+    toolchains = FakeToolchains(
+        {Language.PYTHON: FakeLanguageRunner()}, {Language.PYTHON: FakeStubGenerator()}
+    )
+    environment = make_environment(
+        root, toolchains=toolchains, runner_process=ScriptedRunnerProcess(two_sum)
+    )
+    attempt = start_attempt(environment, StartRequest("two-sum")).attempt
+    run(environment)
+    found = environment.progress.latest_test_run(attempt.id)
+    assert found is not None
+    assert found.levels_passed is None
 
 
 def test_a_level_on_a_problem_without_levels_is_a_usage_error(tmp_path):

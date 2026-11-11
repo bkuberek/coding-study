@@ -4,7 +4,7 @@ Progress lives in SQLite (`progress.db`, gitignored). The database stores only f
 
 ## Schema
 
-Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`. Processes that open a new database at the same time migrate it one after another, under a lock on its folder. A database migrates on the first command that opens it; `cstudy doctor` shows its schema (`progress database`: WARN when older, FAIL when newer than this `cstudy` knows) without migrating, and `cstudy doctor --fix` migrates it now, under the same lock ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`. [`cstudy reset`](cli.md#cstudy-reset) empties every table but `meta` in one transaction and records the highest attempt id it deleted there as `attempt_id_floor`; a new attempt's id is one above the higher of that and the table's own, since `.archive/<slug>/<attempt_id>-<lang>/`, which a reset keeps by default, names old attempts by id.
+Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`; `0006_level_passes.sql` adds `attempts.levels_passed`, `attempts.levels_total` and `test_runs.levels_passed` for [level passes](#level-passes), NULL in the rows written before it. Processes that open a new database at the same time migrate it one after another, under a lock on its folder. A database migrates on the first command that opens it; `cstudy doctor` shows its schema (`progress database`: WARN when older, FAIL when newer than this `cstudy` knows) without migrating, and `cstudy doctor --fix` migrates it now, under the same lock ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`. [`cstudy reset`](cli.md#cstudy-reset) empties every table but `meta` in one transaction and records the highest attempt id it deleted there as `attempt_id_floor`; a new attempt's id is one above the higher of that and the table's own, since `.archive/<slug>/<attempt_id>-<lang>/`, which a reset keeps by default, names old attempts by id.
 
 ```sql
 PRAGMA foreign_keys = ON;
@@ -32,7 +32,9 @@ CREATE TABLE attempts (
   level_unlocked    INTEGER,           -- progressive problems
   stub_path         TEXT,
   archive_path      TEXT,
-  notes             TEXT
+  notes             TEXT,
+  levels_passed     INTEGER,           -- problems with levels: levels 1 to N passed, at cstudy done
+  levels_total      INTEGER            -- the problem's levels, at cstudy done
 );
 CREATE INDEX attempts_by_slug ON attempts (slug, ended_at);
 
@@ -48,7 +50,8 @@ CREATE TABLE test_runs (
   timed_out   INTEGER NOT NULL,
   tle         INTEGER NOT NULL,
   time_limit  TEXT,                    -- "5x", "1500ms", or NULL when off
-  duration_ms INTEGER NOT NULL
+  duration_ms INTEGER NOT NULL,
+  levels_passed INTEGER                -- progressive: levels 1 to N ran and passed
 );
 
 CREATE TABLE schedule (
@@ -113,12 +116,12 @@ CREATE TABLE level_unlocks (           -- project problems: when each level open
 | Event | Effect |
 |-------|--------|
 | `cstudy start` | Insert `in_progress`; `mode` is `review` if a `schedule` row exists, `mock` under `cstudy mock`, else `new`. Same slug and language already `in_progress`: resume it. With `--fresh`: mark the old one `abandoned` (no grade, no schedule change). Progressive and project: a new attempt stores `level_unlocked = 1`; project: also a `level_unlocks` row for level 1, and `stub_path` is the folder `projects/<slug>` |
-| `cstudy test` | Insert a `test_runs` row; set `first_pass_at` on the first all-pass run (progressive: of every level); progressive: raise `level_unlocked` by one when a run passes every unlocked level. Project: the row holds the native suite's tally and changes nothing else |
+| `cstudy test` | Insert a `test_runs` row; set `first_pass_at` on the first all-pass run (progressive: of every level); progressive: store the row's `levels_passed` ([level passes](#level-passes)), and raise `level_unlocked` by one when a run passes every unlocked level. Project: the row holds the native suite's tally and changes nothing else |
 | `cstudy submit` | Project only: insert a `submissions` row; when it graded every unlocked level and passed every case, raise `level_unlocked` by one and insert its `level_unlocks` row, or, at the last level, set `first_pass_at` |
 | `cstudy mock` | One `cstudy start --fresh` per pick, mode `mock`, all with `time_limit_s` set to the shared timer; while it runs and a mock attempt is `in_progress`, `cstudy hint` and `cstudy solution` refuse ([cli](cli.md#cstudy-mock)) |
 | `cstudy hint` | `hints_used += 1` |
 | `cstudy solution` before a full pass | `solution_revealed = 1` |
-| `cstudy done` | Set `ended_at`, `status` (`passed` or `failed`), `rating`, `grade`; update `schedule` |
+| `cstudy done` | Set `ended_at`, `status` (`passed` or `failed`), `rating`, `grade`, and for a problem with levels `levels_passed` and `levels_total`; update `schedule` |
 | `cstudy abort` | Set `ended_at` and `status` `abandoned`: no grade, no rating and no change to `schedule`; refused while a run or a job is active. The files stay, and the next `cstudy start` begins a new attempt |
 
 Solve time is `ended_at - started_at` (wall clock; there is no pause).
@@ -131,7 +134,7 @@ Grades: 0 `again`, 1 `hard`, 2 `ok`, 3 `easy`. Computed in order:
 2. Otherwise from the rating: `easy` 3, `ok` 2, `hard` 1.
 3. Caps (minimum wins): any hint used caps at 2; finished over `--timer` caps at 1; with `schedule.penalize_suboptimal`, the attempt's latest bench verdict `suboptimal` at confidence `medium` or `high` caps at 1.
 
-Project attempts add one cap and their own rating rule ([below](#project-attempts)).
+A problem with levels passes through level N of M with its own rating rule, and a mock adds a level cap ([level passes](#level-passes)). The solution step counts `first_pass_at`, which still means every level, so a solution revealed before then grades 0.
 
 Non-autograded items use step 2 only: no `--gave-up`, and revealing the reference, hints and the timer never lower the grade. Their attempts have `lang` NULL and `stub_path` set to the notes file.
 
@@ -143,14 +146,33 @@ A [project problem](problem-format.md#project-problems)'s attempt is graded from
 |------|------|
 | Counted submission | The latest submission with `every_level = 1`. Submissions with a lower `--level` never count |
 | Levels finished | The largest L such that the counted submission passed every case of levels 1 to L; 0 without a counted submission. A [stress verdict](problem-format.md#stress-cases-in-projects) counts as a hidden case of its level, in `hidden_total` and `hidden_passed` of the level's tally |
-| `cstudy done` | A rating is required when levels finished is at least 1, `--gave-up` otherwise |
-| Level cap | Applied with the caps above, the minimum winning: every level finished, no cap; all but the last, `hard` (1); fewer, `again` (0) |
+| `cstudy done` | Levels finished is the N of a [level pass](#level-passes): a rating is required when it is at least 1, `--gave-up` otherwise |
+| Level cap | A mock only: applied with the caps above, the minimum winning: every level finished, no cap; all but the last, `hard` (1); fewer, `again` (0) |
 | Time box | Soft, as for every problem: finishing over `--timer` caps at `hard`; submissions are never refused |
-| Status | `passed` when every level is finished, `failed` otherwise, also when a rating was given |
+| Status | `passed` when level 1 is finished; in a mock, only when every level is, `failed` otherwise, also when a rating was given |
 | `test_runs` | Native suite runs: `total` counts every reported test but skipped ones, `errored` holds errors and crashes, `tle` is 0; `code_hash` hashes the folder (every file but `.venv`, `node_modules` and caches, by relative path and bytes in path order) |
 | `level_unlocks` | One row per opened level, so `cstudy status` shows when each level opened |
 
-Two levels of four finished, rated `ok`: grade 0. Three of four, rated `ok`: grade 1. Four of four, rated `ok`, under the time box and without hints: grade 2.
+Two levels of four finished, rated `ok`, under the time box and without hints: `passed` through level 2 of 4, grade 2. In a mock: two of four, grade 0; three of four, grade 1; four of four, grade 2.
+
+## Level passes
+
+A progressive or project problem passes through level N of M: N is the largest level such that every case of levels 1 to N passed, M the problem's last level ([ADR 0024](../decisions/0024-level-passes.md)).
+
+| Item | Rule |
+|------|------|
+| What counts | Progressive: the latest test run, its `levels_passed`; a run recorded before that column counts M when it passed every case (as many as a run of every level stores), 0 otherwise. Project: the [counted submission](#project-attempts)'s levels finished. N can be below `level_unlocked` |
+| A run's `levels_passed` | The largest L such that the run ran and passed every case of levels 1 to L, a stress case once per variant; 0 when a case of level 1 did not pass or the code did not build. A run of `--level 2`, or a `--case` run naming every case of levels 1 and 2, counts for them; only a run that passes every unlocked level opens the next |
+| `cstudy done` | N at least 1: a rating, and the attempt is `passed`, graded by the [grade](#grade) steps with no level cap. N = 0: `--gave-up` only, grade 0, `failed`. It stores N and M as `levels_passed` and `levels_total` |
+| Mock | A `mock` attempt keeps the rules from before level passes. Progressive: a rating only when N = M. Project: a rating from N = 1, with the level cap of [project attempts](#project-attempts). Both: `passed` only when N = M. N and M are stored all the same |
+| Without levels | Function, design and concurrent problems, and items, store NULL in both columns and keep their rules |
+| Older rows | An attempt with `levels_passed` NULL that is `passed` passed every level (of the problem's levels now, as it stored no M); one that is `failed` recorded no levels |
+
+| Term | Over the finished attempts of one problem in one language |
+|------|-------------------------------------------------------------|
+| Mastery (`best`) | The most levels a `passed` attempt passed, at most the problem's levels now; none before a pass |
+| Last time | N of the latest attempt, by start, that passed at least level 1, in any mode and status |
+| Goal | While last time is below M: `last time: through level 2 of 4; try level 3`. A new attempt, a review included, still starts at level 1 |
 
 ## Scheduling algorithm
 

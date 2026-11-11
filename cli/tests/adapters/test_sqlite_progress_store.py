@@ -139,6 +139,47 @@ def test_migrated_test_runs_still_require_an_existing_attempt(database):
         SqliteProgressStore(database).add_test_run(run_record(999))
 
 
+def database_before_level_passes(database: Path) -> None:
+    """A progress database at schema version 5, with a passed attempt and its test run."""
+    migrations = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY
+    scripts = sorted(
+        (entry for entry in migrations.iterdir() if entry.name.endswith(".sql")),
+        key=lambda entry: entry.name,
+    )
+    with sqlite3.connect(database) as connection:
+        for script in scripts[:5]:
+            connection.executescript(script.read_text(encoding="utf-8"))
+        connection.execute("INSERT INTO meta (key, value) VALUES ('schema_version', '5')")
+        connection.execute(
+            "INSERT INTO attempts (id, slug, lang, mode, status, started_at, ended_at, rating, "
+            "grade, level_unlocked) VALUES (7, 'level-store', 'python', 'new', 'passed', "
+            "'2026-10-24T10:00:00+00:00', '2026-10-24T10:30:00+00:00', 'ok', 2, 3)"
+        )
+        connection.execute(
+            "INSERT INTO test_runs (attempt_id, ran_at, code_hash, total, passed, failed, "
+            "errored, timed_out, tle, duration_ms) "
+            "VALUES (7, '2026-10-24T10:01:00+00:00', 'abc', 12, 12, 0, 0, 0, 0, 840)"
+        )
+
+
+def test_migrating_to_level_passes_keeps_an_old_pass_without_levels(database):
+    database_before_level_passes(database)
+    attempt = SqliteProgressStore(database).attempt(7)
+    assert attempt is not None
+    assert (attempt.status, attempt.levels_passed, attempt.levels_total) == (
+        AttemptStatus.PASSED,
+        None,
+        None,
+    )
+
+
+def test_migrating_to_level_passes_keeps_old_test_runs_without_levels(database):
+    database_before_level_passes(database)
+    run = SqliteProgressStore(database).latest_test_run(7)
+    assert run is not None
+    assert (run.tally.passed, run.levels_passed) == (12, None)
+
+
 def test_attempt_ids_increase(store):
     first, second = store.add_attempt(new_attempt()), store.add_attempt(new_attempt())
     assert second.id > first.id
@@ -214,6 +255,8 @@ def test_update_stores_every_mutable_field(store):
         hints_used=1,
         solution_revealed=True,
         level_unlocked=2,
+        levels_passed=2,
+        levels_total=4,
         archive_path=".archive/two-sum/1-python",
         notes="used a map",
     )
@@ -236,6 +279,13 @@ def test_no_test_run_yet(store):
 def test_test_runs_keep_the_time_limit(store):
     attempt = store.add_attempt(new_attempt())
     record = replace(run_record(attempt.id), time_limit="5x")
+    store.add_test_run(record)
+    assert store.latest_test_run(attempt.id) == record
+
+
+def test_test_runs_keep_the_levels_they_passed(store):
+    attempt = store.add_attempt(new_attempt())
+    record = replace(run_record(attempt.id), levels_passed=2)
     store.add_test_run(record)
     assert store.latest_test_run(attempt.id) == record
 

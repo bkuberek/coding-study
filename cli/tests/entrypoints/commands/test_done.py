@@ -17,6 +17,7 @@ from tests.fakes import repository_root as copy_repository
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
+PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
 
 
 @pytest.fixture
@@ -84,4 +85,38 @@ def test_a_solution_file_path_selects_its_problem(environment):
     assert (result.exit_code, "no attempt in progress for lru-cache" in result.stderr) == (
         ExitCode.USAGE_ERROR,
         True,
+    )
+
+
+@pytest.fixture
+def level_store(tmp_path, monkeypatch):
+    clock = FakeClock()
+    toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
+    environment = make_environment(
+        copy_repository(tmp_path, PHASE4), toolchains=toolchains, clock=clock
+    )
+    monkeypatch.setattr(done, "load_environment", lambda *_: environment)
+    start_attempt(environment, StartRequest("level-store"))
+    clock.advance(timedelta(minutes=18, seconds=40))
+    return environment
+
+
+def passed_through(environment, level: int) -> None:
+    attempt = environment.progress.active_attempt()
+    tally = Tally(4 * level, 4 * level)
+    record = RunRecord(attempt.id, NOW, "hash", tally, 10, levels_passed=level)
+    environment.progress.add_test_run(record)
+
+
+def test_a_pass_through_a_level_below_the_last_says_so(level_store):
+    passed_through(level_store, 2)
+    assert invoke("--rating", "ok").output.splitlines()[0] == (
+        "level-store · python · passed · through level 2 of 3 · 18m 40s · rating ok · hints 0"
+    )
+
+
+def test_a_pass_through_every_level_says_nothing_of_levels(level_store):
+    passed_through(level_store, 3)
+    assert invoke("--rating", "ok").output.splitlines()[0] == (
+        "level-store · python · passed · 18m 40s · rating ok · hints 0"
     )

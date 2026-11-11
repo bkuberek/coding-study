@@ -61,6 +61,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [0021](decisions/0021-ai-reviewed-problems.md) | Planned, not built: an opt-in class of problems reviewed by a live LLM with your own key; "works on your own machine" replaces "works offline" |
 | [0022](decisions/0022-settings-and-reset.md) | The Settings view edits the whole `config.toml` with tomlkit, keeping the user's comments, from a description of each key held by the parser; `cstudy reset` and a Danger section delete progress after a preview and a typed word |
 | [0023](decisions/0023-problem-sets.md) | Problem sets are a file in the workspace, `sets.yaml`, changed by the lines a change needs; `cstudy set`, `--set` on `cstudy list` and `cstudy next`, which goes in the set's order, and a Sets view; the whole-bundle budget rises |
+| [0024](decisions/0024-level-passes.md) | A pass through level N of M is a pass, graded from the rating with no level cap; a mock keeps the old rules; the best level per language is the problem's mastery, and the next attempt shows the level to try |
 
 ## Conventions
 

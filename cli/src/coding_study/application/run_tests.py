@@ -69,11 +69,17 @@ from coding_study.domain.judging import (
     with_stress,
     with_time_limits,
 )
+from coding_study.domain.level_passes import judged_levels
 from coding_study.domain.levels import LevelRun, cases_up_to, level_run
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.problem_files import GENERATOR_FILE
 from coding_study.domain.runs import CaseReport, JobReport
-from coding_study.domain.stress_runs import PlannedRun, StressSelection, plan_runs
+from coding_study.domain.stress_runs import (
+    PlannedRun,
+    StressSelection,
+    plan_runs,
+    stress_verdict_slots,
+)
 from coding_study.domain.stress_verdict import (
     StressJudging,
     StressRunResult,
@@ -346,7 +352,8 @@ def run_planned_tests(
     )
     if debug is not None:
         return result
-    result = replace(result, attempt=_record(environment, result))
+    levels_passed = _levels_passed(plan, result.case_judgement)
+    result = replace(result, attempt=_record(environment, result, levels_passed))
     if request.case_ids:
         return result
     return _unlock(environment, plan.problem, result)
@@ -537,7 +544,16 @@ def _unlock(environment: Environment, problem: Problem, result: RunTestsResult) 
     return replace(result, attempt=attempt, levels=levels)
 
 
-def _record(environment: Environment, result: RunTestsResult) -> Attempt:
+def _levels_passed(plan: RunTestsPlan, judgement: Judgement | None) -> int | None:
+    """The levels a progressive problem's run passed, which `cstudy done` grades from
+    (domain/level_passes.py); None for a problem without levels."""
+    if plan.levels is None:
+        return None
+    problem = plan.problem
+    return judged_levels(problem.cases, judgement, stress_verdict_slots(problem, plan.language))
+
+
+def _record(environment: Environment, result: RunTestsResult, levels_passed: int | None) -> Attempt:
     """Stores the run; the first full pass also sets the attempt's `first_pass_at`."""
     attempt = result.attempt
     watched = layout.watch_path(result.meta, result.language)
@@ -549,6 +565,7 @@ def _record(environment: Environment, result: RunTestsResult) -> Attempt:
             tally=result.tally,
             duration_ms=round(result.duration_seconds * MILLISECONDS_PER_SECOND),
             time_limit=str(result.time_limits.limit) if result.time_limits else None,
+            levels_passed=levels_passed,
         )
     )
     if result.every_case and result.cases_passed and attempt.first_pass_at is None:

@@ -167,7 +167,7 @@ def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
         "slug": attempt.slug,
         "language": attempt.language.value if attempt.language else None,
         "status": attempt.status.value,
-        "levels_finished": finished.project.finished if finished.project else None,
+        "levels_finished": finished.levels.levels.passed if finished.levels else None,
         "solve_s": int(attempt.solve_time(attempt.ended_at).total_seconds()),
         "rating": attempt.rating.value if attempt.rating else None,
         "grade": attempt.grade.name.lower() if attempt.grade is not None else None,

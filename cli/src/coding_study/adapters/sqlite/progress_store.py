@@ -47,14 +47,15 @@ _ATTEMPT_UPDATE = """
 UPDATE attempts SET status = :status, ended_at = :ended_at, first_pass_at = :first_pass_at,
   time_limit_s = :time_limit_s, rating = :rating, grade = :grade, hints_used = :hints_used,
   solution_revealed = :solution_revealed, level_unlocked = :level_unlocked,
-  stub_path = :stub_path, archive_path = :archive_path, notes = :notes
+  stub_path = :stub_path, archive_path = :archive_path, notes = :notes,
+  levels_passed = :levels_passed, levels_total = :levels_total
 WHERE id = :id
 """
 _TEST_RUN_INSERT = """
 INSERT INTO test_runs (attempt_id, ran_at, code_hash, total, passed, failed, errored, timed_out,
-  tle, time_limit, duration_ms)
+  tle, time_limit, duration_ms, levels_passed)
 VALUES (:attempt_id, :ran_at, :code_hash, :total, :passed, :failed, :errored, :timed_out, :tle,
-  :time_limit, :duration_ms)
+  :time_limit, :duration_ms, :levels_passed)
 """
 _LATEST_USER_BENCHES = """
 SELECT slug, lang, verdict, ran_at FROM bench_runs AS run
@@ -139,6 +140,7 @@ class SqliteProgressStore:
                     "tle": tally.tle,
                     "time_limit": run.time_limit,
                     "duration_ms": run.duration_ms,
+                    "levels_passed": run.levels_passed,
                 },
             )
 
@@ -407,6 +409,8 @@ def _attempt(row: sqlite3.Row) -> Attempt:
         stub_path=row["stub_path"],
         archive_path=row["archive_path"],
         notes=row["notes"],
+        levels_passed=row["levels_passed"],
+        levels_total=row["levels_total"],
     )
 
 
@@ -425,6 +429,8 @@ def _attempt_fields(attempt: Attempt) -> dict[str, object]:
         "stub_path": attempt.stub_path,
         "archive_path": attempt.archive_path,
         "notes": attempt.notes,
+        "levels_passed": attempt.levels_passed,
+        "levels_total": attempt.levels_total,
     }
 
 
@@ -447,6 +453,7 @@ def _run_record(row: sqlite3.Row) -> RunRecord:
         ),
         duration_ms=row["duration_ms"],
         time_limit=row["time_limit"],
+        levels_passed=row["levels_passed"],
     )
 
 

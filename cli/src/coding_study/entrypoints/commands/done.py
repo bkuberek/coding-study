@@ -14,7 +14,8 @@ from coding_study.application.complete_attempt import (
     complete_attempt,
 )
 from coding_study.application.resolve_target import Target, resolve_target
-from coding_study.domain.attempts import Rating, self_graded
+from coding_study.domain.attempts import AttemptStatus, Rating, self_graded
+from coding_study.domain.problem import ProblemKind, ProblemMeta
 from coding_study.entrypoints.shared import (
     OPTIONAL_TARGET_HELP,
     add_command,
@@ -38,10 +39,10 @@ def done(
         typer.Argument(help=OPTIONAL_TARGET_HELP),
     ] = None,
     rating: Annotated[
-        Rating | None, typer.Option("--rating", help="How it went, after a full pass.")
+        Rating | None, typer.Option("--rating", help="How it went, after a pass.")
     ] = None,
     gave_up: Annotated[
-        bool, typer.Option("--gave-up", help="Finish without a full pass (grade again).")
+        bool, typer.Option("--gave-up", help="Finish without a pass (grade again).")
     ] = False,
     notes: Annotated[str | None, typer.Option("--notes", help="Notes kept on the attempt.")] = None,
 ) -> None:
@@ -57,13 +58,11 @@ def done(
 def _summary(finished: FinishedAttempt) -> str:
     attempt = finished.attempt
     assert attempt.ended_at is not None
-    project = finished.project
-    levels = f"levels {project.finished} of {project.last}" if project else ""
     parts = (
         attempt.slug,
         attempt.language or "",
         attempt.status,
-        levels,
+        _levels(finished),
         solve_time_text(attempt.solve_time(attempt.ended_at)),
         _rating(finished),
         f"hints {attempt.hints_used}",
@@ -71,13 +70,27 @@ def _summary(finished: FinishedAttempt) -> str:
     return " · ".join(part for part in parts if part)
 
 
+def _levels(finished: FinishedAttempt) -> str:
+    """`through level 2 of 4` for a pass below the last level; else a project's `levels 4 of 4`,
+    and nothing for a progressive problem."""
+    outcome = finished.levels
+    if outcome is None:
+        return ""
+    levels = outcome.levels
+    if finished.attempt.status is AttemptStatus.PASSED and levels.partial:
+        return levels.text
+    if isinstance(finished.meta, ProblemMeta) and finished.meta.kind is ProblemKind.PROJECT:
+        return f"levels {levels.passed} of {levels.last}"
+    return ""
+
+
 def _rating(finished: FinishedAttempt) -> str:
-    """`rating ok`; a project grade the levels finished capped below the rating says so."""
+    """`rating ok`; a mock project's grade its levels capped below the rating says so."""
     attempt = finished.attempt
     if attempt.rating is None:
         return "gave up"
     rating = f"rating {attempt.rating}"
-    cap = finished.project.cap if finished.project else None
+    cap = finished.levels.cap if finished.levels else None
     if cap is None or attempt.grade is None or cap >= self_graded(attempt.rating):
         return rating
     return f"{rating}, capped at {attempt.grade.name.lower()}"

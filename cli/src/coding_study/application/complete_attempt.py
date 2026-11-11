@@ -1,10 +1,12 @@
 """`cstudy done`: finish an attempt and schedule its review.
 
-Specs: docs/specs/cli.md#cstudy-done and progress-and-scheduling.md. A project attempt is graded
-from its counted submission instead of its latest test run (progress-and-scheduling.md#project-
-attempts): a rating once level 1 passed, capped by the levels finished.
+Specs: docs/specs/cli.md#cstudy-done and progress-and-scheduling.md. A problem with levels is
+graded from the levels it passed (progress-and-scheduling.md#level-passes): those of its latest
+test run, or of a project's counted submission instead (progress-and-scheduling.md#project-
+attempts). A pass through level 1 takes a rating and passes; a mock keeps an interview's rules.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 
@@ -13,6 +15,7 @@ from coding_study.application.environment import Environment
 from coding_study.domain.attempts import (
     SUBOPTIMAL_GRADE_CAP,
     Attempt,
+    AttemptMode,
     AttemptStatus,
     Grade,
     GradeCap,
@@ -26,11 +29,14 @@ from coding_study.domain.attempts import (
 )
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import ItemMeta
+from coding_study.domain.level_passes import LevelOutcome, LevelsPassed, level_outcome, run_levels
+from coding_study.domain.levels import FIRST_LEVEL, level_progress
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry, next_review_state
-from coding_study.domain.submissions import counted_submission, level_grade_cap, levels_finished
+from coding_study.domain.submissions import counted_submission, levels_finished
 
 RATINGS = "|".join(Rating)
+FINISH_WITH_A_RATING = f"finish with --rating {RATINGS}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,25 +50,26 @@ class DoneRequest:
 
 
 @dataclass(frozen=True, slots=True)
-class LevelsFinished:
-    """A project attempt's levels finished by its counted submission, and the grade cap they
-    set."""
-
-    finished: int
-    last: int
-    cap: Grade | None
-
-
-@dataclass(frozen=True, slots=True)
 class FinishedAttempt:
     meta: ProblemMeta | ItemMeta
     attempt: Attempt
     schedule: ScheduleEntry
     today: date
-    project: LevelsFinished | None = None
-    """Project problems only."""
+    levels: LevelOutcome | None = None
+    """Problems with levels only: the levels passed, and what they made of the attempt."""
     caps: tuple[GradeCap, ...] = ()
     """The caps that held the grade below the rating."""
+
+
+@dataclass(frozen=True, slots=True)
+class _Verdict:
+    """How a problem's attempt closes: passed or not, the caps from facts outside its row, and
+    the levels it passed."""
+
+    meta: ProblemMeta
+    passed: bool
+    caps: Mapping[GradeCap, Grade]
+    levels: LevelOutcome | None = None
 
 
 def complete_attempt(environment: Environment, request: DoneRequest) -> FinishedAttempt:
@@ -72,62 +79,56 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     if attempt.language is None:
         return _finish_item(environment, attempt, request)
     problem = environment.problems.load(attempt.slug)
-    if problem.meta.kind is ProblemKind.PROJECT:
-        return _finish_project(environment, attempt, problem, request)
+    measured = _measured_caps(environment, attempt)
+    levels = _levels_passed(environment, attempt, problem)
+    if levels is not None:
+        outcome = level_outcome(levels, attempt.mode, problem.meta.kind)
+        _check_levels_rating(outcome, attempt.mode, problem.meta.kind, request)
+        level_caps = {GradeCap.LEVELS: outcome.cap} if outcome.cap is not None else {}
+        verdict = _Verdict(problem.meta, outcome.passes, {**measured, **level_caps}, outcome)
+        return _close(environment, attempt, request, verdict)
     latest = environment.progress.latest_test_run(attempt.id)
     passed = passed_every_case(latest, problem, attempt.language)
     _check_rating_matches(passed, request)
-    now = environment.clock.now()
-    measured = _measured_caps(environment, attempt)
-    grade = cap_grade(grade_attempt(attempt, request.rating, now), measured.values())
-    finished = replace(
-        attempt,
-        status=AttemptStatus.PASSED if passed else AttemptStatus.FAILED,
-        ended_at=now,
-        rating=request.rating,
-        grade=grade,
-        notes=request.notes,
-    )
-    environment.progress.update_attempt(finished)
-    schedule = _reschedule(environment, finished)
-    caps = capped_by(request.rating, {**attempt_caps(attempt, now), **measured})
-    today = environment.clock.local_date(now)
-    return FinishedAttempt(problem.meta, finished, schedule, today, caps=caps)
+    return _close(environment, attempt, request, _Verdict(problem.meta, passed, measured))
 
 
-def _finish_project(
-    environment: Environment, attempt: Attempt, problem: Problem, request: DoneRequest
+def _levels_passed(
+    environment: Environment, attempt: Attempt, problem: Problem
+) -> LevelsPassed | None:
+    """A project's from its counted submission, which stands in for the latest test run;
+    a progressive problem's from its latest test run; None for a problem without levels."""
+    meta = problem.meta
+    if meta.kind is ProblemKind.PROJECT:
+        counted = counted_submission(environment.progress.submissions(attempt.id))
+        return LevelsPassed(levels_finished(counted), len(meta.levels))
+    if level_progress(meta, None) is None:
+        return None
+    assert attempt.language is not None
+    latest = environment.progress.latest_test_run(attempt.id)
+    return run_levels(latest, problem, attempt.language)
+
+
+def _close(
+    environment: Environment, attempt: Attempt, request: DoneRequest, verdict: _Verdict
 ) -> FinishedAttempt:
-    """The counted submission stands in for the latest test run: a rating once it passed level 1,
-    `--gave-up` otherwise; the levels it finished cap the grade, and only all of them pass."""
-    counted = counted_submission(environment.progress.submissions(attempt.id))
-    levels = LevelsFinished(levels_finished(counted), len(problem.meta.levels), None)
-    levels = replace(levels, cap=level_grade_cap(levels.finished, levels.last))
-    if levels.finished and request.gave_up:
-        raise UsageError(
-            f"the latest submission of every unlocked level passed level 1; "
-            f"finish with --rating {RATINGS}"
-        )
-    if not levels.finished and request.rating is not None:
-        raise UsageError(
-            "no submission of every unlocked level passed level 1 yet; run cstudy submit, or "
-            "finish with --gave-up"
-        )
     now = environment.clock.now()
-    level_caps = {GradeCap.LEVELS: levels.cap} if levels.cap is not None else {}
+    levels = verdict.levels.levels if verdict.levels else None
     finished = replace(
         attempt,
-        status=AttemptStatus.PASSED if levels.cap is None else AttemptStatus.FAILED,
+        status=AttemptStatus.PASSED if verdict.passed else AttemptStatus.FAILED,
         ended_at=now,
         rating=request.rating,
-        grade=cap_grade(grade_attempt(attempt, request.rating, now), level_caps.values()),
+        grade=cap_grade(grade_attempt(attempt, request.rating, now), verdict.caps.values()),
         notes=request.notes,
+        levels_passed=levels.passed if levels else None,
+        levels_total=levels.last if levels else None,
     )
     environment.progress.update_attempt(finished)
     schedule = _reschedule(environment, finished)
+    caps = capped_by(request.rating, {**attempt_caps(attempt, now), **verdict.caps})
     today = environment.clock.local_date(now)
-    caps = capped_by(request.rating, {**attempt_caps(attempt, now), **level_caps})
-    return FinishedAttempt(problem.meta, finished, schedule, today, levels, caps)
+    return FinishedAttempt(verdict.meta, finished, schedule, today, verdict.levels, caps)
 
 
 def _measured_caps(environment: Environment, attempt: Attempt) -> dict[GradeCap, Grade]:
@@ -166,11 +167,46 @@ def _finish_item(
 
 def _check_rating_matches(passed: bool, request: DoneRequest) -> None:
     if passed and request.gave_up:
-        raise UsageError(f"the latest test run passed every case; finish with --rating {RATINGS}")
+        raise UsageError(f"the latest test run passed every case; {FINISH_WITH_A_RATING}")
     if not passed and request.rating is not None:
         raise UsageError(
             "the latest test run did not pass every case; run cstudy test, or finish with --gave-up"
         )
+
+
+def _check_levels_rating(
+    outcome: LevelOutcome, mode: AttemptMode, kind: ProblemKind, request: DoneRequest
+) -> None:
+    """A rating once the levels passed take one, `--gave-up` otherwise, each refusal naming the
+    run or submission it read."""
+    if outcome.rating_needed and request.gave_up:
+        raise UsageError(f"{_levels_read(outcome.levels, kind)}; {FINISH_WITH_A_RATING}")
+    if outcome.rating_needed or request.rating is None:
+        return
+    if kind is ProblemKind.PROJECT:
+        raise UsageError(
+            "no submission of every unlocked level passed level 1 yet; run cstudy submit, or "
+            "finish with --gave-up"
+        )
+    if mode is AttemptMode.MOCK and outcome.levels.passed >= FIRST_LEVEL:
+        raise UsageError(
+            f"a mock needs every level, and the latest test run passed {outcome.levels.text}; "
+            "run cstudy test, or finish with --gave-up"
+        )
+    raise UsageError(
+        "the latest test run did not pass level 1; run cstudy test, or finish with --gave-up"
+    )
+
+
+def _levels_read(levels: LevelsPassed, kind: ProblemKind) -> str:
+    """What passed: `the latest test run passed every case of levels 1 to 2`."""
+    if kind is ProblemKind.PROJECT:
+        return "the latest submission of every unlocked level passed level 1"
+    if levels.every_level:
+        return "the latest test run passed every case"
+    if levels.passed == FIRST_LEVEL:
+        return "the latest test run passed every case of level 1"
+    return f"the latest test run passed every case of levels 1 to {levels.passed}"
 
 
 def _reschedule(environment: Environment, attempt: Attempt) -> ScheduleEntry:

@@ -49,7 +49,19 @@ def cs_done(*arguments: str):
     return runner.invoke(cli.app, ["done", *arguments])
 
 
-def test_a_capped_grade_says_so(environment):
+def test_a_pass_through_a_level_below_the_last_says_so(environment):
+    submit(environment, PASSED_1, FAILED_2)
+    assert cs_done("--rating", "ok").output.splitlines()[0] == (
+        f"{PROJECT_SLUG} · python · passed · through level 1 of 2 · 1h 24m · rating ok · hints 0"
+    )
+
+
+def test_a_mock_s_capped_grade_says_so(tmp_path, monkeypatch):
+    clock = FakeClock()
+    environment = project_environment(tmp_path, ScriptedProjectProcess(), clock=clock)
+    start_attempt(environment, StartRequest(PROJECT_SLUG, mock=True))
+    monkeypatch.setattr(done_command, "load_environment", lambda *_: environment)
+    clock.advance(timedelta(minutes=84, seconds=10))
     submit(environment, PASSED_1, FAILED_2)
     assert cs_done("--rating", "ok").output.splitlines()[0] == (
         f"{PROJECT_SLUG} · python · failed · levels 1 of 2 · 1h 24m · "
