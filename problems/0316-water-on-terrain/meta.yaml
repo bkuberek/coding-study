@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0316"
+slug: water-on-terrain
+title: Water on Terrain
+summary: "Build Terrain from a height profile: draw it as text, pour water unit by unit with exact rules for left, right, flat stretches and edges, and draw terrain and water together."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+domains: [algorithms]
+job_roles: [general]
+scope: function
+levels:
+  - {level: 1, title: Drawing the profile}
+  - {level: 2, title: One unit of water}
+  - {level: 3, title: Many units}
+  - {level: 4, title: Terrain and water together}
+signature:
+  class:
+    name: Terrain
+    constructor: {params: [{name: heights, type: "list<int>"}]}
+    methods:
+      - {name: render, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: tallest, level: 1, params: [], returns: {type: int}}
+      - {name: pour, level: 2, params: [{name: column, type: int}], returns: {type: "list<int>"}}
+      - {name: water, level: 2, params: [], returns: {type: "list<int>"}}
+      - {name: spilled, level: 2, params: [], returns: {type: int}}
+      - {name: pourMany, level: 3, params: [{name: column, type: int}, {name: units, type: int}], returns: {type: "list<int>"}}
+      - {name: renderWindow, level: 4, params: [{name: first, type: int}, {name: last, type: int}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: simulate-each-unit, name: Simulate each unit as a walk to the left and then to the right, role: optimal, time: "O(n) per unit poured; O(n h) per picture", space: "O(n)", time_class: "n", space_class: "n"}
+related: [trapping-rain-water, container-with-most-water]
+estimate_minutes: 60
