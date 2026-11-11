@@ -39,6 +39,9 @@ class ServerSettings:
     lock_deadline_s: float = LOCK_DEADLINE_S
     watcher: FolderWatcher = field(default_factory=WatchfilesWatcher)
     """Watches the folders the notifications cover."""
+    warm_up: bool = False
+    """Starts the default language's server ahead of time (docs/specs/web-ui.md#warm-up): `cstudy
+    serve` does, a test's app does not."""
 
 
 @dataclass(frozen=True, slots=True)

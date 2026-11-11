@@ -12,7 +12,10 @@ from coding_study.application.attempt_changes import WorkspaceSnapshot, workspac
 from coding_study.entrypoints.web.api_about import about_routes
 from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
-from coding_study.entrypoints.web.api_code_intelligence import code_intelligence_routes
+from coding_study.entrypoints.web.api_code_intelligence import (
+    code_intelligence_routes,
+    warm_up,
+)
 from coding_study.entrypoints.web.api_config import config_routes
 from coding_study.entrypoints.web.api_dev import dev_routes
 from coding_study.entrypoints.web.api_events import event_routes
@@ -86,8 +89,9 @@ def create_app(
 
 
 def _serving(state: ServerState) -> Callable[[Starlette], AbstractAsyncContextManager[None]]:
-    """Watches the workspace while the server runs; then stops the runs and jobs, which ends
-    the notification streams, the code-intelligence sessions, and the watch."""
+    """Watches the workspace while the server runs, and starts the default language's server
+    ahead of time when the settings say so; then stops the runs and jobs, which ends the
+    notification streams, the code-intelligence sessions, and the watch."""
 
     async def snapshot(previous: WorkspaceSnapshot | None) -> WorkspaceSnapshot:
         load_environment = state.settings.load_environment
@@ -97,7 +101,11 @@ def _serving(state: ServerState) -> Callable[[Starlette], AbstractAsyncContextMa
     async def lifespan(_app: Starlette) -> AsyncGenerator[None]:
         watch = WorkspaceWatch(state.notifications, state.settings.watcher, snapshot)
         watching = asyncio.create_task(watch.run())
+        warming = asyncio.create_task(warm_up(state)) if state.settings.warm_up else None
         yield
+        if warming is not None:
+            warming.cancel()
+            await asyncio.gather(warming, return_exceptions=True)
         await state.children.stop()
         await state.sessions.stop()
         state.notifications.stop()

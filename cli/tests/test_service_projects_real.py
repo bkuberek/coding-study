@@ -1,9 +1,11 @@
 """A service project from `cstudy start` to the last `cstudy submit`, in TypeScript, Python, Java
 and Go, on a real Docker engine, and its code intelligence from inside the sidecar. Run with
-`uv run pytest -q -m docker`. The waits are generous for a busy machine: what these tests assert
+`uv run pytest -q -m docker`; the Java cases are also marked `docker_jvm`, and the Go ones
+`docker_go`, which CI deselects. The waits are generous for a busy machine: what these tests assert
 is what happened, not how fast."""
 
 import json
+import shutil
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -20,6 +22,8 @@ from coding_study.adapters.subprocess_tool_probe import (
     SubprocessCommandRunner,
     SubprocessToolProbe,
 )
+from coding_study.application.ports import Unpacked
+from coding_study.domain.code_intelligence import JDTLS, JDTLS_DIRECTORY, LSP_DIRECTORY
 from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.sandbox import workspace_digest
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
@@ -353,7 +357,8 @@ def test_verify_require_ready_passes_on_the_reference_with_backing_services(
 # Code intelligence from inside the sidecar (docs/specs/service-projects.md#language-servers):
 # `cstudy start` installs the fixture, the real servers of `.cs/lsp/` run in a sidecar over
 # `docker exec`, and a session gets a type error and a hover from the project's own
-# dependencies; once it ends, nothing of cstudy's is left. Needs Node and pnpm for `.cs/lsp/`.
+# dependencies; once it ends, nothing of cstudy's is left. Needs Node and pnpm for `.cs/lsp/`,
+# and for Java the network the first time, for JDT LS, which then stays in pytest's cache.
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,6 +378,11 @@ class Opened:
     defined_at: dict[str, int]
     defined_in: str
     """Where in the project folder the definition's file is."""
+    defined_elsewhere: str | None = None
+    """The start of the definition's URI when it is outside the project folder: a `jdt://` URI of
+    a class in a jar, or a file of the install cache, which only the sidecar has."""
+    library_refusal: dict[str, str] | None = None
+    """What the library tab says of such a definition, which it cannot read on this machine."""
 
 
 TYPESCRIPT_FILE = Opened(
@@ -401,7 +411,44 @@ PYTHON_FILE = Opened(
     defined_in=".venv/lib/",
 )
 """`pytest` is installed in the project's `.venv` only, by `uv sync` in Docker."""
-FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE}
+JAVA_SOURCES = Path(__file__).parent / "fixtures/service_projects" / JAVA / "starter/src/main/java"
+JAVA_FILE = Opened(
+    path="src/main/java/rooms/Server.java",
+    language_id="java",
+    text=(JAVA_SOURCES / "rooms" / "Server.java")
+    .read_text()
+    .replace("int port = Integer.parseInt", "String port = Integer.parseInt"),
+    error="Type mismatch: cannot convert from int to String",
+    hover_at={"line": 12, "character": 26},
+    hovered="JsonMapper",
+    defined_at={"line": 12, "character": 26},
+    defined_in="",
+    defined_elsewhere="jdt://contents/jackson-databind-3.3.0.jar/",
+    library_refusal={
+        "reason": "not_a_file_uri",
+        "path": "jackson-databind-3.3.0.jar/tools.jackson.databind.json/JsonMapper.java",
+    },
+)
+"""`JsonMapper` comes from jackson-databind, which the install put in the install cache: JDT LS
+imports the Gradle build offline over it, read-only."""
+GO_TEST = Path(__file__).parent / "fixtures/service_projects" / GO / "starter/main_test.go"
+GO_FILE = Opened(
+    path="main_test.go",
+    language_id="go",
+    text=GO_TEST.read_text().replace(
+        "var body map[string]string", "var body map[string]string = 3"
+    ),
+    error="cannot use 3",
+    hover_at={"line": 25, "character": 16},
+    hovered="Diff",
+    defined_at={"line": 25, "character": 16},
+    defined_in="",
+    defined_elsewhere="file:///cache/go/mod/github.com/google/go-cmp@v0.7.0/cmp/",
+    library_refusal={"reason": "missing"},
+)
+"""`cmp.Diff` comes from go-cmp, which the install put in the install cache, where the sidecar's
+gopls reads it and this machine has no file."""
+FILES = {TYPESCRIPT: TYPESCRIPT_FILE, PYTHON: PYTHON_FILE, JAVA: JAVA_FILE, GO: GO_FILE}
 
 
 def patient_language_servers(root: Path) -> LspDirectory:
@@ -410,20 +457,58 @@ def patient_language_servers(root: Path) -> LspDirectory:
     return LspDirectory(root, SubprocessToolProbe(GENEROUS_WAIT_S), SubprocessCommandRunner())
 
 
-@pytest.fixture(scope="module", params=[TYPESCRIPT, PYTHON], ids=["typescript", "python"])
+def jdtls_in_cache(pytestconfig: pytest.Config) -> Path:
+    """JDT LS unpacked in pytest's cache, downloaded the first time as `cstudy doctor --fix`
+    downloads it."""
+    assert pytestconfig.cache is not None
+    cache = pytestconfig.cache.mkdir("jdtls-workspace")
+    directory = LspDirectory(cache, SubprocessToolProbe(), SubprocessCommandRunner())
+    if not isinstance(directory.probe(JDTLS), Unpacked):
+        assert JDTLS.archive is not None
+        result = directory.download(JDTLS.archive)
+        if result.exit_code != 0:
+            pytest.skip(f"JDT LS could not be downloaded: {result.output}")
+    return cache / LSP_DIRECTORY / JDTLS_DIRECTORY
+
+
+def install_servers(project: FixtureProject, pytestconfig: pytest.Config) -> None:
+    """The workspace's `.cs/lsp/`, as `cstudy doctor --fix` fills it: JDT LS is copied, not
+    linked, since the sidecar mounts `.cs/lsp/` and a link would point outside it. Go's gopls
+    needs none: `cstudy start` built it into the install cache, code intelligence being on."""
+    if project.directory == GO:
+        return
+    if project.directory == JAVA:
+        unpacked = jdtls_in_cache(pytestconfig)
+        shutil.copytree(unpacked, project.root / LSP_DIRECTORY / JDTLS_DIRECTORY)
+        return
+    result = patient_language_servers(project.root).install()
+    if result is None or result.exit_code != 0:
+        pytest.skip(f"the language servers are not installed: {result and result.output}")
+
+
+@pytest.fixture(
+    scope="module",
+    params=[
+        TYPESCRIPT,
+        PYTHON,
+        pytest.param(JAVA, marks=pytest.mark.docker_jvm),
+        pytest.param(GO, marks=pytest.mark.docker_go),
+    ],
+    ids=["typescript", "python", "java", "go"],
+)
 def sidecar_project(
-    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+    request: pytest.FixtureRequest,
+    tmp_path_factory: pytest.TempPathFactory,
+    pytestconfig: pytest.Config,
 ) -> Generator[FixtureProject]:
     found = fixture_project(request.param, tmp_path_factory.mktemp("sidecar"))
     try:
-        started = found.cstudy("start", found.slug, "--yes", "--no-open")
-        assert started.returncode == 0, f"{started.stdout}\n{started.stderr}"
-        result = patient_language_servers(found.root).install()
-        if result is None or result.exit_code != 0:
-            pytest.skip(f"the language servers are not installed: {result and result.output}")
         FsPreferencesStore(found.root).write(
             preferences_document(Preferences(code_intelligence=True))
         )
+        started = found.cstudy("start", found.slug, "--yes", "--no-open")
+        assert started.returncode == 0, f"{started.stdout}\n{started.stderr}"
+        install_servers(found, pytestconfig)
         yield found
     finally:
         found.remove_all_it_left()
@@ -474,7 +559,7 @@ def sidecar_session(sidecar_project: FixtureProject) -> Played:
             "text": opened.text,
         }
         websocket.send_json(notification("textDocument/didOpen", {"textDocument": text}))
-        published = until(websocket, lambda message: _reports_on(message, document))
+        published = until(websocket, lambda message: _reports_on(message, document, opened.error))
         position = {"textDocument": {"uri": document}, "position": opened.hover_at}
         websocket.send_json(request(2, "textDocument/hover", position))
         hover = until(websocket, lambda message: message.get("id") == 2)
@@ -492,12 +577,14 @@ def _first_target(answer: dict[str, Any]) -> str:
     return location.get("targetUri") or location["uri"]
 
 
-def _reports_on(message: dict[str, Any], document: str) -> bool:
+def _reports_on(message: dict[str, Any], document: str, error: str) -> bool:
+    """A publication of the document's diagnostics that holds the error: JDT LS first publishes
+    what it finds before the Gradle import, without it."""
     params = message.get("params") or {}
     return (
         message.get("method") == "textDocument/publishDiagnostics"
         and params.get("uri") == document
-        and bool(params.get("diagnostics"))
+        and any(error in found["message"] for found in params.get("diagnostics") or [])
     )
 
 
@@ -519,13 +606,23 @@ def test_the_server_in_the_sidecar_answers_a_hover_from_the_projects_dependencie
 def test_a_definition_leads_into_the_projects_installed_dependencies(
     sidecar_project, sidecar_session
 ):
-    within = (sidecar_project.folder / FILES[sidecar_project.directory].defined_in).as_uri()
+    opened = FILES[sidecar_project.directory]
+    within = opened.defined_elsewhere or (sidecar_project.folder / opened.defined_in).as_uri()
 
     assert sidecar_session.definition.startswith(within)
 
 
-def test_the_library_tab_reads_that_file_at_the_same_path_on_this_machine(sidecar_session):
-    assert sidecar_session.library["result"]["text"]
+def test_the_library_tab_reads_that_file_at_the_same_path_on_this_machine(
+    sidecar_project, sidecar_session
+):
+    """A class in a jar is no file, and a file of the install cache is not on this machine: the
+    tab refuses them, saying why."""
+    refusal = FILES[sidecar_project.directory].library_refusal
+    if refusal is not None:
+        data = sidecar_session.library["error"]["data"]
+        assert {name: data[name] for name in refusal} == refusal
+    else:
+        assert sidecar_session.library["result"]["text"]
 
 
 def test_no_container_is_left_once_the_session_ended(sidecar_project, sidecar_session):

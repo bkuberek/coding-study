@@ -12,6 +12,7 @@ server; each refusal is an HTTP response in place of the upgrade. The page then 
 import asyncio
 import json
 import os
+import sys
 from typing import cast
 
 from starlette.requests import Request
@@ -24,6 +25,7 @@ from coding_study.application.code_intelligence import (
     SessionTarget,
     session_server_states,
     session_target,
+    warm_up_target,
 )
 from coding_study.application.preferences import read_preferences
 from coding_study.domain.errors import UsageError
@@ -63,6 +65,21 @@ async def session(websocket: WebSocket) -> None:
         watched = None if target.sidecar is not None else os.getpid()
         broker = LanguageBroker(target, server.settings.version, watched)
         await server.sessions.serve(websocket, target, broker)
+
+
+async def warm_up(server: ServerState) -> None:
+    """Starts the default language's server ahead of time while code intelligence is on and the
+    server is installed (docs/specs/web-ui.md#warm-up). A server that does not start is no failure:
+    the first session starts one, as it would have."""
+    try:
+        preferences = await server.worker.run(read_preferences, server.settings.preferences)
+        environment = await server.worker.run(server.settings.load_environment)
+        target = await server.worker.run(warm_up_target, environment, preferences)
+        if target is not None:
+            broker = LanguageBroker(target, server.settings.version, os.getpid())
+            await server.sessions.warm(target, broker)
+    except Exception as error:  # the page works without it; the reason is reported
+        print(f"cstudy serve: no language server warmed up: {error}", file=sys.stderr)
 
 
 def code_intelligence_routes() -> list[BaseRoute]:

@@ -105,6 +105,8 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
 
 If a server is not installed, or starts slowly, the editor works as it does without code intelligence, and with Autocomplete on it falls back to the editor's own basic completion until the server is ready.
 
+While code intelligence is on, `cstudy serve` starts the server of your default language (Settings, **Default language**) as it starts, so the first practice file you open in that language has its server ready, which matters most for Java and Kotlin. It starts no other language's, and it stops after about ten minutes if no editor takes it over.
+
 ### What you see
 
 - **Errors and warnings.** They are underlined about half a second after you stop typing in Python and Go and about a second in TypeScript (Rust's compiler errors after each save), with a marker in the gutter and counts in the status bar. Unused code fades, deprecated code is struck through, and hints get no underline. The errors of your last run stay, marked `last run`, and a run error that the server repeats shows once.
@@ -265,7 +267,7 @@ A [service project](../specs/service-projects.md) runs your app in a Docker sand
 | Run tests and Submit | `cstudy test` and `cstudy submit`, with progress as they go. The results panel's `stack` line follows the stack: `starting Docker`, `pulling images`, `installing dependencies`, `starting`, then `ready after 2.4 s, not counted`. The startup never counts toward a time limit or a result. `commands.test` is one test row, and the visible cases follow it. **Run options** offers only the level, for Submit |
 | Cancel | Stops the run, as for any run. `cstudy` takes the stack down before it exits, so the `stack` line ends on `down` |
 | The dev stack | The panel above the results starts `cstudy dev` only when you choose **Start dev stack**, since a stack holds memory. It shows the stack's stage, your app's address on this computer as a link (`http://127.0.0.1:<port>`), a scenario picker per mock server that switches it while the stack runs, and your app's last 200 lines. **Stop** takes the stack down and keeps its data; leaving the Attempt view or the page stops it too. If a terminal already runs `cstudy dev` for the project, the panel says so and starts no second one |
-| Code intelligence | For TypeScript and Python, the language server runs in a sandboxed container of its own, with no network, and reads the packages the install put in the project. While Docker does not answer, or the container's image is missing, the status bar says so with **Restart**, and the editor works without it |
+| Code intelligence | For TypeScript, Python, Java and Go, the language server runs in a sandboxed container of its own, with no network, and reads the packages the install put in the project. Java's runs on the project's own image, so it needs no JDK 25 on your computer, and starts afresh with each session: its first errors take about 20 seconds. Go's gopls is built into the project's install cache by the install, about 40 MB, once code intelligence is on: turn it on, then run the tests once. Kotlin service projects have none yet ([where each server runs](../specs/web-ui.md#where-each-server-runs)). While Docker does not answer, or the container's image is missing, the status bar says so with **Restart**, and the editor works without it |
 
 The flags of `cstudy dev` that serve your own IDE, `--no-run`, `--debug`, `--reset-data` and `--exec`, stay in the terminal ([Your own IDE](../specs/service-projects.md#your-own-ide)).
 

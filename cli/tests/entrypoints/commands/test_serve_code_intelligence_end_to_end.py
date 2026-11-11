@@ -21,6 +21,7 @@ import pytest
 from wsproto.extensions import PerMessageDeflate
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.toml_config import CONFIG_FILE
 from coding_study.domain.preferences import Preferences, preferences_document
 from tests.language_server_scripts import (
     ScriptedServer,
@@ -66,15 +67,26 @@ class Lab:
     """The server's environment: a `node` that is the scripted fake first on `PATH`."""
 
 
-@pytest.fixture
-def lab(practice_workspace: Path, tmp_path: Path) -> Lab:
+def python_lab(practice_workspace: Path, tmp_path: Path, default_language: str) -> Lab:
+    """A Python attempt in progress with a scripted basedpyright, and `default_language` in the
+    config, whose server `cstudy serve` starts ahead of time when it is usable."""
     workspace = workspace_like(practice_workspace, tmp_path / "workspace")
+    config = workspace.parent / "config" / CONFIG_FILE
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(f'default_lang = "{default_language}"\n', encoding="utf-8")
     cstudy(workspace, "start", "two-sum", "--lang", "python", "--no-open")
     install_fake_basedpyright(workspace)
     FsPreferencesStore(workspace).write(preferences_document(Preferences(code_intelligence=True)))
     script = ScriptedServer(tmp_path / "server.json")
     script.play()
     return Lab(workspace, script, {"PATH": fake_node(tmp_path / "bin", script)})
+
+
+@pytest.fixture
+def lab(practice_workspace: Path, tmp_path: Path) -> Lab:
+    """Kotlin as the default language, whose server is not usable without its license: nothing
+    is started ahead of time, so each server here is a session's."""
+    return python_lab(practice_workspace, tmp_path, "kotlin")
 
 
 @pytest.fixture
@@ -110,6 +122,30 @@ def hover(lab: Lab) -> dict[str, object]:
 
 def started_server(lab: Lab) -> int:
     return eventually(lab.script.pids, bool)[0]
+
+
+# the warm-up (docs/specs/web-ui.md#warm-up)
+
+
+def test_cstudy_serve_starts_the_default_languages_server_before_any_page(
+    practice_workspace, tmp_path
+):
+    warm = python_lab(practice_workspace, tmp_path, "python")
+    with running_server(warm.workspace, variables=warm.variables):
+        assert len(eventually(warm.script.pids, bool)) == 1
+
+
+def test_the_first_session_of_its_language_takes_the_warm_server_over(practice_workspace, tmp_path):
+    warm = python_lab(practice_workspace, tmp_path, "python")
+    warm.script.play(PING)
+    with running_server(warm.workspace, variables=warm.variables) as server:
+        page = opened_page(server)
+        (pid,) = eventually(warm.script.pids, bool)
+        with connect(server, page) as websocket:
+            authorise(page, websocket)
+            websocket.send_text(json.dumps(hover(warm)))
+            assert json.loads(str(websocket.receive())) == answer(1, "pong")
+        assert warm.script.pids() == [pid]
 
 
 # the wire

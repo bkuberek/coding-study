@@ -21,9 +21,18 @@ from coding_study.domain.layout import (
     RUST_PROJECT,
     TYPESCRIPT_PROJECT,
 )
-from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
+from coding_study.domain.sandbox import (
+    CACHE_DIRECTORY as INSTALL_CACHE,
+)
+from coding_study.domain.sandbox import (
+    JVM_SIDECAR_MEMORY,
+    JVM_SIDECAR_PIDS,
+    NODE_IMAGE,
+    SidecarToolchain,
+)
 from coding_study.domain.server_builds import Build, License, Releases
-from coding_study.domain.service_project import service_of
+from coding_study.domain.service_project import ServiceProject, service_of
 
 LSP_DIRECTORY = ".cs/lsp"
 """The pnpm project that cstudy owns in the workspace, ignored by git, with the servers that are
@@ -39,6 +48,9 @@ NO_ADDONS = "--no-addons"
 its first load and the load waits, for seconds, or for minutes on a busy machine."""
 IDLE_SECONDS = 60
 """How long the page keeps a session whose files are all closed."""
+WARM_IDLE_S = 600
+"""How long a server that `cstudy serve` started ahead of time waits for an editor to take it over
+before it stops: about ten minutes (docs/specs/web-ui.md#warm-up)."""
 
 _VERSION = re.compile(r"\d+(?:\.\d+)+")
 
@@ -752,22 +764,254 @@ def server_for(language: Language) -> LanguageServer | None:
     return next((server for server in LANGUAGE_SERVERS if server.language is language), None)
 
 
-SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER)
-"""The servers that run in a service project's sidecar: Node programs, so the sidecar's Node image
-runs them for both languages (docs/specs/service-projects.md#language-servers)."""
+SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS, GOPLS)
+"""The servers that run in a service project's sidecar (docs/specs/service-projects.md#language-
+servers): the Node programs on the sidecar's Node image, for both of their languages; JDT LS on the
+project's own image, whose JDK and Gradle build the project; and gopls on the project's own image,
+whose Go loads the project, built into the project's install cache by its install."""
+SIDECAR_PLATFORM = "linux"
+"""What a sidecar runs on, whatever this machine is: JDT LS takes the archive's `config_linux`."""
+GO_BUILD_IN_SIDECAR = "go-build"
+"""Go's build cache in a sidecar's data folder, which the install cache, read-only there, cannot
+hold."""
+SIDECAR_PIDS_FOR_GO = 256
+"""gopls and the `go list` processes it starts took 93 processes, threads included."""
+GO_VARIABLES_LEFT_OUT = frozenset({"GOCACHE", "GOTMPDIR"})
+"""The project's Go variables that name places to write, which the read-only install cache is
+not in a sidecar."""
+GRADLE_HOME_IN_SIDECAR = "gradle"
+"""Gradle's user home in a sidecar's data folder: its daemon, its scripts' compiled classes, and
+what it would otherwise lock in the install cache."""
+PROJECT_CACHE_IN_SIDECAR = "project-cache"
+"""Gradle's project cache in a sidecar's data folder, in place of the project's own `.gradle/`,
+whose locks the app's builds take: a lock cannot be handed over across containers."""
+
+
+GRADLE_USER_HOME = "GRADLE_USER_HOME"
+GRADLE_READ_ONLY_CACHE = "GRADLE_RO_DEP_CACHE"
+
+
+def runs_on_a_jdk(server: LanguageServer) -> bool:
+    """Whether `server` needs a JDK, to run on or to import a Gradle build with."""
+    return server.jdks is not None
+
+
+def is_built_by_go(server: LanguageServer) -> bool:
+    return server.go_install is not None
+
+
+def sidecar_image(server: LanguageServer, project_image: str) -> str:
+    """Where `server` runs in a service project's sidecar: a Node server on the pinned Node image,
+    whatever the project's; a server that needs a JDK, or Go, on the project's own image, which
+    holds the toolchain the project builds with, and which `cstudy start` pulled."""
+    if runs_on_a_jdk(server) or is_built_by_go(server):
+        return project_image
+    return NODE_IMAGE
+
+
+@dataclass(frozen=True, slots=True)
+class CacheInstall:
+    """A server that a service project's install builds into the project's install cache, online,
+    while `code_intelligence` is on: the one `cstudy doctor --fix` builds into `.cs/lsp/` is built
+    for this machine, and a sidecar runs Linux. Its modules and its build go to a scratch folder of
+    the cache that `go clean` empties, so only the binary stays."""
+
+    name: str
+    version: str
+    command: tuple[str, ...]
+    environment: Mapping[str, str]
+    executable: str
+    """Its absolute path in the sidecar, which mounts the install cache at `INSTALL_CACHE`."""
+
+
+def cache_install(server: LanguageServer) -> CacheInstall | None:
+    """For a server that Go builds: the newest version its table pins, which builds with the Go of
+    every service project's image (1.27). None for any other server."""
+    install = server.go_install
+    if install is None:
+        return None
+    version = install.version_for(None)
+    directory = f"{INSTALL_CACHE}/{server.name}/{version}"
+    scratch = f"{INSTALL_CACHE}/{server.name}/scratch"
+    script = 'mkdir -p "$GOTMPDIR" && go install "$1" && go clean -cache -modcache'
+    return CacheInstall(
+        name=server.name,
+        version=version,
+        command=("sh", "-c", script, "sh", f"{install.module}@v{version}"),
+        environment={
+            "GOBIN": directory,
+            "GOMODCACHE": f"{scratch}/mod",
+            "GOCACHE": f"{scratch}/build",
+            "GOPATH": f"{scratch}/path",
+            "GOTMPDIR": f"{scratch}/tmp",
+            "CGO_ENABLED": "0",
+        },
+        executable=f"{directory}/{server.name}",
+    )
+
+
+def cache_install_of(meta: ProblemMeta) -> CacheInstall | None:
+    """The server a service project's install builds into its cache: its language's, when that
+    server is one Go builds. None for every other problem."""
+    if service_of(meta) is None or not meta.languages:
+        return None
+    server = server_for(meta.languages[0])
+    return None if server is None else cache_install(server)
+
+
+def _from_the_install_cache(server: LanguageServer, _launch: Launch) -> tuple[str, ...]:
+    install = cache_install(server)
+    if install is None:
+        raise ValueError(f"{server.name} is not built into an install cache")
+    return (install.executable,)
+
+
+def sidecar_toolchain(
+    server: LanguageServer, service: ServiceProject, data: str, cache_volume: str | None
+) -> SidecarToolchain | None:
+    """What `server` needs of the project's toolchain in its sidecar, whose data folder is the
+    absolute `data`: for JDT LS, the image's Gradle (which it finds through the image's
+    `GRADLE_HOME`) with its user home and project cache in `data`, and the dependencies of the
+    install cache as Gradle's read-only cache, which Gradle neither locks nor writes; for gopls,
+    the project's own Go variables, with the build cache and gopls's file cache in `data`, since
+    the install cache is read-only there. None for a Node server."""
+    if is_built_by_go(server):
+        return _go_toolchain(service, data, cache_volume)
+    if not runs_on_a_jdk(server):
+        return None
+    environment = {"GRADLE_USER_HOME": f"{data}/{GRADLE_HOME_IN_SIDECAR}"}
+    installed = service.env.get(GRADLE_USER_HOME)
+    if cache_volume is not None and installed is not None:
+        environment[GRADLE_READ_ONLY_CACHE] = f"{installed}/caches"
+    properties = f"org.gradle.projectcachedir={data}/{PROJECT_CACHE_IN_SIDECAR}\n"
+    return SidecarToolchain(
+        cache_volume=cache_volume,
+        environment=environment,
+        files={f"{GRADLE_HOME_IN_SIDECAR}/gradle.properties": properties},
+        writable_project=True,
+        memory=JVM_SIDECAR_MEMORY,
+        pids=JVM_SIDECAR_PIDS,
+    )
+
+
+def _go_toolchain(service: ServiceProject, data: str, cache_volume: str | None) -> SidecarToolchain:
+    kept = {
+        name: value
+        for name, value in service.env.items()
+        if (name.startswith("GO") or name == "CGO_ENABLED") and name not in GO_VARIABLES_LEFT_OUT
+    }
+    environment = {
+        **kept,
+        "GOCACHE": f"{data}/{GO_BUILD_IN_SIDECAR}",
+        "XDG_CACHE_HOME": f"{data}/{CACHE_DIRECTORY}",
+    }
+    return SidecarToolchain(cache_volume, environment, pids=SIDECAR_PIDS_FOR_GO)
 
 
 def sidecar_server(server: LanguageServer, folder: str) -> LanguageServer:
     """`server` as it runs in a service project's sidecar, on the dependencies installed in the
     absolute `folder`. TypeScript's compiler is the folder's own, so the workspace's `typescript/`
     is not needed; basedpyright is the catalog's, since it reads the folder's `[tool.pyright]`,
-    whose `venv` it finds without asking Python. Raises ValueError for a server of no sidecar."""
+    whose `venv` it finds without asking Python; JDT LS runs on the image's JDK, so the JDK this
+    machine selects does not matter; gopls is the one the install built into the project's install
+    cache. Raises ValueError for a server of no sidecar."""
     if server not in SIDECAR_SERVERS:
         raise ValueError(f"{server.name} runs in no sidecar")
+    if runs_on_a_jdk(server):
+        return replace(server, jdks=None)
+    if is_built_by_go(server):
+        return replace(server, launcher=_from_the_install_cache)
     if server is not TYPESCRIPT_LANGUAGE_SERVER:
         return server
     options = partial(_compiler_options, folder)
     return replace(server, initialization_options=options, requirement=None)
+
+
+class RouteKind(StrEnum):
+    """The kinds of problem that the route table tells apart (docs/specs/web-ui.md#where-each-
+    server-runs): each `ProblemKind`, a debugging problem, and a project that is a service
+    project."""
+
+    FUNCTION = "function"
+    PROGRESSIVE = "progressive"
+    DESIGN = "design"
+    CONCURRENT = "concurrent"
+    DEBUGGING = "debugging"
+    PROJECT = "project"
+    SERVICE_PROJECT = "service_project"
+
+
+_ROUTE_KINDS: Mapping[ProblemKind, RouteKind] = {
+    ProblemKind.FUNCTION: RouteKind.FUNCTION,
+    ProblemKind.PROGRESSIVE: RouteKind.PROGRESSIVE,
+    ProblemKind.DESIGN: RouteKind.DESIGN,
+    ProblemKind.CONCURRENT: RouteKind.CONCURRENT,
+    ProblemKind.PROJECT: RouteKind.PROJECT,
+}
+"""A new `ProblemKind` has no route until it is named here."""
+
+
+def route_kind(meta: ProblemMeta) -> RouteKind | None:
+    """A service project first, then a problem of the debugging track, then the problem's kind;
+    None for a kind the table does not know."""
+    if service_of(meta) is not None:
+        return RouteKind.SERVICE_PROJECT
+    if meta.track is Track.DEBUGGING:
+        return RouteKind.DEBUGGING
+    return _ROUTE_KINDS.get(meta.kind)
+
+
+class Placement(StrEnum):
+    NATIVE = "native"
+    """The server runs on this machine, from `.cs/lsp/` or `PATH`."""
+    SIDECAR = "sidecar"
+    """The server runs in a container of its own, through `docker exec`: sandboxed code writes the
+    folder, and a server on this machine would run what it names."""
+    PENDING = "pending"
+    """No server yet; the reason names the work it waits for."""
+    NOT_APPLICABLE = "not_applicable"
+    """The catalog has no problem of this kind in this language."""
+
+
+@dataclass(frozen=True, slots=True)
+class Route:
+    placement: Placement
+    reason: str = ""
+    """Why there is no server, for a route that runs none."""
+
+    @property
+    def runs(self) -> bool:
+        return self.placement in (Placement.NATIVE, Placement.SIDECAR)
+
+
+NATIVE = Route(Placement.NATIVE)
+IN_SIDECAR = Route(Placement.SIDECAR)
+SERVICE_PROJECT_ROUTES: Mapping[Language, Route] = {
+    Language.PYTHON: IN_SIDECAR,
+    Language.TYPESCRIPT: IN_SIDECAR,
+    Language.JAVA: IN_SIDECAR,
+    Language.KOTLIN: Route(
+        Placement.PENDING,
+        "the Kotlin LSP is a build per machine with its own runtime and launcher, which the "
+        "project's Linux image cannot run; its sidecar waits for a spike that accepts its license",
+    ),
+    Language.GO: IN_SIDECAR,
+    Language.RUST: Route(Placement.NOT_APPLICABLE, "the catalog has no Rust service project"),
+}
+"""Where a service project's server runs, by language: a key for every language, so a new one
+says where it stands. Every other kind runs its language's server on this machine."""
+
+
+def route_for(kind: RouteKind, language: Language) -> Route | None:
+    """None where nothing says how the combination gets code intelligence: a gap."""
+    if kind is RouteKind.SERVICE_PROJECT:
+        return SERVICE_PROJECT_ROUTES.get(language)
+    return NATIVE if server_for(language) is not None else None
+
+
+def route_of(meta: ProblemMeta, language: Language) -> Route | None:
+    kind = route_kind(meta)
+    return None if kind is None else route_for(kind, language)
 
 
 class NoCodeIntelligence(StrEnum):
@@ -782,5 +1026,5 @@ def no_code_intelligence(meta: ProblemMeta, language: Language | None) -> NoCode
     """A service project in a language whose server runs in no sidecar yet has none."""
     if service_of(meta) is None:
         return None
-    in_sidecar = any(server.language is language for server in SIDECAR_SERVERS)
-    return None if in_sidecar else NoCodeIntelligence.SERVICE_PROJECT
+    route = None if language is None else route_of(meta, language)
+    return None if route is not None and route.runs else NoCodeIntelligence.SERVICE_PROJECT

@@ -34,6 +34,7 @@ from coding_study.adapters.locations import (
     find_workspace,
     workspace_directory,
 )
+from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.adapters.problem_overlay import OverlayProblemFiles, OverlayProblemRepository
 from coding_study.adapters.runner_runtime import RunnerRuntime
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
@@ -140,6 +141,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         sandbox=DockerSandbox(runs_directory=workspace / RUNS_DIRECTORY),
         stack_clients=open_stack_clients,
         problem_sets=YamlProblemSets(WorkspaceFs(workspace)),
+        preferences=FsPreferencesStore(workspace),
     )
 
 

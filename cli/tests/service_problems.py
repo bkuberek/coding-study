@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -69,6 +70,87 @@ def meta_document(**project: object) -> dict[str, object]:
             **project,
         },
     }
+
+
+GRADLE_IMAGE = (
+    "gradle:9.8.2-jdk25-alpine"
+    "@sha256:20d4d9547874206648a7a72991bf3af6d8bc1c8bffc7f32051f682b21f86d027"
+)
+
+
+def java_meta_document() -> dict[str, object]:
+    """A Java service project as P12's template writes one: Gradle in the image, its user home in
+    the install cache."""
+    return {
+        **meta_document(
+            image=GRADLE_IMAGE,
+            app={
+                "port_env": "PORT",
+                "port": 8000,
+                "health": "/health",
+                "ready_timeout_s": 120,
+                "install_cache": True,
+            },
+            env={"PORT": "8000", "GRADLE_USER_HOME": "/cache/gradle"},
+            install_env={"GRADLE_USER_HOME": "/cache/gradle"},
+        ),
+        "languages": ["java"],
+    }
+
+
+GO_IMAGE = "golang:1.27.3@sha256:e519d3b0a5b285e5aa53ab9eef02bc6bbb9cb04608389b743a136a9ce75f0d1e"
+GO_ENV = {
+    "PORT": "8000",
+    "GOPROXY": "off",
+    "GOFLAGS": "-mod=readonly",
+    "GOMODCACHE": "/cache/go/mod",
+    "GOCACHE": "/cache/go/build",
+    "GOTMPDIR": "/cache",
+    "GOWORK": "off",
+    "CGO_ENABLED": "0",
+}
+GO_INSTALL_ENV = {
+    "GOMODCACHE": "/cache/go/mod",
+    "GOCACHE": "/cache/go/build",
+    "GOFLAGS": "-mod=readonly",
+    "GOWORK": "off",
+}
+
+
+def go_meta_document() -> dict[str, object]:
+    """A Go service project as P13's template writes one: its modules in the install cache."""
+    return {
+        **meta_document(
+            image=GO_IMAGE,
+            commands={
+                "install": ["go", "mod", "download"],
+                "run": ["sh", "scripts/run.sh"],
+                "test": ["go", "test", "-count=1", "./..."],
+            },
+            app={
+                "port_env": "PORT",
+                "port": 8000,
+                "health": "/health",
+                "ready_timeout_s": 180,
+                "install_cache": True,
+            },
+            env=GO_ENV,
+            install_env=GO_INSTALL_ENV,
+        ),
+        "languages": ["go"],
+    }
+
+
+def write_go_problem(root: Path) -> None:
+    """`go_meta_document`'s problem, whose starter holds its lock, `go.sum`."""
+    document = go_meta_document()
+    project = cast(dict[str, object], document["project"])
+    project["requires"] = {
+        "lock": "go.sum",
+        "sizes": {"install_mb": 120, "images_mb": {"app": 316}, "memory_mb": 450},
+    }
+    write_problem(root, document)
+    (root / "problems" / f"0901-{SLUG}" / "starter" / "go.sum").write_text("")
 
 
 def write_mock(root: Path, config: dict[str, object] | None = None) -> None:

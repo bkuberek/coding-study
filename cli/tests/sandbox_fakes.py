@@ -1,7 +1,7 @@
 """A `SandboxEngine` that records what the application asks of it, and a Docker runner that answers
 as scripted, so nothing but the slow tests reaches a real engine."""
 
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
@@ -69,6 +69,8 @@ class FakeSandbox:
     sidecar_error: SandboxError | None = None
     cache_present: bool = True
     cache_bytes: int | None = None
+    exec_environments: list[dict[str, str]] = field(default_factory=list[dict[str, str]])
+    """What each `sidecar_command` was given to run with."""
 
     def state(self) -> EngineState:
         self.calls.append(("state", None))
@@ -226,9 +228,12 @@ class FakeSandbox:
         finally:
             self.calls.append(("sidecar_down", plan.identity.name))
 
-    def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
+    def sidecar_command(
+        self, plan: SidecarPlan, command: Sequence[str], environment: Mapping[str, str]
+    ) -> tuple[str, ...]:
         """The command itself, which then runs on this machine, as a test's fake server does."""
         self.calls.append(("sidecar_command", tuple(command)))
+        self.exec_environments.append(dict(environment))
         return tuple(command)
 
     def called(self, name: str) -> list[object]:

@@ -30,6 +30,7 @@ from coding_study.application.ports import (
     VersionFailed,
     VersionPrinted,
 )
+from coding_study.application.service_lifecycle import server_in_install_cache
 from coding_study.application.service_stacks import RUN_ID_BYTES, workspace_id
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.code_intelligence import (
@@ -39,9 +40,12 @@ from coding_study.domain.code_intelligence import (
     SIDECAR_SERVERS,
     LanguageServer,
     License,
-    no_code_intelligence,
+    cache_install,
+    route_of,
     server_for,
+    sidecar_image,
     sidecar_server,
+    sidecar_toolchain,
 )
 from coding_study.domain.docker_engine import EngineStatus
 from coding_study.domain.errors import LanguageServerNotInstalledError, UsageError
@@ -51,13 +55,16 @@ from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.sandbox import (
     NODE_IMAGE,
+    SIDECAR_DATA,
     SharedFolder,
     SidecarPlan,
     StackIdentity,
     StackKind,
+    cache_volume_of,
+    install_stack_name,
     run_stack_name,
 )
-from coding_study.domain.service_project import service_of
+from coding_study.domain.service_project import ServiceProject, service_of
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
@@ -74,6 +81,13 @@ NO_DOCKER: Mapping[EngineStatus, str] = {
 NO_SIDECAR_IMAGE = f"needs the node image: docker pull {NODE_IMAGE}"
 """A TypeScript project's `cstudy start` pulled the image, a Python project's did not. The status
 bar shows what comes before the colon, and its tooltip the rest."""
+NOT_IN_INSTALL_CACHE = "not in the project's install cache"
+INSTALL_CACHE_FIX = "cstudy test"
+"""A run installs again while the install cache lacks the server, now that code intelligence is
+on, and builds it there."""
+NO_PROJECT_IMAGE = "needs the project's image: run cstudy test or cstudy dev, which pull it"
+"""A Java project's server runs on the project's image, which a run pulls. Its name and digest
+would not fit in a close reason, whose 123 bytes would cut the digest."""
 
 
 class ServerStatus(StrEnum):
@@ -126,23 +140,45 @@ def session_server_states(
 ) -> tuple[LanguageServerState, ...]:
     """The states as a session of the attempt judges its servers, which the page reads before it
     connects: a service project's TypeScript runs the project's own compiler in its sidecar, so it
-    needs nothing of the workspace's `typescript/`. Without an attempt, or for one that is no
-    service project's, these are `language_server_states`."""
+    needs nothing of the workspace's `typescript/`, and its gopls is the one its install built into
+    its install cache. Without an attempt, or for one that is no service project's, these are
+    `language_server_states`."""
     locator, jdk = environment.language_servers, environment.jdk
-    folder = _service_folder(environment, attempt_id)
-    if folder is None:
+    slug = _service_slug(environment, attempt_id)
+    if slug is None:
         return language_server_states(locator, jdk)
-    return tuple(_state(language, locator, jdk, folder) for language in Language)
+    folder = str(environment.root / project_folder(slug))
+    return tuple(
+        _cache_state_of(environment, slug, language) or _state(language, locator, jdk, folder)
+        for language in Language
+    )
 
 
-def _service_folder(environment: Environment, attempt_id: int | None) -> str | None:
-    """The absolute project folder of a service project's attempt; None for any other."""
+def _service_slug(environment: Environment, attempt_id: int | None) -> str | None:
+    """The slug of a service project's attempt; None for any other."""
     attempt = None if attempt_id is None else environment.progress.attempt(attempt_id)
     if attempt is None or attempt.language is None:
         return None
     if service_of(environment.problems.load(attempt.slug).meta) is None:
         return None
-    return str(environment.root / project_folder(attempt.slug))
+    return attempt.slug
+
+
+def _cache_state_of(
+    environment: Environment, slug: str, language: Language
+) -> LanguageServerState | None:
+    """For a server that a service project's install builds into its install cache, whether the
+    last install built the version cstudy pins; None for any other server."""
+    server = server_for(language)
+    install = None if server is None else cache_install(server)
+    if server is None or install is None:
+        return None
+    built = server_in_install_cache(environment, slug, install.name)
+    if built == install.version:
+        return _state_of(server, built, f"{server.name} {built}", None)
+    row = f"{server.name} {install.version} is not in the project's install cache"
+    problem = _Problem(row, NOT_IN_INSTALL_CACHE, fix=INSTALL_CACHE_FIX)
+    return _state_of(server, install.version, f"{problem.reason}: run {problem.fix}", problem)
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,11 +245,14 @@ def session_target(
     meta = environment.problems.load(attempt.slug).meta
     server = _server_of(meta, language)
     root = _root(meta, server)
-    sidecar = _sidecar(environment, meta.slug, root) if service_of(meta) is not None else None
+    service = service_of(meta)
+    sidecar = None if service is None else _sidecar(environment, meta.slug, root, server, service)
     if sidecar is not None:
         server = sidecar_server(server, sidecar.project.path)
     jdk = environment.jdk
-    state = _located(server, environment.language_servers, jdk)
+    state = None if sidecar is None else _cache_state_of(environment, meta.slug, language)
+    if state is None:
+        state = _located(server, environment.language_servers, jdk)
     if state.problem is not None:
         raise LanguageServerNotInstalledError(state.problem, state.fix or FIX_COMMAND)
     java_home = jdk.selected_home() if server.jdks is not None else None
@@ -221,14 +260,35 @@ def session_target(
     return SessionTarget(server, environment.root, root, content_root, java_home, sidecar)
 
 
-def sidecar_unavailable(engine: SidecarEngine) -> str | None:
+def warm_up_target(environment: Environment, preferences: Preferences) -> SessionTarget | None:
+    """The server `cstudy serve` may start ahead of time (docs/specs/web-ui.md#warm-up): the one of
+    the default language, rooted in its practice project, where a single-file attempt of that
+    language runs it; on this machine, since a practice project needs no sidecar. None while code
+    intelligence is off, or the server is not usable now. No other language is warmed, and no
+    sidecar."""
+    if not preferences.code_intelligence:
+        return None
+    server = server_for(environment.config.default_lang)
+    if server is None:
+        return None
+    jdk = environment.jdk
+    if _located(server, environment.language_servers, jdk).problem is not None:
+        return None
+    java_home = jdk.selected_home() if server.jdks is not None else None
+    root, content_root = server.root_project, environment.content_root
+    return SessionTarget(server, environment.root, root, content_root, java_home)
+
+
+def sidecar_unavailable(engine: SidecarEngine, image: str = NODE_IMAGE) -> str | None:
     """Why a service project's server cannot start now, as the status bar says it; None once the
-    engine answers and the sidecar's image is here. A session starts no engine and pulls nothing:
-    a file opened in the editor is no reason to start a VM or to download an image."""
+    engine answers and the sidecar's `image` is here. A session starts no engine and pulls
+    nothing: a file opened in the editor is no reason to start a VM or to download an image."""
     state = engine.state()
     if not state.running:
         return NO_DOCKER[state.status]
-    return None if engine.image_present(NODE_IMAGE) else NO_SIDECAR_IMAGE
+    if engine.image_present(image):
+        return None
+    return NO_SIDECAR_IMAGE if image == NODE_IMAGE else NO_PROJECT_IMAGE
 
 
 def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult | None:
@@ -293,14 +353,20 @@ def _language_of(attempt: Attempt) -> Language:
 
 
 def _server_of(meta: ProblemMeta, language: Language) -> LanguageServer:
-    """A service project's folder is written by sandboxed code, and a server on this machine would
-    read it, so its server runs in a sidecar, in the languages whose servers run there
+    """The route table says where the server runs (docs/specs/web-ui.md#where-each-server-runs): a
+    service project's folder is written by sandboxed code, and a server on this machine would read
+    it, so its server runs in a sidecar, in the languages whose servers run there
     (docs/specs/service-projects.md#language-servers)."""
     server = server_for(language)
     if server is None:
         raise UsageError(f"no code intelligence for {language.value} yet")
-    if no_code_intelligence(meta, language) is not None:
-        raise UsageError(f"no code intelligence for {language.value} service projects yet")
+    route = route_of(meta, language)
+    if route is None:
+        raise UsageError(f"no code intelligence for {meta.kind.value} problems yet")
+    if not route.runs:
+        raise UsageError(
+            f"no code intelligence for {language.value} service projects yet: {route.reason}"
+        )
     return server
 
 
@@ -310,19 +376,33 @@ def _root(meta: ProblemMeta, server: LanguageServer) -> str:
     return server.root_project
 
 
-def _sidecar(environment: Environment, slug: str, root: str) -> SidecarPlan:
+def _sidecar(
+    environment: Environment,
+    slug: str,
+    root: str,
+    server: LanguageServer,
+    service: ServiceProject,
+) -> SidecarPlan:
     """A sidecar of its own for each session, owned by this process, so a sweep of a `cstudy serve`
-    that died takes it down."""
+    that died takes it down: on the Node image for a Node server, on the project's own image for a
+    server that needs its JDK and Gradle, with the project's install cache read-only."""
     engine = environment.sandbox
     owner = engine.owner_pid()
     name = run_stack_name(StackKind.LSP, owner, secrets.token_hex(RUN_ID_BYTES))
-    identity = StackIdentity(name, StackKind.LSP, workspace_id(environment), slug, owner)
+    workspace = workspace_id(environment)
+    identity = StackIdentity(name, StackKind.LSP, workspace, slug, owner)
+    run = str((environment.root / RUNS_DIRECTORY / name).resolve())
+    cache = None
+    if service.app.install_cache:
+        cache = cache_volume_of(install_stack_name(slug, workspace))
     return SidecarPlan(
         identity=identity,
         user=engine.host_user(),
         project=_shared(environment.root / root),
         servers=_shared(environment.root / LSP_DIRECTORY),
-        run=str((environment.root / RUNS_DIRECTORY / name).resolve()),
+        run=run,
+        image=sidecar_image(server, service.image),
+        toolchain=sidecar_toolchain(server, service, f"{run}/{SIDECAR_DATA}", cache),
     )
 
 

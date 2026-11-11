@@ -74,11 +74,14 @@ def web_app(
     children: Children | None = None,
     notifications: Notifications | None = None,
     sessions: LanguageSessions | None = None,
+    *,
+    warm_up: bool = False,
 ) -> ASGIApp:
     """The app of a server on `PORT` over the workspace `root`; `child` replaces the `cstudy`
     its children run, `children` holds its runs and jobs, `notifications` its notification
     streams, whose watch of the workspace never sees a change, and `sessions` its
-    code-intelligence sessions."""
+    code-intelligence sessions, which start the default language's server ahead of time with
+    `warm_up`, as `cstudy serve`'s do."""
     workspace = environment or web_workspace(root)
     return create_app(
         ServerSettings(
@@ -91,6 +94,7 @@ def web_app(
             config_file=TomlConfigFile(root / "config.toml"),
             child=child or ChildCommand(),
             watcher=QuietWatcher(),
+            warm_up=warm_up,
         ),
         children,
         notifications,
