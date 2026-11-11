@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0313"
+slug: org-chart-outline
+title: Org Chart Outline
+summary: "Build OrgChart from flat (id, parent, name) rows: list reports, handle rows in any order, orphans and cycles, find common managers and chains, and print an indented outline of 10^5 rows."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [trees, arrays-hashing]
+domains: [algorithms, backend]
+job_roles: [general, backend]
+scope: function
+levels:
+  - {level: 1, title: Reports of each person}
+  - {level: 2, title: Rows in any order}
+  - {level: 3, title: Managers and chains}
+  - {level: 4, title: Indented outline}
+signature:
+  class:
+    name: OrgChart
+    constructor: {params: []}
+    methods:
+      - {name: load, level: 1, params: [{name: rows, type: "list<list<string>>"}], returns: {type: void}}
+      - {name: roots, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: nameOf, level: 1, params: [{name: employee, type: string}], returns: {type: string}}
+      - {name: children, level: 1, params: [{name: employee, type: string}], returns: {type: "list<string>"}}
+      - {name: orphans, level: 2, params: [], returns: {type: "list<string>"}}
+      - {name: cycles, level: 2, params: [], returns: {type: "list<list<string>>"}}
+      - {name: chain, level: 3, params: [{name: employee, type: string}], returns: {type: "list<string>"}}
+      - {name: lowestCommonManager, level: 3, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: string}}
+      - {name: subtreeSize, level: 4, params: [{name: employee, type: string}], returns: {type: int}}
+      - {name: outline, level: 4, params: [{name: order, type: string}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: child-lists, name: Child lists built once from the rows, role: optimal, time: "O(n) to load; O(depth) per chain or manager query; O(1) per size; O(n log n) per outline", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: rows in each of the two charts the generated case loads
+  size_ladder: [1000, 10000, 100000]
+  budget_ms: 10000
+  expected_from: child-lists
+related: [employee-importance, time-to-inform-employees, invert-binary-tree]
+estimate_minutes: 75

@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0314"
+slug: referral-rewards
+title: Referral Rewards
+summary: "Build ReferralProgram: pay a bonus once per referred person, count direct and indirect referrals, rank top referrers, handle repeats and loops, and scale to a million people."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs, union-find]
+domains: [algorithms, backend]
+job_roles: [general, backend]
+scope: function
+levels:
+  - {level: 1, title: Bonus for each referral}
+  - {level: 2, title: Chains of referrals}
+  - {level: 3, title: Repeats and loops}
+  - {level: 4, title: A million people}
+signature:
+  class:
+    name: ReferralProgram
+    constructor: {params: [{name: bonus, type: int}]}
+    methods:
+      - {name: refer, level: 1, params: [{name: referrer, type: string}, {name: referred, type: string}], returns: {type: int}}
+      - {name: points, level: 1, params: [{name: person, type: string}], returns: {type: int}}
+      - {name: referralsOf, level: 1, params: [{name: person, type: string}], returns: {type: "list<string>"}}
+      - {name: totalReferrals, level: 2, params: [{name: person, type: string}], returns: {type: int}}
+      - {name: topReferrer, level: 2, params: [], returns: {type: string}}
+      - {name: referAll, level: 3, params: [{name: rows, type: "list<list<string>>"}], returns: {type: "list<int>"}}
+      - {name: leaderboard, level: 4, params: [{name: k, type: int}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: forest-counts, name: Forest in arrays with a union-find for loops and one breadth-first recount, role: optimal, time: "O(1) amortized per referral; O(n) per recount after a change; O(n log n) per leaderboard", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: referral rows in the one referAll call of the generated case
+  size_ladder: [1000, 10000, 100000, 1000000]
+  budget_ms: 60000
+  expected_from: forest-counts
+related: [employee-importance, time-to-inform-employees, redundant-connection, accounts-merge]
+estimate_minutes: 90
