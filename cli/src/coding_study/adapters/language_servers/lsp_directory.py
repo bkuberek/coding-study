@@ -151,7 +151,8 @@ class LspDirectory:
         version = newest.build.version
         if server.linux_build:
             last = self._last_day_of_this_machines(version)
-            tooling = _gradle_tooling(self._directory / newest.archive.directory)
+            build = self._directory / newest.archive.directory / newest.archive.into
+            tooling = _gradle_tooling(build)
             self._record(server, newest, last, tooling)
         else:
             status = self._status(server)

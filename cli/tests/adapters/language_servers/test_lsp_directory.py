@@ -952,6 +952,16 @@ class TestLinuxBuild:
         record = json.loads((workspace / ".cs/lsp/kotlin-lsp/linux.json").read_text())
         assert record["gradle_tooling"] == "9.7.0"
 
+    def test_the_tooling_api_of_this_machines_build_is_not_taken_for_its_own(self, tmp_path):
+        server = tmp_path / "ws" / ".cs/lsp/kotlin-lsp/server/lib"
+        server.mkdir(parents=True)
+        older = tmp_path / "older"
+        older.mkdir()
+        (server / "a-gradle-tooling.jar").write_bytes(tooling_jar(older, "8.0.0"))
+        _lsp, _result, _commands, workspace = self.installed(tmp_path)
+        record = json.loads((workspace / ".cs/lsp/kotlin-lsp/linux.json").read_text())
+        assert record["gradle_tooling"] == "9.7.0"
+
 
 def this_machines_build(workspace: Path, version: str) -> None:
     """This machine's Kotlin LSP build in place, as `--fix` records it, running until
