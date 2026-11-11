@@ -41,7 +41,9 @@ from coding_study.domain.code_intelligence import (
     License,
     route_of,
     server_for,
+    sidecar_image,
     sidecar_server,
+    sidecar_toolchain,
 )
 from coding_study.domain.docker_engine import EngineStatus
 from coding_study.domain.errors import LanguageServerNotInstalledError, UsageError
@@ -51,13 +53,16 @@ from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.sandbox import (
     NODE_IMAGE,
+    SIDECAR_DATA,
     SharedFolder,
     SidecarPlan,
     StackIdentity,
     StackKind,
+    cache_volume_of,
+    install_stack_name,
     run_stack_name,
 )
-from coding_study.domain.service_project import service_of
+from coding_study.domain.service_project import ServiceProject, service_of
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
@@ -74,6 +79,9 @@ NO_DOCKER: Mapping[EngineStatus, str] = {
 NO_SIDECAR_IMAGE = f"needs the node image: docker pull {NODE_IMAGE}"
 """A TypeScript project's `cstudy start` pulled the image, a Python project's did not. The status
 bar shows what comes before the colon, and its tooltip the rest."""
+NO_PROJECT_IMAGE = "needs the project's image: run cstudy test or cstudy dev, which pull it"
+"""A Java project's server runs on the project's image, which a run pulls. Its name and digest
+would not fit in a close reason, whose 123 bytes would cut the digest."""
 
 
 class ServerStatus(StrEnum):
@@ -209,7 +217,8 @@ def session_target(
     meta = environment.problems.load(attempt.slug).meta
     server = _server_of(meta, language)
     root = _root(meta, server)
-    sidecar = _sidecar(environment, meta.slug, root) if service_of(meta) is not None else None
+    service = service_of(meta)
+    sidecar = None if service is None else _sidecar(environment, meta.slug, root, server, service)
     if sidecar is not None:
         server = sidecar_server(server, sidecar.project.path)
     jdk = environment.jdk
@@ -221,14 +230,16 @@ def session_target(
     return SessionTarget(server, environment.root, root, content_root, java_home, sidecar)
 
 
-def sidecar_unavailable(engine: SidecarEngine) -> str | None:
+def sidecar_unavailable(engine: SidecarEngine, image: str = NODE_IMAGE) -> str | None:
     """Why a service project's server cannot start now, as the status bar says it; None once the
-    engine answers and the sidecar's image is here. A session starts no engine and pulls nothing:
-    a file opened in the editor is no reason to start a VM or to download an image."""
+    engine answers and the sidecar's `image` is here. A session starts no engine and pulls
+    nothing: a file opened in the editor is no reason to start a VM or to download an image."""
     state = engine.state()
     if not state.running:
         return NO_DOCKER[state.status]
-    return None if engine.image_present(NODE_IMAGE) else NO_SIDECAR_IMAGE
+    if engine.image_present(image):
+        return None
+    return NO_SIDECAR_IMAGE if image == NODE_IMAGE else NO_PROJECT_IMAGE
 
 
 def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult | None:
@@ -316,19 +327,33 @@ def _root(meta: ProblemMeta, server: LanguageServer) -> str:
     return server.root_project
 
 
-def _sidecar(environment: Environment, slug: str, root: str) -> SidecarPlan:
+def _sidecar(
+    environment: Environment,
+    slug: str,
+    root: str,
+    server: LanguageServer,
+    service: ServiceProject,
+) -> SidecarPlan:
     """A sidecar of its own for each session, owned by this process, so a sweep of a `cstudy serve`
-    that died takes it down."""
+    that died takes it down: on the Node image for a Node server, on the project's own image for a
+    server that needs its JDK and Gradle, with the project's install cache read-only."""
     engine = environment.sandbox
     owner = engine.owner_pid()
     name = run_stack_name(StackKind.LSP, owner, secrets.token_hex(RUN_ID_BYTES))
-    identity = StackIdentity(name, StackKind.LSP, workspace_id(environment), slug, owner)
+    workspace = workspace_id(environment)
+    identity = StackIdentity(name, StackKind.LSP, workspace, slug, owner)
+    run = str((environment.root / RUNS_DIRECTORY / name).resolve())
+    cache = None
+    if service.app.install_cache:
+        cache = cache_volume_of(install_stack_name(slug, workspace))
     return SidecarPlan(
         identity=identity,
         user=engine.host_user(),
         project=_shared(environment.root / root),
         servers=_shared(environment.root / LSP_DIRECTORY),
-        run=str((environment.root / RUNS_DIRECTORY / name).resolve()),
+        run=run,
+        image=sidecar_image(server, service.image),
+        toolchain=sidecar_toolchain(server, service, f"{run}/{SIDECAR_DATA}", cache),
     )
 
 

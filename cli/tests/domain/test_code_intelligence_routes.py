@@ -26,7 +26,6 @@ from tests.service_problems import meta_document
 SPEC = Path(__file__).resolve().parents[3] / "docs" / "specs" / "web-ui.md"
 TABLE_HEADING = "### Where each server runs"
 EXPECTED_GAPS = {
-    Language.JAVA: Placement.PENDING,
     Language.KOTLIN: Placement.PENDING,
     Language.GO: Placement.PENDING,
     Language.RUST: Placement.NOT_APPLICABLE,

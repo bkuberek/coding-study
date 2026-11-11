@@ -20,7 +20,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import replace
 from pathlib import Path
@@ -48,6 +48,7 @@ from coding_study.domain.sandbox import (
     BOOTSTRAP_SERVICE,
     CACHE_DIRECTORY,
     CONTROL_PORT,
+    DEVCONTAINER_DIRECTORY,
     EGRESS_HOSTS_VARIABLE,
     EGRESS_PROBE_SERVICE,
     FORWARD_SERVICE,
@@ -92,6 +93,7 @@ from coding_study.domain.sandbox import (
     reach_listen_ports,
     render_compose,
     sidecar_document,
+    sidecar_files,
     stack_document,
 )
 
@@ -775,8 +777,10 @@ class DockerSandbox:
         ):
             try:
                 run.mkdir(parents=True, exist_ok=True)
+                covered = replace(plan, image_volumes=self._declared_volumes(plan.image))
+                _prepare_sidecar(covered)
                 stack = run / STACK_FILE
-                _write_file(stack, render_compose(sidecar_document(plan)))
+                _write_file(stack, render_compose(sidecar_document(covered)))
                 up = (*_COMPOSE, "-p", name, "-f", str(stack), "up", "--detach", *_PULL_NEVER)
                 _require_sidecar_up(self._runner.run(up, SIDECAR_UP_S))
                 yield
@@ -785,10 +789,13 @@ class DockerSandbox:
                     self._down(name, removes_volumes=False)
                 _remove_folder(run)
 
-    def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
+    def sidecar_command(
+        self, plan: SidecarPlan, command: Sequence[str], environment: Mapping[str, str]
+    ) -> tuple[str, ...]:
         """No `--tty`: the server's output is the LSP stream, byte for byte."""
-        exec_in = ("exec", "--interactive", "--workdir", plan.project.path, plan.identity.name)
-        return (DOCKER, *exec_in, *command)
+        variables = (part for item in environment.items() for part in ("--env", "=".join(item)))
+        exec_in = ("exec", "--interactive", "--workdir", plan.project.path, *variables)
+        return (DOCKER, *exec_in, plan.identity.name, *command)
 
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
@@ -830,6 +837,21 @@ class DockerSandbox:
             return None
         kibibytes = counted.output.split()[:1]
         return int(kibibytes[0]) * BYTES_PER_KIB if kibibytes and kibibytes[0].isdigit() else None
+
+
+def _prepare_sidecar(plan: SidecarPlan) -> None:
+    """The data folder and its files, and for a writable project the folder of its read-only
+    `.devcontainer`, which a link there may not replace."""
+    data = plan.data_directory
+    if data is not None:
+        Path(data).mkdir(exist_ok=True)
+    for path, content in sidecar_files(plan).items():
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        _write_file(Path(path), content)
+    if plan.toolchain is not None and plan.toolchain.writable_project:
+        devcontainer = Path(plan.project.path) / DEVCONTAINER_DIRECTORY
+        _refuse_link(devcontainer)
+        devcontainer.mkdir(exist_ok=True)
 
 
 def _require_sidecar_up(up: ProbeResult | None) -> None:

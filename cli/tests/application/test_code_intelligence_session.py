@@ -33,7 +33,7 @@ from coding_study.domain.errors import (
 )
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language
-from coding_study.domain.sandbox import SandboxUser, SidecarPlan, StackKind
+from coding_study.domain.sandbox import SandboxUser, SidecarPlan, StackKind, workspace_digest
 from tests.fakes import (
     INSTALLED_SERVERS,
     JDK_HOME,
@@ -47,8 +47,14 @@ from tests.fakes import (
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.sandbox_fakes import FakeSandbox
+from tests.service_problems import (
+    GRADLE_IMAGE,
+    java_meta_document,
+    make_content,
+    meta_document,
+    write_problem,
+)
 from tests.service_problems import SLUG as SERVICE_SLUG
-from tests.service_problems import make_content, meta_document, write_problem
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 ON = Preferences(code_intelligence=True)
@@ -339,6 +345,66 @@ def test_the_sidecar_writes_its_compose_file_among_the_runs(service_project):
 
 def test_the_sidecar_runs_as_you(service_project):
     assert sidecar_of(service_target(service_project)).user == SandboxUser(501, 20)
+
+
+def java_service_environment(tmp_path: Path, jdk: int = 25) -> Environment:
+    root = make_content(tmp_path)
+    write_problem(root, java_meta_document())
+    return make_environment(
+        root,
+        sandbox=FakeSandbox(),
+        language_servers=FakeLanguageServers(INSTALLED_SERVERS),
+        jdk=jdk_of(jdk),
+    )
+
+
+def java_target(tmp_path: Path, jdk: int = 25) -> SessionTarget:
+    return service_target(java_service_environment(tmp_path, jdk))
+
+
+def test_a_java_service_project_gets_jdt_ls_in_a_sidecar_on_the_projects_image(tmp_path):
+    found = java_target(tmp_path)
+
+    assert (found.server.name, sidecar_of(found).image) == ("jdtls", GRADLE_IMAGE)
+
+
+def test_the_java_sidecar_reads_the_projects_install_cache(tmp_path):
+    found = java_target(tmp_path)
+    toolchain = sidecar_of(found).toolchain
+    workspace = workspace_digest(str(found.workspace.resolve()))
+
+    assert toolchain is not None
+    assert toolchain.cache_volume == f"cstudy-i-{SERVICE_SLUG}-{workspace}_cache"
+
+
+def test_the_java_sidecar_keeps_its_data_in_its_own_runs_folder(tmp_path):
+    plan = sidecar_of(java_target(tmp_path))
+
+    assert plan.data_directory == f"{plan.run}/data"
+
+
+def test_the_java_sidecar_needs_no_jdk_25_or_26_on_this_machine(tmp_path):
+    """JDT LS runs on the image's JDK 25, whatever this machine selects."""
+    found = java_target(tmp_path, 21)
+
+    assert (found.server.jdks, found.java_home) == (None, None)
+
+
+def test_a_service_projects_java_state_ignores_this_machines_jdk(tmp_path):
+    environment = java_service_environment(tmp_path, 21)
+    attempt = start_attempt(environment, StartRequest(SERVICE_SLUG)).attempt
+    states = session_server_states(environment, attempt.id)
+
+    java = next(state for state in states if state.language is Language.JAVA)
+    assert java.status is ServerStatus.INSTALLED
+
+
+def test_a_practice_java_attempt_still_needs_a_jdk_25_or_26(tmp_path):
+    environment = java_service_environment(tmp_path, 21)
+    states = session_server_states(environment, None)
+
+    java = next(state for state in states if state.language is Language.JAVA)
+    assert java.status is ServerStatus.NEEDS_JDK
 
 
 def test_a_service_project_in_a_language_without_a_sidecar_server_has_none_yet(tmp_path):

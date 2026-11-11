@@ -1,9 +1,12 @@
 """The language-server sidecar of a service project's code-intelligence session
 (docs/specs/service-projects.md#language-servers): its compose file, its name and its sweep."""
 
+from dataclasses import replace
 from typing import Any
 
 from coding_study.domain.sandbox import (
+    JVM_SIDECAR_MEMORY,
+    JVM_SIDECAR_PIDS,
     LABEL_KIND,
     LABEL_OWNER,
     LABEL_SLUG,
@@ -14,6 +17,7 @@ from coding_study.domain.sandbox import (
     SandboxUser,
     SharedFolder,
     SidecarPlan,
+    SidecarToolchain,
     StackContainer,
     StackIdentity,
     StackKind,
@@ -21,6 +25,7 @@ from coding_study.domain.sandbox import (
     leftovers_in,
     run_stack_name,
     sidecar_document,
+    sidecar_files,
 )
 
 NAME = run_stack_name(StackKind.LSP, 41, "abc")
@@ -156,3 +161,97 @@ def test_a_sidecar_whose_cstudy_serve_lives_is_kept():
 
 def test_a_sidecar_has_no_volume_to_remove():
     assert not StackKind.LSP.removes_volumes
+
+
+GRADLE_IMAGE = "gradle:9.8.2-jdk25-alpine@sha256:20d4"
+DATA = f"{PLAN.run}/data"
+JVM_PLAN = replace(
+    PLAN,
+    image=GRADLE_IMAGE,
+    toolchain=SidecarToolchain(
+        cache_volume="cstudy-i-rooms-d1g3st_cache",
+        environment={"GRADLE_USER_HOME": f"{DATA}/gradle"},
+        files={"gradle/gradle.properties": "org.gradle.projectcachedir=x\n"},
+        writable_project=True,
+        memory=JVM_SIDECAR_MEMORY,
+        pids=JVM_SIDECAR_PIDS,
+    ),
+    image_volumes=("/home/gradle/.gradle",),
+)
+"""JDT LS's sidecar: the project's own image, with its toolchain."""
+
+
+def jvm_document() -> dict[str, Any]:
+    return sidecar_document(JVM_PLAN)
+
+
+def jvm_sidecar() -> dict[str, Any]:
+    return jvm_document()["services"][SIDECAR_SERVICE]
+
+
+def test_a_node_sidecar_keeps_no_data_folder():
+    assert PLAN.data_directory is None
+
+
+def test_a_sidecar_with_a_toolchain_runs_the_projects_own_image():
+    assert jvm_sidecar()["image"] == GRADLE_IMAGE
+
+
+def test_a_sidecar_with_a_toolchain_keeps_its_data_in_the_runs_folder():
+    assert JVM_PLAN.data_directory == DATA
+
+
+def test_a_sidecar_with_a_toolchain_mounts_what_gradle_needs():
+    """The project read-write, as the app's, but its `.devcontainer`, which a host tool obeys; the
+    servers read-only; the data folder read-write where it is; the install cache read-only."""
+    assert jvm_sidecar()["volumes"] == [
+        {"type": "bind", "source": PROJECT.source, "target": PROJECT.path},
+        {
+            "type": "bind",
+            "source": f"{PROJECT.source}/.devcontainer",
+            "target": f"{PROJECT.path}/.devcontainer",
+            "read_only": True,
+        },
+        {"type": "bind", "source": SERVERS.source, "target": SERVERS.path, "read_only": True},
+        {"type": "bind", "source": DATA, "target": DATA},
+        "cache:/cache:ro",
+    ]
+
+
+def test_the_install_cache_is_the_install_stacks_own_volume():
+    volumes = jvm_document()["volumes"]
+
+    assert volumes == {"cache": {"external": True, "name": "cstudy-i-rooms-d1g3st_cache"}}
+
+
+def test_a_sidecar_with_a_toolchain_runs_with_its_variables():
+    assert jvm_sidecar()["environment"] == {
+        "HOME": "/tmp/home",
+        "TMPDIR": "/tmp",
+        "GRADLE_USER_HOME": f"{DATA}/gradle",
+    }
+
+
+def test_the_images_own_volumes_are_small_temporary_folders():
+    """Docker would otherwise make an anonymous volume there, which outlives the sidecar."""
+    assert jvm_sidecar()["tmpfs"][1] == "/home/gradle/.gradle:size=16m,uid=501,gid=20,mode=0700"
+
+
+def test_a_jvm_sidecar_has_room_for_jdt_ls_and_a_gradle_daemon():
+    found = jvm_sidecar()
+
+    assert (found["mem_limit"], found["pids_limit"]) == ("2g", 512)
+
+
+def test_a_jvm_sidecar_reaches_no_network_either():
+    assert jvm_sidecar()["network_mode"] == "none"
+
+
+def test_the_toolchains_files_land_in_the_data_folder():
+    assert sidecar_files(JVM_PLAN) == {
+        f"{DATA}/gradle/gradle.properties": "org.gradle.projectcachedir=x\n"
+    }
+
+
+def test_a_node_sidecar_writes_no_file():
+    assert sidecar_files(PLAN) == {}

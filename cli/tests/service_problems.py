@@ -71,6 +71,32 @@ def meta_document(**project: object) -> dict[str, object]:
     }
 
 
+GRADLE_IMAGE = (
+    "gradle:9.8.2-jdk25-alpine"
+    "@sha256:20d4d9547874206648a7a72991bf3af6d8bc1c8bffc7f32051f682b21f86d027"
+)
+
+
+def java_meta_document() -> dict[str, object]:
+    """A Java service project as P12's template writes one: Gradle in the image, its user home in
+    the install cache."""
+    return {
+        **meta_document(
+            image=GRADLE_IMAGE,
+            app={
+                "port_env": "PORT",
+                "port": 8000,
+                "health": "/health",
+                "ready_timeout_s": 120,
+                "install_cache": True,
+            },
+            env={"PORT": "8000", "GRADLE_USER_HOME": "/cache/gradle"},
+            install_env={"GRADLE_USER_HOME": "/cache/gradle"},
+        ),
+        "languages": ["java"],
+    }
+
+
 def write_mock(root: Path, config: dict[str, object] | None = None) -> None:
     """The mock server `meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}])` names."""
     path = root / "problems" / f"0901-{SLUG}" / CONFIG

@@ -11,11 +11,12 @@ import pytest
 from starlette.testclient import TestClient
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
-from coding_study.application.code_intelligence import NO_SIDECAR_IMAGE
+from coding_study.application.code_intelligence import NO_PROJECT_IMAGE, NO_SIDECAR_IMAGE
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.preferences import preferences_document
+from coding_study.domain.sandbox import NODE_IMAGE
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.language_server import LanguageServerCommand
 from tests.fakes import INSTALLED_SERVERS, FakeLanguageServers, make_environment
@@ -31,16 +32,27 @@ from tests.language_sessions import (
 )
 from tests.sandbox_fakes import FakeSandbox
 from tests.scripted_runs import eventually, is_alive
-from tests.service_problems import SLUG, make_content, write_problem
+from tests.service_problems import (
+    GRADLE_IMAGE,
+    SLUG,
+    java_meta_document,
+    make_content,
+    write_problem,
+)
 from tests.web_server import session_client
 
 NEEDS_DOCKER = 4004
 INITIALIZED = {"reply": "initialize", "result": {"capabilities": {}}}
 
 
-def service_rig(tmp_path: Path, sandbox: FakeSandbox, command: LanguageServerCommand | None = None):
+def service_rig(
+    tmp_path: Path,
+    sandbox: FakeSandbox,
+    command: LanguageServerCommand | None = None,
+    document: dict[str, object] | None = None,
+):
     root = make_content(tmp_path)
-    write_problem(root)
+    write_problem(root, document)
     environment = make_environment(
         root, sandbox=sandbox, language_servers=FakeLanguageServers(INSTALLED_SERVERS)
     )
@@ -196,3 +208,58 @@ def test_a_practice_session_starts_no_sidecar(tmp_path, sandbox):
     with session_client(lab.app) as page, session(page, lab.query):
         eventually(lab.server.ready, bool)
     assert sandbox.calls == []
+
+
+def java_rig(tmp_path: Path, sandbox: FakeSandbox) -> Rig:
+    """A Java service project, whose JDT LS runs in a sidecar on the project's image."""
+    return service_rig(tmp_path, sandbox, document=java_meta_document())
+
+
+def sidecar_data(lab: Rig) -> list[Path]:
+    return list((lab.root / ".cs" / "runs").glob("cstudy-l-*/data"))
+
+
+def test_jdt_ls_in_the_sidecar_keeps_its_caches_in_the_sidecars_data_folder(tmp_path, sandbox):
+    lab = java_rig(tmp_path, sandbox)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        eventually(lab.server.ready, bool)
+    (data,) = sidecar_data(lab)
+    assert sandbox.exec_environments == [{"XDG_CACHE_HOME": f"{data}/cache"}]
+
+
+def test_jdt_ls_finds_its_empty_list_of_gradle_versions_in_the_sidecars_data_folder(
+    tmp_path, sandbox
+):
+    lab = java_rig(tmp_path, sandbox)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        eventually(lab.server.ready, bool)
+    (data,) = sidecar_data(lab)
+    assert (data / "cache" / "tooling" / "gradle" / "versions.json").read_text() == "[]"
+
+
+def test_a_node_server_in_the_sidecar_gets_no_variables_of_its_own(lab, client, sandbox):
+    lab.server.play()
+    with session(client, lab.query):
+        eventually(lab.server.ready, bool)
+    assert sandbox.exec_environments == [{}]
+
+
+def test_a_projects_image_that_is_not_here_closes_calmly_with_4004_naming_what_pulls_it(
+    tmp_path,
+):
+    sandbox = FakeSandbox(every_image_present=False, present={NODE_IMAGE})
+    lab = java_rig(tmp_path, sandbox)
+    with session_client(lab.app) as page, session(page, lab.query) as websocket:
+        assert closed_with(websocket) == (NEEDS_DOCKER, NO_PROJECT_IMAGE)
+    assert (sidecar_steps(sandbox), sandbox.called("pull")) == ([], [])
+
+
+def test_the_java_sidecar_asks_for_the_projects_image(tmp_path):
+    sandbox = FakeSandbox(every_image_present=False, present={GRADLE_IMAGE})
+    lab = java_rig(tmp_path, sandbox)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        eventually(lab.server.ready, bool)
+    assert sidecar_steps(sandbox)[:2] == ["sidecar", "sidecar_command"]

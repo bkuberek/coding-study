@@ -33,7 +33,7 @@ from coding_study.adapters.process_environment import docker_environment, inheri
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget, sidecar_unavailable
 from coding_study.application.ports import SidecarEngine
-from coding_study.domain.code_intelligence import Launch
+from coding_study.domain.code_intelligence import SIDECAR_PLATFORM, Launch
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import SidecarPlan
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
@@ -325,8 +325,12 @@ class LanguageSessions:
     def _launch(self, target: SessionTarget) -> Launch:
         """The places the target's command names; a server that keeps data gets the first data
         directory of its root that no running server of this `cstudy serve` holds, since two
-        servers cannot share one."""
+        servers cannot share one. A server in a sidecar runs on Linux, on the image's `java`, with
+        the sidecar's own data folder, which no other session sees."""
         lsp = target.lsp_directory
+        if target.sidecar is not None:
+            data = target.sidecar.data_directory
+            return Launch(str(lsp), data, platform=SIDECAR_PLATFORM)
         home = None if target.java_home is None else str(target.java_home)
         java = None if target.java_home is None else str(target.java_home / "bin" / "java")
         data = None
@@ -355,22 +359,24 @@ class LanguageSessions:
         self, target: SessionTarget, plan: SidecarPlan, launch: Launch
     ) -> tuple[ServerProcess, ExitStack]:
         """The engine is never started and the image never pulled for a session, which says
-        calmly why it cannot start. The server runs with no variable that hides directories, since
-        none of them is mounted and none would cross `docker exec`; a sidecar whose server does not
-        start goes at once."""
-        unavailable = await asyncio.to_thread(sidecar_unavailable, self._sidecars)
+        calmly why it cannot start. The server runs with its own variables but none that hides
+        directories, since none of them is mounted; a sidecar whose server does not start goes at
+        once."""
+        unavailable = await asyncio.to_thread(sidecar_unavailable, self._sidecars, plan.image)
         if unavailable is not None:
             raise _NoSidecarError(unavailable)
         sidecar = ExitStack()
         try:
             await asyncio.to_thread(sidecar.enter_context, self._sidecars.sidecar(plan))
-            command = self.command.arguments(target.server, launch)
-            arguments = self._sidecars.sidecar_command(plan, command)
+            await asyncio.to_thread(prepare_data_directory, target.server, launch)
+            server = target.server
+            command = self.command.arguments(server, launch)
+            arguments = self._sidecars.sidecar_command(plan, command, server.environment(launch))
             environment = docker_environment()
             process = await ServerProcess.start(
                 arguments, target.directory, self.timing, environment
             )
-        except SandboxError as error:
+        except (SandboxError, OSError) as error:
             await asyncio.to_thread(sidecar.close)
             raise ServerStartError(str(error)) from None
         except BaseException:

@@ -483,6 +483,28 @@ class SharedFolder:
 
 
 @dataclass(frozen=True, slots=True)
+class SidecarToolchain:
+    """What a server that loads the project with the project's own toolchain needs in its sidecar
+    besides the Node servers' mounts: JDT LS imports the Gradle build with the image's Gradle and
+    JDK, over the dependencies the install put in the install cache."""
+
+    cache_volume: str | None
+    """The project's install cache, mounted read-only at `CACHE_DIRECTORY`: the toolchain reads
+    the dependencies there and never locks or writes them, so the app's builds go on beside it.
+    None for a project that keeps none."""
+    environment: Mapping[str, str]
+    """What the sidecar runs with, on top of `HOME` and `TMPDIR`."""
+    files: Mapping[str, str] = field(default_factory=dict[str, str])
+    """Written into the sidecar's data folder before it comes up, by their path in it."""
+    writable_project: bool = False
+    """The project folder mounted read-write, as the app's is, with its `.devcontainer` read-only:
+    Gradle 9 configures no project in a folder it cannot write. What it would keep there goes to
+    the data folder instead."""
+    memory: str = SIDECAR_MEMORY
+    pids: int = SIDECAR_PIDS
+
+
+@dataclass(frozen=True, slots=True)
 class SidecarPlan:
     """The language-server sidecar of one code-intelligence session on a service project
     (docs/specs/service-projects.md#language-servers): a compose project of its own, so it needs no
@@ -493,34 +515,100 @@ class SidecarPlan:
     project: SharedFolder
     """The project folder, with its installed dependencies: `node_modules`, `.venv`."""
     servers: SharedFolder
-    """`.cs/lsp/`, whose servers run on the image's Node."""
+    """`.cs/lsp/`, whose servers run on the image's Node or JDK."""
     run: str
     """`.cs/runs/<stack>/`, absolute: where its compose file is written. Nothing there is
-    mounted."""
+    mounted but the data folder of a sidecar with a toolchain."""
+    image: str = NODE_IMAGE
+    toolchain: SidecarToolchain | None = None
+    image_volumes: tuple[str, ...] = ()
+    """As for `AppContainer.image_volumes`."""
+
+    @property
+    def data_directory(self) -> str | None:
+        """`<run>/data/`, mounted read-write where it is: the server's data directory, and the
+        toolchain's homes and caches. It goes with the run's folder, so each session starts
+        afresh. None for a sidecar without a toolchain."""
+        return None if self.toolchain is None else f"{self.run}/{SIDECAR_DATA}"
+
+
+SIDECAR_DATA = "data"
+JVM_SIDECAR_MEMORY = "2g"
+"""JDT LS under its 1 GB heap and the Gradle daemon of its import measured 1.27 GiB together on
+the first Java service project."""
+JVM_SIDECAR_PIDS = 512
+"""Each thread counts: JDT LS and a Gradle daemon run about 80."""
 
 
 def sidecar_document(plan: SidecarPlan) -> dict[str, object]:
     """The compose file of a sidecar: hardened as the app is, on no network at all, with the
-    project and the servers read-only. None of the hidden directories exists in it."""
+    servers read-only, and the project read-only too unless the toolchain must write it. None of
+    the hidden directories exists in it."""
+    toolchain = plan.toolchain or _NO_TOOLCHAIN
     sidecar = {
         **_hardened(plan.identity),
-        "image": NODE_IMAGE,
+        "image": plan.image,
         "container_name": plan.identity.name,
         "user": plan.user.spec,
         "working_dir": plan.project.path,
         "command": ["sleep", "infinity"],
-        "environment": {"HOME": HOME_DIRECTORY, "TMPDIR": TEMPORARY_DIRECTORY},
-        "tmpfs": [_tmpfs(SIDECAR_TMPFS_MB, plan.user)],
-        "volumes": [_shared(plan.project), _shared(plan.servers)],
+        "environment": {
+            "HOME": HOME_DIRECTORY,
+            "TMPDIR": TEMPORARY_DIRECTORY,
+            **toolchain.environment,
+        },
+        "tmpfs": [
+            _tmpfs(SIDECAR_TMPFS_MB, plan.user),
+            *_image_volume_tmpfs(plan.image_volumes, plan.user),
+        ],
+        "volumes": [
+            *_sidecar_project_mounts(plan.project, toolchain),
+            _shared(plan.servers),
+            *_toolchain_mounts(plan.data_directory, toolchain),
+        ],
         "network_mode": "none",
-        "mem_limit": SIDECAR_MEMORY,
-        "pids_limit": SIDECAR_PIDS,
+        "mem_limit": toolchain.memory,
+        "pids_limit": toolchain.pids,
     }
-    return {"name": plan.identity.name, "services": {SIDECAR_SERVICE: sidecar}}
+    document: dict[str, object] = {
+        "name": plan.identity.name,
+        "services": {SIDECAR_SERVICE: sidecar},
+    }
+    if toolchain.cache_volume is not None:
+        document["volumes"] = {CACHE_VOLUME: {"external": True, "name": toolchain.cache_volume}}
+    return document
+
+
+_NO_TOOLCHAIN = SidecarToolchain(cache_volume=None, environment={})
+"""A Node server's sidecar: nothing beyond the project and the servers."""
+
+
+def sidecar_files(plan: SidecarPlan) -> dict[str, str]:
+    """The files written before the sidecar comes up, by their absolute path: the toolchain's,
+    in the data folder."""
+    data = plan.data_directory
+    if plan.toolchain is None or data is None:
+        return {}
+    return {f"{data}/{path}": content for path, content in plan.toolchain.files.items()}
 
 
 def _shared(folder: SharedFolder) -> dict[str, object]:
     return _bind(folder.source, folder.path, read_only=True)
+
+
+def _sidecar_project_mounts(project: SharedFolder, toolchain: SidecarToolchain) -> list[object]:
+    if not toolchain.writable_project:
+        return [_shared(project)]
+    devcontainer = f"{project.path}/{DEVCONTAINER_DIRECTORY}"
+    source = f"{project.source}/{DEVCONTAINER_DIRECTORY}"
+    return [_bind(project.source, project.path), _bind(source, devcontainer, read_only=True)]
+
+
+def _toolchain_mounts(data: str | None, toolchain: SidecarToolchain) -> list[object]:
+    mounts: list[object] = [] if data is None else [_bind(data, data)]
+    if toolchain.cache_volume is not None:
+        mounts.append(f"{CACHE_VOLUME}:{CACHE_DIRECTORY}:ro")
+    return mounts
 
 
 def stack_document(plan: StackPlan) -> dict[str, object]:

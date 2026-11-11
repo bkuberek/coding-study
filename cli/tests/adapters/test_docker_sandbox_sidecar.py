@@ -5,8 +5,9 @@ and a sidecar that is gone after its block however the block ends."""
 import json
 from collections.abc import Iterator
 from contextlib import AbstractContextManager, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -19,6 +20,7 @@ from coding_study.domain.sandbox import (
     SandboxUser,
     SharedFolder,
     SidecarPlan,
+    SidecarToolchain,
     StackIdentity,
     StackKind,
 )
@@ -154,7 +156,9 @@ def test_a_missing_docker_is_said(plan):
 
 
 def test_a_server_runs_in_the_sidecar_through_docker_exec_with_its_standard_input(plan):
-    command = DockerSandbox(ScriptedDocker()).sidecar_command(plan, ("node", "cli.mjs", "--stdio"))
+    command = DockerSandbox(ScriptedDocker()).sidecar_command(
+        plan, ("node", "cli.mjs", "--stdio"), {}
+    )
 
     assert command == (
         "docker",
@@ -167,3 +171,61 @@ def test_a_server_runs_in_the_sidecar_through_docker_exec_with_its_standard_inpu
         "cli.mjs",
         "--stdio",
     )
+
+
+def test_the_servers_own_variables_cross_docker_exec(plan):
+    command = DockerSandbox(ScriptedDocker()).sidecar_command(
+        plan, ("java", "-jar", "launcher.jar"), {"XDG_CACHE_HOME": "/data/cache"}
+    )
+
+    assert command[: command.index(NAME)][-2:] == ("--env", "XDG_CACHE_HOME=/data/cache")
+
+
+@pytest.fixture
+def jvm_plan(plan: SidecarPlan) -> SidecarPlan:
+    """JDT LS's sidecar, on the project's image, with Gradle's files in its data folder."""
+    toolchain = SidecarToolchain(
+        cache_volume="cstudy-i-rooms-d1g3st_cache",
+        environment={},
+        files={"gradle/gradle.properties": "org.gradle.projectcachedir=x\n"},
+        writable_project=True,
+    )
+    return replace(plan, image="gradle:9.8.2-jdk25-alpine", toolchain=toolchain)
+
+
+def test_the_toolchains_files_are_in_the_data_folder_while_the_sidecar_is_up(jvm_plan):
+    written: list[str] = []
+
+    with DockerSandbox(ScriptedDocker()).sidecar(jvm_plan):
+        written.append((Path(jvm_plan.run) / "data/gradle/gradle.properties").read_text())
+
+    assert written == ["org.gradle.projectcachedir=x\n"]
+
+
+def test_a_writable_projects_devcontainer_folder_is_there_for_its_read_only_mount(jvm_plan):
+    with DockerSandbox(ScriptedDocker()).sidecar(jvm_plan):
+        pass
+
+    assert (Path(jvm_plan.project.path) / ".devcontainer").is_dir()
+
+
+def test_a_link_at_a_writable_projects_devcontainer_is_refused(jvm_plan, tmp_path):
+    (Path(jvm_plan.project.path) / ".devcontainer").symlink_to(tmp_path)
+
+    with (
+        pytest.raises(SandboxError, match="symbolic link"),
+        DockerSandbox(ScriptedDocker()).sidecar(jvm_plan),
+    ):
+        pass
+
+
+def test_the_images_own_volumes_get_a_temporary_folder_each(jvm_plan):
+    docker = ScriptedDocker()
+    docker.answer(("image", "inspect"), ProbeResult(0, '{"/home/gradle/.gradle": {}}\n'))
+    written: list[dict[str, Any]] = []
+
+    with DockerSandbox(docker).sidecar(jvm_plan):
+        written.append(json.loads(Path(stack_file(jvm_plan)).read_text()))
+
+    tmpfs = written[0]["services"][SIDECAR_SERVICE]["tmpfs"]
+    assert tmpfs[1].startswith("/home/gradle/.gradle:")

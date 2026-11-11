@@ -22,8 +22,14 @@ from coding_study.domain.layout import (
     TYPESCRIPT_PROJECT,
 )
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
+from coding_study.domain.sandbox import (
+    JVM_SIDECAR_MEMORY,
+    JVM_SIDECAR_PIDS,
+    NODE_IMAGE,
+    SidecarToolchain,
+)
 from coding_study.domain.server_builds import Build, License, Releases
-from coding_study.domain.service_project import service_of
+from coding_study.domain.service_project import ServiceProject, service_of
 
 LSP_DIRECTORY = ".cs/lsp"
 """The pnpm project that cstudy owns in the workspace, ignored by git, with the servers that are
@@ -752,18 +758,71 @@ def server_for(language: Language) -> LanguageServer | None:
     return next((server for server in LANGUAGE_SERVERS if server.language is language), None)
 
 
-SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER)
-"""The servers that run in a service project's sidecar: Node programs, so the sidecar's Node image
-runs them for both languages (docs/specs/service-projects.md#language-servers)."""
+SIDECAR_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS)
+"""The servers that run in a service project's sidecar (docs/specs/service-projects.md#language-
+servers): the Node programs on the sidecar's Node image, for both of their languages, and JDT LS on
+the project's own image, whose JDK and Gradle build the project."""
+SIDECAR_PLATFORM = "linux"
+"""What a sidecar runs on, whatever this machine is: JDT LS takes the archive's `config_linux`."""
+GRADLE_HOME_IN_SIDECAR = "gradle"
+"""Gradle's user home in a sidecar's data folder: its daemon, its scripts' compiled classes, and
+what it would otherwise lock in the install cache."""
+PROJECT_CACHE_IN_SIDECAR = "project-cache"
+"""Gradle's project cache in a sidecar's data folder, in place of the project's own `.gradle/`,
+whose locks the app's builds take: a lock cannot be handed over across containers."""
+
+
+GRADLE_USER_HOME = "GRADLE_USER_HOME"
+GRADLE_READ_ONLY_CACHE = "GRADLE_RO_DEP_CACHE"
+
+
+def runs_on_a_jdk(server: LanguageServer) -> bool:
+    """Whether `server` needs a JDK, to run on or to import a Gradle build with."""
+    return server.jdks is not None
+
+
+def sidecar_image(server: LanguageServer, project_image: str) -> str:
+    """Where `server` runs in a service project's sidecar: a Node server on the pinned Node image,
+    whatever the project's; a server that needs a JDK on the project's own image, which holds the
+    JDK and the Gradle the project builds with, and which `cstudy start` pulled."""
+    return project_image if runs_on_a_jdk(server) else NODE_IMAGE
+
+
+def sidecar_toolchain(
+    server: LanguageServer, service: ServiceProject, data: str, cache_volume: str | None
+) -> SidecarToolchain | None:
+    """What `server` needs of the project's toolchain in its sidecar, whose data folder is the
+    absolute `data`: for JDT LS, the image's Gradle (which it finds through the image's
+    `GRADLE_HOME`) with its user home and project cache in `data`, and the dependencies of the
+    install cache as Gradle's read-only cache, which Gradle neither locks nor writes. None for a
+    Node server."""
+    if not runs_on_a_jdk(server):
+        return None
+    environment = {"GRADLE_USER_HOME": f"{data}/{GRADLE_HOME_IN_SIDECAR}"}
+    installed = service.env.get(GRADLE_USER_HOME)
+    if cache_volume is not None and installed is not None:
+        environment[GRADLE_READ_ONLY_CACHE] = f"{installed}/caches"
+    properties = f"org.gradle.projectcachedir={data}/{PROJECT_CACHE_IN_SIDECAR}\n"
+    return SidecarToolchain(
+        cache_volume=cache_volume,
+        environment=environment,
+        files={f"{GRADLE_HOME_IN_SIDECAR}/gradle.properties": properties},
+        writable_project=True,
+        memory=JVM_SIDECAR_MEMORY,
+        pids=JVM_SIDECAR_PIDS,
+    )
 
 
 def sidecar_server(server: LanguageServer, folder: str) -> LanguageServer:
     """`server` as it runs in a service project's sidecar, on the dependencies installed in the
     absolute `folder`. TypeScript's compiler is the folder's own, so the workspace's `typescript/`
     is not needed; basedpyright is the catalog's, since it reads the folder's `[tool.pyright]`,
-    whose `venv` it finds without asking Python. Raises ValueError for a server of no sidecar."""
+    whose `venv` it finds without asking Python; JDT LS runs on the image's JDK, so the JDK this
+    machine selects does not matter. Raises ValueError for a server of no sidecar."""
     if server not in SIDECAR_SERVERS:
         raise ValueError(f"{server.name} runs in no sidecar")
+    if runs_on_a_jdk(server):
+        return replace(server, jdks=None)
     if server is not TYPESCRIPT_LANGUAGE_SERVER:
         return server
     options = partial(_compiler_options, folder)
@@ -832,9 +891,7 @@ IN_SIDECAR = Route(Placement.SIDECAR)
 SERVICE_PROJECT_ROUTES: Mapping[Language, Route] = {
     Language.PYTHON: IN_SIDECAR,
     Language.TYPESCRIPT: IN_SIDECAR,
-    Language.JAVA: Route(
-        Placement.PENDING, "JDT LS runs on a JDK and imports Gradle, which the Node image lacks"
-    ),
+    Language.JAVA: IN_SIDECAR,
     Language.KOTLIN: Route(
         Placement.PENDING,
         "the Kotlin LSP is a build per machine with its own runtime and launcher, which the "

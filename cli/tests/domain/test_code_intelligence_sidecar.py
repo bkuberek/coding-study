@@ -10,14 +10,18 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.code_intelligence import (
     BASEDPYRIGHT,
     GOPLS,
+    JDTLS,
     TYPESCRIPT_LANGUAGE_SERVER,
     NoCodeIntelligence,
     no_code_intelligence,
+    sidecar_image,
     sidecar_server,
+    sidecar_toolchain,
 )
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.service_project import service_of
-from tests.service_problems import meta_document
+from coding_study.domain.sandbox import NODE_IMAGE, SidecarToolchain
+from coding_study.domain.service_project import ServiceProject, service_of
+from tests.service_problems import GRADLE_IMAGE, java_meta_document, meta_document
 
 FOLDER = "/work/projects/rooms"
 
@@ -82,3 +86,69 @@ def test_a_problem_that_is_no_service_project_has_its_servers_say():
 def test_gopls_has_no_sidecar_variant_to_offer():
     with pytest.raises(ValueError, match="gopls runs in no sidecar"):
         sidecar_server(GOPLS, FOLDER)
+
+
+def test_jdt_ls_in_a_sidecar_runs_on_the_images_jdk_whatever_this_machine_selects():
+    assert sidecar_server(JDTLS, FOLDER).jdks is None
+
+
+def test_jdt_ls_in_a_sidecar_runs_the_same_milestone():
+    assert sidecar_server(JDTLS, FOLDER).script == JDTLS.script
+
+
+def test_a_node_server_runs_on_the_node_image_whatever_the_projects():
+    assert sidecar_image(TYPESCRIPT_LANGUAGE_SERVER, GRADLE_IMAGE) == NODE_IMAGE
+
+
+def test_jdt_ls_runs_on_the_projects_own_image():
+    """Its JDK and Gradle build the project, and `cstudy start` pulled it."""
+    assert sidecar_image(JDTLS, GRADLE_IMAGE) == GRADLE_IMAGE
+
+
+DATA = "/work/.cs/runs/cstudy-l-41-abc/data"
+CACHE = "cstudy-i-rooms-d1g3st_cache"
+
+
+def java_service() -> ServiceProject:
+    service = service_of(meta_from_document(java_meta_document(), "meta.yaml"))
+    assert service is not None
+    return service
+
+
+def jdtls_toolchain(cache: str | None = CACHE) -> SidecarToolchain:
+    toolchain = sidecar_toolchain(JDTLS, java_service(), DATA, cache)
+    assert toolchain is not None
+    return toolchain
+
+
+def test_a_node_server_needs_no_toolchain():
+    assert sidecar_toolchain(BASEDPYRIGHT, java_service(), DATA, CACHE) is None
+
+
+def test_gradle_keeps_its_home_in_the_data_folder_and_reads_the_install_cache_read_only():
+    """Gradle neither locks nor writes a read-only cache, so the app's builds go on beside it."""
+    assert jdtls_toolchain().environment == {
+        "GRADLE_USER_HOME": f"{DATA}/gradle",
+        "GRADLE_RO_DEP_CACHE": "/cache/gradle/caches",
+    }
+
+
+def test_without_an_install_cache_gradle_has_no_read_only_cache():
+    assert "GRADLE_RO_DEP_CACHE" not in jdtls_toolchain(None).environment
+
+
+def test_gradles_project_cache_goes_to_the_data_folder():
+    """Not the project's `.gradle/`, whose locks the app's builds take."""
+    assert jdtls_toolchain().files == {
+        "gradle/gradle.properties": f"org.gradle.projectcachedir={DATA}/project-cache\n"
+    }
+
+
+def test_gradle_writes_the_project_folder_it_configures():
+    assert jdtls_toolchain().writable_project
+
+
+def test_jdt_ls_gets_room_for_its_heap_and_a_gradle_daemon():
+    toolchain = jdtls_toolchain()
+
+    assert (toolchain.memory, toolchain.pids, toolchain.cache_volume) == ("2g", 512, CACHE)

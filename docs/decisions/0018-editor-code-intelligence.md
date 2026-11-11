@@ -305,7 +305,7 @@ The fake server keeps the fast and browser tests deterministic: they wait for wh
 | 2 | Java on JDK 25 and 26 only (25 is the JDK to install), after a spike that measures JDT LS's start and memory on `jvm/` and a project folder; Kotlin in the same release, starting from a spike of the alpha Kotlin LSP on `jvm/kotlin` and a Kotlin project folder. If the Kotlin spike fails (it does not start offline, misses errors, or is too heavy), the owner is told before anything is built and Java ships alone. Done: Java ships with diagnostics, hover, definitions and, behind `autocomplete`, completion and signature help; the Kotlin spike failed ([Phase 2 spikes](#phase-2-spikes)), so Java ships alone |
 | 3 | Go and Rust, autocomplete included; pull diagnostics; documentation links that open library sources. Done: gopls, built by `cstudy doctor --fix` at the version the selected Go pins, and the rust-analyzer on `PATH`, which cstudy never installs; pulled diagnostics beside published ones; hover links into GOROOT that open the library tab ([Phase 3 measurements](#phase-3-measurements)) |
 | After 3 | Kotlin, from the owner's answer O5: JetBrains' Kotlin LSP behind a license each user accepts, after a spike of every Kotlin server. Done: diagnostics by pull, hover, definitions and, behind `autocomplete`, completion and signature help, with the license step of `cstudy doctor --fix` and its warm-up ([Kotlin revisited](#kotlin-revisited)) |
-| Service projects | [ADR 0019](0019-service-projects.md)'s P9, for TypeScript and Python. Done (2026-11-10): sandboxed code writes a service project's folder, so its server runs in a sidecar container per session instead of on this machine, through `docker exec`, with the same broker, catalog and `.cs/lsp/` ([Service projects](#service-projects)) |
+| Service projects | [ADR 0019](0019-service-projects.md)'s P9, for TypeScript and Python. Done (2026-11-10): sandboxed code writes a service project's folder, so its server runs in a sidecar container per session instead of on this machine, through `docker exec`, with the same broker, catalog and `.cs/lsp/` ([Service projects](#service-projects)). Java followed P12 the same day, JDT LS on the project's own image; the [route table](../specs/web-ui.md#where-each-server-runs) says where every kind of problem and language stands |
 | Not planned | References, rename, and quick fixes such as adding a missing import, with the completions that add one ([Revisit](#revisit)) |
 
 The owner set this order on 2026-11-03 (O4). Each phase is its own release, with its guide section, screenshots and website message. A server that is not a Node program (JDT LS, the Kotlin LSP, gopls, rust-analyzer) must keep the [hidden directories](#servers) from its server in its own way, since `hide_paths.cjs` reaches Node processes only: each of those phases decides how, for example a launch the server runs inside, a workspace the server sees without them, or the broker's filtering alone, and tests it with a reference in `.cs/build/` before it ships.
@@ -324,6 +324,18 @@ A service project's folder is written by code that runs in Docker, so a server o
 | Docker not usable | The socket closes with 4004 and a calm reason; a session neither starts Docker nor pulls the image |
 
 Measured on the catalog's first service projects: TypeScript's first diagnostics 1.4 s after `didOpen`, 386 MiB at peak; basedpyright's 0.8 s, 140 MiB at peak. The servers are the same files as on this machine, so the install does not grow; a Python learner's Docker holds the `node:24-slim` image besides the project's, 352 MB on disk.
+
+**Java (2026-11-10, after P12).** JDT LS is a Java program whose archive holds a `config_linux`, so the sidecar reuses the `.cs/lsp/jdtls/` that `cstudy doctor --fix` unpacked, mounted read-only, and runs it with the `java` of the project's own image (`gradle:9.8.2-jdk25-alpine`), which also holds the Gradle the import needs and which the install already pulled: nothing is downloaded or pulled for it. A spike on the Java fixture settled the rest:
+
+| Item | Rule |
+|------|------|
+| Gradle's caches | The install cache is mounted read-only and named to Gradle as its read-only dependency cache (`GRADLE_RO_DEP_CACHE`), which it neither locks nor writes; Gradle's user home and project cache go to a data folder of the sidecar's run (`org.gradle.projectcachedir`). With the project's `.gradle/` or the install cache writable, the import's Gradle daemon would hold locks that the app's builds wait for, and a lock cannot be handed over between containers |
+| The project folder | Read-write, as the app's, with `.devcontainer` read-only: Gradle 9 refuses to configure a project in a folder it cannot write (`can't be written to`, measured with it read-only). The import wrote nothing there |
+| Memory | 2 GiB and 512 processes: JDT LS and the Gradle daemon took 1.27 GiB and 78 processes |
+| Start | Each session starts afresh, its data folder gone with its run's: the type error came 20.6 s after `didOpen` on a busy laptop, `initialize` in 5.0 s |
+| The JDK of this machine | Not used: JDT LS runs on the image's JDK 25, so a Java service project has code intelligence while this machine selects JDK 21 |
+
+**Kotlin and Go service projects** have no sidecar yet, each for a reason the route table holds: the Kotlin LSP is a build per machine with its own runtime, which the project's Linux image cannot run, and trying another route means running a server whose license you accept; Go service projects come with P13.
 
 ## Consequences
 
@@ -360,7 +372,8 @@ Measured on the catalog's first service projects: TypeScript's first diagnostics
 | A browser test finds Ctrl-Minus held by an engine | Another Back binding |
 | gopls drops the oldest Go that cstudy supports | The pinned table, or cstudy's Go minimum |
 | A Python service project's starter leaves `venv` out of `[tool.pyright]` | `basedpyright.analysis.extraPaths` with the `.venv`'s `site-packages`, which the spike measured working |
-| A service project in another language gets a template | Its server in the sidecar, or in an image of its own, in place of `no_code_intelligence` |
+| A service project in another language gets a template | Its server in the sidecar, or in an image of its own, in place of its pending cell in the route table |
+| The Kotlin LSP's license is accepted for a spike in a container | Its jars on the project image's JDK, or its Linux build on a glibc image, for Kotlin service projects |
 
 ## Alternatives considered
 

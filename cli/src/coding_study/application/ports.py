@@ -1418,9 +1418,11 @@ class SidecarEngine(Protocol):
         what did."""
         ...
 
-    def sidecar_command(self, plan: SidecarPlan, command: Sequence[str]) -> tuple[str, ...]:
-        """What runs `command` in the sidecar, in the project folder, with the standard input and
-        output of the process that runs it."""
+    def sidecar_command(
+        self, plan: SidecarPlan, command: Sequence[str], environment: Mapping[str, str]
+    ) -> tuple[str, ...]:
+        """What runs `command` in the sidecar, in the project folder, with `environment` on top of
+        the sidecar's own and the standard input and output of the process that runs it."""
         ...
 
 
