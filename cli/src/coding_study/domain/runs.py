@@ -22,11 +22,12 @@ HELLO_TIMEOUT_MS: Mapping[Language, int] = {
     Language.TYPESCRIPT: 5_000,
     Language.JAVA: 15_000,
     Language.KOTLIN: 15_000,
-    Language.GO: 5_000,
-    Language.RUST: 5_000,
+    Language.GO: 60_000,
+    Language.RUST: 60_000,
 }
 """How long a freshly started runner may take to write its `hello` event. Go and Rust runners are
-built before they start, so they answer as quickly as a script."""
+built before they start, but macOS checks a freshly built binary on its first exec, which took 9 to
+39 s on a busy machine, so they get a generous wait. Startup never counts toward a time limit."""
 
 
 class RunMode(StrEnum):

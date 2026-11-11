@@ -242,7 +242,7 @@ The CLI watches the event file:
 
 | Phase | Limit | On expiry |
 |-------|-------|-----------|
-| Until `hello` | 5 s (Python, TypeScript, Go, Rust), 15 s (JVM) | Environment error, exit 4 |
+| Until `hello` | 5 s (Python, TypeScript), 15 s (JVM), 60 s (Go, Rust: macOS checks a freshly built binary on first exec) | Environment error, exit 4 |
 | `case_start` to `case_result` | config `hang_guard.ms` if set, else case `hang_guard_ms`, else meta `limits.hang_guard_ms`, else 10000 | Kill the process group; case status `timeout`; restart the runner with the remaining cases |
 | Any other gap between events after `hello` (for example loading user code) | 10000 | As above, reported on the next case not run yet |
 | `case_start` to `case_result` of a concurrent stress run | `deadline_ms + 5000` | As for other cases |
