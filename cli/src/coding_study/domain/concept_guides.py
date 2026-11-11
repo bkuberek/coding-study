@@ -84,7 +84,8 @@ class ProblemFacts:
     title: str
     status: ProblemStatus
     passed: bool
-    """At least one passed attempt, whatever the review schedule says now."""
+    """At least one passed attempt, through every level for a problem with levels, as a set's
+    entry without a target counts it, whatever the review schedule says now."""
     level_passed: int | None
     """The highest level an attempt has passed; None for a problem without levels."""
 
@@ -125,13 +126,15 @@ def problem_step_progress(step: PathStep, facts: ProblemFacts) -> StepProgress:
 
 def highest_level_passed(attempts: Iterable[Attempt], levels: int) -> int | None:
     """An attempt that has unlocked level n passed levels 1 to n - 1; a passed attempt passed
-    them all. None for a problem without levels."""
+    the levels `cstudy done` recorded, or all of them when it recorded none. None for a problem
+    without levels."""
     if levels == 0:
         return None
     reached = 0
     for attempt in attempts:
         if attempt.status is AttemptStatus.PASSED:
-            return levels
+            recorded = attempt.levels_passed
+            reached = max(reached, levels if recorded is None else recorded)
         if attempt.level_unlocked is not None:
             reached = max(reached, attempt.level_unlocked - FIRST_LEVEL)
     return min(reached, levels)

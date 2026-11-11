@@ -151,7 +151,7 @@ steps:
 | `title` | string, 1 to 100 characters | yes | |
 | `summary` | string, 1 to 240 characters | yes | |
 | `steps` | list, at least 1 | yes | In order. Each step is `{guide: <slug>}` or `{problem: <slug>}`, a problem step optionally with `level: <n>` |
-| `level` | integer, at least 1 | no | Only on a progressive or project problem, at most its number of levels: the step is done once that level passes. Without it, the step is done when the problem passes |
+| `level` | integer, at least 1 | no | Only on a progressive or project problem, at most its number of levels: the step is done once that level passes. Without it, the step is done when the problem passes, through every level it has |
 
 The same problem may come twice with different levels, so a path can return to it once it has taught what the later levels need.
 
@@ -198,8 +198,8 @@ A path's progress is computed each time, never stored:
 | Step | Done when |
 |------|-----------|
 | A guide | It is marked read |
-| A problem | It has a passed attempt, whatever its review schedule says now, as for a [set](cli.md#cstudy-set) |
-| A problem with `level: n` | It has a passed attempt, or an attempt in any status has unlocked level n + 1, so it passed levels 1 to n |
+| A problem | It has a passed attempt, through every level for a problem with levels, whatever its review schedule says now, as for a [set](cli.md#cstudy-set) |
+| A problem with `level: n` | A passed attempt passed through level n or beyond ([level passes](progress-and-scheduling.md#level-passes)), or an attempt in any status has unlocked level n + 1, so it passed levels 1 to n |
 
 The path's next step is its first step that is not done.
 

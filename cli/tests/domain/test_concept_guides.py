@@ -17,7 +17,9 @@ from coding_study.domain.scheduling import ProblemStatus
 STARTED = datetime(2026, 11, 11, 9, tzinfo=UTC)
 
 
-def attempt(status: AttemptStatus, level_unlocked: int | None = None) -> Attempt:
+def attempt(
+    status: AttemptStatus, level_unlocked: int | None = None, levels_passed: int | None = None
+) -> Attempt:
     return Attempt(
         id=1,
         slug="ledger",
@@ -26,6 +28,8 @@ def attempt(status: AttemptStatus, level_unlocked: int | None = None) -> Attempt
         status=status,
         started_at=STARTED,
         level_unlocked=level_unlocked,
+        levels_passed=levels_passed,
+        levels_total=None if levels_passed is None else 4,
     )
 
 
@@ -90,6 +94,9 @@ def test_a_passed_problem_meets_any_level_target():
         ((attempt(AttemptStatus.IN_PROGRESS, 3),), 2),
         ((attempt(AttemptStatus.ABANDONED, 4), attempt(AttemptStatus.FAILED, 2)), 3),
         ((attempt(AttemptStatus.PASSED, 4),), 4),
+        ((attempt(AttemptStatus.PASSED, 1, levels_passed=2),), 2),
+        ((attempt(AttemptStatus.PASSED, 3, levels_passed=1),), 2),
+        ((attempt(AttemptStatus.PASSED, 4, levels_passed=4),), 4),
     ],
 )
 def test_the_highest_level_passed_reads_the_unlocked_levels(

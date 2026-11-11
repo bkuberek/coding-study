@@ -45,7 +45,7 @@ Every example is a real program in `examples/`, embedded in `guide.md` byte for 
 
 ### Reading is marked, not inferred
 
-`cstudy learn <guide> --done` marks a guide read; printing it does not, since printing is not reading. The mark lives in `progress.db`, in a new table, `guide_reads`, so `cstudy reset` empties it and `cstudy export` carries it like every other record of what you did. A path's progress is computed each time: a guide step is done when the guide is read, a problem step when the problem has a passed attempt, and a step with a level target when an attempt has passed that level.
+`cstudy learn <guide> --done` marks a guide read; printing it does not, since printing is not reading. The mark lives in `progress.db`, in a new table, `guide_reads`, so `cstudy reset` empties it and `cstudy export` carries it like every other record of what you did. A path's progress is computed each time: a guide step is done when the guide is read, a problem step when the problem has a passed attempt through every level it has, and a step with a level target when an attempt has passed that level.
 
 ### The web UI is where guides read best; the terminal reads them all
 

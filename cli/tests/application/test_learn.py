@@ -12,7 +12,9 @@ from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewA
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
 from tests.fakes import NOW, FakeClock, make_environment
-from tests.guide_builders import write_guide, write_hashing
+from tests.guide_builders import write_guide, write_hashing, write_path
+
+LEDGER_LEVELS = 4
 
 
 @pytest.fixture
@@ -27,13 +29,22 @@ def attempt(
     slug: str,
     status: AttemptStatus,
     level_unlocked: int | None = None,
+    levels_passed: int | None = None,
 ) -> None:
     progress = environment.progress
     started = progress.add_attempt(NewAttempt(slug, Language.PYTHON, AttemptMode.NEW, NOW))
     ended = None if status is AttemptStatus.IN_PROGRESS else NOW
     grade = Grade.OK if status is AttemptStatus.PASSED else None
     progress.update_attempt(
-        replace(started, status=status, ended_at=ended, grade=grade, level_unlocked=level_unlocked)
+        replace(
+            started,
+            status=status,
+            ended_at=ended,
+            grade=grade,
+            level_unlocked=level_unlocked,
+            levels_passed=levels_passed,
+            levels_total=None if levels_passed is None else LEDGER_LEVELS,
+        )
     )
 
 
@@ -121,6 +132,32 @@ def test_a_level_target_not_reached_shows_how_far_it_got(environment: Environmen
     attempt(environment, "tamper-evident-ledger", AttemptStatus.ABANDONED, level_unlocked=2)
     step = path_view(environment, "hashing").steps[3]
     assert (step.done, step.status) == (False, "level 1 passed")
+
+
+def test_a_pass_below_a_level_target_leaves_it_to_do(environment: Environment):
+    attempt(environment, "tamper-evident-ledger", AttemptStatus.PASSED, 2, levels_passed=1)
+    step = path_view(environment, "hashing").steps[3]
+    assert (step.done, step.status, step.level_passed) == (False, "level 1 passed", 1)
+
+
+def test_a_pass_through_a_level_target_meets_it(environment: Environment):
+    attempt(environment, "tamper-evident-ledger", AttemptStatus.PASSED, 2, levels_passed=2)
+    step = path_view(environment, "hashing").steps[3]
+    assert (step.done, step.status) == (True, "level 2 passed")
+
+
+def test_a_problem_step_without_a_level_needs_every_level(
+    environment: Environment, content_root: Path
+):
+    write_path(content_root, "ledger", ["problem: tamper-evident-ledger"], title="Ledger")
+    attempt(environment, "tamper-evident-ledger", AttemptStatus.PASSED, 3, levels_passed=3)
+    (part,) = path_view(environment, "ledger").steps
+    attempt(environment, "tamper-evident-ledger", AttemptStatus.PASSED, 4, levels_passed=4)
+    (whole,) = path_view(environment, "ledger").steps
+    assert [(step.done, step.status) for step in (part, whole)] == [
+        (False, "level 3 passed"),
+        (True, "passed"),
+    ]
 
 
 def test_a_failed_problem_reads_as_attempted(environment: Environment):

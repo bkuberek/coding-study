@@ -22,6 +22,7 @@ from coding_study.domain.concept_guides import (
 from coding_study.domain.errors import UsageError
 from coding_study.domain.guide_markdown import GuideMarkdown
 from coding_study.domain.problem import ProblemSummary
+from coding_study.domain.problem_sets import target_reached
 from coding_study.domain.scheduling import ProblemProgress
 
 MISSING = "missing"
@@ -166,7 +167,7 @@ class _Progress:
         return ProblemFacts(
             title=meta.title,
             status=status,
-            passed=progress.has_passed,
+            passed=target_reached(progress, len(meta.levels) or None, None),
             level_passed=highest_level_passed(attempts, len(meta.levels)),
         )
 
