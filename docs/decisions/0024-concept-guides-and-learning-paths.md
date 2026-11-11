@@ -47,9 +47,11 @@ Every example is a real program in `examples/`, embedded in `guide.md` byte for 
 
 `cstudy learn <guide> --done` marks a guide read; printing it does not, since printing is not reading. The mark lives in `progress.db`, in a new table, `guide_reads`, so `cstudy reset` empties it and `cstudy export` carries it like every other record of what you did. A path's progress is computed each time: a guide step is done when the guide is read, a problem step when the problem has a passed attempt, and a step with a level target when an attempt has passed that level.
 
-### `cstudy learn`
+### The web UI is where guides read best; the terminal reads them all
 
-`cstudy learn` lists the guides and the paths; `cstudy learn <guide>` prints a guide in the terminal, with its diagrams as text; `cstudy learn --path <path>` shows a path's steps and what is done. Each takes `--json`. Reading needs no workspace; `--done` does.
+The owner, on 2026-11-11: recommend the web UI for learning, and keep full CLI support. The Guides page of `cstudy serve` is the recommended way to read: Mermaid drawn, navigation between guides, and a path's progress beside its steps. It is the next step and is not built here.
+
+The terminal is fully supported. `cstudy learn` lists the guides and the paths; `cstudy learn <guide>` renders a guide's Markdown with Rich on a terminal, and prints it as Markdown text when its output is not a terminal, its diagrams as their text drawings either way; `cstudy learn --path <path>` shows a path's steps and what is done. Each takes `--json`. Reading needs no workspace; `--done` does. The list and a guide end with one quiet line that points to the web UI, `cstudy learn <guide> --open`. Until the Guides page lands, `--open` says plainly that the page comes with the next step: keeping the flag now means the hint and the scripts that use it do not change when the page arrives.
 
 ### The first path: "Hashing: from your first hash map to tamper-evident ledgers"
 
@@ -67,7 +69,7 @@ Seven guides, from what a hash function is to Merkle proofs, around the thirteen
 
 | Option | What it would add |
 |--------|-------------------|
-| The page's Guides view | Guides and paths in `cstudy serve`, drawing Mermaid with a locally bundled, lazily loaded renderer that follows the page's theme, and hiding the text drawings |
+| The page's Guides view (next) | Guides and paths in `cstudy serve`, drawing Mermaid with a locally bundled, lazily loaded renderer that follows the page's theme, and hiding the text drawings; `cstudy learn <guide> --open` opens a guide there |
 | Concept checks | Short questions per guide on the review schedule |
 | Mastery per level | Path progress that reads per-level passes once they land |
 | `verify --changed` for guides | Only the guides and paths a branch changed |

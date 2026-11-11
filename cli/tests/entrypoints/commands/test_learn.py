@@ -1,0 +1,205 @@
+"""`cstudy learn` (docs/specs/cli.md#cstudy-learn)."""
+
+import io
+import json
+from pathlib import Path
+
+import pytest
+from rich.console import Console
+from typer.testing import CliRunner
+
+from coding_study.application.environment import Environment
+from coding_study.application.learn import guide_page
+from coding_study.entrypoints import cli
+from coding_study.entrypoints.commands import learn
+from coding_study.entrypoints.shared import ExitCode
+from tests.fakes import NOW, make_environment
+from tests.guide_builders import write_hashing
+
+runner = CliRunner()
+HINT = "Read with rendered diagrams in the web UI: cstudy learn"
+
+
+@pytest.fixture
+def environment(content_root: Path, monkeypatch: pytest.MonkeyPatch) -> Environment:
+    write_hashing(content_root)
+    environment = make_environment(content_root)
+    monkeypatch.setattr(learn, "load_environment", lambda *_: environment)
+    monkeypatch.setattr(learn, "load_catalog_environment", lambda *_: environment)
+    return environment
+
+
+def invoke(*arguments: str):
+    return runner.invoke(cli.app, ["learn", *arguments])
+
+
+def test_the_list_shows_the_guides_the_paths_and_what_comes_next(environment: Environment):
+    lines = invoke().output.splitlines()
+    assert lines == [
+        "GUIDES",
+        "SLUG                        LEVEL     READ  TITLE",
+        "hash-functions              intro     -     Hash functions",
+        "hash-maps                   intro     -     Hash maps",
+        "",
+        "PATHS",
+        "hashing                     0 of 4 done     Hashing",
+        "next      cstudy learn --path hashing",
+        f"{HINT} <guide> --open",
+    ]
+
+
+def test_the_list_as_json_has_no_hint(environment: Environment):
+    learn.mark_read(environment, "hash-maps")
+    document = json.loads(invoke("--json").output)
+    assert (document["guides"][1], document["paths"]) == (
+        {
+            "slug": "hash-maps",
+            "title": "Hash maps",
+            "summary": "A short summary.",
+            "level": "intro",
+            "prerequisites": ["hash-functions"],
+            "related": [],
+            "problems": ["two-sum"],
+            "read": True,
+            "read_at": NOW.isoformat(),
+        },
+        [
+            {
+                "slug": "hashing",
+                "title": "Hashing",
+                "summary": "From hash functions on.",
+                "done": 1,
+                "total": 4,
+            }
+        ],
+    )
+
+
+def test_no_guides_says_where_it_looked(content_root: Path, monkeypatch: pytest.MonkeyPatch):
+    environment = make_environment(content_root)
+    monkeypatch.setattr(learn, "load_catalog_environment", lambda *_: environment)
+    assert invoke().output == f"no guides in {content_root}\n"
+
+
+def test_a_guide_prints_as_markdown_with_its_diagrams_as_text(environment: Environment):
+    output = invoke("hash-maps").output
+    assert (
+        output.startswith("# Hash maps\n"),
+        "```mermaid" in output,
+        "[k] --> [b]" in output,
+        output.splitlines()[-2:],
+    ) == (
+        True,
+        False,
+        True,
+        ["done      cstudy learn hash-maps --done", f"{HINT} hash-maps --open"],
+    )
+
+
+def test_a_guide_names_its_examples_folder(environment: Environment, content_root: Path):
+    folder = content_root / "guides" / "hash-maps" / "examples"
+    assert f"examples  {folder}" in invoke("hash-maps").output
+
+
+def test_a_read_guide_says_when(environment: Environment):
+    learn.mark_read(environment, "hash-maps")
+    assert "read      2026-" in invoke("hash-maps").output
+
+
+def test_on_a_terminal_a_guide_is_rendered_markdown(environment: Environment):
+    buffer = io.StringIO()
+    terminal = Console(file=buffer, force_terminal=True, width=100, color_system=None)
+    learn._print_guide(terminal, guide_page(environment, "hash-maps"), as_json=False)
+    text = buffer.getvalue()
+    assert ("# Hash maps" in text, "Hash maps" in text, "[k] --> [b]" in text) == (
+        False,
+        True,
+        True,
+    )
+
+
+def test_a_guide_as_json_holds_its_markdown_and_examples(environment: Environment):
+    document = json.loads(invoke("hash-maps", "--json").output)
+    assert (
+        document["markdown"].startswith("# Hash maps"),
+        [Path(name).name for name in document["examples"]],
+    ) == (True, ["hello.py"])
+
+
+def test_done_marks_the_guide_read_once(environment: Environment):
+    assert (invoke("hash-maps", "--done").output, invoke("hash-maps", "--done").output) == (
+        "marked hash-maps read\n",
+        f"hash-maps was marked read on {NOW.date().isoformat()}\n",
+    )
+
+
+def test_done_as_json(environment: Environment):
+    document = json.loads(invoke("hash-maps", "--done", "--json").output)
+    assert document == {"slug": "hash-maps", "read_at": NOW.isoformat(), "already": False}
+
+
+def test_open_says_the_guides_page_comes_next(environment: Environment):
+    result = invoke("hash-maps", "--open")
+    assert (result.exit_code, "Guides page comes with the next step" in result.output) == (
+        ExitCode.SUCCESS,
+        True,
+    )
+
+
+def test_a_path_shows_its_steps_and_the_next_command(environment: Environment):
+    learn.mark_read(environment, "hash-functions")
+    lines = invoke("--path", "hashing").output.splitlines()
+    assert lines == [
+        "hashing  Hashing",
+        "From hash functions on.",
+        "1 of 4 done",
+        "#   KIND     STEP                       TARGET   STATUS          TITLE",
+        "1   guide    hash-functions                      read            Hash functions",
+        "2   guide    hash-maps                           not read        Hash maps",
+        "3   problem  two-sum                             new             Two Sum",
+        "4   problem  tamper-evident-ledger      level 2  new             Tamper-Evident Ledger",
+        "next      cstudy learn hash-maps",
+    ]
+
+
+def test_a_path_as_json(environment: Environment):
+    document = json.loads(invoke("--path", "hashing", "--json").output)
+    assert (document["done"], document["total"], document["next"], document["steps"][3]) == (
+        0,
+        4,
+        {
+            "position": 1,
+            "kind": "guide",
+            "slug": "hash-functions",
+            "title": "Hash functions",
+            "level": None,
+            "done": False,
+            "status": "not read",
+            "level_passed": None,
+        },
+        {
+            "position": 4,
+            "kind": "problem",
+            "slug": "tamper-evident-ledger",
+            "title": "Tamper-Evident Ledger",
+            "level": 2,
+            "done": False,
+            "status": "new",
+            "level_passed": 0,
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (("hash-map",), 'unknown guide "hash-map"; did you mean hash-maps'),
+        (("--path", "hashin"), 'unknown path "hashin"; did you mean hashing'),
+        (("hash-maps", "--path", "hashing"), "give a guide or --path, not both"),
+        (("--done",), "--done needs a guide"),
+        (("--open",), "--open needs a guide"),
+    ],
+)
+def test_usage_errors_exit_3(environment: Environment, arguments: tuple[str, ...], message: str):
+    result = invoke(*arguments)
+    assert (result.exit_code, message in result.output) == (ExitCode.USAGE_ERROR, True)

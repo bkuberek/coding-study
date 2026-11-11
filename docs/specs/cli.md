@@ -1140,17 +1140,18 @@ Prints the rendered statement (title, metadata, sections, examples generated fro
 
 ```text
 cstudy learn [--json]
-cstudy learn <guide> [--done] [--json]
+cstudy learn <guide> [--done] [--open] [--json]
 cstudy learn --path <path> [--json]
 ```
 
-Reads the [concept guides and learning paths](guides.md) of the content root ([ADR 0024](../decisions/0024-concept-guides-and-learning-paths.md)). Reading needs no workspace: outside one, nothing is read and no path step is done. `--done` needs one, since it records progress.
+Reads the [concept guides and learning paths](guides.md) of the content root ([ADR 0024](../decisions/0024-concept-guides-and-learning-paths.md)). The web UI's Guides page is the recommended way to read them, with the diagrams drawn; the terminal reads every guide in full. Reading needs no workspace: outside one, nothing is read and no path step is done. `--done` needs one, since it records progress.
 
 | Form | Does | Says |
 |------|------|------|
-| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with steps done of total, and `next    cstudy learn --path <path>` for the first path not finished; with no `guides/`, `no guides in <content root>` |
-| `cstudy learn <guide>` | Prints the guide as Markdown text, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings) | The guide, then `examples  <folder>` when it has examples, and `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked |
+| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with steps done of total, `next    cstudy learn --path <path>` for the first path not finished, and the [web hint](#the-web-hint); with no `guides/`, `no guides in <content root>` |
+| `cstudy learn <guide>` | Shows the guide, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings). On a terminal it is Markdown rendered by Rich; otherwise, piped or redirected, the Markdown text as written | The guide, then `examples  <folder>` when it has examples, `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked, and the web hint |
 | `cstudy learn <guide> --done` | Marks the guide read; the first time is kept | `marked hash-functions read`, or `hash-functions was marked read on 2026-11-11`, which changes nothing and exits 0 |
+| `cstudy learn <guide> --open` | Will open the guide in the web UI's Guides page, as `cstudy serve --open` opens the page. Until that page lands, the next step, it opens nothing | `the web UI's Guides page comes with the next step of cstudy; until then, read the guide here with cstudy learn <guide>`, exit 0 |
 | `cstudy learn --path <path>` | The path's steps in order, with what is [done](guides.md#reading-progress) | The heading, the summary, `3 of 21 done`, the steps, and `next    cstudy learn <guide>` or `next    cstudy start <problem>` for the first step not done |
 
 ```text
@@ -1174,8 +1175,12 @@ A problem step's status is `passed` once done, or for a level target `level N pa
 | A guide that does not exist | `unknown guide "hash-fn"; did you mean hash-functions?`, or `unknown guide "x"; cstudy learn lists the guides`, exit 3 |
 | A path that does not exist | `unknown path "hashin"; did you mean hashing?`, or the same with `cstudy learn lists the paths`, exit 3 |
 | A guide and `--path` | `give a guide or --path, not both`, exit 3 |
-| `--done` without a guide | `--done needs a guide: cstudy learn <guide> --done`, exit 3 |
+| `--done` or `--open` without a guide | `--done needs a guide: cstudy learn <guide> --done`, or the same for `--open`, exit 3 |
 | A guide or path that does not load | What is wrong and which file, exit 5; `cstudy verify --static` names every problem |
+
+### The web hint
+
+The list and a guide end with one dim line, `Read with rendered diagrams in the web UI: cstudy learn <guide> --open` (the guide's slug after a guide, `<guide>` after the list). `--json` never prints it.
 
 `--json` of the list prints `{"guides": [...], "paths": [...]}`: each guide `{"slug", "title", "summary", "level", "prerequisites", "related", "problems", "read", "read_at"}` (`read_at` an ISO 8601 UTC time or null) and each path `{"slug", "title", "summary", "done", "total"}`. `--json` of a guide prints the guide's fields with `"markdown"`, `guide.md` as written, `diagrams` and all, and `"examples"`, the absolute paths of its examples. `--json` of `--done` prints `{"slug", "read_at", "already"}`, `already` true when it was marked before. `--json` of a path prints `{"slug", "title", "summary", "done", "total", "next", "steps": [...]}`: `next` the first step not done or null, and each step `{"position", "kind", "slug", "title", "level", "done", "status", "level_passed"}`, `kind` `guide` or `problem`, `level` the target or null, `status` as the table writes it, and `level_passed` the highest level an attempt has passed, or null for a guide or a problem without levels.
 

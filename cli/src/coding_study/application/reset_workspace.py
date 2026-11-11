@@ -42,6 +42,7 @@ TABLE_LABELS = (
     ("bench_runs", "bench runs"),
     ("submissions", "submissions"),
     ("level_unlocks", "level unlocks"),
+    ("guide_reads", "guides read"),
 )
 
 

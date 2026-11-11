@@ -2,6 +2,8 @@
 
 A **guide** is a short, original reading page that teaches one idea before you practise it: the plain idea, a worked example, when to use it, the traps, the complexity, notes for experts, the problems that practise it, and where to read more. A **path** orders guides and problems into a track, from a topic's first idea to an expert's. Both are content: they ship with `cstudy` like the problems, and [`cstudy learn`](cli.md#cstudy-learn) reads them ([ADR 0024](../decisions/0024-concept-guides-and-learning-paths.md)).
 
+The web UI is the recommended place to read them: the [Guides page](#guides-page-next) of `cstudy serve` draws the diagrams, links the guides to each other and shows a path's progress beside its steps. The terminal is fully supported: `cstudy learn` renders a guide's Markdown with Rich, shows each diagram as its [text drawing](#text-drawings), and has `--json` for scripts.
+
 A guide is written for everyone from beginner to expert, where a beginner is new to the topic, not to programming: it assumes the reader can write a function in one language and nothing about the topic. It starts plainly and goes deep.
 
 ## Layout
@@ -211,4 +213,4 @@ The path's next step is its first step that is not done.
 
 ## Guides page (next)
 
-The page of [`cstudy serve`](web-ui.md) will gain a Guides view: the guides and the paths with their progress, a guide drawn from its Markdown with its `mermaid` blocks drawn by a lazily loaded, locally bundled Mermaid chunk that follows the page's light or dark theme, the text drawings hidden, and a control that marks a guide read through the same use case as `--done`. It is not built yet, and will come after the page's current changes land.
+The page of [`cstudy serve`](web-ui.md) will gain a Guides view, the recommended way to read: the guides and the paths with their progress, a guide drawn from its Markdown with its `mermaid` blocks drawn by a lazily loaded, locally bundled Mermaid chunk that follows the page's light or dark theme, the text drawings hidden, links between guides, and a control that marks a guide read through the same use case as `--done`. `cstudy learn <guide> --open` will open a guide there, as `cstudy serve --open` opens the page. It is not built yet, and will come after the page's current changes land; until then `--open` says so in one line and exits 0, and the terminal reads every guide in full.

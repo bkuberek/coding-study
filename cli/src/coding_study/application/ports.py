@@ -506,6 +506,15 @@ class ProgressStore(Protocol):
 
     def save_schedule_entry(self, entry: ScheduleEntry) -> None: ...
 
+    def mark_guide_read(self, slug: str, at: datetime) -> datetime | None:
+        """Records the concept guide `slug` read at `at` unless it already is: None when this call
+        marked it, else when it was first marked."""
+        ...
+
+    def guide_reads(self) -> Mapping[str, datetime]:
+        """When each guide marked read was first marked, by slug."""
+        ...
+
     def problem_progress(self) -> Mapping[str, ProblemProgress]:
         """Every slug with at least one attempt or schedule entry."""
         ...
