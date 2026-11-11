@@ -26,6 +26,12 @@ function loadEditorModule(): Promise<typeof import("../editor.ts")> {
   return editorModule;
 }
 
+function applyTo(editor: Editor, preferences: Preferences): void {
+  editor.setTheme(preferences.theme);
+  void editor.setVim(preferences.vim);
+  editor.setAutocomplete(autocompleteApplies(preferences));
+}
+
 export interface OpenFile {
   readonly tab: HTMLButtonElement;
   readonly panel: HTMLElement;
@@ -174,9 +180,7 @@ export class EditorTabs {
 
   applyPreferences(preferences: Preferences): void {
     for (const { editor } of this.#open.values()) {
-      editor?.setTheme(preferences.theme);
-      void editor?.setVim(preferences.vim);
-      editor?.setAutocomplete(autocompleteApplies(preferences));
+      if (editor) applyTo(editor, preferences);
     }
   }
 
@@ -257,6 +261,9 @@ export class EditorTabs {
     }
     file.editor = editor;
     file.view = view;
+    // A preference changed while the editor loaded reached no editor, as this one was not open yet.
+    const current = this.#context.preferences();
+    if (current !== preferences) applyTo(editor, current);
     view.attach(editor);
     for (const listener of this.#editorListeners) listener(path, editor);
   }
