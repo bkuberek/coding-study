@@ -244,6 +244,8 @@ def test_json_describes_each_attempt_with_its_runs(environment):
             "time_limit_s": None,
             "level_unlocked": None,
             "levels_finished": None,
+            "levels_passed": None,
+            "levels_total": None,
             "test_runs": [
                 {
                     "ran_at": NOW.isoformat(),
@@ -345,3 +347,58 @@ def test_json_lists_a_projects_submissions_and_levels_finished(project):
             }
         ],
     )
+
+
+def passed_through(environment: Environment, levels: int) -> None:
+    """The project's attempt in progress ends passed through `levels` of 2."""
+    attempt = environment.progress.active_attempt()
+    assert attempt is not None
+    environment.progress.update_attempt(
+        replace(
+            attempt,
+            status=AttemptStatus.PASSED,
+            ended_at=attempt.started_at + timedelta(minutes=30),
+            rating=Rating.OK,
+            grade=Grade.OK,
+            levels_passed=levels,
+            levels_total=2,
+        )
+    )
+
+
+def test_a_pass_below_the_last_level_says_through_which(project):
+    passed_through(project, 1)
+    assert "passed through level 1 of 2" in lines(PROJECT_SLUG)[5]
+
+
+def test_a_pass_of_every_level_reads_passed(project):
+    passed_through(project, 2)
+    assert lines(PROJECT_SLUG)[5].split()[3] == "passed"
+    assert "through" not in lines(PROJECT_SLUG)[5]
+
+
+def test_the_best_level_of_each_language_follows_the_review_line(project):
+    passed_through(project, 1)
+    assert lines(PROJECT_SLUG)[2] == "best       python through level 1 of 2"
+
+
+def test_without_a_pass_there_is_no_best_line(project):
+    assert not any(line.startswith("best") for line in lines(PROJECT_SLUG))
+
+
+def test_json_gives_each_attempt_its_levels(project):
+    passed_through(project, 1)
+    found = document(PROJECT_SLUG)["attempts"][0]
+    assert (found["levels_passed"], found["levels_total"]) == (1, 2)
+
+
+def test_json_gives_the_mastery_and_the_level_to_try_per_language(project):
+    passed_through(project, 1)
+    assert document(PROJECT_SLUG)["levels"] == {
+        "last": 2,
+        "languages": [{"language": "python", "best": 1, "last_time": 1, "try_level": 2}],
+    }
+
+
+def test_json_of_a_problem_without_levels_has_none(environment):
+    assert document("two-sum")["levels"] is None

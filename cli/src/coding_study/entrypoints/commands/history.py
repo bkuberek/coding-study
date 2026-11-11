@@ -1,7 +1,7 @@
 """`cstudy history` (docs/specs/cli.md#cstudy-history).
 
-The header, the review line, then every attempt newest first. Times show in local time; a
-column is as wide as its widest value.
+The header, the review line, the best level of each language for a problem with levels, then every
+attempt newest first. Times show in local time; a column is as wide as its widest value.
 """
 
 import json
@@ -20,6 +20,8 @@ from coding_study.domain.attempts import Attempt, AttemptStatus, Grade, RunRecor
 from coding_study.domain.bench_records import BenchRunSummary
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import EntryKind
+from coding_study.domain.level_passes import LevelMastery
+from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ScheduleEntry
 from coding_study.domain.submissions import SubmissionRecord
 from coding_study.entrypoints.commands.done import solve_time_text
@@ -79,6 +81,11 @@ def history(
     review = Text("review".ljust(LABEL_WIDTH), style="dim")
     review.append(_review(found))
     output.print(review)
+    best = _best(found)
+    if best:
+        line = Text("best".ljust(LABEL_WIDTH), style="dim")
+        line.append(best)
+        output.print(line)
     output.print()
     if not found.attempts:
         output.print(NO_ATTEMPTS)
@@ -98,8 +105,36 @@ def history_document(found: ProblemHistory) -> dict[str, JsonValue]:
         "track": found.track.value,
         "status": found.status.value,
         "schedule": _schedule_value(found.schedule),
+        "levels": _levels_value(found),
         "attempts": attempts,
     }
+
+
+def _levels_value(found: ProblemHistory) -> JsonValue:
+    if found.levels is None:
+        return None
+    languages: list[JsonValue] = [
+        _mastery_value(language, mastery) for language, mastery in found.masteries
+    ]
+    return {"last": found.levels, "languages": languages}
+
+
+def _mastery_value(language: Language, mastery: LevelMastery) -> JsonValue:
+    return {
+        "language": language.value,
+        "best": mastery.best,
+        "last_time": mastery.last_time,
+        "try_level": mastery.try_level,
+    }
+
+
+def _best(found: ProblemHistory) -> str:
+    """`python through level 2 of 4 · kotlin through level 4 of 4`: each language passed."""
+    return " · ".join(
+        f"{language} {mastery.best_text}"
+        for language, mastery in found.masteries
+        if mastery.best_text is not None
+    )
 
 
 def _header(found: ProblemHistory) -> str:
@@ -145,7 +180,7 @@ def _cells(past: PastAttempt, counts_submissions: bool) -> tuple[str, ...]:
         str(attempt.id),
         attempt.language or NO_VALUE,
         attempt.mode,
-        attempt.status,
+        _status(past),
         _local_minute(attempt.started_at),
         _solve_time(attempt),
         attempt.rating or NO_VALUE,
@@ -154,6 +189,15 @@ def _cells(past: PastAttempt, counts_submissions: bool) -> tuple[str, ...]:
         str(len(runs)),
         past.bench_runs[-1].verdict if past.bench_runs else NO_VALUE,
     )
+
+
+def _status(past: PastAttempt) -> str:
+    """`passed through level 2 of 4` for a pass below the last level."""
+    attempt = past.attempt
+    levels = past.levels
+    if attempt.status is AttemptStatus.PASSED and levels is not None and levels.partial:
+        return f"{attempt.status} {levels.text}"
+    return attempt.status
 
 
 def _solve_time(attempt: Attempt) -> str:
@@ -207,6 +251,8 @@ def _attempt_value(past: PastAttempt) -> JsonValue:
         "time_limit_s": attempt.time_limit_s,
         "level_unlocked": attempt.level_unlocked,
         "levels_finished": past.levels_finished,
+        "levels_passed": past.levels.passed if past.levels else None,
+        "levels_total": past.levels.last if past.levels else None,
         "test_runs": test_runs,
         "submissions": submissions,
         "bench_runs": bench_runs,

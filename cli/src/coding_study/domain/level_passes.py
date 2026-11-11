@@ -164,3 +164,14 @@ def level_mastery(attempts: Iterable[Attempt], last: int) -> LevelMastery:
     ]
     through = (min(levels.passed, last) for _, levels in recorded if levels.passed >= FIRST_LEVEL)
     return LevelMastery(last, max(passed, default=None), next(through, None))
+
+
+def masteries(attempts: Sequence[Attempt], last: int) -> tuple[tuple[Language, LevelMastery], ...]:
+    """The mastery of each language with a finished attempt, in `Language` order; `attempts` of
+    one problem, latest start first."""
+    finished = {attempt.language for attempt in attempts if recorded_levels(attempt, last)}
+    return tuple(
+        (language, level_mastery([found for found in attempts if found.language is language], last))
+        for language in Language
+        if language in finished
+    )

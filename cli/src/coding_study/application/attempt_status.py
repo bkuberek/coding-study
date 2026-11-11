@@ -2,9 +2,10 @@
 (docs/specs/cli.md#cstudy-status).
 
 Every attempt has its file, statement, hints, time box and next step. An autograded problem adds
-its latest `cstudy test`, a progressive or project problem its open levels, and a project problem
-when each level opened, its latest submission, the best count per level and the state of each file
-of its folder against what `cstudy` provided.
+its latest `cstudy test`, a progressive or project problem its open levels, the levels it has
+passed, and its best and next goal in that language (progress-and-scheduling.md#level-passes), and
+a project problem when each level opened, its latest submission, the best count per level and the
+state of each file of its folder against what `cstudy` provided.
 """
 
 from dataclasses import dataclass
@@ -12,13 +13,15 @@ from datetime import datetime
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.level_passes import language_mastery, levels_passed
 from coding_study.application.project_manifest import folder_states
 from coding_study.domain import layout
-from coding_study.domain.attempts import Attempt, RunRecord, passed_every_case
+from coding_study.domain.attempts import Attempt, AttemptMode, RunRecord, passed_every_case
 from coding_study.domain.code_intelligence import NoCodeIntelligence, no_code_intelligence
 from coding_study.domain.file_states import FolderFile, StarterChanges, starter_changes
 from coding_study.domain.hints import hint_level, problem_hints
 from coding_study.domain.items import EntryKind, entry_kind
+from coding_study.domain.level_passes import LevelMastery, LevelsPassed
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
 from coding_study.domain.mock_configs import visible_scenario_names
 from coding_study.domain.problem import Language, Problem, ProblemKind, Track
@@ -87,6 +90,11 @@ class AttemptStanding:
     a language whose server runs in no sidecar yet."""
     service: tuple[MockScenarios, ...] | None = None
     """A service project's mock servers, each with its visible scenarios; None for any other."""
+    levels_passed: LevelsPassed | None = None
+    """What the latest test run, or a project's counted submission, passed; None without
+    levels."""
+    mastery: LevelMastery | None = None
+    """The best and the goal over the finished attempts in this language; None without levels."""
 
     @property
     def file(self) -> str | None:
@@ -142,6 +150,7 @@ class _ProblemStatus:
         meta = self._problem.meta
         last_run = self._environment.progress.latest_test_run(self._attempt.id)
         project = self._project()
+        passed = levels_passed(self._environment, self._attempt, self._problem)
         return AttemptStanding(
             attempt=self._attempt,
             kind=entry_kind(meta.kind),
@@ -149,13 +158,15 @@ class _ProblemStatus:
             statement=layout.statement_path(meta.slug),
             hints=self._hints(),
             now=self._environment.clock.now(),
-            next_step=self._next_step(last_run, project),
+            next_step=self._offer_done(self._next_step(last_run, project), passed),
             levels=self._levels,
             opened=self._opened(),
             last_test_run=last_run,
             project=project,
             no_code_intelligence=no_code_intelligence(meta, self._attempt.language),
             service=service_mocks(self._problem),
+            levels_passed=passed,
+            mastery=language_mastery(self._environment, self._attempt, self._problem),
         )
 
     @property
@@ -194,6 +205,14 @@ class _ProblemStatus:
         if project is not None:
             return self._project_next_step(project)
         return self._single_file_next_step(last_run)
+
+    def _offer_done(self, step: str, passed: LevelsPassed | None) -> str:
+        """Once a level below the last passed, `cstudy done` finishes as a pass, but in a mock."""
+        if passed is None or not passed.partial or self._attempt.mode is AttemptMode.MOCK:
+            return step
+        if step == DONE_NEXT:
+            return step
+        return f"{step}, or {DONE_NEXT} to pass {passed.text}"
 
     def _project_next_step(self, project: ProjectStanding) -> str:
         if self._attempt.first_pass_at is not None:

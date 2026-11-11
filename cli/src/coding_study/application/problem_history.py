@@ -1,8 +1,8 @@
 """`cstudy history`: one problem's or item's past in this workspace, its review schedule and
 every attempt with the runs it recorded (docs/specs/cli.md#cstudy-history).
 
-It reads progress.db, and the content only for the header. The local web UI's problem view shows
-the same history.
+It reads progress.db, and the content only for the header and the problem's levels. The local web
+UI's problem view shows the same history.
 """
 
 from dataclasses import dataclass
@@ -13,7 +13,9 @@ from coding_study.application.practice_catalog import is_item
 from coding_study.domain.attempts import Attempt, RunRecord
 from coding_study.domain.bench_records import BenchRunSummary
 from coding_study.domain.items import EntryKind, entry_kind
-from coding_study.domain.problem import Difficulty, Track
+from coding_study.domain.level_passes import LevelMastery, LevelsPassed, masteries, recorded_levels
+from coding_study.domain.levels import level_progress
+from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.scheduling import ProblemProgress, ProblemStatus, ScheduleEntry
 from coding_study.domain.submissions import SubmissionRecord, counted_submission, levels_finished
 
@@ -28,6 +30,10 @@ class PastAttempt:
     bench_runs: tuple[BenchRunSummary, ...]
     levels_finished: int | None
     """The levels a project attempt's counted submission finished; None for another kind."""
+    levels: LevelsPassed | None = None
+    """The levels a finished attempt passed (progress-and-scheduling.md#level-passes); None
+    without levels, while in progress, and for an attempt failed before attempts recorded
+    them."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +50,10 @@ class ProblemHistory:
     """The local date `status` is of."""
     attempts: tuple[PastAttempt, ...]
     """Every attempt in every language, latest start first."""
+    levels: int | None = None
+    """The problem's levels now; None without levels."""
+    masteries: tuple[tuple[Language, LevelMastery], ...] = ()
+    """Each language's best and next goal, in `Language` order; empty without levels."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +62,7 @@ class _Header:
     track: Track
     difficulty: Difficulty
     patterns: tuple[str, ...] = ()
+    levels: int | None = None
 
 
 def problem_history(environment: Environment, slug: str) -> ProblemHistory:
@@ -60,6 +71,7 @@ def problem_history(environment: Environment, slug: str) -> ProblemHistory:
     progress = environment.progress
     today = environment.clock.local_date(environment.clock.now())
     problem_progress = progress.problem_progress().get(slug, ProblemProgress())
+    attempts = progress.attempts(slug)
     return ProblemHistory(
         slug=slug,
         kind=header.kind,
@@ -69,9 +81,9 @@ def problem_history(environment: Environment, slug: str) -> ProblemHistory:
         status=problem_progress.status(today),
         schedule=problem_progress.schedule,
         today=today,
-        attempts=tuple(
-            _past_attempt(environment, attempt, header.kind) for attempt in progress.attempts(slug)
-        ),
+        attempts=tuple(_past_attempt(environment, attempt, header) for attempt in attempts),
+        levels=header.levels,
+        masteries=masteries(attempts, header.levels) if header.levels is not None else (),
     )
 
 
@@ -80,12 +92,13 @@ def _header(environment: Environment, slug: str) -> _Header:
         item = environment.items.load(slug)
         return _Header(EntryKind.ITEM, item.track, item.difficulty)
     meta = environment.problems.load(slug).meta
-    return _Header(entry_kind(meta.kind), meta.track, meta.difficulty, meta.patterns)
+    levels = len(meta.levels) if level_progress(meta, None) is not None else None
+    return _Header(entry_kind(meta.kind), meta.track, meta.difficulty, meta.patterns, levels)
 
 
-def _past_attempt(environment: Environment, attempt: Attempt, kind: EntryKind) -> PastAttempt:
+def _past_attempt(environment: Environment, attempt: Attempt, header: _Header) -> PastAttempt:
     progress = environment.progress
-    is_project = kind is EntryKind.PROJECT
+    is_project = header.kind is EntryKind.PROJECT
     submissions = progress.submissions(attempt.id) if is_project else ()
     return PastAttempt(
         attempt=attempt,
@@ -93,4 +106,5 @@ def _past_attempt(environment: Environment, attempt: Attempt, kind: EntryKind) -
         submissions=submissions,
         bench_runs=progress.bench_runs(attempt.id),
         levels_finished=levels_finished(counted_submission(submissions)) if is_project else None,
+        levels=recorded_levels(attempt, header.levels) if header.levels is not None else None,
     )

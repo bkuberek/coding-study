@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 from coding_study.application.environment import Environment
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
-from coding_study.domain.attempts import RunRecord
+from coding_study.domain.attempts import AttemptStatus, RunRecord
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
@@ -168,7 +168,81 @@ def test_json_lists_a_progressive_problems_levels_without_opening_times(progress
         "last": 3,
         "titles": ["Put and get"],
         "opened_at": [],
+        "passed": 0,
+        "best": None,
+        "last_time": None,
+        "try_level": None,
     }
+
+
+def passed_before(environment: Environment, levels: int) -> None:
+    """The attempt in progress ends passed through `levels` of 3; a new one starts."""
+    attempt = environment.progress.active_attempt()
+    assert attempt is not None
+    environment.progress.update_attempt(
+        replace(attempt, status=AttemptStatus.PASSED, levels_passed=levels, levels_total=3)
+    )
+    start_attempt(environment, StartRequest("level-store", Language.PYTHON))
+
+
+def test_a_new_attempt_shows_the_level_to_try_and_the_best(progressive):
+    passed_before(progressive, 2)
+    assert lines()[2:5] == [
+        "level      1 of 3: Put and get",
+        "goal       last time: through level 2 of 3; try level 3",
+        "best       through level 2 of 3",
+    ]
+
+
+def test_after_every_level_only_the_best_shows(progressive):
+    passed_before(progressive, 3)
+    assert lines()[2:4] == [
+        "level      1 of 3: Put and get",
+        "best       through level 3 of 3",
+    ]
+
+
+def test_json_has_the_levels_passed_the_best_and_the_level_to_try(progressive):
+    passed_before(progressive, 2)
+    levels = document()["levels"]
+    assert (levels["passed"], levels["best"], levels["last_time"], levels["try_level"]) == (
+        0,
+        2,
+        2,
+        3,
+    )
+
+
+def ran_through(environment: Environment, levels: int) -> None:
+    """The attempt in progress opened the level after `levels` and its latest run passed them."""
+    attempt = environment.progress.active_attempt()
+    assert attempt is not None
+    environment.progress.update_attempt(replace(attempt, level_unlocked=levels + 1))
+    tally = Tally(total=4 * levels + 4, passed=4 * levels, failed=4)
+    environment.progress.add_test_run(
+        RunRecord(attempt.id, NOW, "hash", tally, 10, levels_passed=levels)
+    )
+
+
+def test_a_run_through_a_level_offers_done_as_a_pass(progressive):
+    ran_through(progressive, 1)
+    assert lines()[-1] == (
+        "next       cstudy test --watch, or cstudy done --rating easy|ok|hard to pass "
+        "through level 1 of 3"
+    )
+
+
+def test_json_has_the_levels_the_latest_run_passed(progressive):
+    ran_through(progressive, 2)
+    assert document()["levels"]["passed"] == 2
+
+
+def test_a_mock_through_a_level_still_tests_on(tmp_path, monkeypatch):
+    environment = make_environment(repository_root(tmp_path, PHASE4), toolchains=TOOLCHAINS)
+    start_attempt(environment, StartRequest("level-store", Language.PYTHON, mock=True))
+    use(monkeypatch, environment)
+    ran_through(environment, 1)
+    assert lines()[-1] == "next       cstudy test --watch"
 
 
 # items

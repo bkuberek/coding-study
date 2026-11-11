@@ -12,6 +12,7 @@ from datetime import date, timedelta
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.level_passes import levels_passed
 from coding_study.domain.attempts import (
     SUBOPTIMAL_GRADE_CAP,
     Attempt,
@@ -29,11 +30,10 @@ from coding_study.domain.attempts import (
 )
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import ItemMeta
-from coding_study.domain.level_passes import LevelOutcome, LevelsPassed, level_outcome, run_levels
-from coding_study.domain.levels import FIRST_LEVEL, level_progress
-from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
+from coding_study.domain.level_passes import LevelOutcome, LevelsPassed, level_outcome
+from coding_study.domain.levels import FIRST_LEVEL
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry, next_review_state
-from coding_study.domain.submissions import counted_submission, levels_finished
 
 RATINGS = "|".join(Rating)
 FINISH_WITH_A_RATING = f"finish with --rating {RATINGS}"
@@ -80,7 +80,7 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
         return _finish_item(environment, attempt, request)
     problem = environment.problems.load(attempt.slug)
     measured = _measured_caps(environment, attempt)
-    levels = _levels_passed(environment, attempt, problem)
+    levels = levels_passed(environment, attempt, problem)
     if levels is not None:
         outcome = level_outcome(levels, attempt.mode, problem.meta.kind)
         _check_levels_rating(outcome, attempt.mode, problem.meta.kind, request)
@@ -91,22 +91,6 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     passed = passed_every_case(latest, problem, attempt.language)
     _check_rating_matches(passed, request)
     return _close(environment, attempt, request, _Verdict(problem.meta, passed, measured))
-
-
-def _levels_passed(
-    environment: Environment, attempt: Attempt, problem: Problem
-) -> LevelsPassed | None:
-    """A project's from its counted submission, which stands in for the latest test run;
-    a progressive problem's from its latest test run; None for a problem without levels."""
-    meta = problem.meta
-    if meta.kind is ProblemKind.PROJECT:
-        counted = counted_submission(environment.progress.submissions(attempt.id))
-        return LevelsPassed(levels_finished(counted), len(meta.levels))
-    if level_progress(meta, None) is None:
-        return None
-    assert attempt.language is not None
-    latest = environment.progress.latest_test_run(attempt.id)
-    return run_levels(latest, problem, attempt.language)
 
 
 def _close(

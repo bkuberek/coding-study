@@ -15,6 +15,7 @@ from coding_study.domain.level_passes import (
     judged_levels,
     level_mastery,
     level_outcome,
+    masteries,
     recorded_levels,
 )
 from coding_study.domain.problem import Language, ProblemKind
@@ -215,3 +216,14 @@ def test_a_problem_that_gained_a_level_is_mastered_up_to_the_levels_passed():
     mastery = level_mastery((attempt(PASSED, (3, 3)),), 4)
     assert (mastery.best, mastery.try_level) == (3, 4)
 
+
+def test_each_language_with_a_finished_attempt_has_its_mastery_in_language_order():
+    attempts = (
+        attempt(PASSED, (3, 4), hours=3, language=Language.KOTLIN),
+        attempt(AttemptStatus.IN_PROGRESS, hours=2, language=Language.GO),
+        attempt(PASSED, (2, 4), hours=1),
+    )
+    assert masteries(attempts, 4) == (
+        (Language.PYTHON, LevelMastery(4, 2, 2)),
+        (Language.KOTLIN, LevelMastery(4, 3, 3)),
+    )

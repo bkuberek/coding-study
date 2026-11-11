@@ -198,6 +198,10 @@ def test_json_lists_the_open_levels(environment):
         "last": 2,
         "titles": ["Accounts and deposits"],
         "opened_at": [NOW.isoformat()],
+        "passed": 0,
+        "best": None,
+        "last_time": None,
+        "try_level": None,
     }
 
 
@@ -251,3 +255,13 @@ def test_json_files_has_every_files_origin_and_state(environment):
         {"path": "pyproject.toml", "origin": "starter", "level": None, "state": "deleted"},
         {"path": "tests/test_level_1.py", "origin": "level", "level": 1, "state": "modified"},
     ]
+
+
+def test_a_submission_through_a_level_offers_done_as_a_pass(environment):
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, level_unlocked=2))
+    submit(environment, LevelTally(1, 1, 1, 2, 2), LevelTally(2, 1, 0, 2, 2))
+    assert lines()[-1] == (
+        "next       cstudy submit once level 2 passes, or cstudy done --rating easy|ok|hard to "
+        "pass through level 1 of 2"
+    )
