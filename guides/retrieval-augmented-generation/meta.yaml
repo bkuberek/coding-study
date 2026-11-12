@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Retrieval-augmented generation, end to end
+summary: How an assistant answers from your documents and cites them, from chunking and embedding to retrieval with a minimum score, the prompt, and checking every citation against what the model was shown.
+level: core
+prerequisites: [embeddings-and-vector-search, prompts-and-structured-outputs]
+related: [tokens-and-sampling]
+problems: [chunking-with-overlap, freshness-reranker, rag-citations-typescript, graphrag-context]

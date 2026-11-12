@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Evaluating LLM applications
+summary: How to tell whether a change made an assistant better, with a golden set, assertions written as code, a model as judge asked in both orders, retrieval metrics, and a release gate decided before the results.
+level: core
+prerequisites: [retrieval-augmented-generation]
+related: [prompts-and-structured-outputs]
+problems: [retrieval-metrics, safe-redaction-python, eval-release-gate]
