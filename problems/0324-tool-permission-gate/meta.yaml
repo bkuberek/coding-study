@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0324"
+slug: tool-permission-gate
+title: Tool Permission Gate
+summary: "Build PermissionGate, which decides which tool calls an agent may run: rules by tool name, path and host scopes, read-only and risky calls, remembered answers, and a log that ignores injected text."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [stack, arrays-hashing]
+domains: [ai-llm, security, backend]
+job_roles: [ai-engineer, security-engineer, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Rules by tool name}
+  - {level: 2, title: Scoping the arguments}
+  - {level: 3, title: "Read-only tools, risky calls and remembered answers"}
+  - {level: 4, title: Injected text and the audit log}
+signature:
+  class:
+    name: PermissionGate
+    constructor: {params: []}
+    methods:
+      - {name: addRule, level: 1, params: [{name: effect, type: string}, {name: pattern, type: string}], returns: {type: bool}}
+      - {name: removeRule, level: 1, params: [{name: effect, type: string}, {name: pattern, type: string}], returns: {type: bool}}
+      - {name: decide, level: 1, params: [{name: tool, type: string}], returns: {type: string}}
+      - {name: setScope, level: 2, params: [{name: tool, type: string}, {name: param, type: string}, {name: kind, type: string}, {name: allowed, type: "list<string>"}], returns: {type: void}}
+      - {name: addAlias, level: 2, params: [{name: link, type: string}, {name: target, type: string}], returns: {type: void}}
+      - {name: check, level: 2, params: [{name: tool, type: string}, {name: args, type: "list<list<string>>"}], returns: {type: string}}
+      - {name: markReadOnly, level: 3, params: [{name: tool, type: string}], returns: {type: bool}}
+      - {name: addRisk, level: 3, params: [{name: tool, type: string}, {name: param, type: string}, {name: text, type: string}], returns: {type: bool}}
+      - {name: remember, level: 3, params: [{name: tool, type: string}, {name: args, type: "list<list<string>>"}, {name: decision, type: string}, {name: scope, type: string}], returns: {type: bool}}
+      - {name: endSession, level: 3, params: [], returns: {type: void}}
+      - {name: receive, level: 4, params: [{name: channel, type: string}, {name: text, type: string}], returns: {type: string}}
+      - {name: status, level: 4, params: [{name: request, type: int}], returns: {type: string}}
+      - {name: auditLog, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: layered-gate, name: Scope first then the most specific rule then risk then memory, role: optimal, time: "O(R + H L) per check for R rules, H alias hops and a path of length L", space: "O(R + M + K) for R rules, M memories and K log rows", time_class: "n", space_class: "n"}
+related: [tool-calling-agent-loop-typescript, memory-write-sanitizer, loop-controller, context-compaction]
+estimate_minutes: 120
