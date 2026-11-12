@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Agent memory
+summary: Working, episodic, semantic and procedural memory, and the forms they take, from a context buffer and a rolling summary to vector, graph and file memory, with retrieval, forgetting and the risks of writing.
+level: core
+prerequisites: [embeddings-and-vector-search, agents-and-workflows]
+related: [retrieval-augmented-generation, tokens-and-sampling, harness-engineering]
+problems: [memory-store, chat-history-index, forgettable-inverted-index, versioned-memory-store, memory-facts-with-merge, graphrag-context]

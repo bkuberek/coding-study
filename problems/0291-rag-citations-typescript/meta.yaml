@@ -49,4 +49,5 @@ project:
 approaches:
   - {id: reference, name: "Embed each document in one call, rank by cosine in Postgres, and keep only the citations that were retrieved", role: optimal, time: "per request", space: "per chunk"}
 related: [bm25-hybrid-ranker, token-cost-reconciler, inventory-reservations-typescript]
+guides: [retrieval-augmented-generation]
 estimate_minutes: 240

@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Tokens, context windows and sampling
+summary: What a language model actually reads and writes, why everything is counted in tokens, what fits in a context window, and how one next token is chosen from a model's scores.
+level: intro
+related: [prompts-and-structured-outputs, embeddings-and-vector-search, cost-caching-and-routing, agent-memory]
+problems: [context-packer, llm-gateway-typescript]

@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Embeddings and vector search
+summary: How texts become vectors whose directions carry meaning, how cosine similarity and nearest-neighbour search find related texts, where keyword search still wins, and how to fuse the two.
+level: core
+prerequisites: [tokens-and-sampling]
+related: [prompts-and-structured-outputs, retrieval-augmented-generation, agent-memory]
+problems: [cosine-top-k, forgettable-inverted-index]

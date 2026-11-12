@@ -26,4 +26,5 @@ comparator: {type: ops, per_method: {score: float}}
 approaches:
   - {id: incremental-postings, name: Keep the postings and the totals current on every change, role: optimal, time: "O(t) per add, update or forget; O(q + p + m log m) per search; O(q + p) per score", space: "O(s)", time_class: "n log n", space_class: "n"}
 related: [bm25-hybrid-ranker]
+guides: [embeddings-and-vector-search, agent-memory]
 estimate_minutes: 40

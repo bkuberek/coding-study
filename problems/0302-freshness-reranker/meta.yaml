@@ -28,4 +28,5 @@ comparator: {type: exact}
 approaches:
   - {id: pool-then-rescore, name: "Take the pool by relevance, then rescore and keep the best copy of each document", role: optimal, time: "O(n log n + b)", space: "O(n + b)", time_class: "n log n", space_class: "n"}
 related: [bm25-hybrid-ranker, cosine-top-k, retrieval-metrics]
+guides: [retrieval-augmented-generation]
 estimate_minutes: 25
