@@ -418,6 +418,17 @@ class TooLateBeforeUnknown(Model):
         return super().policy_status(policy)
 
 
+class InUseOnlyAfterASuccess(Model):
+    """Marks the heap as in use only when a request succeeds, so a failed one leaves the settings
+    open to change."""
+
+    def allocate(self, size: int) -> int:
+        was_touched = self.touched
+        address = super().allocate(size)
+        self.touched = was_touched or address >= 0
+        return address
+
+
 class CompareCountsFromZero(Model):
     """Reads `-k` as the request at index k."""
 
