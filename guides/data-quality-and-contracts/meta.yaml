@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Data quality checks and data contracts
+summary: Test data the way you test code; checks on values, keys, volumes, distributions and freshness, what a failure should do, and contracts that let a producer change its data without breaking the people who read it.
+level: core
+prerequisites: [pipeline-orchestration]
+related: [data-lineage, dimensional-modeling, table-formats-and-snapshots]
+problems: [data-quality-gate, feed-ingest-python, csv-upload-ingestion-typescript]

@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Batch and streaming
+summary: Data that ends and data that never does; how a batch job and a stream processor each answer the same question, what each costs in latency and correctness, and the Lambda and Kappa designs that combine them.
+level: intro
+related: [event-time-and-windows, change-data-capture, pipeline-orchestration]
+problems: [feed-ingest-python, stream-windows]

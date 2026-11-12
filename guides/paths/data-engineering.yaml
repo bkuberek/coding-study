@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Data engineering: from batch and streams to table formats and lineage"
+summary: From batch jobs and streams to change data capture, orchestration, dimensional models, quality checks, table formats and lineage, with the problems that practise each idea.
+steps:
+  - guide: batch-and-streaming
+  - problem: feed-ingest-python
+    level: 1
+  - guide: event-time-and-windows
+  - problem: stream-windows
+  - guide: change-data-capture
+  - problem: cdc-apply
+  - guide: pipeline-orchestration
+  - problem: pipeline-scheduler
+  - problem: postgres-job-queue-typescript
+  - guide: dimensional-modeling
+  - problem: effective-dated-history
+  - problem: scd-type2-dimension
+  - guide: data-quality-and-contracts
+  - problem: data-quality-gate
+  - problem: feed-ingest-python
+  - problem: csv-upload-ingestion-typescript
+  - guide: table-formats-and-snapshots
+  - problem: snapshot-table
+  - guide: data-lineage
+  - problem: lineage-graph

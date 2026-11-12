@@ -56,4 +56,5 @@ project:
 approaches:
   - {id: reference, name: "Stream each file into one transaction that claims its upload first, and delete the event only after the commit", role: optimal, time: "per file", space: "per batch"}
 related: [idempotent-document-consumer-typescript, inventory-reservations-typescript, data-quality-gate]
+guides: [pipeline-orchestration, data-quality-and-contracts]
 estimate_minutes: 300
