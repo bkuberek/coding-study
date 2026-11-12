@@ -60,8 +60,18 @@
     }
   },
   "$defs": {
-    "domain": { "enum": ["algorithms", "backend", "security", "identity", "ai-llm", "fintech"] },
-    "job_role": { "enum": ["general", "backend", "platform", "security-engineer", "ai-engineer", "ml-engineer"] },
+    "domain": {
+      "enum": [
+        "algorithms", "backend", "security", "identity", "ai-llm", "fintech",
+        "data", "infrastructure", "systems", "software-design", "frontend"
+      ]
+    },
+    "job_role": {
+      "enum": [
+        "general", "backend", "platform", "security-engineer", "ai-engineer", "ml-engineer",
+        "data-engineer", "frontend"
+      ]
+    },
     "scope": { "enum": ["function", "project", "system"] }
   }
 }

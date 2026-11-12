@@ -120,6 +120,11 @@ Three labels say what a problem or item is about, who it is for and how big the 
 | `identity` | Tokens, sessions, login flows, provisioning |
 | `ai-llm` | The code around models: clients, retrieval, evaluation, cost |
 | `fintech` | Money, ledgers, insurance |
+| `data` | Data engineering: pipelines, streams, tables, quality, lineage |
+| `infrastructure` | Infrastructure as code, configuration, deployment tooling |
+| `systems` | Operating systems, networking, distributed systems mechanics |
+| `software-design` | Testing, refactoring, design patterns, architecture |
+| `frontend` | Browser UI, state, rendering, accessibility |
 
 | `job_roles` value | Meaning |
 |-------------------|---------|
@@ -129,6 +134,8 @@ Three labels say what a problem or item is about, who it is for and how big the 
 | `security-engineer` | Security engineers |
 | `ai-engineer` | Engineers who build on models |
 | `ml-engineer` | Engineers who train and evaluate models |
+| `data-engineer` | Engineers who build and run data pipelines and tables |
+| `frontend` | Engineers who build browser UIs |
 
 | `scope` value | Meaning | Fits |
 |---------------|---------|------|
@@ -180,9 +187,12 @@ The order below is the taxonomy order used for tie-breaks in `cstudy next`. Coun
 | 21 | `math-geometry` | 0 | 6 | Rotate Image (48), Spiral Matrix (54), Pow(x, n) (50), Multiply Strings (43) |
 | 22 | `bit-manipulation` | 3 | 5 | Reverse Bits (190), Missing Number (268), Sum of Two Integers (371) |
 | 23 | `segment-tree-fenwick` (stretch) | 0 | 3 | Range Sum Query Mutable (307), Count of Smaller Numbers After Self (315) |
+| 24 | `sorting` | 0 | none yet | Sorting algorithms, custom orderings, sort-then-scan |
+| 25 | `string-matching` | 0 | none yet | Substring search, rolling hashes, pattern and wildcard matching |
+| 26 | `recursion` | 0 | none yet | Recursive decomposition and divide and conquer, without a search or a table |
 | | **Total** | **75** | **185** | |
 
-Problems may list secondary patterns (for example Sliding Window Maximum: `sliding-window`, `monotonic-stack`); `cstudy list --pattern` matches any listed pattern.
+Patterns 24 to 26 were added by [ADR 0020](../decisions/0020-catalog-labels.md#amendment-2026-11-11-data-infrastructure-systems-software-design-and-frontend) with no problems, so the seed and phase targets above count 23 patterns and the totals do not include them. They follow the first 23 in the tie-break order, so the order of the others does not change. Problems may list secondary patterns (for example Sliding Window Maximum: `sliding-window`, `monotonic-stack`); `cstudy list --pattern` matches any listed pattern.
 
 ### Content batches
 

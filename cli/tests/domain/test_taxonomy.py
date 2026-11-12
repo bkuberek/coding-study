@@ -37,3 +37,13 @@ def test_rank_is_the_taxonomy_position():
 
 def test_unknown_patterns_rank_after_every_known_one():
     assert pattern_rank("no-such-pattern") == len(PATTERNS)
+
+
+def test_the_new_domains_and_roles_follow_the_first_ones():
+    assert DOMAINS[-5:] == ("data", "infrastructure", "systems", "software-design", "frontend")
+    assert JOB_ROLES[-2:] == ("data-engineer", "frontend")
+
+
+def test_the_new_patterns_rank_after_the_first_ones():
+    assert PATTERNS[-3:] == ("sorting", "string-matching", "recursion")
+    assert pattern_rank("segment-tree-fenwick") < pattern_rank("sorting")

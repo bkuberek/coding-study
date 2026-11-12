@@ -568,8 +568,8 @@ def test_valid_progressive_problem(problems):
 
 WITHOUT_RUST = tuple(language for language in Language if language is not Language.RUST)
 MUST_LIST = (
-    "every problem outside the concurrency and debugging tracks and the security, identity and "
-    "ai-llm domains lists every language that can express it"
+    "every problem outside the concurrency and debugging tracks and the security, identity, "
+    "ai-llm and frontend domains lists every language that can express it"
 )
 
 
@@ -632,7 +632,7 @@ def test_concurrency_and_debugging_problems_list_any_subset(problems, track):
     assert [issue for issue in issues if "must list" in issue] == []
 
 
-@pytest.mark.parametrize("domain", ["security", "identity", "ai-llm"])
+@pytest.mark.parametrize("domain", ["security", "identity", "ai-llm", "frontend"])
 def test_a_problem_in_a_subset_domain_lists_any_subset(problems, domain):
     labels = replace(problems["two-sum"].meta.labels, domains=(domain,))
     problem = with_meta(problems, labels=labels, languages=(Language.PYTHON, Language.TYPESCRIPT))
@@ -645,7 +645,10 @@ def test_one_subset_domain_among_its_domains_is_enough(problems):
     assert errors(content(problems, problem=problem)) == []
 
 
-@pytest.mark.parametrize("domain", ["algorithms", "backend", "fintech"])
+@pytest.mark.parametrize(
+    "domain",
+    ["algorithms", "backend", "fintech", "data", "infrastructure", "systems", "software-design"],
+)
 def test_a_problem_in_another_domain_lists_every_language(problems, domain):
     labels = replace(problems["two-sum"].meta.labels, domains=(domain,))
     problem = with_meta(problems, labels=labels, languages=WITHOUT_RUST)

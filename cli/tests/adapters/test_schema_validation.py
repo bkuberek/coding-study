@@ -118,7 +118,7 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
     "unknown status": (lambda meta: meta.update(status="done"), "status"),
     "unknown top-level key": (lambda meta: meta.update(hints=["think"]), ""),
     "dsa without patterns": (lambda meta: meta.pop("patterns"), ""),
-    "unknown pattern": (lambda meta: meta.update(patterns=["sorting"]), "patterns[0]"),
+    "unknown pattern": (lambda meta: meta.update(patterns=["no-such-pattern"]), "patterns[0]"),
     "approach languages not a language": (
         lambda meta: meta["approaches"][0].update(languages=["scala"]),
         "approaches[0].languages[0]",

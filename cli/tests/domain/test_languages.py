@@ -26,8 +26,8 @@ def test_only_concurrency_and_debugging_problems_list_a_subset():
     assert {Track.CONCURRENCY, Track.DEBUGGING} == LANGUAGE_SUBSET_TRACKS
 
 
-def test_only_the_security_identity_and_ai_domains_list_a_subset():
-    assert {"security", "identity", "ai-llm"} == LANGUAGE_SUBSET_DOMAINS
+def test_only_the_security_identity_ai_and_frontend_domains_list_a_subset():
+    assert {"security", "identity", "ai-llm", "frontend"} == LANGUAGE_SUBSET_DOMAINS
 
 
 def test_the_subset_domains_are_catalog_domains():

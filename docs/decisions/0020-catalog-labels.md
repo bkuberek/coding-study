@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Phases 1 and 2 implemented. Phase 3 is planned, and nothing of it is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06 |
-| Date | 2026-11-05 |
+| Status | Phases 1 and 2 implemented. Phase 3 is planned, and nothing of it is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06. The [2026-11-11 amendment](#amendment-2026-11-11-data-infrastructure-systems-software-design-and-frontend) adds five domains, two roles and three patterns |
+| Date | 2026-11-05, amended 2026-11-11 |
 | Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. [catalog](../specs/catalog.md#practical-85-problems) lists the first wave, and [S13](../specs/authoring.md#static) holds the language rule of phase 2 |
 | Amends | [PRD](../prd.md) (FR-3, its description and persona), [ADR 0012](0012-go-and-rust.md) (every language on every problem, by the [language rule](#rule-changes)) |
 | Builds on | [ADR 0001](0001-data-driven-tests.md), [ADR 0004](0004-original-problem-wording.md), [ADR 0014](0014-project-problems.md), [ADR 0019](0019-service-projects.md). Reviewed items are [ADR 0021](0021-ai-reviewed-problems.md) |
@@ -226,3 +226,41 @@ Phases 1 and 2 need no Docker and can run before ADR 0019 unless the owner order
 | One `category` field | Domain, role and scope vary independently: a `security` problem can be for a `backend` engineer at any `scope` |
 | Replacing `difficulty` with `scope` | A project can be easy and a function hard |
 | Tracks as directories per domain | Slugs and paths would move, and a problem can have several domains |
+
+## Amendment 2026-11-11: data, infrastructure, systems, software design and frontend
+
+The decision above stands: three independent labels, closed lists, one change to a table, `DOMAINS`, `JOB_ROLES` and the schemas for each new value. This amendment records the values that [Revisit](#revisit) expected authors to ask for.
+
+### Why
+
+The catalog is for engineers from beginner to expert, and planned problems have no honest label. Data engineering (pipelines, streams, tables, quality, lineage), infrastructure as code, an architecture checker, and upcoming testing, refactoring, operating systems, networking, distributed systems and frontend problems would otherwise carry `backend` or `algorithms`, and `cstudy list --domain` could not answer "what is there for a data engineer". Three DSA topics also have no pattern of their own.
+
+### What is added
+
+| List | Value | Meaning |
+|------|-------|---------|
+| `domains` | `data` | Data engineering: pipelines, streams, tables, quality, lineage |
+| `domains` | `infrastructure` | Infrastructure as code, configuration, deployment tooling |
+| `domains` | `systems` | Operating systems, networking, distributed systems mechanics |
+| `domains` | `software-design` | Testing, refactoring, design patterns, architecture |
+| `domains` | `frontend` | Browser UI, state, rendering, accessibility |
+| `job_roles` | `data-engineer` | Engineers who build and run data pipelines and tables. Named like `security-engineer`, `ai-engineer` and `ml-engineer` |
+| `job_roles` | `frontend` | Engineers who build browser UIs. Named like the plain `backend` role |
+| `patterns` | `sorting` | Sorting algorithms, custom orderings, sort-then-scan |
+| `patterns` | `string-matching` | Substring search, rolling hashes, pattern and wildcard matching |
+| `patterns` | `recursion` | Recursive decomposition and divide and conquer, without a search or a table |
+
+The new values are appended, so the order of the existing ones does not change: the three patterns rank after `segment-tree-fenwick` in the `cstudy next` tie-break. Existing problems are not relabelled, and no new pattern has a problem yet, so the counts in [content](../specs/content.md#pattern-taxonomy) and [catalog](../specs/catalog.md) still describe 23 patterns in use.
+
+### Language rule
+
+S13 is unchanged except for one member of `LANGUAGE_SUBSET_DOMAINS`:
+
+| Domain | Languages |
+|--------|-----------|
+| `data`, `infrastructure`, `systems`, `software-design` | All six, as for `algorithms`, `backend` and `fintech`. They are not in `LANGUAGE_SUBSET_DOMAINS`, so `_lists_every_language` requires every language that can express the problem |
+| `frontend` | Any subset, because a browser UI problem is TypeScript first. It joins `security`, `identity` and `ai-llm` in `LANGUAGE_SUBSET_DOMAINS` in `domain/problem.py`, and the `must list` message names it |
+
+### Where the values show
+
+`cstudy next` validates `--domain` and `--role` against the module lists, `cstudy list` matches the labels of each entry as written, the session API gives them to the Problems view, whose filter menus are built from that answer, and both schemas list them. There is no display-name mapping: the CLI and the page show the ids. The [Revisit](#revisit) trigger "a list passes about a dozen values" is near, with 11 domains and 8 roles.

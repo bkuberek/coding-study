@@ -34,7 +34,7 @@ ALL_LANGUAGES = tuple(Language)
 """What a problem lists unless it says otherwise, and what "every language" means in defaults,
 coverage and IDE actions: every problem has references in all of them, except where a language
 cannot express it (check S13), on the concurrency and debugging tracks
-(docs/decisions/0012-go-and-rust.md), in the security, identity and ai-llm domains
+(docs/decisions/0012-go-and-rust.md), in the security, identity, ai-llm and frontend domains
 (docs/decisions/0020-catalog-labels.md#rule-changes), and in project problems, which have exactly
 one."""
 CORE_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN)
@@ -59,9 +59,10 @@ LANGUAGE_SUBSET_TRACKS = frozenset({Track.CONCURRENCY, Track.DEBUGGING})
 """Tracks whose problems may list any subset of the languages, and whose approaches may have
 references in fewer languages than their problem: a race or a bug often exists in some languages
 only."""
-LANGUAGE_SUBSET_DOMAINS = frozenset({"security", "identity", "ai-llm"})
+LANGUAGE_SUBSET_DOMAINS = frozenset({"security", "identity", "ai-llm", "frontend"})
 """Domains whose problems may list any subset of the languages, when any one of their domains is
-here (check S13): these catalogs start in Python and TypeScript, ahead of a language order. Their
+here (check S13): these catalogs start in Python and TypeScript, ahead of a language order,
+and a browser UI problem is TypeScript. Their
 approaches still have a reference in every language of the problem (check S7)."""
 
 

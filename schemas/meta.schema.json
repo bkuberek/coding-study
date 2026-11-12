@@ -43,7 +43,7 @@
     },
     "scope": { "description": "How big the thing you work on is; check S24 ties it to kind", "$ref": "#/$defs/scope" },
     "languages": {
-      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks and in the security, identity and ai-llm domains) and the core four in a workspace problem, which may list any non-empty subset; a project problem lists exactly one",
+      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks and in the security, identity, ai-llm and frontend domains) and the core four in a workspace problem, which may list any non-empty subset; a project problem lists exactly one",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -211,11 +211,22 @@
         "arrays-hashing", "two-pointers", "sliding-window", "stack", "monotonic-stack",
         "binary-search", "linked-list", "trees", "tries", "heap", "backtracking", "graphs",
         "topological-sort", "advanced-graphs", "union-find", "dp-1d", "dp-2d", "greedy",
-        "intervals", "prefix-sum", "math-geometry", "bit-manipulation", "segment-tree-fenwick"
+        "intervals", "prefix-sum", "math-geometry", "bit-manipulation", "segment-tree-fenwick",
+        "sorting", "string-matching", "recursion"
       ]
     },
-    "domain": { "enum": ["algorithms", "backend", "security", "identity", "ai-llm", "fintech"] },
-    "job_role": { "enum": ["general", "backend", "platform", "security-engineer", "ai-engineer", "ml-engineer"] },
+    "domain": {
+      "enum": [
+        "algorithms", "backend", "security", "identity", "ai-llm", "fintech",
+        "data", "infrastructure", "systems", "software-design", "frontend"
+      ]
+    },
+    "job_role": {
+      "enum": [
+        "general", "backend", "platform", "security-engineer", "ai-engineer", "ml-engineer",
+        "data-engineer", "frontend"
+      ]
+    },
     "scope": { "enum": ["function", "project", "system"] },
     "valueType": {
       "description": "Type DSL (docs/specs/problem-format.md#type-dsl); the CLI parser reports syntax errors with positions",

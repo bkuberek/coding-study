@@ -87,8 +87,8 @@ APPROACH_SUBSECTIONS = (
 COMPLEXITY_SUBSECTION = "Complexity"
 LANGUAGE_NOTES = "Language notes"
 EVERY_LANGUAGE = (
-    "every problem outside the concurrency and debugging tracks and the security, identity and "
-    "ai-llm domains lists every language that can express it"
+    "every problem outside the concurrency and debugging tracks and the security, identity, "
+    "ai-llm and frontend domains lists every language that can express it"
 )
 APPROACH_LANGUAGES_TRACKS = (
     "languages: only concurrency and debugging approaches may have references in fewer "
@@ -222,9 +222,9 @@ def _case_values(issues: _Issues, content: ProblemContent) -> None:
 
 def _language_limits(issues: _Issues, content: ProblemContent) -> None:
     """S13: every listed language can express the signature and the case inputs, and a catalog
-    problem outside the concurrency and debugging tracks and the security, identity and ai-llm
-    domains lists every language that can. The user's own workspace problems list any subset, and
-    a project problem one language (S14)."""
+    problem outside the concurrency and debugging tracks and the security, identity, ai-llm and
+    frontend domains lists every language that can. The user's own workspace problems list any
+    subset, and a project problem one language (S14)."""
     problem = content.problem
     meta = problem.meta
     for language in Language:

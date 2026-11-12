@@ -32,6 +32,9 @@ PATTERNS = (
     "math-geometry",
     "bit-manipulation",
     "segment-tree-fenwick",
+    "sorting",
+    "string-matching",
+    "recursion",
 )
 
 DOMAINS = (
@@ -41,6 +44,11 @@ DOMAINS = (
     "identity",
     "ai-llm",
     "fintech",
+    "data",
+    "infrastructure",
+    "systems",
+    "software-design",
+    "frontend",
 )
 """What a problem is about; a problem has one or more."""
 JOB_ROLES = (
@@ -50,6 +58,8 @@ JOB_ROLES = (
     "security-engineer",
     "ai-engineer",
     "ml-engineer",
+    "data-engineer",
+    "frontend",
 )
 """Who a problem is for; a problem has one or more. `general` is any software engineer."""
 
