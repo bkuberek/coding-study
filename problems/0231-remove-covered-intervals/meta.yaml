@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 1288, url: "https://leetcode.com/problems/remove-covered-intervals/"}
 related: [merge-intervals, non-overlapping-intervals, insert-interval]
+guides: [greedy-traps]
 order: 8
 estimate_minutes: 20

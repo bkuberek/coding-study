@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 253, url: "https://leetcode.com/problems/meeting-rooms-ii/"}
 related: [non-overlapping-intervals, merge-intervals, min-interval-per-query]
+guides: [sweep-lines]
 order: 4
 estimate_minutes: 25

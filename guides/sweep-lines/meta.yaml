@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Sweep lines and events
+summary: Turn every interval into an opening and a closing event, sort the events with the right rule for ties, and read how many intervals are open at each moment.
+level: core
+prerequisites: [intervals]
+related: [greedy-traps, scheduling-with-deadlines]
+problems: [min-meeting-rooms, employee-free-time, min-interval-per-query]

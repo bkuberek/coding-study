@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 1851, url: "https://leetcode.com/problems/minimum-interval-to-include-each-query/"}
 related: [min-meeting-rooms, merge-intervals]
+guides: [sweep-lines]
 order: 6
 estimate_minutes: 45

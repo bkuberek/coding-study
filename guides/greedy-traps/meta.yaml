@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Greedy and interval traps
+summary: Sorting by the wrong key, endpoints that touch, ties that change the result, and a small tool that catches them all by checking a greedy rule against brute force on every small input.
+level: advanced
+prerequisites: [intervals, sweep-lines]
+related: [greedy-choices, scheduling-with-deadlines]
+problems: [remove-covered-intervals]

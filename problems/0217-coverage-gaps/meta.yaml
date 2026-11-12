@@ -22,4 +22,5 @@ comparator: {type: exact}
 approaches:
   - {id: sort-and-sweep, name: Sort periods by start and sweep a coverage cursor, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
 related: [merge-intervals, insert-interval, interval-list-intersections]
+guides: [intervals]
 estimate_minutes: 20
