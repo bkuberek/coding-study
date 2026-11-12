@@ -330,7 +330,7 @@ cstudy learn --path hashing --open
 | A path | Each step in order, a check once it is done: a guide once you mark it read, a problem once it passes, or, with a target such as `through level 2`, once that level passes. **Read** opens a guide and **Start** a problem's page, where you start it. `next:` names the first step not done |
 | A problem | Under **read first**, the guides that teach what it practises |
 
-The diagrams load only when you open a guide that has one, from `cstudy serve` itself: nothing is fetched from the internet. A screen reader reads each diagram's title and description. Every command: [`cstudy learn`](../specs/cli.md#cstudy-learn).
+Each diagram is a picture that ships with cstudy, in the page's light or dark colours, and it switches with the theme. It comes from `cstudy serve` itself: nothing is fetched from the internet. Under it, a caption says what the diagram shows, and a screen reader reads the diagram's title with it. Every command: [`cstudy learn`](../specs/cli.md#cstudy-learn).
 
 ## Mock interviews
 

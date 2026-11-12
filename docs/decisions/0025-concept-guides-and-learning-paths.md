@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Accepted. The pilot is built: the format, the checks, `cstudy learn` and the path "Hashing", with seven guides. The page's [Guides view](../specs/web-ui.md#guides-view) is built too, with Mermaid 11.17.2 in chunks of its own, and `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` land there |
+| Status | Accepted. The pilot is built: the format, the checks, `cstudy learn` and the path "Hashing", with seven guides. The page's [Guides view](../specs/web-ui.md#guides-view) is built too, showing each diagram as a light and a dark [SVG drawing](../specs/guides.md#svg-drawings) made when the guide is written, and `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` land there |
 | Date | 2026-11-11 |
 | Spec | [guides](../specs/guides.md), [cli](../specs/cli.md#cstudy-learn), [authoring](../specs/authoring.md#guides-and-paths), [problem-format](../specs/problem-format.md#metayaml) (`guides`), [installation-and-workspaces](../specs/installation-and-workspaces.md#content-root), [progress-and-scheduling](../specs/progress-and-scheduling.md#schema) (`guide_reads`) |
 | Amends | [PRD](../prd.md): FR-18 joins |
@@ -39,6 +39,12 @@ A diagram is a fenced `mermaid` block in `guide.md`, with `accTitle` and `accDes
 
 The text drawing is made when the guide is written, not when it is read, so a user installs nothing. `tools/guides/` pins [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) 1.1.3 (MIT) as a development dependency, and its script writes, right after each `mermaid` block, a marker carrying the SHA-256 of the block's source and a `text` block with the drawing. A static check fails a drawing whose marker no longer matches its source, so a changed diagram cannot ship with a stale drawing. The text renderer draws flowcharts, state, sequence, class and ER diagrams, so guides use only those types.
 
+### The page shows SVG drawings made when the guide is written
+
+Amended on 2026-11-11, after the owner reviewed the first Guides page. That page drew each diagram in the browser with a Mermaid chunk, which needed temporary patches of `document.createElement`, `Element.setAttribute`, `DOMParser` and template insertion to get Mermaid's styles past the page's Content Security Policy. The owner rejected them as too fragile: they lean on Mermaid's internals, and they reach other code while a drawing is in progress.
+
+So each diagram is drawn like its text drawing, when the guide is written: `pnpm render` in `tools/guides/` also writes `guides/<slug>/diagrams/<n>-light.svg` and `<n>-dark.svg`, drawn by Mermaid 11.17.2 in headless Chromium (playwright-core 1.64.1, the version of the Python Playwright the browser tests use), in the web UI's two palettes. Each file starts with the same SHA-256 marker as the text drawing, and holds only presentation attributes: no stylesheet, `style` attribute, script or font. A static check, G10, fails a missing or stale drawing and a file that belongs to no diagram. The page shows the drawing of its theme as an `<img>`, which `img-src 'self'` allows, so the CSP does not change; the web UI's bundle holds no Mermaid. `accTitle` is the image's alt text and `accDescr` its caption. The text drawing is left out of the page, since a screen reader reads box-drawing characters as noise and the alt text and caption carry what the diagram shows; it shows only when the SVGs are missing or stale.
+
 ### Examples are run by a test
 
 Every example is a real program in `examples/`, embedded in `guide.md` byte for byte, with its output in an `output` block after it. A content test runs each one and compares what it prints with that block, so an example cannot rot. Python examples and JavaScript ones run in the fast suite; Go and Java ones are marked slow, and each language skips where its toolchain is missing.
@@ -62,6 +68,7 @@ Seven guides, from what a hash function is to Merkle proofs, around the thirteen
 - Guide text carries facts about languages and libraries. Each guide cites the official documentation for them in its "Further reading", and the pilot's claims are listed with their sources for an independent review.
 - Authors run one more tool when they change a diagram: `pnpm install` and `pnpm render` in `tools/guides/`, which needs Node.js and pnpm, as the web UI's sources already do. Readers need neither.
 - beautiful-mermaid depends on elkjs (EPL-2.0 or GPL-3.0-or-later). It stays in `tools/guides/node_modules/`, a development tool that is never committed or shipped; only its output, the text drawings, is.
+- Mermaid 11.17.2 (MIT) and playwright-core 1.64.1 (Apache-2.0) are development dependencies of `tools/guides/` too, never shipped; only their output, the SVG drawings, is, in the wheel with the guides. Mermaid 12 is not used: it depends on elkjs. Drawing needs Playwright's Chromium, which the browser tests install anyway. The drawings' text is measured on the author's machine, in Helvetica, Arial or a sans-serif, which share their metrics.
 - A guide's examples are content code that runs on the author's machine in tests, never in a user's workspace.
 - `progress.db` gains migration 0007, `CREATE TABLE IF NOT EXISTS`, so it is safe to renumber again. Its number leaves 0006 to the level-passes work, which takes it. An older cstudy's `cstudy doctor` reports such a database as newer than it knows, as after every migration.
 
@@ -69,7 +76,7 @@ Seven guides, from what a hash function is to Merkle proofs, around the thirteen
 
 | Option | What it would add |
 |--------|-------------------|
-| The page's Guides view (built) | Guides and paths in `cstudy serve`, drawing Mermaid with a locally bundled, lazily loaded renderer that follows the page's theme, and hiding the text drawings; `cstudy learn <guide> --open` opens a guide there |
+| The page's Guides view (built) | Guides and paths in `cstudy serve`, each diagram shown as its SVG drawing in the page's theme, made when the guide is written; `cstudy learn <guide> --open` opens a guide there |
 | Concept checks | Short questions per guide on the review schedule |
 | Mastery per level | Path progress that reads per-level passes once they land |
 | `verify --changed` for guides | Only the guides and paths a branch changed |
@@ -83,5 +90,6 @@ Seven guides, from what a hash function is to Merkle proofs, around the thirteen
 | Front matter in `guide.md` | GitHub shows front matter as a table above the guide, and the problems already keep their metadata in `meta.yaml` |
 | Hand-drawn SVG files | Two sources per diagram, and the terminal could not show them |
 | Rendering Mermaid at read time | A user would need Node.js and a renderer to read a guide in the terminal |
+| Drawing Mermaid in the page, from a lazily loaded chunk | Built first, then dropped on review: getting Mermaid's styles past the page's CSP took temporary patches of browser functions that lean on Mermaid's internals and reach other code while a diagram is drawn; and every reader would load about 3 MB of renderer for drawings that never change |
 | Marking a guide read when it is printed | Printing is not reading, and a mark you did not mean is noise in a path |
 | A file in `.cs/` for reading progress | `cstudy reset` and `cstudy export` would need rules of their own for it, while a table in `progress.db` gets theirs for free |

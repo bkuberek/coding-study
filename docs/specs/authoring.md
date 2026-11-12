@@ -351,7 +351,7 @@ System design and code review items (`tracks/<track>/<slug>/`, format in [conten
 
 ## Guides and paths
 
-[Concept guides and learning paths](guides.md) run no code in `cstudy verify`: it applies their static checks, G1 to G9 and P1 to P5, when it verifies the whole catalog, and they do not count towards the coverage report. Their examples run in a content test instead ([examples](guides.md#examples)). [Writing a guide](guides.md#writing-a-guide) lists the steps.
+[Concept guides and learning paths](guides.md) run no code in `cstudy verify`: it applies their static checks, G1 to G10 and P1 to P5, when it verifies the whole catalog, and they do not count towards the coverage report. Their examples run in a content test instead ([examples](guides.md#examples)). [Writing a guide](guides.md#writing-a-guide) lists the steps.
 
 ## Quality gate
 
