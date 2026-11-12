@@ -308,7 +308,7 @@ Use something else when:
 
 ## Common traps
 
-- **Treating the heap's list as sorted.** Only index 0 is guaranteed. `heap[1]` is not the second smallest item; it is one of the root's two children. Pop to get items in order.
+- **Treating the heap's list as sorted.** Only index 0 is guaranteed. The second smallest item is one of the root's two children, `heap[1]` or `heap[2]`, and beyond that the list says little. Pop to get items in order.
 - **Forgetting which end you get.** Python's `heapq`, Java's `PriorityQueue` and Go's `container/heap` give the smallest item; Rust's `BinaryHeap` gives the largest. Check before you rely on it.
 - **Ties that compare the payload.** A Python heap of `(priority, item)` tuples compares the items when two priorities are equal: ties then come out in the items' order instead of the order they arrived, and items that cannot be compared raise `TypeError`. Put a counter between the two, as below.
 - **Changing an item's priority while it sits in the heap.** The heap property is checked only when an item moves. If you change a key in place, the item stays where it is, possibly above smaller items, and the heap returns wrong answers. Rust's documentation calls this a logic error. Remove and re-insert, or use an API built for it, such as Go's `heap.Fix`.
