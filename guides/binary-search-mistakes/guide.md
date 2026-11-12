@@ -232,96 +232,74 @@ Off-by-one errors also hide in what the search returns:
 
 ## Overflow and underflow
 
-[`lo + hi` can overflow](../searching-a-sorted-array/guide.md#computing-the-midpoint) a fixed-width integer even when both fit: write `lo + (hi - lo) / 2`. The mirror problem appears with **unsigned** indexes, which cannot hold -1:
+[`lo + hi` can overflow](../searching-a-sorted-array/guide.md#computing-the-midpoint) a fixed-width integer even when both fit: write `lo + (hi - lo) / 2`. The mirror problem is **underflow**: an unsigned number cannot go below zero, so a subtraction whose true result is negative does not give a negative number.
 
-- In Rust, indexes are `usize`. By default, `0 - 1` panics in a debug build ("attempt to subtract with overflow") and wraps around to the largest `usize` in a release build, where overflow checks are off unless enabled with `-C overflow-checks`.
+- In Rust, every index is a `usize`, so every subtraction of positions is unsigned. By default, `0 - 1` panics in a debug build ("attempt to subtract with overflow") and wraps around to the largest `usize` in a release build, where overflow checks are off unless enabled with `-C overflow-checks`.
 - In Go, unsigned arithmetic wraps silently, by the language's specification, in every build.
 
-A closed interval decrements its bounds: `hi = mid - 1` when `mid` is 0, and `hi = n - 1` when the array is empty. Both reach below zero. In Go:
+A binary search subtracts in more places than its midpoint: a count, a difference of two values, the distance from the target to a neighbour. Here the values are unsigned: kilometre posts of railway stations, and the question is which station is nearest to kilometre 500. A lower bound finds the two neighbours, and the code compares their distances:
 
 ```go examples/underflow.go
-// With unsigned indexes, a bound cannot go below zero: 0 - 1 wraps around to the largest value.
-// Go's unsigned arithmetic wraps silently, so the bug shows up later, as an index far out of range.
+// Unsigned numbers cannot go below zero: a subtraction whose true result is negative wraps around
+// to a huge value instead. Go does this silently, so the bug shows up as a wrong answer, not a crash.
 package main
 
 import (
 	"fmt"
-	"math"
+	"sort"
 )
 
-func closedSearch(values []int, target int) {
-	lo, hi := uint64(0), uint64(len(values))-1
-	for lo <= hi {
-		mid := lo + (hi-lo)/2
-		fmt.Printf("  lo %d  hi %d  mid %d  value %d\n", lo, hi, mid, values[mid])
-		if values[mid] == target {
-			fmt.Println("  found")
-			return
-		}
-		if values[mid] < target {
-			lo = mid + 1
-		} else {
-			hi = mid - 1
-		}
-		if hi == math.MaxUint64 {
-			fmt.Printf("  hi = mid - 1 wrapped to %d, so lo <= hi still holds\n", hi)
-			fmt.Println("  the next step would index values with a number that large: a panic")
-			return
-		}
-	}
-	fmt.Println("  absent")
+// carelessGap assumes station <= x, which is true on one side of x only.
+func carelessGap(x, station uint64) uint64 {
+	return x - station
 }
 
-// The half-open version never subtracts from a bound, so it has nothing to wrap.
-func halfOpenSearch(values []int, target int) string {
-	lo, hi := uint64(0), uint64(len(values))
-	for lo < hi {
-		mid := lo + (hi-lo)/2
-		if values[mid] == target {
-			return fmt.Sprintf("found at %d", mid)
-		}
-		if values[mid] < target {
-			lo = mid + 1
-		} else {
-			hi = mid
-		}
+// gap subtracts the smaller value from the larger one, so it never goes below zero.
+func gap(x, station uint64) uint64 {
+	if station > x {
+		return station - x
 	}
-	return "absent"
+	return x - station
 }
 
 func main() {
-	values := []int{10, 20, 30, 40, 50}
-	fmt.Println("closed interval, unsigned indexes, searching for 5:")
-	closedSearch(values, 5)
+	stations := []uint64{120, 340, 560, 910} // kilometre posts along a railway, sorted
+	x := uint64(500)
 
-	var empty []int
-	fmt.Println("an empty slice: uint64(len(empty)) - 1 =", uint64(len(empty))-1)
+	// The first station at or after kilometre 500; its neighbour before it is the other candidate.
+	i := sort.Search(len(stations), func(i int) bool { return stations[i] >= x })
+	before, after := stations[i-1], stations[i]
+	fmt.Println("lower bound of 500:", i, "| neighbours:", before, "and", after)
 
-	fmt.Println("half-open, searching for 5:", halfOpenSearch(values, 5))
-	fmt.Println("half-open, searching for 40:", halfOpenSearch(values, 40))
-	fmt.Println("half-open, empty slice:", halfOpenSearch(empty, 5))
+	fmt.Println("careless gaps:", carelessGap(x, before), "and", carelessGap(x, after))
+	fmt.Println("gaps:         ", gap(x, before), "and", gap(x, after))
+
+	nearest := func(distance func(x, station uint64) uint64) uint64 {
+		if distance(x, before) <= distance(x, after) {
+			return before
+		}
+		return after
+	}
+	fmt.Println("nearest, careless:", nearest(carelessGap), "| nearest:", nearest(gap))
 }
 ```
 
 It prints:
 
 ```output examples/underflow.go
-closed interval, unsigned indexes, searching for 5:
-  lo 0  hi 4  mid 2  value 30
-  lo 0  hi 1  mid 0  value 10
-  hi = mid - 1 wrapped to 18446744073709551615, so lo <= hi still holds
-  the next step would index values with a number that large: a panic
-an empty slice: uint64(len(empty)) - 1 = 18446744073709551615
-half-open, searching for 5: absent
-half-open, searching for 40: found at 3
-half-open, empty slice: absent
+lower bound of 500: 2 | neighbours: 340 and 560
+careless gaps: 160 and 18446744073709551556
+gaps:          160 and 60
+nearest, careless: 340 | nearest: 560
 ```
 
-Searching for 5, smaller than everything, moves `hi` left until `mid` is 0, and `0 - 1` becomes 18,446,744,073,709,551,615. The condition `lo <= hi` is still true, so the loop would go on and index the slice with that number. An empty slice wraps before the loop even starts. The half-open search has nothing to wrap, since it never subtracts from a bound: `hi = mid` and `lo = mid + 1` stay between 0 and `n`. With unsigned indexes, the half-open style is the safe default; in Rust, `checked_sub` returns `None` instead of wrapping when a subtraction must stay.
+The careless distance `x - station` is right for 340, below 500, and wraps for 560, above it: `500 - 560` becomes 18,446,744,073,709,551,556. So the nearest station comes out as 340, 160 kilometres away, instead of 560, 60 kilometres away. Nothing panicked and nothing failed: the answer is just wrong. Subtracting the smaller value from the larger one fixes it, and so does a signed type wide enough for every difference.
+
+Wherever unsigned numbers are subtracted, ask what happens when the true result would be negative, and test that input. A condition such as `i >= 0` on an unsigned `i` is always true, for the same reason. In Rust, `checked_sub` returns `None` instead of a wrapped value, so the negative case becomes a value the code has to deal with.
 
 ## Predicates that are not monotone
 
-`first_true` assumes the predicate switches once. Given one that does not, it still returns something: a position where false is followed by true, but not necessarily the first true position, and with no error. The program shows two cases:
+`first_true` assumes the predicate switches once. Given one that does not, it still returns something, with no error: a position where a false is followed by a true; or 0, which needs the first position to be true; or `n`, which needs the last one to be false. It is not necessarily the first true position. The program shows two cases:
 
 ```mermaid
 flowchart LR
@@ -375,7 +353,7 @@ A tolerance relative to the size of the numbers is a third option, but it must s
 | No progress | An endless loop, on some inputs only |
 | A predicate that is not monotone | A wrong answer, in O(log n) time and with no error |
 | `lo + hi` overflow | A negative or wrong index, only for large bounds |
-| Unsigned underflow | A panic in Rust debug builds, a huge index otherwise |
+| Unsigned underflow | A panic in Rust debug builds; otherwise a huge number, and a wrong answer or an index far out of range |
 | A floating-point tolerance below the spacing | An endless loop |
 
 Checking all small inputs is cheap: there are `C(L + v - 1, L)` sorted arrays of length `L` over `v` values, so lengths 0 to 4 over 3 values give 1 + 3 + 6 + 10 + 15 = 35 arrays, and 175 cases with five targets each, as the program counted.
@@ -390,8 +368,8 @@ Checking all small inputs is cheap: there are `C(L + v - 1, L)` sorted arrays of
 
 ## Practice
 
-- `cstudy start debug-binary-search-bounds`: a binary search that passes most of its tests and fails some; find the inputs that break it, then fix it.
-- `cstudy start debug-unsigned-underflow`: a search ported to Rust that crashes on some queries; find out why and fix it.
+- `cstudy start debug-binary-search-bounds`: a binary search that passes most of its tests and fails some; find the inputs that break it, then fix it. The path puts it before this guide: try it first, and read this guide as the explanation.
+- `cstudy start debug-unsigned-underflow`: a search ported to Rust that crashes on some queries; find out why and fix it. It needs Rust, so the path keeps it for its last step.
 
 ## Further reading
 

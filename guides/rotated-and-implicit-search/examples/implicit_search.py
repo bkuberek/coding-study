@@ -1,5 +1,5 @@
 """Binary search without a sorted array in memory: a sequence of unknown length, a sorted sequence split
-into chunks of different sizes, a rotated array, and why equal values defeat a rotated array."""
+into chunks of different sizes, and two rotated arrays, the second with a repeated value."""
 
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable
@@ -71,7 +71,9 @@ rotated = ordered[moved:] + ordered[:moved]  # the first 3 values moved to the b
 second_run = [i >= len(ordered) - moved for i in range(len(rotated))]  # known from how it was built
 print("rotated:", rotated, "| in the second run:", " ".join("T" if t else "F" for t in second_run))
 
-# 4. With equal values, the first, middle and last elements can look the same for different arrays.
-for values in ([2, 2, 2, 0, 2], [2, 0, 2, 2, 2]):
-    print(values, "first, middle, last:", values[0], values[len(values) // 2], values[-1], end=" ")
-    print("| the smallest is at", values.index(min(values)))
+# 4. With a repeated value, the same value can sit in both runs, so a value no longer names its run.
+repeated = [1, 6, 6, 6, 8]
+moved = 3
+rotated = repeated[moved:] + repeated[:moved]  # [6, 8, 1, 6, 6]
+runs = ["first" if i < len(repeated) - moved else "second" for i in range(len(rotated))]
+print("rotated:", rotated, "| runs:", " ".join(f"{value}:{run}" for value, run in zip(rotated, runs)))

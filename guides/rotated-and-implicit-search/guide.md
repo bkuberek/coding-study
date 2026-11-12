@@ -83,7 +83,7 @@ The program runs both searches, then a chunked sequence, a rotated array and the
 
 ```python examples/implicit_search.py
 """Binary search without a sorted array in memory: a sequence of unknown length, a sorted sequence split
-into chunks of different sizes, a rotated array, and why equal values defeat a rotated array."""
+into chunks of different sizes, and two rotated arrays, the second with a repeated value."""
 
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable
@@ -155,10 +155,12 @@ rotated = ordered[moved:] + ordered[:moved]  # the first 3 values moved to the b
 second_run = [i >= len(ordered) - moved for i in range(len(rotated))]  # known from how it was built
 print("rotated:", rotated, "| in the second run:", " ".join("T" if t else "F" for t in second_run))
 
-# 4. With equal values, the first, middle and last elements can look the same for different arrays.
-for values in ([2, 2, 2, 0, 2], [2, 0, 2, 2, 2]):
-    print(values, "first, middle, last:", values[0], values[len(values) // 2], values[-1], end=" ")
-    print("| the smallest is at", values.index(min(values)))
+# 4. With a repeated value, the same value can sit in both runs, so a value no longer names its run.
+repeated = [1, 6, 6, 6, 8]
+moved = 3
+rotated = repeated[moved:] + repeated[:moved]  # [6, 8, 1, 6, 6]
+runs = ["first" if i < len(repeated) - moved else "second" for i in range(len(rotated))]
+print("rotated:", rotated, "| runs:", " ".join(f"{value}:{run}" for value, run in zip(rotated, runs)))
 ```
 
 It prints:
@@ -188,11 +190,10 @@ first value >= 5000:
 chunk starts: [0, 3, 8, 9] | the virtual array: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41]
 first value >= 20 is at virtual position 8 and is 23
 rotated: [20, 26, 31, 40, 3, 9, 14] | in the second run: F F F F T T T
-[2, 2, 2, 0, 2] first, middle, last: 2 2 2 | the smallest is at 3
-[2, 0, 2, 2, 2] first, middle, last: 2 2 2 | the smallest is at 1
+rotated: [6, 8, 1, 6, 6] | runs: 6:first 8:first 1:second 6:second 6:second
 ```
 
-Both gallops agree with `bisect_left` on the full list, which a reader of unknown length could not have called. The chunked sequence is the next section. The rotated array shows the question of the drawing above, computed here from how the array was built. The last two lines are two rotated arrays that look the same at the first, middle and last positions, with the smallest value in different places; the [complexity](#complexity) section explains why that matters.
+Both gallops agree with `bisect_left` on the full list, which a reader of unknown length could not have called. The chunked sequence is the next section. The rotated array shows the question of the drawing above, computed here from how the array was built. The last line is a rotated array with a repeated value: a 6 sits at position 0, in the first run, and at positions 3 and 4, in the second, so reading a 6 does not say which run it is in. The method of this guide relies on distinct values; what repeated values cost a search is left to the follow-ups of the rotated-array problems.
 
 ## Values computed from their position
 
@@ -213,7 +214,7 @@ The same pattern covers a sorted file of fixed-size records, where position `i` 
 - The answer is probably near the start of a long sequence: gallop even when the length is known, since it costs about 2 log₂ p reads for an answer at position `p`, against log₂ n for a plain search.
 - The data is not sorted, but some question about a position still switches once: a rotated sorted array, or any structure where one element tells you which side of a boundary it is on.
 
-Use something else when no such question exists, as in an arbitrary unsorted array, and when a rotated array may hold many equal values: then a scan is as fast in the worst case.
+Use something else when no such question exists, as in an arbitrary unsorted array.
 
 ## Common traps
 
@@ -222,7 +223,7 @@ Use something else when no such question exists, as in an arbitrary unsorted arr
 - **The end of an unknown sequence.** The question must treat "past the end" as yes; treating it as no, or reading past the end without checking, breaks the gallop.
 - **Doubling past the type's limit.** In a fixed-width integer, doubling a probe can overflow; cap the probe at the largest position the structure can have.
 - **Off-by-one in the position map.** The chunk holding `i` is the last start *at or before* `i`, an upper bound minus one; a lower bound there puts every chunk's first element in the previous chunk.
-- **Equal values in a rotated array.** They can make the elements a search looks at identical for different arrays, and then no comparison tells it which way to go.
+- **Repeated values in a rotated array.** A value names its run only when the values are distinct: in `6 8 1 6 6`, a 6 sits in both runs. Check that the input promises distinct values before relying on it.
 
 ## Complexity
 
@@ -233,11 +234,8 @@ Use something else when no such question exists, as in an arbitrary unsorted arr
 | `c` chunks, searched through the position map | O(log n · log c) | O(c) for the starts |
 | `c` chunks, chunk first, then inside it | O(log c + log m), for chunks of up to `m` values | O(c) |
 | Rotated, distinct values | O(log n) | O(1) |
-| Rotated, with equal values | O(n) in the worst case | O(1) |
 
 **Galloping, precisely.** With the answer at position `p ≥ 1`, every probe before the first power of two that is at least `p` answers no, and that one answers yes. So there are exactly ⌈log₂ p⌉ + 1 probes. The last "no" was at half that power of two, so the bound search covers fewer than `p` positions, or exactly one when `p` is 1, and needs at most ⌊log₂ p⌋ + 1 more reads. The total, about 2 log₂ p, depends on where the answer is, not on the length. For the code 290, at position 41: 7 probes and 5 reads.
-
-**Equal values in a rotated array.** Take a rotated array of five 2s with one 0 among them, such as `2 2 2 0 2` or `2 0 2 2 2`. Any position the search reads, other than the 0, shows a 2, the same value it would show in every other placement of the 0. So a search learns nothing from a 2, and in the worst case it reads every position before it finds the 0: O(n).
 
 ## Expert notes
 

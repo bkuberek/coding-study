@@ -250,7 +250,7 @@ The traces match the tables. The two versions and the scan agree on every prefix
 ## Common traps
 
 - **Searching data that is not sorted.** Nothing fails loudly: Java's documentation says the results are "undefined", Rust's that they are "unspecified and meaningless". Sorting by one order and searching by another, such as a descending array searched with an ascending comparison, is the same mistake.
-- **Mixing the two interval styles.** A closed start with a half-open loop condition, or the reverse, misses elements, reads past the end or never stops. Pick one style and keep its three lines together ([common mistakes](../binary-search-mistakes/guide.md)).
+- **Mixing the two interval styles.** A line taken from the other style breaks the search on some input. Pick one style and keep its three lines together ([common mistakes](../binary-search-mistakes/guide.md)).
 - **Overflow in `(lo + hi) / 2`.** Harmless in Python, real in Java for very large arrays, and real in every fixed-width language when the bounds are large values instead of positions.
 - **Duplicates.** With equal values, a plain search returns *one* of them, not necessarily the first: Java's documentation says "there is no guarantee which one will be found", and Rust's that "any one of the matches could be returned". To get the first or the last, use a [bound search](../lower-and-upper-bounds/guide.md).
 - **Stopping at "absent".** A search that ends without finding the target has still computed something useful: where it would go. Throwing that away and scanning for the neighbours undoes the speed.
