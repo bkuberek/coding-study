@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 198 DSA problems and 138 non-DSA items (122 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 202 DSA problems and 161 non-DSA items (145 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
-| `dsa` | 198 (185 planned, 13 added) | `problems/` |
-| `practical` | 85 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added) | `problems/` |
+| `dsa` | 202 (185 planned, 17 added) | `problems/` |
+| `practical` | 108 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added, 1 content-addressed storage problem added, 9 AI engineering problems added, 7 data engineering problems added, 1 architecture problem added, 5 infrastructure as code problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **336** (320 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **363** (347 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -40,9 +40,9 @@ Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by
 
 ## DSA catalog
 
-Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 198 rows, with no exceptions.
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 202 rows, with no exceptions.
 
-198 problems: 185 planned in six batches, and 13 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
+202 problems: 185 planned in six batches, and 17 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
 
 ### Batch 1 (34 problems: `arrays-hashing`, `two-pointers`, `sliding-window`, `stack`)
 
@@ -261,7 +261,7 @@ Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on
 
 ### Later DSA additions
 
-13 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210).
+17 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210). Four, `0345` to `0348`, are easy on-ramps, each to a harder problem of its pattern that lists it in `related`: `flood-fill` to `number-of-islands`, `path-exists-in-graph` to `count-connected-components`, `max-average-fixed-window` to `min-size-subarray-sum`, and `kth-largest-in-stream` to `kth-largest-element`.
 
 | id | slug | title | primary | secondary | difficulty | lc | kind |
 |----|------|-------|---------|-----------|------------|----|------|
@@ -278,6 +278,10 @@ Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on
 | 0239 | `sorted-insertion-cost` | Sorted Insertion Cost | `segment-tree-fenwick` | `binary-search` | hard | 1649 | function |
 | 0308 | `all-grid-paths` | All Grid Paths | `backtracking` | - | medium | - | function |
 | 0309 | `find-missing-and-duplicates` | Find All Missing and Duplicate Numbers | `arrays-hashing` | - | medium | - | function |
+| 0345 | `flood-fill` | Flood Fill | `graphs` | - | easy | 733 | function |
+| 0346 | `path-exists-in-graph` | Path Exists in a Graph | `graphs` | - | easy | 1971 | function |
+| 0347 | `max-average-fixed-window` | Maximum Average of a Fixed Window | `sliding-window` | - | easy | 643 | function |
+| 0348 | `kth-largest-in-stream` | Kth Largest in a Stream | `heap` | - | easy | 703 | design |
 
 ## Stream assignment
 
@@ -299,7 +303,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (85, `problems/`)
+### practical (108, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -498,6 +502,54 @@ Three more four-level progressive problems on knowledge representation, in Pytho
 | 0320 | `entity-resolution` | Entity Resolution | `union-find`, `arrays-hashing` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer`, `ml-engineer` | function |
 | 0321 | `graphrag-context` | GraphRAG Context | `graphs`, `greedy` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
 
+One function-size, four-level progressive problem in all six languages on content-addressed storage, the last step of the [hashing path](guides.md#paths): `0322` files data under its SHA-256 address, stores the same data once and checks every read; snapshots folders as trees whose entries are named by digest, and diffs two snapshots; compares fixed-size chunks with content-defined chunks cut by a rolling hash; and keeps named refs, collecting what no ref reaches as garbage. Its Rust starter carries a small SHA-256 [helper](problem-format.md#starter-helpers), since Rust's vendored crates hold none. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0322 | `content-addressed-store` | Content-Addressed Store | `arrays-hashing`, `trees`, `sliding-window`, `graphs` | progressive | hard | all six | `backend`, `algorithms` | `backend`, `platform` | function |
+
+Nine function-size, four-level progressive problems on AI engineering, in Python and TypeScript under the [Languages rule](#rules): `0323` is the brakes of an agent loop, with a step cap, repeated identical failures, token and time budgets and a checked claim of done; `0324` a permission gate that decides each tool call from rules, scopes on paths and hosts, and remembered answers, with a log that ignores injected text; `0325` compaction that keeps a long chat inside a token budget without splitting tool calls, with a stable prefix and pinned facts; `0326` an exact and a semantic cache with routing to a tier and a savings report; `0327` a release gate from output assertions, judge scores checked against human labels and golden-set regressions; `0328` a guard that lets model-written SQL run only as one read-only query on allowed tables and columns, with a row limit; `0329` a runner for a model's plan of subtasks, in parallel waves with retries, replanning and budgets; `0330` corrective retrieval that grades what it found, falls back or rewrites the question, then cites the evidence or refuses; `0331` an analyzer that rebuilds an agent's trace as a tree of spans and finds where the time and the cost went and what failed first. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0323 | `loop-controller` | Loop Controller | `arrays-hashing` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| 0324 | `tool-permission-gate` | Tool Permission Gate | `stack`, `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `security`, `backend` | `ai-engineer`, `security-engineer`, `backend` | function |
+| 0325 | `context-compaction` | Context Compaction | `sliding-window`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend`, `ml-engineer` | function |
+| 0326 | `cache-and-router` | Cache and Router | `arrays-hashing`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+| 0327 | `eval-release-gate` | Eval Release Gate | `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `ml-engineer` | function |
+| 0328 | `sql-guard` | SQL Guard | - | progressive | hard | `python`, `typescript` | `security`, `ai-llm` | `ai-engineer`, `security-engineer`, `backend` | function |
+| 0329 | `plan-and-execute` | Plan and Execute | `topological-sort`, `graphs` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
+| 0330 | `corrective-rag` | Corrective RAG | `arrays-hashing`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+| 0331 | `agent-trace-analyzer` | Agent Trace Analyzer | `trees`, `intervals` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `platform`, `backend` | function |
+
+Seven function-size, four-level progressive problems in all six languages on data engineering, in the `data` domain and for the `data-engineer` role ([ADR 0020](../decisions/0020-catalog-labels.md#amendment-2026-11-11-data-infrastructure-systems-software-design-and-frontend)): `0332` groups timed events into tumbling, hopping and session windows, then runs them as a stream where a watermark closes windows and late events are corrected or dropped; `0333` applies a change log to a copy of a table, with positions that make replays safe, atomic transactions and schema changes; `0334` runs a graph of tasks per daily partition, with retries, reruns and backfills; `0335` keeps a type 2 slowly changing dimension, with surrogate keys, point-in-time lookups and late changes; `0336` decides whether a batch may be published, from row and dataset checks, drift and freshness; `0337` is a table format of immutable files and snapshots, with time travel, optimistic commits, expiry and compaction; `0338` walks column-level lineage to find the impact of a change and where sensitive data ends up. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0332 | `stream-windows` | Stream Windows | `arrays-hashing`, `intervals` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| 0333 | `cdc-apply` | CDC Apply | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| 0334 | `pipeline-scheduler` | Pipeline Scheduler | `graphs`, `topological-sort`, `heap` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `platform` | function |
+| 0335 | `scd-type2-dimension` | SCD Type 2 Dimension | `arrays-hashing`, `intervals`, `binary-search` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| 0336 | `data-quality-gate` | Data Quality Gate | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| 0337 | `snapshot-table` | Snapshot Table | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| 0338 | `lineage-graph` | Lineage Graph | `graphs`, `advanced-graphs` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+
+One function-size, four-level progressive problem in all six languages on software design: `0339` reads modules and their imports as a graph, finds import cycles, checks layer and independence rules with the chain of imports behind each break, then allows exceptions and keeps a baseline of today's breaks that fails only on new ones. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0339 | `architecture-checker` | Architecture Checker | `graphs`, `advanced-graphs` | progressive | hard | all six | `software-design` | `general`, `backend` | function |
+
+Five function-size, four-level progressive problems in all six languages on infrastructure as code, as concepts on today's engine; problems on the real tools wait for [Phase 17](../roadmap.md#phase-17-infrastructure-tools-in-the-sandbox): `0340` diffs desired and actual infrastructure, orders the steps by dependency, replaces or updates, and applies through failures until a new plan converges; `0341` compares recorded infrastructure with a scan, reports drift, imports unmanaged resources and reconciles by policy; `0342` brings hosts to a desired state with tasks that change only what differs, a dry run with diffs, handlers, conditions on facts and batches; `0343` deep-merges layers of values into templates, validates the result against a schema and shows which layer set each value; `0344` checks deployment manifests against rules given as data, with selectors, exceptions that expire, severities and fixes. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0340 | `iac-plan-engine` | Infrastructure Plan Engine | `topological-sort`, `heap`, `graphs` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| 0341 | `drift-detection` | Drift Detection | `arrays-hashing`, `string-matching` | progressive | medium | all six | `infrastructure` | `platform`, `backend` | function |
+| 0342 | `idempotent-converge` | Idempotent Converge | `arrays-hashing` | progressive | medium | all six | `infrastructure` | `platform` | function |
+| 0343 | `values-templating` | Layered Values and Templates | `recursion`, `trees`, `stack` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| 0344 | `manifest-policy` | Manifest Policy Checks | `arrays-hashing`, `trees`, `sorting` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -551,7 +603,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-85-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-108-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|

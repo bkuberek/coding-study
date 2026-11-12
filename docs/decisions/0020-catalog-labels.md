@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | Phases 1 and 2 implemented. Phase 3 is planned, and nothing of it is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06. The [2026-11-11 amendment](#amendment-2026-11-11-data-infrastructure-systems-software-design-and-frontend) adds five domains, two roles and three patterns |
 | Date | 2026-11-05, amended 2026-11-11 |
-| Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. [catalog](../specs/catalog.md#practical-85-problems) lists the first wave, and [S13](../specs/authoring.md#static) holds the language rule of phase 2 |
+| Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. [catalog](../specs/catalog.md#practical-108-problems) lists the first wave, and [S13](../specs/authoring.md#static) holds the language rule of phase 2 |
 | Amends | [PRD](../prd.md) (FR-3, its description and persona), [ADR 0012](0012-go-and-rust.md) (every language on every problem, by the [language rule](#rule-changes)) |
 | Builds on | [ADR 0001](0001-data-driven-tests.md), [ADR 0004](0004-original-problem-wording.md), [ADR 0014](0014-project-problems.md), [ADR 0019](0019-service-projects.md). Reviewed items are [ADR 0021](0021-ai-reviewed-problems.md) |
 
@@ -109,7 +109,7 @@ One pass over the 270, in one commit: a throwaway script writes the three fields
 | Track `code-review` | 6 | `backend` | `backend` | `function` |
 | **Total** | **270** | | | |
 
-0214 to 0228 are insurance tasks: [catalog](../specs/catalog.md#practical-85-problems) calls them that, and their titles agree (premium rating, unearned premium, coverage gaps, loss ratio).
+0214 to 0228 are insurance tasks: [catalog](../specs/catalog.md#practical-108-problems) calls them that, and their titles agree (premium rating, unearned premium, coverage gaps, loss ratio).
 
 Proposed overrides, to confirm in R3:
 
