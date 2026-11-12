@@ -109,11 +109,11 @@ Belady's anomaly. Each address is the first byte of the page with the same numbe
 
 <!-- case: ex6 -->
 
-The same references under LRU and the clock, with 3 frames. When page 4 arrives, LRU evicts page 2, the least recently used, and then needs it again at once: 6 faults. The clock finds every use bit set, clears them all as it goes round, and evicts page 1 in frame 0, where its hand started; when page 5 arrives, page 2 has been used since (its bit is 1 again), so the hand clears it and takes page 3: 5 faults on this string.
+A new string, 1, 2, 3, 1, 4, 2, 5, under LRU and the clock, with 3 frames. When page 4 arrives, LRU evicts page 2, the least recently used, and then needs it again at once: 6 faults. The clock finds every use bit set, clears them all as it goes round, and evicts page 1 in frame 0, where its hand started; when page 5 arrives, page 2 has been used since (its bit is 1 again), so the hand clears it and takes page 3: 5 faults on this string.
 
 ## Level 4: Two-level tables and the working set
 
-**Smaller page tables.** A one-level page table has an entry for every page of the address space, mapped or not. With 32-bit addresses, 4096-byte pages and 4-byte entries, that is 2^20 entries and 4 MiB per program. A **two-level** table cuts that list into pieces of one page each, the *inner tables*, and keeps only the pieces that hold at least one mapped page. A small **directory** says where each piece is. The page number is split again: its high bits index the directory, and its low bits index the inner table.
+**Smaller page tables.** A one-level page table has an entry for every page of the address space, mapped or not. With 32-bit addresses, 4096-byte pages and 4-byte entries, that is 2^20 entries and 4 MiB per program (1 MiB = 2^20 bytes). A **two-level** table cuts that list into pieces of one page each, the *inner tables*, and keeps only the pieces that hold at least one mapped page. A small **directory** says where each piece is. The page number is split again: its high bits index the directory, and its low bits index the inner table.
 
 - `walk(address, entryBytes)`: the indexes of a translation through a two-level table whose entries take `entryBytes` bytes, as `[directory index, table index, offset]`. An inner table fills one page, so it holds `E = pageSize / entryBytes` entries: the table index is the page number modulo `E`, and the directory index is the page number divided by `E`, rounded down.
 - `tableBytes(addressBits, entryBytes)`: the memory used by the page tables for the pages in the page table now (mapped, or in memory with demand paging), in an address space of `2^addressBits` bytes, as `[one level, two levels]`:

@@ -181,7 +181,7 @@ Five processes arrive at 0 on three cores: core 0 gets `A` and `D`, core 1 `B` a
 - Add a context-switch cost of `c` ticks during which the CPU does no work. How does the best quantum for average turnaround change as `c` grows?
 - A process that gives up the CPU just before its allotment ends would stay in queue 0 forever under a rule that resets the allotment on every turn. Why does counting the allotment over all turns at a level close that loophole?
 - Placement by load counts processes, not work. What would placement by the sum of remaining bursts gain, and why can a real kernel not do it?
-- Real feedback schedulers raise the quantum as the priority falls. Which jobs does that help, and which does it hurt?
+- Many feedback schedulers raise the quantum as the priority falls. Which jobs does that help, and which does it hurt?
 
 ## Hints
 
