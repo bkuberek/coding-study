@@ -7,7 +7,7 @@
 | filter-all-strings | brute | O(n * 2^n) | O(n * 1.62^n) | as a cross-check, or to see how much work pruning saves |
 | choose-explore-undo | optimal | O(n * 1.62^n) | O(n * 1.62^n) | default answer: every string it finishes is already valid |
 
-The number of allowed patterns is the Fibonacci number F(n + 2), which grows by a factor of about 1.618 per extra lamp, so the output alone is about n * 1.62^n characters. The brute force looks at all 2^n strings, which is about 1.24 times more strings for every extra lamp than there are answers.
+The number of allowed patterns is the Fibonacci number F(n + 2), which grows by a factor of about 1.618 per extra lamp, so the output alone is about n * 1.62^n characters. The brute force looks at all 2^n strings, and the ratio of 2^n to the answer count grows by about 1.24 per lamp.
 
 ## Approach: filter-all-strings (Write all 2^n strings of 0 and 1, keep those without two 1s in a row)
 
@@ -53,7 +53,7 @@ It is the shortest correct program and a good cross-check for anything cleverer.
 
 ### Intuition
 
-This is backtracking: build the answer one position at a time, and at every position follow the same three steps. Choose a value for the next lamp, explore everything that can follow, then undo the choice so the next value can be tried from the same starting point. The only extra idea is pruning: a lamp may be switched on only when the lamp to its left is off, so a branch that would create two `1`s in a row is never entered. Backtracking is a standard way to write such searches; Golomb and Baumert wrote it up as "Backtrack Programming" in 1965 (Journal of the ACM 12(4):516-524, doi 10.1145/321296.321300), where they say the method was named "backtrack" by D. H. Lehmer.
+This is backtracking: build the answer one position at a time, and at every position follow the same three steps. Choose a value for the next lamp, explore everything that can follow, then undo the choice so the next value can be tried from the same starting point. The only extra idea is pruning: a lamp may be switched on only when the lamp to its left is off, so a branch that would create two `1`s in a row is never entered. Backtracking is a standard way to write such searches; Golomb and Baumert wrote it up as "Backtrack Programming" in 1965 (Journal of the ACM 12(4):516-524, doi 10.1145/321296.321300), and, as NIST's Dictionary of Algorithms and Data Structures records, they credit D. H. Lehmer with the name.
 
 ### Algorithm
 

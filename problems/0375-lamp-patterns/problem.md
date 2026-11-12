@@ -6,6 +6,8 @@ A corridor has `n` lamps in a row. Each lamp is either on or off, and the safety
 
 Return every allowed arrangement exactly once, in increasing order. Strings of the same length are ordered like words in a dictionary, so `"0"` comes before `"1"` at the first position where two strings differ.
 
+Reference: this is our own wording of LeetCode problem 3211, [Generate Binary Strings Without Adjacent Zeros](https://leetcode.com/problems/generate-binary-strings-without-adjacent-zeros/), with the roles of `0` and `1` swapped.
+
 **The technique: backtracking.** Backtracking builds an answer one decision at a time, and every decision follows the same three steps:
 
 1. **Choose.** Fill the next empty slot with one of its possible values.
