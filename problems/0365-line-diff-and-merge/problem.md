@@ -52,7 +52,7 @@ Only one of the two lines can be kept. The diff that starts by removing `x = 1` 
 
 ## Level 2: Unified hunks
 
-A diff of a long file is mostly kept lines. The unified format shows only the changes and a few kept lines around each, called context, in blocks called hunks, each with a header that says where it is. This is the format of the POSIX `diff -U` command.
+A diff of a long file is mostly kept lines. The unified format shows only the changes and a few kept lines around each, called context, in blocks called hunks, each with a header that says where it is. The hunks here are in the format of POSIX `diff -U`, with two differences: POSIX also allows `start,1` for a range of one line, where this problem always writes `start` alone, and `diff -U` starts its output with `---` and `+++` lines naming the two files, which `unified()` leaves out.
 
 - `unified(before, after, context)`: the hunks of the diff of level 1, as one list: each hunk's header followed by its lines, hunk after hunk. When the files are equal, the list is empty.
 
