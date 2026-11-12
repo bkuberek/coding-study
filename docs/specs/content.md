@@ -6,7 +6,7 @@ What the catalog contains: tracks, the DSA pattern taxonomy with Phase targets, 
 
 DSA is roughly a third of a senior or staff loop, so the catalog covers the other rounds too.
 
-Every problem and item also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. The first security and AI/LLM problems use them: `0255` to `0261` in the [catalog](catalog.md#practical-82-problems), in Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
+Every problem and item also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. The first security and AI/LLM problems use them: `0255` to `0261` in the [catalog](catalog.md#practical-85-problems), in Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
 
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
