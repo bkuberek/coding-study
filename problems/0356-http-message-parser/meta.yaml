@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0356"
+slug: http-message-parser
+title: HTTP Message Parser
+summary: "Build HttpParser, which reads HTTP/1.1 requests from raw bytes: request line and fields, Content-Length and chunked bodies, requests split across reads, and refusing ambiguous framing."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [string-matching]
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Request line and header fields}
+  - {level: 2, title: Message bodies}
+  - {level: 3, title: Bytes in pieces}
+  - {level: 4, title: Ambiguity and limits}
+signature:
+  class:
+    name: HttpParser
+    constructor: {params: []}
+    methods:
+      - {name: parseHead, level: 1, params: [{name: data, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: parseMessage, level: 2, params: [{name: data, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: feed, level: 3, params: [{name: data, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: close, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: setLimits, level: 4, params: [{name: maxHeadBytes, type: int}, {name: maxBodyBytes, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: framing-state-machine, name: Staged parse over a buffer that resumes when more bytes arrive, role: optimal, time: "O(n) per message of n bytes; O(k) per feed call, k the bytes kept", space: "O(k) for the bytes kept", time_class: "n", space_class: "n"}
+related: [stream-reassembler, dns-resolver-sim, reliable-transport-sim]
+estimate_minutes: 120
