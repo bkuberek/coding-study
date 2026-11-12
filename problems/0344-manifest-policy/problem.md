@@ -119,7 +119,7 @@ On its expiry date, 2026-11-30, the exception for `workload/worker` still applie
 
 **Fixes.** A rule's `fix` is a text; the empty text means the rule has no fix. A finding of a rule with a fix gets a suggestion in the form of an operation of JSON Patch (RFC 6902), an `op` and a `value` that apply at the finding's pointer:
 
-- `requireField`: when the value at the pointer is `null` or `""`, the suggestion is `replace` with the fix as the value. When the pointer leads nowhere and its parent (the pointer without its last segment) is an object, the suggestion is `add` with the fix as the value. When the parent is missing or is not an object, there is no suggestion, because RFC 6902 lets `add` create a member only in an object that exists.
+- `requireField`: when the value at the pointer is `null` or `""`, the suggestion is `replace` with the fix as the value. When the pointer leads nowhere and its parent (the pointer without its last segment) is an object, the suggestion is `add` with the fix as the value. When the parent is missing or is not an object, there is no suggestion. RFC 6902's `add` fails when the object or list that would receive the value does not exist, which rules out a missing parent. It can insert into an existing list, but leaving a missing list item without a suggestion is this problem's choice.
 - `forbidTags`: the suggestion is `replace` with the reference rewritten to the fix as its tag: the reference without its tag, then `:` and the fix. `web:latest` with the fix `1.4.2` becomes `web:1.4.2`, and `registry.local:5000/web` becomes `registry.local:5000/web:1.4.2`.
 - `requirePortTargets`: never has a suggestion; its fix is ignored.
 

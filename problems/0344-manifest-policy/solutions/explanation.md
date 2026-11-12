@@ -67,7 +67,7 @@ Findings and decisions: a stable sort by severity rank keeps the report order in
 - A selector needs every pair to match exactly, never selects services, and an empty or missing selector selects nothing. A target must be on every selected workload, on any container (`h6`).
 - An exception lasts through its expiry day, covers one rule in one manifest at all its pointers, and is reported once it expires even when nothing matches it any more; expired rows sort by manifest, then rule. A second `allow` replaces the first (`h8`, `h9`, `h10`).
 - Severity orders the findings and mode decides the outcome; a critical warning never rejects, and redefining a rule keeps its configuration (`h11`).
-- `add` needs a parent object that exists; a missing parent or a parent list gets no suggestion, and `null` or `""` get `replace` (`h12`).
+- A missing value gets `add` only when its parent object exists: a missing parent gets no suggestion, since RFC 6902 would refuse the `add`, and neither does a parent list, by this problem's choice. `null` or `""` get `replace` (`h12`).
 - Every manifest gets a decision row, and excepted findings do not count until their exception expires (`h13`).
 
 ### Language notes
@@ -85,4 +85,4 @@ Findings and decisions: a stable sort by severity rank keeps the report order in
 - [OCI Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md): defines a tag as a human-readable pointer to a manifest, notes that one digest may have many tags, and defines a digest as an identifier made from a cryptographic hash of the content.
 - A. Rahman, C. Parnin and L. Williams, "The Seven Sins: Security Smells in Infrastructure as Code Scripts", Proceedings of the 41st International Conference on Software Engineering (ICSE), 2019, [doi:10.1109/ICSE.2019.00033](https://doi.org/10.1109/ICSE.2019.00033).
 - A. Rahman, R. Mahdavi-Hezaveh and L. Williams, "A systematic mapping study of infrastructure as code research", Information and Software Technology 108, 2019, [doi:10.1016/j.infsof.2018.12.004](https://doi.org/10.1016/j.infsof.2018.12.004).
-- T. Xu and Y. Zhou, "Systems Approaches to Tackling Configuration Errors: A Survey", ACM Computing Surveys 47(4), 2015, [doi:10.1145/2791577](https://doi.org/10.1145/2791577): a survey of configuration errors, which its abstract calls one of the dominant causes of system failures, and of ways to prevent, detect and troubleshoot them.
+- T. Xu and Y. Zhou, "Systems Approaches to Tackling Configuration Errors", ACM Computing Surveys 47(4), 2015, [doi:10.1145/2791577](https://doi.org/10.1145/2791577): a survey of configuration errors, which its abstract calls one of the dominant causes of system failures, and of ways to prevent, detect and troubleshoot them.
