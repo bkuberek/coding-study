@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0353"
+slug: gradient-descent-models
+title: Gradient Descent Models
+summary: "Build LinearModels, which trains linear and logistic regression by gradient descent, then picks a penalty by cross-validation and stops early on a validation split without leaking it."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [math-geometry]
+domains: [ai-llm]
+job_roles: [ml-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Linear regression}
+  - {level: 2, title: Logistic regression}
+  - {level: 3, title: Regularization and cross-validation}
+  - {level: 4, title: Early stopping and leakage}
+signature:
+  class:
+    name: LinearModels
+    constructor: {params: [{name: features, type: "double[][]"}, {name: targets, type: "double[]"}]}
+    methods:
+      - {name: linearLoss, level: 1, params: [{name: weights, type: "double[]"}], returns: {type: double}}
+      - {name: linearGradient, level: 1, params: [{name: weights, type: "double[]"}], returns: {type: "double[]"}}
+      - {name: trainLinear, level: 1, params: [{name: learningRate, type: double}, {name: steps, type: int}], returns: {type: "double[][]"}}
+      - {name: logisticLoss, level: 2, params: [{name: weights, type: "double[]"}], returns: {type: double}}
+      - {name: logisticGradient, level: 2, params: [{name: weights, type: "double[]"}], returns: {type: "double[]"}}
+      - {name: trainLogistic, level: 2, params: [{name: learningRate, type: double}, {name: steps, type: int}], returns: {type: "double[][]"}}
+      - {name: trainRidge, level: 3, params: [{name: learningRate, type: double}, {name: steps, type: int}, {name: strength, type: double}], returns: {type: "double[][]"}}
+      - {name: crossValidate, level: 3, params: [{name: learningRate, type: double}, {name: steps, type: int}, {name: strength, type: double}, {name: folds, type: int}], returns: {type: "double[][]"}}
+      - {name: chooseStrength, level: 3, params: [{name: learningRate, type: double}, {name: steps, type: int}, {name: strengths, type: "double[]"}, {name: folds, type: int}], returns: {type: "double[]"}}
+      - {name: fitScaler, level: 4, params: [{name: validationCount, type: int}], returns: {type: "double[][]"}}
+      - {name: earlyStop, level: 4, params: [{name: learningRate, type: double}, {name: maxSteps, type: int}, {name: patience, type: int}, {name: validationCount, type: int}], returns: {type: "double[]"}}
+      - {name: leakageCheck, level: 4, params: [{name: learningRate, type: double}, {name: maxSteps, type: int}, {name: patience, type: int}, {name: validationCount, type: int}], returns: {type: "double[]"}}
+comparator:
+  type: ops
+  tolerance: 1.0e-9
+  per_method: {linearLoss: float, linearGradient: float, trainLinear: float, logisticLoss: float, logisticGradient: float, trainLogistic: float, trainRidge: float, crossValidate: float, chooseStrength: float, fitScaler: float, earlyStop: float, leakageCheck: float}
+approaches:
+  - {id: batch-gradient-descent, name: Full-batch gradient steps shared by every model with folds and splits around them, role: optimal, time: "O(s n d) per training run", space: "O(n d)", time_class: "n", space_class: "n"}
+related: [classification-metrics, calibration-metrics, retrieval-metrics]
+estimate_minutes: 90
