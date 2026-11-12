@@ -267,7 +267,7 @@ It prints:
   big into small  -> (3, 4)
 ```
 
-Six moves is the minimum, and BFS proves it: the goal was discovered at level 6, after every state of levels 0 to 5 had been discovered, none of them a goal. Of the 24 possible pairs, only 14 were ever discovered; the rest, such as (1, 1), cannot be reached at all, since after every move at least one jug is full or empty. The search stops as soon as it discovers a goal state, which is safe for BFS: a node is discovered first at its smallest level, so nothing found later can be closer.
+Six moves is the minimum, and BFS proves it: the goal was discovered at level 6, after every state of levels 0 to 5 had been discovered, none of them a goal. Of the 24 possible pairs, 16 are reachable: after every move at least one jug is full or empty, which rules out the 8 pairs, such as (1, 1), where neither is. The search stopped after discovering 14 of the 16. It stops as soon as it discovers a goal state, which is safe for BFS: a node is discovered first at its smallest level, so nothing found later can be closer.
 
 ## Why the first discovery is the shortest
 
@@ -281,7 +281,7 @@ The argument uses one assumption: every edge counts the same. With weights, a ro
 
 ## When to use it
 
-- **Fewest steps, moves or hops**, when each one costs the same: fewest stops, fewest moves in a puzzle, fewest changes from one word or setting to another.
+- **Fewest steps, moves or hops**, when each one costs the same: fewest stops on a map, fewest moves in a puzzle.
 - **Everything within k steps**, or work done level by level: the nodes of each level are together in the queue, and their recorded distance says which level they belong to.
 - **The nearest node with some property**: stop at the first one discovered.
 - **Reachability**: which nodes can be reached at all. [Depth-first search](../depth-first-search/guide.md) answers this too, and either is fine.
@@ -294,7 +294,7 @@ Use something else when edges have different costs (Dijkstra's algorithm, in the
 - **Marking on exit.** As the club example showed, a node gets queued many times. Mark it when you put it in.
 - **Forgetting to mark the start.** Then a neighbor rediscovers it at distance 2. Put the start in the visited set as you queue it.
 - **A list as the queue.** `list.pop(0)` moves every remaining element; on a large graph the search turns quadratic. Use `collections.deque` and `popleft`.
-- **Counting the wrong thing.** BFS counts edges. When a question counts the nodes on a route, the start included, the answer is the number of edges plus one. Decide which one is asked before you return.
+- **Counting the wrong thing.** A recorded distance counts edges. A question may count something else along the route; read what it counts before you return.
 - **Stopping in the wrong place.** Checking for the goal when a node is discovered and checking when it leaves the queue both work, if you do it consistently; check the start itself too, since it may already be the goal.
 - **Mutable states.** A state must be hashable to go into the visited set. Use tuples or strings, never lists, and build a new value for each neighbor instead of changing the current one.
 - **Weights.** BFS on a weighted graph returns the route with the fewest edges, which is not the cheapest one.
@@ -309,14 +309,13 @@ With V nodes and E edges stored as adjacency lists:
 | Memory | O(V) | The visited set, the parents and the queue hold at most one entry per node |
 | Time, adjacency matrix | O(V²) | Listing a node's neighbors scans a whole row |
 
-For an implicit graph, V and E are the states and moves the search actually reaches, not the whole space, and each neighbor costs whatever building it costs: generating the six jug moves is constant, while changing one letter of a word of length L builds a new string of length L. A search with b moves per state that ends at depth d can reach up to about b to the power d states, which is why a nearby goal matters.
+For an implicit graph, V and E are the states and moves the search actually reaches, not the whole space, and each neighbor costs whatever building it costs: generating the six jug moves is constant, while a state that is a long string or tuple costs time in proportion to its length to build and to hash. A search with b moves per state that ends at depth d can reach up to about b to the power d states, which is why a nearby goal matters.
 
 ## Expert notes
 
 - **History.** C. Y. Lee's 1961 paper "An Algorithm for Path Connections and Its Applications" set out to solve path-connection problems in logical drawing, wiring diagrams and optimal route finding, and programmed its minimal-distance solution on an IBM 704.
-- **Several starts.** Queue every start at distance 0 before the search begins, and each node gets its distance to the nearest start, in one pass of O(V + E) instead of one search per start.
-- **Searching from both ends.** When the goal is known and moves can be reversed, run two searches, one from the start and one from the goal, expanding a level of the smaller frontier each time, and stop when they meet. With b moves per state and a distance of d, each side reaches depth about d/2, so the two together touch about 2 · b^(d/2) states instead of b^d. The stop needs care: finish the level in which the frontiers meet and keep the best total, rather than returning the first meeting point.
-- **Level by level.** Instead of storing a distance per node, you can process the queue one level at a time: read its length, take exactly that many nodes, and count the levels. It is handy when the answer is the number of levels, and it saves the distance map when the parents are not needed.
+- **More than one start.** Nothing in the algorithm requires the queue to begin with a single node.
+- **Searching from both ends.** When the goal is known, a second search can run from the goal towards the start, and the two meet in between. The technique exists; it comes with conditions of its own and a stopping rule that needs care.
 - **Python's `deque`.** The documentation promises thread-safe, memory-efficient appends and pops from either end in approximately O(1), and says indexing is O(1) at both ends but O(n) in the middle, so use it as a queue, not as an array.
 - **Java's `ArrayDeque`.** A resizable array with no capacity limit, not thread-safe, and refusing `null` elements. Its documentation says it is likely faster than `Stack` when used as a stack and faster than `LinkedList` when used as a queue, and that most of its operations run in amortized constant time.
 

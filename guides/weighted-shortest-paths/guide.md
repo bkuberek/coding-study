@@ -171,7 +171,7 @@ Settling assumes that no route found later can be cheaper than one settled now. 
 ```python examples/negative_edge.py
 """One negative edge is enough to make Dijkstra's algorithm settle a node too early.
 
-The edges are one-way. Relaxing every edge again and again, V - 1 times, still finds the truth."""
+The edges are one-way. The graph is small enough to try every route, which gives the truth."""
 
 import heapq
 
@@ -198,45 +198,48 @@ def dijkstra(source: str) -> dict[str, int]:
     return best
 
 
-def relax_every_edge(source: str) -> dict[str, float]:
-    best: dict[str, float] = {node: float("inf") for node in nodes}
-    best[source] = 0
-    for _ in range(len(nodes) - 1):
-        for start, end, weight in edges:
-            if best[start] + weight < best[end]:
-                best[end] = best[start] + weight
-    return best
+def every_route(source: str) -> dict[str, int]:
+    cheapest = {source: 0}
+    stack = [(source, 0)]
+    while stack:  # the graph has no cycle, so every route ends
+        node, cost = stack.pop()
+        for nxt, weight in out[node]:
+            cheapest[nxt] = min(cheapest.get(nxt, cost + weight), cost + weight)
+            stack.append((nxt, cost + weight))
+    return dict(sorted(cheapest.items()))
 
 
-print("Dijkstra:        ", dijkstra("a"))
-print("relax every edge:", {node: int(d) for node, d in relax_every_edge("a").items()})
+print("Dijkstra:   ", dijkstra("a"))
+print("every route:", every_route("a"))
 ```
 
 It prints:
 
 ```output examples/negative_edge.py
-Dijkstra:         {'a': 0, 'b': 2, 'c': 5, 'd': 3}
-relax every edge: {'a': 0, 'b': 1, 'c': 5, 'd': 2}
+Dijkstra:    {'a': 0, 'b': 2, 'c': 5, 'd': 3}
+every route: {'a': 0, 'b': 1, 'c': 5, 'd': 2}
 ```
 
-Dijkstra's algorithm settles `b` at 2 before it settles `c` at 5. Only then does it see the edge from `c` to `b` costing −4, which makes `b` reachable at 1, but `b` is final and `d` was already computed from it. The other method makes no such assumption: it relaxes every edge, V − 1 times over. After round k, every node whose cheapest route uses at most k edges has its exact distance, and a cheapest route never needs more than V − 1 edges, because without a cycle of negative total it visits no node twice. It costs O(V · E) instead of about O(E log V). If a V-th round still lowers a distance, some cycle has a negative total, and "cheapest" has no answer: going round it once more is always cheaper.
+Dijkstra's algorithm settles `b` at 2 before it settles `c` at 5. Only then does it see the edge from `c` to `b` costing −4, which makes `b` reachable at 1, but `b` is final and `d` was already computed from it. Trying every route, which only a tiny graph allows, shows the true costs. A graph with negative costs needs an algorithm that does not treat a distance as final this early. And if some cycle has a negative total, "cheapest" has no answer at all: going round it once more is always cheaper.
 
 ## Why settling is safe
 
-Suppose every edge costs 0 or more, and `x` is the unsettled node with the smallest tentative distance, D. Take any route from the start to `x`. It starts in the settled set and ends outside it, so it has a first node outside, `y`, reached directly from a settled node. When that settled node was settled, it relaxed its edge to `y`, so `y`'s tentative distance is at most the cost of the route up to `y`. And since `x` was chosen as the smallest, D is at most `y`'s tentative distance. The rest of the route, from `y` to `x`, costs 0 or more. So the route costs at least D, and no route to `x` is cheaper than the one already found. The step that fails with a negative edge is the last one: the rest of the route could lower the total.
+Suppose every edge costs 0 or more. The claim is that every node, at the moment it is settled, has its true distance, the cost of its cheapest route. It holds for the start, settled first at 0. Assume it holds for every node settled so far, and let `x` be the next one: the unsettled node with the smallest tentative distance, D. D is the cost of a real route, the chain of parents, so the true distance is at most D; the question is whether some route is cheaper.
+
+Take any route from the start to `x`. It starts in the settled set and ends outside it, so it has a first node outside, `y`, reached directly from a settled node `s`. By the assumption, `s` was settled at its true distance, which is at most what this route pays to reach `s`. When `s` was settled, it relaxed its edge to `y`, so `y`'s tentative distance is at most what this route pays to reach `y`. Since `x` was chosen as the smallest, D is at most `y`'s tentative distance. The rest of the route, from `y` to `x`, costs 0 or more, because no edge is negative. So the route costs at least D, no route to `x` is cheaper, and `x` is settled at its true distance, which carries the assumption to the next node. The step that fails with a negative edge is the one about the rest of the route: it could lower the total.
 
 ## When to use it
 
 - **Non-negative costs from one start**: travel times, prices, delays, any cost that adds up along a route and is never below 0. Costs of 0 are fine.
 - **All costs equal**: use BFS instead. It gives the same answer with a plain queue, in O(V + E).
-- **Negative costs**: relax every edge V − 1 times, as above, and check a last round for a negative cycle.
+- **Negative costs**: Dijkstra's algorithm is the wrong tool, as the negative edge above showed.
 - **Not a shortest path at all**: connecting every node at the least total cost is a different problem, a minimum spanning tree, whose answer is usually not a shortest-path tree. Dijkstra's 1959 note treats both, as its two problems.
 
 ## Common traps
 
 - **Settling when you push.** In BFS a node is final when it is discovered; here it is final only when it leaves the heap. A node discovered first through an expensive road, like `bridge` at 12, can still get cheaper.
-- **Not skipping outdated entries.** Without the check, a node is processed again for each outdated entry: wasted work at best, and wrong answers when the code relaxes from it again.
-- **Negative costs.** The algorithm returns numbers, not an error. Check the input, or use the slower method.
+- **Not skipping outdated entries.** Without the check, a node is processed again for each outdated entry. With the `<` test when relaxing, an outdated entry cannot lower any distance, so the distances stay right and only time is wasted; it goes wrong when the code does other work for every entry it pops, such as counting settled nodes or recording the order they come out in.
+- **Negative costs.** The algorithm returns numbers, not an error. Check the input before trusting them.
 - **Ties in the heap.** Python compares tuples item by item, so two entries with equal distances compare their nodes next. The `heapq` documentation warns that this breaks when the items cannot be compared, and suggests a running counter as the second item.
 - **Unreachable nodes.** They never get a distance. Decide what to report for them, and do not read them as distance 0.
 - **Storing an undirected road once.** As in any graph, an edge that works both ways is stored in both lists.
@@ -248,8 +251,6 @@ With V nodes and E edges:
 | Method | Time | Memory |
 |--------|------|--------|
 | Dijkstra with a binary heap and outdated entries skipped | O((V + E) log V): each edge pushes at most one entry, and the heap holds at most E + 1 entries, whose logarithm is at most about 2 log V | O(V + E) |
-| Dijkstra scanning all unsettled nodes for the smallest | O(V²): V steps of O(V) each, better than a heap for very dense graphs | O(V) beyond the graph |
-| Relaxing every edge V − 1 times | O(V · E) | O(V) beyond the graph |
 | BFS, when every edge costs the same | O(V + E) | O(V) |
 
 ## Expert notes

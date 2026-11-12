@@ -158,7 +158,7 @@ flowchart TD
 └───────┘    └─┘
 ```
 
-The answer is the same and the tree is flatter: `h` and `g` are one step from the root. Only the nodes on the path that was walked moved; `d` and `f` keep their parents until a `find` passes through them. Finally, opening the door `d-h` returns `False`: both rooms already have root `a`, so the door adds no new connection. In graph terms, an edge whose two ends are already in one group closes a cycle.
+The answer is the same and the tree is flatter: `h` and `g` are one step from the root. Only the nodes on the path that was walked moved; `d` and `f` keep their parents until a `find` passes through them. Finally, opening the door `d-h` returns `False`: both rooms already have root `a`, so the door adds no new connection.
 
 ### How deep the trees get
 
@@ -253,8 +253,8 @@ Why union by size keeps trees shallow: an element only moves one step further fr
 Union-find beats a search when:
 
 - **Edges keep arriving** and questions come in between: "are these two connected now?", "how many groups are there now?", "how big is this one's group?". A search would start over after each edge; union-find updates in almost constant time.
-- **An equivalence is spread over many facts.** Records that match on any of several keys, positions that can be swapped through a chain of allowed swaps, accounts linked by shared details: each fact is a union, and the groups fall out at the end.
-- **You process edges in a chosen order** and need to know, for each one, whether its ends are already connected. Tarjan's 1974 report lists finding minimum spanning trees among the uses of set union.
+- **An equivalence is spread over many facts**, each saying that two things belong together. Each fact is a union, and the groups fall out at the end.
+- **Minimum spanning trees.** Tarjan's 1974 report lists finding them among the uses of set union.
 
 A search is the better tool when:
 
@@ -268,7 +268,6 @@ A search is the better tool when:
 - **Comparing parents instead of roots.** `parent[a] == parent[b]` is not "connected": two nodes of one tree can have different parents. Compare `find(a)` and `find(b)`.
 - **Linking the nodes instead of the roots.** `parent[a] = b` cuts `a` out of its own tree and leaves the rest of the tree behind. Always link `find(a)` and `find(b)`.
 - **Updating the size of a non-root.** Only a root's size is meaningful. Add the smaller tree's size to the new root.
-- **Counting groups wrongly.** Start with one group per element and subtract one only when `union` actually merges two different roots. An edge inside a group changes nothing.
 - **A recursive `find` without union by size.** The chain above is 1,023 deep, and Python's default recursion limit is 1,000. Write `find` with loops, as here, or keep the trees shallow.
 - **Elements that appear late.** When elements are names that show up as they come, add each one, as its own root of size 1, the first time you see it; a dictionary of parents is simpler than numbering everything up front.
 

@@ -201,8 +201,7 @@ Kahn's algorithm is the one to reach for when you also want to know what is read
 ## Common traps
 
 - **The arrows the wrong way round.** "`[a, b]` means `a` needs `b`" and "`[a, b]` means `a` comes before `b`" are opposite graphs. Built backwards, the algorithm happily returns a reversed order. Write down what one pair means, and draw the arrow from what must come first.
-- **Forgetting nodes with no arrows.** `metrics` appears in no arrow. If the nodes are collected from the arrows alone, it is missing from the order.
-- **Duplicate arrows.** If the same pair is listed twice, count it twice in the in-degree and remove it twice, or remove duplicates first. Counting it twice but storing it once leaves a node waiting forever, and the algorithm reports a cycle that is not there.
+- **A graph built carelessly.** The algorithms are only as right as the nodes and arrows you give them. Before trusting an order, ask what your input can hold that the services example did not, and whether your counts and lists still agree with each other.
 - **Expecting one answer.** Unless the problem picks one, any valid order is right, and a test that compares with a single expected order is wrong. When you need a stable output, break ties explicitly, as the heap does.
 - **An undirected cycle check on a directed graph.** `app` importing `auth` both directly and through `ui` is not a cycle. Use in-degrees or the three colours.
 - **A node that needs itself.** An arrow from a node to itself is a cycle of one node: its in-degree never reaches 0.
@@ -219,7 +218,7 @@ With V nodes and E arrows:
 
 ## Expert notes
 
-- **Kahn, 1962.** A. B. Kahn's paper "Topological Sorting of Large Networks" presents, in its abstract, a very general method for obtaining topological order, a procedure needed for many problems of network analysis, PERT among them. It states that a network of 30,000 activities could be ordered in less than one hour of machine time on the 7090, and, candidly, that the method had not been programmed and there were no plans to implement it.
+- **Kahn, 1962.** A. B. Kahn's paper "Topological Sorting of Large Networks" presents, in its abstract, a very general method for obtaining topological order, a procedure needed for many problems of network analysis, PERT among them. It states that a PERT network of 30,000 activities could be ordered in less than one hour of machine time, discusses the procedure in terms of the 7090, and says, candidly, that the method had not been programmed and there were no plans to implement it.
 - **When the order is unique.** A DAG has exactly one topological order when each pair of neighbors in that order is joined by an arrow. If some neighbors `x`, `y` are not joined, swapping them breaks no arrow, since no arrow joins them and every other node keeps its side of both, so there is a second order. If every pair is joined, the arrows themselves fix the whole sequence. One run of Kahn's algorithm can check it: the order is unique exactly when no step ever has more than one node ready.
 - **The smallest order by name.** Taking the smallest ready node each time, as the heap does, gives the topological order that comes first in dictionary order: any valid order must start with a ready node, so the smallest ready node is the best possible first entry, and after it the same reasoning applies to what remains.
 - **Python's `graphlib`.** Added in Python 3.9. `static_order()` raises `CycleError` on a cycle; the cycle is in `args[1]`, with each node an immediate predecessor of the next and the first node repeated at the end, and when several cycles exist only one is reported. The order of nodes that become ready together can depend on the insertion order.

@@ -230,19 +230,19 @@ flowchart TD
 ```mermaid
 flowchart LR
   accTitle: The edge that closes a cycle
-  accDescr: The current path is app, auth, db, config, all grey. Config imports db, which is grey, so the edge from config back to db closes the cycle db, config, db.
+  accDescr: The current path is app, auth, db, config, all grey. Config imports db, drawn a second time at the end of the path because it is the same db, still grey, so the edge from config back to db closes the cycle db, config, db.
   app["app: grey"] --> auth["auth: grey"] --> db["db: grey"] --> config["config: grey"]
-  config -- "back edge" --> db
+  config --> again["db again: grey, a cycle"]
 ```
 
-<!-- text-of-mermaid sha256:854fad3e6fce986e7ea257138eae15e937fde86baae6e586215e7c1989555d47 -->
+<!-- text-of-mermaid sha256:975af65cd8f5d4c9a525153929717a91cada7093aa989a9e4ef9858c56ac00ec -->
 ```text
-┌─────────┐    ┌──────────┐    ┌────────┐           ┌────────────┐
-│app: grey├───►│auth: grey├───►│db: grey├◄back─edge►┤config: grey│
-└─────────┘    └──────────┘    └────────┘           └────────────┘
+┌─────────┐    ┌──────────┐    ┌────────┐    ┌────────────┐    ┌───────────────────────┐
+│app: grey├───►│auth: grey├───►│db: grey├───►│config: grey├───►│db again: grey, a cycle│
+└─────────┘    └──────────┘    └────────┘    └────────────┘    └───────────────────────┘
 ```
 
-The current path, kept in `path`, is `app`, `auth`, `db`, `config`; the part from `db` to the end, plus `db` again, is the cycle the program reports.
+The drawing shows `db` twice, but it is one module: the last box is where `config`'s import leads, back to the `db` that is still grey on the path. The current path, kept in `path`, is `app`, `auth`, `db`, `config`; the part from `db` to the end, plus `db` again, is the cycle the program reports.
 
 Why this is right in both directions:
 
@@ -403,7 +403,7 @@ A grid of R rows and C columns has R · C nodes and O(R · C) edges, so a search
 - `cstudy start surrounded-regions`: fill in the regions that cannot reach the edge of the board.
 - `cstudy start pacific-atlantic-water-flow`: the cells from which water can flow to two different sides of a map.
 - `cstudy start bipartite-graph`: can the nodes be split into two teams with every edge between the teams?
-- `cstudy start contractor-exposure-rollup`: add up everything under one contractor, counting shared subcontractors once and refusing loops.
+- `cstudy start contractor-exposure-rollup`: the total exposure of everyone working under one contractor.
 - `cstudy start referral-rewards`, levels 1 and 2: totals over chains of referrals. Its last level grows the chains to a million people; come back to it after [union-find](../union-find/guide.md).
 
 ## Further reading

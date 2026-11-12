@@ -1,6 +1,6 @@
 """One negative edge is enough to make Dijkstra's algorithm settle a node too early.
 
-The edges are one-way. Relaxing every edge again and again, V - 1 times, still finds the truth."""
+The edges are one-way. The graph is small enough to try every route, which gives the truth."""
 
 import heapq
 
@@ -27,15 +27,16 @@ def dijkstra(source: str) -> dict[str, int]:
     return best
 
 
-def relax_every_edge(source: str) -> dict[str, float]:
-    best: dict[str, float] = {node: float("inf") for node in nodes}
-    best[source] = 0
-    for _ in range(len(nodes) - 1):
-        for start, end, weight in edges:
-            if best[start] + weight < best[end]:
-                best[end] = best[start] + weight
-    return best
+def every_route(source: str) -> dict[str, int]:
+    cheapest = {source: 0}
+    stack = [(source, 0)]
+    while stack:  # the graph has no cycle, so every route ends
+        node, cost = stack.pop()
+        for nxt, weight in out[node]:
+            cheapest[nxt] = min(cheapest.get(nxt, cost + weight), cost + weight)
+            stack.append((nxt, cost + weight))
+    return dict(sorted(cheapest.items()))
 
 
-print("Dijkstra:        ", dijkstra("a"))
-print("relax every edge:", {node: int(d) for node, d in relax_every_edge("a").items()})
+print("Dijkstra:   ", dijkstra("a"))
+print("every route:", every_route("a"))
