@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Agents and workflows: ReAct and plan-and-execute"
+summary: Who decides the next step, your code or the model; how a ReAct agent alternates thoughts, actions and observations, how plan-and-execute plans once and runs the steps, and why every loop needs a limit.
+level: core
+prerequisites: [prompts-and-structured-outputs]
+related: [evaluating-llm-applications]
+problems: [tool-calling-agent-loop-typescript, plan-and-execute]
