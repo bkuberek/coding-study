@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0377"
+slug: village-paths
+title: Village Paths
+summary: "Build a class that tracks which villages are linked as paths are added one at a time: report whether a path joined two groups, whether two villages connect, and group sizes."
+status: ready
+difficulty: easy
+track: dsa
+kind: design
+patterns: [union-find]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  class:
+    name: VillageMap
+    constructor:
+      params: [{name: villages, type: int}]
+    methods:
+      - {name: addPath, params: [{name: a, type: int}, {name: b, type: int}], returns: {type: bool}}
+      - {name: canReach, params: [{name: a, type: int}, {name: b, type: int}], returns: {type: bool}}
+      - {name: groupSize, params: [{name: village, type: int}], returns: {type: int}}
+      - {name: groupCount, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: relabel-group, name: Give each group a label and relabel one whole group on every merge, role: brute, time: "O(n) per addPath, O(1) for the other calls", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: disjoint-set-forest, name: Trees of villages with union by size and path compression, role: optimal, time: "O(α(n)) amortized per call", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n villages, with 3n calls
+  size_ladder: [500, 1000, 2000, 4000]
+  expected_from: disjoint-set-forest
+  time_limit: {factor: 5}
+related: [count-connected-components, redundant-connection, number-of-islands-ii]
+order: 0
+estimate_minutes: 20
