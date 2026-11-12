@@ -29,4 +29,5 @@ perf:
 references:
   leetcode: {number: 1249, url: "https://leetcode.com/problems/minimum-remove-to-make-valid-parentheses/"}
 related: [valid-parentheses, decode-string]
+guides: [stacks]
 estimate_minutes: 20

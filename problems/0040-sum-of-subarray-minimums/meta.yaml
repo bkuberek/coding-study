@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 907, url: "https://leetcode.com/problems/sum-of-subarray-minimums/"}
 related: [largest-rectangle-histogram, daily-temperatures]
+guides: [monotonic-stacks]
 order: 4
 estimate_minutes: 30

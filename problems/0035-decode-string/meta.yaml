@@ -30,4 +30,5 @@ perf:
 references:
   leetcode: {number: 394, url: "https://leetcode.com/problems/decode-string/"}
 related: [valid-parentheses, basic-calculator, encode-decode-strings]
+guides: [stacks]
 estimate_minutes: 25

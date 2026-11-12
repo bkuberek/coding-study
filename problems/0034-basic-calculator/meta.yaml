@@ -29,4 +29,5 @@ perf:
 references:
   leetcode: {number: 227, url: "https://leetcode.com/problems/basic-calculator-ii/"}
 related: [evaluate-rpn, decode-string]
+guides: [evaluating-expressions]
 estimate_minutes: 25

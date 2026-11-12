@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Evaluating expressions
+summary: Evaluate infix and postfix expressions in one pass with stacks, and see why precedence, associativity and operand order are rules about when an operator may pop.
+level: core
+prerequisites: [stacks]
+related: [monotonic-stacks]
+problems: [evaluate-rpn, basic-calculator]

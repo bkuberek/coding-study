@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 22, url: "https://leetcode.com/problems/generate-parentheses/"}
 related: [valid-parentheses, phone-letter-combinations, permutations]
+guides: [stacks]
 order: 9
 estimate_minutes: 20

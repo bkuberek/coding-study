@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Tries
+summary: The prefix tree. Insert and look up letter by letter, count keys by prefix, branch through it for near matches, and weigh its memory against a hash set.
+level: core
+related: [hash-maps-and-sets, stacks]
+problems: [implement-trie, replace-words, wildcard-word-dictionary, search-suggestions, word-search-ii]

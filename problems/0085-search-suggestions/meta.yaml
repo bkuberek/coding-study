@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 1268, url: "https://leetcode.com/problems/search-suggestions-system/"}
 related: [implement-trie, wildcard-word-dictionary]
+guides: [tries]
 order: 3
 estimate_minutes: 25

@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 212, url: "https://leetcode.com/problems/word-search-ii/"}
 related: [implement-trie, wildcard-word-dictionary]
+guides: [tries]
 order: 4
 estimate_minutes: 35
