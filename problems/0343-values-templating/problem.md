@@ -70,7 +70,7 @@ Template text is copied as it is, except for **tags**. A tag starts at `{{` and 
 
 **Looking up a path.** Start at the merged values and follow the segments: a key picks that member of an object, and an index picks that item of a list. The value is **missing** when the path cannot be followed, or when it leads to a `null`. A path cannot be followed when an object lacks the key, when an index is past the end of the list, when a key is used on a list or an index on an object, and when any segment comes after a string, a number or a boolean.
 
-**What is inserted.** A string inserts its characters, a number its decimal text, and a boolean `true` or `false`. A value is inserted exactly as it is: nothing is escaped, quoted or rendered again, so a value that holds `{{` stays as written. A `default` replaces only a missing value: `false`, `0` and `""` are values, and they are inserted.
+**What is inserted.** A string inserts its characters, a number its decimal text, and a boolean `true` or `false`. A value is inserted exactly as it is: nothing is escaped, quoted or rendered again, so a value that holds `{{` stays as written. A `default` replaces only a missing value: `false`, `0` and `""` are values, and they are inserted. A design where `default` also replaces empty values (`0`, `""`, `false`, empty lists and objects) is common, and it has a classic bug: a deliberate `replicas: 0` silently becomes the default. This problem replaces only missing values.
 
 **Errors.** The whole template is checked first, left to right, and rendering starts only when no tag is malformed. The first problem found is the one reported.
 
@@ -97,7 +97,7 @@ Spaces inside the tags are optional: `{{app.replicas}}` works like `{{ app.repli
 
 ## Level 3: Conditions, loops and whitespace
 
-A tag whose first word is `if`, `else`, `end` or `for` is a **block tag**, and must be one of these forms; any other tag that starts with one of these words is a `bad_expression`.
+A tag whose first word is `if`, `else`, `end` or `for` is a **block tag**, and must be one of these forms; any other tag that starts with one of these words is a `bad_expression`. A word runs over letters, digits, `_` and `.`, so `{{ if.x }}` starts with the word `if.x` and is the path `if.x`, not a block tag.
 
 - `{{ if path }}...{{ end }}` and `{{ if path }}...{{ else }}...{{ end }}`: renders the part before `else` when the value at `path` is true, and the `else` part, or nothing, when it is false. A condition never fails: a missing value is false.
 - `{{ for item in path }}...{{ end }}` and `{{ for key, item in path }}...{{ end }}`: renders the body once for each item of a list, in index order, or once for each member of an object, in ascending order of the keys. `item` is the item or the member's value. `key`, when given, is the item's index (a number) or the member's key (a string).
@@ -150,7 +150,7 @@ In the first template, `{{-` before `for` removes the newline after `ports:`, an
 
 Every keyword is checked on its own, at every location that a schema reaches, and every failure is reported: a failed `type` does not stop the other keywords of the same schema. A member that is missing from the values is not checked any further, so the `required` error is the only error about it.
 
-**Errors.** An error is `[pointer, keyword, layer]`. `pointer` is the instance's location; for `required`, it is where the missing member would be, such as `/image/tag`. `keyword` names the keyword that failed. `layer` is the layer that set the value at `pointer` (as `provenance` gives it), and `""` for a missing member and for the whole values, which no layer sets. The errors are sorted by pointer, then by keyword, comparing texts by the numeric value of their characters, so `/ports/10` comes before `/ports/2`. JSON Schema's own output format also gives each error's instance location as a JSON Pointer.
+**Errors.** An error is `[pointer, keyword, layer]`. `pointer` is the instance's location. For `additionalProperties`, it is the member that is not allowed, such as `/replcias`, and there is one error for each such member. For `required`, it is where the missing member would be, such as `/image/tag`. `keyword` names the keyword that failed. `layer` is the layer that set the value at `pointer` (as `provenance` gives it): for `additionalProperties`, the layer of the extra member; `""` for a missing member and for the whole values, which no layer sets. The errors are sorted by pointer, then by keyword, comparing texts by the numeric value of their characters, so `/ports/10` comes before `/ports/2`. JSON Schema's own output format also gives instance locations as JSON Pointers, but it reports a `required` failure at the object that lacks the member; reporting it at the missing member is this problem's choice.
 
 **Provenance.** A string, number, boolean or list belongs to the last layer that wrote it, even when that layer wrote the same text again, and everything inside a list belongs to the list's layer. An object belongs to the layer that created it: the layer whose merge made it an object where there was none before, because the key was absent or held another kind of value. A later layer that only merges members into an existing object does not take the object over.
 
@@ -170,7 +170,7 @@ Every keyword is checked on its own, at every location that a schema reaches, an
 
 - At most 2000 calls in a test, at most 20 layers, and at most 500 rows in one layer or schema.
 - Layer names are 1 to 30 characters: letters, digits, `-` and `_`.
-- Keys are 1 to 30 characters. Strings hold printable ASCII characters (codes 32 to 126), at most 100 of them. Numbers are whole numbers written in decimal without leading zeros, at most `10^15` in absolute value. Values nest at most 20 levels deep.
+- Keys are 1 to 30 characters. Strings hold printable ASCII characters (codes 32 to 126), at most 100 of them. Numbers are whole numbers written in decimal without leading zeros, at most `10^15` in absolute value, and zero is always written `0`, never `-0`. Values nest at most 20 levels deep.
 - A template has at most 5000 characters: printable ASCII and newlines.
 - A schema uses only the keywords of level 4, each with a value of the kind its table row gives, and each `required` list names a key at most once.
 
