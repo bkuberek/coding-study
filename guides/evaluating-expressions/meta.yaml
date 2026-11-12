@@ -4,4 +4,4 @@ summary: Evaluate infix and postfix expressions in one pass with stacks, and see
 level: core
 prerequisites: [stacks]
 related: [monotonic-stacks]
-problems: [evaluate-rpn, basic-calculator, tiny-interpreter]
+problems: [evaluate-rpn, basic-calculator, tiny-interpreter, regex-engine]
