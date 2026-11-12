@@ -3,5 +3,5 @@ title: Prompts and structured outputs
 summary: How a prompt is put together from roles, instructions, examples and delimited data, and how to get answers that code can trust by parsing strictly, checking a schema and retrying a bounded number of times.
 level: intro
 prerequisites: [tokens-and-sampling]
-related: [embeddings-and-vector-search]
+related: [embeddings-and-vector-search, evaluating-llm-applications, llm-application-security]
 problems: [safe-redaction-python]

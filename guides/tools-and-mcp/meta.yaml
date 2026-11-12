@@ -3,5 +3,5 @@ title: Tools and the Model Context Protocol
 summary: How a model proposes tool calls that the application checks and runs, and how the Model Context Protocol standardizes the wiring between hosts, clients and tool servers, its errors and its consent rules.
 level: core
 prerequisites: [agents-and-workflows]
-related: [prompts-and-structured-outputs]
+related: [prompts-and-structured-outputs, harness-engineering, llm-application-security]
 problems: [tool-calling-agent-loop-typescript, tool-permission-gate]

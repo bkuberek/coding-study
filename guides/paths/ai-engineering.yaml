@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "AI engineering: from your first model call to agent harnesses"
+summary: From what a token is to the harness around an agent, through prompts, retrieval, evaluation, tools, memory, cost and security, with the problems that practise each idea.
+steps:
+  - guide: tokens-and-sampling
+  - problem: context-packer
+  - guide: prompts-and-structured-outputs
+  - problem: safe-redaction-python
+    level: 2
+  - guide: embeddings-and-vector-search
+  - problem: cosine-top-k
+  - problem: forgettable-inverted-index
+  - guide: retrieval-augmented-generation
+  - problem: chunking-with-overlap
+  - problem: freshness-reranker
+  - problem: rag-citations-typescript
+  - guide: evaluating-llm-applications
+  - problem: retrieval-metrics
+  - problem: safe-redaction-python
+  - problem: eval-release-gate
+  - guide: agents-and-workflows
+  - problem: plan-and-execute
+  - guide: tools-and-mcp
+  - problem: tool-calling-agent-loop-typescript
+    level: 2
+  - guide: agent-memory
+  - problem: memory-store
+  - problem: chat-history-index
+  - problem: versioned-memory-store
+  - problem: memory-facts-with-merge
+  - problem: graphrag-context
+  - guide: harness-engineering
+  - problem: loop-controller
+  - problem: tool-permission-gate
+  - problem: context-compaction
+  - problem: tool-calling-agent-loop-typescript
+  - guide: cost-caching-and-routing
+  - problem: llm-gateway-typescript
+  - problem: cache-and-router
+  - guide: llm-application-security
+  - problem: memory-write-sanitizer
+  - problem: sql-guard
