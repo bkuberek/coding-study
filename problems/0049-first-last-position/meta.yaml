@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 34, url: "https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/"}
 related: [binary-search, time-based-kv-store]
+guides: [lower-and-upper-bounds]
 order: 7
 estimate_minutes: 20

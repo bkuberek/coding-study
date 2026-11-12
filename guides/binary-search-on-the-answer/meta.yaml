@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Binary search on the answer
+summary: When a question asks for the smallest or largest value that works, and "does this value work?" is easy and monotone, search the range of values instead of an array.
+level: core
+prerequisites: [lower-and-upper-bounds]
+related: [binary-search-mistakes, rotated-and-implicit-search]
+problems: [koko-eating-bananas, split-array-largest-sum, swim-rising-water]

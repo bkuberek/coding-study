@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 35, url: "https://leetcode.com/problems/search-insert-position/"}
 related: [binary-search, first-last-position, search-2d-matrix]
+guides: [lower-and-upper-bounds]
 order: 11
 estimate_minutes: 10

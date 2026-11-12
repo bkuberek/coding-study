@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 153, url: "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/"}
 related: [search-rotated-array, binary-search]
+guides: [rotated-and-implicit-search]
 order: 3
 estimate_minutes: 20

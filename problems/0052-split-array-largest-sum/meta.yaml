@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 410, url: "https://leetcode.com/problems/split-array-largest-sum/"}
 related: [koko-eating-bananas, median-of-two-sorted-arrays]
+guides: [binary-search-on-the-answer]
 order: 10
 estimate_minutes: 40

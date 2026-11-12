@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 1146, url: "https://leetcode.com/problems/snapshot-array/"}
 related: [time-based-kv-store, binary-search, first-last-position, content-addressed-store, snapshot-table]
+guides: [lower-and-upper-bounds]
 order: 12
 estimate_minutes: 25

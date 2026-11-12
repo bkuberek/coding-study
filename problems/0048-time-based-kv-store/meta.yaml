@@ -30,6 +30,6 @@ perf:
 references:
   leetcode: {number: 981, url: "https://leetcode.com/problems/time-based-key-value-store/"}
 related: [binary-search, first-last-position, scd-type2-dimension, snapshot-table]
-guides: [designing-with-hash-maps]
+guides: [designing-with-hash-maps, lower-and-upper-bounds]
 order: 6
 estimate_minutes: 25

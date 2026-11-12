@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 4, url: "https://leetcode.com/problems/median-of-two-sorted-arrays/"}
 related: [split-array-largest-sum, binary-search]
+guides: [rotated-and-implicit-search]
 order: 9
 estimate_minutes: 45

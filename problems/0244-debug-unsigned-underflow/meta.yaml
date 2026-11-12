@@ -22,5 +22,5 @@ comparator: {type: exact}
 approaches:
   - {id: half-open-interval, name: Half-open binary search, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
 related: [debug-binary-search-bounds, search-insert-position, binary-search]
-guides: [learn-rust-first]
+guides: [learn-rust-first, binary-search-mistakes]
 estimate_minutes: 15

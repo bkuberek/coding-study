@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 875, url: "https://leetcode.com/problems/koko-eating-bananas/"}
 related: [split-array-largest-sum, binary-search]
+guides: [binary-search-on-the-answer]
 order: 4
 estimate_minutes: 25

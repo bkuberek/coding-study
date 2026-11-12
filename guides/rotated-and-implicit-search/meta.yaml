@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Searching rotated and implicit structures
+summary: Binary search needs a question that switches once, not a sorted array. Search sequences of unknown length, values computed from their position, and arrays that were sorted and then rotated.
+level: advanced
+prerequisites: [lower-and-upper-bounds]
+related: [binary-search-on-the-answer, binary-search-mistakes]
+problems: [search-2d-matrix, min-in-rotated-array, search-rotated-array, find-peak-element, median-of-two-sorted-arrays]

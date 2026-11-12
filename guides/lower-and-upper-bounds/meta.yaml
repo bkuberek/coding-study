@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Lower and upper bounds
+summary: Search for the first position where a yes/no question turns true, and every question about a sorted array becomes one search, with duplicates, absent values and the standard libraries of five languages.
+level: core
+prerequisites: [searching-a-sorted-array]
+related: [binary-search-mistakes, binary-search-on-the-answer, rotated-and-implicit-search]
+problems: [search-insert-position, first-last-position, time-based-kv-store, snapshot-array]

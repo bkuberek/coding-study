@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Binary search: from a sorted array to searching the answer"
+summary: From halving a sorted array to bound searches, the bugs that break them, searching the range of possible answers, and structures that are not sorted at all.
+steps:
+  - guide: searching-a-sorted-array
+  - problem: binary-search
+  - guide: lower-and-upper-bounds
+  - problem: search-insert-position
+  - problem: debug-binary-search-bounds
+  - guide: binary-search-mistakes
+  - problem: first-last-position
+  - problem: time-based-kv-store
+  - problem: snapshot-array
+  - guide: binary-search-on-the-answer
+  - problem: koko-eating-bananas
+  - guide: rotated-and-implicit-search
+  - problem: search-2d-matrix
+  - problem: min-in-rotated-array
+  - problem: search-rotated-array
+  - problem: find-peak-element
+  - problem: split-array-largest-sum
+  - problem: swim-rising-water
+  - problem: median-of-two-sorted-arrays
+  - problem: debug-unsigned-underflow
