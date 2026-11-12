@@ -32,4 +32,5 @@ comparator: {type: ops}
 approaches:
   - {id: tombstoned-conversations, name: Per-user conversations with tombstones, role: optimal, time: "O(1) per append or deletion; O(n q + c log c) per search", space: "O(n w)", time_class: "n log n", space_class: "n"}
 related: [memory-store, context-packer]
+guides: [agent-memory]
 estimate_minutes: 90

@@ -34,4 +34,5 @@ comparator: {type: ops}
 approaches:
   - {id: versioned-facts, name: Per-fact version history with ids from one counter for the whole store, role: optimal, time: "O(1) per remember or recall, O(log v) per recallAt, O(v) per history, O(f log f) per listFacts or merge, O(h log h) per exportFacts, O(l) per importFacts", space: "O(w)", time_class: "n log n", space_class: "n"}
 related: [in-memory-database, effective-dated-history]
+guides: [agent-memory]
 estimate_minutes: 90

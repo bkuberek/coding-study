@@ -25,4 +25,5 @@ comparator: {type: ops}
 approaches:
   - {id: versioned-map, name: One map from each key to its version and value that keeps forgotten keys, role: optimal, time: "O(1) per call", space: "O(u)", time_class: "n", space_class: "n"}
 related: [refresh-token-rotation, freshness-reranker]
+guides: [agent-memory]
 estimate_minutes: 20
