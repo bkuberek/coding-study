@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0335"
+slug: scd-type2-dimension
+title: SCD Type 2 Dimension
+summary: "Build DimensionTable, a type 2 slowly changing dimension: surrogate keys, versions over half-open dates, point-in-time lookups and fact keys, late changes that split history, and soft deletes."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, intervals, binary-search]
+domains: [data, backend]
+job_roles: [data-engineer, backend]
+scope: function
+levels:
+  - {level: 1, title: Surrogate keys}
+  - {level: 2, title: Type 2 history}
+  - {level: 3, title: Point in time and facts}
+  - {level: 4, title: Late changes and deletes}
+signature:
+  class:
+    name: DimensionTable
+    constructor: {params: [{name: attributes, type: "list<string>"}]}
+    methods:
+      - {name: load, level: 1, params: [{name: rows, type: "list<list<string>>"}, {name: loadDate, type: int}], returns: {type: "list<int>"}}
+      - {name: lookup, level: 1, params: [{name: businessKey, type: string}], returns: {type: int}}
+      - {name: rowOf, level: 1, params: [{name: surrogateKey, type: int}], returns: {type: "list<string>"}}
+      - {name: size, level: 1, params: [], returns: {type: int}}
+      - {name: trackHistory, level: 2, params: [{name: attribute, type: string}], returns: {type: bool}}
+      - {name: history, level: 2, params: [{name: businessKey, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: lookupAt, level: 3, params: [{name: businessKey, type: string}, {name: asOf, type: int}], returns: {type: int}}
+      - {name: snapshotAt, level: 3, params: [{name: asOf, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: resolveFacts, level: 3, params: [{name: facts, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+      - {name: loadFull, level: 4, params: [{name: rows, type: "list<list<string>>"}, {name: loadDate, type: int}], returns: {type: "list<int>"}}
+      - {name: fullHistory, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: versions-by-key, name: Versions sorted by start date per business key, role: optimal, time: "O(b log b + b v) per load of b rows, v the versions of a key; O(log v) per point lookup; O(k log v) per snapshot of k keys", space: "O(n) for n versions", time_class: "n log n", space_class: "n"}
+related: [time-based-kv-store, versioned-rate-table, insert-interval, data-quality-gate, snapshot-table, lineage-graph]
+estimate_minutes: 120
