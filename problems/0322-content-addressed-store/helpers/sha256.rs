@@ -106,6 +106,14 @@ mod sha256_tests {
     }
 
     #[test]
+    fn digest_of_the_one_byte_message_bd() {
+        assert_eq!(
+            sha256_hex(&[0xbd]),
+            "68325720aabd7c82f30f554b313d0570c95accbb7dc4b5aae11204c08ffe732b"
+        );
+    }
+
+    #[test]
     fn digest_of_the_448_bit_message() {
         assert_eq!(
             sha256_hex(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),

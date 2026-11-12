@@ -6,7 +6,8 @@ that frees shared objects or sweeps after a failed mark. These tests replay ever
 model of the store written from the statement, which must give every expected output, and against
 that model with one mistake planted at a time, which some hidden case must fail. A mistake that
 crashes fails its case, as a thrown exception does in the grader. The Rust starter's SHA-256 helper
-is the one the Rust reference uses, and its own tests pass against the standard's vectors."""
+is the one the Rust reference uses, and its own tests pass against NIST's examples and the digest
+of the empty message."""
 
 import contextlib
 import hashlib
@@ -1076,7 +1077,7 @@ def test_every_level_has_visible_and_hidden_cases():
         assert sum(not case.get("visible") for case in at_level) >= 2
 
 
-def test_the_addresses_of_the_standards_vectors_are_checked():
+def test_the_addresses_of_nists_examples_and_of_the_empty_message_are_checked():
     vectors = next(case for case in CASES if case["id"] == "h1")
     for message in (b"", b"abc", b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"):
         assert sha256_hex(message) in vectors["expected"]
@@ -1088,7 +1089,7 @@ def test_the_rust_reference_carries_the_starter_helper_unchanged():
 
 
 @pytest.mark.slow
-def test_the_rust_helper_passes_its_tests_against_the_standards_vectors(tmp_path: Path):
+def test_the_rust_helper_passes_its_tests_against_known_digests(tmp_path: Path):
     rustc = shutil.which("rustc")
     if rustc is None:
         pytest.skip("rustc is not installed")
@@ -1102,4 +1103,4 @@ def test_the_rust_helper_passes_its_tests_against_the_standards_vectors(tmp_path
     assert built.returncode == 0, built.stderr
     run = subprocess.run([str(binary)], capture_output=True, text=True, check=False)
     assert run.returncode == 0, run.stdout + run.stderr
-    assert "3 passed" in run.stdout
+    assert "4 passed" in run.stdout

@@ -110,7 +110,7 @@ So a chunk holds 32 to 256 bytes, except the last, which may be shorter. A windo
 
 - `chunkSizes(data, method)`: the sizes of the chunks that `method` cuts `data` into, in order. It stores nothing.
 - `putFile(data, method)`: cuts `data` with `method`, stores each chunk as an object, as `put` does, and then stores the manifest: one line per chunk, in order, each the chunk's address followed by a line feed. It returns the address of the manifest. Empty data has the empty manifest.
-- `readFile(manifest)`: the data of the file whose manifest is at `manifest`: the manifest, then each of its chunks in order, joined. Every object is checked as `get` checks it, and the answer is `""` when any of them is missing or damaged. The argument is always an address that `putFile` returned.
+- `readFile(manifest)`: the data of the file whose manifest is at `manifest`: open the manifest, then each chunk it lists, and return the chunks joined in order. Every object is checked as `get` checks it, and the answer is `""` when any of them is missing or damaged. The argument is always an address that `putFile` returned.
 - `dedupRatio(method)`: how well `method` has deduplicated so far: the total size of the data of every `putFile` call with this method, each call counted, divided by the total size of the distinct chunks those calls produced, each distinct chunk counted once, whatever other objects the store holds. It is `0` while that total is 0.
 
 ### Example 1
@@ -169,7 +169,7 @@ The folder `src` is damaged, and `main` reaches it, so the collector cannot tell
 
 - `diff` opens only the folders that changed. How many tree objects does it open for a snapshot of a million files where one file changed, ten folders deep?
 - Two snapshots that differ in one file share every other folder. How many bytes does the second snapshot add, as a function of the depth of that file and the size of each folder's text?
-- Content-defined chunks average about 96 bytes here. What changes when the cut condition is a multiple of 4096 instead of 64? What do the minimum and maximum sizes protect against?
+- Content-defined chunks average about 93 bytes here. What changes when the cut condition is a multiple of 4096 instead of 64? What do the minimum and maximum sizes protect against?
 - The collector reads every live tree on every run. How would you keep it from rereading the folders that did not change since the last run?
 - A real store writes objects to disk while a collection runs. Which order of writing an object and moving a ref keeps the collector from freeing an object that is about to be named?
 
@@ -181,7 +181,7 @@ Keep a dictionary from address to the stored bytes. To put data, turn it into by
 
 ### Hint 2
 
-Count bytes, not characters: in Python `len(data.encode("utf-8"))`, in TypeScript `Buffer.byteLength(data, "utf8")`, in Java and Kotlin the length of `getBytes(StandardCharsets.UTF_8)`. `damage` changes the bytes under an address without moving them, so `check` and `get` must hash the bytes again every time rather than trust a flag.
+Count bytes, not characters: in Python `len(data.encode("utf-8"))`, in TypeScript `Buffer.byteLength(data, "utf8")`, in Java and Kotlin the length of `getBytes(StandardCharsets.UTF_8)`; in Go `len(data)` and in Rust `data.len()` already count the bytes of a string. `damage` changes the bytes under an address without moving them, so `check` and `get` must hash the bytes again every time rather than trust a flag.
 
 ### Hint 3
 
