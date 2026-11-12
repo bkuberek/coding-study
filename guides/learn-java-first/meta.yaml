@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Learn Java first
+summary: What to learn in Java before your first cstudy problem, where to learn it for free from the official documentation, and how to check your JDK with cstudy doctor.
+level: intro
+prerequisites: [using-the-terminal]
+related: [package-managers, learn-kotlin-first]

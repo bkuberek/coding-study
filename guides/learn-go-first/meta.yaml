@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Learn Go first
+summary: What to learn in Go before your first cstudy problem, where to learn it for free from the official documentation, and how to check your Go toolchain with cstudy doctor.
+level: intro
+prerequisites: [using-the-terminal]
+related: [package-managers]
+problems: [debug-shadowed-variable, debug-range-value-copy]
