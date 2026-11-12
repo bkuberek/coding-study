@@ -33,4 +33,5 @@ comparator: {type: ops}
 approaches:
   - {id: state-machine, name: One pass with a streak counter and ordered checks, role: optimal, time: "O(L) for L the total length of the steps' texts", space: "O(n) for n steps", time_class: "n", space_class: "n"}
 related: [tool-calling-agent-loop-typescript, llm-gateway-typescript, tool-permission-gate, context-compaction]
+guides: [harness-engineering]
 estimate_minutes: 90

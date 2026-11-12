@@ -39,4 +39,5 @@ comparator: {type: ops}
 approaches:
   - {id: layered-gate, name: Scope first then the most specific rule then risk then memory, role: optimal, time: "O(R + H L) per check for R rules, H alias hops and a path of length L", space: "O(R + M + K) for R rules, M memories and K log rows", time_class: "n", space_class: "n"}
 related: [tool-calling-agent-loop-typescript, memory-write-sanitizer, loop-controller, context-compaction]
+guides: [tools-and-mcp, harness-engineering]
 estimate_minutes: 120

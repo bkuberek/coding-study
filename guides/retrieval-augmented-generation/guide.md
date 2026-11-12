@@ -244,6 +244,7 @@ The model call dominates both latency and cost. Retrieving fewer, better chunks 
 
 - `cstudy start chunking-with-overlap`: cut a text into chunks of at most a number of words that share a few words with the one before and end at a sentence where they can, and return where each starts and ends.
 - `cstudy start freshness-reranker`: the second stage, rescoring a pool of retrieved candidates by relevance, age and source, and keeping one copy of each document.
+- `cstudy start corrective-rag`: check what retrieval found before the model reads it: keep the passages graded relevant, trim the ambiguous ones, fall back to a second source or retry with rewritten questions when nothing is relevant, then cite the evidence or refuse.
 - `cstudy start rag-citations-typescript`: the whole pipeline as a service on a real vector database: ingest and chunk, retrieve, answer with citations, then keep answers true to the documents as they change and to what the model was shown.
 - `cstudy start graphrag-context`: retrieval over a knowledge graph instead of passages: the facts around an entity, ranked, packed into a token budget, each with the path that leads to it.
 

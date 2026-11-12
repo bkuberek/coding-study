@@ -103,7 +103,7 @@ The editor can also show errors as you type, documentation on hover, go to defin
 
 ## Learn before you practise
 
-Concept guides teach an idea before you practise it: the plain idea, a worked example traced step by step, when to use it, the common traps, the complexity with its conditions, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, and the diagrams are Mermaid. Learning paths order guides and problems into a track; the first, "Hashing: from your first hash map to tamper-evident ledgers", has seven guides and thirteen problems ([guides](docs/specs/guides.md)).
+Concept guides teach an idea before you practise it: the plain idea, a worked example traced step by step, when to use it, the common traps, the complexity with its conditions, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, and the diagrams are Mermaid. Learning paths order guides and problems into a track. "Getting started" goes from the terminal to your first problem, "Hashing" from your first hash map to content-addressed storage, and "AI engineering" from your first model call to agent harnesses ([guides](docs/specs/guides.md)).
 
 ```bash
 cstudy learn                       # the guides and the paths, with what you have read

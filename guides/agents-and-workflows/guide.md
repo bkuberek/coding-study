@@ -233,7 +233,7 @@ The quadratic growth is why a long ReAct run gets expensive faster than its numb
 ## Practice
 
 - `cstudy start tool-calling-agent-loop-typescript`: the loop of this guide as a service: send the conversation and the tools, run the calls the model asks for, feed the results back, and stop within a step and token budget whatever the model does.
-- `cstudy start plan-and-execute`: the planner, worker and solver split of this guide.
+- `cstudy start plan-and-execute`: the code between the planner and the solver: check a plan before anything runs, run its steps in parallel waves under a cap, retry and re-plan when a step fails, and stop inside a cost and step budget.
 
 ## Further reading
 

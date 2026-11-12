@@ -4,4 +4,4 @@ summary: How an assistant answers from your documents and cites them, from chunk
 level: core
 prerequisites: [embeddings-and-vector-search, prompts-and-structured-outputs]
 related: [tokens-and-sampling, evaluating-llm-applications, agent-memory, llm-application-security]
-problems: [chunking-with-overlap, freshness-reranker, rag-citations-typescript, graphrag-context]
+problems: [chunking-with-overlap, freshness-reranker, corrective-rag, rag-citations-typescript, graphrag-context]

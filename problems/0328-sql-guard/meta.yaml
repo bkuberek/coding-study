@@ -34,4 +34,5 @@ comparator: {type: ops}
 approaches:
   - {id: token-rules, name: "One tokenizer, token rules for the early levels and a small recursive-descent parser for the later ones", role: optimal, time: "O(n s) per call, s the sources of the query", space: "O(n + a)", time_class: "n^2", space_class: "n"}
 related: [plan-and-execute, tool-calling-agent-loop-typescript, authorization-policy-engine, memory-write-sanitizer]
+guides: [llm-application-security]
 estimate_minutes: 150

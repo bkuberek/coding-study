@@ -40,4 +40,5 @@ comparator: {type: ops}
 approaches:
   - {id: run-tables, name: "One table per run of outputs and scores, and one verdict function for every level", role: optimal, time: "O(R C (K + L)) per call", space: "O(R C (K + L))", time_class: "n", space_class: "n"}
 related: [calibration-metrics, retrieval-metrics, reasoner-vs-validator, rag-citations-typescript, bm25-hybrid-ranker, cache-and-router]
+guides: [evaluating-llm-applications]
 estimate_minutes: 150

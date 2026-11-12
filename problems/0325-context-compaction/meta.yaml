@@ -41,4 +41,5 @@ comparator: {type: ops}
 approaches:
   - {id: rolling-summary, name: Units and one live list rebuilt on every add, role: optimal, time: "O(F n^2 L) per add for n live turns, F pinned facts and texts of length L", space: "O(T L) for T turns of length L", time_class: "n^2", space_class: "n"}
 related: [context-packer, memory-store, chat-history-index, graphrag-context, loop-controller, tool-permission-gate, tool-calling-agent-loop-typescript]
+guides: [harness-engineering]
 estimate_minutes: 120
