@@ -154,6 +154,7 @@ The last lines show what the stack saves. In a line of 2,000 people who get shor
 
 - **"For each item, the first one after it that is greater"**, or smaller, or that beats it by any comparison. The sign is a nested loop that scans ahead from every item and stops at the first match.
 - **Items that become hopeless.** Whenever a later item makes an earlier one irrelevant for the rest of the scan, the earlier one can be popped. The window deque of the [queues and deques](../queues-and-deques/guide.md) guide is built on that idea.
+
 What to use instead: the stack knows about the **first** item that beats each one, and nothing about the ones after it. To count or list every later item that is greater, not only the nearest, you need a different structure. To keep the largest or smallest value of a window as it slides, use the deque, which can also drop items from the old end.
 
 ## Common traps

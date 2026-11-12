@@ -2,7 +2,7 @@
 abbreviation of each command that no other command shares, and what an abbreviation means.
 
 Every node counts the commands whose name passes through it, so the number of commands that start
-with a prefix is read at the prefix's last node, without visiting the commands below it.
+with a prefix is the count of the prefix's last node.
 """
 
 COMMANDS = {

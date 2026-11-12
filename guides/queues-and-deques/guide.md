@@ -6,7 +6,7 @@ A **queue** is a line: items join at the back and leave from the front, so the i
 
 A **deque**, short for double-ended queue and pronounced "deck", lets items join and leave at **both** ends. Used from one end only, it is a [stack](../stacks/guide.md); used at the back for joining and the front for leaving, it is a queue. Most languages give you a deque and let you pick: Python's `collections.deque`, Java's `ArrayDeque`, Rust's `VecDeque`.
 
-A plain array is the wrong base for a queue. Removing its first element shifts every other element down by one place, so each dequeue costs O(n). There are three ways around it, and this guide builds or draws each:
+A plain array is the wrong base for a queue. Removing its first element shifts every other element down by one place, so each dequeue costs O(n). There are three ways around it: this guide builds the first, draws the second and describes the third.
 
 1. **Two stacks**, which turn the order around once per item.
 2. **A ring buffer**: an array whose front moves forward and wraps around, so nothing has to shift.
@@ -142,38 +142,40 @@ Now the cost. One dequeue can be expensive: after 100,000 enqueues, the first de
 
 A ring buffer is an array plus two numbers: where the front is, and how many items there are. Enqueue writes after the last item, dequeue reads at the front and moves the front forward by one, and both positions wrap around to slot 0 at the end of the array. Nothing ever shifts. When the array is full, a growable ring buffer allocates a larger one and copies the items over, in queue order.
 
+The drawing shows an array of 8 slots holding the queue `a, b, c, d`, in slot order from slot 0 to slot 7. The queue starts at the front, slot 6, goes on to slot 7, wraps around to slot 0, and ends at the back, slot 1. The next enqueue writes slot 2.
+
 ```mermaid
 flowchart TD
-  accTitle: A ring buffer of 8 slots holding four items
-  accDescr: The front is slot 6, holding a. Then slot 7 holds b, the positions wrap around, slot 0 holds c and slot 1 holds d. The next item will go in slot 2.
-  front["front"] --> s6["slot 6: a"] --> s7["slot 7: b"] --> s0["slot 0: c"] --> s1["slot 1: d"] --> next["next free: slot 2"]
+  accTitle: The array of a ring buffer, in slot order
+  accDescr: An array of 8 slots, listed from slot 0 to slot 7. Slot 0 holds c and slot 1 holds d, the back of the queue. Slot 2 takes the next item, and slots 3 to 5 are free. Slot 6 holds a, the front, and slot 7 holds b, after which the queue wraps around to slot 0.
+  s0["slot 0: c"] --> s1["slot 1: d, the back"] --> s2["slot 2: next item goes here"] --> s3["slots 3 to 5: free"] --> s6["slot 6: a, the front"] --> s7["slot 7: b, then wrap to slot 0"]
 ```
 
-<!-- text-of-mermaid sha256:3de39955b79959edc64bdc8fc23300fcf4bc2f3b0457c13abd64c98ac91b20af -->
+<!-- text-of-mermaid sha256:ad1235cf812aa99d9c1de2c428ac8adb2c006331ab2ecde7defd7a14a2520d61 -->
 ```text
-┌─────────────────┐
-│      front      │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│    slot 6: a    │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│    slot 7: b    │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│    slot 0: c    │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│    slot 1: d    │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│next free: slot 2│
-└─────────────────┘
+┌──────────────────────────────┐
+│          slot 0: c           │
+└───────────────┬──────────────┘
+                ▼
+┌──────────────────────────────┐
+│     slot 1: d, the back      │
+└───────────────┬──────────────┘
+                ▼
+┌──────────────────────────────┐
+│ slot 2: next item goes here  │
+└───────────────┬──────────────┘
+                ▼
+┌──────────────────────────────┐
+│      slots 3 to 5: free      │
+└───────────────┬──────────────┘
+                ▼
+┌──────────────────────────────┐
+│     slot 6: a, the front     │
+└───────────────┬──────────────┘
+                ▼
+┌──────────────────────────────┐
+│slot 7: b, then wrap to slot 0│
+└──────────────────────────────┘
 ```
 
 Rust's `VecDeque` is "a double-ended queue implemented with a growable ring buffer", and Java's `ArrayDeque` is a "resizable-array implementation of the `Deque` interface". Because the items can wrap around the end, they are not always contiguous in memory: Rust's documentation says so, and offers `make_contiguous` to rotate them into one slice.
@@ -289,7 +291,7 @@ Why is it O(1) amortized? Every offer is pushed exactly once and popped at most 
 
 ## When to use it
 
-- **Serve in arrival order.** Tasks, requests, messages, print jobs, events to process: anything fair, where waiting longest means going first. Breadth-first search in graphs is a queue too, and the graphs path covers it.
+- **Serve in arrival order.** Tasks, requests, messages, print jobs, events to process: anything fair, where waiting longest means going first. Breadth-first search in graphs runs on a queue too.
 - **Both ends at once.** A history with a cap, where new entries push out the oldest; a window that gains items at one end and loses them at the other; a list of work that one side adds to and another takes from.
 - **A window that must report its smallest or largest value**, as items enter and leave: a deque of candidates, as above.
 

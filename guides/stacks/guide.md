@@ -10,7 +10,7 @@ A **stack** is a pile: you add to the top and take from the top, so the item you
 
 There is no way to reach the middle. That restriction is the point: when the problem only ever needs the most recent unfinished thing, a stack hands you exactly that thing, with no search.
 
-Most languages build a stack on a growable array and make its end the top, because changing the end of an array moves nothing else: Python's `list` with `append` and `pop`, Go's slices with `append`, Rust's `Vec` and JavaScript's arrays with `push` and `pop`. Java's `ArrayDeque`, a resizable array on which most operations run in amortized constant time, pushes and pops at its front.
+Most languages build a stack on a growable array and make its end the top, because changing the end of an array moves nothing else: Python's `list` with `append` and `pop`, Go's slices with `append`, Rust's `Vec` and JavaScript's arrays with `push` and `pop`. Java's `ArrayDeque`, also a resizable array, pushes and pops at its front.
 
 Three situations call for "the most recent unfinished thing", and this guide works through the first two:
 

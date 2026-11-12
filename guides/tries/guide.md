@@ -18,51 +18,35 @@ Each walk takes one step per letter of the key or prefix, whether the trie holds
 
 A command-line tool has ten commands, and it lets you type any abbreviation that no other command shares: `br` for `branch`, but not `bu`, which could be `build` or `bump`. Store the names in a trie, and give every node one more field: **how many names pass through it**. Inserting a name adds one to the count of every node on its path.
 
-Here is the part of the trie that holds the three commands starting with `l`: `log`, `login` and `logout`, with each node's count. The three share the path `l`, `o`, `g`; `log` ends at a marked node in the middle of it, and the path splits there into `i`, `n` for `login` and `o`, `u`, `t` for `logout`.
+Here is the part of the trie that holds the three commands starting with `l`: `log`, `login` and `logout`, with each node's count. The three share the path `l`, `o`, `g`; `log` ends at a marked node in the middle of it, and the path splits there into `o`, `u`, `t` for `logout` and `i`, `n` for `login`. The drawing gives the shared path its own row, then one row for each branch below `g`.
 
 ```mermaid
-flowchart TD
-  accTitle: The trie of log, login and logout, with counts
-  accDescr: From the root, l, o and g each have count 3, and g marks the end of log. Below g the path splits. One branch is i then n, each with count 1, and n marks the end of login. The other is o, u, t, each with count 1, and t marks the end of logout.
+flowchart LR
+  accTitle: The trie of log, login and logout, with counts, one path per row
+  accDescr: The first row is the shared path. From the root, l, o and g each have count 3, and g marks the end of log. The second row is one branch below g, o, u and t, each with count 1, where t marks the end of logout. The third row is the other branch below g, i and n, each with count 1, where n marks the end of login.
   root["root"] --> l["l, 3"] --> o["o, 3"] --> g["g, 3, ends log"]
-  g --> o2["o, 1"] --> u["u, 1"] --> t["t, 1, ends logout"]
-  g --> i["i, 1"] --> n["n, 1, ends login"]
+  below1["below g"] --> o2["o, 1"] --> u["u, 1"] --> t["t, 1, ends logout"]
+  below2["also below g"] --> i["i, 1"] --> n["n, 1, ends login"]
 ```
 
-<!-- text-of-mermaid sha256:a870b9cb2ffb92ca219bea7a46ab8d7a59be924d937bd5d644617c52dbb43065 -->
+<!-- text-of-mermaid sha256:1bd0f927f82d00c216a77db7609565b213bb4e017d677e67f243f0340484c6c2 -->
 ```text
-┌─────────────────┐
-│       root      │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│       l, 3      │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│       o, 3      │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│  g, 3, ends log │
-└─────────────────┘
-         ▼──────────────────────▼
-┌─────────────────┐    ┌────────────────┐
-│       o, 1      │    │      i, 1      │
-└────────┬────────┘    └────────┬───────┘
-         ▼                      ▼
-┌─────────────────┐    ┌────────────────┐
-│       u, 1      │    │n, 1, ends login│
-└────────┬────────┘    └────────────────┘
-         ▼
-┌─────────────────┐
-│t, 1, ends logout│
-└─────────────────┘
+┌────────────┐    ┌────┐    ┌────────────────┐    ┌─────────────────┐
+│    root    ├───►│l, 3├───►│      o, 3      ├───►│  g, 3, ends log │
+└────────────┘    └────┘    └────────────────┘    └─────────────────┘
+
+┌────────────┐    ┌────┐    ┌────────────────┐    ┌─────────────────┐
+│  below g   ├───►│o, 1├───►│      u, 1      ├───►│t, 1, ends logout│
+└────────────┘    └────┘    └────────────────┘    └─────────────────┘
+
+┌────────────┐    ┌────┐    ┌────────────────┐
+│also below g├───►│i, 1├───►│n, 1, ends login│
+└────────────┘    └────┘    └────────────────┘
 ```
 
 The counts answer three questions with one walk each:
 
-- **How many commands start with a prefix?** Walk the prefix and read the count of the node you reach. The commands below it are never visited.
+- **How many commands start with a prefix?** Walk the prefix and read the count of the node you reach: one step per letter of the prefix.
 - **What is the shortest abbreviation of a command that no other command shares?** Walk its name and stop at the first node whose count is 1: only this command passes there.
 - **What does an abbreviation mean?** Walk it. A marked node is a complete name, which wins. A count of 1 means exactly one command continues from here, so follow the only path down to its mark. A larger count means the abbreviation is ambiguous.
 
@@ -71,7 +55,7 @@ The counts answer three questions with one walk each:
 abbreviation of each command that no other command shares, and what an abbreviation means.
 
 Every node counts the commands whose name passes through it, so the number of commands that start
-with a prefix is read at the prefix's last node, without visiting the commands below it.
+with a prefix is the count of the prefix's last node.
 """
 
 COMMANDS = {
@@ -357,7 +341,7 @@ With L the length of the key or prefix, n the number of keys, S the total number
 | Operation | Time | Condition |
 |-----------|------|-----------|
 | Insert, look up, count a prefix | O(L) steps | Each step is one lookup in a node's map of children, expected O(1) |
-| Shortest unique prefix, resolving an abbreviation | O(length of the name) | Thanks to the counts; without them, counting below a node visits every key there |
+| Shortest unique prefix, resolving an abbreviation | O(length of the name) | Using the counts kept on the path |
 | Suggestions within one change | At most about σ · L² steps | σ is the number of different letters: at each of the L positions, the walk may branch into each other child once, then must follow the rest of the word exactly |
 | Memory | O(S) nodes at most, fewer when keys share prefixes | Each node holds a map of its children |
 
@@ -366,8 +350,8 @@ Compare a hash set: a lookup hashes the whole key and compares it, O(L) expected
 ## Expert notes
 
 - **The name.** The structure's name appears in the title of Edward Fredkin's paper "Trie memory", Communications of the ACM, volume 3, issue 9, pages 490 to 499, September 1960.
-- **Compressed tries.** Many nodes of a trie have a single child, like the `i`, `l`, `d` at the end of `build`. A compressed trie, also called a radix tree, merges each such chain into a single edge labelled with a string, so the number of nodes is at most about twice the number of keys, whatever their length. Lookups then compare whole labels instead of single letters.
-- **How to hold the children.** A map per node, as here, stores only the letters that occur, at the price of a map for every node. An array indexed by letter finds a child in one step, but reserves a slot for every possible letter in every node, most of them empty. A short list of letter and child pairs, kept sorted, wastes no slots and is searched in order. The choice is the main lever on a trie's memory.
+- **Compressed tries.** Many nodes of a trie have a single child, like the `i` and the `l` that lead to the `d` at the end of `build`. A compressed trie, also called a radix tree, merges each such chain into a single edge labelled with a string, so the number of nodes is at most about twice the number of keys, whatever their length. Lookups then compare whole labels instead of single letters.
+- **How a node holds its children** is the main lever on a trie's memory. A map per node, as here, stores only the letters that occur, at the price of a whole map for every node.
 - **A trie is also a map.** The command table stores a summary at each marked node, so it maps names to values, just like a hash map, with prefix questions on top.
 
 ## Practice

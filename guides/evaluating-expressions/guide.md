@@ -282,9 +282,9 @@ Each token is pushed at most once and popped at most once, so the inner loop tha
 
 ## Expert notes
 
-### Where the two-stack method comes from
+### Where the operator stack comes from
 
-Edsger Dijkstra described it in 1961, in "Making a Translator for ALGOL 60" (published in the APIC Bulletin no. 7, May 1961, and reprinted with his "An ALGOL 60 Translator for the X1" in the Mathematical Centre's report "ALGOL-60 Translation", November 1961). His translator wrote out the program in reverse Polish notation, the postfix order of this guide, which "demands the presence of a stack" at run time. To produce it, he wrote, "the translation process shows much resemblance to shunting at a three way railroad junction": the text arrives on one track, the program leaves on another, and operators wait on the third, the translator stack. Each operator has a priority number, and before a new operator joins the stack, the waiting operators whose priority is greater than or equal to its own leave first. An opening bracket enters with priority 0, "shielding all postponed operations" until its closing bracket. The report also notes that between brackets, the priority numbers in the stack "increased monotonically": the operator stack is a [monotonic stack](../monotonic-stacks/guide.md).
+The operator stack and its priority rule come from Edsger Dijkstra's "Making a Translator for ALGOL 60" (published in the APIC Bulletin no. 7, May 1961, and reprinted with his "An ALGOL 60 Translator for the X1" in the Mathematical Centre's report "ALGOL-60 Translation", November 1961), where they serve a translator rather than an evaluator. He wrote that "the translation process shows much resemblance to shunting at a three way railroad junction", and called the stack where operators wait the translator stack. Each operator has a priority number, and before a new operator joins the stack, the waiting operators whose priority is greater than or equal to its own leave first. An opening bracket enters with priority 0, "shielding all postponed operations" until its closing bracket. The report also notes that between brackets, the priority numbers in the stack "increased monotonically": the operator stack is a [monotonic stack](../monotonic-stacks/guide.md).
 
 The first part of the same report says that in the programs its X1 translator produces, algebraic expressions are evaluated "with the help of an accumulator stack", and cites K. Samelson and F. L. Bauer, "Sequentielle Formelübersetzung", Elektronische Rechenanlagen 1 (1959).
 
@@ -294,7 +294,7 @@ In the Java Virtual Machine, each frame contains "a last-in-first-out (LIFO) sta
 
 ### Prefix order
 
-Writing each operator before its operands, `+ 2 * 3 4`, is prefix order, also called Polish notation; postfix is its reverse. A prefix expression is evaluated with the same stack, reading the tokens from right to left, where the first value popped is the **left** operand.
+Writing each operator before its operands, `+ 2 * 3 4`, is prefix order, also called Polish notation: the operator comes first instead of last. A prefix expression is evaluated with the same stack, reading the tokens from right to left, where the first value popped is the **left** operand.
 
 ## Practice
 
