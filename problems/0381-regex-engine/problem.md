@@ -170,7 +170,7 @@ The pattern from "Why this matters". `aaaac` matches. With 30 letters `a` the an
 **Character classes.** From this level on, patterns may contain *classes*. A class is an atom: it matches one character from a list, and it can be repeated like any atom.
 
 - `[` starts a class and `]` ends it. Inside, the characters are *items*: `[abc]` matches `a`, `b` or `c`.
-- `x-y` inside a class is a *range*: it matches every character whose code is from the code of `x` to the code of `y`, both included. `[a-z0-9_]` matches a small letter, a digit or `_`. A `-` is a range only between two characters: first in the list (after `^`, if any) or right before `]`, it is the literal `-`.
+- `x-y` inside a class is a *range*: it matches every character whose code is from the code of `x` to the code of `y`, both included. `[a-z0-9_]` matches a small letter, a digit or `_`. A `-` is a range only between two characters: first in the list (after `^`, if any) or right before `]`, it is the literal `-`. A character that ends a range cannot start another one: in `[a-c-e]` the second `-` is a literal, so the items are `'a'-'c'`, `'-'` and `'e'`.
 - `^` right after `[` makes the class *negated*: `[^0-9]` matches any character that is not a digit. Elsewhere in a class, `^` is a literal.
 - Inside a class every other character is a literal, the special characters of level 1 and `[` included: `[.*]` matches a dot or a star.
 - Outside a class, `]` is a literal.
