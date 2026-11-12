@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0339"
+slug: architecture-checker
+title: Architecture Checker
+summary: "Build ArchitectureChecker, which reads modules and imports as a graph: dependencies, import cycles, layer and independence rules with the chain behind each break, then exceptions and a baseline."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs, advanced-graphs]
+domains: [software-design]
+job_roles: [general, backend]
+scope: function
+levels:
+  - {level: 1, title: Modules and imports}
+  - {level: 2, title: Import cycles}
+  - {level: 3, title: Contracts and chains}
+  - {level: 4, title: "Exceptions, modes and a ratchet"}
+signature:
+  class:
+    name: ArchitectureChecker
+    constructor: {params: []}
+    methods:
+      - {name: addModule, level: 1, params: [{name: name, type: string}, {name: imports, type: "list<string>"}], returns: {type: bool}}
+      - {name: unknownImports, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: dependencies, level: 1, params: [{name: name, type: string}], returns: {type: "list<string>"}}
+      - {name: transitiveDependencies, level: 1, params: [{name: name, type: string}], returns: {type: "list<string>"}}
+      - {name: cycles, level: 2, params: [{name: depth, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: cycleChain, level: 2, params: [{name: name, type: string}], returns: {type: "list<string>"}}
+      - {name: addLayers, level: 3, params: [{name: contract, type: string}, {name: layers, type: "list<string>"}], returns: {type: bool}}
+      - {name: addForbidden, level: 3, params: [{name: contract, type: string}, {name: source, type: string}, {name: target, type: string}], returns: {type: bool}}
+      - {name: addIndependence, level: 3, params: [{name: contract, type: string}, {name: names, type: "list<string>"}], returns: {type: bool}}
+      - {name: check, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: ignore, level: 4, params: [{name: contract, type: string}, {name: importer, type: string}, {name: imported, type: string}], returns: {type: bool}}
+      - {name: allow, level: 4, params: [{name: contract, type: string}, {name: importer, type: string}, {name: imported, type: string}, {name: until, type: string}], returns: {type: bool}}
+      - {name: setVersion, level: 4, params: [{name: version, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: setMode, level: 4, params: [{name: contract, type: string}, {name: mode, type: string}], returns: {type: bool}}
+      - {name: setBaseline, level: 4, params: [{name: entries, type: "list<list<string>>"}], returns: {type: int}}
+      - {name: ratchet, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: ordered-walks, name: Resolved import lists with breadth-first walks in name order and two-pass components, role: optimal, time: "O(I log I) after a change, to resolve and sort the I imports; then O(V log V + I R) per walk or cycle search, with R the ignores and exceptions of the contract checked", space: "O(V + I)", time_class: "n log n", space_class: "n"}
+related: [course-schedule, course-schedule-ii, critical-connections, word-ladder, taxonomy, triple-store]
+estimate_minutes: 120
