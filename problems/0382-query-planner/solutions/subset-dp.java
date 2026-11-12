@@ -149,6 +149,9 @@ public class QueryPlanner {
                 while (j < sql.length() && isDigit(sql.charAt(j))) {
                     j++;
                 }
+                if (j - i - (c == '-' ? 1 : 0) > 9) {
+                    throw new QueryError("syntax");
+                }
                 tokens.add(sql.substring(i, j));
                 i = j;
             } else if ("*,.=<>".indexOf(c) >= 0) {

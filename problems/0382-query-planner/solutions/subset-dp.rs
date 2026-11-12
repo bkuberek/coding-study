@@ -52,6 +52,10 @@ fn tokenize(sql: &str) -> Option<Vec<String>> {
             while j < bytes.len() && bytes[j].is_ascii_digit() {
                 j += 1;
             }
+            let sign = if c == b'-' { 1 } else { 0 };
+            if j - i - sign > 9 {
+                return None;
+            }
             tokens.push(sql[i..j].to_string());
             i = j;
         } else if b"*,.=<>".contains(&c) {

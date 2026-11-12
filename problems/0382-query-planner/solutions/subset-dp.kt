@@ -358,6 +358,7 @@ class QueryPlanner {
                     isDigit(c) || (c == '-' && i + 1 < sql.length && isDigit(sql[i + 1])) -> {
                         var j = i + 1
                         while (j < sql.length && isDigit(sql[j])) j++
+                        if (j - i - (if (c == '-') 1 else 0) > 9) throw QueryError("syntax")
                         tokens.add(sql.substring(i, j))
                         i = j
                     }

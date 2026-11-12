@@ -59,11 +59,14 @@ class Model:
         found, at = [], 0
         while sql[at:].strip(" "):
             match = TOKEN.match(sql, at)
-            if not match:
+            if not match or (match.group(2) and not self.number_fits(match.group(2))):
                 raise RejectedError("syntax")
             found.append(match.group(match.lastindex or 0))
             at = match.end()
         return found
+
+    def number_fits(self, number: str) -> bool:
+        return len(number.lstrip("-")) <= 9
 
     def is_name(self, token: str) -> bool:
         return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token)) and token not in KEYWORDS
@@ -392,6 +395,13 @@ class SpaceInsideANumberIsFine(Model):
 
     def tokens(self, sql: str) -> list[str]:
         return super().tokens(re.sub(r"- +([0-9])", r"-\1", sql))
+
+
+class LongNumbersAccepted(Model):
+    """Accepts a number of 10 digits or more."""
+
+    def number_fits(self, number: str) -> bool:
+        return True
 
 
 class ColumnsCheckedAgainstTheCatalog(Model):

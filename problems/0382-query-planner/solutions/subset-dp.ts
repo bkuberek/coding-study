@@ -30,6 +30,7 @@ function tokenize(sql: string): string[] {
     } else if (isDigit(c) || (c === "-" && i + 1 < sql.length && isDigit(sql[i + 1]))) {
       let j = i + 1;
       while (j < sql.length && isDigit(sql[j])) j++;
+      if (j - i - (c === "-" ? 1 : 0) > 9) throw new QueryError("syntax");
       tokens.push(sql.slice(i, j));
       i = j;
     } else if (SYMBOLS.includes(c)) {

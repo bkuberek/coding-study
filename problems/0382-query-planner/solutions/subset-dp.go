@@ -44,6 +44,13 @@ func tokenize(sql string) ([]string, bool) {
 			for j < len(sql) && isDigit(sql[j]) {
 				j++
 			}
+			digits := j - i
+			if c == '-' {
+				digits--
+			}
+			if digits > 9 {
+				return nil, false
+			}
 			tokens = append(tokens, sql[i:j])
 			i = j
 		case strings.IndexByte("*,.=<>", c) >= 0:

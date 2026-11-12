@@ -24,6 +24,8 @@ def tokenize(sql: str) -> list[str]:
             j = i + 1
             while j < len(sql) and sql[j].isascii() and sql[j].isdigit():
                 j += 1
+            if j - i - (1 if char == "-" else 0) > 9:
+                raise QueryError("syntax")
             tokens.append(sql[i:j])
             i = j
         elif char in SYMBOLS:
