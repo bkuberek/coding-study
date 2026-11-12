@@ -22,6 +22,9 @@ CASES: Sequence[Mapping[str, Any]] = json.loads(
     (PROBLEM / "tests.json").read_text(encoding="utf-8")
 )["cases"]
 HIDDEN_CASES = [case for case in CASES if not case.get("visible", False)]
+MAX_ROW_ID = 10**9
+"""The constraints say `0 <= rowId <= 10^9`, which also keeps a row id apart from the `-1` that
+`search` answers for a missing key."""
 
 Key = tuple[int, ...]
 
@@ -639,3 +642,19 @@ def test_keys_have_one_field_until_level_four():
         if case["level"] < 4:
             keys = [arg for args in case["args"][1:] for arg in args if isinstance(arg, list)]
             assert all(len(key) == 1 for key in keys), case["id"]
+
+
+def row_ids(case: Mapping[str, Any]) -> list[int]:
+    """Every row id the case passes to `insert` or `bulkLoad`."""
+    found: list[int] = []
+    for op, arguments in zip(case["ops"], case["args"], strict=True):
+        if op == "insert":
+            found.append(arguments[1])
+        elif op == "bulkLoad":
+            found += arguments[1]
+    return found
+
+
+@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
+def test_every_row_id_is_within_the_stated_range(case):
+    assert all(0 <= row_id <= MAX_ROW_ID for row_id in row_ids(case))
