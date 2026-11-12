@@ -24,37 +24,47 @@ Duplicates need a policy. The code here keeps keys distinct, so inserting a key 
 Insert the keys 41, 20, 65, 11, 29, 50, 91, 32, 72 and 99, in that order, into an empty tree. 41 becomes the root. 20 is smaller, so it goes left; 65 is larger and goes right. 11 goes left of 41 and left of 20. 29 goes left of 41, then right of 20. 50 goes right of 41, then left of 65. 91 goes right twice. 32 goes left, right, right: below 29, on its right. 72 goes right of 41, right of 65, left of 91. 99 goes right three times.
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: A binary search tree of ten keys
-  accDescr: 41 is the root. Its left child is 20, with children 11 and 29; 29 has a single right child, 32. Its right child is 65, with children 50 and 91; 91 has children 72 and 99.
-  k41["41"] --> k20["20"]
-  k41 --> k65["65"]
-  k20 --> k11["11"]
-  k20 --> k29["29"]
-  k29 --> k32["32"]
-  k65 --> k50["50"]
-  k65 --> k91["91"]
-  k91 --> k72["72"]
-  k91 --> k99["99"]
+  accDescr: 41 is the root. Its left child is 20, with children 11 and 29; 29 has no left child, marked none, and a single right child, 32. Its right child is 65, with children 50 and 91; 91 has children 72 and 99.
+  subgraph tree["ten keys"]
+    direction TB
+    k41["41"] --> k20["20"]
+    k41 --> k65["65"]
+    k20 --> k11["11"]
+    k20 --> k29["29"]
+    k29 --> n29["none"]
+    k29 --> k32["32"]
+    k65 --> k50["50"]
+    k65 --> k91["91"]
+    k91 --> k72["72"]
+    k91 --> k99["99"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:e945cbbd74729f30aea8e23fd9d41214b522ff60af2bd4dd7442ef72c0ace1bb -->
+<!-- text-of-mermaid sha256:8e4b73e8ae8d487ad81b89a2c70102c0bd8400c934d66ca25ec31a2322f4733a -->
 ```text
-┌──┐
-│41│
-└──┘
-  ▼───────▼
-┌──┐    ┌──┐
-│20│    │65│
-└──┘    └──┘
-  ▼───────▼───────▼───────▼
-┌──┐    ┌──┐    ┌──┐    ┌──┐
-│11│  ┌─┤29│    │50│    │91│
-└──┘  │ └──┘    └──┘    └──┘
-  ▼───┘   ▼───────▼───────┘
-┌──┐    ┌──┐    ┌──┐
-│32│    │72│    │99│
-└──┘    └──┘    └──┘
+┌────────────────────────────────────────┐
+│               ten keys                 │
+│                                        │
+│                                        │
+│ ┌──┐                                   │
+│ │41├───────┐                           │
+│ └─┬┘       │                           │
+│   ▼        ▼                           │
+│ ┌──┐    ┌────┐                         │
+│ │20├──┐ │ 65 ├────┬─┐                  │
+│ └─┬┘  │ └────┘    └─┼───────┐          │
+│   ▼   └────▼        ▼       ▼          │
+│ ┌──┐    ┌────┐    ┌──┐    ┌──┐         │
+│ │11│    │ 29 ├──┐ │50│    │91├──────┐  │
+│ └──┘    └──┬─┘  │ └──┘    └─┬┘      │  │
+│            ▼    └───▼       ▼       ▼  │
+│         ┌────┐    ┌──┐    ┌──┐    ┌──┐ │
+│         │none│    │32│    │72│    │99│ │
+│         └────┘    └──┘    └──┘    └──┘ │
+│                                        │
+└────────────────────────────────────────┘
 ```
 
 Check the invariant at the root: everything below 20 (11, 29, 32) is smaller than 41, and everything below 65 (50, 72, 91, 99) is larger. It holds at every other node too.
@@ -74,34 +84,45 @@ Check the invariant at the root: everything below 20 (11, 29, 32) is smaller tha
 Deleting 65, then 29, then 11 leaves this tree:
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: The tree after deleting 65, 29 and 11
-  accDescr: 41 is still the root. Its left child is 20, whose only child is 32, on the right. Its right child is now 72, with children 50 and 91; 91 has a single right child, 99.
-  k41["41"] --> k20["20"]
-  k41 --> k72["72"]
-  k20 --> k32["32"]
-  k72 --> k50["50"]
-  k72 --> k91["91"]
-  k91 --> k99["99"]
+  accDescr: 41 is still the root. Its left child is 20, whose only child is 32, on the right; the missing left child is marked none. Its right child is now 72, with children 50 and 91; 91 has a single right child, 99, and no left child, marked none.
+  subgraph tree["after the three deletes"]
+    direction TB
+    k41["41"] --> k20["20"]
+    k41 --> k72["72"]
+    k20 --> n20["none"]
+    k20 --> k32["32"]
+    k72 --> k50["50"]
+    k72 --> k91["91"]
+    k91 --> n91["none"]
+    k91 --> k99["99"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:5dd4fd82e2467bf70485ebf48bbea53d57b8ffd68d833a200cb351c1ba41704c -->
+<!-- text-of-mermaid sha256:8e7a9ce987a5875536e6f05cd6ac2486184a05ecde5245be8475b972157ce5c4 -->
 ```text
-┌──┐
-│41│
-└──┘
-  ▼───────▼
-┌──┐    ┌──┐
-│20│    │72│
-└─┬┘    └──┘
-  ▼       ▼───────▼
-┌──┐    ┌──┐    ┌──┐
-│32│    │50│    │91│
-└──┘    └──┘    └─┬┘
-                  │
-┌──┐              │
-│99│◄─────────────┘
-└──┘
+┌──────────────────────────────────────────┐
+│         after the three deletes          │
+│                                          │
+│                                          │
+│ ┌────┐                                   │
+│ │ 41 ├──────┐                            │
+│ └──┬─┘      │                            │
+│    ▼        ▼                            │
+│ ┌────┐    ┌──┐                           │
+│ │ 20 ├──┐ │72├────┬─┐                    │
+│ └──┬─┘  │ └──┘    └─┼────────┐           │
+│    ▼    └───▼       ▼        ▼           │
+│ ┌────┐    ┌──┐    ┌──┐    ┌────┐         │
+│ │none│    │32│    │50│    │ 91 ├──────┐  │
+│ └────┘    └──┘    └──┘    └──┬─┘      │  │
+│                              ▼        ▼  │
+│                           ┌────┐    ┌──┐ │
+│                           │none│    │99│ │
+│                           └────┘    └──┘ │
+│                                          │
+└──────────────────────────────────────────┘
 ```
 
 **In-order** lists the keys sorted. The reason is the invariant applied at every level: in-order lists the whole left subtree, whose keys are all smaller, then the node, then the whole right subtree, whose keys are all larger; and the same holds inside each subtree.
@@ -282,55 +303,73 @@ The same 1,000 keys make a tree of height 999 when inserted in sorted order, and
 Here is a right rotation at y. Before it, y is the parent, with x as its left child; A, B and C stand for whole subtrees, possibly empty.
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: Before a right rotation
   accDescr: y is the parent. Its left child is x, whose left and right subtrees are A and B. Its right subtree is C.
-  y["y"] --> x["x"]
-  y --> c["C"]
-  x --> a["A"]
-  x --> b["B"]
+  subgraph before["before"]
+    direction TB
+    y["y"] --> x["x"]
+    y --> c["C: right of y"]
+    x --> a["A: left of x"]
+    x --> b["B: right of x"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:92f5405c74f4b5ba65613561064b51a015ceab76fd63a2b2fac6b948fff4d8f4 -->
+<!-- text-of-mermaid sha256:d8f56f258e22730c804aa3fc524ebc612a57b7223adc254da50a69c69dd3107b -->
 ```text
-┌─┐
-│y│
-└─┘
- ▼──────▼
-┌─┐    ┌─┐
-│x│    │C│
-└─┘    └─┘
- ▼──────▼
-┌─┐    ┌─┐
-│A│    │B│
-└─┘    └─┘
+┌───────────────────────────────────┐
+│              before               │
+│                                   │
+│                                   │
+│ ┌────────────┐                    │
+│ │     y      ├───────────┐        │
+│ └──────┬─────┘           │        │
+│        ▼                 ▼        │
+│ ┌────────────┐    ┌─────────────┐ │
+│ │     x      ├──┐ │C: right of y│ │
+│ └──────┬─────┘  │ └─────────────┘ │
+│        ▼        └────────▼        │
+│ ┌────────────┐    ┌─────────────┐ │
+│ │A: left of x│    │B: right of x│ │
+│ └────────────┘    └─────────────┘ │
+│                                   │
+└───────────────────────────────────┘
 ```
 
 The rotation lifts x into y's place, makes y the right child of x, and hands B, which sat between x and y, to y as its new left subtree:
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: After a right rotation
   accDescr: x is now the parent. Its left subtree is A and its right child is y, whose left and right subtrees are B and C.
-  x["x"] --> a["A"]
-  x --> y["y"]
-  y --> b["B"]
-  y --> c["C"]
+  subgraph after["after"]
+    direction TB
+    x["x"] --> a["A: left of x"]
+    x --> y["y"]
+    y --> b["B: left of y"]
+    y --> c["C: right of y"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:cb77004c591161e3dc27af0703c35d1ab8e73106b3cfb45a967e1d3687161cd1 -->
+<!-- text-of-mermaid sha256:daadab1ca58e74b3b439d528e858e76dc9787c854c79f7a6b120f09f18248b21 -->
 ```text
-┌─┐
-│x│
-└─┘
- ▼──────▼
-┌─┐    ┌─┐
-│A│    │y│
-└─┘    └─┘
- ▼──────▼
-┌─┐    ┌─┐
-│B│    │C│
-└─┘    └─┘
+┌─────────────────────────────────────────────────────┐
+│                        after                        │
+│                                                     │
+│                                                     │
+│ ┌────────────┐                                      │
+│ │     x      ├───────────┐                          │
+│ └──────┬─────┘           │                          │
+│        ▼                 ▼                          │
+│ ┌────────────┐    ┌────────────┐                    │
+│ │A: left of x│    │     y      ├───────────┐        │
+│ └────────────┘    └──────┬─────┘           │        │
+│                          ▼                 ▼        │
+│                   ┌────────────┐    ┌─────────────┐ │
+│                   │B: left of y│    │C: right of y│ │
+│                   └────────────┘    └─────────────┘ │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
 Before the rotation, an in-order walk reads A, x, B, y, C. After it, still A, x, B, y, C, so the invariant survives. But A has moved up a level and C down one: a rotation shifts height from one side to the other, which is how a balanced tree repairs a side that has grown too deep. Two standard libraries show two designs: Java's `TreeMap` is a red-black tree, and Rust's `BTreeMap` a B-tree, which keeps many keys in each node.

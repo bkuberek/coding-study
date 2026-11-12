@@ -26,38 +26,47 @@ A function may use either direction or both. Up is for questions a subtree can a
 An arithmetic expression is a binary tree: each operator is an internal node whose two children are its operands, and each number is a leaf. Here is `(7 - 2) * (1 + 3) - (6 - 1)`.
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: The expression (7 - 2) * (1 + 3) - (6 - 1) as a tree
   accDescr: The root is a minus. Its left child is a times, whose children are a minus over 7 and 2 and a plus over 1 and 3. The root's right child is a minus over 6 and 1. Operators are internal nodes and numbers are leaves.
-  r["-"] --> m["*"]
-  r --> s2["-"]
-  m --> s1["-"]
-  m --> p["+"]
-  s1 --> a["7"]
-  s1 --> b["2"]
-  p --> c["1"]
-  p --> d["3"]
-  s2 --> e["6"]
-  s2 --> f["1"]
+  subgraph tree["the expression tree"]
+    direction TB
+    r["-"] --> m["*"]
+    r --> s2["-"]
+    m --> s1["-"]
+    m --> p["+"]
+    s1 --> a["7"]
+    s1 --> b["2"]
+    p --> c["1"]
+    p --> d["3"]
+    s2 --> e["6"]
+    s2 --> f["1"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:277835500a986e8c73ac1974b81fdbfb609c68f1cd8d22275a77197a736c37a1 -->
+<!-- text-of-mermaid sha256:e1bbc1001596a9119d9440639232e1f04f8c255c0f1c15b9eebc9973f8c87912 -->
 ```text
-┌─┐
-│-│
-└─┘
- ▼──────▼
-┌─┐    ┌─┐
-│*│    │-│
-└─┘    └─┘
- ▼──────▼──────▼──────▼
-┌─┐    ┌─┐    ┌─┐    ┌─┐
-│-│    │+│    │6│    │1│
-└─┘    └─┘    └─┘    └─┘
- ▼──────▼──────▼──────▼
-┌─┐    ┌─┐    ┌─┐    ┌─┐
-│7│    │2│    │1│    │3│
-└─┘    └─┘    └─┘    └─┘
+┌──────────────────────────┐
+│   the expression tree    │
+│                          │
+│                          │
+│ ┌─┐                      │
+│ │-├─────┐                │
+│ └┬┘     │                │
+│  ▼      ▼                │
+│ ┌─┐    ┌─┐               │
+│ │*├──┐ │-├────┬┐         │
+│ └┬┘  │ └─┘    └┼──────┐  │
+│  ▼   └──▼      ▼      ▼  │
+│ ┌─┐    ┌─┐    ┌─┐    ┌─┐ │
+│ │-├──┐ │+├──┐ │6│    │1│ │
+│ └┬┘  │ └─┘  │ └─┘    └─┘ │
+│  ▼   └──▼   └──▼──────▼  │
+│ ┌─┐    ┌─┐    ┌─┐    ┌─┐ │
+│ │7│    │2│    │1│    │3│ │
+│ └─┘    └─┘    └─┘    └─┘ │
+│                          │
+└──────────────────────────┘
 ```
 
 The tree needs no parentheses: its shape already says that `7 - 2` happens before the multiplication. Evaluating it is a pure "values up" function. The three questions get these answers:

@@ -20,38 +20,48 @@ Each walk can be written two ways. Recursively, the language's call stack rememb
 
 ## A worked example
 
-Every trace below uses this tree. It is not a search tree: the letters are just names.
+Every trace below uses this tree. It is not a search tree: the letters are just names. E has a left child, H, and no right child; the drawing marks the missing one "none".
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: The tree used by every trace
-  accDescr: A is the root, with children B and C. B has children D and E. E has a single left child, H. C has children F and G. D, H, F and G are leaves.
-  A --> B
-  A --> C
-  B --> D
-  B --> E
-  E --> H
-  C --> F
-  C --> G
+  accDescr: A is the root, with children B and C. B has children D and E. E has a single left child, H, and a box marked none stands for its missing right child. C has children F and G. D, H, F and G are leaves.
+  subgraph tree["the tree of every trace"]
+    direction TB
+    A --> B
+    A --> C
+    B --> D
+    B --> E
+    E --> H
+    E --> e0["none"]
+    C --> F
+    C --> G
+  end
 ```
 
-<!-- text-of-mermaid sha256:5c7b5513efefc0bf3f29038741d57b771d01b76fc0f730a54bb4dfd3aa21f775 -->
+<!-- text-of-mermaid sha256:ec748ee32ed961052c6ceb4e2d555ef6088d6d2bad7a465f5c4ea2d7657e0840 -->
 ```text
-┌─┐
-│A│
-└─┘
- ▼──────▼
-┌─┐    ┌─┐
-│B│    │C│
-└─┘    └─┘
- ▼──────▼──────▼──────▼
-┌─┐    ┌─┐    ┌─┐    ┌─┐
-│D│    │E│    │F│    │G│
-└─┘    └┬┘    └─┘    └─┘
-        │
-┌─┐     │
-│H│◄────┘
-└─┘
+┌─────────────────────────────┐
+│   the tree of every trace   │
+│                             │
+│                             │
+│ ┌─┐                         │
+│ │A├─────┐                   │
+│ └┬┘     │                   │
+│  ▼      ▼                   │
+│ ┌─┐    ┌─┐                  │
+│ │B├──┐ │C├────┬──┐          │
+│ └┬┘  │ └─┘    └──┼───────┐  │
+│  ▼   └──▼        ▼       ▼  │
+│ ┌─┐    ┌─┐    ┌────┐    ┌─┐ │
+│ │D│    │E├──┐ │ F  │    │G│ │
+│ └─┘    └┬┘  │ └────┘    └─┘ │
+│         ▼   └────▼          │
+│        ┌─┐    ┌────┐        │
+│        │H│    │none│        │
+│        └─┘    └────┘        │
+│                             │
+└─────────────────────────────┘
 ```
 
 **Pre-order** writes a node, then everything below it on the left, then everything below it on the right. Start at A and write it. Go left to B and write it. B's left subtree is just D: write D. B's right subtree is E with its child H: write E, then H. B is finished, and so is the left side of A. Now the right side: C, then F, then G. The result is `A B D E H C F G`. Notice that every node comes before all of its descendants.

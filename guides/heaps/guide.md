@@ -30,29 +30,39 @@ Push 31, 14, 42, 9, 26 and 19 into an empty min-heap.
 6. **19** goes to index 5, whose parent is index 2, holding 42. Swap: 19 is at index 2, below the root 9. 9 is smaller: done. `[9, 14, 19, 31, 26, 42]`.
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: The min-heap after six pushes
-  accDescr: The root, index 0, holds 9. Its children are index 1 holding 14 and index 2 holding 19. Index 1's children are index 3 holding 31 and index 4 holding 26. Index 2's only child is index 5 holding 42. Every parent is smaller than its children.
-  h0["index 0: 9"] --> h1["index 1: 14"]
-  h0 --> h2["index 2: 19"]
-  h1 --> h3["index 3: 31"]
-  h1 --> h4["index 4: 26"]
-  h2 --> h5["index 5: 42"]
+  accDescr: The root, index 0, holds 9. Its children are index 1 holding 14 and index 2 holding 19. Index 1's children are index 3 holding 31 and index 4 holding 26. Index 2's only child is index 5 holding 42, on the left; a box marked none stands for the free place on its right. Every parent is smaller than its children.
+  subgraph heap["six items"]
+    direction TB
+    h0["index 0: 9"] --> h1["index 1: 14"]
+    h0 --> h2["index 2: 19"]
+    h1 --> h3["index 3: 31"]
+    h1 --> h4["index 4: 26"]
+    h2 --> h5["index 5: 42"]
+    h2 --> n2["none"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:0e0e1080c4e6e9461ecb9ee843c3b451522793d6dc627d099525f3a283d06368 -->
+<!-- text-of-mermaid sha256:37890b4bb09b3c34ef7a0ee6b8dec3d1e526e3576e28b877942c8d0eb3f7d736 -->
 ```text
-┌───────────┐
-│ index 0: 9│
-└───────────┘
-      ▼────────────────▼
-┌───────────┐    ┌───────────┐
-│index 1: 14│    │index 2: 19├──────────┐
-└───────────┘    └───────────┘          │
-      ▼────────────────▼                ▼
-┌───────────┐    ┌───────────┐    ┌───────────┐
-│index 3: 31│    │index 4: 26│    │index 5: 42│
-└───────────┘    └───────────┘    └───────────┘
+┌───────────────────────────────────────────────────────────┐
+│                         six items                         │
+│                                                           │
+│                                                           │
+│ ┌───────────┐                                             │
+│ │ index 0: 9├──────────┐                                  │
+│ └─────┬─────┘          │                                  │
+│       ▼                ▼                                  │
+│ ┌───────────┐    ┌───────────┐                            │
+│ │index 1: 14├──┐ │index 2: 19├────┬─────┐                 │
+│ └─────┬─────┘  │ └───────────┘    └─────┼─────────────┐   │
+│       ▼        └───────▼                ▼             ▼   │
+│ ┌───────────┐    ┌───────────┐    ┌───────────┐    ┌────┐ │
+│ │index 3: 31│    │index 4: 26│    │index 5: 42│    │none│ │
+│ └───────────┘    └───────────┘    └───────────┘    └────┘ │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
 ```
 
 The same heap is just this list:

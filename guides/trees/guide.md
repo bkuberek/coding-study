@@ -26,39 +26,48 @@ A **binary tree** is a tree in which every node has at most two children, and th
 
 ## A worked example
 
-Here is a binary tree of seven nodes. Node C has a right child and no left child; node E has a left child and no right child. The drawing marks the empty places so that you can see which side each child is on.
+Here is a binary tree of seven nodes. Node C has a right child and no left child; node E has a left child and no right child. In the drawing, a box marked "none" stands in for a missing child, so that F appears on C's right and G on E's left.
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: A binary tree of seven nodes
   accDescr: A is the root, with left child B and right child C. B has left child D and right child E. C has no left child and has right child F. E has left child G and no right child. D, F and G are leaves.
-  A --> B
-  A --> C
-  B --> D
-  B --> E
-  C --> c0["none"]
-  C --> F
-  E --> G
-  E --> e0["none"]
+  subgraph tree["seven nodes"]
+    direction TB
+    A --> B
+    A --> C
+    B --> D
+    B --> E
+    C --> c0["none"]
+    C --> F
+    E --> G
+    E --> e0["none"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:650b6e79f90497aa0129e75abe7fa59d09aaecaa22dd850d24b982e3bc3765af -->
+<!-- text-of-mermaid sha256:c2383f14e43e765d000336fbb3c969a4f4885f6406adb05aee486bb65c53f302 -->
 ```text
-┌─┐
-│A│
-└─┘
- ▼────────▼
-┌─┐    ┌────┐
-│B│    │ C  │
-└─┘    └────┘
- ▼────────▼─────────▼───────▼
-┌─┐    ┌────┐    ┌────┐    ┌─┐
-│D│    │ E  │    │none│    │F│
-└─┘    └────┘    └────┘    └─┘
- ▼────────▼
-┌─┐    ┌────┐
-│G│    │none│
-└─┘    └────┘
+┌─────────────────────────────┐
+│         seven nodes         │
+│                             │
+│                             │
+│ ┌─┐                         │
+│ │A├─────┐                   │
+│ └┬┘     │                   │
+│  ▼      ▼                   │
+│ ┌─┐    ┌─┐                  │
+│ │B├──┐ │C├────┬──┐          │
+│ └┬┘  │ └─┘    └──┼───────┐  │
+│  ▼   └──▼        ▼       ▼  │
+│ ┌─┐    ┌─┐    ┌────┐    ┌─┐ │
+│ │D│    │E├──┐ │none│    │F│ │
+│ └─┘    └┬┘  │ └────┘    └─┘ │
+│         ▼   └────▼          │
+│        ┌─┐    ┌────┐        │
+│        │G│    │none│        │
+│        └─┘    └────┘        │
+│                             │
+└─────────────────────────────┘
 ```
 
 Read each node's facts off the drawing, one at a time.
@@ -152,37 +161,47 @@ root = Node("A", Node("B", Node("D"), Node("E", Node("G"))), Node("C", None, Nod
 **In an array.** A complete binary tree needs no links at all. Write its nodes into a list level by level, left to right, and the positions alone say who is whose child: with indexes counted from 0, the children of index `i` sit at `2i + 1` and `2i + 2`, and its parent at `(i - 1) // 2`. Here is a complete tree of ten nodes, labelled with the index each one gets.
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: A complete binary tree and its array indexes
-  accDescr: Ten nodes stored in a list in level order. Index 0, A, is the root. Its children are 1, B, and 2, C. B's children are 3, D, and 4, E; C's are 5, F, and 6, G. D's children are 7, H, and 8, I. E's only child is 9, J, on the left. The last level is filled from the left.
-  n0["0: A"] --> n1["1: B"]
-  n0 --> n2["2: C"]
-  n1 --> n3["3: D"]
-  n1 --> n4["4: E"]
-  n2 --> n5["5: F"]
-  n2 --> n6["6: G"]
-  n3 --> n7["7: H"]
-  n3 --> n8["8: I"]
-  n4 --> n9["9: J"]
+  accDescr: Ten nodes stored in a list in level order. Index 0, A, is the root. Its children are 1, B, and 2, C. B's children are 3, D, and 4, E; C's are 5, F, and 6, G. D's children are 7, H, and 8, I. E's only child is 9, J, on the left; a box marked none stands for its missing right child. The last level is filled from the left.
+  subgraph tree["ten nodes, level by level"]
+    direction TB
+    n0["0: A"] --> n1["1: B"]
+    n0 --> n2["2: C"]
+    n1 --> n3["3: D"]
+    n1 --> n4["4: E"]
+    n2 --> n5["5: F"]
+    n2 --> n6["6: G"]
+    n3 --> n7["7: H"]
+    n3 --> n8["8: I"]
+    n4 --> n9["9: J"]
+    n4 --> e1["none"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:d31d513983f6362a0f339e669a9bc39d80cc3cb9db021323f446442f6e865bd2 -->
+<!-- text-of-mermaid sha256:37cb04aa25d683b548ddbf53b329d8aaf05926c460c9e6fb276770992f47d600 -->
 ```text
-┌────┐
-│0: A│
-└────┘
-   ▼─────────▼
-┌────┐    ┌────┐
-│1: B│    │2: C│
-└────┘    └────┘
-   ▼─────────▼─────────▼─────────▼
-┌────┐    ┌────┐    ┌────┐    ┌────┐
-│3: D│    │4: E├──┐ │5: F│    │6: G│
-└────┘    └────┘  │ └────┘    └────┘
-   ▼─────────▼    └────▼
-┌────┐    ┌────┐    ┌────┐
-│7: H│    │8: I│    │9: J│
-└────┘    └────┘    └────┘
+┌──────────────────────────────────────┐
+│      ten nodes, level by level       │
+│                                      │
+│                                      │
+│ ┌────┐                               │
+│ │0: A├───────┐                       │
+│ └──┬─┘       │                       │
+│    ▼         ▼                       │
+│ ┌────┐    ┌────┐                     │
+│ │1: B├──┐ │2: C├────┬──┐             │
+│ └──┬─┘  │ └────┘    └──┼─────────┐   │
+│    ▼    └────▼         ▼         ▼   │
+│ ┌────┐    ┌────┐    ┌────┐    ┌────┐ │
+│ │3: D├──┐ │4: E├──┐ │5: F│    │6: G│ │
+│ └──┬─┘  │ └────┘  │ └────┘    └────┘ │
+│    ▼    └────▼    └────▼─────────▼   │
+│ ┌────┐    ┌────┐    ┌────┐    ┌────┐ │
+│ │7: H│    │8: I│    │9: J│    │none│ │
+│ └────┘    └────┘    └────┘    └────┘ │
+│                                      │
+└──────────────────────────────────────┘
 ```
 
 ```python examples/array_layout.py
@@ -239,7 +258,6 @@ Reach for a tree when the data itself is a hierarchy, or when a hierarchy makes 
 
 - **Counting edges when the problem counts nodes, or the reverse.** Read the definition of depth and height in each problem. Check it on a single node: is its height 0 or 1?
 - **Forgetting the empty tree.** A tree of zero nodes is a valid input almost everywhere. Code that reads `root.value` before checking that `root` exists fails on it.
-- **Losing the side of a child.** A list of children loses which side a lone child was on. In a binary tree, keep `left` and `right` as separate fields.
 - **Assuming a tree is balanced.** A tree built from real data can be a long path. An operation that is fast on a tree of height 20 may be a million steps on a degenerate one, and a recursive walk of a very deep tree can run out of call stack; [tree traversals](../tree-traversals/guide.md) shows how to walk it without recursion.
 - **Treating a graph as a tree.** If a node can be reached along two paths, a walk that assumes a tree visits it twice, and a cycle makes it loop forever.
 

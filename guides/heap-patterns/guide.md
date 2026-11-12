@@ -4,7 +4,7 @@
 
 A heap shows you exactly one item cheaply: its root. Everything else costs a sift. The patterns of this guide come from choosing what sits at the root, so that the one item you can see is the one your question needs to compare against.
 
-**A bounded heap keeps the best k.** To keep the k largest items of a long stream, hold at most k of them in a **min-heap**. That sounds backwards, so look at what the root is: the smallest of the kept items, the weakest member of the current top k. That is the only item a newcomer has to beat. A newcomer larger than the root belongs in the top k, and the root, now in place k + 1, drops out: one heap operation replaces it. A newcomer no larger than the root cannot be in the top k at all, and is dismissed after a single comparison. The heap never grows past k, so each operation costs O(log k), not O(log n), and the memory is O(k), however long the stream. To keep the k smallest instead, turn every comparison around.
+**A bounded heap keeps the best k.** To keep the k largest items of a long stream, hold at most k of them in a **min-heap**. That sounds backwards, so look at what the root is: the smallest of the items kept so far. It is the only item a newcomer has to beat. A newcomer larger than the root belongs among the kept items, and the root drops out: one heap operation replaces it. A newcomer no larger than the root cannot be in the top k at all, and is dismissed after a single comparison. The heap never grows past k, so each operation costs O(log k), not O(log n), and the memory is O(k), however long the stream. To keep the k smallest instead, turn every comparison around.
 
 **Two heaps keep the middle in reach.** A heap answers "smallest" or "largest", never "middle". But split the items into a lower part and an upper part, keep the lower part in a **max-heap** and the upper part in a **min-heap**, and the two roots sit on either side of the split, back to back. If the split stays in the middle, the middle values of the whole collection are always at the two roots.
 
@@ -111,52 +111,66 @@ The random count is no accident. The notes in CPython's `Lib/heapq.py` give the 
 Here are five values, 2, 5, 7, 9 and 12, split between two heaps. The lower half, 2, 5 and 7, is a max-heap, so its largest value is its root:
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: The lower half, a max-heap
   accDescr: The lower half holds 2, 5 and 7 as a max-heap: 7 is the root, with 5 and 2 below it.
-  l7["lower half, a max-heap: 7"] --> l5["5"]
-  l7 --> l2["2"]
+  subgraph lower["lower half"]
+    direction TB
+    l7["7"] --> l5["5"]
+    l7 --> l2["2"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:ed6800670beb025947b467a17b42ea459ec4f16a41ffd4f8bbfb2ee01427c347 -->
+<!-- text-of-mermaid sha256:e5e4c8e77cd308c05e51b2f6ba880aff3121ddfae533cec21e35e710be1c1864 -->
 ```text
-┌─────────────────────────┐
-│lower half, a max-heap: 7│
-└─────────────────────────┘
-             ▼──────────────────▼
-┌─────────────────────────┐    ┌─┐
-│            5            │    │2│
-└─────────────────────────┘    └─┘
+┌────────────┐
+│lower half  │
+│            │
+│            │
+│ ┌─┐        │
+│ │7├─────┐  │
+│ └┬┘     │  │
+│  ▼      ▼  │
+│ ┌─┐    ┌─┐ │
+│ │5│    │2│ │
+│ └─┘    └─┘ │
+│            │
+└────────────┘
 ```
 
 The upper half, 9 and 12, is a min-heap, so its smallest value is its root:
 
 ```mermaid
-flowchart TD
+flowchart LR
   accTitle: The upper half, a min-heap
-  accDescr: The upper half holds 9 and 12 as a min-heap: 9 is the root, with 12 below it.
-  h9["upper half, a min-heap: 9"] --> h12["12"]
+  accDescr: The upper half holds 9 and 12 as a min-heap: 9 is the root, and 12 is its left child; a box marked none stands for the empty right place.
+  subgraph upper["upper half"]
+    direction TB
+    h9["9"] --> h12["12"]
+    h9 --> n9["none"]
+  end
 ```
 
-<!-- text-of-mermaid sha256:61a6025e64038bfb91f9e0182cc2fd98583d1ae06f59ac125b263ff10c94176f -->
+<!-- text-of-mermaid sha256:8ccb9acfafa22d19a6d0f9df922ca6dae229fa5242066b2059863afd8f7b8e39 -->
 ```text
-┌─────────────────────────┐
-│upper half, a min-heap: 9│
-└────────────┬────────────┘
-             ▼
-┌─────────────────────────┐
-│            12           │
-└─────────────────────────┘
+┌────────────────┐
+│  upper half    │
+│                │
+│                │
+│ ┌──┐           │
+│ │9 ├───────┐   │
+│ └─┬┘       │   │
+│   ▼        ▼   │
+│ ┌──┐    ┌────┐ │
+│ │12│    │none│ │
+│ └──┘    └────┘ │
+│                │
+└────────────────┘
 ```
 
-Two rules hold at every moment:
+Here the two roots, 7 and 9, are the values on either side of the middle of 2, 5, 7, 9, 12, and the middle value itself, 7, is one of them. Reading them takes O(1), whatever the size of the collection. What it takes to keep such a split correct while values keep arriving, and why that stays cheap, is what the practice problem `median-data-stream` asks you to work out.
 
-1. **Order across the split.** Every value in the lower heap is at most every value in the upper heap. Since each root is the extreme of its own half, it is enough that the lower root is at most the upper root: here 7 is at most 9.
-2. **Balance.** The two heaps hold the same number of values, or the lower one holds one more.
-
-Together they say that the lower root is the largest of the smaller half and the upper root the smallest of the larger half. For an odd count the middle value is the lower root, 7 here; for an even count the two middle values are the two roots. Reading them is O(1), and an arrival can be absorbed with a constant number of heap operations, O(log n) in all. Working out which operations keep both rules true, for every arrival, is what the practice problem `median-data-stream` asks of you.
-
-The split does not have to sit in the middle. Keep the sizes in a ratio of 9 to 1 instead, and the lower root tracks the value 90% of the way up the collection, the 90th percentile. Any fixed rank of a growing collection can be watched this way.
+The same idea can watch another fixed rank of a growing collection, such as the 90th percentile, not only the middle.
 
 ## When to use it
 
@@ -189,7 +203,7 @@ For two heaps holding n values:
 | Operation | Time |
 |-----------|------|
 | Read the middle | O(1) |
-| Add a value, restoring both rules | O(log n) |
+| Add a value and keep the split correct | O(log n) |
 | Memory | O(n) |
 
 ## Expert notes
