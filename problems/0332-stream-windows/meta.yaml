@@ -36,4 +36,5 @@ comparator: {type: ops}
 approaches:
   - {id: window-state, name: An event log for the views and a map of window totals for the stream, role: optimal, time: "O(1) per event, plus O(w log w) when the watermark moves; O(n h + r log r) per view", space: "O(n) for the log, plus one entry per open or correctable window", time_class: "n log n", space_class: "n"}
 related: [cdc-apply, pipeline-scheduler, merge-intervals, insert-interval, metrics-monitoring]
+guides: [event-time-and-windows, batch-and-streaming]
 estimate_minutes: 90

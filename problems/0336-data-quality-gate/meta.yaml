@@ -34,4 +34,5 @@ comparator: {type: ops}
 approaches:
   - {id: rules-as-data, name: Rules kept as data and checked one pass each, role: optimal, time: "O(r c + r log b) per validate or decide, r rows, c rule columns, b drift bins", space: "O(r + d) for r rows and d dimension keys", time_class: "n", space_class: "n"}
 related: [scd-type2-dimension, snapshot-table, lineage-graph, find-missing-and-duplicates, csv-upload-ingestion-typescript, feed-ingest-python]
+guides: [data-quality-and-contracts]
 estimate_minutes: 120

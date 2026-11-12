@@ -36,4 +36,5 @@ comparator: {type: ops}
 approaches:
   - {id: versions-by-key, name: Versions sorted by start date per business key, role: optimal, time: "O(b log b + b v) per load of b rows, v the versions of a key; O(log v) per point lookup; O(k log v) per snapshot of k keys", space: "O(n) for n versions", time_class: "n log n", space_class: "n"}
 related: [time-based-kv-store, versioned-rate-table, insert-interval, data-quality-gate, snapshot-table, lineage-graph]
+guides: [dimensional-modeling]
 estimate_minutes: 120

@@ -37,4 +37,5 @@ comparator: {type: ops}
 approaches:
   - {id: file-lifetimes, name: One lifetime per data file over a line of snapshots, role: optimal, time: "O(F log F) per scan, manifest or expiry and O(F) per overwrite or compaction, F the files ever added; O(k + D) per commit of k changes, D the files changed since its base", space: "O(F + S) for F files and S snapshots", time_class: "n log n", space_class: "n"}
 related: [snapshot-array, time-based-kv-store, versioned-memory-store, scd-type2-dimension, data-quality-gate, lineage-graph]
+guides: [table-formats-and-snapshots]
 estimate_minutes: 120

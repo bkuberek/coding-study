@@ -38,4 +38,5 @@ comparator: {type: ops}
 approaches:
   - {id: partition-ledger, name: "A heap of ready tasks for the order, and a ledger of numbered partition writes", role: optimal, time: "O((V + E) log V) to order; O(V (V + E)) to find the tasks on cycles; O(V + E w) per run of a day; O(R P i + P log P) per backfill", space: "O(V + E) for the graph, plus each written partition and the writes it read", time_class: "n log n", space_class: "n"}
 related: [stream-windows, cdc-apply, course-schedule-ii, parallel-courses, job-scheduler, iac-plan-engine, idempotent-converge]
+guides: [pipeline-orchestration]
 estimate_minutes: 120
