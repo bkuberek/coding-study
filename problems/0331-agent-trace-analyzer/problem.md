@@ -19,7 +19,7 @@ Aim to finish in 120 minutes. A good split: read the statement in the first 10 m
 - `name` is 1 to 30 characters from `a` to `z`, `0` to `9`, `_` and `.`.
 - `start` and `end` are times in milliseconds, integers from 0 to 10^9.
 - `status` is `ok`, `error` or `unset`, as in OpenTelemetry.
-- `attributes` is a list of 0 to 10 strings, each `key=value`: the key is everything before the first `=`, 1 to 30 characters from `a` to `z`, `_` and `.`, and the value everything after it, 0 to 100 characters from the space to `~` in ASCII. When a key appears more than once, the first one counts. A level that reads an attribute names it; the others are ignored.
+- `attributes` is a list of 0 to 10 strings, each `key=value`: the key is everything before the first `=`, 1 to 30 characters from `a` to `z`, `_` and `.`, and the value everything after it, 0 to 100 characters from the space to `~` in ASCII. When a key appears more than once, the first one counts, unlike OpenTelemetry's attribute setter, where setting an existing key overwrites its value. A level that reads an attribute names it; the others are ignored.
 - Each level's section describes the methods it adds and their parameters.
 
 ## Output
@@ -145,16 +145,18 @@ So ` Q = paris ` and `q=paris` are the same, and so are `lang=en&q=paris` and `q
 spans: <the number of spans in the tree>
 depth: <depth()>
 malformed: <the number of events with at least one error>
-status: <empty when the tree is empty, failed when the request failed, else ok>
+status: <`empty` when the tree is empty, `failed` when the request failed, else `ok`>
 critical path: <the number of spans on the critical path>
 duration: <the total time of the first span of the critical path, 0 when there is none>
-root cause: <the id of the root cause, or none>
+root cause: <the id of the root cause, or `none`>
 retry loops: <the number of retry loops of at least minRun calls>
 repeated calls: <the sum over those loops of count - 1>
 tokens: <all input and output tokens of the tree>
 cost: <the rounded sum of the exact costs of all spans of the tree>
 unpriced: <the number of unpriced spans>
 ```
+
+Each `<...>` is replaced by its value. The words in backticks, `empty`, `failed`, `ok` and `none`, are printed literally, without the backticks: an empty trace gives `status: empty` and `root cause: none`.
 
 ### Example 1
 

@@ -68,7 +68,7 @@ Context and support: `remaining` only decreases, so the tokens taken never excee
 
 ### Language notes
 
-- Python: `fractions.Fraction(d * abs(d), length)` is an exact sort key, and tuples `(-fraction, id)` sort by score and then by id in one call. `text.split(".")[:-1]` gives the sentences without their periods, because the text ends with a period. A dictionary keeps insertion order, which gives the fallback items their order and the citation numbers theirs.
+- Python: `fractions.Fraction(d * abs(d), length)` is an exact sort key, and tuples `(-fraction, id)` sort by score and then by id in one call. `text.split(".")[:-1]` gives the sentences without their periods, because the text ends with a period; every piece after the first keeps the space before it, so each is stripped before its period is put back. A dictionary keeps insertion order, which gives the fallback items their order and the citation numbers theirs.
 - TypeScript: plain numbers are exact for integers below 2^53, and with embeddings of at most 8 numbers from -100 to 100 every cross product stays below about 6 * 10^14, so `b.signed * a.length - a.signed * b.length` is an exact comparator. Compare ids with `<` and `>` (code unit order), not `localeCompare`. A `Map` keyed by a joined string stands for the pair (question, item); the separator `|` cannot appear in either part.
 
 ## Further reading
