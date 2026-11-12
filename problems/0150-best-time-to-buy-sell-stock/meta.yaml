@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 121, url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/"}
 related: [stock-with-cooldown, maximum-subarray, longest-substring-without-repeats]
+guides: [variable-size-windows]
 order: 1
 estimate_minutes: 10

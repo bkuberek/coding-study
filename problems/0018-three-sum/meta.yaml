@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 15, url: "https://leetcode.com/problems/3sum/"}
 related: [two-sum, two-sum-sorted, container-with-most-water]
+guides: [pairs-in-sorted-arrays]
 order: 4
 estimate_minutes: 30

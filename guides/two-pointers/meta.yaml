@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Two pointers
+summary: Two indices that walk an array under a rule, from both ends toward each other or in the same direction, so that one pass replaces checking every pair.
+level: intro
+related: [pairs-in-sorted-arrays, in-place-compaction, fixed-size-windows]
+problems: [valid-palindrome, almost-palindrome]

@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Fixed-size sliding windows
+summary: Slide a window of k consecutive values along an array and update its summary in O(1) per step, by adding the value that enters and removing the one that leaves.
+level: core
+prerequisites: [two-pointers]
+related: [variable-size-windows, prefix-sums-with-hash-maps, counting-and-frequency]
+problems: [permutation-in-string, chunking-with-overlap, sliding-window-maximum]

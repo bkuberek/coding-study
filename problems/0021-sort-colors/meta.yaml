@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 75, url: "https://leetcode.com/problems/sort-colors/"}
 related: [move-zeroes]
+guides: [in-place-compaction]
 order: 7
 estimate_minutes: 20

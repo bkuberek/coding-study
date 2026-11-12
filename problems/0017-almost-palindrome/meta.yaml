@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 680, url: "https://leetcode.com/problems/valid-palindrome-ii/"}
 related: [valid-palindrome]
+guides: [two-pointers]
 order: 3
 estimate_minutes: 15

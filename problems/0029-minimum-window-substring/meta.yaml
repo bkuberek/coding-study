@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 76, url: "https://leetcode.com/problems/minimum-window-substring/"}
 related: [permutation-in-string, longest-substring-without-repeats, min-size-subarray-sum]
+guides: [variable-size-windows]
 order: 7
 estimate_minutes: 40

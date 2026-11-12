@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 424, url: "https://leetcode.com/problems/longest-repeating-character-replacement/"}
 related: [max-ones-with-flips, longest-substring-without-repeats]
+guides: [variable-size-windows]
 order: 2
 estimate_minutes: 25

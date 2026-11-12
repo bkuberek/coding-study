@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 11, url: "https://leetcode.com/problems/container-with-most-water/"}
 related: [trapping-rain-water, three-sum]
+guides: [pairs-in-sorted-arrays]
 order: 5
 estimate_minutes: 20
