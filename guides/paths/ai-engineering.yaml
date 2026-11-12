@@ -13,6 +13,7 @@ steps:
   - guide: retrieval-augmented-generation
   - problem: chunking-with-overlap
   - problem: freshness-reranker
+  - problem: corrective-rag
   - problem: rag-citations-typescript
   - guide: evaluating-llm-applications
   - problem: retrieval-metrics
