@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Using the terminal
+summary: What a terminal and a shell are, how the shell finds a command, moving around and reading files, pipes, environment variables, config files, and how to read an error.
+level: intro
+related: [package-managers]
