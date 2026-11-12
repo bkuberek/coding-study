@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0372"
+slug: raft-sim
+title: Raft Simulation
+summary: "Build RaftCluster, a step-by-step Raft simulation on a scripted network: the voting rules, leader election, log replication with safe commits, and a partition that loses no committed entry."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: The voting rules}
+  - {level: 2, title: Leader election}
+  - {level: 3, title: Log replication}
+  - {level: 4, title: Partitions and recovery}
+signature:
+  class:
+    name: RaftCluster
+    constructor: {params: [{name: nodes, type: "list<string>"}]}
+    methods:
+      - {name: load, level: 1, params: [{name: node, type: string}, {name: term, type: int}, {name: vote, type: string}, {name: entries, type: "list<string>"}], returns: {type: void}}
+      - {name: requestVote, level: 1, params: [{name: node, type: string}, {name: candidate, type: string}, {name: term, type: int}, {name: lastLogIndex, type: int}, {name: lastLogTerm, type: int}], returns: {type: string}}
+      - {name: votedFor, level: 1, params: [{name: node, type: string}], returns: {type: string}}
+      - {name: status, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: timeout, level: 2, params: [{name: node, type: string}], returns: {type: "list<int>"}}
+      - {name: heartbeat, level: 2, params: [{name: node, type: string}], returns: {type: "list<int>"}}
+      - {name: deliver, level: 2, params: [{name: message, type: int}], returns: {type: "list<int>"}}
+      - {name: lose, level: 2, params: [{name: message, type: int}], returns: {type: void}}
+      - {name: propose, level: 3, params: [{name: node, type: string}, {name: command, type: string}], returns: {type: int}}
+      - {name: log, level: 3, params: [{name: node, type: string}], returns: {type: "list<string>"}}
+      - {name: commitIndex, level: 3, params: [{name: node, type: string}], returns: {type: int}}
+      - {name: partition, level: 4, params: [{name: groups, type: "list<list<string>>"}], returns: {type: void}}
+      - {name: heal, level: 4, params: [], returns: {type: void}}
+      - {name: applied, level: 4, params: [{name: node, type: string}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: message-handlers, name: One handler per message kind that applies the rules of the Raft summary, role: optimal, time: "O(n L) per call", space: "O(n L + M)", time_class: "n", space_class: "n"}
+related: [logical-clocks, crdt-replicas, consistent-hash-ring]
+estimate_minutes: 150
