@@ -1,6 +1,7 @@
 """Seeded inputs for flood-fill.
 
-`n` is the number of cells (at most 50 by 50). From 100 cells on, the sizes the ladder times,
+`n` is the number of cells (at most 50 by 50), and the grid has exactly n cells whenever n splits
+into sides of at most 50 (every size of the ladder does). From 100 cells on, the sizes the ladder times,
 the grid has the same shape of input at every seed: about nine squares in ten have colour 0
 and the rest are scattered over colours 1 to 3, the fill starts at the middle square (forced
 to colour 0) and repaints with colour 5. That is far above the density at which same-coloured
@@ -24,9 +25,13 @@ BIG_NEW_COLOR = 5
 
 
 def _shape(rng: random.Random, cells: int) -> tuple[int, int]:
-    rows = min(MAX_SIDE, max(1, round(math.sqrt(cells) * rng.uniform(0.5, 2.0))))
-    cols = min(MAX_SIDE, max(1, cells // rows))
-    return rows, cols
+    """Rows and columns whose product is `cells`, or just above it when no exact split fits."""
+    exact = [r for r in range(1, MAX_SIDE + 1) if cells % r == 0 and cells // r <= MAX_SIDE]
+    if exact:
+        rows = rng.choice(exact)
+        return rows, cells // rows
+    rows = rng.randint(math.ceil(cells / MAX_SIDE), MAX_SIDE)
+    return rows, math.ceil(cells / rows)
 
 
 def generate(rng: random.Random, n: int) -> dict:

@@ -18,7 +18,7 @@
     {"id": "h12", "input": {"grid": [[7, 0, 7], [0, 7, 0], [7, 0, 7]], "row": 0, "col": 0, "newColor": 7}, "expected": [[7, 0, 7], [0, 7, 0], [7, 0, 7]], "note": "same colour as the region it starts in, with look-alike squares around"},
     {"id": "h13", "input": {"grid": [[0, 0, 0], [0, 9, 0], [0, 0, 0]], "row": 1, "col": 1, "newColor": 0}, "expected": [[0, 0, 0], [0, 0, 0], [0, 0, 0]], "note": "a single square painted with the colour that surrounds it"},
     {"id": "h14", "input": {"grid": [[10000, 0], [0, 10000]], "row": 1, "col": 1, "newColor": 0}, "expected": [[10000, 0], [0, 0]], "note": "extreme colour values"},
-    {"id": "g1", "generate": {"n": 2500, "seed": 7}, "note": "a 50 by 50 grid, mostly one colour"},
+    {"id": "g1", "generate": {"n": 2500, "seed": 7}, "note": "a 50 by 50 grid (2,500 cells), mostly one colour"},
     {"id": "g2", "generate": {"n": 1000, "seed": 3}}
   ]
 }
