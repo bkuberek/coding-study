@@ -23,103 +23,93 @@ For closed intervals, both `<` become `<=`. This one test, with the right conven
 
 Two moves then solve most interval questions:
 
-- **Sort by start to see what runs together.** In start order, an interval can only overlap the ones that came before it if it starts before they end, so one pass that remembers how far the current group reaches finds every group.
+- **Sort by start to see what runs together.** In start order, an interval can only overlap the ones that came before it if it starts before they end, so one pass that remembers how far they reach is enough.
 - **Sort by end to choose.** To keep the most intervals that do not overlap, the one that ends first leaves the most room for the others, and that choice can be proved safe.
 
 ## A worked example
 
-A channel airs segments, some of them at the same time on different streams, as half-open intervals in minutes: `[30, 45)`, `[0, 10)`, `[8, 20)`, `[12, 15)`, `[20, 26)`, `[40, 52)` and `[60, 70)`, in the order they were logged. What is the longest stretch during which something was on air without a break?
+A channel airs segments, some of them at the same time on different streams, as half-open intervals in minutes: `[30, 45)`, `[0, 10)`, `[8, 20)`, `[12, 15)`, `[20, 26)`, `[40, 52)` and `[60, 70)`, in the order they were logged. How long is the longest stretch during which something was on air without a break?
 
-Sort the segments by start, then walk them keeping one **run**: the stretch from the start of the current group to the furthest end seen in it. A segment that starts at or before the run's end continues the run; one that starts after it opens a new run.
+Sort the segments by start, then walk them remembering two numbers about the current **stretch**: when it began, and how far it **reaches**, the furthest end seen in it. A segment that starts at or before the reach continues the stretch and may push the reach further; one that starts after it begins a new stretch. The length of the current stretch is its reach minus when it began.
 
 ```python examples/longest_stretch.py
-"""A channel airs segments [start, end) in minutes, some of them at the same time. Find the longest
-stretch during which something was on air without a break."""
-
-from collections.abc import Iterator
+"""A channel airs segments [start, end) in minutes, some of them at the same time. How long is the
+longest stretch during which something was on air without a break?"""
 
 Interval = tuple[int, int]
 
 
-def show(interval: Interval) -> str:
-    start, end = interval
-    return f"[{start:>2}, {end:>2})"
-
-
-def unbroken_runs(segments: list[Interval]) -> Iterator[Interval]:
-    """Yield the stretches without a break, from left to right, printing each step."""
+def longest_unbroken(segments: list[Interval]) -> int:
+    """Minutes of the longest stretch with no break, printing how long the current one lasts."""
     ordered = sorted(segments)
-    run_start, run_end = ordered[0]
-    print(f"{show(ordered[0])} opens a run")
-    for start, end in ordered[1:]:
-        if start <= run_end:
-            run_end = max(run_end, end)  # a segment may end inside the run
-            print(f"{show((start, end))} joins it: {show((run_start, run_end))}")
+    since, reach = ordered[0]  # when the current stretch began, and how far it reaches so far
+    longest = 0
+    for start, end in ordered:
+        if start > reach:
+            since, reach = start, end
         else:
-            print(f"{show((start, end))} starts after {run_end}: a new run opens")
-            yield run_start, run_end
-            run_start, run_end = start, end
-    yield run_start, run_end
+            reach = max(reach, end)  # a segment may end before the stretch does
+        longest = max(longest, reach - since)
+        print(f"[{start:>2}, {end:>2}): on air for {reach - since:>2} minutes without a break")
+    return longest
 
 
 segments = [(30, 45), (0, 10), (8, 20), (12, 15), (20, 26), (40, 52), (60, 70)]
-start, end = max(unbroken_runs(segments), key=lambda run: run[1] - run[0])
-print(f"longest unbroken stretch: [{start}, {end}), {end - start} minutes")
+print("longest unbroken stretch:", longest_unbroken(segments), "minutes")
 ```
 
 It prints:
 
 ```output examples/longest_stretch.py
-[ 0, 10) opens a run
-[ 8, 20) joins it: [ 0, 20)
-[12, 15) joins it: [ 0, 20)
-[20, 26) joins it: [ 0, 26)
-[30, 45) starts after 26: a new run opens
-[40, 52) joins it: [30, 52)
-[60, 70) starts after 52: a new run opens
-longest unbroken stretch: [0, 26), 26 minutes
+[ 0, 10): on air for 10 minutes without a break
+[ 8, 20): on air for 20 minutes without a break
+[12, 15): on air for 20 minutes without a break
+[20, 26): on air for 26 minutes without a break
+[30, 45): on air for 15 minutes without a break
+[40, 52): on air for 22 minutes without a break
+[60, 70): on air for 10 minutes without a break
+longest unbroken stretch: 26 minutes
 ```
 
-`sorted` orders the tuples by their first element, the start, and breaks ties by the second, because Python compares tuples element by element. Follow the first run in the drawing.
+`sorted` orders the tuples by their first element, the start, and breaks ties by the second, because Python compares tuples element by element. Follow the first stretch in the drawing.
 
 ```mermaid
 flowchart TD
-  accTitle: Growing the first run
-  accDescr: The segment from 0 to 10 opens a run. The segment from 8 to 20 overlaps it, so the run reaches 20. The segment from 12 to 15 lies inside, so the run still ends at 20. The segment from 20 to 26 starts exactly where the run ends, so the run reaches 26. The segment from 30 to 45 starts after 26, so the run from 0 to 26 is complete.
-  a["[0, 10) opens the run [0, 10)"] --> b["[8, 20) overlaps: run [0, 20)"]
-  b --> c["[12, 15) inside: run stays [0, 20)"]
-  c --> d["[20, 26) touches: run [0, 26)"]
-  d --> e["[30, 45) starts after 26: run [0, 26) done"]
+  accTitle: Timing the first stretch
+  accDescr: The segment from 0 to 10 begins a stretch of 10 minutes. The segment from 8 to 20 overlaps it, so the stretch lasts 20 minutes. The segment from 12 to 15 lies inside, so it still lasts 20. The segment from 20 to 26 starts exactly where the stretch reaches, so it lasts 26. The segment from 30 to 45 begins a new stretch of 15 minutes.
+  a["[0, 10) begins a stretch: 10 minutes"] --> b["[8, 20) overlaps: 20 minutes"]
+  b --> c["[12, 15) inside: still 20 minutes"]
+  c --> d["[20, 26) touches: 26 minutes"]
+  d --> e["[30, 45) begins a new stretch: 15 minutes"]
 ```
 
-<!-- text-of-mermaid sha256:a9caf23e326e5e239d2bc29ffa08b06f42e40a05ef2052e785c388e6353886dc -->
+<!-- text-of-mermaid sha256:044229ae4e6c94a0e7a7715b092a5fd5c3926dade1051e07473cb29897fe7b08 -->
 ```text
-┌──────────────────────────────────────────┐
-│      [0, 10) opens the run [0, 10)       │
-└─────────────────────┬────────────────────┘
-                      ▼
-┌──────────────────────────────────────────┐
-│      [8, 20) overlaps: run [0, 20)       │
-└─────────────────────┬────────────────────┘
-                      ▼
-┌──────────────────────────────────────────┐
-│    [12, 15) inside: run stays [0, 20)    │
-└─────────────────────┬────────────────────┘
-                      ▼
-┌──────────────────────────────────────────┐
-│      [20, 26) touches: run [0, 26)       │
-└─────────────────────┬────────────────────┘
-                      ▼
-┌──────────────────────────────────────────┐
-│[30, 45) starts after 26: run [0, 26) done│
-└──────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│   [0, 10) begins a stretch: 10 minutes  │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│       [8, 20) overlaps: 20 minutes      │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│    [12, 15) inside: still 20 minutes    │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│       [20, 26) touches: 26 minutes      │
+└────────────────────┬────────────────────┘
+                     ▼
+┌─────────────────────────────────────────┐
+│[30, 45) begins a new stretch: 15 minutes│
+└─────────────────────────────────────────┘
 ```
 
-Three details of the walk matter:
+Two details of the walk matter:
 
-- **The run's end is a maximum.** `[12, 15)` ends before the run does, so the run keeps its end at 20 instead of shrinking to 15.
-- **Touching continues the run.** `[20, 26)` starts at 20, where the run ends. With half-open segments there is no instant of silence between minute 20 of one and minute 20 of the other, so the test is `start <= run_end`.
-- **Why one pass is enough.** When a segment starts after the run's end, there is a gap: every segment seen so far ends by the run's end, and every segment still to come starts no earlier than this one, because they are sorted by start. Nothing can fill the gap later, so the run is complete the moment the gap appears.
+- **The reach is a maximum.** `[12, 15)` ends before the stretch reaches, so the reach stays at 20 instead of shrinking to 15.
+- **Touching continues the stretch.** `[20, 26)` starts at 20, exactly the reach. With half-open segments there is no instant of silence between minute 20 of one and minute 20 of the other, so only a segment that starts after the reach, `start > reach`, begins a new stretch.
 
 ## Choosing the most intervals
 
@@ -243,7 +233,7 @@ The proof is a **stays-ahead** argument, as in the [greedy choices guide](../gre
 
 Let greedy grant `g1, g2, ..., gk`, in the order it granted them, which is the order of their ends. Take any set of requests that do not overlap, `o1, o2, ..., om`, listed by end; since they do not overlap, each one starts at or after the end of the one before it.
 
-1. **Greedy stays ahead: `gi` ends no later than `oi`, for every `i` up to both lengths.** For `i = 1`, `g1` is the request that ends first of all, since nothing is granted yet to block it. Now suppose `gi` ends no later than `oi`. The request `o(i+1)` starts at or after the end of `oi`, so at or after the end of `gi`, and so after every request greedy has granted so far, since they all end by then. It ends after `gi` does, so the greedy scan reaches it after granting `gi`, and finds it overlapping nothing granted. If greedy had not granted anything since `gi` by then, it grants `o(i+1)` itself. Either way, greedy's next grant ends no later than `o(i+1)`.
+1. **Greedy stays ahead: `gi` ends no later than `oi`, for every `i` up to both lengths.** For `i = 1`, `g1` is the request that ends first of all, since nothing is granted yet to block it. Now suppose `gi` ends no later than `oi`. The request `o(i+1)` starts at or after the end of `oi`, so at or after the end of `gi`, and so after every request greedy has granted so far, since they all end by then. It ends after `gi` does, so the greedy scan reaches it after granting `gi`. Two cases. If greedy granted another request after `gi` and before reaching `o(i+1)`, that request is `g(i+1)`, and it comes earlier in end order, so it ends no later than `o(i+1)`. If not, the granted requests are still `g1` to `gi` when the scan reaches `o(i+1)`, it overlaps none of them, and greedy grants it as `g(i+1)`. Either way, greedy's next grant ends no later than `o(i+1)`.
 2. **Ahead means best.** Suppose the other set is larger, `m > k`. Then `o(k+1)` starts at or after the end of `ok`, which is at or after the end of `gk`, so it overlaps none of greedy's grants and comes after `gk` in the scan. Greedy would have granted it, a `(k+1)`-th request. So `m <= k`: no set of requests that fit together is larger than greedy's.
 
 The proof never used how ties are broken, so earliest end is safe with any tie order.
@@ -251,15 +241,15 @@ The proof never used how ties are broken, so earliest end is safe with any tie o
 ## When to use it
 
 - **Anything with a start and an end**: bookings, time windows, byte ranges, segments of a road, versions valid from one date to another.
-- **"Which overlap", "what do they cover together", "is there a break"**: sort by start and walk once with a run.
+- **"Which overlap", "how long without a break"**: sort by start and walk once, remembering how far the intervals so far reach.
 - **"The most that fit together"**: sort by end, grant what fits.
 - **"How many at once"**: turn the endpoints into events and sweep them, as the [sweep line guide](../sweep-lines/guide.md) shows.
 
 ## Common traps
 
 - **Using the other convention's test.** A half-open test on closed intervals misses intervals that share one point; a closed test on half-open ones reports touching intervals as overlapping. Find the convention in the statement and its examples before writing `<` or `<=`.
-- **Sorting by the wrong end.** Start order finds what runs together; it does not choose the most. End order chooses; it does not group overlapping intervals into runs.
-- **Comparing only neighbors in unsorted input.** Neighbors in the input say nothing about overlap; neighbors after sorting by start do.
+- **Sorting by the wrong end.** Start order finds what runs together; it does not choose the most. End order chooses; it does not bring overlapping intervals together.
+- **Assuming an order the input does not promise.** Interval lists often arrive in no particular order. Rely on an order only when the statement guarantees it or your code has made it.
 - **Empty intervals.** `[t, t)` holds no point, so it overlaps nothing, but code that only compares starts and ends may still count it. Decide whether the input can contain one, and what it means.
 - **Trusting a rule that passes the examples.** Shortest first was wrong on 6 inputs out of 1,940. Compare a new rule with brute force on every small input, as the example does.
 
@@ -268,7 +258,7 @@ The proof never used how ties are broken, so earliest end is safe with any tie o
 | Step | Time | Space |
 |------|------|-------|
 | Sort n intervals | O(n log n) | O(n) for `sorted`, which copies the list |
-| Walk the sorted intervals with a run | O(n) | O(1) besides the output |
+| Walk the sorted intervals once | O(n) | O(1) besides the output |
 | Earliest end, written as in the example | O(n · k) for k grants, since each request is checked against every grant | O(k) |
 | Check every pair for overlap | O(n²) | O(1) |
 | Brute force over every subset | O(2^n · n²) | O(n) |

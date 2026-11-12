@@ -1,32 +1,23 @@
-"""A channel airs segments [start, end) in minutes, some of them at the same time. Find the longest
-stretch during which something was on air without a break."""
-
-from collections.abc import Iterator
+"""A channel airs segments [start, end) in minutes, some of them at the same time. How long is the
+longest stretch during which something was on air without a break?"""
 
 Interval = tuple[int, int]
 
 
-def show(interval: Interval) -> str:
-    start, end = interval
-    return f"[{start:>2}, {end:>2})"
-
-
-def unbroken_runs(segments: list[Interval]) -> Iterator[Interval]:
-    """Yield the stretches without a break, from left to right, printing each step."""
+def longest_unbroken(segments: list[Interval]) -> int:
+    """Minutes of the longest stretch with no break, printing how long the current one lasts."""
     ordered = sorted(segments)
-    run_start, run_end = ordered[0]
-    print(f"{show(ordered[0])} opens a run")
-    for start, end in ordered[1:]:
-        if start <= run_end:
-            run_end = max(run_end, end)  # a segment may end inside the run
-            print(f"{show((start, end))} joins it: {show((run_start, run_end))}")
+    since, reach = ordered[0]  # when the current stretch began, and how far it reaches so far
+    longest = 0
+    for start, end in ordered:
+        if start > reach:
+            since, reach = start, end
         else:
-            print(f"{show((start, end))} starts after {run_end}: a new run opens")
-            yield run_start, run_end
-            run_start, run_end = start, end
-    yield run_start, run_end
+            reach = max(reach, end)  # a segment may end before the stretch does
+        longest = max(longest, reach - since)
+        print(f"[{start:>2}, {end:>2}): on air for {reach - since:>2} minutes without a break")
+    return longest
 
 
 segments = [(30, 45), (0, 10), (8, 20), (12, 15), (20, 26), (40, 52), (60, 70)]
-start, end = max(unbroken_runs(segments), key=lambda run: run[1] - run[0])
-print(f"longest unbroken stretch: [{start}, {end}), {end - start} minutes")
+print("longest unbroken stretch:", longest_unbroken(segments), "minutes")
