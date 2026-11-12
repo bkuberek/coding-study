@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 51, url: "https://leetcode.com/problems/n-queens/"}
 related: [permutations, valid-sudoku, generate-parentheses]
+guides: [backtracking]
 order: 10
 estimate_minutes: 35

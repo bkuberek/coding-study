@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 198, url: "https://leetcode.com/problems/house-robber/"}
 related: [climbing-stairs, stock-with-cooldown, job-scheduling-max-profit]
+guides: [one-dimensional-tables]
 order: 2
 estimate_minutes: 20

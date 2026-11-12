@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 312, url: "https://leetcode.com/problems/burst-balloons/"}
 related: [maximal-square, target-sum]
+guides: [choosing-states]
 order: 9
 estimate_minutes: 45

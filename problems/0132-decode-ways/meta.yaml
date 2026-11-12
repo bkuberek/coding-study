@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 91, url: "https://leetcode.com/problems/decode-ways/"}
 related: [climbing-stairs, word-break]
+guides: [one-dimensional-tables]
 order: 7
 estimate_minutes: 25

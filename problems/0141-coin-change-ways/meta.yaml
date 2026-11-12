@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 518, url: "https://leetcode.com/problems/coin-change-ii/"}
 related: [target-sum, unique-paths]
+guides: [choosing-states]
 order: 4
 estimate_minutes: 25

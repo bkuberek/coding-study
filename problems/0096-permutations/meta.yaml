@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 46, url: "https://leetcode.com/problems/permutations/"}
 related: [subsets, n-queens, generate-parentheses]
+guides: [backtracking]
 order: 2
 estimate_minutes: 15
