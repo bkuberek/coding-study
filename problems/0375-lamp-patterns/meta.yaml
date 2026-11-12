@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0375"
+slug: lamp-patterns
+title: Lamp Patterns
+summary: "List every way to switch a row of n lamps on or off so that no two neighbouring lamps are on, as strings of 0 and 1 in increasing order."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [backtracking]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: lampPatterns
+    params:
+      - {name: n, type: int}
+    returns: {type: "list<string>"}
+comparator: {type: exact}
+approaches:
+  - {id: filter-all-strings, name: "Write all 2^n strings of 0 and 1, keep those without two 1s in a row", role: brute, time: "O(n * 2^n)", space: "O(n * 1.62^n)", time_class: "2^n", space_class: "2^n", oracle: true}
+  - {id: choose-explore-undo, name: "Choose a lamp state, explore the rest, undo the choice; never choose 1 after 1", role: optimal, time: "O(n * 1.62^n)", space: "O(n * 1.62^n)", time_class: "2^n", space_class: "2^n"}
+perf:
+  size_param: n lamps (generated inputs stop at 14, the maximum)
+  size_ladder: [8, 11, 14]
+  expected_from: choose-explore-undo
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 3211, url: "https://leetcode.com/problems/generate-binary-strings-without-adjacent-zeros/"}
+related: [subsets, generate-parentheses, phone-letter-combinations]
+order: 0
+estimate_minutes: 15

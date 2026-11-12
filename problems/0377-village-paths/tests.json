@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["VillageMap", "addPath", "addPath", "addPath", "addPath", "canReach", "canReach", "groupSize", "groupCount"], "args": [[5], [0, 1], [2, 3], [1, 0], [1, 2], [0, 3], [0, 4], [3], []], "expected": [null, true, true, false, true, true, false, 4, 2]},
+    {"id": "ex2", "visible": true, "ops": ["VillageMap", "groupCount", "addPath", "addPath", "canReach", "addPath", "canReach", "groupSize", "groupCount"], "args": [[4], [], [3, 2], [0, 1], [1, 2], [2, 0], [1, 3], [1], []], "expected": [null, 4, true, true, false, true, true, 4, 1]},
+    {"id": "h1", "ops": ["VillageMap", "canReach", "addPath", "groupSize", "groupCount"], "args": [[1], [0, 0], [0, 0], [0], []], "expected": [null, true, false, 1, 1], "note": "a single village"},
+    {"id": "h2", "ops": ["VillageMap", "addPath", "groupCount", "groupSize"], "args": [[3], [1, 1], [], [1]], "expected": [null, false, 3, 1], "note": "a path from a village to itself joins nothing"},
+    {"id": "h3", "ops": ["VillageMap", "addPath", "addPath", "addPath", "addPath", "addPath", "canReach", "groupSize", "groupCount"], "args": [[6], [4, 5], [3, 4], [2, 3], [1, 2], [0, 1], [0, 5], [3], []], "expected": [null, true, true, true, true, true, true, 6, 1], "note": "a chain built from its far end"},
+    {"id": "h4", "ops": ["VillageMap", "addPath", "addPath", "addPath", "addPath", "addPath", "canReach", "groupSize", "addPath"], "args": [[6], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [3, 5], [4], [2, 4]], "expected": [null, true, true, true, true, true, true, 6, false], "note": "a star around village 0; the last path is redundant"},
+    {"id": "h5", "ops": ["VillageMap", "addPath", "addPath", "addPath", "addPath", "addPath", "addPath", "canReach", "groupSize", "groupSize", "groupCount", "addPath", "groupSize", "groupCount", "canReach"], "args": [[8], [0, 1], [2, 3], [0, 2], [4, 5], [6, 7], [4, 6], [1, 7], [0], [7], [], [3, 6], [5], [], [1, 7]], "expected": [null, true, true, true, true, true, true, false, 4, 4, 2, true, 8, 1, true], "note": "two groups of four, then one path joins them"},
+    {"id": "h6", "ops": ["VillageMap", "addPath", "addPath", "addPath", "groupSize", "groupCount"], "args": [[4], [0, 1], [0, 1], [1, 0], [0], []], "expected": [null, true, false, false, 2, 3], "note": "the same path built again, in either direction"},
+    {"id": "h7", "ops": ["VillageMap", "addPath", "addPath", "addPath", "addPath", "groupCount"], "args": [[4], [0, 1], [1, 2], [2, 3], [3, 0], []], "expected": [null, true, true, true, false, 1], "note": "a path that closes a loop joins nothing"},
+    {"id": "h8", "ops": ["VillageMap", "canReach", "canReach", "groupSize", "groupCount"], "args": [[5], [0, 4], [2, 2], [3], []], "expected": [null, false, true, 1, 5], "note": "questions before any path exists"},
+    {"id": "h9", "ops": ["VillageMap", "addPath", "groupSize", "addPath", "groupSize", "addPath", "groupSize", "groupSize", "groupCount"], "args": [[7], [6, 5], [6], [5, 4], [4], [0, 6], [0], [1], []], "expected": [null, true, 2, true, 3, true, 4, 1, 4], "note": "group sizes grow as paths join"},
+    {"id": "h10", "ops": ["VillageMap", "addPath", "groupCount", "addPath", "groupCount", "addPath", "groupCount", "addPath", "groupCount"], "args": [[5], [0, 1], [], [2, 3], [], [1, 2], [], [4, 0], []], "expected": [null, true, 4, true, 3, true, 2, true, 1], "note": "the group count after each path"},
+    {"id": "h11", "ops": ["VillageMap", "addPath", "addPath", "addPath", "addPath", "addPath", "addPath", "addPath", "addPath", "addPath", "canReach", "canReach", "groupSize", "groupCount"], "args": [[10], [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [0, 9], [9, 0], [5], []], "expected": [null, true, true, true, true, true, true, true, true, true, true, true, 10, 1], "note": "a chain built in order, then asked from both ends"},
+    {"id": "g1", "generate": {"n": 4000, "seed": 377}, "note": "random paths at the largest size"}
+  ]
+}
