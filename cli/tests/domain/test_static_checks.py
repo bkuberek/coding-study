@@ -402,6 +402,10 @@ def test_a_helper_for_a_language_the_problem_does_not_list_is_an_error(problems)
     assert [issue for issue in found if "tools.py" in issue] == []
 
 
+def test_hidden_files_in_helpers_are_ignored(problems):
+    assert errors(content(problems, helper_files=(".DS_Store", "._tools.py", "tools.py"))) == []
+
+
 FLOAT = ComparatorSpec(ComparatorType.FLOAT)
 FLOAT_ON_DECIMAL = (
     '"float" applies its tolerance to doubles only, and {subject} decimal and no double: '

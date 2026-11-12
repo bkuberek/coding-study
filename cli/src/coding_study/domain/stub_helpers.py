@@ -2,9 +2,10 @@
 of one language ends with, for a tool the problem needs and that language's standard library
 lacks, such as SHA-256 in Rust.
 
-`helpers/` holds at most one file per language, of any name with the language's extension.
-`cstudy start` appends it to the generated stub, and `cstudy verify` builds the stub with it (D1).
-A reference that uses the helper carries its own copy, since references are copied unchanged.
+`helpers/` holds at most one file per language, of any name with the language's extension; a
+hidden file, such as `.DS_Store`, is ignored. `cstudy start` appends the helper to the generated
+stub, and `cstudy verify` builds the stub with it (D1). A reference that uses the helper carries
+its own copy, since references are copied unchanged.
 """
 
 from collections.abc import Sequence
@@ -25,6 +26,11 @@ _BLANK_LINES = {
 ruff formats them, and one elsewhere."""
 
 
+def helper_names(file_names: Sequence[str]) -> tuple[str, ...]:
+    """The names of `helpers/` that count: every one but hidden files."""
+    return tuple(name for name in file_names if not name.startswith("."))
+
+
 def helper_language(file_name: str) -> Language | None:
     """The language whose extension the file name ends with, or None."""
     stem, dot, extension = file_name.rpartition(".")
@@ -38,7 +44,8 @@ def helper_language(file_name: str) -> Language | None:
 def helper_file(language: Language, file_names: Sequence[str]) -> str | None:
     """The helper of `language` among the names of `helpers/`, relative to the problem directory,
     or None when it has none."""
-    name = next((name for name in file_names if helper_language(name) is language), None)
+    names = helper_names(file_names)
+    name = next((name for name in names if helper_language(name) is language), None)
     return None if name is None else f"{HELPERS_DIRECTORY}/{name}"
 
 
@@ -57,7 +64,7 @@ def helper_issues(
     issue is the file relative to the problem directory and its message."""
     issues: list[tuple[str, str]] = []
     seen: set[Language] = set()
-    for name in file_names:
+    for name in helper_names(file_names):
         language = helper_language(name)
         location = f"{HELPERS_DIRECTORY}/{name}"
         if language is None or language not in languages:

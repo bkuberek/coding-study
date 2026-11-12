@@ -19,6 +19,13 @@ def test_the_helper_of_a_language_is_the_file_with_its_extension():
     assert helper_file(Language.GO, names) is None
 
 
+def test_hidden_files_are_no_helpers():
+    names = (".DS_Store", ".sha256.rs", "sha256.rs")
+    assert helper_file(Language.RUST, (".sha256.rs",)) is None
+    assert helper_file(Language.RUST, names) == "helpers/sha256.rs"
+    assert helper_issues(names, (Language.RUST,)) == []
+
+
 def test_a_kotlin_script_is_no_kotlin_helper():
     assert helper_file(Language.KOTLIN, ("build.kts",)) is None
     assert helper_language("build.kts") is None

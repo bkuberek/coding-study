@@ -68,6 +68,7 @@ from coding_study.domain.service_project import ENV_FILE, service_of
 from coding_study.domain.signature import ClassSignature, declared_types
 from coding_study.domain.starter_files import LOCK_FILES, cache_path
 from coding_study.domain.stress import StressScenario
+from coding_study.domain.stub_helpers import helper_names
 from coding_study.domain.type_dsl import (
     ArrayType,
     ListType,
@@ -506,7 +507,7 @@ class _Settings:
                 self._issues.error(name, "a project problem has none")
         if self._content.buggy_files:
             self._issues.error(BUGGY_DIRECTORY, "a project problem has none")
-        if self._content.helper_files:
+        if helper_names(self._content.helper_files):
             self._issues.error(HELPERS_DIRECTORY, "a project problem has none")
 
     def _cases(self) -> None:

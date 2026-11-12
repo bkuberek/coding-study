@@ -61,7 +61,7 @@ from coding_study.domain.service_project import service_of
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, output_type
 from coding_study.domain.statement import example_marker
 from coding_study.domain.stress import StressScenario
-from coding_study.domain.stub_helpers import helper_issues
+from coding_study.domain.stub_helpers import helper_issues, helper_names
 from coding_study.domain.type_dsl import Scalar, scalars_of
 from coding_study.domain.value_checks import case_issues
 
@@ -376,7 +376,7 @@ def _helper_files(issues: _Issues, content: ProblemContent) -> None:
     """S8: starter helpers, one per listed language, only for a generated starter. A project
     problem has none, which S14 reports."""
     meta = content.problem.meta
-    if not content.helper_files or meta.kind is ProblemKind.PROJECT:
+    if not helper_names(content.helper_files) or meta.kind is ProblemKind.PROJECT:
         return
     if meta.stub is not StubSource.GENERATED:
         issues.error(HELPERS_DIRECTORY, f"present but stub is {meta.stub}")

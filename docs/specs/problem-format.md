@@ -110,7 +110,7 @@ A problem may need a tool that one language's standard library lacks, such as SH
 
 | Rule | Detail |
 |------|--------|
-| Files | `helpers/<name>.<ext>`, any name, with the extension of a language in `languages` (`py`, `ts`, `java`, `kt`, `go`, `rs`); at most one per language. A file for another language, or a second one for the same language, is an error ([S8](authoring.md#static)). |
+| Files | `helpers/<name>.<ext>`, any name, with the extension of a language in `languages` (`py`, `ts`, `java`, `kt`, `go`, `rs`); at most one per language. A file for another language, or a second one for the same language, is an error ([S8](authoring.md#static)). A hidden file, whose name starts with `.` (`.DS_Store`), is ignored |
 | Where | A generated starter only: `stub: buggy` and project problems have none, since their starter is a file or a tree of their own |
 | Text | Code that can follow the stub at the top level of its file: no `package` line, which the stub's file already has, and no import, since Go, Java and Kotlin take none after a declaration; a helper there writes qualified names instead (`java.security.MessageDigest`), and `sha256.rs` needs no `use` line |
 | References | References are copied unchanged, so a reference that uses the helper carries its own copy. A problem's content test can hold the copy equal to the helper, as `0322`'s does |

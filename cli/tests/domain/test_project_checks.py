@@ -349,6 +349,12 @@ def test_a_project_problem_has_no_starter_helper(bank):
     assert [issue for issue in found if "maps to no language" in issue] == []
 
 
+def test_a_hidden_file_in_helpers_is_no_starter_helper_of_a_project(bank):
+    assert f"{DIRECTORY}/helpers: a project problem has none" not in errors(
+        content(bank, helper_files=(".DS_Store",))
+    )
+
+
 def test_a_project_problem_has_no_generate_cases(bank):
     problem = replace(bank, cases=(*bank.cases, Case("g1", GeneratedInput(10, 1), level=2)))
     assert f"{TESTS}: cases[6] g1: a project problem has no generate cases" in errors(
