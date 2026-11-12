@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0346"
+slug: path-exists-in-graph
+title: Path Exists in a Graph
+summary: "Given n nodes and a list of two-way connections, decide whether you can travel from one node to another. A first graph problem, built on an adjacency list."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [graphs]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: hasPath
+    params:
+      - {name: n, type: int}
+      - {name: edges, type: "int[][]"}
+      - {name: source, type: int}
+      - {name: target, type: int}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: edge-scan, name: Sweep the connection list until nothing new is reached, role: brute, time: "O(V * E)", space: "O(V)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: bfs, name: Adjacency list and a breadth-first search, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+  - {id: union-find, name: Merge the two ends of every connection, role: optimal, time: "O(V + E * α(V))", space: "O(V)", time_class: "n", space_class: "n"}
+perf:
+  size_param: V = n nodes, joined in one long chain
+  size_ladder: [250, 500, 1000, 2000]
+  expected_from: bfs
+  time_limit: {factor: 5}
+related: [count-connected-components, number-of-islands, redundant-connection]
+order: 0
+estimate_minutes: 20
