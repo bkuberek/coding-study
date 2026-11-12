@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0360"
+slug: virtual-memory-sim
+title: Virtual Memory Sim
+summary: "Build VirtualMemory, which translates addresses through a page table: a TLB in front of it, demand paging with FIFO, LRU and clock replacement, two-level tables and the working set."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+domains: [systems]
+job_roles: [general, platform]
+scope: function
+levels:
+  - {level: 1, title: Pages and the page table}
+  - {level: 2, title: The TLB}
+  - {level: 3, title: Page replacement}
+  - {level: 4, title: Two-level tables and the working set}
+signature:
+  class:
+    name: VirtualMemory
+    constructor: {params: [{name: pageSize, type: int}]}
+    methods:
+      - {name: split, level: 1, params: [{name: address, type: long}], returns: {type: "long[]"}}
+      - {name: mapPage, level: 1, params: [{name: page, type: long}, {name: frame, type: long}], returns: {type: bool}}
+      - {name: unmapPage, level: 1, params: [{name: page, type: long}], returns: {type: bool}}
+      - {name: translate, level: 1, params: [{name: address, type: long}], returns: {type: long}}
+      - {name: faults, level: 1, params: [], returns: {type: int}}
+      - {name: enableTlb, level: 2, params: [{name: entries, type: int}], returns: {type: void}}
+      - {name: flushTlb, level: 2, params: [], returns: {type: void}}
+      - {name: tlbHits, level: 2, params: [], returns: {type: int}}
+      - {name: tlbMisses, level: 2, params: [], returns: {type: int}}
+      - {name: useFrames, level: 3, params: [{name: count, type: int}, {name: policy, type: string}], returns: {type: void}}
+      - {name: resident, level: 3, params: [], returns: {type: "long[]"}}
+      - {name: walk, level: 4, params: [{name: address, type: long}, {name: entryBytes, type: int}], returns: {type: "long[]"}}
+      - {name: tableBytes, level: 4, params: [{name: addressBits, type: int}, {name: entryBytes, type: int}], returns: {type: "long[]"}}
+      - {name: workingSet, level: 4, params: [{name: window, type: int}], returns: {type: "long[]"}}
+      - {name: thrashing, level: 4, params: [{name: window, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: page-map, name: "A page map, a TLB in use order and a frame table", role: optimal, time: "O(t + f) per translation, t the TLB entries and f the frames; O(m) per tableBytes over m pages in the table; O(w log w) per workingSet over w references", space: "O(m + t + f + r) for r references", time_class: "n", space_class: "n"}
+related: [lru-cache, cpu-scheduler-sim]
+estimate_minutes: 120
