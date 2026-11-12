@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0352"
+slug: classification-metrics
+title: Classification Metrics
+summary: "Write classificationMetrics: score a classifier at a threshold with confusion counts, accuracy, precision, recall and F1 per class, their macro and micro averages, and ROC-AUC."
+status: ready
+difficulty: easy
+track: practical
+kind: function
+patterns: [sorting, arrays-hashing]
+domains: [ai-llm]
+job_roles: [ml-engineer, ai-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: classificationMetrics
+    params:
+      - {name: labels, type: "int[]"}
+      - {name: scores, type: "double[][]"}
+      - {name: threshold, type: double}
+    returns: {type: "double[][]"}
+comparator: {type: float, tolerance: 1.0e-9}
+approaches:
+  - {id: counts-and-rank-sum, name: Count the four outcomes per class and rank the scores once for the AUC, role: optimal, time: "O(k n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [calibration-metrics, retrieval-metrics, gradient-descent-models]
+estimate_minutes: 35
