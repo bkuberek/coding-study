@@ -9,7 +9,8 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
-from coding_study.application.learn import guide_page
+from coding_study.application.learn import PathView, guide_page
+from coding_study.domain.concept_guides import LearningPath, PathStep, StepProgress
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
 from coding_study.entrypoints.shared import ExitCode
@@ -239,3 +240,25 @@ def test_a_path_as_json(environment: Environment):
 def test_usage_errors_exit_3(environment: Environment, arguments: tuple[str, ...], message: str):
     result = invoke(*arguments)
     assert (result.exit_code, message in result.output) == (ExitCode.USAGE_ERROR, True)
+
+
+def test_a_path_with_long_slugs_keeps_its_columns_aligned():
+    steps = tuple(
+        StepProgress(PathStep.guide(slug), title, done=False, status="not read")
+        for slug, title in (
+            ("hash-maps", "Hash maps"),
+            ("longest-substring-without-repeats", "Longest Substring"),
+            ("longest-repeating-replacement", "Longest Repeating"),
+        )
+    )
+    view = PathView(LearningPath("windows", "Windows", "Sliding windows.", ()), steps)
+    buffer = io.StringIO()
+    learn._print_path(Console(file=buffer, width=200), view, as_json=False)
+    rows = buffer.getvalue().splitlines()[3:7]
+    assert {
+        row.index(label)
+        for row, label in zip(
+            rows, ("TITLE", "Hash maps", "Longest Substring", "Longest Repeating"), strict=True
+        )
+    } == {rows[0].index("TITLE")}
+    assert {row.index("not read") for row in rows[1:]} == {rows[0].index("STATUS")}

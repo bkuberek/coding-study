@@ -37,6 +37,7 @@ READ_WIDTH = 6
 POSITION_WIDTH = 4
 KIND_WIDTH = 9
 STEP_WIDTH = 27
+COLUMN_GAP = 2
 TARGET_WIDTH = 9
 STATUS_WIDTH = 16
 NOT_READ = "-"
@@ -182,22 +183,23 @@ def _print_path(output: Console, view: PathView, as_json: bool) -> None:
     output.print(Text(f"{view.path.slug}  {view.path.title}", style="bold"))
     output.print(Text(view.path.summary))
     output.print(Text(f"{view.done} of {view.total} done"))
+    step_width = max(STEP_WIDTH, *(len(step.step.slug) + COLUMN_GAP for step in view.steps))
     header = (
-        f"{'#'.ljust(POSITION_WIDTH)}{'KIND'.ljust(KIND_WIDTH)}{'STEP'.ljust(STEP_WIDTH)}"
+        f"{'#'.ljust(POSITION_WIDTH)}{'KIND'.ljust(KIND_WIDTH)}{'STEP'.ljust(step_width)}"
         f"{'TARGET'.ljust(TARGET_WIDTH)}{'STATUS'.ljust(STATUS_WIDTH)}TITLE"
     )
     output.print(Text(header, style="bold"))
     for position, step in enumerate(view.steps, start=1):
-        output.print(Text(_step_line(position, step)))
+        output.print(Text(_step_line(position, step, step_width)))
     if view.next_step is not None:
         output.print(_labelled("next", _command(view.next_step)))
 
 
-def _step_line(position: int, step: StepProgress) -> str:
+def _step_line(position: int, step: StepProgress, step_width: int) -> str:
     target = f"level {step.step.level}" if step.step.level is not None else NO_TARGET
     return (
         f"{str(position).ljust(POSITION_WIDTH)}{step.step.kind.ljust(KIND_WIDTH)}"
-        f"{step.step.slug.ljust(STEP_WIDTH)}{target.ljust(TARGET_WIDTH)}"
+        f"{step.step.slug.ljust(step_width)}{target.ljust(TARGET_WIDTH)}"
         f"{step.status.ljust(STATUS_WIDTH)}{step.title}"
     )
 
