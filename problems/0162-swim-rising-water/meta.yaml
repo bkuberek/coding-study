@@ -29,7 +29,6 @@ perf:
 references:
   leetcode: {number: 778, url: "https://leetcode.com/problems/swim-in-rising-water/"}
 related: [network-delay-time, min-obstacle-removal, pacific-atlantic-water-flow]
-guides: [binary-search-on-the-answer]
+guides: [binary-search-on-the-answer, weighted-shortest-paths]
 order: 5
-guides: [weighted-shortest-paths]
 estimate_minutes: 35
