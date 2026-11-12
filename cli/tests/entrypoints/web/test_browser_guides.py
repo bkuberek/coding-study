@@ -35,7 +35,7 @@ WAIT_MS = 60_000
 GUIDE = "hash-maps-and-sets"
 GUIDE_TITLE = "Hash maps and sets"
 PATH = "hashing"
-STEPS = 21
+STEPS = 22
 GUIDES_LINK = ".topbar nav a[data-view='guides']"
 THEME_BUTTON = ".statusbar button:has-text('theme')"
 PATH_CARD = ".path-card"
@@ -279,7 +279,7 @@ def test_the_path_shows_its_steps_their_done_state_and_level_targets(seen: Seen)
 
 
 def test_the_problem_view_links_to_its_guides(seen: Seen):
-    assert seen.problem_guides == [f"#/guides/{GUIDE}"]
+    assert seen.problem_guides == ["#/guides/your-first-problem", f"#/guides/{GUIDE}"]
 
 
 def test_nothing_is_logged(seen: Seen):
