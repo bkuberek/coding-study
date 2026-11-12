@@ -17,6 +17,7 @@ interface Segment {
   seq: number;
   length: number;
   sent: boolean;
+  timedOut: boolean;
 }
 
 interface Timed {
@@ -75,7 +76,7 @@ export class ReliableTransport {
     let end = this.segments.length > 0 ? ReliableTransport.end(this.segments[this.segments.length - 1]) : 0;
     while (length > 0) {
       const size = Math.min(length, MSS);
-      this.segments.push({ seq: end, length: size, sent: false });
+      this.segments.push({ seq: end, length: size, sent: false, timedOut: false });
       end += size;
       length -= size;
     }
@@ -124,14 +125,17 @@ export class ReliableTransport {
 
   private timeout(at: number): number[][] {
     const before = this.congestion();
+    const oldest = this.oldestUnacked();
     if (this.cwnd !== null) {
-      this.ssthresh = Math.max(Math.floor((this.nxt - this.una) / 2), 2 * MSS);
+      // RFC 5681 holds ssthresh when the timer resends a segment it has resent before.
+      if (!oldest.timedOut) this.ssthresh = Math.max(Math.floor((this.nxt - this.una) / 2), 2 * MSS);
       this.cwnd = MSS;
       this.recovering = false;
       this.duplicates = 0;
       this.ackedInAvoidance = 0;
     }
-    const sent = [this.retransmit(this.oldestUnacked())];
+    oldest.timedOut = true;
+    const sent = [this.retransmit(oldest)];
     this.rto = Math.min(2 * this.rto, MAX_RTO);
     this.deadline = at + this.rto;
     this.note(at, before);

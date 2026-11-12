@@ -14,6 +14,7 @@ const (
 type segment struct {
 	seq, length int
 	sent        bool
+	timedOut    bool
 }
 
 func (s *segment) end() int { return s.seq + s.length }
@@ -148,14 +149,19 @@ func (r *ReliableTransport) expire(now int64) [][]int {
 
 func (r *ReliableTransport) timeout(at int64) [][]int {
 	cwnd, ssthresh := r.cwnd, r.ssthresh
+	oldest := r.oldestUnacked()
 	if r.cwnd != unlimited {
-		r.ssthresh = max((r.nxt-r.una)/2, 2*mss)
+		// RFC 5681 holds ssthresh when the timer resends a segment it has resent before.
+		if !oldest.timedOut {
+			r.ssthresh = max((r.nxt-r.una)/2, 2*mss)
+		}
 		r.cwnd = mss
 		r.recovering = false
 		r.duplicates = 0
 		r.ackedInAvoidance = 0
 	}
-	sent := [][]int{r.retransmit(r.oldestUnacked())}
+	oldest.timedOut = true
+	sent := [][]int{r.retransmit(oldest)}
 	r.rto = min(2*r.rto, maxRto)
 	r.deadline = at + r.rto
 	r.note(at, cwnd, ssthresh)

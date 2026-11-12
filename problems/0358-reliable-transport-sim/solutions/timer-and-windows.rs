@@ -12,6 +12,7 @@ struct Segment {
     seq: i32,
     length: i32,
     sent: bool,
+    timed_out: bool,
 }
 
 impl Segment {
@@ -104,7 +105,7 @@ impl ReliableTransport {
         let mut remaining = length;
         while remaining > 0 {
             let size = remaining.min(MSS);
-            self.segments.push(Segment { seq: end, length: size, sent: false });
+            self.segments.push(Segment { seq: end, length: size, sent: false, timed_out: false });
             end += size;
             remaining -= size;
         }
@@ -154,14 +155,18 @@ impl ReliableTransport {
 
     fn timeout(&mut self, at: i64) -> Vec<Vec<i32>> {
         let before = (self.cwnd, self.ssthresh);
+        let oldest = self.oldest_unacked();
         if self.cwnd.is_some() {
-            self.ssthresh = ((self.nxt - self.una) / 2).max(2 * MSS);
+            // RFC 5681 holds ssthresh when the timer resends a segment it has resent before.
+            if !self.segments[oldest].timed_out {
+                self.ssthresh = ((self.nxt - self.una) / 2).max(2 * MSS);
+            }
             self.cwnd = Some(MSS);
             self.recovering = false;
             self.duplicates = 0;
             self.acked_in_avoidance = 0;
         }
-        let oldest = self.oldest_unacked();
+        self.segments[oldest].timed_out = true;
         let mut sent = vec![self.retransmit(oldest)];
         self.rto = (2 * self.rto).min(MAX_RTO);
         self.deadline = at + self.rto;

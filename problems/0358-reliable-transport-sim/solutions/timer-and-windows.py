@@ -12,6 +12,7 @@ class Segment:
         self.seq = seq
         self.length = length
         self.sent = False
+        self.timed_out = False
 
     @property
     def end(self) -> int:
@@ -113,11 +114,14 @@ class ReliableTransport:
         before = self._congestion()
         oldest = self._oldest_unacked()
         if self._cwnd is not None:
-            self._ssthresh = max((self._nxt - self._una) // 2, 2 * MSS)
+            # RFC 5681 holds ssthresh when the timer resends a segment it has resent before.
+            if not oldest.timed_out:
+                self._ssthresh = max((self._nxt - self._una) // 2, 2 * MSS)
             self._cwnd = MSS
             self._recovering = False
             self._duplicates = 0
             self._acked_in_avoidance = 0
+        oldest.timed_out = True
         sent = [self._retransmit(oldest)]
         self._rto = min(2 * self._rto, MAX_RTO)
         self._deadline = at + self._rto

@@ -54,6 +54,7 @@ class Model:
         self.dups = 0
         self.in_recovery = False
         self.history: list[list[int]] = []
+        self.timer_resent: set[int] = set()
 
     # --- level 1
     def keep(self, position: int, char: str) -> None:
@@ -129,7 +130,8 @@ class Model:
     def expire(self, at: int, now: int) -> list[list[int]]:
         snapshot = (self.cwnd, self.ssthresh)
         if self.cwnd is not None:
-            self.on_timeout_congestion()
+            self.on_timeout_congestion(self.oldest() in self.timer_resent)
+        self.timer_resent.add(self.oldest())
         out = self.timeout_resends()
         self.rto = self.backed_off()
         self.expires = self.expiry_time(at, now) + self.rto
@@ -142,12 +144,16 @@ class Model:
     def trace_time(self, at: int, now: int) -> int:
         return at
 
-    def on_timeout_congestion(self) -> None:
-        self.ssthresh = max(self.flight_for_timeout() // 2, 2 * MSS)
+    def on_timeout_congestion(self, repeat: bool) -> None:
+        if not repeat:
+            self.ssthresh = max(self.flight_for_timeout() // 2, 2 * MSS)
         self.cwnd = MSS
         self.in_recovery = False
-        self.dups = 0
+        self.reset_on_timeout()
         self.counted = 0
+
+    def reset_on_timeout(self) -> None:
+        self.dups = 0
 
     def flight_for_timeout(self) -> int:
         return self.nxt - self.una
@@ -611,18 +617,32 @@ class TimeoutHalvesCwnd(Model):
 class TimeoutKeepsCwnd(Model):
     """Lowers ssthresh on a timeout but keeps cwnd."""
 
-    def on_timeout_congestion(self) -> None:
+    def on_timeout_congestion(self, repeat: bool) -> None:
         cwnd = self.cwnd
-        super().on_timeout_congestion()
+        super().on_timeout_congestion(repeat)
         self.cwnd = cwnd
 
 
 class NoSsthreshFloor(Model):
     """Lets ssthresh fall below two MSS."""
 
-    def on_timeout_congestion(self) -> None:
-        super().on_timeout_congestion()
+    def on_timeout_congestion(self, repeat: bool) -> None:
+        super().on_timeout_congestion(repeat)
         self.ssthresh = (self.nxt - self.una) // 2
+
+
+class SsthreshRecomputedOnEveryTimeout(Model):
+    """Recomputes ssthresh even when the timer resends a segment it has resent before."""
+
+    def on_timeout_congestion(self, repeat: bool) -> None:
+        super().on_timeout_congestion(False)
+
+
+class DuplicatesSurviveTimeout(Model):
+    """Keeps the count of duplicate ACKs across a timeout."""
+
+    def reset_on_timeout(self) -> None:
+        pass
 
 
 class DuplicateWithoutOutstandingData(Model):
@@ -679,9 +699,9 @@ class DuplicatesNeverReset(Model):
 class TimeoutLeavesRecoveryOn(Model):
     """Stays in fast recovery after a timeout."""
 
-    def on_timeout_congestion(self) -> None:
+    def on_timeout_congestion(self, repeat: bool) -> None:
         recovering = self.in_recovery
-        super().on_timeout_congestion()
+        super().on_timeout_congestion(repeat)
         self.in_recovery = recovering
 
 

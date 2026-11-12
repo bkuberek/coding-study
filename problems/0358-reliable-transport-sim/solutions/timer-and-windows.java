@@ -22,6 +22,7 @@ public class ReliableTransport {
         final int seq;
         final int length;
         boolean sent = false;
+        boolean timedOut = false;
 
         Segment(int seq, int length) {
             this.seq = seq;
@@ -138,15 +139,20 @@ public class ReliableTransport {
     private List<int[]> timeout(long at) {
         Integer cwndBefore = cwnd;
         int ssthreshBefore = ssthresh;
+        Segment oldest = oldestUnacked();
         if (cwnd != null) {
-            ssthresh = Math.max((nxt - una) / 2, 2 * MSS);
+            // RFC 5681 holds ssthresh when the timer resends a segment it has resent before.
+            if (!oldest.timedOut) {
+                ssthresh = Math.max((nxt - una) / 2, 2 * MSS);
+            }
             cwnd = MSS;
             recovering = false;
             duplicates = 0;
             ackedInAvoidance = 0;
         }
+        oldest.timedOut = true;
         List<int[]> sent = new ArrayList<>();
-        sent.add(retransmit(oldestUnacked()));
+        sent.add(retransmit(oldest));
         rto = Math.min(2 * rto, MAX_RTO);
         deadline = at + rto;
         note(at, cwndBefore, ssthreshBefore);

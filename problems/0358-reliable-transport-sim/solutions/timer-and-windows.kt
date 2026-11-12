@@ -8,6 +8,7 @@ private const val DUPLICATE_THRESHOLD = 3
 
 private class Segment(val seq: Int, val length: Int) {
     var sent = false
+    var timedOut = false
     val end get() = seq + length
 }
 
@@ -107,14 +108,17 @@ class ReliableTransport {
 
     private fun timeout(at: Long): List<IntArray> {
         val before = cwnd to ssthresh
+        val oldest = oldestUnacked()
         if (cwnd != null) {
-            ssthresh = maxOf((nxt - una) / 2, 2 * MSS)
+            // RFC 5681 holds ssthresh when the timer resends a segment it has resent before.
+            if (!oldest.timedOut) ssthresh = maxOf((nxt - una) / 2, 2 * MSS)
             cwnd = MSS
             recovering = false
             duplicates = 0
             ackedInAvoidance = 0
         }
-        val sent = mutableListOf(retransmit(oldestUnacked()))
+        oldest.timedOut = true
+        val sent = mutableListOf(retransmit(oldest))
         rto = minOf(2 * rto, MAX_RTO)
         deadline = at + rto
         note(at, before)
