@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Common binary search mistakes
+summary: The three conditions every correct binary search meets, and the bugs that break them, from loops that never end and off-by-one bounds to unsigned underflow, predicates that are not monotone, and floating-point stalls.
+level: core
+prerequisites: [searching-a-sorted-array, lower-and-upper-bounds]
+related: [binary-search-on-the-answer]
+problems: [debug-binary-search-bounds, debug-unsigned-underflow]
