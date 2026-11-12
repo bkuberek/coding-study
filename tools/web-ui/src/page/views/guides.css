@@ -138,23 +138,48 @@
   border-top: 1px solid var(--rule);
 }
 
-/* A diagram: Mermaid's SVG, as wide as it is drawn and never wider than the text. */
+/* A diagram: its SVG drawing in the page's theme, as wide as it is drawn and never wider than
+   the text, then its description. The light and dark drawings are both in the figure, and the
+   theme shows one, as it sets the page's colours (app.css). */
 .diagram {
   margin: 20px 0;
-  overflow-x: auto;
 }
 
-.diagram > svg {
+.diagram-image {
   display: block;
   max-width: 100%;
   height: auto;
   margin: 0 auto;
 }
 
-.diagram[aria-busy="true"] {
-  min-height: 120px;
-  background: var(--paper-sunken);
-  border-radius: var(--radius);
+.diagram-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .diagram-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .diagram-dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] .diagram-light {
+    display: none;
+  }
+
+  :root[data-theme="system"] .diagram-dark {
+    display: block;
+  }
+}
+
+.diagram figcaption {
+  max-width: 68ch;
+  margin: 8px auto 0;
+  font-size: var(--text-s);
+  color: var(--ink-soft);
+  text-align: center;
 }
 
 .diagram-text {

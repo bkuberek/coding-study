@@ -1,10 +1,8 @@
 """The committed front end stays within the page-weight budget of NFR-12
-(docs/specs/web-ui.md#front-end-assets): the whole bundle without the Vim, code-intelligence and
-Mermaid chunks is at most 1,200 KB raw and 400 KB gzip, and what the page loads before a file of
-one language is editable is at most 600 KB raw. The code-intelligence chunk has a budget of its
-own, at most 64 KB raw and 24 KB gzip, and holds no `marked`. Mermaid, which draws a guide's
-diagrams, has its own too, at most 3,584 KB raw and 1,024 KB gzip with every diagram type it can
-draw, and loads only when a guide with a diagram opens. A KB is 1024 bytes, as
+(docs/specs/web-ui.md#front-end-assets): the whole bundle without the Vim and code-intelligence
+chunks is at most 1,200 KB raw and 400 KB gzip, and what the page loads before a file of one
+language is editable is at most 600 KB raw. The code-intelligence chunk has a budget of its own, at
+most 64 KB raw and 24 KB gzip, and holds no `marked`. A KB is 1024 bytes, as
 `tools/web-ui/build.sh` prints sizes.
 
 What the page loads is the static-import closure of `app.js`, plus `app.css`; opening a file adds
@@ -27,8 +25,6 @@ WHOLE_GZIP_KB = 400
 EDITABLE_RAW_KB = 600
 INTELLIGENCE_RAW_KB = 64
 INTELLIGENCE_GZIP_KB = 24
-DIAGRAMS_RAW_KB = 3584
-DIAGRAMS_GZIP_KB = 1024
 STATIC_IMPORT = re.compile(r'(?:from|import)\s*"(\.{1,2}/[^"]+\.js)"')
 DYNAMIC_IMPORT = re.compile(r'import\("(\.{1,2}/[^"]+\.js)"\)')
 STYLESHEET = re.compile(r'"(chunks/[^"]+\.css)"')
@@ -91,31 +87,9 @@ def intelligence() -> set[Path]:
     return (closure(entry) - held) | linked
 
 
-def reach(entry: Path, around: frozenset[Path] = frozenset()) -> set[Path]:
-    """The module and every module it imports, statically or with `import()`, without going
-    through a module of `around`."""
-    seen: set[Path] = set()
-    pending = [entry.resolve()]
-    while pending:
-        current = pending.pop()
-        if current not in seen and current not in around:
-            seen.add(current)
-            static, dynamic = imports(current)
-            pending.extend([*static, *dynamic])
-    return seen
-
-
-def diagrams() -> set[Path]:
-    """The diagrams chunk, which the Guides view fetches with `import()` when a guide with a
-    diagram opens, and Mermaid with every diagram type it draws: all it reaches that the rest of
-    the page does not."""
-    entry = chunk("diagrams").resolve()
-    return reach(entry) - reach(STATIC / "app.js", frozenset({entry}))
-
-
 def without_optional_chunks() -> set[Path]:
-    """Every script and stylesheet but the Vim chunk, the code-intelligence files and Mermaid's."""
-    optional = intelligence() | diagrams()
+    """Every script and stylesheet but the Vim chunk and the code-intelligence files."""
+    optional = intelligence()
     return {
         path.resolve()
         for path in STATIC.rglob("*")
@@ -169,47 +143,20 @@ def test_the_page_loads_neither_code_intelligence_module_until_the_preference_is
     ) == (False, False, True, True)
 
 
-def test_mermaid_is_within_its_raw_budget():
-    assert raw_kb(diagrams()) <= DIAGRAMS_RAW_KB
-
-
-def test_mermaid_is_within_its_gzip_budget():
-    assert gzip_kb(diagrams()) <= DIAGRAMS_GZIP_KB
-
-
-def test_only_a_guide_with_a_diagram_fetches_mermaid():
-    """The Guides view is a chunk the page fetches when it first opens, and it fetches the
-    diagrams chunk with `import()` only once a guide has a diagram: neither the page, nor a file
-    being edited, nor the Guides view itself loads any of Mermaid."""
-    view = chunk("guides").resolve()
-    fetched_by_page = {
-        found for module in page() if module.suffix == ".js" for found in imports(module)[1]
-    }
-    loaded = page() | closure(chunk("editor")) | closure(view)
-    assert (
-        view in fetched_by_page,
-        chunk("diagrams").resolve() in imports(view)[1],
-        sorted(path.name for path in loaded & diagrams()),
-    ) == (True, True, [])
-
-
-def test_mermaid_holds_every_diagram_type_a_guide_may_draw():
-    """The types `cstudy verify` allows in a guide (docs/specs/guides.md#diagrams)."""
-    names = {path.name.split("-")[0] for path in diagrams()}
-    assert {"flowDiagram", "sequenceDiagram", "stateDiagram", "classDiagram", "erDiagram"} <= names
-
-
-def test_no_script_but_mermaids_holds_marked():
-    """`@codemirror/lsp-client` imports `marked`; the build gives it an escaping stand-in, so its
-    source, which names its repository in an error message, is in no script the page or the
-    editor loads. Mermaid's chunks hold it, to read the Markdown a diagram's label may hold."""
-    mermaid = diagrams()
+def test_no_script_holds_marked():
+    """`@codemirror/lsp-client` imports `marked`; the build aliases it to an escaping stand-in, so
+    its source, which names its repository in an error message, is nowhere."""
     holding = [
         path.name
         for path in STATIC.rglob("*.js")
-        if path.resolve() not in mermaid and "github.com/markedjs/marked" in path.read_text()
+        if "github.com/markedjs/marked" in path.read_text()
     ]
     assert holding == []
+
+
+def test_the_licenses_do_not_list_marked():
+    licenses = (STATIC / "THIRD_PARTY_LICENSES.txt").read_text()
+    assert not re.search(r"^marked ", licenses, re.MULTILINE)
 
 
 def test_the_stand_in_for_marked_is_in_the_code_intelligence_chunk():

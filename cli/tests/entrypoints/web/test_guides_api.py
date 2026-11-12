@@ -2,7 +2,6 @@
 `cstudy learn --json`, a guide's HTML with its diagrams ready to draw, marking a guide read as
 `cstudy learn <guide> --done` does, and a problem's `guides`."""
 
-import html
 import json
 from pathlib import Path
 
@@ -15,7 +14,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
 from tests.fakes import NOW, make_environment
 from tests.guide_builders import DIAGRAM, write_guide, write_hashing
-from tests.web_server import WRITE_HEADERS, session_client, web_app
+from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, web_app
 
 GUIDES = "/api/v1/guides"
 PATHS = "/api/v1/paths"
@@ -76,15 +75,72 @@ def test_a_guide_is_the_document_of_cstudy_learn_with_its_html(client, monkeypat
     )
 
 
-def test_a_diagram_carries_its_source_and_hides_its_text_drawing(client):
+def test_a_diagram_is_its_light_and_dark_drawing_with_alt_text_and_a_caption(client):
+    page = client.get(f"{GUIDES}/hash-maps").json()["html"]
+    drawings = f"{GUIDES}/hash-maps/diagrams"
+    assert (
+        '<figure class="diagram">\n'
+        f'<img class="diagram-image diagram-light" src="{drawings}/1-light.svg" alt="Buckets" '
+        'width="40" height="20">\n'
+        f'<img class="diagram-image diagram-dark" src="{drawings}/1-dark.svg" alt="Buckets" '
+        'width="40" height="20">\n'
+        "<figcaption>A key lands in a bucket.</figcaption>\n</figure>\n"
+    ) in page
+
+
+def test_neither_the_source_nor_the_text_drawing_of_a_drawn_diagram_shows(client):
     page = client.get(f"{GUIDES}/hash-maps").json()["html"]
     assert (
-        f'<figure class="diagram" data-mermaid="{html.escape(DIAGRAM)}">' in page,
-        '<pre class="diagram-text" hidden><code>[k] --&gt; [b]\n</code></pre>' in page,
+        "[k] --&gt; [b]" in page,
+        "k --&gt; b" in page,
         "text-of-mermaid" in page,
         mermaid_digest(DIAGRAM) in page,
-        "language-mermaid" in page,
-    ) == (True, True, False, False, False)
+    ) == (False, False, False, False)
+
+
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_a_diagram_with_a_stale_or_missing_drawing_shows_its_text_drawing(
+    content_root, client, theme: str
+):
+    drawing = content_root / "guides" / "hash-maps" / "diagrams" / f"1-{theme}.svg"
+    drawing.write_text(drawing.read_text().replace("sha256:", "sha256:0", 1))
+    page = client.get(f"{GUIDES}/hash-maps").json()["html"]
+    assert (
+        '<pre class="diagram-text"><code>[k] --&gt; [b]\n</code></pre>' in page,
+        "<figcaption>A key lands in a bucket.</figcaption>" in page,
+        "<img" in page,
+    ) == (True, True, False)
+
+
+def test_a_drawing_is_served_as_an_svg_image(client, content_root):
+    response = client.get(f"{GUIDES}/hash-maps/diagrams/1-dark.svg")
+    file = content_root / "guides" / "hash-maps" / "diagrams" / "1-dark.svg"
+    assert (
+        response.status_code,
+        response.headers["content-type"],
+        response.headers["cache-control"],
+        response.text,
+    ) == (200, "image/svg+xml", "no-store", file.read_text())
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        f"{GUIDES}/hash-maps/diagrams/2-dark.svg",
+        f"{GUIDES}/hash-maps/diagrams/1-dark.png",
+        f"{GUIDES}/hash-maps/diagrams/..%2Fmeta.yaml",
+        f"{GUIDES}/nope/diagrams/1-dark.svg",
+    ],
+)
+def test_a_drawing_the_guide_does_not_have_is_not_found(client, path: str):
+    assert error(client.get(path))[:2] == (404, "not_found")
+
+
+def test_a_drawing_needs_the_session(content_root, tmp_path):
+    with anonymous_client(
+        web_app(tmp_path / "anonymous", make_environment(content_root))
+    ) as client:
+        assert client.get(f"{GUIDES}/hash-maps/diagrams/1-dark.svg").status_code == 401
 
 
 def test_a_guide_leaves_out_its_title_heading_which_the_view_shows(client):

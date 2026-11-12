@@ -32,8 +32,7 @@
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
     "@lezer/highlight": "1.2.5",
-    "@replit/codemirror-vim": "6.4.0",
-    "mermaid": "11.17.2"
+    "@replit/codemirror-vim": "6.4.0"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

@@ -29,4 +29,21 @@ def test_the_bundled_copy_holds_the_guides_cstudy_reads(content_root: Path, tmp_
     for name in ("problems", "schemas", "guides"):
         (bundled / name).symlink_to(content_root / name, target_is_directory=True)
     root = find_content_root({}, package)
-    assert FsGuideCatalog(root.path).path_slugs() == ("hashing",)
+    catalog = FsGuideCatalog(root.path)
+    assert (catalog.path_slugs(), sorted(catalog.diagrams("hash-maps"))) == (
+        ("hashing",),
+        ["diagrams/1-dark.svg", "diagrams/1-light.svg"],
+    )
+
+
+def test_the_wheel_ships_every_svg_drawing_of_the_catalog():
+    """`only-include` names the whole guides/ folder, and only the build's excludes leave files
+    out: no SVG drawing matches one."""
+    drawings = sorted((REPOSITORY_ROOT / "guides").glob("*/diagrams/*.svg"))
+    excluded = [
+        path
+        for path in drawings
+        for pattern in BUILD["exclude"]
+        if path.relative_to(REPOSITORY_ROOT).match(pattern.removeprefix("**/"))
+    ]
+    assert (len(drawings) > 0, excluded) == (True, [])

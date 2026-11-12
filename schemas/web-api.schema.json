@@ -420,7 +420,7 @@
     },
     "statement": { "description": "GET /api/v1/problems/{slug}/statement", "$ref": "#/$defs/markdown" },
     "guide": {
-      "description": "GET /api/v1/guides/{slug}: cstudy learn <guide> --json, which cli.md describes, with the HTML the Guides view shows added. Each mermaid block is a <figure class=\"diagram\"> whose data-mermaid holds its source, with its text drawing in a hidden <pre class=\"diagram-text\">",
+      "description": "GET /api/v1/guides/{slug}: cstudy learn <guide> --json, which cli.md describes, with the HTML the Guides view shows added. Each mermaid block is a <figure class=\"diagram\"> holding an <img> of its light and of its dark SVG drawing, served by GET /api/v1/guides/{slug}/diagrams/{n}-{light|dark}.svg, with accTitle as alt text and accDescr as the <figcaption>; without both drawings up to date, its text drawing in a <pre class=\"diagram-text\"> instead",
       "type": "object",
       "required": ["slug", "markdown", "html"],
       "properties": {

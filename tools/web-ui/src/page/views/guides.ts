@@ -1,22 +1,21 @@
 /**
  * The Guides view (docs/specs/web-ui.md#guides-view), the recommended way to learn: the paths with
  * their progress and the guides with their read state (`cstudy learn`), a guide to read with its
- * diagrams drawn and a control that marks it read (`cstudy learn <guide>`, `--done`), and a path's
- * steps in order, each done or not, with a link to read the guide or start the problem
- * (`cstudy learn --path <path>`).
+ * diagrams, drawn ahead of time as SVG in the page's light and dark palettes, and a control that
+ * marks it read (`cstudy learn <guide>`, `--done`), and a path's steps in order, each done or not,
+ * with a link to read the guide or start the problem (`cstudy learn --path <path>`).
  */
 
 import "./guides.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { command, h, rendered } from "../dom.ts";
-import { diagramTheme, type DiagramTheme, progressText, stepCommand, stepHref, stepTarget } from "../guides-model.ts";
+import { progressText, stepCommand, stepHref, stepTarget } from "../guides-model.ts";
 import { GUIDES_HASH, guideHash, pathHash, problemHash } from "../routes.ts";
 import { empty, loading, messageOf, showFailure } from "../states.ts";
 import type { GuideDocument, GuideEntry, GuideListing, MarkedRead, PathDocument, PathStep, PathSummary } from "../types.ts";
 
 const GUIDES_API = "/api/v1/guides";
-const DARK_SCHEME = "(prefers-color-scheme: dark)";
 const LEVEL_WORDS: Readonly<Record<GuideEntry["level"], string>> = {
   intro: "intro: a first idea",
   core: "core: used every day",
@@ -155,27 +154,8 @@ function readControl(context: PageContext, guide: GuideDocument, readChanged: (r
   return region;
 }
 
-/** Draws the guide's diagrams in the page's theme, and again when the theme changes. */
-function followTheme(context: PageContext, body: HTMLElement): Cleanup {
-  const figures = [...body.querySelectorAll<HTMLElement>("figure.diagram")];
-  if (figures.length === 0) return () => {};
-  for (const figure of figures) figure.setAttribute("aria-busy", "true");
-  const system = window.matchMedia(DARK_SCHEME);
-  const draw = () => {
-    const theme: DiagramTheme = diagramTheme(context.preferences().theme, system.matches);
-    import("../diagrams.ts")
-      .then((diagrams) => diagrams.drawDiagrams(figures, theme, context.nonce))
-      .catch((error: unknown) => context.shell.announce(`could not draw the diagrams: ${messageOf(error)}`));
-  };
-  draw();
-  system.addEventListener("change", draw);
-  const stop = context.onPreferences(draw);
-  return () => {
-    system.removeEventListener("change", draw);
-    stop();
-  };
-}
-
+/** A guide, its diagrams as the server's `<img>` pairs, of which the stylesheet shows the one of
+ * the page's theme. */
 export function guideView(context: PageContext, slug: string): Cleanup {
   const { api, shell } = context;
   shell.setView("guides");
@@ -184,7 +164,6 @@ export function guideView(context: PageContext, slug: string): Cleanup {
   const page = h("article", { class: "guide", "aria-busy": "true" }, loading());
   shell.main.replaceChildren(page);
   let left = false;
-  let cleanup: Cleanup = () => {};
   void Promise.all([api.get<GuideDocument>(`${GUIDES_API}/${encodeURIComponent(slug)}`), api.get<GuideListing>(GUIDES_API)])
     .then(([guide, found]) => {
       if (left) return;
@@ -215,14 +194,12 @@ export function guideView(context: PageContext, slug: string): Cleanup {
         ),
       );
       document.title = `${guide.title} · cstudy`;
-      cleanup = followTheme(context, body);
     })
     .catch((error: unknown) => {
       if (!left) showFailure(page, error);
     });
   return () => {
     left = true;
-    cleanup();
   };
 }
 

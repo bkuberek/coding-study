@@ -8,13 +8,15 @@ same way, except that an image is its alt text, only a web link stays a link, an
 library file that the caller accepts becomes a button the page opens it with.
 
 A concept guide (docs/specs/web-ui.md#guides-view) is rendered the same way too, except that its
-`# ` title is left out, since the view's header shows it, each `mermaid` block becomes a figure the
-page draws, and a link to another guide becomes a link to that guide's view.
+`# ` title is left out, since the view's header shows it, each `mermaid` block becomes a figure of
+its SVG drawings, made when the guide was written (docs/specs/guides.md#svg-drawings), and a link
+to another guide becomes a link to that guide's view.
 """
 
 import html
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import cast
 
 from markdown_it import MarkdownIt
@@ -25,7 +27,18 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import find_lexer_class_by_name
 from pygments.util import ClassNotFound
 
-from coding_study.domain.guide_markdown import MERMAID, TEXT, is_text_marker
+from coding_study.domain.concept_guides import DIAGRAMS_DIRECTORY
+from coding_study.domain.guide_markdown import (
+    MERMAID,
+    SVG_THEMES,
+    TEXT,
+    diagram_text,
+    is_text_marker,
+    mermaid_digest,
+    svg_digest,
+    svg_file,
+    svg_size,
+)
 
 TOKEN_CLASS_PREFIX = "tok-"
 """`<span class="tok-k">`: the stylesheet colours each Pygments token class under this prefix."""
@@ -53,8 +66,27 @@ TITLE_TOKENS = 3
 DRAWING_SHAPE = ("paragraph_open", "inline", "paragraph_close", "fence")
 """The tokens of a diagram's marker and its text drawing."""
 DRAWING_TOKENS = len(DRAWING_SHAPE)
-FIGURE_HTML = '<figure class="diagram" data-mermaid="{source}">\n{drawing}</figure>\n'
-DRAWING_HTML = '<pre class="diagram-text" hidden><code>{text}</code></pre>\n'
+DIAGRAM_IMAGES = "diagram_images"
+"""The key of the render environment that holds the `DiagramImages` of a guide."""
+FIGURE_HTML = '<figure class="diagram">\n{body}<figcaption>{caption}</figcaption>\n</figure>\n'
+IMAGE_HTML = (
+    '<img class="diagram-image diagram-{theme}" src="{src}" alt="{alt}" '
+    'width="{width}" height="{height}">\n'
+)
+TEXT_HTML = '<pre class="diagram-text"><code>{text}</code></pre>\n'
+
+
+@dataclass(frozen=True, slots=True)
+class DiagramImages:
+    """Where the page asks for a guide's SVG drawings, and the drawings the guide has."""
+
+    url: str
+    """`{name}` in it is a drawing's name: `/api/v1/guides/hash-functions/diagrams/{name}`."""
+    drawings: Mapping[str, str]
+    """The text of each file under the guide's `diagrams/`, by its path relative to the guide."""
+
+
+NO_IMAGES = DiagramImages("", {})
 
 type LibraryLinks = Callable[[str], bool]
 """Whether a link that is no web link, such as gopls's `file:` links into GOROOT, opens a library
@@ -75,9 +107,10 @@ def render_documentation_markdown(text: str, opens_library: LibraryLinks = no_li
     return _DOCUMENTATION.render(text, {LIBRARY_LINKS: opens_library})
 
 
-def render_guide_markdown(text: str) -> str:
-    """A concept guide's guide.md as the Guides view shows it."""
-    return _GUIDE.render(text)
+def render_guide_markdown(text: str, images: DiagramImages = NO_IMAGES) -> str:
+    """A concept guide's guide.md as the Guides view shows it, each diagram as the `images` of its
+    SVG drawings when both are up to date."""
+    return _GUIDE.render(text, {DIAGRAM_IMAGES: images})
 
 
 def render_code_block(code: str, language: str) -> str:
@@ -194,16 +227,20 @@ def _without_title(state: StateCore) -> None:
 
 def _diagram_figures(state: StateCore) -> None:
     """Each `mermaid` block, with the marker and the text drawing that follow it, becomes one
-    figure: the page draws the source its `data-mermaid` holds, and the drawing stays hidden,
-    for when the drawing fails."""
+    figure: its light and dark SVG drawings, of which the page's stylesheet shows the one of its
+    theme, with `accTitle` as their alt text and `accDescr` as the caption. A diagram without
+    both drawings up to date shows its text drawing instead, as the terminal does."""
+    images = cast(DiagramImages, state.env.get(DIAGRAM_IMAGES, NO_IMAGES))
     tokens = state.tokens
     kept: list[Token] = []
     index = 0
+    position = 0
     while index < len(tokens):
         token = tokens[index]
         if token.type == "fence" and token.info.strip() == MERMAID:
+            position += 1
             drawing = _drawing_after(tokens, index)
-            kept.append(_figure(token, drawing))
+            kept.append(_figure(token, drawing, _images(images, position, token.content)))
             index += 1 + (DRAWING_TOKENS if drawing is not None else 0)
         else:
             kept.append(token)
@@ -223,10 +260,34 @@ def _drawing_after(tokens: Sequence[Token], index: int) -> Token | None:
     return drawing
 
 
-def _figure(diagram: Token, drawing: Token | None) -> Token:
-    text = "" if drawing is None else DRAWING_HTML.format(text=html.escape(drawing.content))
+def _images(images: DiagramImages, position: int, source: str) -> list[tuple[str, str]] | None:
+    """Each theme with the `<img>` of the diagram's drawing in it; None unless both drawings
+    exist and hold the hash of the source."""
+    alt = html.escape(diagram_text(source).title)
+    found: list[tuple[str, str]] = []
+    for theme in SVG_THEMES:
+        name = svg_file(position, theme)
+        svg = images.drawings.get(f"{DIAGRAMS_DIRECTORY}/{name}")
+        size = None if svg is None else svg_size(svg)
+        if svg is None or size is None or svg_digest(svg) != mermaid_digest(source):
+            return None
+        src = html.escape(images.url.format(name=name))
+        width, height = size
+        found.append(
+            (theme, IMAGE_HTML.format(theme=theme, src=src, alt=alt, width=width, height=height))
+        )
+    return found
+
+
+def _figure(diagram: Token, drawing: Token | None, images: list[tuple[str, str]] | None) -> Token:
+    if images is not None:
+        body = "".join(image for _theme, image in images)
+    else:
+        text = diagram.content if drawing is None else drawing.content
+        body = TEXT_HTML.format(text=html.escape(text))
+    caption = html.escape(diagram_text(diagram.content).description)
     figure = Token("html_block", "", 0, block=True, map=diagram.map)
-    figure.content = FIGURE_HTML.format(source=html.escape(diagram.content), drawing=text)
+    figure.content = FIGURE_HTML.format(body=body, caption=caption)
     return figure
 
 

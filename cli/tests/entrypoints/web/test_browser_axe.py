@@ -489,10 +489,12 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
 
 
 def _guide(page: Any) -> None:
-    """A guide whose diagrams are drawn: each SVG is named and described by its `accTitle` and
-    `accDescr`."""
-    _open(page, "#/guides/hash-maps-and-sets", "figure.diagram > svg")
-    page.wait_for_function("() => !document.querySelector('figure.diagram[aria-busy]')")
+    """A guide with diagrams: each is the image of its SVG drawing in the view's theme, its
+    `accTitle` the alt text and its `accDescr` the caption."""
+    _open(page, "#/guides/hash-maps-and-sets", "figure.diagram img")
+    page.wait_for_function(
+        "() => [...document.querySelectorAll('figure.diagram img')].every((i) => i.complete)"
+    )
 
 
 def _problems_menu(page: Any, menu: str) -> None:

@@ -11,8 +11,8 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | `src/page/notifications.ts` | The tab's notification stream (`/api/v1/events`), closed while the tab is hidden; the views follow what changed elsewhere through it |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/page/intelligence-start.ts`, `src/page/intelligence.ts` | Code intelligence in the Attempt view. The start module is in the page; it fetches the link (`intelligence.ts`) as a chunk once `code_intelligence` is on. The link decides what each file gets (a session, or a reason in the status bar), reads the languages and loads the code-intelligence chunk only for a file of a language with an installed server. `intelligence-state.ts` and `intelligence-status.ts` hold the close codes, the reconnect delays and the status bar's text, which the tests cover |
-| `src/code-intelligence.ts`, `src/code-intelligence/` | The code-intelligence chunk: `@codemirror/lsp-client` and the sessions over it (the WebSocket transport, the client, the workspace, the session with its tries, Restart and idle close, and the manager that keeps one session per root). `marked-stand-in.ts` stands in for `marked`: `scripts/build.ts` gives it to `@codemirror/lsp-client`'s import |
-| `src/page/views/guides.ts`, `src/page/guides-model.ts`, `src/page/diagrams.ts` | The Guides view: the guides and paths, a guide, a path. `diagrams.ts` and Mermaid 11.17.2 are chunks the view fetches only when a guide with a diagram opens; it draws each `mermaid` block as SVG under the page's CSP. `guides-model.ts` holds what the tests cover: the step links and words, the theme and Mermaid's options |
+| `src/code-intelligence.ts`, `src/code-intelligence/` | The code-intelligence chunk: `@codemirror/lsp-client` and the sessions over it (the WebSocket transport, the client, the workspace, the session with its tries, Restart and idle close, and the manager that keeps one session per root). `marked-stand-in.ts` stands in for `marked`, which `scripts/build.ts` aliases to it |
+| `src/page/views/guides.ts`, `src/page/guides-model.ts` | The Guides view: the guides and paths, a guide, a path. A guide's diagrams come from the server as `<img>` pairs of SVG drawn when the guide was written, and `views/guides.css` shows the one of the page's theme. `guides-model.ts` holds what the tests cover: a step's link, command and level target, and a path's progress |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language, with its indent unit where it is not CodeMirror's two spaces, and one for Vim keybindings, each fetched on first use |
 | `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test`; `test/stylesheets.ts` makes an imported stylesheet an empty module for them |
 | `scripts/build.ts` | The esbuild run, each chunk's stylesheet, the license notice and the digest manifest. It refuses a stylesheet imported by a module the page loads at start, which `app.ts` must import instead |
@@ -58,18 +58,16 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 77.8 | 28.4 |
-| Every JavaScript and CSS file but Vim, the code-intelligence chunk and Mermaid | 1030.6 | 374.8 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 77.2 | 28.0 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 1028.6 | 373.7 |
 | The editor before any language: the page, the editor and the core | 481.5 | 163.5 |
 | A Python file | 551.9 | 190.4 |
 | A TypeScript or JavaScript file, the largest grammar | 590.4 | 204.0 |
 | Vim keybindings, added on top | 120.5 | 38.4 |
 | The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 9.1 | 4.1 |
-| The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with a stand-in for `marked`) | 35.4 | 12.9 |
-| The Guides view, fetched when it first opens | 10.6 | 4.2 |
-| Mermaid with the diagrams module, as much as drawing a first flowchart fetches | 723.3 | 188.6 |
-| Mermaid with every diagram type it draws, each fetched when a guide first has one (its own budget: 3,584 KB raw, 1,024 KB gzip) | 3351.7 | 960.0 |
+| The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 35.4 | 12.9 |
 | The Problems view, the landing view, fetched when it first opens | 18.5 | 7.4 |
+| The Guides view, fetched when it first opens; a guide's diagrams are SVG images drawn when it was written, so no diagram code loads | 9.9 | 3.6 |
 | The Problem view, fetched when it first opens | 6.8 | 3.3 |
 | The Sets view, fetched when it first opens (with the Problems view, for its pick, and the dialogs, for its questions and Start) | 53.0 | 20.6 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 40.1 | 16.3 |
