@@ -122,7 +122,7 @@ Three nodes with five points each. Nothing is followed yet, so the report of the
 
 - `replicas(key, count)`: start at the key's owner point and walk clockwise, point by point, listing each node the first time you meet it, until `count` nodes are listed or every node is. `[]` when `count` is below 1 or the ring is empty.
 
-**Bounded loads.** Even with virtual nodes, some node can get many more keys than the average, for example when many keys hash close together. Vahab Mirrokni, Mikkel Thorup and Morteza Zadimoghaddam (2016) give every node a *capacity*, a little above the average, and send a key that arrives at a full node on clockwise to the first node that still has room, as linear probing does in a hash table.
+**Bounded loads.** Even with virtual nodes, some node can get many more keys than the average, for example when many keys hash close together. Vahab Mirrokni, Mikkel Thorup and Morteza Zadimoghaddam (2016; SODA 2018) give every node a *capacity*, a little above the average, and send a key that arrives at a full node on clockwise to the first node that still has room, as linear probing does in a hash table.
 
 - `assignBounded(keys, numerator, denominator)`: places the entries of `keys`, one at a time in list order, with `ε = numerator / denominator`, and returns the node of each entry, in list order. With `m` entries and `N` nodes, every node has the capacity `ceil((1 + ε) * m / N)`. An entry starts at its owner point and walks clockwise past every point whose node already holds `capacity` entries, to the first point whose node holds fewer. `[]` when the ring is empty or `keys` is empty. Nothing changes: not the ring, not the followed keys, not the report.
 
