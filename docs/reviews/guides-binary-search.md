@@ -2,7 +2,7 @@
 
 The five guides of the path "Binary search: from a sorted array to searching the answer" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about languages, libraries and one piece of history. This page lists each one with where it was checked, so that the independent accuracy review starts from the sources.
 
-"Quote" means the exact text was read on that page, fetched on 2026-11-12. "Run" means an example of the guide, or a one-off program, printed it: on CPython 3.13.12, OpenJDK 21.0.2, Go 1.27.3, Node 24.18.0 and rustc 1.92.0. "Proof" means the guide argues it in plain language and the argument is repeated here in short. A fact that could not be checked was left out of the guides; the last section lists what was left out.
+"Quote" means the exact text was read on that page, fetched on 2026-11-12. "Run" means an example of the guide, or a one-off program, printed it: on CPython 3.13.12, OpenJDK 21.0.2, Go 1.27.3, Node 24.18.0 and rustc 1.92.0. "Proof" means the guide argues it in plain language and the argument is repeated here in short. A fact that could not be checked was left out of the guides; the section "Left out" lists it.
 
 | Guide | Slug | Level |
 |-------|------|-------|
@@ -40,7 +40,7 @@ The five guides of the path "Binary search: from a sorted array to searching the
 | J5 | `>>>` shifts with zero-extension, so `(lo + hi) >>> 1` is right for two non-negative `int`s | Quote: [JLS §15.19](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.19); run: `Midpoint.java` (1750000000); arithmetic: the true sum is below 2³² |
 | J6 | Arrays are indexed by `int`; an index out of range throws `ArrayIndexOutOfBoundsException` | Quote: [JLS §10.4](https://docs.oracle.com/javase/specs/jls/se21/html/jls-10.html#jls-10.4) |
 | J7 | The current `Arrays.binarySearch` computes `int mid = (low + high) >>> 1` | Quote: [OpenJDK `Arrays.java`](https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/util/Arrays.java), every `binarySearch0` |
-| J8 | Bug JDK-5045582, "(coll) binarySearch() fails for size larger than 1<<30", dated 05/11/2004 against `1.5.0-beta`: `int mid = (low + high) >> 1` overflowed, and a 1,100,000,000-byte array threw `ArrayIndexOutOfBoundsException: -1064671149`; it reports similar problems in `Collections` and the same calculation in `TreeMap`; fix version 6 | Quote: [JDK-5045582](https://bugs.openjdk.org/browse/JDK-5045582) |
+| J8 | Bug JDK-5045582, "(coll) binarySearch() fails for size larger than 1<<30", created 2004-05-11 against `1.5.0-beta`: `int mid = (low + high) >> 1` overflowed, and a 1,100,000,000-byte array threw `ArrayIndexOutOfBoundsException: -1064671149`; it reports similar problems in `Collections` and the same calculation in `TreeMap`; fix version 6, resolved 2006-04-28 | Quote: [JDK-5045582](https://bugs.openjdk.org/browse/JDK-5045582), fetched 2026-11-12, with its text saved at the time: the fields "Created: 2004-05-11 15:11", "Resolved: 2006-04-28 19:17", "Fix Version/s: 6" and "Affects Version/s: 5.0, 6", and the description "Date: 05/11/2004". The reviewer later got 403 from the page, the API and the XML export, so a re-check needs a browser session |
 | J9 | `TreeMap` guarantees log(n) time for `containsKey`, `get`, `put` and `remove`; `ceilingKey` is the least key greater than or equal to the given key, `floorKey` the greatest key less than or equal | Quote: [TreeMap, Java 21](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/TreeMap.html) |
 | J10 | `ArrayList.get` runs in constant time | Quote: [ArrayList, Java 21](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html) |
 
@@ -52,7 +52,7 @@ The five guides of the path "Binary search: from a sorted array to searching the
 | G2 | `slices.BinarySearch` returns the earliest position where the target is found, or where it would appear, and whether it was found; the slice must be sorted in increasing order; `BinarySearchFunc` takes a comparison | Quote: [slices](https://pkg.go.dev/slices#BinarySearch) |
 | G3 | The `slices` package is new in Go 1.21 | Quote: [Go 1.21 release notes](https://go.dev/doc/go1.21) ("New slices package") |
 | G4 | `sort.Search`, `sort.Find` and `slices.BinarySearch` compute `h := int(uint(i+j) >> 1) // avoid overflow when computing h` | Quote: [`sort/search.go`](https://go.dev/src/sort/search.go), [`slices/sort.go`](https://go.dev/src/slices/sort.go) |
-| G5 | Unsigned `+`, `-`, `*` and `<<` are computed modulo 2ⁿ; signed overflow is deterministic and does not panic | Quote: [the Go specification, integer overflow](https://go.dev/ref/spec#Integer_overflow); run: `underflow.go` (`0 - 1` as `uint64` is 18446744073709551615), `answer_search.go` (`(lo + hi) / 2` is -2223372036854775808) |
+| G5 | Unsigned `+`, `-`, `*` and `<<` are computed modulo 2ⁿ; signed overflow is deterministic and does not panic | Quote: [the Go specification, integer overflow](https://go.dev/ref/spec#Integer_overflow); run: `underflow.go` (`500 - 560` as `uint64` is 18446744073709551556), `answer_search.go` (`(lo + hi) / 2` is -2223372036854775808) |
 | G6 | `uint` has 32 or 64 bits and `int` has the same size | Quote: the Go specification, [numeric types](https://go.dev/ref/spec#Numeric_types) |
 
 ## Rust
@@ -91,10 +91,13 @@ The five guides of the path "Binary search: from a sorted array to searching the
 | A7 | Sorted arrays of length `L` over `v` values number C(L + v − 1, L): 35 for lengths 0 to 4 over 3 values, 175 cases with five targets | Arithmetic; run: `mistakes.py` (60 of 175 fail for `>=` in place of `>`, first `[0]`, 0) |
 | A8 | The greedy check of the sensors places at least as many sensors as any valid placement, and the largest gap is 7 for 4 sensors on the posts 0 3 4 7 11 12 18 20 25 | Proof (sensor by sensor, by induction); run: `answer_search.py` and `answer_search.go`, and every choice of 4 posts out of 9 |
 | A9 | Galloping to an answer at position `p ≥ 1` makes exactly ⌈log₂ p⌉ + 1 probes, then searches at most `p` positions | Proof; run: `implicit_search.py` (position 41: 7 probes and 5 reads; past the end: 10 probes and 8 reads) |
-| A10 | In a rotated array with equal values, a search can be forced to read every position: O(n) | Proof (an adversary placing one 0 among 2s); run: `implicit_search.py` (two arrays alike at first, middle and last) |
-| A11 | ⌊log₂ n⌋ + 1 is 20 for a million and 30 for a billion; at most 60 checks for 10¹⁸ candidates; four quintillion lies between 2⁶¹ and 2⁶², so 62 steps | Arithmetic; run: `answer_search.go` (62 steps) |
+| A10 | In a rotated array, a value names its run only when the values are distinct: in `6 8 1 6 6` a 6 sits in both runs | Run: `implicit_search.py`. The guide no longer states what repeated values cost a search; see the changes below |
+| A11 | ⌊log₂ n⌋ + 1 is 20 for a million and 30 for a billion; at most 60 checks for 10¹⁸ candidates; four quintillion lies between 2⁶¹ and 2⁶², so at most 62 steps | Arithmetic; run: `answer_search.go` (62 steps for its threshold) |
 | A12 | `lo + hi` overflows a signed 64-bit index only past 2⁶² elements, and Java's `int` only past 2³⁰ | Arithmetic: with `lo < hi ≤ n`, `lo + hi < 2n` |
 | A13 | 100,000 values of up to 10⁹ sum to up to 10¹⁴, beyond 32 bits | Arithmetic |
+| A14 | `hi - lo` cannot overflow while `lo >= 0`, since it is at most `hi`; with negative bounds it can: from -2,000,000,000 to 2,000,000,000 the difference, 4,000,000,000, exceeds an `int`'s 2,147,483,647 | Arithmetic; J4 |
+| A15 | On a predicate that is not monotone, `first_true` returns a position `r` with `r = 0` or position `r - 1` false, and `r = n` or position `r` true: a false-to-true switch, or 0, which needs the first position true, or `n`, which needs the last false | Proof: `lo` only moves past a false position and `hi` only to a true one; run: `mistakes.py` |
+| A16 | Unsigned `500 - 560` wraps, so a careless distance makes 340 the nearest station to 500 instead of 560 | Run: `underflow.go`; G5 |
 
 ## Left out
 
@@ -111,16 +114,32 @@ The five guides of the path "Binary search: from a sorted array to searching the
 
 ## Spoilers checked
 
-The guides teach on examples of their own and name each practice problem's question only, after reading every linked `problem.md`.
+The guides teach on examples of their own and name each practice problem's question only, after reading every linked `problem.md`, its hints and its follow-ups. The first draft did not meet this everywhere; the review found three spoilers, fixed as the [changes](#changes-from-the-first-accuracy-review-2026-11-12) list. What each guide still gives away is stated here, not hidden.
 
-| Problem | What the guides avoid |
-|---------|-----------------------|
-| `binary-search`, `search-insert-position`, `first-last-position` | The worked examples use parcel weights and a list of 15 values; bounds are taught generally, with no "first and last occurrence" example |
-| `time-based-kv-store`, `snapshot-array` | No example keyed by time or version; no history-per-key design |
-| `debug-binary-search-bounds` | The mistakes guide's examples are a square-root loop and a half-open start with a closed loop condition; the other mixes of interval styles are not spelled out |
-| `debug-unsigned-underflow` | The underflow example is a Go membership search, not "the last release at or before a time" |
-| `koko-eating-bananas`, `split-array-largest-sum`, `swim-rising-water` | The worked example maximizes the smallest gap between sensors; no rate, piece-sum or grid example |
+| Problem | What the guides teach, and what they leave to the problem |
+|---------|-----------------------------------------------------------|
+| `binary-search`, `search-insert-position`, `first-last-position` | The intro's `search_half_open` is a plain search, which an intro needs, and the bounds guide's table of identities gives the bound for each question; neither goes beyond these problems' own hints. The worked examples use a list of 15 values and parcel weights, with no "first and last occurrence" example |
+| `time-based-kv-store`, `snapshot-array` | The table includes "the last position with a value `<= x`", as a general identity. No example is keyed by time or version, and no history-per-key design is shown |
+| `debug-binary-search-bounds` | The intro teaches both interval styles and that their three lines must agree, which is the rule this problem tests. The path now puts the problem before the mistakes guide, so the guide reads as the explanation after the attempt. No guide describes this problem's particular mix of lines or what patching one of them does; the mistakes guide's examples are a square-root loop and a half-open start with a closed loop condition |
+| `debug-unsigned-underflow` | The mistakes guide teaches underflow on unsigned values, in a nearest-station query, and states how Rust and Go treat `0 - 1`, which the problem's bug report also shows. It no longer shows a closed interval with unsigned indexes, its two triggers or the half-open fix. The intro still gives "no bound is ever decremented" as one reason for the half-open style. The step is the path's last, since it needs Rust |
+| `koko-eating-bananas`, `split-array-largest-sum`, `swim-rising-water` | The recipe of searching on the answer is the technique these problems use; the worked example maximizes the smallest gap between sensors, with no rate, piece-sum or grid example |
 | `search-2d-matrix` | The index map is taught on chunks of different sizes and on fixed-size records, not on a grid |
-| `min-in-rotated-array`, `search-rotated-array` | The guide shows that "in the second run?" switches once, without the comparison or a search for the break |
+| `min-in-rotated-array`, `search-rotated-array` | The guide shows that "in the second run?" switches once, without the comparison or a search for the break. On repeated values it says only that a value can sit in both runs, with `6 8 1 6 6`; their cost is left to the problems' follow-ups |
 | `find-peak-element` | Not discussed beyond its practice line |
 | `median-of-two-sorted-arrays` | Not discussed beyond its practice line |
+
+## Changes from the first accuracy review (2026-11-12)
+
+The review confirmed every example, every proof and all but one citation; these are its findings and what changed.
+
+| Finding | Change |
+|---------|--------|
+| Spoiler: the intro's trap "a closed start with a half-open loop condition ... never stops" described `debug-binary-search-bounds`' bug exactly | The trap now says only that a line taken from the other style breaks the search on some input |
+| Spoiler: the mistakes guide's underflow section, a closed interval with unsigned indexes in Go, gave both triggers of `debug-unsigned-underflow` (`mid - 1` at 0, `n - 1` on an empty array) and its half-open fix | Rewritten on another shape: unsigned kilometre posts, where a careless distance `x - station` wraps and picks the wrong nearest station; `underflow.go` replaced |
+| `debug-binary-search-bounds` came after the guide that explains it | It now comes before `binary-search-mistakes` in the path, and its practice line says to try it first |
+| The path has no optional steps, so a learner without Rust stopped at `debug-unsigned-underflow` | It is the path's last step, and its practice line says it needs Rust |
+| Spoiler: `[2, 2, 2, 0, 2]` and its O(n) proof answered the follow-ups of `search-rotated-array` and `min-in-rotated-array`; "five 2s" was wrong, there are four | The array and the proof are gone, with the complexity row and the trap built on them; the guide shows `6 8 1 6 6` and leaves the cost to the follow-ups |
+| JDK-5045582 could not be re-checked: 403 from bugs.openjdk.org | Kept, from the page text saved when it was first fetched; the date is written 2004-05-11, the issue's "Created" field (J8) |
+| `hi - lo` cannot overflow only while `lo >= 0`, and the guide on searching the answer sends readers to the intro for value ranges that may be negative | The intro says so, with an `int` example, and recommends a wider type for negative ranges; the answer guide's overflow note says the same (A14) |
+| "62 steps" is a bound, not a count for every threshold | "At most 62 steps", with the bound's formula; the Go comment too |
+| The mistakes guide said `first_true` on a predicate that is not monotone returns a false-to-true switch | It can also return 0 or `n` (A15) |
