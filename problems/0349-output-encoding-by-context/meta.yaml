@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0349"
+slug: output-encoding-by-context
+title: Output Encoding by Context
+summary: "Write encodeOutput, which makes untrusted text safe to place in one of four spots of a web page: HTML text, a quoted attribute, a URL query value or a JavaScript string."
+status: ready
+difficulty: easy
+track: practical
+kind: function
+domains: [security, frontend]
+job_roles: [security-engineer, backend, frontend]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: encodeOutput
+    params:
+      - {name: text, type: string}
+      - {name: context, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: encoder-per-context, name: One encoder per context chosen by name with a refusal for any other name, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [fix-the-flaws-typescript, cors-policy-evaluator, memory-write-sanitizer, cert-chain-validator]
+estimate_minutes: 25

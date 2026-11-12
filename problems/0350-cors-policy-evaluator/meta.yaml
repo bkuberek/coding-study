@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0350"
+slug: cors-policy-evaluator
+title: CORS Policy Evaluator
+summary: "Build CorsPolicy, a server's cross-origin sharing policy: serialize origins, answer preflights, combine credentials with the wildcard safely, and lint risky configurations."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [string-matching]
+domains: [security, frontend]
+job_roles: [security-engineer, backend, frontend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Origins and an allow-list}
+  - {level: 2, title: Preflight requests}
+  - {level: 3, title: Credentials and the wildcard}
+  - {level: 4, title: "Patterns, the null origin and a linter"}
+signature:
+  class:
+    name: CorsPolicy
+    constructor: {params: []}
+    methods:
+      - {name: originOf, level: 1, params: [{name: url, type: string}], returns: {type: string}}
+      - {name: allowOrigin, level: 1, params: [{name: url, type: string}], returns: {type: string}}
+      - {name: allowOriginFor, level: 1, params: [{name: origin, type: string}], returns: {type: string}}
+      - {name: allowMethod, level: 2, params: [{name: method, type: string}], returns: {type: bool}}
+      - {name: allowHeader, level: 2, params: [{name: name, type: string}], returns: {type: bool}}
+      - {name: setMaxAge, level: 2, params: [{name: seconds, type: int}], returns: {type: void}}
+      - {name: needsPreflight, level: 2, params: [{name: method, type: string}, {name: headers, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: preflightResponse, level: 2, params: [{name: origin, type: string}, {name: method, type: string}, {name: requestHeaders, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: allowAnyOrigin, level: 3, params: [], returns: {type: void}}
+      - {name: allowCredentials, level: 3, params: [], returns: {type: void}}
+      - {name: actualResponse, level: 3, params: [{name: origin, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: allowPattern, level: 4, params: [{name: pattern, type: string}], returns: {type: bool}}
+      - {name: lint, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: serialize-then-match, name: Serialize origins once then decide by exact lookups and one pattern scan, role: optimal, time: "O(P L) per request", space: "O(C)", time_class: "n", space_class: "n"}
+related: [output-encoding-by-context, cert-chain-validator, ssrf-safe-webhook-dispatcher-typescript, multi-tenant-api-typescript, token-claim-validator]
+estimate_minutes: 90

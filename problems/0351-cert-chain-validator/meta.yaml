@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0351"
+slug: cert-chain-validator
+title: Certificate Chain Validator
+summary: "Build ChainValidator, which decides whether to trust a server's certificate: dates and hostnames, a chain to a trusted root, CA constraints, revocation, and a reason for every rejected path."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [graphs]
+domains: [security, identity]
+job_roles: [security-engineer, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: One certificate}
+  - {level: 2, title: Building a chain}
+  - {level: 3, title: Constraints on issuers}
+  - {level: 4, title: "Revocation and choosing a path"}
+signature:
+  class:
+    name: ChainValidator
+    constructor: {params: []}
+    methods:
+      - {name: addCertificate, level: 1, params: [{name: certId, type: string}, {name: subject, type: string}, {name: issuer, type: string}, {name: notBefore, type: long}, {name: notAfter, type: long}, {name: dnsNames, type: "list<string>"}], returns: {type: bool}}
+      - {name: matchedName, level: 1, params: [{name: certId, type: string}, {name: hostname, type: string}], returns: {type: string}}
+      - {name: checkLeaf, level: 1, params: [{name: certId, type: string}, {name: hostname, type: string}, {name: now, type: long}], returns: {type: string}}
+      - {name: addSignature, level: 2, params: [{name: signerId, type: string}, {name: certId, type: string}, {name: valid, type: bool}], returns: {type: void}}
+      - {name: addTrustAnchor, level: 2, params: [{name: certId, type: string}], returns: {type: bool}}
+      - {name: buildChain, level: 2, params: [{name: leafId, type: string}], returns: {type: "list<string>"}}
+      - {name: setConstraints, level: 3, params: [{name: certId, type: string}, {name: isCa, type: bool}, {name: pathLen, type: int}, {name: keyUsage, type: "list<string>"}], returns: {type: bool}}
+      - {name: validatePath, level: 3, params: [{name: path, type: "list<string>"}, {name: hostname, type: string}, {name: now, type: long}], returns: {type: "list<string>"}}
+      - {name: revoke, level: 4, params: [{name: certId, type: string}], returns: {type: bool}}
+      - {name: verify, level: 4, params: [{name: leafId, type: string}, {name: hostname, type: string}, {name: now, type: long}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: search-then-validate, name: Enumerate the chains shortest first then validate each in the order of RFC 5280, role: optimal, time: "O(K n C) per verify", space: "O(C + K n)", time_class: "n", space_class: "n"}
+related: [token-claim-validator, cors-policy-evaluator, output-encoding-by-context, oauth-pkce-client-typescript, tamper-evident-ledger]
+estimate_minutes: 120
