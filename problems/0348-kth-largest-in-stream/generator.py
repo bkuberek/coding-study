@@ -8,8 +8,9 @@ insertion shifts a large share of them, while a heap that holds k numbers stays 
 Below 100 calls, which covers the oracle's inputs, k is between 1 and 8, the constructor gets
 between k - 1 and k + 5 starting numbers (so the first `add` can be the one that makes the
 collection reach k numbers), and the added numbers come from one of four families: the full
-range, two distinct values (many ties at the kth place), ascending (every add enters the top k)
-or descending (no add enters it once the top k is full).
+range, three distinct values -1, 0 and 1 (many ties at the kth place), ascending (adds come in
+increasing order, so most of them enter the top k), or descending (adds come in decreasing
+order, so once the top k is full later adds rarely beat the kth largest; ties can still enter).
 """
 
 import random
