@@ -94,9 +94,9 @@ The program below runs the trace, checks it against every pair, then checks both
 from itertools import combinations, combinations_with_replacement
 
 
-def count_pairs_within(prices: list[int], budget: int, trace: bool = False) -> int:
-    """How many pairs of different positions have a sum of at most `budget`."""
-    i, j, count = 0, len(prices) - 1, 0
+def count_pairs_within(prices: list[int], budget: int, start: int = 0, trace: bool = False) -> int:
+    """How many pairs of different positions from `start` on have a sum of at most `budget`."""
+    i, j, count = start, len(prices) - 1, 0
     while i < j:
         total = prices[i] + prices[j]
         if total > budget:  # prices[j] is too dear even with the cheapest partner left
@@ -114,7 +114,7 @@ def count_pairs_within(prices: list[int], budget: int, trace: bool = False) -> i
 def count_triples_within(prices: list[int], budget: int) -> int:
     """Fix the smallest of the three, then count the pairs after it."""
     return sum(
-        count_pairs_within(prices[first + 1:], budget - prices[first])
+        count_pairs_within(prices, budget - prices[first], start=first + 1)
         for first in range(len(prices))
     )
 
@@ -193,7 +193,7 @@ The scan is O(n) because the gap `j - i` starts at `n - 1` and shrinks by one at
 
 - **What the proof needs.** The scan is right whenever every step can prove that all remaining pairs of one end are settled. On a sorted array that proof comes from order: `a[i] + a[k] <= a[i] + a[j]` for every `k <= j`. Opposite-ends scans also work on unsorted input, when the question offers another reason to settle an end. Finding that reason is the whole difficulty of `container-with-most-water` and `trapping-rain-water`.
 - **The staircase.** Write the sums in a grid, row `i` and column `j`: on a sorted array the grid grows along every row and down every column. The scan starts at the corner of row 0 and column `n - 1` and walks a staircase, one row down or one column left per step. The same walk finds a value in any grid that is sorted along its rows and its columns in O(rows + columns).
-- **Differences instead of sums.** To find pairs whose difference `a[q] - a[p]` equals `d >= 0`, both pointers start at the left and move right, keeping `p < q`: if the difference is too small, move `q`; if it is too large, move `p`. Order again rules out a whole set of pairs at each step.
+- **Differences instead of sums.** To find pairs whose difference `a[q] - a[p]` equals `d >= 0`, both pointers start at the left, `p` at 0 and `q` at 1, and move right: if the difference is too small, move `q`; if it is too large, move `p`, and when `p` catches up with `q`, move `q` one place too, so that the two positions stay different. Order again rules out a whole set of pairs at each step.
 - **More values.** For `k` values with a given sum, fix the first `k - 2` in nested loops and close in on the last two: O(n^(k - 1)) after sorting, so O(n²) for triples.
 - **Counting is a building block.** The number of pairs with a sum of at most `B` never decreases as `B` grows. So for integer values, the smallest `B` with at least `m` pairs is the `m`-th smallest pair sum, counting repeats, and a binary search over `B` finds it with O(log R) counts of O(n) each, where `R` is the range of possible sums.
 

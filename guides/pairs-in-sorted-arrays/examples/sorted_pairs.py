@@ -3,9 +3,9 @@
 from itertools import combinations, combinations_with_replacement
 
 
-def count_pairs_within(prices: list[int], budget: int, trace: bool = False) -> int:
-    """How many pairs of different positions have a sum of at most `budget`."""
-    i, j, count = 0, len(prices) - 1, 0
+def count_pairs_within(prices: list[int], budget: int, start: int = 0, trace: bool = False) -> int:
+    """How many pairs of different positions from `start` on have a sum of at most `budget`."""
+    i, j, count = start, len(prices) - 1, 0
     while i < j:
         total = prices[i] + prices[j]
         if total > budget:  # prices[j] is too dear even with the cheapest partner left
@@ -23,7 +23,7 @@ def count_pairs_within(prices: list[int], budget: int, trace: bool = False) -> i
 def count_triples_within(prices: list[int], budget: int) -> int:
     """Fix the smallest of the three, then count the pairs after it."""
     return sum(
-        count_pairs_within(prices[first + 1:], budget - prices[first])
+        count_pairs_within(prices, budget - prices[first], start=first + 1)
         for first in range(len(prices))
     )
 
