@@ -70,7 +70,7 @@ mid = lo + (hi - lo) / 2      (division rounding down)
 
 which is always at least `lo` and below `hi` while the interval is not empty, so `mid` is a real candidate.
 
-On paper, `(lo + hi) / 2` is the same number. In a program it may not be: `lo + hi` can exceed the largest value of the integer type even though `lo` and `hi` both fit. `hi - lo` never does, since it is at most `hi`, and `lo + (hi - lo) / 2` is at most `hi`. Whether that matters depends on the language:
+On paper, `(lo + hi) / 2` is the same number. In a program it may not be: `lo + hi` can exceed the largest value of the integer type even though `lo` and `hi` both fit. When `lo` is at least 0, as it always is for a position, `hi - lo` never does, since it is at most `hi`, and `lo + (hi - lo) / 2` is at most `hi`. Whether that matters depends on the language:
 
 | Language | Integers | `(lo + hi) / 2` |
 |----------|----------|-----------------|
@@ -110,9 +110,9 @@ lo + (hi - lo) / 2 = 1750000000
 exact, in a long   = 1750000000
 ```
 
-`lo + hi` is 3,500,000,000, which does not fit in an `int`, so it wraps around by 2³² to -794,967,296, and the midpoint comes out negative. Used as an index, it would throw `ArrayIndexOutOfBoundsException`. `lo + (hi - lo) / 2` never leaves the range. `>>> 1` works for another reason: the true sum of two non-negative `int`s is below 2³², so its 32 bits read as an unsigned number are right, and `>>>` shifts a zero in from the left instead of copying the sign bit.
+`lo + hi` is 3,500,000,000, which does not fit in an `int`, so it wraps around by 2³² to -794,967,296, and the midpoint comes out negative. Used as an index, it would throw `ArrayIndexOutOfBoundsException`. `lo + (hi - lo) / 2`, with both bounds non-negative, never leaves the range. `>>> 1` works for another reason: the true sum of two non-negative `int`s is below 2³², so its 32 bits read as an unsigned number are right, and `>>>` shifts a zero in from the left instead of copying the sign bit.
 
-When does it matter in practice? With 64-bit indexes, never for an array: the sum would need more than 2⁶² elements. With Java's 32-bit `int`, for arrays of more than a billion elements. And whenever `lo` and `hi` are not positions but **values**, as when you [search on the answer](../binary-search-on-the-answer/guide.md) over a range that reaches the type's limit. Writing `lo + (hi - lo) / 2` everywhere costs nothing and removes the question.
+When does it matter in practice? With 64-bit indexes, never for an array: the sum would need more than 2⁶² elements. With Java's 32-bit `int`, for arrays of more than a billion elements. And whenever `lo` and `hi` are not positions but **values**, as when you [search on the answer](../binary-search-on-the-answer/guide.md) over a range that reaches the type's limit. For positions, writing `lo + (hi - lo) / 2` everywhere costs nothing and removes the question. For values that can be **negative**, it is not enough: `hi - lo` can then exceed the type's limit itself, as from -2,000,000,000 to 2,000,000,000 in a Java `int`, whose largest value is 2,147,483,647. Compute the midpoint of such a range in a wider type, such as a `long` for `int` bounds, or in Python, whose integers never overflow.
 
 ## A worked example
 
@@ -270,7 +270,7 @@ The bound assumes that reading an element and comparing it cost O(1). Comparing 
 
 ## Expert notes
 
-- **A bug in the JDK itself.** Bug JDK-5045582, "binarySearch() fails for size larger than 1<<30", was filed in May 2004 against the Java 5 beta: `Arrays.binarySearch` computed `int mid = (low + high) >> 1`, and searching a 1.1-billion-byte array threw `ArrayIndexOutOfBoundsException` with a negative index. The report found similar code in `Collections` and `TreeMap`. It was fixed in Java 6 with `(low + high) >>> 1`, which the current source still uses. The algorithm was right; the arithmetic of the language was not the arithmetic its proof assumed.
+- **A bug in the JDK itself.** Bug JDK-5045582, "binarySearch() fails for size larger than 1<<30", was filed on 2004-05-11 against the Java 5 beta: `Arrays.binarySearch` computed `int mid = (low + high) >> 1`, and searching a 1.1-billion-byte array threw `ArrayIndexOutOfBoundsException` with a negative index. The report found similar code in `Collections` and `TreeMap`. It was fixed in Java 6 with `(low + high) >>> 1`, which the current source still uses. The algorithm was right; the arithmetic of the language was not the arithmetic its proof assumed.
 - **No search by comparisons can do much better.** A search that learns only from yes/no comparisons, with `k` of them, can follow at most `2^k` different paths, and it must tell apart at least `n + 1` answers: each of the `n` positions, or "absent". So it needs at least log₂(n + 1) comparisons in the worst case. A bound search, which compares once per step and checks for equality once at the end, needs at most ⌊log₂ n⌋ + 2, within one of that limit. Doing better needs more than comparisons, such as hashing.
 - **One comparison per step.** The search above asks two questions per step: equal? smaller? The [bound searches](../lower-and-upper-bounds/guide.md) ask only one, `a[mid] >= target`, run all the way down to an interval of one position, and check for equality once at the end. They never stop early, but they answer more questions: the first match among duplicates, and where an absent value would go.
 - **Libraries.** Python's `bisect`, Java's `Arrays.binarySearch` and `Collections.binarySearch`, Go's `sort.Search` and `slices.BinarySearch` and Rust's `binary_search` all do this search, each with its own way of reporting "absent"; JavaScript and TypeScript have none built in. The [next guide](../lower-and-upper-bounds/guide.md) compares them.

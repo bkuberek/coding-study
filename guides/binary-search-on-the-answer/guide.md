@@ -171,7 +171,7 @@ The table of T and F is the check over the first twelve gaps: monotone, as argue
 
 - **The range must contain the answer.** `lo` must be a value at or below the answer, and the search interval must reach a value that is known to fail, or one past the largest candidate, so that "nothing fails" is a possible result. If the range is too narrow, `first_true` returns its end, which is then not an answer.
 - **The direction.** For "the smallest value that works", the check is false then true: search for the first true. For "the largest value that works", it is true then false: search for the first false and subtract one, as above. Writing a separate "last true" loop invites [the endless loop of `lo = mid`](../binary-search-mistakes/guide.md#a-worked-example).
-- **Overflow.** Candidate values can be large, so `lo + hi` can overflow even where indexes never would: write [`lo + (hi - lo) / 2`](../searching-a-sorted-array/guide.md#computing-the-midpoint). The check overflows too when it adds up large values in a fixed-width type: a sum of 100,000 values of up to a billion needs 64 bits.
+- **Overflow.** Candidate values can be large, so `lo + hi` can overflow even where indexes never would: write [`lo + (hi - lo) / 2`](../searching-a-sorted-array/guide.md#computing-the-midpoint), which is safe while `lo` is not negative; for a range that includes negative values, compute the midpoint in a wider type. The check overflows too when it adds up large values in a fixed-width type: a sum of 100,000 values of up to a billion needs 64 bits.
 - **Real-valued answers.** For a rate or a length, bisect with a fixed number of steps, or until no midpoint is left between the ends, never with a tolerance alone ([real numbers](../binary-search-mistakes/guide.md#real-numbers)).
 
 Go's `sort.Search` takes any range `[0, n)` and a predicate, not a slice, so it searches values as readily as positions. The second half of this program shows the overflow on a range of large values:
@@ -209,7 +209,7 @@ func main() {
 	fmt.Println("(lo + hi) / 2      =", (lo+hi)/2)
 	fmt.Println("lo + (hi - lo) / 2 =", lo+(hi-lo)/2)
 
-	// The first value of at least the threshold in [lo, hi): 62 steps cover four quintillion values.
+	// The first value of at least the threshold in [lo, hi): at most 62 steps for four quintillion values.
 	threshold := int64(7_123_456_789_012_345_678)
 	steps := 0
 	for lo < hi {
@@ -234,7 +234,7 @@ lo + (hi - lo) / 2 = 7000000000000000000
 found 7123456789012345678 in 62 steps
 ```
 
-`sort.Search` returned the first gap that is too wide, 8, so the answer is again 7. `lo + hi` is 14 quintillion, more than an `int64` holds, so it wrapped to a negative number; `lo + (hi - lo) / 2` did not. The last search covered four quintillion values in 62 steps, since four quintillion lies between 2⁶¹ and 2⁶².
+`sort.Search` returned the first gap that is too wide, 8, so the answer is again 7. `lo + hi` is 14 quintillion, more than an `int64` holds, so it wrapped to a negative number; `lo + (hi - lo) / 2` did not. The last search covered four quintillion values in 62 steps, and no search of that range can take more, since four quintillion lies between 2⁶¹ and 2⁶²: at most ⌊log₂ R⌋ + 1 steps for R values.
 
 ## When to use it
 

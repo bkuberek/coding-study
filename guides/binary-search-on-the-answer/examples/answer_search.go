@@ -30,7 +30,7 @@ func main() {
 	fmt.Println("(lo + hi) / 2      =", (lo+hi)/2)
 	fmt.Println("lo + (hi - lo) / 2 =", lo+(hi-lo)/2)
 
-	// The first value of at least the threshold in [lo, hi): 62 steps cover four quintillion values.
+	// The first value of at least the threshold in [lo, hi): at most 62 steps for four quintillion values.
 	threshold := int64(7_123_456_789_012_345_678)
 	steps := 0
 	for lo < hi {
