@@ -16,7 +16,7 @@ You can solve this by checking every slot to the right of every item, but a shel
 
 A **stack** is a list that you only change at one end, called the top. To *push* is to add an item on top, and to *pop* is to remove the item on top. The last item pushed is the first one popped, like a pile of plates.
 
-A **monotonic stack** is a stack whose items always stay in order from bottom to top: for example, never getting smaller. The rule that keeps it in order is simple. Before you push a new item, you first pop every item on top that would break the order.
+A **monotonic stack** is a stack whose items always stay in order from bottom to top: for example, no item taller than the one beneath it, as in the line of people below. The rule that keeps it in order is simple. Before you push a new item, you first pop every item on top that would break the order.
 
 Here is a different small question, so you can see the shape of the idea. People stand in a line with the heights `150, 160, 155, 170, 165`, and for each person we want the height of the first person standing behind them who is taller (or "none"). Walk along the line from the front and keep a stack of the people who have not found anyone taller yet. When a new person arrives, they are the answer for every waiting person who is shorter than them, so those people are popped and answered. Then the new person joins the stack to wait.
 
@@ -77,7 +77,7 @@ An item that has not found its cheaper neighbour yet is "waiting". When a new it
 
 ### Hint 3
 
-The waiting items, from the leftmost to the rightmost, always cost strictly more as you go: if a waiting item cost no more than the one before it, it would already have answered that one. So the item the newcomer is most likely to answer is the one that arrived last. Keep the waiting slots on a stack and look only at its top.
+The waiting items, from the leftmost to the rightmost, always cost strictly more as you go: if a waiting item cost no more than the one before it, it would already have answered that one. So a newcomer can only answer a run of waiting slots at the top of the pile, and never one buried beneath a slot it cannot answer. Keep the waiting slots on a stack and look only at its top.
 
 ### Hint 4
 
