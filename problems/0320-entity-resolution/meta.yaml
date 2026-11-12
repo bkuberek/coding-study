@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0320"
+slug: entity-resolution
+title: Entity Resolution
+summary: "Build EntityResolver, which finds the records that describe one real-world thing: normalize, block, score with Jaro-Winkler and token overlap, cluster with union-find, then grade the result."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [union-find, arrays-hashing]
+domains: [algorithms, backend, ai-llm]
+job_roles: [general, backend, ai-engineer, ml-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Normalized records}
+  - {level: 2, title: Blocking and pair scores}
+  - {level: 3, title: Clusters and canonical records}
+  - {level: 4, title: Grading the clusters}
+signature:
+  class:
+    name: EntityResolver
+    constructor: {params: []}
+    methods:
+      - {name: normalizeName, level: 1, params: [{name: name, type: string}], returns: {type: string}}
+      - {name: normalizeEmail, level: 1, params: [{name: email, type: string}], returns: {type: string}}
+      - {name: addRecord, level: 1, params: [{name: recordId, type: string}, {name: name, type: string}, {name: email, type: string}], returns: {type: bool}}
+      - {name: normalized, level: 1, params: [{name: recordId, type: string}], returns: {type: "list<string>"}}
+      - {name: exactGroups, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: blockingKeys, level: 2, params: [{name: recordId, type: string}], returns: {type: "list<string>"}}
+      - {name: candidatePairs, level: 2, params: [], returns: {type: "list<list<string>>"}}
+      - {name: jaroWinkler, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: double}}
+      - {name: tokenJaccard, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: double}}
+      - {name: similarity, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: double}}
+      - {name: isMatch, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: bool}}
+      - {name: matches, level: 2, params: [], returns: {type: "list<list<string>>"}}
+      - {name: components, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: clusters, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: canonical, level: 3, params: [{name: recordId, type: string}], returns: {type: string}}
+      - {name: aliases, level: 3, params: [{name: recordId, type: string}], returns: {type: "list<string>"}}
+      - {name: pairwiseScores, level: 4, params: [{name: predicted, type: "list<list<string>>"}, {name: gold, type: "list<list<string>>"}], returns: {type: "list<double>"}}
+      - {name: bcubedScores, level: 4, params: [{name: predicted, type: "list<list<string>>"}, {name: gold, type: "list<list<string>>"}], returns: {type: "list<double>"}}
+      - {name: pairErrors, level: 4, params: [{name: predicted, type: "list<list<string>>"}, {name: gold, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+comparator:
+  type: ops
+  per_method: {jaroWinkler: float, tokenJaccard: float, similarity: float, pairwiseScores: float, bcubedScores: float}
+approaches:
+  - {id: block-score-union, name: Blocking keys then pair scores then guarded union-find, role: optimal, time: "O(R + P w^2 + M k^2)", space: "O(R + P)", time_class: "n^2", space_class: "n"}
+related: [duplicate-contractor-records, accounts-merge, taxonomy, triple-store]
+estimate_minutes: 120
