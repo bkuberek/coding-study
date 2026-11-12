@@ -128,6 +128,11 @@ class GuideCatalog(Protocol):
         """The text of every file under `examples/`, by its path relative to the guide."""
         ...
 
+    def diagrams(self, slug: str) -> Mapping[str, str]:
+        """The text of every file under `diagrams/`, the SVG drawings of the guide's diagrams, by
+        its path relative to the guide, such as `diagrams/1-light.svg`."""
+        ...
+
     def examples_folder(self, slug: str) -> Path:
         """The absolute folder of the guide's examples, which may not exist."""
         ...

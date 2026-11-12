@@ -1,12 +1,13 @@
-"""The static checks of concept guides (G2 to G9) and learning paths (P1 to P5), as
+"""The static checks of concept guides (G2 to G10) and learning paths (P1 to P5), as
 docs/specs/guides.md#static-checks lists them. G1, the schema of `meta.yaml`, is the adapter's.
 """
 
 import re
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from coding_study.domain.concept_guides import (
+    DIAGRAMS_DIRECTORY,
     EXAMPLES_DIRECTORY,
     GUIDE_FILE,
     GUIDE_META_FILE,
@@ -17,7 +18,14 @@ from coding_study.domain.concept_guides import (
     is_slug,
 )
 from coding_study.domain.errors import ContentIssue
-from coding_study.domain.guide_markdown import Fence, GuideMarkdown, mermaid_digest
+from coding_study.domain.guide_markdown import (
+    SVG_THEMES,
+    Fence,
+    GuideMarkdown,
+    mermaid_digest,
+    svg_digest,
+    svg_file,
+)
 from coding_study.domain.markdown import MarkdownDocument
 
 GUIDE_SECTIONS = (
@@ -64,6 +72,9 @@ class GuideContent:
     """Every file under the folder, relative to it, such as `examples/buckets.py`."""
     examples: Mapping[str, str]
     """The text of each file under `examples/`, by its relative path."""
+    diagrams: Mapping[str, str] = field(default_factory=dict[str, str])
+    """The text of each file under `diagrams/`, by its relative path, such as
+    `diagrams/1-light.svg`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,8 +157,8 @@ def _folder(issues: _Issues, content: GuideContent) -> None:
         if not _belongs(name):
             issues.add(
                 "",
-                f'"{name}" does not belong in a guide: '
-                f"a guide holds {GUIDE_META_FILE}, {GUIDE_FILE} and {EXAMPLES_DIRECTORY}/",
+                f'"{name}" does not belong in a guide: a guide holds {GUIDE_META_FILE}, '
+                f"{GUIDE_FILE}, {EXAMPLES_DIRECTORY}/ and {DIAGRAMS_DIRECTORY}/",
             )
 
 
@@ -155,17 +166,17 @@ def _belongs(name: str) -> bool:
     parts = name.split("/")
     if len(parts) == 1:
         return name in (GUIDE_META_FILE, GUIDE_FILE)
-    return len(parts) == 2 and parts[0] == EXAMPLES_DIRECTORY
+    return len(parts) == 2 and parts[0] in (EXAMPLES_DIRECTORY, DIAGRAMS_DIRECTORY)
 
 
 def _links(issues: _Issues, meta: GuideMeta, catalog: CatalogFacts) -> None:
     """G4, in meta.yaml"""
-    for field, slugs in (("prerequisites", meta.prerequisites), ("related", meta.related)):
+    for key, slugs in (("prerequisites", meta.prerequisites), ("related", meta.related)):
         for slug in slugs:
             if slug == meta.slug:
-                issues.add(GUIDE_META_FILE, "a guide does not link to itself", field)
+                issues.add(GUIDE_META_FILE, "a guide does not link to itself", key)
             elif slug not in catalog.guides:
-                issues.add(GUIDE_META_FILE, f'"{slug}" is not a guide', field)
+                issues.add(GUIDE_META_FILE, f'"{slug}" is not a guide', key)
     for slug in meta.problems:
         if slug not in catalog.problems:
             issues.add(GUIDE_META_FILE, f'"{slug}" is not a problem', "problems")
@@ -284,10 +295,36 @@ class _GuideFile:
             self.error(f"the copy of {name} differs from the file", fence.start)
 
     def _diagrams(self, markdown: GuideMarkdown) -> None:
-        """G7 and G8"""
-        for diagram in markdown.mermaid_fences():
+        """G7, G8 and G10"""
+        diagrams = markdown.mermaid_fences()
+        for position, diagram in enumerate(diagrams, start=1):
             for message in _diagram_issues(diagram):
                 self.error(f"the diagram {message}", diagram.start)
+            self._svg_drawings(position, diagram)
+        drawn = {
+            f"{DIAGRAMS_DIRECTORY}/{svg_file(position, theme)}"
+            for position in range(1, len(diagrams) + 1)
+            for theme in SVG_THEMES
+        }
+        for name in sorted(set(self._content.diagrams) - drawn):
+            self._issues.add(name, f"belongs to no diagram: {REDRAW}, which removes it")
+        self._text_drawings(markdown)
+
+    def _svg_drawings(self, position: int, diagram: Fence) -> None:
+        """G10: both SVG drawings of the diagram exist and hold the hash of its source."""
+        for theme in SVG_THEMES:
+            name = f"{DIAGRAMS_DIRECTORY}/{svg_file(position, theme)}"
+            svg = self._content.diagrams.get(name)
+            if svg is None:
+                self.error(
+                    f"the diagram has no {theme} SVG drawing {name}: {REDRAW}", diagram.start
+                )
+            elif svg_digest(svg) != mermaid_digest(diagram.content):
+                self.error(f"the SVG drawing {name} is stale: {REDRAW}", diagram.start)
+
+    def _text_drawings(self, markdown: GuideMarkdown) -> None:
+        """G8"""
+        for diagram in markdown.mermaid_fences():
             drawing = markdown.text_drawing(diagram)
             if drawing is None:
                 self.error(f"the diagram has no text drawing: {REDRAW}", diagram.start)

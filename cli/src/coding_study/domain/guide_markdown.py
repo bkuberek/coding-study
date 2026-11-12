@@ -1,5 +1,5 @@
 """How a guide.md reads (docs/specs/guides.md#guidemd): its fenced blocks, the examples and their
-outputs, the Mermaid diagrams and their text drawings, and the text `cstudy learn` shows.
+outputs, the Mermaid diagrams with their text and SVG drawings, and the text `cstudy learn` shows.
 
 Fences are read line by line, as the renderer of `tools/guides/` reads them: a fence opens with
 three or more backticks or tildes at the start of a line and closes with a line of at least as
@@ -15,8 +15,72 @@ MERMAID = "mermaid"
 TEXT = "text"
 OUTPUT = "output"
 EXAMPLES_PREFIX = "examples/"
+SVG_THEMES = ("light", "dark")
+"""The SVG drawings of each diagram, one per theme of the web UI."""
 _OPENING = re.compile(r"(?P<marker>`{3,}|~{3,})(?P<info>.*)")
 _MARKER = re.compile(r"<!-- text-of-mermaid sha256:(?P<digest>[0-9a-f]{64}) -->")
+_SVG_MARKER = re.compile(r"<!-- svg-of-mermaid sha256:(?P<digest>[0-9a-f]{64}) -->")
+_SVG_FILE = re.compile(r"[1-9][0-9]*-(?:light|dark)\.svg")
+_SVG_SIZE = re.compile(r'<svg\b[^>]*?\swidth="(?P<width>\d+)"[^>]*?\sheight="(?P<height>\d+)"')
+_TITLE = re.compile(r"\s*accTitle\s*:\s*(?P<text>\S.*)")
+_DESCRIPTION = re.compile(r"\s*accDescr\s*:\s*(?P<text>\S.*)")
+_DESCRIPTION_BLOCK = re.compile(r"\s*accDescr\s*\{(?P<text>.*)")
+_BLOCK_END = "}"
+
+
+@dataclass(frozen=True, slots=True)
+class DiagramText:
+    """What a diagram's `accTitle` and `accDescr` say; empty for a line it lacks."""
+
+    title: str
+    description: str
+
+
+def svg_file(position: int, theme: str) -> str:
+    """The SVG drawing of the guide's `position`-th diagram, from 1, in `theme`: `1-light.svg`."""
+    return f"{position}-{theme}.svg"
+
+
+def is_svg_file(name: str) -> bool:
+    return _SVG_FILE.fullmatch(name) is not None
+
+
+def svg_marker(source: str) -> str:
+    return f"<!-- svg-of-mermaid sha256:{mermaid_digest(source)} -->"
+
+
+def svg_digest(svg: str) -> str | None:
+    """The hash on an SVG drawing's first line; None without the marker."""
+    first = svg.split("\n", 1)[0]
+    marker = _SVG_MARKER.fullmatch(first.strip())
+    return marker["digest"] if marker else None
+
+
+def svg_size(svg: str) -> tuple[int, int] | None:
+    """The width and height of an SVG drawing's root element, in pixels."""
+    found = _SVG_SIZE.search(svg)
+    return (int(found["width"]), int(found["height"])) if found else None
+
+
+def diagram_text(source: str) -> DiagramText:
+    """`accTitle: …`, and `accDescr: …` or a `accDescr { … }` block, joined into one line."""
+    title = ""
+    description: list[str] = []
+    inside = False
+    for line in source.splitlines():
+        if inside:
+            text, closed = line.split(_BLOCK_END, 1)[0], _BLOCK_END in line
+            description.append(text.strip())
+            inside = not closed
+        elif found := _TITLE.fullmatch(line):
+            title = found["text"].strip()
+        elif found := _DESCRIPTION.fullmatch(line):
+            description = [found["text"].strip()]
+        elif found := _DESCRIPTION_BLOCK.fullmatch(line):
+            rest = found["text"]
+            description = [rest.split(_BLOCK_END, 1)[0].strip()]
+            inside = _BLOCK_END not in rest
+    return DiagramText(title, " ".join(part for part in description if part))
 
 
 @dataclass(frozen=True, slots=True)

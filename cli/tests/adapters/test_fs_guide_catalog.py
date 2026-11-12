@@ -44,6 +44,8 @@ def test_files_lists_every_file_but_hidden_ones(content_root: Path):
     (folder / "examples" / "__pycache__").mkdir()
     (folder / "examples" / "__pycache__" / "x.pyc").write_text("")
     assert FsGuideCatalog(content_root).files("hash-maps") == (
+        "diagrams/1-dark.svg",
+        "diagrams/1-light.svg",
         "examples/hello.py",
         "guide.md",
         "meta.yaml",
@@ -53,6 +55,18 @@ def test_files_lists_every_file_but_hidden_ones(content_root: Path):
 def test_examples_are_read_by_their_path_in_the_guide(content_root: Path):
     write_guide(content_root, "hash-maps", "Hash maps")
     assert FsGuideCatalog(content_root).examples("hash-maps") == {"examples/hello.py": EXAMPLE}
+
+
+def test_svg_drawings_are_read_by_their_path_in_the_guide(content_root: Path):
+    write_guide(content_root, "hash-maps", "Hash maps")
+    drawings = FsGuideCatalog(content_root).diagrams("hash-maps")
+    assert (
+        sorted(drawings),
+        drawings["diagrams/1-dark.svg"].startswith("<!-- svg-of-mermaid"),
+    ) == (
+        ["diagrams/1-dark.svg", "diagrams/1-light.svg"],
+        True,
+    )
 
 
 def test_a_missing_guide_md_reads_as_none(content_root: Path):

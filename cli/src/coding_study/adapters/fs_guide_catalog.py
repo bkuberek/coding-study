@@ -12,6 +12,7 @@ from typing import Any
 from coding_study.adapters.fs_problem_repository import parse_yaml, read_content_file
 from coding_study.adapters.schema_validation import SCHEMAS_DIRECTORY, SchemaValidator
 from coding_study.domain.concept_guides import (
+    DIAGRAMS_DIRECTORY,
     EXAMPLES_DIRECTORY,
     GUIDE_FILE,
     GUIDE_META_FILE,
@@ -77,6 +78,13 @@ class FsGuideCatalog:
         return {
             path.relative_to(folder).as_posix(): path.read_text(encoding="utf-8", errors="replace")
             for path in sorted(_files_under(folder / EXAMPLES_DIRECTORY))
+        }
+
+    def diagrams(self, slug: str) -> Mapping[str, str]:
+        folder = self._guides / slug
+        return {
+            path.relative_to(folder).as_posix(): path.read_text(encoding="utf-8", errors="replace")
+            for path in sorted(_files_under(folder / DIAGRAMS_DIRECTORY))
         }
 
     def examples_folder(self, slug: str) -> Path:

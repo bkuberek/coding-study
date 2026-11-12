@@ -6,6 +6,10 @@
 // drawn again; --force draws every one again, after a change to the renderer or its options.
 // With --check it writes nothing and exits 1 when a drawing is missing or stale.
 //
+// Then it draws each diagram as a light and a dark SVG for the web UI (render-svg.ts), with the
+// same rules: kept when its marker matches, drawn again otherwise or with --force, and only
+// reported with --check.
+//
 // Fences are read line by line, as `coding_study.domain.guide_markdown` reads them.
 
 import { createHash } from "node:crypto";
@@ -13,6 +17,8 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderMermaidASCII } from "beautiful-mermaid";
+
+import { type GuideDiagrams, renderSvgs } from "./render-svg.ts";
 
 const REPOSITORY = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const GUIDES = join(REPOSITORY, "guides");
@@ -125,7 +131,33 @@ function guideFiles(): string[] {
     .sort();
 }
 
-function main(): number {
+/** Each guide's `mermaid` blocks, in order, with the hash their markers hold. */
+export function guideDiagrams(path: string, text: string): GuideDiagrams {
+  const diagrams = fences(text.split("\n"))
+    .filter((fence) => fence.info === "mermaid")
+    .map((fence) => {
+      const source = fence.lines.map((line) => `${line}\n`).join("");
+      return { source, hash: digest(source) };
+    });
+  return { folder: dirname(path), diagrams };
+}
+
+async function main(): Promise<number> {
+  const textStatus = drawText();
+  const check = process.argv.includes("--check");
+  const guides = guideFiles().map((path) => guideDiagrams(path, readFileSync(path, "utf8")));
+  let changed = 0;
+  try {
+    changed = await renderSvgs(guides, { check, force: process.argv.includes("--force"), root: REPOSITORY });
+  } catch (error) {
+    console.error(`SVG drawings: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+  if (textStatus !== 0) return textStatus;
+  return check && changed > 0 ? 1 : 0;
+}
+
+function drawText(): number {
   const check = process.argv.includes("--check");
   let stale = 0;
   let failed = 0;
@@ -158,5 +190,5 @@ function main(): number {
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exitCode = main();
+  process.exitCode = await main();
 }
