@@ -113,7 +113,7 @@ Read the trace at minute 4. Two sessions, `[0, 4)` and `[1, 4)`, close there, an
 
 The last line shows the tie rule at work. Sorted with opens first, the session opening at minute 4 is counted while the two that end at 4 are still counted too, and the sweep reports a peak of 4 that never happened.
 
-Why reading the count after every event is safe with closes first: within one time, the closes come first and then the opens, so the count only rises after the last close, and every intermediate count is a part of the true count at that time. It can be lower than the truth for an instant, never higher, and the true count is reached after the last open.
+Why reading the count after every event is safe with closes first: at a time `t`, the closes come first, and while they are handled the count only falls from its value just before `t`, which is the number of sessions open at a real moment. Then the opens come, and while they are handled the count only rises, up to its value after the last open, which is the number open at `t`. A count read in between need not match any moment: with only `[0, 4)` and `[1, 4)`, the count after the first close at 4 is 1, though no session is open at 4. But it is never above a count that does match a moment, so the largest count the sweep reads is a real one. With opens first, the counts during the opens at `t` still include the sessions that close at `t`, and can exceed both.
 
 ## Counting overlapping pairs
 
@@ -184,7 +184,7 @@ Each pair is counted at the open of the one handled second and at no other time.
 - **Stepping through every moment.** A loop over every minute from the first start to the last end does work for times where nothing happens, and with times up to 10^9 it never finishes. Only the 2n endpoints matter.
 - **A dictionary of time to change, iterated as it is.** Accumulating changes in a dict is fine, but a Python dict iterates in insertion order, not in order of its keys. Sort the keys before sweeping.
 - **Forgetting the convention when converting.** Events are only as right as the intervals they come from. Turning closed intervals into events with the half-open tie rule loses every pair that shares exactly one point.
-- **Empty intervals.** `[t, t)` makes a close and an open at the same time. With closes first, its close comes before its own open, so the count dips for an instant and recovers; it never raises the peak, but code that asserts the count is never negative will fail. Drop empty intervals first if they can occur.
+- **Empty intervals.** `[t, t)` makes a close and an open at the same time. With closes first, its close comes before its own open, so the count dips for an instant and recovers; it never raises the peak, but code that asserts the count is never negative can fail. Drop empty intervals first if they can occur.
 
 ## Complexity
 

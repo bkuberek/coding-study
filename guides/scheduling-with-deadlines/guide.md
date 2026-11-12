@@ -152,7 +152,7 @@ The greedy rule takes the jobs by deadline and keeps a **plan**, the jobs it mea
 1. Take the next job by deadline into the plan.
 2. If the plan's total hours now pass this job's deadline, give up the **longest** job in the plan, which may be the one just taken.
 
-A **max-heap** of the plan's hours finds the longest job in O(log n) and removes it, as the trees and heaps guides explain. Python's `heapq` is a min-heap, so the example pushes `-hours`, with an arrival counter that breaks ties between equal hours.
+The plan needs two operations: add a job, and remove the longest job it holds. A **max-heap** does both. It is a binary tree, stored in a plain list, in which every parent is at least as large as its children, so the largest item is always at the root. Adding an item or removing the root breaks that order along a single path from the root to a leaf, and repairing it costs O(log n) steps for n items. Python's `heapq` is a min-heap, smallest at the root, so the example pushes `-hours`, with an arrival counter that breaks ties between equal hours.
 
 ```python examples/most_on_time.py
 """The press is overbooked, so some jobs will be late. Keep as many on time as possible: take the
@@ -371,7 +371,7 @@ After the last job, promises 1 and 2 say that the plan is a largest set of jobs 
 
 - **Where the rules come from.** *Elements of Scheduling*, the book on machine scheduling collected by Jan Karel Lenstra and David Shmoys, credits earliest deadline first to J. R. Jackson, in a 1955 report, as Jackson's EDD (earliest due date) rule: if any order completes every job on time, the deadline order does, and it minimizes the maximum lateness either way. Its proof there is the interchange of neighboring jobs used above. The plan with the heap is the Moore–Hodgson algorithm: J. M. Moore published a related method in 1968 and credited this simpler form to his colleague Hodgson. The book states it with a priority queue supporting insert and delete-max, in O(n log n) time.
 - **Arrivals change everything.** When jobs have release times and cannot be interrupted, minimizing the maximum lateness is strongly NP-hard. If a running job may be interrupted, a preemptive version of earliest deadline first, which always runs the available job with the earliest deadline, solves it again.
-- **Weights break the heap rule.** If each job has a weight and the goal is the smallest total weight of late jobs, the problem is NP-hard; a dynamic program solves it in O(nW) time, where W is the total weight. The Moore–Hodgson rule stays optimal when the weights and the processing times are oppositely ordered, a shorter job never weighing less, which covers equal weights and equal lengths.
+- **Weights make it hard.** If each job has a weight and the goal is the smallest total weight of late jobs, the problem is NP-hard; a dynamic program solves it in O(nW) time, where W is the total weight. The heap rule of this guide gives up the longest job without looking at weights, so it is only for counting late jobs.
 - **Python's heap.** `heapq` keeps a min-heap in a plain list, with the smallest item at `heap[0]`. Python 3.14 added max-heap functions, such as `heappush_max` and `heappop_max`; negating the key works in every version. The documentation's notes on priority queues recommend an entry count as a tie-breaker, so that equal priorities come out in the order they went in and the tasks themselves are never compared.
 
 ## Practice
@@ -385,3 +385,4 @@ After the last job, promises 1 and 2 say that the plan is a largest set of jobs 
 - [J. M. Moore, "An n job, one machine sequencing algorithm for minimizing the number of late jobs", *Management Science* 15 (1968)](https://doi.org/10.1287/mnsc.15.1.102).
 - [Kevin Wayne, lecture slides for Kleinberg and Tardos, *Algorithm Design*, chapter 4](https://www.cs.princeton.edu/~wayne/kleinberg-tardos/pdf/04GreedyAlgorithmsI.pdf): scheduling to minimize lateness, with idle time and inversions.
 - [Python `heapq`](https://docs.python.org/3/library/heapq.html): the min-heap, the max-heap functions of 3.14, and the priority-queue notes on tie-breakers.
+- The trees and heaps path of `cstudy`, for how a heap keeps its order.

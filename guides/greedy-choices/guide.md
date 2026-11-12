@@ -132,37 +132,37 @@ Now the argument. There are finitely many orders, so at least one of them has th
 ```mermaid
 flowchart TD
   accTitle: The exchange argument
-  accDescr: Start from any best answer. Find the first place where it differs from the greedy answer. Swap in the greedy choice and show the answer got no worse. Repeating this turns the best answer into the greedy one, so the greedy answer is best too.
-  a["Take any best answer"] --> b["Find its first difference from greedy"]
-  b --> c["Swap in the greedy choice"]
-  c --> d["Show the answer got no worse"]
-  d --> e["Repeated, it becomes the greedy answer"]
+  accDescr: Start from any best order. Find two neighbors that are out of the greedy order and swap them, which leaves the total no worse. Each swap fixes one pair, so repeating it ends in the greedy order, which is therefore best too.
+  a["Take any best order"] --> b["Find two neighbors out of greedy order"]
+  b --> c["Swap them: the total gets no worse"]
+  c --> d["Repeat until no pair is out of order"]
+  d --> e["It is now a greedy order, and still best"]
 ```
 
-<!-- text-of-mermaid sha256:77de00f53d7358f0acca3bba9f26c9c71f88d25afc5ad9e8318328da19932703 -->
+<!-- text-of-mermaid sha256:27d1ad31188c00bade050758e8ef267b4cde05c810d877ac79cb3def7b9f7283 -->
 ```text
-┌──────────────────────────────────────┐
-│         Take any best answer         │
-└───────────────────┬──────────────────┘
-                    ▼
-┌──────────────────────────────────────┐
-│Find its first difference from greedy │
-└───────────────────┬──────────────────┘
-                    ▼
-┌──────────────────────────────────────┐
-│      Swap in the greedy choice       │
-└───────────────────┬──────────────────┘
-                    ▼
-┌──────────────────────────────────────┐
-│     Show the answer got no worse     │
-└───────────────────┬──────────────────┘
-                    ▼
-┌──────────────────────────────────────┐
-│Repeated, it becomes the greedy answer│
-└──────────────────────────────────────┘
+┌────────────────────────────────────────┐
+│          Take any best order           │
+└────────────────────┬───────────────────┘
+                     ▼
+┌────────────────────────────────────────┐
+│ Find two neighbors out of greedy order │
+└────────────────────┬───────────────────┘
+                     ▼
+┌────────────────────────────────────────┐
+│   Swap them: the total gets no worse   │
+└────────────────────┬───────────────────┘
+                     ▼
+┌────────────────────────────────────────┐
+│  Repeat until no pair is out of order  │
+└────────────────────┬───────────────────┘
+                     ▼
+┌────────────────────────────────────────┐
+│It is now a greedy order, and still best│
+└────────────────────────────────────────┘
 ```
 
-The drawing is the general shape of every exchange argument: the swap never hurts, so after enough swaps the best answer has become the greedy answer without getting worse.
+The drawing is the shape of this proof, and of the deadline proof in the [scheduling guide](../scheduling-with-deadlines/guide.md): each swap of two neighbors fixes the order of exactly that pair and never makes the total worse, so after finitely many swaps the best order has become a greedy order without getting worse.
 
 ## Greedy stays ahead
 
@@ -218,7 +218,7 @@ most parcels of any plan: 4
 The measure of progress is the **load after k parcels**, and the two lines of loads show greedy staying ahead: after 1, 2 and 3 parcels it carries 3, 7 and 13 kg where the other plan carries 4, 11 and 20, so greedy always has more room left. Here is why that holds for every plan, and why it is enough.
 
 1. **Greedy stays ahead.** Greedy's first `k` parcels are the `k` lightest of all. Any `k` parcels weigh at least as much as the `k` lightest, so after `k` parcels any plan's load is at least greedy's.
-2. **Ahead means best.** Suppose some plan that fits carries more parcels than greedy, say `k + 1` where greedy carried `k`. Greedy stopped because its next parcel did not fit: the `k + 1` lightest parcels weigh more than 20 kg. But the plan's `k + 1` parcels weigh at least as much as the `k + 1` lightest, so more than 20 kg too, and the plan does not fit after all. So no plan carries more than greedy.
+2. **Ahead means best.** If greedy took every parcel, no plan can carry more. Otherwise, suppose some plan that fits carries more parcels than greedy, say at least `k + 1` where greedy carried `k`. Greedy stopped because its next parcel did not fit: the `k + 1` lightest parcels weigh more than 20 kg. But any `k + 1` of the plan's parcels weigh at least as much as the `k + 1` lightest, so more than 20 kg too, and the plan does not fit after all. So no plan carries more than greedy.
 
 The art of a stays-ahead proof is the choice of measure. "Parcels carried so far" would not work: every plan carries `k` parcels after `k` steps. Load works because a smaller load means more room, which is exactly what the last step needs.
 
@@ -226,7 +226,7 @@ The art of a stays-ahead proof is the choice of measure. "Parcels carried so far
 
 Change one thing in the oven: some batches are for several customers. Scones (2 minutes) are for 2 customers, cookies (4 minutes) for 1, and croissants (6 minutes) for 3, and every waiting customer counts. Shortest first still sounds right, and it is wrong: the second half of the output shows it waiting 46 customer-minutes, while the best order waits 40.
 
-The exchange argument finds the mistake and the fix. Redo the swap of a neighboring pair, with `x` taking `a` minutes for `u` customers and `y` taking `b` minutes for `v` customers. The `u` customers of `x` now wait `b` minutes longer, and the `v` customers of `y` wait `a` minutes less, so the total changes by `u·b - v·a`. The swap helps exactly when `u·b < v·a`, that is, when `b / v < a / u`: when `y` has **fewer minutes per customer** than `x`. Shortest first compared minutes alone, which is right only when every batch has the same number of customers.
+The exchange argument finds the mistake and the fix. Redo the swap of a neighboring pair, with `x` taking `a` minutes for `u` customers and `y` taking `b` minutes for `v` customers. The `u` customers of `x` now wait `b` minutes longer, and the `v` customers of `y` wait `a` minutes less, so the total changes by `u·b - v·a`. The swap helps exactly when `u·b < v·a`, that is, when `b / v < a / u`: when `y` has **fewer minutes per customer** than `x`. Shortest first compared minutes alone, which is guaranteed right only when every batch has the same number of customers.
 
 So the safe rule sorts by minutes per customer: scones (1 minute per customer), croissants (2), cookies (4), which waits 40 customer-minutes, the best of all six orders. The same proof as before, with `u·b - v·a` in place of `b - a`, shows that every order sorted this way is best. Swapping cookies and croissants in the shortest-first order changes the total by 1·6 - 3·4 = -6, from 46 to 40.
 
