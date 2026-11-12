@@ -55,7 +55,7 @@ Paths: the parent of each entity is defined by a rule that depends on the entity
 
 - Running the search per query keeps the graph free of precomputed state and is fast for a few hops; for a graph with millions of facts a hub at hop 1 can still pull in a large part of it, so real systems cap the facts a node contributes or use a ranking that prefers specific relations.
 - The score is a product of three factors and each halving is an integer shift, which keeps every score exact and the order identical in every language. A smooth exponential decay and learned weights would rank better, at the price of floating point ties and of a score that cannot be checked by hand.
-- Greedy filling is simple and explainable, and may leave a part of the budget unused where an exact knapsack would use it. Because a fact that does not fit is skipped rather than ending the fill, a small fact lower in the ranking can use the space that a larger one could not.
+- Greedy filling is simple and explainable, and may miss the choice with the highest total score within the budget, which an exact knapsack solution finds. Because a fact that does not fit is skipped rather than ending the fill, a small fact lower in the ranking can use the space that a larger one could not.
 - The budget here counts the facts only, and not the paths or the numbering. That keeps the facts and their citations independent of each other. A system that counts everything the model reads must fill the budget with the rendered lines instead, and then the path length changes what fits.
 - Community summaries (clusters of densely connected entities, each summarised in text) answer broad questions that no single entity's neighbourhood can. They are outside this problem, which only retrieves and cites individual facts.
 
@@ -73,8 +73,10 @@ Paths: the parent of each entity is defined by a rule that depends on the entity
 
 ## Further reading
 
-- P. Lewis et al., "Retrieval-augmented generation for knowledge-intensive NLP tasks", Advances in Neural Information Processing Systems, 2020: the idea of fetching passages at question time and giving them to a generator.
+- P. Lewis et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks", NeurIPS 2020, arXiv:2005.11401: the idea of fetching passages at question time and giving them to a generator.
 - [Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search): the traversal that gives distances in an unweighted graph, and the tree of parents used for paths.
-- V. A. Traag, L. Waltman and N. J. van Eck, "From Louvain to Leiden: guaranteeing well-connected communities", Scientific Reports, 2019: community detection, the first step of the community summaries mentioned above (not implemented here).
-- M. E. J. Newman, "Networks", Oxford University Press, 2nd edition, 2018: ego networks, distances and communities in graphs.
+- V. A. Traag, L. Waltman and N. J. van Eck, "From Louvain to Leiden: guaranteeing well-connected communities", Scientific Reports 9:5233, 2019, doi:10.1038/s41598-019-41695-z: community detection, the first step of the community summaries mentioned above (not implemented here).
+- M. E. J. Newman, "Networks", 2nd edition, Oxford University Press, 2018, doi:10.1093/oso/9780198805090.001.0001: a textbook on networks, with community detection among its topics.
+- N. F. Liu et al., "Lost in the Middle: How Language Models Use Long Contexts", Transactions of the Association for Computational Linguistics 12:157-173, 2024, doi:10.1162/tacl_a_00638: how the position of information in a long context affects its use, which is why the order of the facts matters.
+- [NetworkX `ego_graph`](https://networkx.org/documentation/stable/reference/generated/networkx.generators.ego.ego_graph.html): the usual ego network as an induced subgraph of the neighbours within a radius, which level 1 deliberately does not follow.
 - S. Martello and P. Toth, "Knapsack Problems: Algorithms and Computer Implementations", Wiley, 1990: the exact alternative to a greedy fill.
