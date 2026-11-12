@@ -86,7 +86,7 @@ Classic teaching examples of dynamic programming are themselves catalog problems
 | Example | Guide | Avoided, and why |
 |---------|-------|------------------|
 | The digit sum of a number, the towers of Hanoi | recursion | Powers (`fast-power`) and binary search (`binary-search`) are catalog problems; tree recursions are close to `max-depth-binary-tree` and `employee-importance` |
-| Three-colouring a map of six regions | backtracking | Subsets, orderings, sums, bracket strings, grid words and queens are the linked problems; two-colouring is `bipartite-graph`, which is not linked and is solved without search |
+| Three-colouring a map of six regions | backtracking | Subsets, orderings, sums, grid words and queens are the linked problems, and bracket strings are `generate-parentheses`, a catalog problem outside the path; two-colouring is `bipartite-graph`, which is not linked and is solved without search |
 | Fewest operations (subtract 1, halve, divide by 3) down to 1 | memoization | Fibonacci is `climbing-stairs`; binomial coefficients and lattice paths are `unique-paths`; counting paths through a graph is close to `unique-paths` and `longest-increasing-path-matrix` |
 | A take-away game with moves 1, 3 and 4 | one-dimensional-tables | Step counts are `climbing-stairs`, digit readings `decode-ways`, non-adjacent picks `house-robber`, sums of coins `coin-change` |
 | A week of lunch specials, no cuisine twice in a row | two-dimensional-tables | Every two-sequence recurrence in common use (common subsequences, edit distances, interleaving, counting occurrences, pattern matching) is a linked or catalog problem, and right-and-down path costs are `unique-paths` and the unmerged `minimum-path-sum`; the guide teaches what a two-sequence cell means without any of their recurrences |
@@ -103,7 +103,7 @@ Every worked example, trap and note was read against each linked problem's state
 | permutations | backtracking | A used flag per value; swapping into place; the next ordering | Not mentioned; colours may repeat on non-neighbours, so the example needs no used flags |
 | combination-sum | backtracking | Hint 1: a fixed order prevents duplicate combinations; hint 2: stay on a candidate to reuse it; hint 3: sorted candidates let the loop stop | The guide's traps leave out duplicate arrangements and sorted early exits; pruning is shown as a clash check |
 | word-search | backtracking | Mark and unmark cells; count letters first; search from the rarer end | The undo is the general technique; letter counts, reversal and in-place marking are not mentioned |
-| n-queens | backtracking | Row by row; sets of columns and diagonals; bits of free columns; counting only | Forward checking was cut (left out above); symmetry breaking is about renaming colours, and the statement counts mirror images as different placements |
+| n-queens | backtracking | Row by row; sets of columns and diagonals; bits of free columns; counting only | Forward checking was cut (left out above); symmetry breaking is about renaming colours, and the statement counts mirror images as different placements; the output-size note is an accepted overlap (below) |
 | climbing-stairs | memoization | The recurrence `ways(n - 1) + ways(n - 2)`; two variables | No Fibonacci-shaped example; the guide answers its first follow-up only as the general idea of the guide, overlapping subproblems and a memo |
 | word-break | memoization | Hint 2: the rest depends only on where it starts; hint 3: `ok[i]` over prefixes | The trap "the key describes what is left to solve" is general; no string splitting appears |
 | house-robber | one-dimensional-tables | The take-or-skip recurrence over the last house; two running totals | The prefix and suffix shapes of a state are general; the example is a game with three moves |
@@ -111,10 +111,10 @@ Every worked example, trap and note was read against each linked problem's state
 | coin-change | one-dimensional-tables | Hint 2: `1 + min` over coins, unreachable amounts marked; hint 3: fill amounts upwards; follow-up 1: why the largest coin first fails; follow-up 2: a shortest path over remainders | The memoization example also minimizes "1 + the best next number", and its greedy line shows dividing first is worse on 10; neither touches coins, unreachable totals or coin systems. The note that a table over a DAG is a shortest path was left out. A trap about initializing a minimum with infinity was left out |
 | min-cost-tickets | one-dimensional-tables | Hint 3: the three passes; the optimal approach: a 30-day ring buffer | The ring of slots is taught on the game's window of 4, as the general space saving; passes, calendar days and the window of 30 are not mentioned |
 | longest-increasing-subsequence | one-dimensional-tables | Hint 2: the best subsequence ending at `i`; hint 3: smallest tails with binary search | The table of state shapes was cut to prefix and suffix; "ending exactly at `i`" is not mentioned |
-| unique-paths | two-dimensional-tables | Hint 1: right plus below; hint 2: fill from a corner; hint 3: a binomial coefficient | The guide says a right-and-down path arrives from above or the left, which is in the statement, and that row-by-row order serves it; no counts, no corners filled, no binomials anywhere in the path |
+| unique-paths | two-dimensional-tables | Hint 1: right plus below; hint 2: fill from a corner; hint 3: a binomial coefficient | A sentence saying that a right-and-down path arrives at a square from above or from the left, and that row-by-row order serves it, was cut on review, since it mirrored hints 1 and 2; no counts, no corners filled, no binomials anywhere in the path |
 | longest-common-subsequence | two-dimensional-tables | Hint 2: `1 + L(i + 1, j + 1)` on a match, else the larger neighbour; two rows; reading one subsequence back | The guide says which three cells a two-sequence cell usually reads, never how they combine; reading back is taught on the lunch table |
 | maximal-square | two-dimensional-tables | Hint 2: `1 + min` of three neighbours; hint 3: one row plus the diagonal | The three-neighbour diagram has no combining rule; the space note says two rows, not one row and a diagonal |
-| edit-distance | two-dimensional-tables | Hint 2: `1 + min` of three suffix cells; the borders are the other length; returning the operations | Not mentioned; the borders trap says only that row 0 and column 0 are rarely all zeros |
+| edit-distance | two-dimensional-tables | Hint 2: `1 + min` of three suffix cells; the borders are the other length; returning the operations | Not mentioned; the borders trap says only that row 0 and column 0 are not always all zeros |
 | interleaving-string | two-dimensional-tables | Hint 2: `R(i, j)` from `R(i - 1, j)` and `R(i, j - 1)` with a character check | Not mentioned |
 | regex-matching | two-dimensional-tables | Hint 2: skip a starred item or consume and stay; hint 3: `M(i, j)` over prefixes | Not mentioned |
 | partition-equal-subset-sum | choosing-states | Hint 1: half the total; hint 2: reachable sums, item in or out; hint 3: one row updated from the largest sum down; follow-up 2: memory proportional to the target | The bag example teaches take-or-skip with values; halving, reachable sums and the one-row update direction are left out, and the complexity table gives no reduced-space row for the bag |
@@ -124,11 +124,37 @@ Every worked example, trap and note was read against each linked problem's state
 | job-scheduling-max-profit | choosing-states | Follow-up 1: most profitable first and ending first both fail; hints: sort by end, the last compatible job, binary search | No interval-scheduling example or counterexample appears; greedy is refuted on the bag |
 | burst-balloons | choosing-states | Follow-ups: the first balloon gives dependent parts, the last does not; filling intervals by length; hint 3: the split recurrence | The interval example takes coins from the ends, with no split point; filling by length is taught as the general order of interval tables, which answers the third follow-up only in general; "cutting a piece out" was removed from the list of interval shapes |
 
+### Accepted technique overlaps
+
+These teach the general technique that a problem's question also needs. They stay, because a guide that left them out would not teach its topic; none hands over the problem's own state, recurrence or trick.
+
+| Problem | Its text | What the guide teaches | Why it stays |
+|---------|----------|------------------------|--------------|
+| burst-balloons | Follow-up 3: in which order must the intervals be computed bottom-up? | `choosing-states` fills its interval table by stretch length, short to long | It is the fill order of every interval table; the problem's hard part, deciding which balloon of a stretch to think about, is not touched |
+| coin-change | Follow-up 1: why does always taking the largest coin fail, and for which coin systems does it work? | `memoization` shows that dividing whenever possible takes 4 steps from 10, where the best takes 3 | It teaches that a locally best choice can lose, the reason the recursion tries every choice; coins and coin systems are never mentioned |
+| n-queens | Follow-up 3: if only the number of placements were needed, which parts of the work could be dropped? | `backtracking`'s complexity notes that listing `S` answers of `n` choices takes at least `S · n` steps | It is the general cost of listing every answer; nothing is said about counting queens or what to drop |
+
 ## Not linked, checked anyway
 
 | Problem | Note |
 |---------|------|
 | `debug-recursion-base-case` | The recursion guide's base-case traps are about counting down and digits; nothing about trees or leaves |
 | `debug-grid-aliasing` | The list-of-lists aliasing trap was left out of the two-dimensional guide |
-| `context-packer` | It packs by a fixed greedy order that its statement gives; the guide's density counterexample neither describes nor contradicts that rule |
+| `all-grid-paths` | Hint 3 says to undo a move after exploring it and to store a copy of the path, not the path itself: the same as the backtracking guide's first two traps, forgetting the undo and recording the arrangement instead of a copy. Both are general rules of the technique and stay; the problem's order of moves and its follow-ups are not touched |
+| `context-packer` | It packs by a fixed greedy order that its statement gives; the guide's density counterexample neither describes nor contradicts that rule. A follow-up asks when an exact choice is worth paying for and what it would cost: `choosing-states` answers that in general, with the take-or-skip table, its O(n · C) cost and the trap of a budget too large for a table |
+| `graphrag-context` | Its statement says greedy filling is not optimal and the exact choice is a knapsack problem, and a follow-up asks when an exact knapsack choice is worth paying for; the same parts of `choosing-states` answer that in general |
 | `stock-with-cooldown` | Left out of the path: the lunch table, a position with a choice, is close to its follow-up on a small state machine |
+
+## Changes from the first accuracy review (2026-11-12)
+
+The review found no must-fix issues: every example matched its output and every fact its source, the Bellman quote included. These are its should-fix findings and what changed.
+
+| Finding | Change |
+|---------|--------|
+| "The stack underneath does not grow with it" is false for plain Python recursion on 3.13 | Cut; the trap keeps the documented warning that a limit set too high can crash, and that the highest safe limit depends on the platform. Run on CPython 3.13.12: with `setrecursionlimit(10**7)`, a recursion 1,000,000 deep finished |
+| The colouring's dead end was said to be found three levels after its cause | The cause, West = green, is one level above Centre; the sentence says so |
+| The two-dimensional guide mirrored the first two hints of `unique-paths` | The sentence on right-and-down paths and row-by-row order was cut |
+| `generate-parentheses` was named as a linked problem | It is a catalog problem outside the path |
+| Overlaps with `all-grid-paths`, `context-packer`, `graphrag-context`, `burst-balloons`, `coin-change` and `n-queens` were not recorded | Recorded above |
+| Hard problems came before `climbing-stairs` | `n-queens` and `regex-matching` close the path, after `burst-balloons`; the one-dimensional block is ordered by difficulty, then estimated minutes, then catalog order: `house-robber`, `coin-change`, `longest-increasing-subsequence`, `decode-ways`, `min-cost-tickets` |
+| Wording | A Java thread's stack size may be rounded up or down, or ignored (not "capped"); borders are "not always all zeros"; interval tables fit when each subproblem is one stretch; "many" one-dimensional states take one of two shapes; Michie's title keeps its quote marks; "depth first" is defined |
