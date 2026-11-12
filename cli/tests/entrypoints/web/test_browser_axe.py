@@ -490,8 +490,9 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
 
 def _guide(page: Any) -> None:
     """A guide with diagrams: each is the image of its SVG drawing in the view's theme, its
-    `accTitle` the alt text and its `accDescr` the caption."""
-    _open(page, "#/guides/hash-maps-and-sets", "figure.diagram img")
+    `accTitle` the alt text and its `accDescr` the caption. It waits for the image the theme
+    shows, since the other one stays hidden."""
+    _open(page, "#/guides/hash-maps-and-sets", "figure.diagram img:visible")
     page.wait_for_function(
         "() => [...document.querySelectorAll('figure.diagram img')].every((i) => i.complete)"
     )
