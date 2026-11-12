@@ -1731,7 +1731,7 @@
       "id": "v7",
       "level": 4,
       "visible": true,
-      "hang_guard_ms": 30000,
+      "hang_guard_ms": 34000,
       "note": "a test event is nothing to load: it is deleted, and the upload after it loads",
       "steps": [
         {
@@ -1762,6 +1762,9 @@
         },
         {
           "use": "import_result"
+        },
+        {
+          "use": "no_import_result"
         },
         {
           "request": {

@@ -2,7 +2,8 @@
 `grading/bulk.json`, too big for a case to carry, and its cases drive S3 and SQS on the emulator
 directly. These tests keep the bulk cases' expected answers equal to what the generator writes,
 the bulk file bigger than the app's memory limit, every bucket and queue a case names one the
-problem sets up, and every wait of a case well inside its limit."""
+problem sets up, every wait of a case well inside its limit, and every count of the events in
+flight after the app had time to delete the event it last announced."""
 
 import json
 import re
@@ -172,6 +173,61 @@ def test_a_cases_waits_take_at_most_half_its_limit(case_id: str):
     waited_ms = 1000 * sum(wait_s(request) for request in requests_of(case))
 
     assert waited_ms <= case["hang_guard_ms"] / 2
+
+
+SETTLE_S = 2
+"""How long a case waits for no further result before it counts the events in flight."""
+IN_FLIGHT = "ApproximateNumberOfMessagesNotVisible"
+
+
+def sqs_action(step: Step, action: str, queue: str) -> Mapping[str, Any] | None:
+    """The step's JSON when it sends `action` to `queue`, else None."""
+    request = step.get("request", {})
+    target = request.get("headers", {}).get("X-Amz-Target")
+    body = request.get("json", {})
+    return body if (target, body.get("QueueUrl")) == (f"AmazonSQS.{action}", queue) else None
+
+
+def receives_a_result(step: Step) -> bool:
+    receive = sqs_action(step, "ReceiveMessage", ENV["RESULT_QUEUE_URL"])
+    return receive is not None and step.get("expected", {}).get("body") != {}
+
+
+def settles(step: Step) -> bool:
+    """A wait for no result, or a sleep, long enough for the app's delete to land."""
+    receive = sqs_action(step, "ReceiveMessage", ENV["RESULT_QUEUE_URL"])
+    if receive is not None:
+        return step.get("expected", {}).get("body") == {} and wait_s(step["request"]) >= SETTLE_S
+    return step.get("sleep_ms", 0) >= SETTLE_S * 1000
+
+
+def counts_events_in_flight(step: Step) -> bool:
+    attributes = sqs_action(step, "GetQueueAttributes", ENV["UPLOAD_QUEUE_URL"])
+    return attributes is not None and IN_FLIGHT in attributes["AttributeNames"]
+
+
+def unsettled_counts(case: Mapping[str, Any]) -> list[int]:
+    """The position of each count of the events in flight that comes right after a result."""
+    unsettled = False
+    found: list[int] = []
+    for position, step in enumerate(steps_of(case["steps"]), start=1):
+        if receives_a_result(step):
+            unsettled = True
+        elif settles(step):
+            unsettled = False
+        elif counts_events_in_flight(step) and unsettled:
+            found.append(position)
+    return found
+
+
+@pytest.mark.parametrize("case_id", sorted(CASES))
+def test_a_case_counts_the_events_in_flight_only_once_the_app_had_time_to_delete_its_last(
+    case_id: str,
+):
+    """The app announces a result and only then deletes its event, so the moment a case receives
+    the result, that event is still in flight: a count right then races the app's delete. The case
+    waits for no further result first."""
+    assert unsettled_counts(CASES[case_id]) == []
 
 
 def skus_in(steps: list[Step]) -> Iterator[str]:

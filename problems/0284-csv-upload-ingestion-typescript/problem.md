@@ -59,7 +59,7 @@ Your app reads its port from `PORT`, listens on all interfaces inside the contai
 
 ### How the cases drive S3 and SQS
 
-The cases play the suppliers and S3 itself. A case puts a file into `uploads`, then puts S3's event for it on `upload-events`, as S3 would. It waits for your result on `import-results` and then asks your API. It may read your report from `upload-reports`, and look at what is left on `upload-events` and `upload-events-dlq`. While it waits for a result, it gives up after 10 seconds, or 40 for the bulk file. Before it waits, it asks your `/health`, so an app that died is reported as exited, with its exit code; 137 means it was killed for using more than its memory.
+The cases play the suppliers and S3 itself. A case puts a file into `uploads`, then puts S3's event for it on `upload-events`, as S3 would. It waits for your result on `import-results` and then asks your API. It may read your report from `upload-reports`, and look at what is left on `upload-events` and `upload-events-dlq`. Your app deletes an event only once its result is announced, so after a result, a case waits 2 seconds for no other result before it looks at `upload-events`. While it waits for a result, it gives up after 10 seconds, or 40 for the bulk file. Before it waits, it asks your `/health`, so an app that died is reported as exited, with its exit code; 137 means it was killed for using more than its memory.
 
 The emulator checks no signature, so the cases send it plain HTTP with an `Authorization` header that only names the service and the region. Your app signs its requests with the SDK as it would against AWS.
 
