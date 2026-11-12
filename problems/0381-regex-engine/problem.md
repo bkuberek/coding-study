@@ -220,7 +220,7 @@ A class with three items, one of them `_`, then a negated class that matches any
 
 ### Hint 1
 
-Start with the grammar: write one function per line of it, each reading characters from a shared position. `alternation` calls `sequence` and loops while it sees `|`; `sequence` calls `repetition` until it sees `|`, `)` or the end; `repetition` reads one atom and then wraps it once per `*`, `+` or `?` that follows. Each function returns a node of the tree.
+Start with the grammar: write one function per line of it. All of them share the pattern and one position in it, which each function moves forward past the characters it reads. `alternation` calls `sequence` and loops while it sees `|`; `sequence` calls `repetition` until it sees `|`, `)` or the end; `repetition` reads one atom and then wraps it once per `*`, `+` or `?` that follows; `atom` reads one character, or after `(` calls `alternation` again and then expects `)`. Each function returns a node of the tree. This way of parsing, one function per rule, is called *recursive descent*.
 
 ### Hint 2
 
