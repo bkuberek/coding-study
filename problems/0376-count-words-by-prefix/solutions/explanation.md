@@ -52,6 +52,8 @@ It is the shortest correct solution and the right one when either list is short.
 
 ### Intuition
 
+Counting the words that begin with a single prefix needs no trie: one pass over the words does it in the time of the scan above. That is why this problem takes a list of prefixes. A trie pays for itself when the same words are asked about again and again.
+
 Words that begin alike share their first letters, and a prefix question only depends on those first letters. A trie stores each shared beginning once, as a path of nodes from a root. If every node also keeps the number of words that went through it, then the number of words beginning with a prefix is simply the counter of the node at the end of the prefix's path. The structure is described in Edward Fredkin's "Trie Memory" (Communications of the ACM 3(9):490-499, 1960, doi 10.1145/367390.367400), and the name comes from the word "retrieval".
 
 ### Algorithm
