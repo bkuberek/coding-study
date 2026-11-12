@@ -12,9 +12,11 @@ steps:
   - problem: two-sum-sorted
   - problem: three-sum
   - problem: container-with-most-water
+  - problem: trapping-rain-water
   - guide: fixed-size-windows
   - problem: permutation-in-string
   - problem: chunking-with-overlap
+  - problem: sliding-window-maximum
   - guide: variable-size-windows
   - problem: best-time-to-buy-sell-stock
   - problem: min-size-subarray-sum
@@ -22,6 +24,4 @@ steps:
   - problem: max-ones-with-flips
   - problem: fruit-into-baskets
   - problem: longest-repeating-replacement
-  - problem: trapping-rain-water
-  - problem: sliding-window-maximum
   - problem: minimum-window-substring
