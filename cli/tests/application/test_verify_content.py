@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import pytest
@@ -85,6 +86,74 @@ def test_duplicate_ids_fail(environment):
     assert two_sum(report).static_errors == (
         'problems/0001-two-sum: id "0001" is also used by problems/0001-lru-cache-copy',
     )
+
+
+LRU_CACHE = "problems/0002-lru-cache"
+
+
+def add_leetcode_reference(environment, directory: str, number: int) -> None:
+    meta = environment.root / directory / "meta.yaml"
+    url = f"https://leetcode.com/problems/p{number}/"
+    meta.write_text(
+        meta.read_text() + f"references:\n  leetcode:\n    number: {number}\n    url: {url}\n"
+    )
+
+
+def shared_reference_warnings(report, directory: str) -> tuple[str, ...]:
+    problem = next(problem for problem in report.problems if problem.directory == directory)
+    return tuple(warning for warning in problem.warnings if "references.leetcode" in warning)
+
+
+def shared(directory: str, number: int, *others: str) -> str:
+    return (
+        f"{directory}/meta.yaml: references.leetcode: number {number} is also used by "
+        + ", ".join(others)
+    )
+
+
+def test_a_reference_shared_by_two_problems_is_warned_on_both(environment):
+    add_leetcode_reference(environment, TWO_SUM, 1)
+    add_leetcode_reference(environment, LRU_CACHE, 1)
+    report = verify(environment, static_only=True)
+    assert [shared_reference_warnings(report, d) for d in (TWO_SUM, LRU_CACHE)] == [
+        (shared(TWO_SUM, 1, LRU_CACHE),),
+        (shared(LRU_CACHE, 1, TWO_SUM),),
+    ]
+
+
+def test_a_group_of_three_names_the_other_two(environment):
+    third = "problems/0003-two-sum-copy"
+    shutil.copytree(environment.root / TWO_SUM, environment.root / third)
+    meta = environment.root / third / "meta.yaml"
+    meta.write_text(
+        meta.read_text()
+        .replace('id: "0001"', 'id: "0003"')
+        .replace("slug: two-sum", "slug: two-sum-copy")
+    )
+    for directory in (TWO_SUM, LRU_CACHE, third):
+        add_leetcode_reference(environment, directory, 1)
+    report = verify(environment, static_only=True)
+    assert shared_reference_warnings(report, TWO_SUM) == (shared(TWO_SUM, 1, LRU_CACHE, third),)
+
+
+def test_a_shared_reference_is_found_when_one_problem_is_verified(environment):
+    add_leetcode_reference(environment, TWO_SUM, 1)
+    add_leetcode_reference(environment, LRU_CACHE, 1)
+    report = verify(environment, static_only=True, slugs=("two-sum",))
+    assert shared_reference_warnings(report, TWO_SUM) == (shared(TWO_SUM, 1, LRU_CACHE),)
+
+
+def test_a_shared_reference_does_not_fail_verification(environment):
+    add_leetcode_reference(environment, TWO_SUM, 1)
+    add_leetcode_reference(environment, LRU_CACHE, 1)
+    assert verify(environment, static_only=True).failed == 0
+
+
+def test_distinct_references_are_not_reported(environment):
+    add_leetcode_reference(environment, TWO_SUM, 1)
+    add_leetcode_reference(environment, LRU_CACHE, 146)
+    report = verify(environment, static_only=True)
+    assert [shared_reference_warnings(report, d) for d in (TWO_SUM, LRU_CACHE)] == [(), ()]
 
 
 def test_unknown_related_slugs_are_warnings(environment):

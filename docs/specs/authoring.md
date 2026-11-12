@@ -285,6 +285,7 @@ A service project (`project.grading: http`) has its [own manifest](service-proje
 | S19 to S23 | [Service projects](service-projects.md#static): the manifest, the mock configs, the compose file, `requires` and the HTTP cases. S14 to S16 read differently for one |
 | S24 | Labels ([content](content.md#labels)): a catalog problem has `domains`, `job_roles` and `scope`, and `scope` fits `kind`: `project` or `system` for `kind: project`, `function` for any other kind. A problem in your own workspace may leave all three out, and one that names a `scope` still has to fit it. An item has the same three, with `scope: system` for a `system-design` item and `function` for a `code-review` item ([items](#items)) |
 | S25 | `guides` names [concept guides](guides.md) that exist |
+| S26 | No two problems share a `references.leetcode.number` ([meta.yaml](problem-format.md#metayaml)). Each problem in a group names the number and every other problem that carries it. Items have no such reference, so only problems take part. A warning for now, not an error: the catalog holds one pair that predates the check, `0002-lru-cache` and `0200-thread-safe-lru-cache` (both 146), and the existing duplicates must be resolved before S26 becomes an error, like S2 |
 
 ### Dynamic
 

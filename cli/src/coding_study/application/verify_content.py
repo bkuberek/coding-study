@@ -43,6 +43,7 @@ from coding_study.application.verify_items import (
 )
 from coding_study.application.verify_ladder import LadderResult, verify_ladder
 from coding_study.application.verify_projects import SuiteCheck, verify_project
+from coding_study.application.verify_references import reference_conflicts
 from coding_study.application.verify_service import verify_service_project
 from coding_study.domain.cases import Expected, GeneratedInput, JsonValue
 from coding_study.domain.clock_determinism import DeterminismVerdict
@@ -209,7 +210,9 @@ def verify_content(
     for slug, conflicts in problem_slug_conflicts(environment).items():
         duplicates[slug] = (*duplicates.get(slug, ()), *conflicts)
     all_slugs = frozenset((*known, *item_slugs))
-    verifier = _ProblemVerifier(environment, request, notify, all_slugs)
+    verifier = _ProblemVerifier(
+        environment, request, notify, all_slugs, reference_conflicts(environment)
+    )
     checked = (
         verifier.verify(slug, duplicates.get(slug, ())) for slug in selected if slug in known
     )
@@ -308,11 +311,14 @@ class _ProblemVerifier:
         request: VerifyRequest,
         notify: ProgressNotice,
         known_slugs: frozenset[str],
+        shared_references: dict[str, tuple[str, ...]],
     ) -> None:
         self._environment = environment
         self._request = request
         self._notify = notify
         self._known_slugs = known_slugs
+        self._shared_references = shared_references
+        """S26, by slug; a warning until the catalog's existing duplicates are resolved."""
         self._guide_slugs = frozenset(environment.guides.slugs())
 
     def verify(self, slug: str, duplicates: tuple[str, ...]) -> ProblemVerification | None:
@@ -340,7 +346,10 @@ class _ProblemVerifier:
                 *duplicates,
                 *(str(issue) for issue in (*static.errors, *self._unknown_guides(content))),
             ),
-            warnings=tuple(str(issue) for issue in (*static.warnings, *self._related(content))),
+            warnings=(
+                *self._shared_references.get(slug, ()),
+                *(str(issue) for issue in (*static.warnings, *self._related(content))),
+            ),
             reference_languages=_reference_languages(content),
             ready_errors=ready_problems(content) if self._request.require_ready else (),
         )

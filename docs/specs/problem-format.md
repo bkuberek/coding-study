@@ -70,7 +70,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `perf` | object | no | See [Performance block](#performance-block) |
 | `limits.hang_guard_ms` | int | no | Overrides the per-case hang guard (default 10000). A [virtual-clock](#asynchronous-code-and-the-virtual-clock) problem lowers it to a few seconds, since a correct case takes milliseconds |
 | `concurrency` | object | `concurrent` (required); `project` (optional, with stress cases) | See [Concurrent problems](#concurrent-problems) and [Stress cases in projects](#stress-cases-in-projects) |
-| `references` | object | no | `leetcode: {number, url}`, `links: [url]` |
+| `references` | object | no | `leetcode: {number, url}`, `links: [url]`. No two problems share a `leetcode.number` (S26) |
 | `related` | list of slugs | no | |
 | `guides` | list of guide slugs | no | The [concept guides](guides.md) to read before the problem; each must exist (S25) |
 | `order` | int | no | Curriculum order within the primary pattern (default 1000) |
