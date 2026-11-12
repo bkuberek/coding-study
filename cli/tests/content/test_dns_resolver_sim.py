@@ -726,6 +726,17 @@ def test_the_hidden_cases_reach_every_response_code():
     assert codes == {"NOERROR", "NXDOMAIN", "REFUSED", "SERVFAIL"}
 
 
+def test_an_alias_holds_one_cname_and_nothing_else():
+    for case in CASES:
+        held: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for op, args in zip(case["ops"], case["args"], strict=True):
+            if op == "addRecord":
+                held[(args[0], args[1].lower())].append(args[2])
+        for (server, name), types in held.items():
+            if "CNAME" in types:
+                assert types == ["CNAME"], (case["id"], server, name)
+
+
 def test_every_ttl_is_positive_and_time_never_goes_back():
     for case in CASES:
         times = [
