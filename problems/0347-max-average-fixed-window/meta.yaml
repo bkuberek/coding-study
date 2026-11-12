@@ -27,6 +27,8 @@ perf:
   size_ladder: [1000, 2000, 5000, 10000]
   expected_from: sliding-window
   time_limit: {factor: 5}
+references:
+  leetcode: {number: 643, url: "https://leetcode.com/problems/maximum-average-subarray-i/"}
 related: [min-size-subarray-sum, max-ones-with-flips, longest-substring-without-repeats]
 order: 0
 estimate_minutes: 15

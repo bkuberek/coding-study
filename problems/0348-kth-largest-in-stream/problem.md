@@ -13,6 +13,8 @@ Implement the class `KthLargestTracker`:
 
 You may assume that when `add` returns, at least `k` scores have been recorded, so the answer always exists.
 
+Reference: this is our own wording of LeetCode problem 703, [Kth Largest Element in a Stream](https://leetcode.com/problems/kth-largest-element-in-a-stream/).
+
 The tracker will be fed far more scores than `k`. Sorting everything after each new score is simple, but the board has to keep up, and a data structure called a heap lets you do much better. A min-heap is a container with two cheap operations: it tells you the smallest item it holds immediately, and it lets you insert an item or remove the smallest item in time proportional to the logarithm of its size, rather than to its size.
 
 ## Input
@@ -68,7 +70,7 @@ Suppose you remembered only the `k` highest scores seen so far. Where among them
 
 ### Hint 3
 
-A min-heap of at most `k` numbers does exactly that: its smallest item sits at the top, and you can insert and remove in logarithmic time. A new score smaller than the top cannot be among the `k` highest, so it can be ignored. A larger one replaces the top.
+A min-heap of at most `k` numbers does exactly that: its smallest item sits at the top, and you can insert and remove in logarithmic time. Once the heap holds `k` scores, a new score smaller than the top cannot be among the `k` highest, so it can be ignored, and a larger one replaces the top. Before that, every score simply goes in.
 
 ### Hint 4
 

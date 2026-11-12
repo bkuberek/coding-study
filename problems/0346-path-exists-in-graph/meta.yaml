@@ -2,7 +2,7 @@
 id: "0346"
 slug: path-exists-in-graph
 title: Path Exists in a Graph
-summary: "Given n nodes and a list of two-way connections, decide whether you can travel from one node to another. A first graph problem, built on an adjacency list."
+summary: "Given n nodes and a list of two-way connections, decide whether you can travel from one node to another. A first graph problem, with a list of neighbours per node."
 status: ready
 difficulty: easy
 track: dsa
@@ -30,6 +30,8 @@ perf:
   size_ladder: [250, 500, 1000, 2000]
   expected_from: bfs
   time_limit: {factor: 5}
+references:
+  leetcode: {number: 1971, url: "https://leetcode.com/problems/find-if-path-exists-in-graph/"}
 related: [count-connected-components, number-of-islands, redundant-connection]
 order: 0
 estimate_minutes: 20

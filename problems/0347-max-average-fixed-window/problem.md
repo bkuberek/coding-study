@@ -8,6 +8,8 @@ The average of a window is the sum of its numbers divided by `k`. Given the arra
 
 The numbers can be negative, and so can the answer.
 
+Reference: this is our own wording of LeetCode problem 643, [Maximum Average Subarray I](https://leetcode.com/problems/maximum-average-subarray-i/).
+
 ## Input
 
 - `nums`: the numbers, in order.

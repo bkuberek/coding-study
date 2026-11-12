@@ -8,6 +8,8 @@ A path from one campsite to another is a walk that goes from the first to the se
 
 Given the campsites, the trails, a starting campsite `source` and a destination `target`, return `true` if some path leads from `source` to `target`, and `false` otherwise.
 
+Reference: this is our own wording of LeetCode problem 1971, [Find if Path Exists in Graph](https://leetcode.com/problems/find-if-path-exists-in-graph/).
+
 ## Input
 
 - `n`: the number of campsites.

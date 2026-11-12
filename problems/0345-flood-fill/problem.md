@@ -10,6 +10,8 @@ Given the grid, the position of the tile to repaint and the new colour, return t
 
 If the new colour is the same as the starting tile's colour, nothing changes and you return the grid as it is.
 
+Reference: this is our own wording of LeetCode problem 733, [Flood Fill](https://leetcode.com/problems/flood-fill/).
+
 ## Input
 
 - `grid`: the paving plan, with `m` rows and `n` columns; `grid[r][c]` is the colour of the tile in row `r` and column `c`, counting from 0 at the top left.
