@@ -58,7 +58,7 @@ Before any path exists, each of the four villages is its own group. The path `2-
 
 ## Follow-ups
 
-- Why must the class never need to un-build a path, and which part of your design would break if it had to?
+- The problem never removes a path. Which part of your design would break if it could?
 - How would you also report the size of the largest group, in constant time?
 - The problem Count Connected Components gives you all the paths at once and asks for the number of groups. How does that problem use this class?
 
