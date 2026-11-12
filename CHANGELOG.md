@@ -2,6 +2,285 @@
 
 <!-- version list -->
 
+## v0.43.0 (2026-11-12)
+
+### Bug Fixes
+
+- **content**: Clarify the watermark bound, the replay promise and backfill skips in 0332 to 0334
+  ([`6a750ac`](https://github.com/bkuberek/coding-study/commit/6a750ac7c3702c365f0c7437f041ea5346b80a52))
+
+- **content**: Correct the Lost in the Middle summary and the dropped row format of
+  context-compaction
+  ([`1110fd7`](https://github.com/bkuberek/coding-study/commit/1110fd7b260f25b7c420cfd913df7a0230c3b203))
+
+- **content**: Define int in 0327 by its 64-bit double and restore a lost escape
+  ([`fb9bb12`](https://github.com/bkuberek/coding-study/commit/fb9bb123f701486dbdf09c2d1887b353d3d1f47a))
+
+- **content**: Ignore hidden files in a problem's helpers
+  ([`646887c`](https://github.com/bkuberek/coding-study/commit/646887cf849acfc182bc10cf88c9cf26f247700b))
+
+- **content**: Keep an undefined prefix cold in 0326 and state the baseline of a long prompt
+  ([`bd8fb21`](https://github.com/bkuberek/coding-study/commit/bd8fb2184c979aeec3844fd06d3b4a12a702aa0d))
+
+- **content**: Log request numbers as written and tighten tool-permission-gate wording
+  ([`b70db7f`](https://github.com/bkuberek/coding-study/commit/b70db7f35556c0753668df093a6076c91b1a127b))
+
+- **content**: Mark the literal report words of 0331, note its first-wins attributes and the
+  sentence strip of 0330
+  ([`b6f8c70`](https://github.com/bkuberek/coding-study/commit/b6f8c7052b4243e9ebd0ce00bac60b63d0a68dd6))
+
+- **content**: Name the known dialect gaps of sql-guard and fix its explanation
+  ([`5295385`](https://github.com/bkuberek/coding-study/commit/5295385d66202793700a9d06a93e015c355fbe65))
+
+- **content**: State the replan id check and the ready set exactly in plan-and-execute
+  ([`5ed19e7`](https://github.com/bkuberek/coding-study/commit/5ed19e72c4c410226fe86acb28218a0cc31e770e))
+
+- **content**: Tighten the integer and OWASP wording of loop-controller
+  ([`1180a03`](https://github.com/bkuberek/coding-study/commit/1180a0323365333bc5de849385b733ddbf58240f))
+
+- **doctor**: Drop the wrong reason from the Node version check
+  ([`cd32ade`](https://github.com/bkuberek/coding-study/commit/cd32ade1c755eb5efc7028f8f49a939477eb755b))
+
+- **guides**: Apply the independent accuracy review
+  ([`5657929`](https://github.com/bkuberek/coding-study/commit/5657929c18542334831aebc2bb7d9da71da15460))
+
+- **guides**: Apply the independent accuracy review
+  ([`d6eea5d`](https://github.com/bkuberek/coding-study/commit/d6eea5d38ab6ac912f51050f9f7044b3e87b552a))
+
+- **guides**: Keep to what the sources support
+  ([`be8b5f8`](https://github.com/bkuberek/coding-study/commit/be8b5f8c13774d07dc7c59b375c565d3704d99a5))
+
+- **problems**: Add reference lines, a hint caveat and a clearer summary to the on-ramps
+  ([`2573dac`](https://github.com/bkuberek/coding-study/commit/2573dac4fffe60d83b156666e9e06b21e592ab39))
+
+- **problems**: Apply the independent review of 0322
+  ([`c798eba`](https://github.com/bkuberek/coding-study/commit/c798eba3fae4a7484c589016c9c5c4b8b56c82ae))
+
+- **problems**: Cite the OWASP LLM Top 10 2026 IDs
+  ([`1a245b9`](https://github.com/bkuberek/coding-study/commit/1a245b9821958ff4ee96e75a2efb1c0740ad905f))
+
+- **problems**: Clarify 0343 schema error locations, default on empty values and number text
+  ([`d6e052c`](https://github.com/bkuberek/coding-study/commit/d6e052cedfec59cc4d9f649be4d3a754da257403))
+
+- **problems**: Drop an unsourced idea from 0339's reading list and say expired exceptions stay
+  ([`490b843`](https://github.com/bkuberek/coding-study/commit/490b843d3a5d5ef6d34e089b64dd12b0755f631e))
+
+- **problems**: Keep both deletes of an 0340 address with an old object and state where the mark
+  spreads
+  ([`dadca04`](https://github.com/bkuberek/coding-study/commit/dadca04062f946986d23c439aa3f9ea9f41945a4))
+
+- **problems**: Make flood-fill generator grids hold the requested cell count
+  ([`38dc790`](https://github.com/bkuberek/coding-study/commit/38dc790e9bac9abd8d9babc9b0313d655b4994cf))
+
+- **problems**: Refuse lineage-graph names outside a-z, 0-9 and _ in every reference
+  ([`8a0c184`](https://github.com/bkuberek/coding-study/commit/8a0c184bab527e345a4f079f27af8d46ebd72812))
+
+- **problems**: State the 0342 condition order, leading zeros and the first batch size
+  ([`1162dc5`](https://github.com/bkuberek/coding-study/commit/1162dc51a8056062c396c4d624652ebcb369c5c2))
+
+- **problems**: Sum data-quality-gate drift terms in a plain loop in Python
+  ([`3c11132`](https://github.com/bkuberek/coding-study/commit/3c1113282dc0fc81d4ae6c93823efb2e96c68004))
+
+- **problems**: Word 0344's list-parent fix rule as a choice and correct a citation title
+  ([`65fd785`](https://github.com/bkuberek/coding-study/commit/65fd7854b25067bb2a0eaae9d9a95c4e3ad2de1a))
+
+### Chores
+
+- **deps**: Bump glob and minimatch in the 0282-0291 starters
+  ([`5e63eba`](https://github.com/bkuberek/coding-study/commit/5e63eba4aff21d651e5a8314b7e3ae92fb6be161))
+
+### Documentation
+
+- Catalog at 363 with 0322–0348
+  ([`7238e40`](https://github.com/bkuberek/coding-study/commit/7238e407f2e1b9de166e71d9ddf6cfa56ee2b414))
+
+- Mark the getting started path built on the roadmap
+  ([`b77eea8`](https://github.com/bkuberek/coding-study/commit/b77eea84bde568407a865e014cb13391b59eeca2))
+
+- State the guide reviews plainly and recount the roadmap and practical targets
+  ([`4b04266`](https://github.com/bkuberek/coding-study/commit/4b04266ec61cb4c4a269839ebdc260b64ca2095e))
+
+- **guides**: Add a learn-it-first guide for each catalog language
+  ([`e3afa8b`](https://github.com/bkuberek/coding-study/commit/e3afa8baf1cc1fb9b0c87476f4a0b25691268978))
+
+- **guides**: Add the terminal and package manager guides
+  ([`7eff024`](https://github.com/bkuberek/coding-study/commit/7eff024e832a6a3d1ed21e7c996e4508660ee8d4))
+
+- **guides**: Add your first problem and the getting-started path
+  ([`7e0ad1c`](https://github.com/bkuberek/coding-study/commit/7e0ad1ce628bc813bf1a837336177142ac82825d))
+
+- **guides**: Give the real reason cstudy needs Node 24
+  ([`8ab96e4`](https://github.com/bkuberek/coding-study/commit/8ab96e476dc2f4a3ac77392891854c845d2fd069))
+
+- **guides**: Map the OWASP 2025 IDs to 2026 and complete the MCP deprecations
+  ([`39043f8`](https://github.com/bkuberek/coding-study/commit/39043f8cccb91120f36c7b0a212d5b2c9be4eb90))
+
+- **problems**: Cite the path-halving bound in path-exists-in-graph
+  ([`961e6c4`](https://github.com/bkuberek/coding-study/commit/961e6c4426cf317898705c09ac7769b195fdda36))
+
+- **problems**: Correct the kth-largest-in-stream generator docstring
+  ([`4bbdcb9`](https://github.com/bkuberek/coding-study/commit/4bbdcb9613847933d0eaab584a9ded44ee9a70b7))
+
+- **problems**: Link the new problems from their neighbours
+  ([`92cb5d3`](https://github.com/bkuberek/coding-study/commit/92cb5d3f0d59838be5c2292e6c8dd9dac98526b8))
+
+- **problems**: Note manifest lists and format versions in snapshot-table
+  ([`04b207f`](https://github.com/bkuberek/coding-study/commit/04b207f203a5ea7a6176b9b2ca0a2cc7fb045d5e))
+
+- **problems**: Say how 0341 ignore rules differ from a planning-time ignore setting
+  ([`4b68ef0`](https://github.com/bkuberek/coding-study/commit/4b68ef0d6d065bc62572a3d93b0556a287555282))
+
+- **reviews**: List the facts of the AI engineering guides with their sources
+  ([`1159af4`](https://github.com/bkuberek/coding-study/commit/1159af4e53071fbc321b4551117ef4a73510d8ef))
+
+- **reviews**: List the sources of the getting-started guides
+  ([`8013a55`](https://github.com/bkuberek/coding-study/commit/8013a5585fe623b43881e2e548675a24bcc11f29))
+
+- **reviews**: Record the independent accuracy review of the AI engineering guides
+  ([`2deda98`](https://github.com/bkuberek/coding-study/commit/2deda989e6049e68b96ff4f54030f312068832e4))
+
+- **reviews**: Record the independent review of the getting-started guides
+  ([`9551b70`](https://github.com/bkuberek/coding-study/commit/9551b7008326465b4b0f73a69789231f2a737538))
+
+### Features
+
+- **content**: Add 0326 cache-and-router, a progressive problem on cutting the cost of model calls
+  ([`72e769a`](https://github.com/bkuberek/coding-study/commit/72e769aac80e7d94dae61a40950415cda87c5ae2))
+
+- **content**: Add 0327 eval-release-gate, a progressive problem on deciding whether a change can
+  ship
+  ([`373d29a`](https://github.com/bkuberek/coding-study/commit/373d29a17bb8de7ee6c4906c7dd39def1b716511))
+
+- **content**: Add 0330 corrective-rag, a progressive problem on grading retrieval before trusting
+  it
+  ([`4826b85`](https://github.com/bkuberek/coding-study/commit/4826b859f02842674730a1da4f3f0d3dff0fef8c))
+
+- **content**: Add 0331 agent-trace-analyzer, a progressive problem on reading an agent's trace for
+  time, cost and failures
+  ([`8cd6a69`](https://github.com/bkuberek/coding-study/commit/8cd6a692c11be6221879a95c0b17b08c727c8068))
+
+- **content**: Add context-compaction, keeping a long chat inside a token budget
+  ([`5600818`](https://github.com/bkuberek/coding-study/commit/5600818e3220aa4251730f9413a138aeeae6a512))
+
+- **content**: Add loop-controller, the brakes of an agent loop
+  ([`bc6cca2`](https://github.com/bkuberek/coding-study/commit/bc6cca2681602f1cfdcbd51eba4d1c8e7db59856))
+
+- **content**: Add the plan-and-execute progressive problem (0329)
+  ([`598c852`](https://github.com/bkuberek/coding-study/commit/598c852498c2345ed7a89bf8e9440de7fa858587))
+
+- **content**: Add the sql-guard progressive problem (0328)
+  ([`5639c0f`](https://github.com/bkuberek/coding-study/commit/5639c0f2e315bd64ad4b1e79ea6cc81a0ebf8556))
+
+- **content**: Add tool-permission-gate, deciding which tool calls an agent may run
+  ([`f422c37`](https://github.com/bkuberek/coding-study/commit/f422c373dfd544759a915d055ef70aba58a72064))
+
+- **content**: Append a problem's helper file to its generated starter
+  ([`ee7baec`](https://github.com/bkuberek/coding-study/commit/ee7baec52a7b7e650e5d482f6ceb80c7a5709745))
+
+- **guides**: Add corrective-rag to the AI engineering path
+  ([`f7b063e`](https://github.com/bkuberek/coding-study/commit/f7b063ecc0429470a5ff4ae9257727268417c408))
+
+- **guides**: Add the agent memory guide
+  ([`e9f5107`](https://github.com/bkuberek/coding-study/commit/e9f51074ce1694443a4da23530a2098948cd6d51))
+
+- **guides**: Add the agents and tools guides
+  ([`fff4bb7`](https://github.com/bkuberek/coding-study/commit/fff4bb70a174744deee1393ffe2eb2acc25ef4c1))
+
+- **guides**: Add the AI engineering path
+  ([`78991e0`](https://github.com/bkuberek/coding-study/commit/78991e0db99f48a0859de4a2cbbcdb5bc427cf12))
+
+- **guides**: Add the harness, cost and security guides
+  ([`31714fb`](https://github.com/bkuberek/coding-study/commit/31714fb7e5a634ad149a9dbdb6c04f2c9350f25c))
+
+- **guides**: Add the RAG and evaluation guides
+  ([`8d35907`](https://github.com/bkuberek/coding-study/commit/8d359077124a0fac41d36b658f73a8fc9187d816))
+
+- **guides**: Add the tokens, prompts and embeddings guides
+  ([`6e1adb4`](https://github.com/bkuberek/coding-study/commit/6e1adb4ad74b6a35a242dea985e7c83d926cb408))
+
+- **guides**: Link the getting-started problems to their guides
+  ([`831b4fa`](https://github.com/bkuberek/coding-study/commit/831b4fa7d5b5425d874e15772814567d50897733))
+
+- **guides**: Link the new problems to their guides
+  ([`032344c`](https://github.com/bkuberek/coding-study/commit/032344c061eac4154b8f67c9d3f5a60930197e09))
+
+- **guides**: Practise the hashing path and guide on the content-addressed store
+  ([`45e9f5d`](https://github.com/bkuberek/coding-study/commit/45e9f5d79c8365cefc0d150f76797bf1eae38f56))
+
+- **problems**: Add 0322 content-addressed store
+  ([`f186d5b`](https://github.com/bkuberek/coding-study/commit/f186d5bff5a480867526b9dbeca48a4372a802a8))
+
+- **problems**: Add 0332 stream-windows progressive problem
+  ([`282a2c7`](https://github.com/bkuberek/coding-study/commit/282a2c759c141f9a927f299904d8bccfa0ca96b4))
+
+- **problems**: Add 0333 cdc-apply progressive problem
+  ([`737865e`](https://github.com/bkuberek/coding-study/commit/737865e2190f07089d9d7d166d1b2a83991d6559))
+
+- **problems**: Add 0334 pipeline-scheduler progressive problem
+  ([`0752246`](https://github.com/bkuberek/coding-study/commit/0752246f62ba3556577aa31b9099941910f78ae4))
+
+- **problems**: Add 0335 scd-type2-dimension, surrogate keys, type 2 versions, point-in-time facts,
+  late changes and soft deletes
+  ([`db29010`](https://github.com/bkuberek/coding-study/commit/db29010f13625b92bd5199e453fe67a1e8ae0c62))
+
+- **problems**: Add 0336 data-quality-gate, row checks, keys and references, drift by stability
+  index, freshness and quarantine
+  ([`0a98d78`](https://github.com/bkuberek/coding-study/commit/0a98d782114caadc1934e05fe8e84905ed41355e))
+
+- **problems**: Add 0337 snapshot-table, manifests, time travel, optimistic commits that rebase or
+  conflict, expiry and compaction
+  ([`db73e8c`](https://github.com/bkuberek/coding-study/commit/db73e8cfa251c58b7b4fc16a7438d0294ec86e08))
+
+- **problems**: Add 0338 lineage-graph, column specs, cycle checks, upstream and downstream, change
+  impact and sensitive data exposure
+  ([`5826bd9`](https://github.com/bkuberek/coding-study/commit/5826bd9ba4f9171be119cf4dabce6ca26e4899cb))
+
+- **problems**: Add 0339 architecture-checker, import graphs, cycles, layer contracts and a ratchet
+  ([`89d11c0`](https://github.com/bkuberek/coding-study/commit/89d11c0d23cea8b9803d2c473cc2d962c67789bd))
+
+- **problems**: Add 0340 iac-plan-engine, diff desired and actual state, order, replace and apply a
+  plan
+  ([`fa470f4`](https://github.com/bkuberek/coding-study/commit/fa470f4e64dfd809e5e0d531ead720cf59441d1a))
+
+- **problems**: Add 0341 drift-detection, report, filter, import and reconcile drift
+  ([`d37147b`](https://github.com/bkuberek/coding-study/commit/d37147ba26c72ecab07a72fca580de1c4c83e5fd))
+
+- **problems**: Add 0342 idempotent-converge, converge hosts with check mode, handlers, conditions
+  and batches
+  ([`b54e54d`](https://github.com/bkuberek/coding-study/commit/b54e54de97036ae3b780f62d7c346efd78b6ac8b))
+
+- **problems**: Add 0343 values-templating, merge layered values, render templates and validate
+  against a schema
+  ([`0e5524f`](https://github.com/bkuberek/coding-study/commit/0e5524f5d6ef03d4d6c7aaa51607647253f4dd9c))
+
+- **problems**: Add 0344 manifest-policy, check manifests against rules with wildcards, exceptions,
+  modes and fixes
+  ([`030f0f9`](https://github.com/bkuberek/coding-study/commit/030f0f912dd6b1980dd47deb788b4a285c90ea7c))
+
+- **problems**: Add 0345 flood-fill, an easy grid search on-ramp
+  ([`035d4b3`](https://github.com/bkuberek/coding-study/commit/035d4b3a644535a73b0d0e659c69aa7242841596))
+
+- **problems**: Add 0346 path-exists-in-graph, an easy adjacency-list on-ramp
+  ([`32efd83`](https://github.com/bkuberek/coding-study/commit/32efd83679a75fe4d5f88d9248403ae5b3b1abbf))
+
+- **problems**: Add 0347 max-average-fixed-window, an easy fixed sliding window
+  ([`4007852`](https://github.com/bkuberek/coding-study/commit/4007852ddc41e3473c4631aed9d09f14b84bd502))
+
+- **problems**: Add 0348 kth-largest-in-stream, an easy size-k min-heap design
+  ([`693aa5a`](https://github.com/bkuberek/coding-study/commit/693aa5abd48c500c0237e71011cb41ee796e1f5a))
+
+### Testing
+
+- **content**: Cover a starter helper in a project and one for an unlisted language
+  ([`08393eb`](https://github.com/bkuberek/coding-study/commit/08393eb7a885523f9e84a351064d0933fb29fdd2))
+
+- **web**: Expect the hashing path's 22 steps and two-sum's two guides
+  ([`11c1d4f`](https://github.com/bkuberek/coding-study/commit/11c1d4ff73f68583d3e45ae9e212c06ce9fa9df1))
+
+- **web**: Find the hashing path card by its link
+  ([`c4d42ee`](https://github.com/bkuberek/coding-study/commit/c4d42ee5386437167e14d3e431a7380593481579))
+
+
 ## v0.42.0 (2026-11-12)
 
 ### Documentation
