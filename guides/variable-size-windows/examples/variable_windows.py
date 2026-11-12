@@ -17,17 +17,21 @@ def longest_within(durations: list[int], budget: int, trace: bool = False) -> in
     return best
 
 
-def shortest_with_at_least(rainy: list[int], wanted: int) -> int:
-    """The fewest consecutive days holding at least `wanted` rainy days (1 = rainy), or 0."""
-    left = count = 0
-    best = len(rainy) + 1
-    for right, day in enumerate(rainy):
-        count += day  # grow
-        while count >= wanted:  # the rule holds: record, then try a shorter window
+def shortest_with_artists(playlist: list[int], wanted: int) -> int:
+    """The fewest consecutive songs by at least `wanted` different artists, or 0."""
+    counts: dict[int, int] = {}  # songs per artist in the window
+    left = 0
+    best = len(playlist) + 1
+    for right, artist in enumerate(playlist):
+        counts[artist] = counts.get(artist, 0) + 1  # grow
+        while len(counts) >= wanted:  # the rule holds: record, then try a shorter window
             best = min(best, right - left + 1)
-            count -= rainy[left]
+            leaving = playlist[left]
+            counts[leaving] -= 1
+            if counts[leaving] == 0:
+                del counts[leaving]
             left += 1
-    return best if best <= len(rainy) else 0
+    return best if best <= len(playlist) else 0
 
 
 def every_stretch(values):
@@ -39,8 +43,8 @@ print("longest run of", songs, "within 10 minutes")
 print("window:", longest_within(songs, 10, trace=True))
 print("every stretch:", max(len(s) for s in every_stretch(songs) if sum(s) <= 10))
 
-days = [0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1]
-print("shortest stretch with 3 rainy days:", shortest_with_at_least(days, 3))
+artists = [1, 2, 2, 1, 1, 3, 3, 2]
+print("fewest songs in a row by 3 artists in", artists, "->", shortest_with_artists(artists, 3))
 
 cases = disagreements = 0
 for size in range(7):
@@ -50,11 +54,10 @@ for size in range(7):
             cases += 1
             brute = max((len(s) for s in stretches if sum(s) <= budget), default=0)
             disagreements += longest_within(list(values), budget) != brute
-        for wanted in range(1, 4):
+        for wanted in range(1, 5):
             cases += 1
-            flags = [value % 2 for value in values]
-            lengths = [len(s) for s in every_stretch(flags) if sum(s) >= wanted]
-            disagreements += shortest_with_at_least(flags, wanted) != min(lengths, default=0)
+            lengths = [len(s) for s in stretches if len(set(s)) >= wanted]
+            disagreements += shortest_with_artists(list(values), wanted) != min(lengths, default=0)
 print(f"against every stretch: {cases} cases, {disagreements} disagreements")
 
 mixed = [5, -4, 1]  # a negative value: the rule is no longer kept by shrinking

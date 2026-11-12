@@ -29,7 +29,7 @@ flowchart LR
 └────────────────────┘    └───────────────────────┘    └─────────────────────┘
 ```
 
-When the pass ends, only the first `write` positions are the answer. The positions after them still hold old values, which the contract decides what to do with: cut them off (`del values[write:]` in Python), report the new length and leave them, or overwrite them.
+When the pass ends, only the first `write` positions are the answer. The positions after them still hold old values. What to do with them is up to the **contract**, the function's specification of what it promises its callers: cut them off (`del values[write:]` in Python), report the new length and leave them, or overwrite them.
 
 ## A worked example
 
@@ -47,7 +47,7 @@ Remove the repeats from the sorted list `[1, 1, 2, 3, 3, 3, 5]`, in place. In a 
 
 The pass ends with `write = 4`, and the list is `[1, 2, 3, 5, 3, 3, 5]`: the answer, then three leftovers.
 
-The program below runs this, a filter that keeps the readings of at least 0, the trap of removing values from a list while looping over it, a version that keeps at most two copies of each value, and a variant that **swaps** instead of copying, for when the dropped values must stay in the array:
+The program below runs this, a filter that keeps the readings of at least 0, the trap of removing values from a list while looping over it, and a version that keeps at most two copies of each value:
 
 ```python examples/compaction.py
 """A reader and a writer: keep the wanted values at the front of the same list, in order."""
@@ -109,20 +109,6 @@ def at_most_two(values: list[int], against_kept: bool) -> list[int]:
 
 print("at most two, compared with what was kept:", at_most_two([1, 1, 1, 2, 2, 3], True))
 print("at most two, compared with what was read:", at_most_two([1, 1, 1, 2, 2, 3], False))
-
-
-def evens_first(values: list[int]) -> None:
-    """Swap each even value into the next free slot at the front."""
-    write = 0
-    for read in range(len(values)):
-        if values[read] % 2 == 0:
-            values[write], values[read] = values[read], values[write]
-            write += 1
-
-
-values = [3, 8, 5, 2, 7, 4, 1]
-evens_first(values)
-print("evens first:", values, "| the odd values were 3, 5, 7, 1")
 ```
 
 It prints:
@@ -142,14 +128,12 @@ dedupe [1, 1, 2, 3, 3, 3, 5]
 result: [1, 2, 3, 5] | the tail still holds [3, 3, 5]
 at most two, compared with what was kept: [1, 1, 2, 2, 3]
 at most two, compared with what was read: [1, 1, 2, 3]
-evens first: [8, 2, 4, 3, 7, 5, 1] | the odd values were 3, 5, 7, 1
 ```
 
 - The filter leaves `[-3, 8, 0]` behind its four kept readings: old values, not part of the answer, until `del` cuts them off.
 - Removing while looping skips a value: on CPython 3.13, `-1` survives. Removing `-2` shifted `-1` back into the position the loop had just visited, and the loop moved on to the next one.
 - The dedupe trace is the table above, line for line.
 - Keeping at most two copies works when each value is compared with the value kept two places back, and fails when it is compared with the value read two places back: see the expert notes.
-- Swapping keeps the even values in their order, `8 2 4`, but not the odd ones: `3 5 7 1` became `3 7 5 1`.
 
 ## When to use it
 
@@ -179,7 +163,7 @@ When a new list is fine, `[x for x in values if keep(x)]` is clearer, with the s
 
 ## Expert notes
 
-- **Stability.** Copying keeps the kept values in order. Swapping keeps the kept values in order but not the others. A third way works from **both ends**: one pointer from the left looks for a value that belongs at the back, one from the right for a value that belongs at the front, and they swap. Every swap settles two values, so there are at most `n / 2` swaps, but neither side keeps its order. It is the right choice when order does not matter and writes are expensive.
+- **Stability.** Copying keeps the kept values in order. When the dropped values must stay in the array, behind the kept ones, the writer can swap instead of copy: the kept values still land in the order they were read, but a dropped value can be swapped past other dropped values, so their order is lost. A third way works from **both ends**: one pointer from the left looks for a value that belongs at the back, one from the right for a value that belongs at the front, and they swap. Every swap settles two values, so there are at most `n / 2` swaps, but neither side keeps its order. It is the right choice when order does not matter and writes are expensive.
 - **More than two regions.** The invariant can split the array into three regions or more, each boundary with a pointer of its own, and still finish in one pass. `sort-colors` practises that.
 - **At most `k` copies.** In a sorted list, compare `values[read]` with `values[write - k]`. The kept prefix is sorted, so its copies of a value sit together at its end. If `values[read]` equals the value `k` places back in the prefix, then every value between them is equal too, and `k` copies are kept already: skip. Otherwise fewer than `k` are kept: keep it. The comparison with `values[read - k]` fails once `write` falls behind `read`, because that position may have been overwritten: in the example, the second `2` met an overwritten position that held `2` and was skipped.
 - **Go.** The `slices` package, new in Go 1.21, has both operations: `slices.DeleteFunc` removes in place the elements for which a function returns true and returns the shortened slice, and `slices.Compact` replaces runs of equal elements with a single copy, which on a sorted slice is the dedupe of the worked example. Since Go 1.22, the functions that shrink a slice zero the elements between the new length and the old one, so the tail no longer refers to the removed values.

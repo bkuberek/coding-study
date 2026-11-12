@@ -2,7 +2,7 @@
 
 ## The idea
 
-Some questions ask for the **longest** stretch that obeys a rule: the most songs in a row that fit in an hour, the longest run of a log with no repeated user. Others ask for the **shortest** stretch that reaches something: the fewest days in a row that contain three rainy days. An array of `n` values has `n(n + 1) / 2` stretches; trying every start and extending it one value at a time is O(n²).
+Some questions ask for the **longest** stretch that obeys a rule: the most songs in a row that fit in an hour, the longest run of a log with no repeated user. Others ask for the **shortest** stretch that reaches something: the fewest songs in a row by three different artists. An array of `n` values has `n(n + 1) / 2` stretches; trying every start and extending it one value at a time is O(n²).
 
 A **variable-size window** finds the answer in one pass. Keep a window from `left` to `right`, and a summary of it, such as its sum. For each `right` from the first position to the last:
 
@@ -104,13 +104,13 @@ The values in parentheses are the window after shrinking. The best is 4 songs, `
 
 The loop therefore records the longest valid window ending at every `r`, and the best of those is the answer.
 
-**The shortest form** mirrors it. When the rule is closed under growing, as "contains at least 3 rainy days" is, grow the window, and **while it obeys the rule**, record its length and remove the value at `left`. Let `R(r)` be the largest left edge for which the window ending at `r` obeys the rule, when there is one. The window from `R(r)` to `r` is the shortest valid window that ends at `r`, and every window ending at `r` that starts at or before `R(r)` contains it, so it obeys the rule too.
+**The shortest form** mirrors it. When the rule is closed under growing, as "holds songs by at least 3 different artists" is, grow the window, and **while it obeys the rule**, record its length and remove the value at `left`. Let `R(r)` be the largest left edge for which the window ending at `r` obeys the rule, when there is one. The window from `R(r)` to `r` is the shortest valid window that ends at `r`, and every window ending at `r` that starts at or before `R(r)` contains it, so it obeys the rule too.
 
 - **`R(r)` never decreases.** If the window from `l` to `r` obeys the rule, so does the window from `l` to `r + 1`, which contains it.
 - **The loop leaves `left` at `R(r) + 1`.** When `r` enters, `left` is `R(r - 1) + 1`, or 0 if no window obeyed the rule yet, and either way at most `R(r) + 1`. The loop records and removes exactly while `left <= R(r)`, so it records every valid window ending at `r` from where `left` was, and stops at `R(r) + 1`.
 - **It records the shortest window of all.** Take a shortest valid stretch of all, and say it ends at `r`. If `R(r)` were equal to `R(r - 1)`, the window from `R(r - 1)` to `r - 1` would be valid and one value shorter, which is impossible. So `R(r)` is new or larger than `R(r - 1)`, `left` started at or before it, and the loop recorded the window from `R(r)` to `r`.
 
-The program runs both forms and checks them against every stretch of every list of up to six values from 0 to 3, for every budget from 0 to 8 and every target from 1 to 3 rainy days. Then it shows the window giving a wrong answer once a negative value breaks the rule's closure:
+The program runs both forms and checks them against every stretch of every list of up to six values from 0 to 3, for every budget from 0 to 8 and every target from 1 to 4 different values. The shortest form keeps a count per artist, as the [fixed-size windows](../fixed-size-windows/guide.md) did, and the number of entries is the number of different artists in the window. Then it shows the window giving a wrong answer once a negative value breaks the rule's closure:
 
 ```python examples/variable_windows.py
 """Grow on the right, shrink on the left: the longest and the shortest stretch that obey a rule."""
@@ -132,17 +132,21 @@ def longest_within(durations: list[int], budget: int, trace: bool = False) -> in
     return best
 
 
-def shortest_with_at_least(rainy: list[int], wanted: int) -> int:
-    """The fewest consecutive days holding at least `wanted` rainy days (1 = rainy), or 0."""
-    left = count = 0
-    best = len(rainy) + 1
-    for right, day in enumerate(rainy):
-        count += day  # grow
-        while count >= wanted:  # the rule holds: record, then try a shorter window
+def shortest_with_artists(playlist: list[int], wanted: int) -> int:
+    """The fewest consecutive songs by at least `wanted` different artists, or 0."""
+    counts: dict[int, int] = {}  # songs per artist in the window
+    left = 0
+    best = len(playlist) + 1
+    for right, artist in enumerate(playlist):
+        counts[artist] = counts.get(artist, 0) + 1  # grow
+        while len(counts) >= wanted:  # the rule holds: record, then try a shorter window
             best = min(best, right - left + 1)
-            count -= rainy[left]
+            leaving = playlist[left]
+            counts[leaving] -= 1
+            if counts[leaving] == 0:
+                del counts[leaving]
             left += 1
-    return best if best <= len(rainy) else 0
+    return best if best <= len(playlist) else 0
 
 
 def every_stretch(values):
@@ -154,8 +158,8 @@ print("longest run of", songs, "within 10 minutes")
 print("window:", longest_within(songs, 10, trace=True))
 print("every stretch:", max(len(s) for s in every_stretch(songs) if sum(s) <= 10))
 
-days = [0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1]
-print("shortest stretch with 3 rainy days:", shortest_with_at_least(days, 3))
+artists = [1, 2, 2, 1, 1, 3, 3, 2]
+print("fewest songs in a row by 3 artists in", artists, "->", shortest_with_artists(artists, 3))
 
 cases = disagreements = 0
 for size in range(7):
@@ -165,11 +169,10 @@ for size in range(7):
             cases += 1
             brute = max((len(s) for s in stretches if sum(s) <= budget), default=0)
             disagreements += longest_within(list(values), budget) != brute
-        for wanted in range(1, 4):
+        for wanted in range(1, 5):
             cases += 1
-            flags = [value % 2 for value in values]
-            lengths = [len(s) for s in every_stretch(flags) if sum(s) >= wanted]
-            disagreements += shortest_with_at_least(flags, wanted) != min(lengths, default=0)
+            lengths = [len(s) for s in stretches if len(set(s)) >= wanted]
+            disagreements += shortest_with_artists(list(values), wanted) != min(lengths, default=0)
 print(f"against every stretch: {cases} cases, {disagreements} disagreements")
 
 mixed = [5, -4, 1]  # a negative value: the rule is no longer kept by shrinking
@@ -190,12 +193,12 @@ longest run of [4, 2, 6, 3, 1, 5, 1] within 10 minutes
   right=6 left=3 [3, 1, 5, 1] total=10 best=4
 window: 4
 every stretch: 4
-shortest stretch with 3 rainy days: 4
-against every stretch: 65532 cases, 0 disagreements
+fewest songs in a row by 3 artists in [1, 2, 2, 1, 1, 3, 3, 2] -> 4
+against every stretch: 70993 cases, 0 disagreements
 with a negative value, window: 2 | every stretch: 3
 ```
 
-The trace is the diagram, line for line. In `[0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1]`, the shortest stretches with 3 rainy days take 4 days, such as positions 4 to 7. Both forms agree with checking every stretch in all 65,532 cases.
+The trace is the diagram, line for line. In the playlist `[1, 2, 2, 1, 1, 3, 3, 2]`, no three songs in a row have three different artists, and two stretches of four do: `2 1 1 3`, positions 2 to 5, and `1 3 3 2`, positions 4 to 7. Both forms agree with checking every stretch in all 70,993 cases.
 
 ## When the window fails
 

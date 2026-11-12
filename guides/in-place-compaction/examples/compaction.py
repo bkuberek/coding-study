@@ -57,17 +57,3 @@ def at_most_two(values: list[int], against_kept: bool) -> list[int]:
 
 print("at most two, compared with what was kept:", at_most_two([1, 1, 1, 2, 2, 3], True))
 print("at most two, compared with what was read:", at_most_two([1, 1, 1, 2, 2, 3], False))
-
-
-def evens_first(values: list[int]) -> None:
-    """Swap each even value into the next free slot at the front."""
-    write = 0
-    for read in range(len(values)):
-        if values[read] % 2 == 0:
-            values[write], values[read] = values[read], values[write]
-            write += 1
-
-
-values = [3, 8, 5, 2, 7, 4, 1]
-evens_first(values)
-print("evens first:", values, "| the odd values were 3, 5, 7, 1")
