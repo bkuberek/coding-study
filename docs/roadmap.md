@@ -20,7 +20,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 
 ## Status
 
-Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 347 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
+Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 379 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
 
 | Item | Phase | Needs |
 |------|-------|-------|
@@ -229,12 +229,20 @@ The pilots are written with the next project problems.
 - [x] `0339`, an architecture checker that enforces layer and dependency rules on an import graph (owner, 2026-11-12), all six languages. It is built: the catalog then had 354 entries.
 - [x] Infrastructure as code, as concepts (owner, 2026-11-12), all six languages: `0340` a plan engine that diffs desired and actual state and orders create, update, replace and delete; `0341` drift detection and import; `0342` idempotent converge with changed and ok results, check mode and handlers; `0343` layered values rendered into templates with schema validation; `0344` policy checks on deployment manifests. Problems on the real tools wait for [Phase 17](#phase-17-infrastructure-tools-in-the-sandbox). All five are built: the catalog then had 359 entries.
 - [x] DSA on-ramps: `0345` to `0348`, four easy problems in all six languages, each a first step to a harder problem of its pattern: flood fill before counting islands, whether a path exists before counting connected components, a window of fixed width before windows that grow and shrink, and the kth largest of a stream before the kth largest element. They take the next free ids outside the stream plan, listed under [later DSA additions](specs/catalog.md#later-dsa-additions). The catalog then had 363 entries.
-- [ ] Guides paths after the hashing pilot: Getting started (the terminal, package managers, one "learn the language first" page per language, then a first problem), AI engineering, Data engineering, Knowledge representation, and Infrastructure as code. Each guide is checked against primary sources and reviewed independently before it merges. The Getting started and AI engineering paths are built.
-- [ ] Security, planned as `0349` to `0351`: encoding output for the context it lands in, evaluating a CORS policy, and validating a certificate chain.
-- [ ] Machine learning, planned as `0352` and `0353`.
-- [ ] Testing, planned as `0354` and `0355`.
-- [ ] Networking, planned as `0356` to `0358`.
-- [ ] Later waves, with the next free ids: operating systems, DSA fundamentals, languages and editors, database internals, distributed systems, and platform.
+- [x] Guides paths after the hashing pilot: Getting started (the terminal, package managers, one "learn the language first" page per language, then a first problem), AI engineering, and Data engineering. Each guide is checked against primary sources and reviewed independently before it merges. All three are built.
+- [x] Guides paths on the classic algorithm patterns: two pointers and sliding windows, binary search, graphs, trees and heaps, stacks, queues and tries, recursion and dynamic programming, and greedy choices and intervals. Each guide is checked against primary sources, reviewed independently, and checked for spoilers against every problem it links; the DSA on-ramps open the sections of their guides. All seven are built: with them there are 11 paths and 73 guides.
+- [ ] Guides paths on knowledge representation and on infrastructure as code.
+- [x] Security, `0349` to `0351`, in Python and TypeScript: encoding output for the context it lands in, evaluating a CORS policy, and validating a certificate chain. All three are built: the catalog then had 366 entries.
+- [x] Machine learning, `0352` and `0353`, in Python and TypeScript: classification metrics from confusion counts to ROC-AUC, and linear and logistic regression trained by gradient descent, with cross-validation and early stopping. Both are built: the catalog then had 368 entries.
+- [x] Testing, `0354` and `0355`, all six languages: a library of test doubles, and a property-based test runner with shrinking and stateful tests. Both are built: the catalog then had 370 entries.
+- [x] Networking, `0356` to `0358`, all six languages: an HTTP/1.1 request parser, a DNS resolver that follows referrals and caches answers, and reliable transport with retransmission, a sliding window and congestion control. All three are built: the catalog then had 373 entries.
+- [x] Operating systems, `0359` and `0360`, all six languages: a CPU scheduler and virtual memory with a TLB and page replacement, both simulated. Both are built: the catalog then had 375 entries.
+- [x] DSA fundamentals, `0361` to `0363`, all six languages: a sorting workbench in four levels, a practical problem, and substring search and the first bad commit, listed under [later DSA additions](specs/catalog.md#later-dsa-additions). All three are built: the catalog then had 378 entries.
+- [x] Languages and editors, `0364` to `0366`, all six languages: a tiny interpreter, a line diff with a three-way merge, and an editor with undo and redo. All three are built: the catalog then had 381 entries.
+- [x] Database internals, `0367` and `0368`, all six languages: a B+ tree index, and multiversion storage with snapshot isolation. Both are built: the catalog then had 383 entries.
+- [x] Distributed systems, `0369` to `0372`, all six languages: logical clocks, a consistent hash ring, CRDT replicas and a Raft simulation. All four are built: the catalog then had 387 entries.
+- [x] Platform, `0373` and `0374`, all six languages: a SemVer resolver, and alerts on an SLO's error budget burn rate. Both are built: the catalog then had 389 entries.
+- [x] More DSA on-ramps: `0375` to `0380`, six problems in all six languages, each a first step in its pattern: lamp patterns before subsets, counting words by prefix before a whole trie, village paths before counting connected components, a rebate from the next cheaper item before daily temperatures, the cheapest route across a grid as a first two-dimensional table, and checking a task order before course schedule. They are listed under [later DSA additions](specs/catalog.md#later-dsa-additions). The catalog then had 395 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 
 ### Planned project problems

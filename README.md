@@ -103,7 +103,7 @@ The editor can also show errors as you type, documentation on hover, go to defin
 
 ## Learn before you practise
 
-Concept guides teach an idea before you practise it: the plain idea, a worked example traced step by step, when to use it, the common traps, the complexity with its conditions, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, and the diagrams are Mermaid. Learning paths order guides and problems into a track. "Getting started" goes from the terminal to your first problem, "Hashing" from your first hash map to content-addressed storage, and "AI engineering" from your first model call to agent harnesses ([guides](docs/specs/guides.md)).
+Concept guides teach an idea before you practise it: the plain idea, a worked example traced step by step, when to use it, the common traps, the complexity with its conditions, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, and the diagrams are Mermaid. Learning paths order guides and problems into a track. "Getting started" goes from the terminal to your first problem, "Hashing" from your first hash map to content-addressed storage, "AI engineering" from your first model call to agent harnesses, and "Data engineering" from batch and streams to table formats and lineage. Seven more follow the classic algorithm patterns: two pointers and sliding windows, binary search, graphs, trees and heaps, stacks, queues and tries, recursion and dynamic programming, and greedy choices and intervals ([guides](docs/specs/guides.md)).
 
 ```bash
 cstudy learn                       # the guides and the paths, with what you have read
@@ -148,8 +148,8 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 
 | Track | Items | Graded by | Format |
 |-------|------:|-----------|--------|
-| `dsa` | 202 | Tests, in all 6 languages | Functions and data-structure designs across 23 patterns |
-| `practical` | 108 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, a business task with money and dates, a security or AI/LLM task in Python and TypeScript, a small service to extend, or a service project in Docker with mock servers and backing services |
+| `dsa` | 210 | Tests, in all 6 languages | Functions and data-structure designs across 24 patterns |
+| `practical` | 132 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, a business task with money and dates, a security or AI/LLM task in Python and TypeScript, a small service to extend, or a service project in Docker with mock servers and backing services |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |
 | `concurrency` | 6 | Stress tests against invariants | Thread-safe classes, per-language models |
 | `debugging` | 23 | Tests | Buggy code to fix, including Go- and Rust-only bugs and JavaScript traps |

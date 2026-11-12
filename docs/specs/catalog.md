@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 202 DSA problems and 161 non-DSA items (145 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 210 DSA problems and 185 non-DSA items (169 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
-| `dsa` | 202 (185 planned, 17 added) | `problems/` |
-| `practical` | 108 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added, 1 content-addressed storage problem added, 9 AI engineering problems added, 7 data engineering problems added, 1 architecture problem added, 5 infrastructure as code problems added) | `problems/` |
+| `dsa` | 210 (185 planned, 25 added) | `problems/` |
+| `practical` | 132 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added, 1 content-addressed storage problem added, 9 AI engineering problems added, 7 data engineering problems added, 1 architecture problem added, 5 infrastructure as code problems added, 3 security problems added, 2 machine learning problems added, 2 testing problems added, 3 networking problems added, 2 operating systems problems added, 1 sorting problem added, 3 language and editor problems added, 2 database internals problems added, 4 distributed systems problems added, 2 platform problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **363** (347 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **395** (379 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -40,9 +40,9 @@ Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by
 
 ## DSA catalog
 
-Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 202 rows, with no exceptions.
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 210 rows, with no exceptions.
 
-202 problems: 185 planned in six batches, and 17 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
+210 problems: 185 planned in six batches, and 25 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
 
 ### Batch 1 (34 problems: `arrays-hashing`, `two-pointers`, `sliding-window`, `stack`)
 
@@ -261,7 +261,7 @@ Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on
 
 ### Later DSA additions
 
-17 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210). Four, `0345` to `0348`, are easy on-ramps, each to a harder problem of its pattern that lists it in `related`: `flood-fill` to `number-of-islands`, `path-exists-in-graph` to `count-connected-components`, `max-average-fixed-window` to `min-size-subarray-sum`, and `kth-largest-in-stream` to `kth-largest-element`.
+25 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210). Four, `0345` to `0348`, are easy on-ramps, each to a harder problem of its pattern that lists it in `related`: `flood-fill` to `number-of-islands`, `path-exists-in-graph` to `count-connected-components`, `max-average-fixed-window` to `min-size-subarray-sum`, and `kth-largest-in-stream` to `kth-largest-element`. Six more, `0375` to `0380`, are on-ramps in the same way, all easy but `minimum-path-sum`: `lamp-patterns` to `subsets`, `count-words-by-prefix` to `implement-trie`, `village-paths` to `count-connected-components`, `price-after-rebate` to `daily-temperatures`, `minimum-path-sum` to `unique-paths`, and `check-task-order` to `course-schedule`. `0362` and `0363` are fundamentals: substring search, and the first bad commit of a history whose tests cannot all run.
 
 | id | slug | title | primary | secondary | difficulty | lc | kind |
 |----|------|-------|---------|-----------|------------|----|------|
@@ -282,6 +282,14 @@ Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on
 | 0346 | `path-exists-in-graph` | Path Exists in a Graph | `graphs` | - | easy | 1971 | function |
 | 0347 | `max-average-fixed-window` | Maximum Average of a Fixed Window | `sliding-window` | - | easy | 643 | function |
 | 0348 | `kth-largest-in-stream` | Kth Largest in a Stream | `heap` | - | easy | 703 | design |
+| 0362 | `substring-search` | Substring Search | `string-matching` | - | medium | - | function |
+| 0363 | `first-bad-commit` | First Bad Commit | `binary-search` | - | easy | - | function |
+| 0375 | `lamp-patterns` | Lamp Patterns | `backtracking` | - | easy | 3211 | function |
+| 0376 | `count-words-by-prefix` | Count Words by Prefix | `tries` | - | easy | - | function |
+| 0377 | `village-paths` | Village Paths | `union-find` | - | easy | - | design |
+| 0378 | `price-after-rebate` | Price After Rebate | `monotonic-stack` | - | easy | 1475 | function |
+| 0379 | `minimum-path-sum` | Minimum Path Sum | `dp-2d` | - | medium | 64 | function |
+| 0380 | `check-task-order` | Check Task Order | `topological-sort` | `graphs` | easy | - | function |
 
 ## Stream assignment
 
@@ -303,7 +311,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (108, `problems/`)
+### practical (132, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -550,6 +558,80 @@ Five function-size, four-level progressive problems in all six languages on infr
 | 0343 | `values-templating` | Layered Values and Templates | `recursion`, `trees`, `stack` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
 | 0344 | `manifest-policy` | Manifest Policy Checks | `arrays-hashing`, `trees`, `sorting` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
 
+Three function-size problems on web security, in Python and TypeScript under the [Languages rule](#rules), each a first problem on its topic: `0349`, one function, encodes untrusted text for one of four places in a page, HTML text, a quoted attribute, a URL query value or a JavaScript string, and refuses any other; `0350`, in four levels, evaluates a server's cross-origin sharing policy: origins on an allow-list, preflight requests, credentials with the wildcard, then patterns, the null origin and a linter for risky settings; `0351`, in four levels, decides whether to trust a server's certificate: dates and hostnames, a chain to a trusted root, constraints on issuers, then revocation and a reason for every rejected path. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0349 | `output-encoding-by-context` | Output Encoding by Context | - | function | easy | `python`, `typescript` | `security`, `frontend` | `security-engineer`, `backend`, `frontend` | function |
+| 0350 | `cors-policy-evaluator` | CORS Policy Evaluator | `string-matching` | progressive | medium | `python`, `typescript` | `security`, `frontend` | `security-engineer`, `backend`, `frontend` | function |
+| 0351 | `cert-chain-validator` | Certificate Chain Validator | `graphs` | progressive | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
+
+Two function-size problems on machine learning fundamentals, in Python and TypeScript under the [Languages rule](#rules): `0352`, one function, scores a classifier at a threshold with confusion counts, accuracy, precision, recall and F1 per class, their macro and micro averages, and ROC-AUC; `0353`, in four levels, trains linear and logistic regression by gradient descent, then picks a penalty by cross-validation and stops early on a validation split without leaking it. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0352 | `classification-metrics` | Classification Metrics | `sorting`, `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ml-engineer`, `ai-engineer` | function |
+| 0353 | `gradient-descent-models` | Gradient Descent Models | `math-geometry` | progressive | medium | `python`, `typescript` | `ai-llm` | `ml-engineer` | function |
+
+Two function-size, four-level progressive problems in all six languages on testing: `0354` is a library of test doubles, with stubs that give scripted answers, spies that record calls, strict and lenient mocks with a final check, and a fake clock whose timers fire in order; `0355` is a property-based testing engine, with seeded generators and runs that find a counterexample, greedy shrinking, composed and filtered generators, and stateful tests of a buggy queue. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0354 | `test-doubles` | Test Doubles | `arrays-hashing`, `heap` | progressive | medium | all six | `software-design` | `general`, `backend` | function |
+| 0355 | `property-test-runner` | Property Test Runner | `greedy` | progressive | hard | all six | `software-design` | `general`, `backend` | function |
+
+Three function-size, four-level progressive problems in all six languages on networking: `0356` reads HTTP/1.1 requests from raw bytes: the request line and fields, bodies sized by Content-Length or sent in chunks, requests split across reads, and refusing ambiguous framing; `0357` resolves names: answers from a zone, CNAME chains, a walk from the root through referrals with a TTL cache on a virtual clock, then negative answers cached and unrelated glue refused; `0358` delivers bytes reliably: segments reordered and deduplicated, retransmission on an RFC 6298 timer, a send window under flow control, then slow start, congestion avoidance and fast retransmit. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0356 | `http-message-parser` | HTTP Message Parser | `string-matching` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+| 0357 | `dns-resolver-sim` | DNS Resolver Sim | `graphs`, `arrays-hashing` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+| 0358 | `reliable-transport-sim` | Reliable Transport Sim | `sliding-window`, `arrays-hashing` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+
+Two function-size, four-level progressive problems in all six languages on operating systems: `0359` simulates how an operating system shares a CPU, first come first served and shortest job first, round robin, a multi-level feedback queue, then several cores; `0360` translates addresses through a page table, with a TLB in front of it, demand paging with FIFO, LRU and clock replacement, then two-level tables and the working set. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0359 | `cpu-scheduler-sim` | CPU Scheduler Sim | - | progressive | hard | all six | `systems` | `general`, `platform`, `backend` | function |
+| 0360 | `virtual-memory-sim` | Virtual Memory Sim | - | progressive | hard | all six | `systems` | `general`, `platform` | function |
+
+One function-size, four-level progressive problem in all six languages on sorting, beside the DSA problems `0362` and `0363` under [later DSA additions](#later-dsa-additions): `0361` writes four sorts that report their own work, insertion sort, a stable merge sort by a column, quicksort and quickselect with a three-way partition, and an external merge sort. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0361 | `sorting-workbench` | Sorting Workbench | `sorting` | progressive | medium | all six | `algorithms` | `general` | function |
+
+Three function-size, four-level progressive problems in all six languages on the tools of programming: `0364` interprets a small expression language, from tokens with positions and a syntax tree with precedence to evaluation with closures and a depth limit, and bytecode for a stack machine; `0365` is the core of a diff tool, the lines two files share and a line diff, unified hunks, patches applied where lines moved, and a three-way merge; `0366` is a text buffer with undo and redo, typing grouped into one step, named checkpoints, and a history that keeps every branch. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0364 | `tiny-interpreter` | Tiny Interpreter | `recursion`, `stack` | progressive | hard | all six | `algorithms` | `general` | function |
+| 0365 | `line-diff-and-merge` | Line Diff and Merge | `dp-2d` | progressive | hard | all six | `algorithms` | `general` | function |
+| 0366 | `undo-redo-editor` | Undo and Redo Editor | `stack`, `trees` | progressive | easy | all six | `software-design` | `general`, `frontend` | function |
+
+Two function-size, four-level progressive problems in all six languages on database internals: `0367` is the B+ tree under a database index, with search and insert by splits, range scans that count page reads, deletes that borrow or merge, then bulk loads and composite keys; `0368` is multiversion storage with snapshot reads, version chains, first committer wins, write skew caught as a dangerous structure of read-write antidependencies, and vacuum. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0367 | `btree-index` | B-Tree Index | `trees`, `binary-search` | progressive | hard | all six | `backend` | `backend`, `platform` | function |
+| 0368 | `mvcc-snapshot-isolation` | MVCC Snapshot Isolation | `arrays-hashing`, `graphs` | progressive | hard | all six | `backend` | `backend`, `platform` | function |
+
+Four function-size, four-level progressive problems in all six languages on distributed systems: `0369` timestamps a scripted message history with Lamport clocks, vector clocks, sibling versions of concurrent writes and hybrid logical clocks; `0370` places keys on nodes with a consistent hash ring, virtual nodes, a report of the keys that move, replicas and bounded loads; `0371` keeps replicas that accept updates offline and agree after merging, with counters, a last-writer-wins register, an add-wins set and delta sync; `0372` simulates Raft step by step on a scripted network: the voting rules, leader election, log replication with safe commits, and a partition that loses no committed entry. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0369 | `logical-clocks` | Logical Clocks | `arrays-hashing`, `sorting` | progressive | medium | all six | `systems` | `backend`, `platform` | function |
+| 0370 | `consistent-hash-ring` | Consistent Hash Ring | `binary-search`, `bit-manipulation` | progressive | medium | all six | `systems` | `backend`, `platform` | function |
+| 0371 | `crdt-replicas` | CRDT Replicas | - | progressive | medium | all six | `systems` | `backend`, `platform` | function |
+| 0372 | `raft-sim` | Raft Simulation | - | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+
+Two function-size, four-level progressive problems in all six languages on platform engineering: `0373` resolves package versions, from SemVer 2.0.0 precedence and caret, tilde and wildcard ranges to dependency resolution with backtracking, then explains conflicts and updates a lockfile; `0374` watches a service level objective, with rates from counters across restarts, latency quantiles from histograms, error budgets and burn rates, then multi-window alerts with their start and stop times. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0373 | `semver-resolver` | Semver Resolver | `backtracking`, `graphs` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| 0374 | `slo-burn-rate` | SLO Burn Rate | `sliding-window`, `binary-search` | progressive | hard | all six | `systems` | `platform`, `backend` | function |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -603,7 +685,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-108-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-132-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|
