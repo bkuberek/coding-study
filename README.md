@@ -111,7 +111,7 @@ cstudy learn --path hashing        # a path's steps and the next one
 cstudy learn hash-functions        # read a guide; add --done once you have
 ```
 
-The web UI is the recommended way to read guides: its Guides page, which draws the diagrams and shows a path's progress beside its steps, is in progress. The terminal is fully supported in the meantime and after: `cstudy learn` renders a guide's Markdown, shows each diagram as a text drawing, and has `--json` for scripts.
+The web UI is the recommended way to read guides: its Guides page (`cstudy serve`, or `cstudy learn <guide> --open`) draws the diagrams, marks guides as read and shows a path's progress beside its steps. The terminal is fully supported too: `cstudy learn` renders a guide's Markdown, shows each diagram as a text drawing, and has `--json` for scripts.
 
 ## Your workspace is your repository
 
