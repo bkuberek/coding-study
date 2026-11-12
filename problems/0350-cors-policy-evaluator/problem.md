@@ -72,7 +72,7 @@ Not every cross-origin request is sent right away. A request that a plain HTML f
 - `preflightResponse(origin, method, requestHeaders)`: the server's answer to a preflight with these three request headers. `method` is compared exactly as sent. `requestHeaders` is a comma-separated list of names, `""` when the header is absent; split it on `,`, remove spaces and tabs around each name, skip empty names, and compare in lowercase. Answer with headers only when everything is allowed:
   1. The origin must be allowed, as for `allowOriginFor`.
   2. The method must be `GET`, `HEAD` or `POST` (which the browser always allows), or an allowed method.
-  3. Every requested header name must be allowed. There is no exception for safelisted names: the browser lists a name only when that header is not safelisted, as `content-type` is when its value is `application/json`.
+  3. Every requested header name must be allowed. There is no exception for safelisted names: the browser lists a name when that header is not safelisted, as `content-type` is when its value is `application/json`, and it also lists the safelisted ones once their values add up to more than 1024 characters (step 4 of `needsPreflight`). Either way, each listed name must be allowed.
 
   If any of these fails, return `[]`: the browser then refuses the real request, and the server has told it nothing about its policy. Otherwise return these rows, in this order, each only when it applies:
   - `Access-Control-Allow-Origin`: the value of `allowOriginFor(origin)`.

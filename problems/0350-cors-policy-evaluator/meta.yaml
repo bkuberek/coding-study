@@ -4,7 +4,7 @@ slug: cors-policy-evaluator
 title: CORS Policy Evaluator
 summary: "Build CorsPolicy, a server's cross-origin sharing policy: serialize origins, answer preflights, combine credentials with the wildcard safely, and lint risky configurations."
 status: ready
-difficulty: easy
+difficulty: medium
 track: practical
 kind: progressive
 patterns: [string-matching]
