@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0340"
+slug: iac-plan-engine
+title: Infrastructure Plan Engine
+summary: "Build PlanEngine, which diffs desired and actual infrastructure: classify each resource, order steps by dependency, replace or update, and apply through failures until a new plan converges."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [topological-sort, heap, graphs]
+domains: [infrastructure]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: Desired versus actual}
+  - {level: 2, title: References and dependencies}
+  - {level: 3, title: Replacement and unknown values}
+  - {level: 4, title: Applying the plan}
+signature:
+  class:
+    name: PlanEngine
+    constructor: {params: []}
+    methods:
+      - {name: desire, level: 1, params: [{name: address, type: string}, {name: attributes, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: remove, level: 1, params: [{name: address, type: string}], returns: {type: bool}}
+      - {name: observe, level: 1, params: [{name: address, type: string}, {name: attributes, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: plan, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: observeDependency, level: 2, params: [{name: address, type: string}, {name: dependsOn, type: string}], returns: {type: bool}}
+      - {name: forceReplacement, level: 3, params: [{name: resourceType, type: string}, {name: key, type: string}], returns: {type: bool}}
+      - {name: computed, level: 3, params: [{name: resourceType, type: string}, {name: key, type: string}], returns: {type: bool}}
+      - {name: createBeforeDestroy, level: 3, params: [{name: address, type: string}], returns: {type: bool}}
+      - {name: apply, level: 4, params: [{name: failures, type: "list<list<string>>"}, {name: values, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+      - {name: state, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: step-graph, name: "Resolve in dependency order, then place the smallest ready step", role: optimal, time: "O(R (R + E) + S log S) per plan or apply, for R resources, E references and S attribute rows", space: "O(R K + E) for K keys per resource", time_class: "n^2", space_class: "n"}
+related: [drift-detection, idempotent-converge, course-schedule-ii, parallel-courses, pipeline-scheduler]
+estimate_minutes: 150

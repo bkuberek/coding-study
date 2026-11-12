@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0342"
+slug: idempotent-converge
+title: Idempotent Converge
+summary: "Build Converger, which brings hosts to a desired state: tasks that change only what differs, a dry run with diffs, handlers and failures, then batches, conditions on facts and a summary."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [infrastructure]
+job_roles: [platform]
+scope: function
+levels:
+  - {level: 1, title: Tasks and runs}
+  - {level: 2, title: Check mode and diffs}
+  - {level: 3, title: Handlers and failures}
+  - {level: 4, title: "Facts, conditions and batches"}
+signature:
+  class:
+    name: Converger
+    constructor: {params: []}
+    methods:
+      - {name: addHost, level: 1, params: [{name: host, type: string}], returns: {type: bool}}
+      - {name: setState, level: 1, params: [{name: host, type: string}, {name: kind, type: string}, {name: target, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: addTask, level: 1, params: [{name: name, type: string}, {name: kind, type: string}, {name: target, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: run, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: state, level: 1, params: [{name: host, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: check, level: 2, params: [], returns: {type: "list<list<string>>"}}
+      - {name: addHandler, level: 3, params: [{name: name, type: string}, {name: kind, type: string}, {name: target, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: notifies, level: 3, params: [{name: task, type: string}, {name: handler, type: string}], returns: {type: bool}}
+      - {name: setFact, level: 4, params: [{name: host, type: string}, {name: key, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: onlyIf, level: 4, params: [{name: task, type: string}, {name: fact, type: string}, {name: comparison, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: setBatchSize, level: 4, params: [{name: size, type: int}], returns: {type: bool}}
+      - {name: summary, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: state-copies, name: "Compare before changing, on deep copies for a check", role: optimal, time: "O(N (T + H + C) + S) per run or check, for N hosts, T tasks, H handlers, C conditions and S resources copied", space: "O(S + N H)", time_class: "n", space_class: "n"}
+related: [iac-plan-engine, drift-detection, pipeline-scheduler]
+estimate_minutes: 100
