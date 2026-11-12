@@ -6,9 +6,8 @@ steps:
   - problem: binary-search
   - guide: lower-and-upper-bounds
   - problem: search-insert-position
-  - guide: binary-search-mistakes
   - problem: debug-binary-search-bounds
-  - problem: debug-unsigned-underflow
+  - guide: binary-search-mistakes
   - problem: first-last-position
   - problem: time-based-kv-store
   - problem: snapshot-array
@@ -22,3 +21,4 @@ steps:
   - problem: split-array-largest-sum
   - problem: swim-rising-water
   - problem: median-of-two-sorted-arrays
+  - problem: debug-unsigned-underflow
