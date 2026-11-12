@@ -1,14 +1,14 @@
 """gradient-descent-models promises that its hidden cases catch the classic mistakes of training
 linear models by gradient descent: a gradient without its factor 2 or with one too many, weights
 updated one at a time or rounded between steps, a missing starting row, a log loss in the wrong
-base or without clipping,
-a penalized bias, folds cut the wrong way or trained from the last fold's weights, a strength
-chosen on training error, a sample standard deviation, a scaler fitted on the validation part, and
-early stopping that counts patience wrong, returns the last weights or compares unrounded errors.
-These tests replay every case against a model of the class written from the statement, which must
-give every expected output, and against that model with one mistake planted at a time, which some
-hidden case must fail. A mistake that crashes fails its case, as a thrown exception does in the
-grader."""
+base or without clipping, a penalized bias, folds cut the wrong way or trained from the last
+fold's weights, a strength chosen on training error, a sample standard deviation, a scaler fitted
+on the validation part, early stopping that counts patience wrong, returns the last weights or
+compares unrounded errors, and a feature chosen by the sign of its correlation, by covariance, or
+with the validation labels in view. These tests replay every case against a model of the class
+written from the statement, which must give every expected output, and against that model with
+one mistake planted at a time, which some hidden case must fail. A mistake that crashes fails its
+case, as a thrown exception does in the grader."""
 
 import json
 import math
@@ -307,6 +307,55 @@ class Model:
         leaky = self.stop_early(everyone, rate, max_steps, patience, held_out)
         return [honest[0], self.rounded(honest[3]), leaky[0], self.rounded(leaky[3])]
 
+    def correlation(self, column: list[float], labels: list[float]) -> float:
+        mx, my = self.mean(column), self.mean(labels)
+        products = self.mean([(x - mx) * (y - my) for x, y in zip(column, labels, strict=True)])
+        sx = math.sqrt(self.mean([(x - mx) ** 2 for x in column]))
+        sy = math.sqrt(self.mean([(y - my) ** 2 for y in labels]))
+        return 0.0 if sx == 0 or sy == 0 else products / (sx * sy)
+
+    def correlations_over(self, rows: list[int]) -> list[float]:
+        labels = [self.targets[i] for i in rows]
+        return [
+            self.correlation([self.features[i][j] for i in rows], labels)
+            for j in range(len(self.features[0]))
+        ]
+
+    def feature_correlations(self, held_out: int) -> list[float]:
+        return [self.rounded(r) for r in self.correlations_over(self.parts(held_out)[0])]
+
+    def strength_of(self, r: float) -> float:
+        return abs(r)
+
+    def chosen_feature(self, rows: list[int]) -> int:
+        sizes = [self.rounded(self.strength_of(r)) for r in self.correlations_over(rows)]
+        return max(range(len(sizes)), key=lambda j: (sizes[j], -j))
+
+    def honest_choice_rows(self, held_out: int) -> list[int]:
+        return self.parts(held_out)[0]
+
+    def one_feature_error(self, feature: int, rate: float, steps: int, held_out: int) -> float:
+        train, valid = self.parts(held_out)
+        column = [self.features[i][feature] for i in train]
+        mean = self.mean(column)
+        scale = self.spread(column, mean) or 1.0
+        z = [[(row[feature] - mean) / scale] for row in self.features]
+        tx, ty = [z[i] for i in train], [self.targets[i] for i in train]
+        weights = [0.0, 0.0]
+        for _ in range(steps):
+            weights = self.moved(weights, lambda w: self.mse_slope(tx, ty, w), rate)
+        return self.mse([z[i] for i in valid], [self.targets[i] for i in valid], weights)
+
+    def selection_check(self, rate: float, steps: int, held_out: int) -> list:
+        honest = self.chosen_feature(self.honest_choice_rows(held_out))
+        leaky = self.chosen_feature(list(range(len(self.targets))))
+        return [
+            honest,
+            self.rounded(self.one_feature_error(honest, rate, steps, held_out)),
+            leaky,
+            self.rounded(self.one_feature_error(leaky, rate, steps, held_out)),
+        ]
+
 
 # ------------------------------------------------------------------ level 1 mistakes
 class GradientWithoutTheTwo(Model):
@@ -559,6 +608,54 @@ class UnroundedComparison(Model):
         return error < best
 
 
+class SignedCorrelation(Model):
+    """Picks the most positive correlation, ignoring strong negative ones."""
+
+    def strength_of(self, r: float) -> float:
+        return r
+
+
+class CovarianceNotCorrelation(Model):
+    """Ranks the features by covariance, which grows with a feature's units."""
+
+    def correlation(self, column: list[float], labels: list[float]) -> float:
+        mx, my = self.mean(column), self.mean(labels)
+        return self.mean([(x - mx) * (y - my) for x, y in zip(column, labels, strict=True)])
+
+
+class TieGoesToTheLastFeature(Model):
+    """Keeps the later of two features with the same correlation."""
+
+    def chosen_feature(self, rows: list[int]) -> int:
+        sizes = [self.rounded(self.strength_of(r)) for r in self.correlations_over(rows)]
+        return max(range(len(sizes)), key=lambda j: (sizes[j], j))
+
+
+class HonestChoiceSeesEveryRow(Model):
+    """Chooses the feature with the validation labels in view in the honest run too."""
+
+    def honest_choice_rows(self, held_out: int) -> list[int]:
+        return list(range(len(self.targets)))
+
+
+class CorrelationsIncludeValidation(Model):
+    """Reports the correlations over every example."""
+
+    def feature_correlations(self, held_out: int) -> list[float]:
+        return [self.rounded(r) for r in self.correlations_over(list(range(len(self.targets))))]
+
+
+class ConstantFeatureDividesByZero(Model):
+    """Divides by a spread of 0 for a feature that does not vary."""
+
+    def correlation(self, column: list[float], labels: list[float]) -> float:
+        mx, my = self.mean(column), self.mean(labels)
+        products = self.mean([(x - mx) * (y - my) for x, y in zip(column, labels, strict=True)])
+        sx = math.sqrt(self.mean([(x - mx) ** 2 for x in column]))
+        sy = math.sqrt(self.mean([(y - my) ** 2 for y in labels]))
+        return products / (sx * sy)
+
+
 MISTAKES: Sequence[type[Model]] = Model.__subclasses__()
 
 
@@ -610,6 +707,20 @@ def test_every_level_has_two_visible_and_two_hidden_cases():
         at_level = [case for case in CASES if case["level"] == level]
         assert sum(bool(case.get("visible")) for case in at_level) >= 2
         assert sum(not case.get("visible") for case in at_level) >= 2
+
+
+def test_a_visible_case_shows_choosing_with_the_labels_flattering_the_error():
+    shown = [
+        got
+        for case in CASES
+        if case.get("visible")
+        for op, got in zip(case["ops"], case["expected"], strict=True)
+        if op == "selectionCheck"
+    ]
+    assert any(
+        honest != leaky and 2 * leaky_error < honest_error
+        for honest, honest_error, leaky, leaky_error in shown
+    )
 
 
 def test_a_visible_case_shows_the_leaky_scaler_changing_the_result():

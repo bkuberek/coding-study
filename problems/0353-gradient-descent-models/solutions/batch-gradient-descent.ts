@@ -149,6 +149,42 @@ function fitScalerOn(features: Rows): Scaler {
   return { means, scales };
 }
 
+/** Pearson's r of one feature with the labels, 0 when either of them does not vary. */
+function correlation(column: number[], targets: number[]): number {
+  const count = targets.length;
+  const meanX = total(column) / count;
+  const meanY = total(targets) / count;
+  let products = 0;
+  let spreadX = 0;
+  let spreadY = 0;
+  column.forEach((x, i) => {
+    const y = targets[i];
+    products += (x - meanX) * (y - meanY);
+    spreadX += (x - meanX) * (x - meanX);
+    spreadY += (y - meanY) * (y - meanY);
+  });
+  if (spreadX === 0 || spreadY === 0) {
+    return 0;
+  }
+  return products / Math.sqrt(spreadX * spreadY);
+}
+
+function correlations(features: Rows, targets: number[]): number[] {
+  return features[0].map((_, j) =>
+    correlation(
+      features.map((row) => row[j]),
+      targets,
+    ),
+  );
+}
+
+/** The feature whose correlation with the labels is largest in size, compared after rounding; the
+ * lowest index wins a tie. */
+function bestFeature(features: Rows, targets: number[]): number {
+  const sizes = correlations(features, targets).map((r) => round6(Math.abs(r)));
+  return sizes.indexOf(Math.max(...sizes));
+}
+
 function standardize(features: Rows, scaler: Scaler): Rows {
   return features.map((row) => row.map((value, j) => (value - scaler.means[j]) / scaler.scales[j]));
 }
@@ -261,6 +297,23 @@ export class LinearModels {
     return [honest.bestStep, round6(honest.validationError), leaky.bestStep, round6(leaky.validationError)];
   }
 
+  featureCorrelations(validationCount: number): number[] {
+    const split = this.features.length - validationCount;
+    return correlations(this.features.slice(0, split), this.targets.slice(0, split)).map(round6);
+  }
+
+  selectionCheck(learningRate: number, steps: number, validationCount: number): number[] {
+    const split = this.features.length - validationCount;
+    const honest = bestFeature(this.features.slice(0, split), this.targets.slice(0, split));
+    const leaky = bestFeature(this.features, this.targets);
+    return [
+      honest,
+      round6(this.oneFeatureError(honest, learningRate, steps, split)),
+      leaky,
+      round6(this.oneFeatureError(leaky, learningRate, steps, split)),
+    ];
+  }
+
   // Shared
   /** One row per state, from the zero weights to the last step: [loss, bias, weights...]. */
   private train(
@@ -289,6 +342,14 @@ export class LinearModels {
         mse(this.features.slice(start, end), this.targets.slice(start, end), weights),
       ];
     });
+  }
+
+  /** Validation MSE of a model on one feature, standardized and trained on the training part only. */
+  private oneFeatureError(feature: number, learningRate: number, steps: number, split: number): number {
+    const column = this.features.map((row) => [row[feature]]);
+    const rows = standardize(column, fitScalerOn(column.slice(0, split)));
+    const weights = fitRidge(rows.slice(0, split), this.targets.slice(0, split), learningRate, steps, 0);
+    return mse(rows.slice(split), this.targets.slice(split), weights);
   }
 
   /** Train on the standardized training part, watching the validation error after each step, and

@@ -142,6 +142,32 @@ def _scaler(features: Rows) -> Scaler:
     return means, scales
 
 
+def _correlation(column: list[float], targets: list[float]) -> float:
+    """Pearson's r of one feature with the labels, 0 when either of them does not vary."""
+    count = len(targets)
+    mean_x = _total(column) / count
+    mean_y = _total(targets) / count
+    products = spread_x = spread_y = 0.0
+    for x, y in zip(column, targets, strict=True):
+        products += (x - mean_x) * (y - mean_y)
+        spread_x += (x - mean_x) * (x - mean_x)
+        spread_y += (y - mean_y) * (y - mean_y)
+    if spread_x == 0 or spread_y == 0:
+        return 0.0
+    return products / sqrt(spread_x * spread_y)
+
+
+def _correlations(features: Rows, targets: list[float]) -> list[float]:
+    return [_correlation(list(column), targets) for column in zip(*features, strict=True)]
+
+
+def _best_feature(features: Rows, targets: list[float]) -> int:
+    """The feature whose correlation with the labels is largest in size, compared after rounding;
+    the lowest index wins a tie."""
+    sizes = [_round(abs(r)) for r in _correlations(features, targets)]
+    return sizes.index(max(sizes))
+
+
 def _standardize(features: Rows, means: list[float], scales: list[float]) -> Rows:
     return [
         [(value - mean) / scale for value, mean, scale in zip(row, means, scales, strict=True)]
@@ -249,6 +275,23 @@ class LinearModels:
             _round(leaky.validation_error),
         ]
 
+    def feature_correlations(self, validation_count: int) -> list[float]:
+        split = len(self._features) - validation_count
+        return [_round(r) for r in _correlations(self._features[:split], self._targets[:split])]
+
+    def selection_check(
+        self, learning_rate: float, steps: int, validation_count: int
+    ) -> list[float]:
+        split = len(self._features) - validation_count
+        honest = _best_feature(self._features[:split], self._targets[:split])
+        leaky = _best_feature(self._features, self._targets)
+        return [
+            float(honest),
+            _round(self._one_feature_error(honest, learning_rate, steps, split)),
+            float(leaky),
+            _round(self._one_feature_error(leaky, learning_rate, steps, split)),
+        ]
+
     # Shared
     def _train(
         self,
@@ -285,6 +328,16 @@ class LinearModels:
                 ]
             )
         return errors
+
+    def _one_feature_error(
+        self, feature: int, learning_rate: float, steps: int, split: int
+    ) -> float:
+        """Validation MSE of a model on one feature, standardized and trained on the training part
+        only."""
+        column = [[row[feature]] for row in self._features]
+        rows = _standardize(column, *_scaler(column[:split]))
+        weights = _fit_ridge(rows[:split], self._targets[:split], learning_rate, steps, 0.0)
+        return _mse(rows[split:], self._targets[split:], weights)
 
     def _early_stop(
         self,

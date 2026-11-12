@@ -153,11 +153,22 @@ The labels are a straight line, `1 + x`, plus some noise, but the features offer
 3. If this is the first step, or the rounded error is lower than the best so far, it becomes the best: remember the step, the error and the weights. Otherwise count one step without a new best; a new best resets that count to 0.
 4. Stop after `maxSteps` steps, or as soon as `patience` steps in a row have brought no new best, whichever comes first. Otherwise go back to 2.
 
-**Leakage.** Information leaks when something about the data you test on reaches the training, here when the scaler is fitted on all the examples, validation part included. The validation part is then no longer unseen, so its error no longer measures what happens on new data, and it usually looks better than it should.
+**Leakage.** The validation error measures how the model does on data it has never seen only if nothing about the validation examples went into it. So every step that is fitted on data, a scaler as much as the weights, is fitted on the training part only, and the validation part is used only to measure. Breaking that rule is called **leakage**, and it can happen in two ways:
+
+- **Through the features.** A scaler fitted on all the examples takes its means and scales partly from the validation features. They carry no label, and for a linear model a scaler only changes the units, so the leak changes the path gradient descent takes and the step early stopping picks, and the validation error moves up or down, with no reliable direction. Either way it is no longer a clean measurement.
+- **Through the labels.** A choice made by how well something fits the labels, with the validation labels in view, picks what happens to fit them, chance included, so the validation error comes out better than the model will do on new data. Here the choice is one feature. The **correlation** of a feature `x` with the labels `y` (Pearson's r) says how closely `y` follows a straight line in `x`, from `-1` (falling) through 0 (no line at all) to 1 (rising):
+
+  ```text
+  r = sum of (x - mean of x) * (y - mean of y) / sqrt(sum of (x - mean of x)^2 * sum of (y - mean of y)^2)
+  ```
+
+  over the examples considered, and `r = 0` when `x` or `y` does not vary there. The chosen feature is the one whose `r` is largest in size, `|r|`, compared after rounding to 6 decimals; a tie goes to the lower index.
 
 - `fitScaler(validationCount)`: `[[means], [scales]]`, one entry per feature, fitted on the training part.
 - `earlyStop(learningRate, maxSteps, patience, validationCount)`: `[best step, steps taken, training error at the best step, validation error at the best step, b, w1, ..., wd]`, the weights being those of the best step, in standardized units. Steps are counted from 1.
 - `leakageCheck(learningRate, maxSteps, patience, validationCount)`: runs the early stopping twice, once as above and once with the scaler fitted on all `n` examples (everything else the same), and returns `[best step, validation error, leaky best step, leaky validation error]`.
+- `featureCorrelations(validationCount)`: the `r` of each feature with the labels, over the training part.
+- `selectionCheck(learningRate, steps, validationCount)`: chooses a feature twice, honestly over the training part and leakily over all `n` examples. For each choice it trains a model on that feature alone: the feature is standardized with its mean and scale over the training part, then `steps` steps of level 1's gradient descent run from `[0, 0]` on the training part. Returns `[chosen feature, validation error, leaky chosen feature, leaky validation error]`, a feature being its index in a row of `features`, from 0.
 
 ### Example 1
 
@@ -169,7 +180,13 @@ With one example set aside, the training part's first feature is `1, 2, 3`: mean
 
 <!-- case: ex8 -->
 
-Ten flats: area in square metres, rooms, and age in years, with prices as labels. The last three, set aside, are the largest, larger than any flat in the training part. The validation error falls to 0.130076 at step 4 and then rises at every step, while the training error keeps falling: the model gets better at the flats it sees and worse at new ones, so early stopping keeps step 4 and stops after step 7. Fitted on all ten flats, the scaler's mean area moves from 82.857143 to 101, the large flats look less unusual, and training takes another path: its best validation error, 0.072988 at step 20, looks almost twice as good. It is not a better model; the validation flats were used to prepare the training, so that number says nothing reliable about the next flat.
+Ten flats: area in square metres, rooms, and age in years, with prices as labels. The last three, set aside, are the largest, larger than any flat in the training part. The validation error falls to 0.130076 at step 4 and then rises at every step, while the training error keeps falling: the model gets better at the flats it sees and worse at new ones, so early stopping keeps step 4 and stops after step 7. Fitted on all ten flats, the scaler's mean area moves from 82.857143 to 101, and training takes another path: its best validation error is 0.072988, at step 20. It came out lower on this table, but on other tables the same leak makes it come out higher. What it changes for sure is the meaning of the number: the validation flats helped prepare the training, so the error no longer measures a model on flats it has never seen.
+
+### Example 3
+
+<!-- case: ex9 -->
+
+Eight examples whose labels are whole numbers drawn at random, so no feature really predicts them. Over the five training examples, feature 0 has the correlation largest in size, `-0.836483`, so the honest run chooses it, and its model misses the three validation labels badly: an error of 13.858914. Over all eight examples, the validation labels included, feature 1 has a correlation of about 0.837 and feature 0 only about `-0.607`, so the leaky run chooses feature 1 and reports an error of 2.132041, more than six times better, on labels that are random. Feature 1 will not help with the next example: only the choice saw the answers.
 
 ## Constraints
 
@@ -186,7 +203,7 @@ Ten flats: area in square metres, rooms, and age in years, with prices as labels
 - Linear regression also has a solution in closed form, by solving a linear system. When is gradient descent still the better choice?
 - `chooseStrength` reports the validation error of the strength it picked, after looking at all of them. Is that number still an honest estimate for new data? How would nested cross-validation fix it?
 - The folds here are consecutive blocks. What goes wrong when the table is sorted by label, or by date, and when is a split by date the right one?
-- Scaling is a mild leak. Choosing the features most correlated with the label using all the data, or filling missing values with an average over all of it, can leak much more. How would you structure a pipeline so that every fitted step sees only the training part?
+- Scaling, choosing features and filling in missing values with an average are all steps fitted on data. How would you structure a pipeline so that every fitted step sees only the training part, including inside each fold of a cross-validation?
 
 ## Hints
 
@@ -212,7 +229,7 @@ For cross-validation, compute the start and end of each fold once, then for each
 
 ### Hint 6
 
-For early stopping, keep four things besides the current weights: the best step, its rounded validation error, its weights, and how many steps have passed without a new best. For the leakage check, write the early stopping once, taking the scaler as an argument, and call it with the two scalers.
+For early stopping, keep four things besides the current weights: the best step, its rounded validation error, its weights, and how many steps have passed without a new best. For the leakage check, write the early stopping once, taking the scaler as an argument, and call it with the two scalers. The selection check works the same way: one function chooses a feature from the examples it is given, and you call it with the training part and with every example.
 
 ### Hint 7
 
