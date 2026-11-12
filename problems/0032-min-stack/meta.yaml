@@ -32,4 +32,5 @@ perf:
 references:
   leetcode: {number: 155, url: "https://leetcode.com/problems/min-stack/"}
 related: [valid-parentheses, randomized-set]
+guides: [stacks]
 estimate_minutes: 20

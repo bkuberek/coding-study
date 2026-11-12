@@ -29,4 +29,5 @@ perf:
 references:
   leetcode: {number: 20, url: "https://leetcode.com/problems/valid-parentheses/"}
 related: [min-remove-to-balance, decode-string, basic-calculator]
+guides: [stacks]
 estimate_minutes: 10

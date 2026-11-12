@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 402, url: "https://leetcode.com/problems/remove-k-digits/"}
 related: [daily-temperatures, sum-of-subarray-minimums]
+guides: [monotonic-stacks]
 order: 5
 estimate_minutes: 25

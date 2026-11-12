@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 85, url: "https://leetcode.com/problems/maximal-rectangle/"}
 related: [largest-rectangle-histogram, maximal-square]
+guides: [monotonic-stacks]
 order: 12
 estimate_minutes: 45

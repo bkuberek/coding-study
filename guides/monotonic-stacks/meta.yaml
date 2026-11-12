@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Monotonic stacks
+summary: For every item, the first later item that beats it, in one pass. Why the stack stays in order by itself, and why each item is pushed and popped only once.
+level: core
+prerequisites: [stacks]
+related: [queues-and-deques, evaluating-expressions]
+problems: [daily-temperatures, stock-span, car-fleet, remove-k-digits, sum-of-subarray-minimums, trapping-rain-water, largest-rectangle-histogram, maximal-rectangle]

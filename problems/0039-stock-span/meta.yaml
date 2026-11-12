@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 901, url: "https://leetcode.com/problems/online-stock-span/"}
 related: [daily-temperatures, min-stack]
+guides: [monotonic-stacks]
 order: 3
 estimate_minutes: 20

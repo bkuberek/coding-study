@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 853, url: "https://leetcode.com/problems/car-fleet/"}
 related: [daily-temperatures, merge-intervals]
+guides: [monotonic-stacks]
 order: 2
 estimate_minutes: 25

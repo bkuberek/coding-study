@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 648, url: "https://leetcode.com/problems/replace-words/"}
 related: [implement-trie, search-suggestions, wildcard-word-dictionary]
+guides: [tries]
 order: 5
 estimate_minutes: 20

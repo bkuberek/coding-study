@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 678, url: "https://leetcode.com/problems/valid-parenthesis-string/"}
 related: [valid-parentheses, min-remove-to-balance, partition-labels]
+guides: [stacks]
 order: 7
 estimate_minutes: 25

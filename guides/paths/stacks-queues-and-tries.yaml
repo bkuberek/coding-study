@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Stacks, queues and tries: from matching pairs to prefix trees"
+summary: Last in first out, first in first out, the monotonic stack and the trie, each taught on its own example, then practised on the problems that need it, the hardest last.
+steps:
+  - guide: stacks
+  - problem: valid-parentheses
+  - problem: generate-parentheses
+  - problem: min-stack
+  - problem: min-remove-to-balance
+  - problem: decode-string
+  - problem: valid-parenthesis-string
+  - guide: evaluating-expressions
+  - problem: evaluate-rpn
+  - problem: basic-calculator
+  - guide: queues-and-deques
+  - guide: monotonic-stacks
+  - problem: daily-temperatures
+  - problem: stock-span
+  - problem: car-fleet
+  - problem: remove-k-digits
+  - problem: sum-of-subarray-minimums
+  - guide: tries
+  - problem: implement-trie
+  - problem: replace-words
+  - problem: wildcard-word-dictionary
+  - problem: search-suggestions
+  - problem: sliding-window-maximum
+  - problem: trapping-rain-water
+  - problem: word-search-ii
+  - problem: largest-rectangle-histogram
+  - problem: maximal-rectangle

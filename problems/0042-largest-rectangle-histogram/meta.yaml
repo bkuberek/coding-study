@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 84, url: "https://leetcode.com/problems/largest-rectangle-in-histogram/"}
 related: [maximal-rectangle, sum-of-subarray-minimums, trapping-rain-water]
+guides: [monotonic-stacks]
 order: 6
 estimate_minutes: 40

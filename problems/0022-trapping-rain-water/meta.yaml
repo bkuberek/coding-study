@@ -31,6 +31,6 @@ perf:
 references:
   leetcode: {number: 42, url: "https://leetcode.com/problems/trapping-rain-water/"}
 related: [container-with-most-water]
-guides: [pairs-in-sorted-arrays]
+guides: [pairs-in-sorted-arrays, monotonic-stacks]
 order: 8
 estimate_minutes: 35
