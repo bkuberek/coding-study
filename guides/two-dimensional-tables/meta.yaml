@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Two-dimensional tables
+summary: When one number cannot name what is left to solve, the table gets rows and columns. Grids, two sequences and a position with a choice; what a cell means, the order to fill it, and reading the answer back.
+level: core
+prerequisites: [one-dimensional-tables]
+related: [choosing-states]
+problems: [unique-paths, longest-common-subsequence, maximal-square, edit-distance, interleaving-string, regex-matching]

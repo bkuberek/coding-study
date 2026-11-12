@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Bottom-up tables in one dimension
+summary: Turn a recursion into a loop that fills a table. State the subproblem in one sentence, write the recurrence, fill in an order that has every answer ready, then keep only what the next step reads.
+level: core
+prerequisites: [memoization]
+related: [two-dimensional-tables]
+problems: [house-robber, decode-ways, coin-change, min-cost-tickets, longest-increasing-subsequence]
