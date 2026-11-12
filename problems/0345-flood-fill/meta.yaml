@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0345"
+slug: flood-fill
+title: Flood Fill
+summary: "Repaint one square of a grid and every same-coloured square joined to it up, down, left or right. A first grid search, before counting regions."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [graphs]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: floodFill
+    params:
+      - {name: grid, type: "int[][]"}
+      - {name: row, type: int}
+      - {name: col, type: int}
+      - {name: newColor, type: int}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: dfs, name: Recursive depth-first fill, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: bfs, name: Breadth-first fill with a queue, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [100, 400, 1000, 2500]
+  expected_from: bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 733, url: "https://leetcode.com/problems/flood-fill/"}
+related: [number-of-islands, max-area-of-island, surrounded-regions]
+order: 0
+estimate_minutes: 15
