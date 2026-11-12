@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0382"
+slug: query-planner
+title: Query Planner
+summary: "Build QueryPlanner: parse a small SQL subset into a plan, estimate rows from statistics, pick the cheapest left-deep join order by dynamic programming, then choose indexes and join methods."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [dp-1d, bit-manipulation]
+domains: [backend]
+job_roles: [backend]
+scope: function
+levels:
+  - {level: 1, title: Parse and plan in written order}
+  - {level: 2, title: Estimate row counts}
+  - {level: 3, title: Choose the join order}
+  - {level: 4, title: Access paths and join methods}
+signature:
+  class:
+    name: QueryPlanner
+    constructor: {params: []}
+    methods:
+      - {name: addTable, level: 1, params: [{name: table, type: string}, {name: columns, type: "list<string>"}], returns: {type: string}}
+      - {name: logicalPlan, level: 1, params: [{name: sql, type: string}], returns: {type: "list<string>"}}
+      - {name: analyze, level: 2, params: [{name: table, type: string}, {name: rows, type: long}, {name: distinct, type: "list<long>"}], returns: {type: string}}
+      - {name: estimate, level: 2, params: [{name: sql, type: string}], returns: {type: "list<string>"}}
+      - {name: optimize, level: 3, params: [{name: sql, type: string}], returns: {type: "list<string>"}}
+      - {name: addIndex, level: 4, params: [{name: table, type: string}, {name: column, type: string}], returns: {type: string}}
+      - {name: explain, level: 4, params: [{name: sql, type: string}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: subset-dp, name: Recursive-descent parser and dynamic programming over subsets of tables, role: optimal, time: "O(q) to parse and check; O(2^k k^2) to choose a plan", space: "O(2^k k)", time_class: "n", space_class: "n"}
+related: [in-memory-database, triple-store, subsets, partition-equal-subset-sum, basic-calculator]
+estimate_minutes: 120

@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0383"
+slug: memory-allocator
+title: Memory Allocator
+summary: "Build MemoryAllocator over a fixed heap: first fit with headers and alignment, coalescing with boundary tags, first, next and best fit compared on one trace, then a buddy allocator."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [intervals, bit-manipulation]
+domains: [systems]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: First fit over a fixed heap}
+  - {level: 2, title: Coalescing with boundary tags}
+  - {level: 3, title: Placement policies}
+  - {level: 4, title: The buddy allocator}
+signature:
+  class:
+    name: MemoryAllocator
+    constructor: {params: [{name: heapSize, type: int}]}
+    methods:
+      - {name: allocate, level: 1, params: [{name: size, type: int}], returns: {type: int}}
+      - {name: free, level: 1, params: [{name: address, type: int}], returns: {type: string}}
+      - {name: heapMap, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: setCoalescing, level: 2, params: [{name: enabled, type: bool}], returns: {type: string}}
+      - {name: freeReport, level: 2, params: [], returns: {type: "list<int>"}}
+      - {name: setPolicy, level: 3, params: [{name: policy, type: string}], returns: {type: string}}
+      - {name: compare, level: 3, params: [{name: trace, type: "list<int>"}], returns: {type: "list<list<int>>"}}
+      - {name: wasted, level: 4, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: block-list, name: "Address-ordered list of blocks with splitting, merging and buddies", role: optimal, time: "O(b) per allocate or free; O(t b) per compare", space: "O(b)", time_class: "n", space_class: "n"}
+related: [range-module, merge-intervals, insert-interval, lru-cache]
+estimate_minutes: 120

@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0381"
+slug: regex-engine
+title: Regex Engine
+summary: "Build RegexEngine: parse a pattern into a syntax tree, build its NFA by Thompson's construction, match it with a set of states and no backtracking, then search leftmost-longest with classes."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [string-matching]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+levels:
+  - {level: 1, title: Parse to a syntax tree}
+  - {level: 2, title: Build the NFA}
+  - {level: 3, title: Simulate without backtracking}
+  - {level: 4, title: Search and character classes}
+signature:
+  class:
+    name: RegexEngine
+    constructor: {params: []}
+    methods:
+      - {name: parse, level: 1, params: [{name: pattern, type: string}], returns: {type: string}}
+      - {name: nfa, level: 2, params: [{name: pattern, type: string}], returns: {type: "list<string>"}}
+      - {name: fullMatch, level: 3, params: [{name: pattern, type: string}, {name: text, type: string}], returns: {type: bool}}
+      - {name: countSteps, level: 3, params: [{name: pattern, type: string}, {name: text, type: string}], returns: {type: int}}
+      - {name: search, level: 4, params: [{name: pattern, type: string}, {name: text, type: string}], returns: {type: "int[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: thompson-simulation, name: "Recursive descent, Thompson's construction and a state-set simulation", role: optimal, time: "O(m) to parse and build; O(n m) per match, count or search", space: "O(m)", time_class: "n", space_class: "n"}
+related: [regex-matching, wildcard-word-dictionary, basic-calculator, implement-trie]
+estimate_minutes: 120
