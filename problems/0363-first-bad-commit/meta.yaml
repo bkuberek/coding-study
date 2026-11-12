@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0363"
+slug: first-bad-commit
+title: First Bad Commit
+summary: "A history of commits is tested one by one: good ones come first, then bad ones, and some commits cannot be tested. Report which positions could be the first bad commit."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [binary-search]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: firstBadCommit
+    params:
+      - {name: statuses, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: linear-scan, name: Scan from the oldest commit to the first bad one, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: binary-search, name: Two binary searches that step past skipped commits, role: optimal, time: "O(log n) with isolated skips, O(n) when long runs are skipped", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: binary-search
+  time_limit: {factor: 5}
+related: [binary-search, first-last-position, search-insert-position]
+order: 12
+estimate_minutes: 20
