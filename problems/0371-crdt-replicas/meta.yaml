@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0371"
+slug: crdt-replicas
+title: CRDT Replicas
+summary: "Build Replicas, copies of shared data that accept updates offline and always agree after merging: counters, a last-writer-wins register, an add-wins set, and delta sync."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Counters that merge}
+  - {level: 2, title: Last writer wins}
+  - {level: 3, title: An add-wins set}
+  - {level: 4, title: Delta sync}
+signature:
+  class:
+    name: Replicas
+    constructor: {params: [{name: ids, type: "list<string>"}]}
+    methods:
+      - {name: increment, level: 1, params: [{name: replica, type: string}, {name: counter, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: decrement, level: 1, params: [{name: replica, type: string}, {name: counter, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: value, level: 1, params: [{name: replica, type: string}, {name: counter, type: string}], returns: {type: int}}
+      - {name: merge, level: 1, params: [{name: source, type: string}, {name: target, type: string}], returns: {type: void}}
+      - {name: write, level: 2, params: [{name: replica, type: string}, {name: register, type: string}, {name: text, type: string}, {name: timestamp, type: long}], returns: {type: bool}}
+      - {name: read, level: 2, params: [{name: replica, type: string}, {name: register, type: string}], returns: {type: string}}
+      - {name: add, level: 3, params: [{name: replica, type: string}, {name: setName, type: string}, {name: element, type: string}], returns: {type: string}}
+      - {name: remove, level: 3, params: [{name: replica, type: string}, {name: setName, type: string}, {name: element, type: string}], returns: {type: int}}
+      - {name: contains, level: 3, params: [{name: replica, type: string}, {name: setName, type: string}, {name: element, type: string}], returns: {type: bool}}
+      - {name: elements, level: 3, params: [{name: replica, type: string}, {name: setName, type: string}], returns: {type: "list<string>"}}
+      - {name: sync, level: 4, params: [{name: source, type: string}, {name: target, type: string}], returns: {type: int}}
+      - {name: stateSize, level: 4, params: [{name: replica, type: string}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: join-per-entry, name: Every piece of state is an entry that only grows and joins by maximum, role: optimal, time: "O(1) per write or add; O(S) per merge or sync", space: "O(S)", time_class: "n", space_class: "n"}
+related: [logical-clocks, consistent-hash-ring, raft-sim, tamper-evident-ledger]
+estimate_minutes: 90
