@@ -21,4 +21,5 @@ comparator: {type: exact}
 approaches:
   - {id: none-sentinel, name: None sentinel for the accumulator, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
 related: [debug-recursion-base-case, max-depth-binary-tree]
+guides: [learn-python-first]
 estimate_minutes: 10

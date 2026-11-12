@@ -23,4 +23,5 @@ comparator: {type: exact}
 approaches:
   - {id: index-in-place, name: Update the slice element through its index, role: optimal, time: "O(n + e)", space: "O(n)", time_class: "n", space_class: "n"}
 related: [debug-append-aliasing, debug-grid-aliasing, bank-transfers]
+guides: [learn-go-first]
 estimate_minutes: 15

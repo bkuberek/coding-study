@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 125, url: "https://leetcode.com/problems/valid-palindrome/"}
 related: [almost-palindrome, two-sum-sorted]
+guides: [your-first-problem]
 order: 1
 estimate_minutes: 10

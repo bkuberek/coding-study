@@ -29,5 +29,5 @@ perf:
 references:
   leetcode: {number: 217, url: "https://leetcode.com/problems/contains-duplicate/"}
 related: [valid-anagram, two-sum, longest-consecutive-sequence]
-guides: [hash-maps-and-sets]
+guides: [your-first-problem, hash-maps-and-sets]
 estimate_minutes: 10
