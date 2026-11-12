@@ -641,14 +641,20 @@ def _kotlin_lsp_linux_command(_server: LanguageServer, launch: Launch) -> tuple[
 
 def _kotlin_lsp_linux_environment(launch: Launch) -> dict[str, str]:
     """As this machine's build, with Gradle's user home in the sidecar's data folder, where the
-    import finds the image's Gradle as its tooling API's own distribution, and the shared data
-    folder the build creates at startup (`$XDG_DATA_HOME/JetBrains`) there too: the image's
-    `~/.local`, which it uses otherwise, is read-only in a sidecar."""
+    import finds the image's Gradle as its tooling API's own distribution, and the build's other
+    homes there too: the shared data folder it creates at startup (`$XDG_DATA_HOME/JetBrains`), its
+    license store (`$XDG_CONFIG_HOME/JetBrains/IntelliJServer`) and its index databases, which go
+    under `$XDG_CACHE_HOME/JetBrains/IntelliJServer/workspaces/` rather than the system path. The
+    image's `~/.local`, `~/.config` and `~/.cache`, which it uses otherwise, are read-only in a
+    sidecar."""
+    data = launch.data_directory
     options = _kotlin_lsp_environment(launch)["IJ_JAVA_OPTIONS"]
-    home = f"-Dcom.jetbrains.ls.imports.gradle.gradleUserHome={launch.data_directory}/gradle"
+    home = f"-Dcom.jetbrains.ls.imports.gradle.gradleUserHome={data}/gradle"
     return {
         "IJ_JAVA_OPTIONS": f"{options} {home}",
-        "XDG_DATA_HOME": f"{launch.data_directory}/share",
+        "XDG_DATA_HOME": f"{data}/share",
+        "XDG_CONFIG_HOME": f"{data}/config",
+        "XDG_CACHE_HOME": f"{data}/cache",
     }
 
 
