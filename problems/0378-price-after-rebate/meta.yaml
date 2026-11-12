@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0378"
+slug: price-after-rebate
+title: Price After Rebate
+summary: "Each shelf item earns a rebate equal to the price of the first item to its right that costs no more; return the price paid for every item."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [monotonic-stack]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: pricesAfterRebate
+    params:
+      - {name: prices, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Scan right for the first item that costs no more, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: monotonic-stack, name: Stack of items still waiting for a rebate, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of items, a third to two thirds of them in a rising run followed by dearer items
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: monotonic-stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1475, url: "https://leetcode.com/problems/final-prices-with-a-special-discount-in-a-shop/"}
+related: [daily-temperatures, stock-span]
+order: 0
+estimate_minutes: 20

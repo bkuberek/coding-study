@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0380"
+slug: check-task-order
+title: Check Task Order
+summary: "Given n tasks, prerequisite pairs and a proposed order, return true only if the order lists every task once and puts each prerequisite before the task that needs it."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [topological-sort, graphs]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: isValidTaskOrder
+    params:
+      - {name: n, type: int}
+      - {name: prerequisites, type: "int[][]"}
+      - {name: order, type: "int[]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: scan-positions, name: Scan the order for the places of both tasks of every pair, role: brute, time: "O(n^2 + m * n)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: position-table, name: Record every task's place once and compare it for each pair, role: optimal, time: "O(n + m)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n tasks, with about 2n prerequisite pairs, in a valid order
+  size_ladder: [250, 500, 1000, 2000]
+  expected_from: position-table
+  time_limit: {factor: 5}
+related: [course-schedule, course-schedule-ii]
+order: 0
+estimate_minutes: 20
