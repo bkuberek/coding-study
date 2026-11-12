@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.42.0 (2026-11-12)
+
+### Documentation
+
+- Plan the AI, data, IaC and guides waves and Phase 17 on the roadmap
+  ([`b84758f`](https://github.com/bkuberek/coding-study/commit/b84758f14379772a713044d97aa9a5ba6d691e8a))
+
+- The web Guides page has shipped
+  ([`e9675d8`](https://github.com/bkuberek/coding-study/commit/e9675d86502e5abfc7d7763aeeb3fe24934189d9))
+
+### Features
+
+- **taxonomy**: Add data, infrastructure, systems, software-design and frontend domains
+  ([`1da9b26`](https://github.com/bkuberek/coding-study/commit/1da9b2698dbb99b9f7bb2e00df94573509ee6f7f))
+
+
 ## v0.41.0 (2026-11-12)
 
 ### Bug Fixes
