@@ -28,6 +28,6 @@ perf:
   size_ladder: [1000, 2000, 5000, 10000]
   expected_from: kmp
   time_limit: {factor: 5}
-related: [permutation-in-string, minimum-window-substring, longest-palindromic-substring]
+related: [permutation-in-string, minimum-window-substring, longest-palindromic-substring, regex-engine]
 order: 1
 estimate_minutes: 30

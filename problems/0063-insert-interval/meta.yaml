@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 57, url: "https://leetcode.com/problems/insert-interval/"}
-related: [merge-intervals, interval-list-intersections, stream-windows, scd-type2-dimension]
+related: [merge-intervals, interval-list-intersections, stream-windows, scd-type2-dimension, memory-allocator]
 guides: [intervals]
 order: 2
 estimate_minutes: 20

@@ -29,5 +29,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: thompson-simulation, name: "Recursive descent, Thompson's construction and a state-set simulation", role: optimal, time: "O(m) to parse and build; O(n m) per match, count or search", space: "O(m)", time_class: "n", space_class: "n"}
-related: [regex-matching, wildcard-word-dictionary, basic-calculator, implement-trie]
+related: [regex-matching, wildcard-word-dictionary, basic-calculator, implement-trie, substring-search, tiny-interpreter]
 estimate_minutes: 120

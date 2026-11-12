@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 10, url: "https://leetcode.com/problems/regular-expression-matching/"}
-related: [edit-distance, interleaving-string, drift-detection]
+related: [edit-distance, interleaving-string, drift-detection, regex-engine]
 guides: [two-dimensional-tables]
 order: 11
 estimate_minutes: 45

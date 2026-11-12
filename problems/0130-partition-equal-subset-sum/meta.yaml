@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 416, url: "https://leetcode.com/problems/partition-equal-subset-sum/"}
-related: [coin-change, house-robber]
+related: [coin-change, house-robber, query-planner]
 guides: [choosing-states]
 order: 5
 estimate_minutes: 25

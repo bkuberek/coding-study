@@ -33,5 +33,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: bplus-tree, name: B+ tree with linked leaves, role: optimal, time: "O(d log_d n) per search, insert or remove; O(d log_d n + k) per scan of k entries; O(n) per bulk load", space: "O(n)", time_class: "log n", space_class: "n"}
-related: [in-memory-database, transactional-kv-store, mvcc-snapshot-isolation]
+related: [in-memory-database, transactional-kv-store, mvcc-snapshot-isolation, query-planner]
 estimate_minutes: 150

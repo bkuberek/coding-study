@@ -28,6 +28,6 @@ perf:
   expected_from: hash-map-dll
 references:
   leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}
-related: [cache-and-router, virtual-memory-sim]
+related: [cache-and-router, virtual-memory-sim, memory-allocator]
 estimate_minutes: 30
 guides: [designing-with-hash-maps]

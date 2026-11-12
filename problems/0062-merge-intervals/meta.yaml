@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 56, url: "https://leetcode.com/problems/merge-intervals/"}
-related: [insert-interval, non-overlapping-intervals, interval-list-intersections, agent-trace-analyzer, stream-windows]
+related: [insert-interval, non-overlapping-intervals, interval-list-intersections, agent-trace-analyzer, stream-windows, memory-allocator]
 guides: [intervals]
 order: 1
 estimate_minutes: 20

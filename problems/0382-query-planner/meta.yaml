@@ -31,5 +31,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: subset-dp, name: Recursive-descent parser and dynamic programming over subsets of tables, role: optimal, time: "O(q) to parse and check; O(2^k k^2) to choose a plan", space: "O(2^k k)", time_class: "n", space_class: "n"}
-related: [in-memory-database, triple-store, subsets, partition-equal-subset-sum, basic-calculator]
+related: [in-memory-database, triple-store, subsets, partition-equal-subset-sum, basic-calculator, btree-index, mvcc-snapshot-isolation]
 estimate_minutes: 120

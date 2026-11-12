@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 78, url: "https://leetcode.com/problems/subsets/"}
-related: [subsets-with-duplicates, permutations, combination-sum, lamp-patterns]
+related: [subsets-with-duplicates, permutations, combination-sum, lamp-patterns, query-planner]
 guides: [backtracking]
 order: 1
 estimate_minutes: 15
