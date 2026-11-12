@@ -273,4 +273,4 @@ Retrieval for one user is usually small enough for an exact scan; the cost that 
 - [Park and others, *Generative Agents: Interactive Simulacra of Human Behavior* (2023)](https://arxiv.org/abs/2304.03442): a memory stream, reflections, and retrieval by recency, importance and relevance.
 - [Wang and others, *Recursively Summarizing Enables Long-Term Dialogue Memory in Large Language Models* (2023)](https://arxiv.org/abs/2308.15022): rolling summaries for long conversations.
 - [Edge and others, *From Local to Global: A Graph RAG Approach to Query-Focused Summarization* (2024)](https://arxiv.org/abs/2404.16130): knowledge kept as an entity graph.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM01 Prompt Injection on memory persistence and memory writes.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM01:2026 Prompt Injection (2025: LLM01) on memory persistence and memory writes.

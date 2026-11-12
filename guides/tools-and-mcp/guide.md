@@ -10,7 +10,7 @@ Every application used to wire its tools in its own way. The **Model Context Pro
 
 - **Three roles.** A **host** is the application the user works in, which runs the model and enforces consent. A **client**, created by the host, talks to exactly one **server**. A server offers capabilities: a database, a file system, an issue tracker.
 - **What servers offer**: **tools**, functions for the model to call; **resources**, data for the user or the model to read; and **prompts**, templated messages for users.
-- **What clients offer**, when a server asks within its reply: **elicitation**, asking the user for more information. The revision still defines **sampling** (asking the host's model for a completion) and **roots** (directories the client points the server to, as a hint and not a permission), but deprecates both: new implementations should not adopt them.
+- **What clients offer**, when a server asks within its reply: **elicitation**, asking the user for more information. The revision still defines **sampling** (asking the host's model for a completion) and **roots** (directories the client points the server to, as a hint and not a permission), but deprecates both, along with the server's **logging** utility: deprecated features still work and stay in the specification, new implementations should not adopt them, and they may be dropped no earlier than the first revision released on or after 2027-07-28.
 - **The messages.** JSON-RPC 2.0: requests with an id, results or errors that answer them, and notifications that expect no answer.
 - **Statelessness.** Every request carries its own protocol version and client capabilities in a `_meta` field, and a server must not rely on earlier requests on the same connection. Earlier revisions opened a session with an `initialize` handshake; this one does not.
 - **Two transports.** **stdio**, newline-delimited messages over the standard streams of a subprocess the client launched, for local servers; and **Streamable HTTP**, where each message is a POST to one endpoint and the reply is JSON or a stream of server-sent events, for remote ones.
@@ -256,6 +256,7 @@ Tool definitions are paid on every call, which is a reason to offer only the too
 - [MCP: base protocol](https://modelcontextprotocol.io/specification/2026-07-28/basic): JSON-RPC messages, `_meta`, error codes and JSON Schema usage.
 - [MCP: transports](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports): stdio and Streamable HTTP.
 - [MCP: tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools): definitions, results, the two kinds of error, and security considerations.
+- [MCP: deprecated features, revision 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/deprecated): sampling, roots and logging, and when they may go.
 - [MCP schema, revision 2026-07-28](https://github.com/modelcontextprotocol/specification/blob/main/schema/2026-07-28/schema.ts): `ToolAnnotations` and their defaults.
 - [JSON-RPC 2.0 specification](https://www.jsonrpc.org/specification): requests, responses and notifications.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03 Excessive Agency and its mitigations.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03:2026 Excessive Agency (2025: LLM06) and its mitigations.

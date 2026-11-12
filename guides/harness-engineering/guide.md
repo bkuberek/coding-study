@@ -341,4 +341,4 @@ Compaction changes the growth: with the context held under a fraction of `W`, ea
 - [Huang and others, *Large Language Models Cannot Self-Correct Reasoning Yet* (2024)](https://arxiv.org/abs/2310.01798): self-correction without external feedback.
 - [Yao and others, *ReAct: Synergizing Reasoning and Acting in Language Models* (2023)](https://arxiv.org/abs/2210.03629): step limits in practice.
 - [Model Context Protocol, base protocol, revision 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/basic): statelessness and explicit identifiers for state.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03 Excessive Agency and LLM06 Unbounded Consumption.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03:2026 Excessive Agency (2025: LLM06) and LLM06:2026 Unbounded Consumption (2025: LLM10).

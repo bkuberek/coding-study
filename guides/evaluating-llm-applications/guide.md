@@ -225,4 +225,4 @@ Most of an evaluation's cost is the application's own model calls. Cache the bas
 - [Zheng and others, *Judging LLM-as-a-Judge* (2023, title shortened)](https://arxiv.org/abs/2306.05685): judges' agreement with people, their biases, and swapping positions.
 - [Chinchor, *MUC-4 Evaluation Metrics* (1992)](https://aclanthology.org/M92-1002.pdf): recall, precision and van Rijsbergen's F-measure with its weight `β`.
 - [Järvelin and Kekäläinen, *Cumulated gain-based evaluation of IR techniques* (2002)](https://doi.org/10.1145/582415.582418): graded relevance and discounted cumulative gain.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM07 Misinformation, the failure an evaluation exists to catch before users do.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM07:2026 Misinformation (2025: LLM09), the failure an evaluation exists to catch before users do.

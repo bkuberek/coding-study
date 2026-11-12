@@ -241,4 +241,4 @@ Validation is the cheapest part of the pipeline, so there is no reason to skip i
 - [Python `json`](https://docs.python.org/3/library/json.html): repeated names keep the last value, `NaN` is accepted by default, `object_pairs_hook` and `parse_constant`.
 - [Python built-in types, `bool`](https://docs.python.org/3/library/stdtypes.html#boolean-type-bool): `bool` is a subclass of `int`.
 - [JSON Schema specification](https://json-schema.org/specification): the current version, 2020-12.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM01 Prompt Injection's advice on output schemas, and LLM08 Hidden Context Exposure on what must stay out of a system prompt.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM01:2026 Prompt Injection's advice on output schemas (2025: LLM01), and LLM08:2026 Hidden Context Exposure on what must stay out of a system prompt (it replaces 2025's LLM07 System Prompt Leakage).

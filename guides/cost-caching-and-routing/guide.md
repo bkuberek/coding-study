@@ -260,4 +260,4 @@ A cascade beats the large model alone when `small + e · large < large`, that is
 - [Ong and others, *RouteLLM: Learning to Route LLMs with Preference Data* (2024)](https://arxiv.org/abs/2406.18665): routers between a stronger and a weaker model.
 - [Model Context Protocol, tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools): deterministic tool order and prompt cache hit rates.
 - [Python `json`](https://docs.python.org/3/library/json.html) and [Python `hashlib`](https://docs.python.org/3/library/hashlib.html): `sort_keys`, compact `separators` and SHA-256 for cache keys.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM06 Unbounded Consumption, and semantic cache poisoning under LLM09.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM06:2026 Unbounded Consumption (2025: LLM10), and semantic cache poisoning under LLM09:2026 Vector and Embedding Weaknesses (2025: LLM08).

@@ -26,6 +26,21 @@ The **OWASP Top 10 for LLM Applications** is the community's ranking of these ri
 | LLM09:2026 | Vector and Embedding Weaknesses | Similarity search leaks across tenants, embeddings are inverted, retrieval is poisoned or jammed | Scope tenants inside the index query, validate sources, protect stored vectors |
 | LLM10:2026 | Improper Output Handling | Model output passed downstream unchecked becomes cross-site scripting (XSS), server-side request forgery (SSRF), SQL injection or code execution | Encode for the target context, parameterized queries, no automatic rendering of external content |
 
+Much material still uses the 2025 numbering:
+
+| 2025 | 2026 |
+|------|------|
+| LLM01 Prompt Injection | LLM01 Prompt Injection |
+| LLM02 Sensitive Information Disclosure | LLM02 Sensitive Information Disclosure |
+| LLM03 Supply Chain | LLM04 Supply Chain |
+| LLM04 Data and Model Poisoning | LLM05 Data and Model Poisoning |
+| LLM05 Improper Output Handling | LLM10 Improper Output Handling |
+| LLM06 Excessive Agency | LLM03 Excessive Agency |
+| LLM07 System Prompt Leakage | LLM08 Hidden Context Exposure, which replaces it |
+| LLM08 Vector and Embedding Weaknesses | LLM09 Vector and Embedding Weaknesses |
+| LLM09 Misinformation | LLM07 Misinformation |
+| LLM10 Unbounded Consumption | LLM06 Unbounded Consumption |
+
 The edition draws a boundary worth keeping in mind: this list covers the model as a component of your application; once the model acts on its own, with tools, memory that persists between sessions and consequences downstream, OWASP's separate Top 10 for Agentic Applications applies alongside it.
 
 ## A worked example
@@ -201,7 +216,7 @@ The expensive part of security here is design, not computation: deciding which a
 
 ## Further reading
 
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): the ten risks, their examples and their mitigations.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/), and [its PDF](https://genai.owasp.org/download/56857/), dated August 4th, 2026: the ten risks, their examples and their mitigations.
 - [OWASP GenAI Security Project, LLM Top 10](https://genai.owasp.org/llm-top-10/) (it currently shows the 2025 edition, numbered differently): the project's hub for the list and its earlier editions.
 - [Greshake and others, *Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection* (2023)](https://arxiv.org/abs/2302.12173): indirect prompt injection.
 - [Python `html`](https://docs.python.org/3/library/html.html): `html.escape` and what it converts.

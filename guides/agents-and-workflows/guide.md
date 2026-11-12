@@ -242,4 +242,4 @@ The quadratic growth is why a long ReAct run gets expensive faster than its numb
 - [Xu and others, *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models* (2023)](https://arxiv.org/abs/2305.18323): planner, worker and solver.
 - [Shinn and others, *Reflexion: Language Agents with Verbal Reinforcement Learning* (2023)](https://arxiv.org/abs/2303.11366): reflections kept across attempts.
 - [Wei and others, *Chain-of-Thought Prompting Elicits Reasoning in Large Language Models* (2022)](https://arxiv.org/abs/2201.11903): the reasoning traces that ReAct interleaves with actions.
-- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03 Excessive Agency.
+- [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03:2026 Excessive Agency (2025: LLM06).
