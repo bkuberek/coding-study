@@ -75,7 +75,7 @@ Two records are **candidates** when they share at least one key. Only candidates
 5. The **Jaro** similarity is `(m / |s| + m / |t| + (m - h) / m) / 3`.
 6. Let `l` be the length of the longest common prefix of `s` and `t`, at most 4. The **Jaro-Winkler** similarity is `jaro + l * 0.1 * (1 - jaro)`. The boost applies whatever the Jaro value is.
 
-This is the definition on the usual reference pages. Libraries differ in details that this problem fixes as above: some round `h` down, some boost only when the Jaro value is at least 0.7, and some always scan the shorter text instead of `s`.
+This is the definition given on the usual reference pages. Libraries differ in details that this problem fixes as above: some round `h` down, some apply a threshold of 0.7 to the boost, and some always scan the shorter text instead of `s`.
 
 **Token Jaccard.** The tokens of a text are its maximal runs of non-space characters. `tokenJaccard(s, t)` is the number of distinct tokens in both texts divided by the number of distinct tokens in either, compared exactly as given, and `0` when neither text has a token.
 
@@ -99,7 +99,7 @@ This is the definition on the usual reference pages. Libraries differ in details
 
 <!-- case: ex4 -->
 
-The first three values are standard checks: for `MARTHA` and `MARHTA` there are 6 matches, 2 characters out of order so one transposition, a Jaro value of `0.9444` and a common prefix of 3, which gives `0.9611`. Equal texts score 1 and texts with no character in common score 0. `john a smith` and `smith john` share two of three distinct tokens. Repeated tokens count once, and two empty texts give 0.
+The first three values are the ones usually quoted for this definition (the original 1990 paper may tabulate somewhat different numbers for some pairs, likely because the comparator it describes makes further adjustments; this problem uses the plain definition): for `MARTHA` and `MARHTA` there are 6 matches, 2 characters out of order so one transposition, a Jaro value of `0.9444` and a common prefix of 3, which gives `0.9611`. Equal texts score 1 and texts with no character in common score 0. `john a smith` and `smith john` share two of three distinct tokens. Repeated tokens count once, and two empty texts give 0.
 
 ## Level 3: Clusters and canonical records
 
@@ -168,7 +168,7 @@ The first value is the output of `clusters()` for the five records of level 2 (`
 
 ## Follow-ups
 
-- The guard needs every cross pair to score at least 0.65, which is a complete-linkage rule. What would a single-linkage rule give (that is `components`), and what an average-linkage rule? Which one splits a chain like `maria gonzalez, maria gonzales, mario gonzales` the way you want?
+- The guard tests a merge the way complete linkage does: every cross pair must score at least 0.65. It is not complete-linkage clustering, which merges the two groups whose worst cross pair is best, whereas the guard visits the pairs by their best single score, which is why the order matters. What would a single-linkage test give (that is `components`), and what an average-linkage test? Which one splits a chain like `maria gonzalez, maria gonzales, mario gonzales` the way you want?
 - Two people can share an email, such as a shared office mailbox, and then the score is 1 and the guard cannot see the difference. How would you give a key a weight, or count how many records use it?
 - Blocking by the first three letters of the last token loses `Smith` against `Smyth`, and a name written first-name-last is in another block. Which cheaper or more tolerant keys (sorted tokens, phonetic codes, n-grams, several keys at once) would you add, and what does each cost in comparisons?
 - Choosing the threshold 0.75 and the floor 0.65 by hand is fragile. How would you choose them from a labelled sample, with the pair precision and recall of level 4?
@@ -198,7 +198,7 @@ The guard compares every record of one group with every record of the other, so 
 
 ### Hint 6
 
-For the canonical record, sort the members by a tuple that already contains all three tie-breaks: the number of filled fields, minus the length of the normalized name, and the id. The first member is the canonical one; the aliases are the other distinct names.
+For the canonical record, sort the members by a tuple that already contains all three tie-breaks: minus the number of filled fields, minus the length of the normalized name, and the id, so that the most filled and the longest sort first. The first member is the canonical one; the aliases are the other distinct names.
 
 ### Hint 7
 

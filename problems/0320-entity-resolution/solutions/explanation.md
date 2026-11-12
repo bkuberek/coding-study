@@ -23,7 +23,7 @@ The early choice that keeps the rest simple is to normalize once, when the recor
 
 ### Intuition
 
-Resolution is a pipeline of cheap filters in front of an expensive judge. Normalization removes differences that carry no information (case, spacing, punctuation, the order of a comma form). Blocking removes most pairs without looking at them. The score looks at what is left and says how alike two records are. Grouping turns pair decisions into entities. The one subtle step is the last one: a match is a statement about two records, an entity is a statement about all of its members, and the transitive closure of the first is not the second. The guard asks that a merge be acceptable to every pair across the two groups, which is complete linkage with a floor lower than the match threshold.
+Resolution is a pipeline of cheap filters in front of an expensive judge. Normalization removes differences that carry no information (case, spacing, punctuation, the order of a comma form). Blocking removes most pairs without looking at them. The score looks at what is left and says how alike two records are. Grouping turns pair decisions into entities. The one subtle step is the last one: a match is a statement about two records, an entity is a statement about all of its members, and the transitive closure of the first is not the second. The guard asks that a merge be acceptable to every pair across the two groups, which is the merge test of complete linkage with a floor lower than the match threshold. It is not complete-linkage clustering: that method merges the two groups whose worst cross pair is best, while the guard visits the matches by their best single score and merges whenever the test passes, which is why it depends on the order.
 
 ### Algorithm
 
@@ -53,7 +53,7 @@ The pair and B-cubed measures follow their formulas, with the conventions for em
 
 - Blocking is a bet on recall. A pair that shares no key is never found, and a key shared by too many records (a very common surname, a mailbox used by a department) brings back the quadratic cost. In practice one runs several blocking passes with different keys and takes the union, and caps or skips oversized blocks.
 - A weighted sum of two measures is easy to explain and to tune, but it hides which measure drove a decision. Production systems often learn the weights, or the whole decision, from labelled pairs; the Fellegi-Sunter model does it with a likelihood ratio per field.
-- Complete linkage is the strictest of the usual linkage rules: one dissimilar pair can keep two large groups apart. Average linkage is more forgiving, and single linkage is the plain closure that `components` computes. The guard is also order dependent (it visits the best pairs first), where other clustering methods are not.
+- The merge test of complete linkage is the strictest of the usual linkage rules: one dissimilar pair can keep two large groups apart. Average linkage is more forgiving, and single linkage is the plain closure that `components` computes. Standard agglomerative complete linkage merges, at each step, the two groups whose worst cross pair is best; the guard instead goes through the matches from the best single score down, so it depends on the order of the pairs, and standard complete linkage on a fixed set of scores does not.
 - B-cubed and pairwise measures answer different questions. Reporting both, and the list of errors, is how one finds out whether the mistakes are a few large wrong merges or many small missed ones.
 
 ### Pitfalls and edge cases
@@ -70,9 +70,9 @@ The pair and B-cubed measures follow their formulas, with the conventions for em
 
 ## Further reading
 
-- W. E. Winkler, "String comparator metrics and enhanced decision rules in the Fellegi-Sunter model of record linkage", Proceedings of the Section on Survey Research Methods, American Statistical Association, 1990: the prefix adjustment of the Jaro comparator.
-- M. A. Jaro, "Advances in record-linkage methodology as applied to matching the 1985 census of Tampa, Florida", Journal of the American Statistical Association, 1989: the original matching comparator.
-- I. P. Fellegi and A. B. Sunter, "A theory of record linkage", Journal of the American Statistical Association, 1969: the probabilistic model that scores each field by a likelihood ratio.
-- A. Bagga and B. Baldwin, "Algorithms for scoring coreference chains", 1998: the B-cubed measures; and E. Amigo, J. Gonzalo, J. Artiles and F. Verdejo, "A comparison of extrinsic clustering evaluation metrics based on formal constraints", Information Retrieval, 2009: why B-cubed satisfies properties that the pairwise measures do not.
-- P. Christen, "Data Matching", Springer, 2012: a survey of blocking, comparison and classification, including the transitivity problem of clustering matches.
-- [Union-find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure): the disjoint-set structure with path compression and union by size.
+- W. E. Winkler, "String Comparator Metrics and Enhanced Decision Rules in the Fellegi-Sunter Model of Record Linkage", 1990 (available through ERIC): the string comparator that adds a prefix adjustment to the Jaro comparator. Its own table of values may differ from those quoted in the statement for the plain definition.
+- M. A. Jaro, "Advances in record-linkage methodology as applied to matching the 1985 census of Tampa, Florida", Journal of the American Statistical Association 84(406):414-420, 1989, doi:10.1080/01621459.1989.10478785: the Jaro comparator.
+- I. P. Fellegi and A. B. Sunter, "A Theory for Record Linkage", Journal of the American Statistical Association 64(328):1183-1210, 1969, doi:10.1080/01621459.1969.10501049: the probabilistic model of record linkage.
+- E. Amigó, J. Gonzalo, J. Artiles and F. Verdejo, "A comparison of extrinsic clustering evaluation metrics based on formal constraints", Information Retrieval 12(4):461-486, 2009, doi:10.1007/s10791-008-9066-8: a comparison of metrics for evaluating a clustering against a gold standard.
+- P. Christen, "Data Matching: Concepts and Techniques for Record Linkage, Entity Resolution, and Duplicate Detection", Springer, 2012, doi:10.1007/978-3-642-31164-2: a book on record linkage, entity resolution and duplicate detection.
+- [Union-find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure): the disjoint-set structure used for the groups.
