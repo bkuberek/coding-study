@@ -29,4 +29,5 @@ perf:
   size_ladder: [100, 1000, 10000, 100000]
   expected_from: bounded-heap
 related: [k-closest-points, bm25-hybrid-ranker]
+guides: [embeddings-and-vector-search]
 estimate_minutes: 25

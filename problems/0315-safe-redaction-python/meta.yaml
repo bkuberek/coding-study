@@ -33,4 +33,5 @@ project:
 approaches:
   - {id: reference, name: "Rebuild the text around spans that were placed by their quotes, merged, and joined by two patterns", role: optimal, time: "O(p * n) per call for p proposals and n characters", space: "O(n + p)", time_class: "n", space_class: "n"}
 related: [memory-write-sanitizer, retrieval-metrics, feed-ingest-python]
+guides: [prompts-and-structured-outputs]
 estimate_minutes: 120

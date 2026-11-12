@@ -45,4 +45,5 @@ project:
 approaches:
   - {id: reference, name: "One stream reader per provider, a gateway that commits to a provider at the first event, and a ledger per team", role: optimal, time: "per request", space: "per event and per team"}
 related: [token-cost-reconciler, vendor-retry-client-typescript, coworking-availability-typescript]
+guides: [tokens-and-sampling]
 estimate_minutes: 180
