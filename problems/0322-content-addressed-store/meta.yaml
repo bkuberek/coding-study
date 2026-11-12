@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0322"
+slug: content-addressed-store
+title: Content-Addressed Store
+summary: "Build ContentStore: file data under its SHA-256 address with dedup and checked reads, snapshot folders as trees and diff them, compare two ways of chunking, and collect garbage from named refs."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, trees, sliding-window, graphs]
+domains: [backend, algorithms]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Put and get by address}
+  - {level: 2, title: Folder snapshots}
+  - {level: 3, title: Chunking}
+  - {level: 4, title: Refs and garbage collection}
+signature:
+  class:
+    name: ContentStore
+    constructor: {params: []}
+    methods:
+      - {name: put, level: 1, params: [{name: data, type: string}], returns: {type: string}}
+      - {name: get, level: 1, params: [{name: address, type: string}], returns: {type: string}}
+      - {name: check, level: 1, params: [{name: address, type: string}], returns: {type: string}}
+      - {name: damage, level: 1, params: [{name: address, type: string}, {name: data, type: string}], returns: {type: bool}}
+      - {name: count, level: 1, params: [], returns: {type: int}}
+      - {name: bytesStored, level: 1, params: [], returns: {type: int}}
+      - {name: snapshot, level: 2, params: [{name: files, type: "list<list<string>>"}], returns: {type: string}}
+      - {name: readPath, level: 2, params: [{name: root, type: string}, {name: path, type: string}], returns: {type: string}}
+      - {name: diff, level: 2, params: [{name: oldRoot, type: string}, {name: newRoot, type: string}], returns: {type: "list<string>"}}
+      - {name: chunkSizes, level: 3, params: [{name: data, type: string}, {name: method, type: string}], returns: {type: "list<int>"}}
+      - {name: putFile, level: 3, params: [{name: data, type: string}, {name: method, type: string}], returns: {type: string}}
+      - {name: readFile, level: 3, params: [{name: manifest, type: string}], returns: {type: string}}
+      - {name: dedupRatio, level: 3, params: [{name: method, type: string}], returns: {type: double}}
+      - {name: setRef, level: 4, params: [{name: name, type: string}, {name: kind, type: string}, {name: address, type: string}], returns: {type: bool}}
+      - {name: getRef, level: 4, params: [{name: name, type: string}], returns: {type: string}}
+      - {name: deleteRef, level: 4, params: [{name: name, type: string}], returns: {type: bool}}
+      - {name: collectGarbage, level: 4, params: [], returns: {type: int}}
+comparator: {type: ops, per_method: {dedupRatio: float}}
+approaches:
+  - {id: store-and-walk, name: Object map with tree walks and a mark-and-sweep collector, role: optimal, time: "O(b) per object put or read; diff opens only changed folders; O(n) per chunked file; O(live bytes + objects) per collection", space: "O(stored bytes)", time_class: "n", space_class: "n"}
+related: [tamper-evident-ledger, cloud-file-storage, in-memory-database, snapshot-array]
+guides: [cryptographic-hashes]
+estimate_minutes: 120

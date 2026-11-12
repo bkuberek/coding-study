@@ -106,14 +106,14 @@ Run: cstudy test two-sum
 
 ### Starter helpers
 
-A problem may need a tool that one language's standard library lacks, such as SHA-256 in Rust, without asking the user to write it. A file in `helpers/` holds that code, and the generated starter of its language ends with it: `cstudy start` appends it after the stub, one blank line apart (two in Python, as ruff writes top-level definitions), and `cstudy verify` builds the stub with it, so D1 also proves that the helper compiles or imports ([authoring](authoring.md#dynamic)).
+A problem may need a tool that one language's standard library lacks, such as SHA-256 in Rust, without asking the user to write it. A file in `helpers/` holds that code, and the generated starter of its language ends with it: `cstudy start` appends it after the stub, one blank line apart (two in Python, as ruff writes top-level definitions), and `cstudy verify` builds the stub with it, so D1 also proves that the helper compiles or imports ([authoring](authoring.md#dynamic)). `0322-content-addressed-store` ships `helpers/sha256.rs`: `sha256` and `sha256_hex`, written from FIPS 180-4, with `#[cfg(test)]` tests against the standard's example vectors.
 
 | Rule | Detail |
 |------|--------|
 | Files | `helpers/<name>.<ext>`, any name, with the extension of a language in `languages` (`py`, `ts`, `java`, `kt`, `go`, `rs`); at most one per language. A file for another language, or a second one for the same language, is an error ([S8](authoring.md#static)) |
 | Where | A generated starter only: `stub: buggy` and project problems have none, since their starter is a file or a tree of their own |
-| Text | Code that can follow the stub at the top level of its file: no `package` line, which the stub's file already has, and no import, since Go, Java and Kotlin take none after a declaration; a helper there writes qualified names instead (`java.security.MessageDigest`) |
-| References | References are copied unchanged, so a reference that uses the helper carries its own copy. A problem's content test can hold the copy equal to the helper |
+| Text | Code that can follow the stub at the top level of its file: no `package` line, which the stub's file already has, and no import, since Go, Java and Kotlin take none after a declaration; a helper there writes qualified names instead (`java.security.MessageDigest`), and `sha256.rs` needs no `use` line |
+| References | References are copied unchanged, so a reference that uses the helper carries its own copy. A problem's content test can hold the copy equal to the helper, as `0322`'s does |
 | Existing files | Only a new start writes the helper; `cstudy` never rewrites a practice file, as for the [header](#starter-header) |
 
 ### JDK range
