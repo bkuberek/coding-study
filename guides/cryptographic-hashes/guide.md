@@ -314,6 +314,7 @@ These costs assume the hash is never broken in the ways it is designed against; 
 ## Practice
 
 - `cstudy start tamper-evident-ledger`: four levels that build exactly this guide's tools. Level 1 fingerprints batches, which needs an unambiguous encoding; level 2 chains them; level 3 finds where two chains part in O(log n); level 4 proves that a record is in a batch with a Merkle proof. Read its rules carefully: they fix their own encoding and tree shape, which differ from the examples here.
+- `cstudy start content-addressed-store`: four levels on a digest used as an address. Level 1 files data under its SHA-256 digest, stores the same data once and checks every read; level 2 snapshots folders as tree objects that name their entries by digest, so an unchanged folder is shared and a diff never opens it; level 3 compares fixed-size and content-defined chunking on a rolling hash; level 4 frees what no named ref reaches. Its folder text and chunking rules are its own, exact to the byte.
 
 ## Further reading
 

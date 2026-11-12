@@ -23,6 +23,7 @@ problems/0001-two-sum/
   checker.py          # only when comparator.type == checker
   stress_checker.py   # only when a concurrent stress case has a checker invariant
   buggy/              # only when stub == buggy (debugging track): solution.<ext> per language
+  helpers/            # optional, generated starters only: <name>.<ext>, at most one per language
   rubric.md           # required for track lld: design criteria and reference design (authoring.md)
   solutions/
     explanation.md    # one section per approach (format: authoring.md)
@@ -102,6 +103,18 @@ Run: cstudy test two-sum
 | Concurrent problems | The model follows, as `Concurrency: threads` after an empty line in Python, and on the line after the run command in the other languages |
 | Existing files | Only a new start writes a header. `cstudy` never rewrites a practice file, so a file started earlier keeps the header it has |
 | Project problems and items | Neither has a generated stub, so neither has this header: a project problem copies its `starter/` tree, and an item's notes file keeps its own one-line comment ([cli](cli.md#cstudy-start)) |
+
+### Starter helpers
+
+A problem may need a tool that one language's standard library lacks, such as SHA-256 in Rust, without asking the user to write it. A file in `helpers/` holds that code, and the generated starter of its language ends with it: `cstudy start` appends it after the stub, one blank line apart (two in Python, as ruff writes top-level definitions), and `cstudy verify` builds the stub with it, so D1 also proves that the helper compiles or imports ([authoring](authoring.md#dynamic)). `0322-content-addressed-store` ships `helpers/sha256.rs`: `sha256` and `sha256_hex`, written from FIPS 180-4, with `#[cfg(test)]` tests against NIST's two SHA-256 examples in SHA256.pdf (`abc` and the 448-bit message), the first SHA-256 example of SHA2_Additional.pdf (the byte `0xbd`), and the well-known digest of the empty message.
+
+| Rule | Detail |
+|------|--------|
+| Files | `helpers/<name>.<ext>`, any name, with the extension of a language in `languages` (`py`, `ts`, `java`, `kt`, `go`, `rs`); at most one per language. A file for another language, or a second one for the same language, is an error ([S8](authoring.md#static)). A hidden file, whose name starts with `.` (`.DS_Store`), is ignored |
+| Where | A generated starter only: `stub: buggy` and project problems have none, since their starter is a file or a tree of their own |
+| Text | Code that can follow the stub at the top level of its file: no `package` line, which the stub's file already has, and no import, since Go, Java and Kotlin take none after a declaration; a helper there writes qualified names instead (`java.security.MessageDigest`), and `sha256.rs` needs no `use` line |
+| References | References are copied unchanged, so a reference that uses the helper carries its own copy. A problem's content test can hold the copy equal to the helper, as `0322`'s does |
+| Existing files | Only a new start writes the helper; `cstudy` never rewrites a practice file, as for the [header](#starter-header) |
 
 ### JDK range
 
