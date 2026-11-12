@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0365"
+slug: line-diff-and-merge
+title: Line Diff and Merge
+summary: "Build LineDiff, the core of a diff tool: the lines two files share, a line diff, unified hunks with headers, patches applied to moved lines, and a three-way merge."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [dp-2d]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+levels:
+  - {level: 1, title: Common lines and a line diff}
+  - {level: 2, title: Unified hunks}
+  - {level: 3, title: Applying a patch}
+  - {level: 4, title: Three-way merge}
+signature:
+  class:
+    name: LineDiff
+    constructor: {params: []}
+    methods:
+      - {name: lcs, level: 1, params: [{name: before, type: "list<string>"}, {name: after, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: diff, level: 1, params: [{name: before, type: "list<string>"}, {name: after, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: unified, level: 2, params: [{name: before, type: "list<string>"}, {name: after, type: "list<string>"}, {name: context, type: int}], returns: {type: "list<string>"}}
+      - {name: applyPatch, level: 3, params: [{name: lines, type: "list<string>"}, {name: patch, type: "list<string>"}, {name: maxOffset, type: int}], returns: {type: "list<string>"}}
+      - {name: patched, level: 3, params: [], returns: {type: "list<string>"}}
+      - {name: merge, level: 4, params: [{name: base, type: "list<string>"}, {name: ours, type: "list<string>"}, {name: theirs, type: "list<string>"}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: lcs-table, name: A suffix table of common subsequences and chunked three-way merge, role: optimal, time: "O(n * m) per diff, unified diff or merge; O(k * p + h * n) per patch", space: "O(n * m)", time_class: "n^2", space_class: "n^2"}
+related: [longest-common-subsequence, edit-distance, tiny-interpreter, undo-redo-editor]
+estimate_minutes: 120

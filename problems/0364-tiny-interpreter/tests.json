@@ -1,0 +1,2080 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "let x = 42 in x"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "keyword let 1:1",
+          "name x 1:5",
+          "symbol = 1:7",
+          "number 42 1:9",
+          "keyword in 1:12",
+          "name x 1:15",
+          "end 1:16"
+        ]
+      ]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "if n >= 10 then n else 0 # clamp\n"
+        ],
+        [
+          "price $ 3"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "keyword if 1:1",
+          "name n 1:4",
+          "symbol >= 1:6",
+          "number 10 1:9",
+          "keyword then 1:12",
+          "name n 1:17",
+          "keyword else 1:19",
+          "number 0 1:24",
+          "end 2:1"
+        ],
+        [
+          "error bad-char 1:7"
+        ]
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "a==b"
+        ],
+        [
+          "a=>b"
+        ],
+        [
+          "a=b"
+        ],
+        [
+          "a<=b<c"
+        ],
+        [
+          "x != y"
+        ],
+        [
+          "==>"
+        ],
+        [
+          "a ! b"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "name a 1:1",
+          "symbol == 1:2",
+          "name b 1:4",
+          "end 1:5"
+        ],
+        [
+          "name a 1:1",
+          "symbol => 1:2",
+          "name b 1:4",
+          "end 1:5"
+        ],
+        [
+          "name a 1:1",
+          "symbol = 1:2",
+          "name b 1:3",
+          "end 1:4"
+        ],
+        [
+          "name a 1:1",
+          "symbol <= 1:2",
+          "name b 1:4",
+          "symbol < 1:5",
+          "name c 1:6",
+          "end 1:7"
+        ],
+        [
+          "name x 1:1",
+          "symbol != 1:3",
+          "name y 1:6",
+          "end 1:7"
+        ],
+        [
+          "symbol == 1:1",
+          "symbol > 1:3",
+          "end 1:4"
+        ],
+        [
+          "error bad-char 1:3"
+        ]
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "\tx\n  y"
+        ],
+        [
+          "1\n"
+        ],
+        [
+          ""
+        ],
+        [
+          "# only a comment"
+        ],
+        [
+          "\n\n   "
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "name x 1:2",
+          "name y 2:3",
+          "end 2:4"
+        ],
+        [
+          "number 1 1:1",
+          "end 2:1"
+        ],
+        [
+          "end 1:1"
+        ],
+        [
+          "end 1:17"
+        ],
+        [
+          "end 3:4"
+        ]
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "0"
+        ],
+        [
+          "2147483647"
+        ],
+        [
+          "2147483648"
+        ],
+        [
+          "007"
+        ],
+        [
+          "00"
+        ],
+        [
+          "0x"
+        ],
+        [
+          "12ab"
+        ],
+        [
+          "1 + 99999999999"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "number 0 1:1",
+          "end 1:2"
+        ],
+        [
+          "number 2147483647 1:1",
+          "end 1:11"
+        ],
+        [
+          "error bad-number 1:1"
+        ],
+        [
+          "error bad-number 1:1"
+        ],
+        [
+          "error bad-number 1:1"
+        ],
+        [
+          "number 0 1:1",
+          "name x 1:2",
+          "end 1:3"
+        ],
+        [
+          "number 12 1:1",
+          "name ab 1:3",
+          "end 1:5"
+        ],
+        [
+          "error bad-number 1:5"
+        ]
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "letter in_ if_ fn fnord then else lets _a1 A_Z"
+        ],
+        [
+          "let in fn if then else"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "name letter 1:1",
+          "name in_ 1:8",
+          "name if_ 1:12",
+          "keyword fn 1:16",
+          "name fnord 1:19",
+          "keyword then 1:25",
+          "keyword else 1:30",
+          "name lets 1:35",
+          "name _a1 1:40",
+          "name A_Z 1:44",
+          "end 1:47"
+        ],
+        [
+          "keyword let 1:1",
+          "keyword in 1:5",
+          "keyword fn 1:8",
+          "keyword if 1:11",
+          "keyword then 1:14",
+          "keyword else 1:19",
+          "end 1:23"
+        ]
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "(a, b) % c ^ -d / e * f"
+        ],
+        [
+          "f(x)(y)"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "symbol ( 1:1",
+          "name a 1:2",
+          "symbol , 1:3",
+          "name b 1:5",
+          "symbol ) 1:6",
+          "symbol % 1:8",
+          "name c 1:10",
+          "symbol ^ 1:12",
+          "symbol - 1:14",
+          "name d 1:15",
+          "symbol / 1:17",
+          "name e 1:19",
+          "symbol * 1:21",
+          "name f 1:23",
+          "end 1:24"
+        ],
+        [
+          "name f 1:1",
+          "symbol ( 1:2",
+          "name x 1:3",
+          "symbol ) 1:4",
+          "symbol ( 1:5",
+          "name y 1:6",
+          "symbol ) 1:7",
+          "end 1:8"
+        ]
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "ops": [
+        "Interpreter",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize",
+        "tokenize"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "caf\u00e9 = 1"
+        ],
+        [
+          "x = 1\r\n"
+        ],
+        [
+          "\"text\""
+        ],
+        [
+          "a;b"
+        ],
+        [
+          "1 +\n  # note\n\t2 $"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "error bad-char 1:4"
+        ],
+        [
+          "error bad-char 1:6"
+        ],
+        [
+          "error bad-char 1:1"
+        ],
+        [
+          "error bad-char 1:2"
+        ],
+        [
+          "error bad-char 3:4"
+        ]
+      ]
+    },
+    {
+      "id": "ex3",
+      "visible": true,
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "1 + 2 * 3 - 4"
+        ],
+        [
+          "2 ^ 3 ^ 2"
+        ],
+        [
+          "-2 ^ 2"
+        ]
+      ],
+      "expected": [
+        null,
+        "(- (+ 1 (* 2 3)) 4)",
+        "(^ 2 (^ 3 2))",
+        "(neg (^ 2 2))"
+      ]
+    },
+    {
+      "id": "ex4",
+      "visible": true,
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "let sq = fn (x) => x * x in sq(5)"
+        ],
+        [
+          "f(1 2)"
+        ]
+      ],
+      "expected": [
+        null,
+        "(let sq (fn (x) (* x x)) (call sq 5))",
+        "error unexpected-token 1:5"
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "10 - 4 - 3"
+        ],
+        [
+          "8 / 4 / 2"
+        ],
+        [
+          "7 % 4 * 2"
+        ],
+        [
+          "1 + 2 < 3 * 4 == 1"
+        ],
+        [
+          "a >= b != c <= d"
+        ]
+      ],
+      "expected": [
+        null,
+        "(- (- 10 4) 3)",
+        "(/ (/ 8 4) 2)",
+        "(* (% 7 4) 2)",
+        "(== (< (+ 1 2) (* 3 4)) 1)",
+        "(<= (!= (>= a b) c) d)"
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "--3"
+        ],
+        [
+          "-x * y"
+        ],
+        [
+          "2 * -3"
+        ],
+        [
+          "2 ^ -1"
+        ],
+        [
+          "-f(2)"
+        ],
+        [
+          "-2 ^ -3 ^ 2"
+        ],
+        [
+          "(-2) ^ 2"
+        ]
+      ],
+      "expected": [
+        null,
+        "(neg (neg 3))",
+        "(* (neg x) y)",
+        "(* 2 (neg 3))",
+        "(^ 2 (neg 1))",
+        "(neg (call f 2))",
+        "(neg (^ 2 (neg (^ 3 2))))",
+        "(^ (neg 2) 2)"
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "f()"
+        ],
+        [
+          "f(1)(2)(3)"
+        ],
+        [
+          "g(a, b + 1, h(c))"
+        ],
+        [
+          "(fn (x) => x)(7)"
+        ],
+        [
+          "((1))"
+        ],
+        [
+          "f(x)^2"
+        ]
+      ],
+      "expected": [
+        null,
+        "(call f)",
+        "(call (call (call f 1) 2) 3)",
+        "(call g a (+ b 1) (call h c))",
+        "(call (fn (x) x) 7)",
+        "1",
+        "(^ (call f x) 2)"
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "1 + let x = 2 in x * 3"
+        ],
+        [
+          "if a then b else c + 1"
+        ],
+        [
+          "fn (x) => x + 1"
+        ],
+        [
+          "let a = 1 in let b = 2 in a + b"
+        ],
+        [
+          "fn fact(n) => n"
+        ],
+        [
+          "fn tick() => 1"
+        ],
+        [
+          "if a then if b then 1 else 2 else 3"
+        ],
+        [
+          "2 * if a then 1 else 0 + 5"
+        ]
+      ],
+      "expected": [
+        null,
+        "(+ 1 (let x 2 (* x 3)))",
+        "(if a b (+ c 1))",
+        "(fn (x) (+ x 1))",
+        "(let a 1 (let b 2 (+ a b)))",
+        "(fn fact (n) n)",
+        "(fn tick () 1)",
+        "(if a (if b 1 2) 3)",
+        "(* 2 (if a 1 (+ 0 5)))"
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "1 +"
+        ],
+        [
+          "(1"
+        ],
+        [
+          "1)"
+        ],
+        [
+          "let x 1 in x"
+        ],
+        [
+          "if 1 then 2"
+        ],
+        [
+          "fn (a b) => a"
+        ],
+        [
+          "f(1,)"
+        ],
+        [
+          "let 5 = 1 in 2"
+        ],
+        [
+          "else"
+        ],
+        [
+          "x y"
+        ],
+        [
+          "fn x => 1"
+        ],
+        [
+          ""
+        ]
+      ],
+      "expected": [
+        null,
+        "error unexpected-token 1:4",
+        "error unexpected-token 1:3",
+        "error unexpected-token 1:2",
+        "error unexpected-token 1:7",
+        "error unexpected-token 1:12",
+        "error unexpected-token 1:7",
+        "error unexpected-token 1:5",
+        "error unexpected-token 1:5",
+        "error unexpected-token 1:1",
+        "error unexpected-token 1:3",
+        "error unexpected-token 1:6",
+        "error unexpected-token 1:1"
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "fn (a, b, a) => 1"
+        ],
+        [
+          "fn f(a, a, ) => 1"
+        ],
+        [
+          "fn (a, b) => fn (b, c, b) => 1"
+        ],
+        [
+          "fn (a, a) 1"
+        ],
+        [
+          "1 + + $"
+        ],
+        [
+          "f(007)"
+        ]
+      ],
+      "expected": [
+        null,
+        "error duplicate-param 1:11",
+        "error duplicate-param 1:9",
+        "error duplicate-param 1:24",
+        "error duplicate-param 1:8",
+        "error bad-char 1:7",
+        "error bad-number 1:3"
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "ops": [
+        "Interpreter",
+        "parse",
+        "parse",
+        "parse"
+      ],
+      "args": [
+        [
+          100
+        ],
+        [
+          "(((((((((((((((--------------x)))))))))))))))"
+        ],
+        [
+          "let f = fn f(n) => if n == 0 then 0 else f(n - 1) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 in f(99)"
+        ],
+        [
+          "let id = fn (x) => x in let f = fn f(n) => if n == 0 then 0 else id(id(id(id(id(id(id(id(f(n - 1))))))))) in f(99)"
+        ]
+      ],
+      "expected": [
+        null,
+        "(neg (neg (neg (neg (neg (neg (neg (neg (neg (neg (neg (neg (neg (neg x))))))))))))))",
+        "(let f (fn f (n) (if (== n 0) 0 (+ (+ (+ (+ (+ (+ (+ (+ (+ (call f (- n 1)) 1) 1) 1) 1) 1) 1) 1) 1) 1))) (call f 99))",
+        "(let id (fn (x) x) (let f (fn f (n) (if (== n 0) 0 (call id (call id (call id (call id (call id (call id (call id (call id (call f (- n 1)))))))))))) (call f 99)))"
+      ]
+    },
+    {
+      "id": "ex5",
+      "visible": true,
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "let double = fn (x) => x * 2 in double(21)"
+        ],
+        [
+          "let add = fn (a) => fn (b) => a + b in let add5 = add(5) in add5(10)"
+        ]
+      ],
+      "expected": [
+        null,
+        "42",
+        "15"
+      ]
+    },
+    {
+      "id": "ex6",
+      "visible": true,
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          15
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(5)"
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(20)"
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(13)"
+        ]
+      ],
+      "expected": [
+        null,
+        "120",
+        "error depth 1:55",
+        "error overflow 1:49"
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          50
+        ],
+        [
+          "7 / 2"
+        ],
+        [
+          "-7 / 2"
+        ],
+        [
+          "7 % -2"
+        ],
+        [
+          "-7 % -2"
+        ],
+        [
+          "-7 % 2"
+        ],
+        [
+          "0 / 5"
+        ],
+        [
+          "2 ^ 10"
+        ],
+        [
+          "0 ^ 0"
+        ],
+        [
+          "(-2) ^ 31"
+        ],
+        [
+          "2 ^ 31"
+        ],
+        [
+          "(-1) ^ 1000000001"
+        ],
+        [
+          "1 ^ 2000000000"
+        ],
+        [
+          "0 ^ 5"
+        ],
+        [
+          "3 ^ 0"
+        ]
+      ],
+      "expected": [
+        null,
+        "3",
+        "-3",
+        "1",
+        "-1",
+        "-1",
+        "0",
+        "1024",
+        "1",
+        "-2147483648",
+        "error overflow 1:3",
+        "-1",
+        "1",
+        "0",
+        "1"
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          50
+        ],
+        [
+          "-2147483647 - 1"
+        ],
+        [
+          "-(-2147483647 - 1)"
+        ],
+        [
+          "2147483647 + 1"
+        ],
+        [
+          "46340 * 46340"
+        ],
+        [
+          "46341 * 46341"
+        ],
+        [
+          "(-2147483647 - 1) / -1"
+        ],
+        [
+          "(-2147483647 - 1) % -1"
+        ],
+        [
+          "-2147483647 - 2"
+        ],
+        [
+          "1 / 0"
+        ],
+        [
+          "5 % 0"
+        ],
+        [
+          "2 ^ -1"
+        ],
+        [
+          "0 ^ -1"
+        ]
+      ],
+      "expected": [
+        null,
+        "-2147483648",
+        "error overflow 1:1",
+        "error overflow 1:12",
+        "2147395600",
+        "error overflow 1:7",
+        "error overflow 1:19",
+        "0",
+        "error overflow 1:13",
+        "error div-zero 1:3",
+        "error div-zero 1:3",
+        "error negative-exponent 1:3",
+        "error negative-exponent 1:3"
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          50
+        ],
+        [
+          "3 < 4"
+        ],
+        [
+          "4 < 3"
+        ],
+        [
+          "2 == 2"
+        ],
+        [
+          "2 != 2"
+        ],
+        [
+          "3 >= 3"
+        ],
+        [
+          "2 <= 1"
+        ],
+        [
+          "if 3 > 2 then 10 else 20"
+        ],
+        [
+          "if 0 then 1 else 2"
+        ],
+        [
+          "if -1 then 1 else 2"
+        ],
+        [
+          "if 1 then 2 else 1 / 0"
+        ],
+        [
+          "if 0 then 1 / 0 else 2"
+        ]
+      ],
+      "expected": [
+        null,
+        "1",
+        "0",
+        "1",
+        "0",
+        "1",
+        "0",
+        "10",
+        "2",
+        "1",
+        "2",
+        "2"
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          50
+        ],
+        [
+          "let x = 1 in let f = fn () => x in let x = 2 in f()"
+        ],
+        [
+          "let x = 1 in let x = x + 1 in x"
+        ],
+        [
+          "let f = fn f(f) => f in f(5)"
+        ],
+        [
+          "let g = fn f(n) => n in f(1)"
+        ],
+        [
+          "let x = 5 in let f = fn (x) => x * 2 in f(1) + x"
+        ],
+        [
+          "let make = fn (n) => fn () => n * 10 in let a = make(1) in let b = make(2) in a() + b()"
+        ]
+      ],
+      "expected": [
+        null,
+        "1",
+        "2",
+        "5",
+        "error unbound 1:25",
+        "7",
+        "30"
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          50
+        ],
+        [
+          "fn (x) => x"
+        ],
+        [
+          "let f = fn sq(x) => x * x in f"
+        ],
+        [
+          "let f = fn () => 1 in f()"
+        ],
+        [
+          "fn () => fn inner() => 1"
+        ],
+        [
+          "(fn () => fn inner() => 1)()"
+        ],
+        [
+          "x"
+        ],
+        [
+          "let y = 1 in y + z"
+        ]
+      ],
+      "expected": [
+        null,
+        "<fn>",
+        "<fn sq>",
+        "1",
+        "<fn>",
+        "<fn inner>",
+        "error unbound 1:1",
+        "error unbound 1:18"
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          1
+        ],
+        [
+          "(1 / 0) + x"
+        ],
+        [
+          "x + (1 / 0)"
+        ],
+        [
+          "f(1 / 0)"
+        ],
+        [
+          "1(2 / 0)"
+        ],
+        [
+          "(fn (a) => a)(1, 1 / 0)"
+        ],
+        [
+          "let f = fn (a) => a in f(1, 2)"
+        ],
+        [
+          "let f = fn (a) => a in f(1)"
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(1)"
+        ],
+        [
+          "let f = fn g(n) => if n == 0 then 0 else g(n - 1) in f(1)(1, 2)"
+        ],
+        [
+          "(fn (g) => g(1, 2))(fn (x) => x)"
+        ],
+        [
+          "(fn (g) => g(1))(fn (x) => x)"
+        ],
+        [
+          "1(2, 3)"
+        ]
+      ],
+      "expected": [
+        null,
+        "error div-zero 1:4",
+        "error unbound 1:1",
+        "error unbound 1:1",
+        "error div-zero 1:5",
+        "error div-zero 1:20",
+        "error arity 1:25",
+        "1",
+        "error depth 1:52",
+        "error depth 1:43",
+        "error arity 1:13",
+        "error depth 1:13",
+        "error not-callable 1:2"
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          50
+        ],
+        [
+          "(fn () => 1) + 1"
+        ],
+        [
+          "1 + (fn () => 1)"
+        ],
+        [
+          "-(fn () => 1)"
+        ],
+        [
+          "if (fn () => 0) then 1 else 2"
+        ],
+        [
+          "(fn () => 1) == (fn () => 1)"
+        ],
+        [
+          "(fn () => 1)() - 1"
+        ],
+        [
+          "let f = fn () => 1 in -f"
+        ],
+        [
+          "(fn () => 1) / 0"
+        ],
+        [
+          "(fn () => 1) + y"
+        ]
+      ],
+      "expected": [
+        null,
+        "error type 1:14",
+        "error type 1:3",
+        "error type 1:1",
+        "error type 1:1",
+        "error type 1:14",
+        "0",
+        "error type 1:23",
+        "error type 1:14",
+        "error unbound 1:16"
+      ]
+    },
+    {
+      "id": "h21",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          3
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(2)"
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(3)"
+        ],
+        [
+          "let fib = fn fib(n) => if n < 2 then n else fib(n - 1) + fib(n - 2) in fib(10)"
+        ],
+        [
+          "let f = fn (g) => g(g) in f(fn self(h) => 7)"
+        ],
+        [
+          "1 +"
+        ],
+        [
+          "f(1,)"
+        ]
+      ],
+      "expected": [
+        null,
+        "0",
+        "error depth 1:52",
+        "error depth 1:48",
+        "7",
+        "error unexpected-token 1:4",
+        "error unexpected-token 1:5"
+      ]
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          100
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(99)"
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(100)"
+        ],
+        [
+          "let fib = fn fib(n) => if n < 2 then n else fib(n - 1) + fib(n - 2) in fib(18)"
+        ],
+        [
+          "let twice = fn (f) => fn (x) => f(f(x)) in twice(twice)(fn (n) => n + 3)(1)"
+        ]
+      ],
+      "expected": [
+        null,
+        "0",
+        "error depth 1:52",
+        "2584",
+        "13"
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "ops": [
+        "Interpreter",
+        "evaluate",
+        "evaluate",
+        "evaluate",
+        "evaluate"
+      ],
+      "args": [
+        [
+          100
+        ],
+        [
+          "let f = fn f(n) => if n == 0 then 0 else f(n - 1) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 in f(99)"
+        ],
+        [
+          "let id = fn (x) => x in let f = fn f(n) => if n == 0 then 0 else id(id(id(id(id(id(id(id(f(n - 1))))))))) in f(99)"
+        ],
+        [
+          "let f = fn f(n) => if n == 0 then 0 else f(n - 1) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 in f(100)"
+        ],
+        [
+          "let id = fn (x) => x in let f = fn f(n) => if n == 0 then 0 else id(id(id(id(id(id(id(id(f(n - 1))))))))) in f(100)"
+        ]
+      ],
+      "expected": [
+        null,
+        "891",
+        "0",
+        "error depth 1:43",
+        "error depth 1:91"
+      ]
+    },
+    {
+      "id": "ex7",
+      "visible": true,
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run",
+        "bytecode",
+        "run"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "1 + 2 * 3"
+        ],
+        [
+          "1 + 2 * 3"
+        ],
+        [
+          "let x = 5 in -x"
+        ],
+        [
+          "let x = 5 in -x"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 PUSH 1",
+          "1 PUSH 2",
+          "2 PUSH 3",
+          "3 MUL 1:7",
+          "4 ADD 1:3",
+          "5 RETURN"
+        ],
+        "7",
+        [
+          "block 0 main",
+          "0 PUSH 5",
+          "1 BIND x",
+          "2 LOAD x 1:15",
+          "3 NEG 1:14",
+          "4 UNBIND",
+          "5 RETURN"
+        ],
+        "-5"
+      ]
+    },
+    {
+      "id": "ex8",
+      "visible": true,
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "let sq = fn (x) => x * x in sq(4)"
+        ],
+        [
+          "let sq = fn (x) => x * x in sq(4)"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 CLOSURE 1",
+          "1 BIND sq",
+          "2 LOAD sq 1:29",
+          "3 PUSH 4",
+          "4 CALL 1 1:31",
+          "5 UNBIND",
+          "6 RETURN",
+          "block 1 fn (x)",
+          "0 LOAD x 1:20",
+          "1 LOAD x 1:24",
+          "2 MUL 1:22",
+          "3 RETURN"
+        ],
+        "16"
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run",
+        "bytecode",
+        "run"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "if a > 0 then 1 else if a < 0 then -1 else 0"
+        ],
+        [
+          "let a = -7 in if a > 0 then 1 else if a < 0 then -1 else 0"
+        ],
+        [
+          "2 * (if 0 then 1 else 3)"
+        ],
+        [
+          "2 * (if 0 then 1 else 3)"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 LOAD a 1:4",
+          "1 PUSH 0",
+          "2 GT 1:6",
+          "3 JUMP_IF_ZERO 6 1:1",
+          "4 PUSH 1",
+          "5 JUMP 14",
+          "6 LOAD a 1:25",
+          "7 PUSH 0",
+          "8 LT 1:27",
+          "9 JUMP_IF_ZERO 13 1:22",
+          "10 PUSH 1",
+          "11 NEG 1:36",
+          "12 JUMP 14",
+          "13 PUSH 0",
+          "14 RETURN"
+        ],
+        "-1",
+        [
+          "block 0 main",
+          "0 PUSH 2",
+          "1 PUSH 0",
+          "2 JUMP_IF_ZERO 5 1:6",
+          "3 PUSH 1",
+          "4 JUMP 6",
+          "5 PUSH 3",
+          "6 MUL 1:3",
+          "7 RETURN"
+        ],
+        "6"
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run",
+        "bytecode",
+        "run"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "let a = fn (x) => fn (y) => x in let b = fn () => 1 in a(b)(2)"
+        ],
+        [
+          "let a = fn (x) => fn (y) => x in let b = fn () => 1 in a(b)(2)"
+        ],
+        [
+          "f(fn () => 1, fn named(p, q) => p)"
+        ],
+        [
+          "(fn (f, g) => f() + g(2, 3))(fn () => 1, fn named(p, q) => p)"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 CLOSURE 1",
+          "1 BIND a",
+          "2 CLOSURE 3",
+          "3 BIND b",
+          "4 LOAD a 1:56",
+          "5 LOAD b 1:58",
+          "6 CALL 1 1:57",
+          "7 PUSH 2",
+          "8 CALL 1 1:60",
+          "9 UNBIND",
+          "10 UNBIND",
+          "11 RETURN",
+          "block 1 fn (x)",
+          "0 CLOSURE 2",
+          "1 RETURN",
+          "block 2 fn (y)",
+          "0 LOAD x 1:29",
+          "1 RETURN",
+          "block 3 fn ()",
+          "0 PUSH 1",
+          "1 RETURN"
+        ],
+        "<fn>",
+        [
+          "block 0 main",
+          "0 LOAD f 1:1",
+          "1 CLOSURE 1",
+          "2 CLOSURE 2",
+          "3 CALL 2 1:2",
+          "4 RETURN",
+          "block 1 fn ()",
+          "0 PUSH 1",
+          "1 RETURN",
+          "block 2 fn named (p q)",
+          "0 LOAD p 1:33",
+          "1 RETURN"
+        ],
+        "3"
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run",
+        "bytecode",
+        "bytecode",
+        "run",
+        "bytecode",
+        "run",
+        "bytecode",
+        "run"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "x"
+        ],
+        [
+          "x"
+        ],
+        [
+          "f()"
+        ],
+        [
+          "-2 ^ 3 % 4 != 1"
+        ],
+        [
+          "-2 ^ 3 % 4 != 1"
+        ],
+        [
+          "1 +"
+        ],
+        [
+          "1 +"
+        ],
+        [
+          "1 $"
+        ],
+        [
+          "fn (a, a) => 1"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 LOAD x 1:1",
+          "1 RETURN"
+        ],
+        "error unbound 1:1",
+        [
+          "block 0 main",
+          "0 LOAD f 1:1",
+          "1 CALL 0 1:2",
+          "2 RETURN"
+        ],
+        [
+          "block 0 main",
+          "0 PUSH 2",
+          "1 PUSH 3",
+          "2 POW 1:4",
+          "3 NEG 1:1",
+          "4 PUSH 4",
+          "5 MOD 1:8",
+          "6 PUSH 1",
+          "7 NE 1:12",
+          "8 RETURN"
+        ],
+        "1",
+        [
+          "error unexpected-token 1:4"
+        ],
+        "error unexpected-token 1:4",
+        [
+          "error bad-char 1:3"
+        ],
+        "error duplicate-param 1:8"
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run",
+        "run",
+        "run",
+        "run"
+      ],
+      "args": [
+        [
+          20
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(5)"
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(5)"
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(10)"
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(13)"
+        ],
+        [
+          "let fact = fn fact(n) => if n < 2 then 1 else n * fact(n - 1) in fact(11)"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 CLOSURE 1",
+          "1 BIND fact",
+          "2 LOAD fact 1:66",
+          "3 PUSH 5",
+          "4 CALL 1 1:70",
+          "5 UNBIND",
+          "6 RETURN",
+          "block 1 fn fact (n)",
+          "0 LOAD n 1:29",
+          "1 PUSH 2",
+          "2 LT 1:31",
+          "3 JUMP_IF_ZERO 6 1:26",
+          "4 PUSH 1",
+          "5 JUMP 13",
+          "6 LOAD n 1:47",
+          "7 LOAD fact 1:51",
+          "8 LOAD n 1:56",
+          "9 PUSH 1",
+          "10 SUB 1:58",
+          "11 CALL 1 1:55",
+          "12 MUL 1:49",
+          "13 RETURN"
+        ],
+        "120",
+        "3628800",
+        "error overflow 1:49",
+        "39916800"
+      ]
+    },
+    {
+      "id": "h28",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run"
+      ],
+      "args": [
+        [
+          3
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(2)"
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(3)"
+        ],
+        [
+          "1(2 / 0)"
+        ],
+        [
+          "(fn (a) => a)(1, 1 / 0)"
+        ],
+        [
+          "let f = fn (a) => a in f(1, 2)"
+        ],
+        [
+          "if (fn () => 0) then 1 else 2"
+        ],
+        [
+          "-(-2147483647 - 1)"
+        ],
+        [
+          "let g = fn f(n) => n in f(1)"
+        ],
+        [
+          "2 ^ -1"
+        ],
+        [
+          "5 % 0"
+        ]
+      ],
+      "expected": [
+        null,
+        "0",
+        "error depth 1:52",
+        "error div-zero 1:5",
+        "error div-zero 1:20",
+        "error arity 1:25",
+        "error type 1:1",
+        "error overflow 1:1",
+        "error unbound 1:25",
+        "error negative-exponent 1:3",
+        "error div-zero 1:3"
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run",
+        "run"
+      ],
+      "args": [
+        [
+          100
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(99)"
+        ],
+        [
+          "let down = fn down(n) => if n == 0 then 0 else down(n - 1) in down(100)"
+        ],
+        [
+          "let fib = fn fib(n) => if n < 2 then n else fib(n - 1) + fib(n - 2) in fib(18)"
+        ],
+        [
+          "let x = 1 in let f = fn () => x in let x = 2 in f()"
+        ],
+        [
+          "let make = fn (n) => fn () => n * 10 in let a = make(1) in let b = make(2) in a() + b()"
+        ],
+        [
+          "let f = fn sq(x) => x * x in f"
+        ],
+        [
+          "fn () => 1"
+        ],
+        [
+          "let twice = fn (f) => fn (x) => f(f(x)) in twice(twice)(fn (n) => n + 3)(1)"
+        ]
+      ],
+      "expected": [
+        null,
+        "0",
+        "error depth 1:52",
+        "2584",
+        "1",
+        "30",
+        "<fn sq>",
+        "<fn>",
+        "13"
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "bytecode",
+        "run",
+        "bytecode",
+        "run"
+      ],
+      "args": [
+        [
+          10
+        ],
+        [
+          "let x = 1 in let y = x + 1 in (let z = y in z) * x"
+        ],
+        [
+          "let x = 1 in let y = x + 1 in (let z = y in z) * x"
+        ],
+        [
+          "fn outer(a) => let b = a in fn (c) => a + b + c"
+        ],
+        [
+          "(fn outer(a) => let b = a in fn (c) => a + b + c)(1)(2)"
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "block 0 main",
+          "0 PUSH 1",
+          "1 BIND x",
+          "2 LOAD x 1:22",
+          "3 PUSH 1",
+          "4 ADD 1:24",
+          "5 BIND y",
+          "6 LOAD y 1:40",
+          "7 BIND z",
+          "8 LOAD z 1:45",
+          "9 UNBIND",
+          "10 LOAD x 1:50",
+          "11 MUL 1:48",
+          "12 UNBIND",
+          "13 UNBIND",
+          "14 RETURN"
+        ],
+        "2",
+        [
+          "block 0 main",
+          "0 CLOSURE 1",
+          "1 RETURN",
+          "block 1 fn outer (a)",
+          "0 LOAD a 1:24",
+          "1 BIND b",
+          "2 CLOSURE 2",
+          "3 UNBIND",
+          "4 RETURN",
+          "block 2 fn (c)",
+          "0 LOAD a 1:39",
+          "1 LOAD b 1:43",
+          "2 ADD 1:41",
+          "3 LOAD c 1:47",
+          "4 ADD 1:45",
+          "5 RETURN"
+        ],
+        "4"
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 4,
+      "ops": [
+        "Interpreter",
+        "run",
+        "run",
+        "run",
+        "run",
+        "bytecode"
+      ],
+      "args": [
+        [
+          100
+        ],
+        [
+          "let f = fn f(n) => if n == 0 then 0 else f(n - 1) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 in f(99)"
+        ],
+        [
+          "let id = fn (x) => x in let f = fn f(n) => if n == 0 then 0 else id(id(id(id(id(id(id(id(f(n - 1))))))))) in f(99)"
+        ],
+        [
+          "let f = fn f(n) => if n == 0 then 0 else f(n - 1) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 in f(100)"
+        ],
+        [
+          "let id = fn (x) => x in let f = fn f(n) => if n == 0 then 0 else id(id(id(id(id(id(id(id(f(n - 1))))))))) in f(100)"
+        ],
+        [
+          "(((((((((((((((--------------x)))))))))))))))"
+        ]
+      ],
+      "expected": [
+        null,
+        "891",
+        "0",
+        "error depth 1:43",
+        "error depth 1:91",
+        [
+          "block 0 main",
+          "0 LOAD x 1:30",
+          "1 NEG 1:29",
+          "2 NEG 1:28",
+          "3 NEG 1:27",
+          "4 NEG 1:26",
+          "5 NEG 1:25",
+          "6 NEG 1:24",
+          "7 NEG 1:23",
+          "8 NEG 1:22",
+          "9 NEG 1:21",
+          "10 NEG 1:20",
+          "11 NEG 1:19",
+          "12 NEG 1:18",
+          "13 NEG 1:17",
+          "14 NEG 1:16",
+          "15 RETURN"
+        ]
+      ]
+    }
+  ]
+}
