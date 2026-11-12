@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0367"
+slug: btree-index
+title: B-Tree Index
+summary: "Build BTreeIndex, the B+ tree under a database index: search and insert with splits, range scans that count page reads, deletes that borrow or merge, bulk loads and composite keys."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [trees, binary-search]
+domains: [backend]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Search and insert}
+  - {level: 2, title: Range scans and page reads}
+  - {level: 3, title: Delete with borrow and merge}
+  - {level: 4, title: Bulk loading and composite keys}
+signature:
+  class:
+    name: BTreeIndex
+    constructor: {params: [{name: minKeys, type: int}]}
+    methods:
+      - {name: search, level: 1, params: [{name: key, type: "int[]"}], returns: {type: int}}
+      - {name: insert, level: 1, params: [{name: key, type: "int[]"}, {name: rowId, type: int}], returns: {type: bool}}
+      - {name: levels, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: rangeScan, level: 2, params: [{name: low, type: "int[]"}, {name: high, type: "int[]"}], returns: {type: "list<int>"}}
+      - {name: scanVisits, level: 2, params: [{name: low, type: "int[]"}, {name: high, type: "int[]"}], returns: {type: int}}
+      - {name: height, level: 2, params: [], returns: {type: int}}
+      - {name: remove, level: 3, params: [{name: key, type: "int[]"}], returns: {type: bool}}
+      - {name: bulkLoad, level: 4, params: [{name: keys, type: "int[][]"}, {name: rowIds, type: "int[]"}, {name: fillPercent, type: int}], returns: {type: bool}}
+      - {name: prefixScan, level: 4, params: [{name: prefix, type: "int[]"}], returns: {type: "list<int>"}}
+comparator: {type: ops}
+approaches:
+  - {id: bplus-tree, name: B+ tree with linked leaves, role: optimal, time: "O(d log_d n) per search, insert or remove; O(d log_d n + k) per scan of k entries; O(n) per bulk load", space: "O(n)", time_class: "log n", space_class: "n"}
+related: [in-memory-database, transactional-kv-store, mvcc-snapshot-isolation]
+estimate_minutes: 150
