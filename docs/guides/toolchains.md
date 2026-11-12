@@ -48,7 +48,7 @@ The workspace's Python project also lists `debugpy`, which only `cstudy test --d
 
 ## Node.js and pnpm
 
-The TypeScript runner runs your `.ts` files directly with Node's type stripping, which needs Node 24 or newer. pnpm installs the workspace's TypeScript project (`typescript/`). We recommend [fnm](https://github.com/Schniz/fnm) to install Node, and Corepack, which ships with Node 24, to provide pnpm.
+The TypeScript runner runs your `.ts` files directly with Node's type stripping, on by default since Node 22.18.0 and 23.6.0. cstudy requires Node 24 or newer, and `cstudy doctor` checks it. pnpm installs the workspace's TypeScript project (`typescript/`). We recommend [fnm](https://github.com/Schniz/fnm) to install Node, and Corepack, which ships with Node 24, to provide pnpm.
 
 1. Install fnm:
 
