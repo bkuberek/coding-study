@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0369"
+slug: logical-clocks
+title: Logical Clocks
+summary: "Build LogicalClocks over a scripted message history: Lamport timestamps, vector clocks, sibling versions of concurrent writes, and hybrid logical clocks."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing, sorting]
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Lamport clocks}
+  - {level: 2, title: Vector clocks}
+  - {level: 3, title: Concurrent writes}
+  - {level: 4, title: Hybrid logical clocks}
+signature:
+  class:
+    name: LogicalClocks
+    constructor: {params: [{name: processes, type: int}]}
+    methods:
+      - {name: local, level: 1, params: [{name: process, type: int}, {name: event, type: string}, {name: wall, type: long}], returns: {type: int}}
+      - {name: send, level: 1, params: [{name: process, type: int}, {name: event, type: string}, {name: wall, type: long}], returns: {type: int}}
+      - {name: receive, level: 1, params: [{name: process, type: int}, {name: event, type: string}, {name: message, type: string}, {name: wall, type: long}], returns: {type: int}}
+      - {name: totalOrder, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: vector, level: 2, params: [{name: event, type: string}], returns: {type: "list<int>"}}
+      - {name: compare, level: 2, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: string}}
+      - {name: write, level: 3, params: [{name: process, type: int}, {name: event, type: string}, {name: key, type: string}, {name: value, type: string}, {name: wall, type: long}], returns: {type: int}}
+      - {name: read, level: 3, params: [{name: process, type: int}, {name: key, type: string}], returns: {type: "list<string>"}}
+      - {name: concurrentWrites, level: 3, params: [{name: key, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: hlc, level: 4, params: [{name: event, type: string}], returns: {type: "list<long>"}}
+      - {name: hlcOrder, level: 4, params: [], returns: {type: "list<string>"}}
+      - {name: maxOffset, level: 4, params: [], returns: {type: long}}
+comparator: {type: ops}
+approaches:
+  - {id: stamped-events, name: Clocks kept per process and stamped on every event, role: optimal, time: "O(n) per event or compare; O(w^2 n) per read or concurrentWrites; O(E log E) per order", space: "O(E n)", time_class: "n", space_class: "n"}
+related: [consistent-hash-ring, distributed-kv-store]
+estimate_minutes: 90
