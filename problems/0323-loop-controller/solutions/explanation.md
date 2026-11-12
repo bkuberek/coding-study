@@ -51,7 +51,7 @@ The loop terminates because every iteration consumes one step of a finite list. 
 - Masking digits merges failures that differ only in a number. That is what a harness wants for line numbers and timings, and wrong for `exit code 1` against `exit code 2`. A production harness would let each tool say which part of its message is the signature.
 - Checking budgets only between steps is the simplest design, and it lets one long step overshoot. The alternative is a deadline passed to the step itself (a timeout on the tool call, a cap on the output length), which the data-only model of this problem cannot show.
 - The check being given as data keeps the problem deterministic. A real check is code that runs, can be slow or flaky, and its cost belongs in the budgets.
-- A loop that never stops is the same resource-exhaustion risk that OWASP lists as LLM10:2025 Unbounded Consumption, which is framed around abuse of an application but recommends limits and timeouts among its mitigations. A step cap, a token budget and a time budget are those kinds of limits applied to an agent.
+- A loop that never stops is the same resource-exhaustion risk that OWASP lists as LLM06:2026 Unbounded Consumption (2025: LLM10), which is framed around abuse of an application but recommends agentic circuit breakers among its mitigations: step limits, time limits and per-run cost ceilings on every agent execution. A step cap, a token budget and a time budget are those kinds of limits applied to an agent.
 
 ### Pitfalls and edge cases
 
@@ -68,5 +68,5 @@ The loop terminates because every iteration consumes one step of a finite list. 
 ## Further reading
 
 - S. Yao et al., "ReAct: Synergizing Reasoning and Acting in Language Models", ICLR 2023, arXiv:2210.03629: the cycle of model reasoning, tool use and observation that agent loops follow.
-- [OWASP Top 10 for LLM Applications 2025, LLM10:2025 Unbounded Consumption](https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/): why an application should bound the inferences it runs, with timeouts, throttling and limits among the mitigations.
+- [OWASP Top 10 for LLM Applications 2026, LLM06:2026 Unbounded Consumption (2025: LLM10)](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): why an application should bound the inferences it runs, with rate limits, hard spending caps and agentic circuit breakers (step, recursion-depth and time limits) among the mitigations.
 - [RFC 8259, The JSON Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259): an object is an unordered collection of name/value pairs (the reason key order is ignored here), the advice that names be unique, and the range of integers that is safe across implementations (section 6).
