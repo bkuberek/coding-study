@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0327"
+slug: eval-release-gate
+title: Eval Release Gate
+summary: "Build ReleaseGate, which decides if a prompt or model change can ship: output assertions, judge scores checked against human labels, golden-set regression with noise, and a gate that adds new cases."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, ml-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Assertions on outputs}
+  - {level: 2, title: Judge scores and human labels}
+  - {level: 3, title: Regression against a baseline}
+  - {level: 4, title: The release gate}
+signature:
+  class:
+    name: ReleaseGate
+    constructor: {params: []}
+    methods:
+      - {name: setSchema, level: 1, params: [{name: rows, type: "list<list<string>>"}], returns: {type: void}}
+      - {name: setBannedWords, level: 1, params: [{name: words, type: "string[]"}], returns: {type: void}}
+      - {name: check, level: 1, params: [{name: output, type: string}], returns: {type: "list<string>"}}
+      - {name: addRun, level: 1, params: [{name: run, type: string}, {name: caseIds, type: "string[]"}, {name: inputs, type: "string[]"}, {name: outputs, type: "string[]"}], returns: {type: int}}
+      - {name: checkRun, level: 1, params: [{name: run, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: addScores, level: 2, params: [{name: run, type: string}, {name: criteria, type: "string[]"}, {name: caseIds, type: "string[]"}, {name: scores, type: "int[][]"}], returns: {type: int}}
+      - {name: addHumanScores, level: 2, params: [{name: run, type: string}, {name: caseIds, type: "string[]"}, {name: criteria, type: "string[]"}, {name: scores, type: "int[][]"}], returns: {type: int}}
+      - {name: aggregate, level: 2, params: [{name: run, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: agreement, level: 2, params: [{name: run, type: string}, {name: passScore, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: disagreements, level: 2, params: [{name: run, type: string}, {name: passScore, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: compare, level: 3, params: [{name: baselineRuns, type: "string[]"}, {name: candidateRuns, type: "string[]"}, {name: passScore, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: summarize, level: 3, params: [{name: baselineRuns, type: "string[]"}, {name: candidateRuns, type: "string[]"}, {name: passScore, type: int}], returns: {type: "list<int>"}}
+      - {name: configureGate, level: 4, params: [{name: critical, type: "string[]"}, {name: maxDrop, type: int}], returns: {type: void}}
+      - {name: gate, level: 4, params: [{name: baselineRuns, type: "string[]"}, {name: candidateRuns, type: "string[]"}, {name: passScore, type: int}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: run-tables, name: "One table per run of outputs and scores, and one verdict function for every level", role: optimal, time: "O(R C (K + L)) per call", space: "O(R C (K + L))", time_class: "n", space_class: "n"}
+related: [calibration-metrics, retrieval-metrics, reasoner-vs-validator, rag-citations-typescript, bm25-hybrid-ranker, cache-and-router]
+estimate_minutes: 150
