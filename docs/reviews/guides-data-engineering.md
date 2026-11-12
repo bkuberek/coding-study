@@ -36,6 +36,7 @@ Akidau and others, *The Dataflow Model: A Practical Approach to Balancing Correc
 | D13 | The paper names the Lambda Architecture, citing *How to beat the CAP theorem*; Lambda gives the streaming pipeline's best low-latency estimate with the promise of correctness once the batch pipeline runs; batch output is correct only if the input is complete when the batch job runs | Quote: Dataflow, §1, §2.3 and footnote 10; reference [25] |
 | D14 | A team ran a weakly consistent streaming pipeline with a nightly batch job to produce the truth; its users stopped trusting the weak results, and the system was rebuilt around strong consistency | Quote: Dataflow, §3.3.1 |
 | D15 | An initial motivation was a single implementation that runs in streaming and batch mode without modification; the choice among batch, micro-batch and streaming engines can then rest on latency and resource cost | Quote: Dataflow, §1 and §3.3.1 |
+| D16 | The Dataflow paper's word for these windows is sliding; Apache Kafka Streams' documentation, version 3.7, calls them hopping time windows, defined by a size and an advance interval (the "hop"), with tumbling windows a special case; the guide says that some engines, and the practice problem, call them hopping, without naming the engine | Quote: [Kafka Streams, *Streams DSL*, 3.7](https://kafka.apache.org/37/streams/developer-guide/dsl-api/), *Windowing* |
 | M1 | A computation's low watermark is the minimum of its oldest unfinished work and the low watermarks of the computations that output to it; it bounds the timestamps of future records | Quote: MillWheel, §4.5 |
 | M2 | Injectors seed low watermarks; pending work in external systems is often an estimate, so computations should expect a small rate of late records; one pipeline dropped them while tracking how many (around 0.001%), others corrected their aggregates; low watermarks stay monotonic even with late data | Quote: MillWheel, §4.5 |
 | M3 | Deliveries are retried until acknowledged, an at-least-once requirement that is a prerequisite for exactly-once; records get unique ids when produced, stored in the same atomic write as the state change, and a retried duplicate is discarded; the guarantee does not extend to external systems | Quote: MillWheel, §3 and §6.1.1 |
@@ -144,10 +145,10 @@ OpenLineage's documentation, version 1.55.0, and its JSON schema `spec/2-0-2/Ope
 | O1 | OpenLineage is an open framework for data lineage collection and analysis, with an extensible specification at its core; an open standard for lineage metadata collection; defined using OpenAPI, extended through custom facets; an LF AI & Data Foundation graduate project | Quote: [OpenLineage, *About*](https://openlineage.io/docs/) |
 | O2 | Jobs, runs and datasets: a job is a process that consumes or produces datasets, identified by a name unique within a namespace; a run is one occurrence of a job, with a client-generated id, UUIDv7 recommended; a dataset is a discrete collection of data, named uniquely within a namespace from its physical location; the model includes jobs because it cares how datasets come into being; a lineage graph is built by weaving together observations of many jobs across platforms | Quote: [OpenLineage, *Object Model*](https://openlineage.io/docs/spec/object-model) |
 | O3 | Run events are emitted at runtime; job events and dataset events carry design-time metadata and are not associated with a run | Quote: *Object Model* |
-| O4 | Run states `START`, `RUNNING`, `COMPLETE`, `ABORT`, `FAIL`, `OTHER`, `COMPLETE`, `ABORT` and `FAIL` being terminal; `BATCH` jobs are finite, `STREAMING` and `SERVICE` jobs continuous, emitting periodically | Quote: [OpenLineage, *The Run Cycle*](https://openlineage.io/docs/spec/run-cycle) |
+| O4 | Run states `START`, `RUNNING`, `COMPLETE`, `ABORT`, `FAIL`, `OTHER`; `COMPLETE`, `ABORT` and `FAIL` are terminal; `BATCH` jobs are finite, `STREAMING` and `SERVICE` jobs continuous, emitting periodically | Quote: [OpenLineage, *The Run Cycle*](https://openlineage.io/docs/spec/run-cycle) |
 | O5 | Facets: job source code location; run `nominalTime` (the scheduled time, different from the actual run time) and parent; dataset schema and version (a table format's snapshot id is the example); input data quality metrics (row count, null count, distinct count and more) and assertions; output statistics | Quote: *Object Model* |
 | O6 | A run event requires `eventTime`, `producer`, `schemaURL`, `run` (with `runId`) and `job` (with `namespace` and `name`) | Quote: [`OpenLineage.json`, 2-0-2](https://openlineage.io/spec/2-0-2/OpenLineage.json), `BaseEvent`, `RunEvent`, `Run`, `Job` |
-| O7 | Column lineage types: `DIRECT` (derived from the input) with subtypes `IDENTITY`, `TRANSFORMATION`, `AGGREGATION`; `INDIRECT` (affects the output without being derived) with `JOIN`, `GROUP_BY`, `FILTER`, `SORT`, `WINDOW`, `CONDITIONAL`; `masking` marks an obfuscated input, hash and count being the examples | Quote: [OpenLineage, *Column Level Lineage Dataset Facet*](https://openlineage.io/docs/spec/facets/dataset-facets/column_lineage_facet) |
+| O7 | Column lineage types: `DIRECT` (derived from the input) with subtypes `IDENTITY`, `TRANSFORMATION`, `AGGREGATION`; `INDIRECT` (affects the output without being derived) with `JOIN`, `GROUP_BY`, `FILTER`, `SORT`, `WINDOW`, `CONDITIONAL`; `masking` marks an input whose value was obfuscated, hash and count being the examples, and which methods count as masking depends on the source system | Quote: [OpenLineage, *Column Level Lineage Dataset Facet*](https://openlineage.io/docs/spec/facets/dataset-facets/column_lineage_facet) |
 | P1 | PROV-O is a W3C Recommendation of 30 April 2013; an entity is a thing with some fixed aspects, an activity occurs over time and acts on entities, an agent bears responsibility for an activity or an entity; a derivation is a transformation of an entity into another, an update resulting in a new one, or the construction of a new entity from a pre-existing one | Quote: [W3C, *PROV-O*](https://www.w3.org/TR/prov-o/) |
 
 ## The examples and the arithmetic
@@ -187,19 +188,18 @@ The two posts on Lambda and Kappa and the 2018 post on log-based capture are cit
 
 ## Not verified, so left out or reworded
 
-- A post on functional data engineering, often cited for idempotent partition overwrites, could not be read: WebFetch got HTTP 403. The orchestration guide states the idea in its own words, grounded in RFC 9110's definition and its own example, and cites nothing for it.
+- A post on functional data engineering, often cited for idempotent partition overwrites, could not be read: the site refused the request (HTTP 403). The orchestration guide states the idea in its own words, grounded in RFC 9110's definition and its own example, and cites nothing for it.
 - The DOIs of the two VLDB papers resolve to the ACM Digital Library, which refused the request with HTTP 403; the guides cite the VLDB copies, which were read.
-- The name "hopping" for sliding windows is not in the Dataflow paper; it is kept because the practice problem `stream-windows` uses it.
 - The Iceberg manifest entry status also lists `REPLACED` and `MODIFIED`; the spec page does not say in which format version they appear, so the guide names only existing, added and deleted.
-- Hudi: a sentence that only completed actions count was not found in the documentation and was removed.
+- Hudi: the documentation does not say that only completed actions count, so the guide does not say it.
 - Debezium's `source` block: the fields it holds were not read, so the guide's table says only that it carries metadata such as the table and, on some databases, the transaction (C1).
-- PostgreSQL: an early draft said the WAL is "in commit order"; the documentation says records are appended as they are written, and slots replay changes in the order they were made, so the guide says that.
+- PostgreSQL: the documentation says WAL records are appended as they are written, not in commit order.
 - The Kimball Group's pages on null attributes and null fact keys returned no technique text. The advice to keep a reserved "unknown" dimension row, in `dimensional-modeling`'s traps, is given as design advice, without a citation.
 - The SQL:2011 standard itself is sold by ISO and was not read; its temporal features are cited from the SIGMOD Record article that describes them.
 
 ## Practice links to problems not yet merged
 
-The guides and the path reference seven problems that live on two other branches, by the slugs of their folders: `stream-windows` (0332), `cdc-apply` (0333) and `pipeline-scheduler` (0334) on `feat/data-eng-streams-problems`; `scd-type2-dimension` (0335), `data-quality-gate` (0336), `snapshot-table` (0337) and `lineage-graph` (0338) on `feat/data-eng-tables-problems`. Each problem's statement and solution explanation were read before its guide was written. `cstudy verify --static` passed on a temporary merge of this branch with both, with these `guides:` lists added to the new problems' `meta.yaml`, after `related:`:
+The guides and the path reference seven problems that live on two other branches, by the slugs of their folders: `stream-windows` (0332), `cdc-apply` (0333) and `pipeline-scheduler` (0334) on `feat/data-eng-streams-problems`; `scd-type2-dimension` (0335), `data-quality-gate` (0336), `snapshot-table` (0337) and `lineage-graph` (0338) on `feat/data-eng-tables-problems`. `cstudy verify --static` passed on a temporary merge of this branch with both, with these `guides:` lists added to the new problems' `meta.yaml`, after `related:`:
 
 | Problem | `guides:` |
 |---------|-----------|
@@ -225,6 +225,21 @@ Each guide teaches its idea with examples of its own, but some ideas are the pro
 | `table-formats-and-snapshots` | `snapshot-table` level 3 | A log-based table where a retry checks that removed files are still live, Iceberg's rule; not the problem's partition conflict rule, expiry or compaction |
 | `data-lineage` | `lineage-graph` level 2 | A dataset-level walk with a visited set; no distances, cycle groups, impact rules or labels |
 
-## Independent accuracy review
+## Independent accuracy review (2026-11-12)
 
-Pending.
+The review checked every claim of the eight guides against the source this page gives for it, ran every example and compared what it prints with the guide, and read the guides against the linked problems' statements and solutions. It found no factual error, no example whose output differs from its guide, and no spoiler: the table of places close to a problem's hints holds. These are its findings and what changed.
+
+| Finding | Change |
+|---------|--------|
+| `data-lineage` said that an edge that hashes or counts carries no value onward; OpenLineage only says a masked input was obfuscated, and that which methods count as masking depends on the source system | The filter half stays. A masking edge, such as a hash or a count, hides the value but may still identify a person, since a hash of an email still matches that email; whether a masked edge stops a label is a policy you choose, in the use and in the trap (O7) |
+| `dimensional-modeling` said a type 2 dimension keeps valid time | It keeps valid time when its dates come from the source, and something closer to transaction time when they are load dates |
+| `event-time-and-windows` tied its grace period to the MillWheel pipelines that corrected their aggregates | The grace period is the guide's own term; the MillWheel paper's pipelines corrected aggregates when late records came, and the paper does not say for how long (M2) |
+| `event-time-and-windows` gave hopping as another name for sliding windows | Sliding is the Dataflow paper's word; some engines, and the practice problem, call them hopping (D16) |
+| `batch-and-streaming` said the Kappa log holds the full history | The log retains as much history as you may want to reprocess (L2) |
+| `table-formats-and-snapshots` said branches make write-audit-publish possible | Branches support it (Q6, I12) |
+| `change-data-capture` said the reader was started before the snapshot finished, which the example does not show | The log still holds every change from position 10, and the reader starts there, before the snapshot's position |
+| `change-data-capture` called the WAL a file, and its example said "commit order" | An append-only log, kept as a series of files, of changes in the order they were written; the example's comment says "in the order written", in the file and in its copy in the guide (W2) |
+| Wording on this page: a tool name, history, and the run states | Stated plainly; the run states list says which are terminal (O4) |
+| Jargon before its definition | `change-data-capture` defines an upsert where it first appears and in its trap, and says "capture process" for connector; `data-lineage` says a stream of messages for topic; `dimensional-modeling` explains a join, and an inner join as a join that keeps only matching rows |
+| `pipeline-orchestration` called every deadline an SLA | A deadline promised to the readers is part of a service-level agreement (SLA) |
+| `batch-and-streaming`'s practice line for `feed-ingest-python` described its later levels, while the path's step after the guide is level 1 | The line describes level 1, and says the later levels come back after the guide on data quality |
