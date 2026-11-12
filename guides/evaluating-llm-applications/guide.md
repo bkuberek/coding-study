@@ -17,7 +17,7 @@ The core habit is to measure every change on the same golden set, compare it wit
 
 ## A worked example
 
-A baseline and a candidate version of a help assistant have answered the same eight golden cases. Each case has one or more assertions, and four of them are marked **critical**: a release may never fail them. Two open-ended cases were also given to a judge model, which compared the two answers twice, once in each order. Everything is recorded data, so the example prints the same every time.
+A baseline and a candidate version of a help assistant have answered the same eight golden cases. Each case has one or more assertions, and four of them are marked **critical**: a release may never fail them. Two open-ended cases were also given to a judge model, which compared the two answers twice, once in each order. Everything is recorded data, so the example prints the same every time. Each pass rate is printed with its **standard error**, `sqrt(p (1 - p) / n)` for a rate `p` over `n` cases: a measure of how much the rate would vary if the same app were scored on another set of `n` similar cases.
 
 ```python examples/release_gate.py
 """Score two versions of an assistant on a golden set with assertions and a pairwise judge, then gate.
@@ -179,7 +179,7 @@ The drawing puts the gate last for a reason: the cases and the rule exist before
 - **Assertions first.** Anything that can be checked with code should be: required facts, forbidden content, format, citations that point at shown sources, refusals where the answer is not in the data. They are free to run and never disagree with themselves.
 - **A judge for what code cannot check**: completeness, helpfulness, tone, whether an answer actually addresses the question. Give it a rubric with concrete criteria, ask for a verdict in a fixed format, and check it against human grades on a sample before trusting it.
 - **Retrieval on its own.** For RAG, measure retrieval separately, with the known relevant chunks of each question: whether they are in the top `k` (recall at `k`), how high the first one ranks (reciprocal rank), and whether the most useful ones come first (nDCG, normalized discounted cumulative gain). When an answer is wrong, these say whether the right chunk was ever shown.
-- **Precision and recall for extraction.** When the app finds things, such as personal data to hide, count what it found that it should have (precision) and what it should have found that it did (recall). Where a miss costs more than a false alarm, weight recall higher.
+- **Precision and recall for extraction.** When the app finds things, such as personal data to hide, measure the share of what it found that was right (precision) and the share of what it should have found that it did (recall). Where a miss costs more than a false alarm, weight recall higher.
 - **Production traffic** as the source of new cases: every complaint or bad answer becomes a golden case, so the set grows where the app actually fails.
 
 ## Common traps
@@ -222,7 +222,7 @@ Most of an evaluation's cost is the application's own model calls. Cache the bas
 
 ## Further reading
 
-- [Zheng and others, *Judging LLM-as-a-Judge* (2023)](https://arxiv.org/abs/2306.05685): judges' agreement with people, their biases, and swapping positions.
+- [Zheng and others, *Judging LLM-as-a-Judge* (2023, title shortened)](https://arxiv.org/abs/2306.05685): judges' agreement with people, their biases, and swapping positions.
 - [Chinchor, *MUC-4 Evaluation Metrics* (1992)](https://aclanthology.org/M92-1002.pdf): recall, precision and van Rijsbergen's F-measure with its weight `β`.
 - [Järvelin and Kekäläinen, *Cumulated gain-based evaluation of IR techniques* (2002)](https://doi.org/10.1145/582415.582418): graded relevance and discounted cumulative gain.
 - [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM07 Misinformation, the failure an evaluation exists to catch before users do.

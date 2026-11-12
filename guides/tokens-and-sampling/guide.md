@@ -233,7 +233,7 @@ flowchart TD
 └─────────────────┬─────────────────┘  │ └──────────┘
 ```
 
-The drawing shows why writing costs more time per token than reading: every token of the answer is one more run of the model, each one waiting for the token before it, while the prompt is read in one pass. The original transformer paper describes its decoder as auto-regressive, "consuming the previously generated symbols as additional input when generating the next". Two settings stop the loop: a **stop sequence**, a token or string that ends the answer, and an **output limit**, often called `max_tokens`, the most tokens the answer may use. An answer cut by the limit simply ends mid-sentence, so check whether the answer stopped or was cut.
+The drawing shows why writing costs more time per token than reading: every token of the answer is one more run of the model, each one waiting for the token before it, while the prompt is read in one pass. The paper that introduced the **transformer**, a neural network design for sequences, describes its decoder as auto-regressive, "consuming the previously generated symbols as additional input when generating the next". Two settings stop the loop: a **stop sequence**, a token or string that ends the answer, and an **output limit**, often called `max_tokens`, the most tokens the answer may use. An answer cut by the limit simply ends mid-sentence, so check whether the answer stopped or was cut.
 
 Because each token is ready before the next one exists, an answer can be shown while it is written. That is **streaming**. Over HTTP it is often sent as server-sent events: a response of type `text/event-stream` in which each `data:` line adds to an event, a blank line sends it, and a line starting with a colon is a comment. A client that waits for the whole answer before showing anything throws that advantage away.
 
@@ -272,22 +272,22 @@ When the conversation grows, something has to give: the oldest turns are dropped
 
 ## Complexity
 
-For a prompt of `n` tokens and an answer of `m` tokens, with a model whose layers work on vectors of size `d`:
+A transformer is a stack of **layers**. Each layer holds every token as a vector of `d` numbers and updates it by relating it to the other tokens of the sequence, a step called **self-attention**. For a prompt of `n` tokens and an answer of `m` tokens:
 
 | Step | Cost |
 |------|------|
-| Tokenize a text of `L` characters | O(L) with a precomputed table, for practical purposes |
+| Tokenize a text of `L` characters | Roughly linear in `L` in practice |
 | Self-attention over a sequence of `n` tokens, per layer | O(n² · d), as the transformer paper's comparison table gives it |
 | Read the prompt | One pass over `n` tokens, which runs in parallel |
 | Write the answer | `m` sequential steps, one token each |
 | Memory for keys and values kept between steps | Grows with `n + m`, per request |
 
-The quadratic term is why long contexts are expensive, and why windows have a limit at all. The sequential term is why the length of the answer, more than the length of the prompt, decides how long a person waits. Serving systems keep each layer's attention keys and values for the tokens already processed, the **KV cache**, so that each new step only computes the new token's; its memory grows with every token of the request.
+The quadratic term is one reason long contexts are expensive and windows are limited. The sequential term is why the length of the answer, more than the length of the prompt, decides how long a person waits. Self-attention computes, for each token in each layer, two vectors called its **key** and its **value**. Serving systems keep them for the tokens already processed, the **KV cache**, so that each new step only computes the new token's; its memory grows with every token of the request.
 
 ## Expert notes
 
 - **Where BPE came from.** Byte pair encoding began as a data compression method that repeatedly replaces the most frequent pair of bytes with an unused byte. Sennrich, Haddow and Birch applied it to characters and character sequences to give translation models an open vocabulary: rare and unknown words become sequences of subword units, and the number of merges is the algorithm's only hyperparameter. They also did not merge across word boundaries, which is why the example keeps words apart.
-- **Temperature, top-k and top-p together.** Holtzman and colleagues showed that decoding by likelihood alone gives text that is "bland and strangely repetitive", and proposed nucleus sampling, which truncates the unreliable tail and lets the size of the kept set rise and fall with the model's confidence. Top-k sampling, used by Fan, Lewis and Dauphin with `k = 10`, keeps a fixed number of candidates, too few where the distribution is flat and too many where it is peaked. A temperature applied before either one reshapes the distribution first.
+- **Temperature, top-k and top-p together.** Holtzman and colleagues showed that maximization-based decoding, such as beam search, leads to degeneration, output that is "bland, incoherent, or gets stuck in repetitive loops", and proposed nucleus sampling, which truncates the unreliable tail and lets the size of the kept set rise and fall with the model's confidence. Top-k sampling, used by Fan, Lewis and Dauphin with `k = 10`, keeps a fixed number of candidates, too few where the distribution is flat and too many where it is peaked. A temperature applied before either one reshapes the distribution first.
 - **Lost in the middle.** Liu and colleagues measured question answering with the relevant passage moved through a long context: accuracy was highest with the passage at the start or the end, and dropped in the middle, even for models built for long contexts. Put what matters most first or last.
 - **The KV cache is per request.** The keys and values for a request's tokens are kept between steps and grow with it. Requests that share a long identical start, such as the same instructions, can share that cached part, which is the basis of prompt caching in the guide on cost.
 - **Usage is reported, not computed by you.** A provider's own count of prompt and completion tokens is the one that is billed. A client-side count is an estimate, useful for budgeting before the request; reconcile with the reported usage after.

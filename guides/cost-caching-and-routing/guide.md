@@ -206,7 +206,7 @@ The drawing orders the levers by cost: a cache hit costs a lookup, routing costs
 
 ## When to use it
 
-- **Prompt caching** almost always: it needs no change of behaviour, only a stable layout. Keep the instructions, tool definitions and long shared documents identical and first; keep timestamps, user details and the question last.
+- **Prompt caching** almost always: it needs no change of behaviour and mostly needs a stable layout; depending on the provider it may also need to be enabled, and writing to the cache may cost more than an ordinary read. Keep the instructions, tool definitions and long shared documents identical and first; keep timestamps, user details and the question last.
 - **Response caching** for repeated, deterministic requests: classification of the same input, the same question on a help page, embeddings of the same text. Never across users when answers depend on who asks.
 - **Semantic caching** for high-volume, low-stakes questions that recur in many wordings, with a threshold measured on real traffic and a way to invalidate answers when the facts change. Avoid it where a near miss is costly.
 - **Routing** when requests vary in difficulty: a small model for the easy majority, a large one for the rest. Decide with a validator where you can check answers, with a trained router where you cannot.
@@ -256,8 +256,8 @@ A cascade beats the large model alone when `small + e · large < large`, that is
 - [Patel and others, *Splitwise: Efficient generative LLM inference using phase splitting* (2023)](https://arxiv.org/abs/2311.18677): prompt computation and token generation as two phases.
 - [Kwon and others, *Efficient Memory Management for Large Language Model Serving with PagedAttention* (2023)](https://arxiv.org/abs/2309.06180): the KV cache and sharing it across requests.
 - [Gim and others, *Prompt Cache: Modular Attention Reuse for Low-Latency Inference* (2023)](https://arxiv.org/abs/2311.04934): reusing attention states for repeated prompt segments.
-- [Chen, Zaharia and Zou, *How to Use Large Language Models While Reducing Cost and Improving Performance* (2023)](https://arxiv.org/abs/2305.05176): prompt adaptation, approximation and cascades.
-- [Ong and others, *Learning to Route LLMs with Preference Data* (2024)](https://arxiv.org/abs/2406.18665): routers between a stronger and a weaker model.
+- [Chen, Zaharia and Zou, *How to Use Large Language Models While Reducing Cost and Improving Performance* (2023, title shortened)](https://arxiv.org/abs/2305.05176): prompt adaptation, approximation and cascades.
+- [Ong and others, *RouteLLM: Learning to Route LLMs with Preference Data* (2024)](https://arxiv.org/abs/2406.18665): routers between a stronger and a weaker model.
 - [Model Context Protocol, tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools): deterministic tool order and prompt cache hit rates.
 - [Python `json`](https://docs.python.org/3/library/json.html) and [Python `hashlib`](https://docs.python.org/3/library/hashlib.html): `sort_keys`, compact `separators` and SHA-256 for cache keys.
 - [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM06 Unbounded Consumption, and semantic cache poisoning under LLM09.

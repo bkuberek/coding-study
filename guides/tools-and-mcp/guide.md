@@ -10,7 +10,7 @@ Every application used to wire its tools in its own way. The **Model Context Pro
 
 - **Three roles.** A **host** is the application the user works in, which runs the model and enforces consent. A **client**, created by the host, talks to exactly one **server**. A server offers capabilities: a database, a file system, an issue tracker.
 - **What servers offer**: **tools**, functions for the model to call; **resources**, data for the user or the model to read; and **prompts**, templated messages for users.
-- **What clients offer**, when a server asks within its reply: **elicitation**, asking the user for more information; **sampling**, asking the host's model for a completion; and **roots**, the directories the server may work in.
+- **What clients offer**, when a server asks within its reply: **elicitation**, asking the user for more information. The revision still defines **sampling** (asking the host's model for a completion) and **roots** (directories the client points the server to, as a hint and not a permission), but deprecates both: new implementations should not adopt them.
 - **The messages.** JSON-RPC 2.0: requests with an id, results or errors that answer them, and notifications that expect no answer.
 - **Statelessness.** Every request carries its own protocol version and client capabilities in a `_meta` field, and a server must not rely on earlier requests on the same connection. Earlier revisions opened a session with an `initialize` handshake; this one does not.
 - **Two transports.** **stdio**, newline-delimited messages over the standard streams of a subprocess the client launched, for local servers; and **Streamable HTTP**, where each message is a POST to one endpoint and the reply is JSON or a stream of server-sent events, for remote ones.
@@ -27,7 +27,6 @@ and client capabilities in _meta, results tagged with resultType. The model and 
 """
 
 import json
-import re
 
 VERSION = "2026-07-28"
 ORDERS = {"A-1001": "shipped", "A-1002": "processing"}
@@ -42,20 +41,10 @@ TOOLS = [
 ]
 
 
-def schema_problem(schema: dict, arguments: object) -> str:
-    """The first way the arguments break the schema, or "" (only the keywords this server uses)."""
-    if not isinstance(arguments, dict):
-        return "arguments must be an object"
-    for name in schema["required"]:
-        if name not in arguments:
-            return f"missing {name}"
-    for name, value in arguments.items():
-        rule = schema["properties"].get(name)
-        if rule is None:
-            return f"unexpected argument {name}"
-        if not isinstance(value, str) or not re.fullmatch(rule["pattern"], value):
-            return f"{name} must match {rule['pattern']}"
-    return ""
+def schema_problem(schema: dict, arguments: dict) -> str:
+    """Only the required keys; a real server checks the whole schema with a JSON Schema validator."""
+    missing = [name for name in schema["required"] if name not in arguments]
+    return f"missing {', '.join(missing)}" if missing else ""
 
 
 def server(request: dict) -> dict:
@@ -101,7 +90,8 @@ print("tools offered to the model:", [tool["name"] for tool in listing["result"]
 
 proposed = [  # what the scripted model asked for, in order
     ("get_order", {"order_id": "A-1002"}),
-    ("get_order", {"order_id": "1002"}),
+    ("get_order", {}),
+    ("get_order", {"order_id": "A-9999"}),
     ("refund_order", {"order_id": "A-1002"}),
     ("cancel_order", {"order_id": "A-1001"}),
     ("cancel_order", {"order_id": "A-1002"}),
@@ -129,7 +119,8 @@ It prints:
 ```output examples/mcp_exchange.py
 tools offered to the model: ['get_order', 'cancel_order']
 get_order{'order_id': 'A-1002'}: isError=False, A-1002: processing
-get_order{'order_id': '1002'}: isError=True, order_id must match ^A-[0-9]{4}$
+get_order{}: isError=True, missing order_id
+get_order{'order_id': 'A-9999'}: isError=True, no order A-9999
 refund_order{'order_id': 'A-1002'}: protocol error -32602: Unknown tool: refund_order
 cancel_order{'order_id': 'A-1001'}: isError=True, a shipped order cannot be cancelled
 cancel_order{'order_id': 'A-1002'}: the user declined, so the host never called the server
@@ -142,7 +133,7 @@ What each line shows:
 
 - **`tools/list`** returns the definitions the host shows to the model: a name, a description, an `inputSchema` in JSON Schema, and optional annotations. The schema is how the model learns what arguments to send.
 - **A good call.** `get_order` with `A-1002` returns `isError=False` and the status as text content.
-- **Bad arguments.** `1002` breaks the schema's pattern. The server answers with a **tool execution error**: a normal result with `isError: true` and a message the model can read and correct. The specification counts input validation, failed API calls and business rules among these, and advises clients to pass them back to the model.
+- **Bad arguments.** A call without `order_id` lacks a required argument, and `A-9999` is not an order the server knows. The server answers each with a **tool execution error**: a normal result with `isError: true` and a message the model can read and correct. This server checks only the required keys; a real one checks the whole `inputSchema` with a JSON Schema validator. The specification counts input validation, failed API calls and business rules among these, and advises clients to pass them back to the model.
 - **An unknown tool.** `refund_order` was never offered. That is a **protocol error**, a JSON-RPC error with code `-32602`, because the request itself is wrong and the model is less likely to recover from it.
 - **A business rule.** Cancelling a shipped order fails at the server, as a tool execution error.
 - **A declined call.** For the second cancellation the user said no, so the host never sent the request. Confirmation happens in the host, before the server hears of the call.

@@ -4,9 +4,6 @@ The model is a fake that plays back scripted steps; the tools and the test run a
 Tokens are counted as words.
 """
 
-import hashlib
-import json
-
 WINDOW = 50  # tokens of context the model can take
 COMPACT_AT = 0.7  # compact when the context passes this share of the window
 KEEP_RECENT = 2  # entries kept word for word when compacting
@@ -52,7 +49,7 @@ def run(steps: list[dict[str, str]], max_steps: int = 8, max_tokens: int = 400) 
                 return
             context.append(f"check failed: {result}")
             continue
-        key = hashlib.sha256(json.dumps(step, sort_keys=True).encode()).hexdigest()
+        key = (step["tool"], step["arg"])
         seen[key] = seen.get(key, 0) + 1
         if seen[key] == 3:
             print(f"  stop: {step['tool']}({step['arg']}) proposed 3 times with the same arguments")

@@ -15,7 +15,7 @@ The harness has six jobs, and this guide takes each in turn:
 | **Subagents** | When should a task run in a fresh context of its own? |
 | **Completion checks** | How do we know the agent is actually done? |
 
-Around those mechanisms sits the environment the agent works in: the instructions and documents it can read, the tests and linters that check its work, and the logs it can inspect. Practitioners writing about agents that build software describe designing that environment as the main work of the people involved: specifying intent, shaping the environment and giving structured feedback, with rules enforced by tools rather than by reminders in a prompt.
+Around those mechanisms sits the environment the agent works in: the instructions and documents it can read, the tests and linters that check its work, and the logs it can inspect. Designing that environment is much of the work of the people around an agent: specifying intent, shaping the environment and giving structured feedback, with rules enforced by tools rather than by reminders in a prompt.
 
 ## A worked example
 
@@ -105,7 +105,7 @@ Each line is one decision:
 - **Reading the code and running the known test command** are allowed without asking: they change nothing.
 - **Writing a source file** asks the user, who approves.
 - **Writing `.env`** is denied by a specific rule, even though another rule would have asked: deny rules are checked first, so no allow or ask can override them.
-- **`docs/../../secrets.txt` and `/etc/passwd`** are denied because they leave the workspace. The check walks the path's parts; a check that only looked at the first directory would have let the first one through.
+- **`docs/../../secrets.txt` and `/etc/passwd`** are denied because they leave the workspace. The check walks the path's parts; a check that only looked at the first directory would have let the first one through. This check is lexical; a real gate resolves symlinks first.
 - **`rm -rf build`** is denied outright; **`make deploy`** is unknown, so the user is asked, and declines.
 - **`send_email`** matches no rule at all, so it is denied. A gate that allows by default is a gate that fails open.
 
@@ -117,9 +117,6 @@ Each line is one decision:
 The model is a fake that plays back scripted steps; the tools and the test run are fakes too.
 Tokens are counted as words.
 """
-
-import hashlib
-import json
 
 WINDOW = 50  # tokens of context the model can take
 COMPACT_AT = 0.7  # compact when the context passes this share of the window
@@ -166,7 +163,7 @@ def run(steps: list[dict[str, str]], max_steps: int = 8, max_tokens: int = 400) 
                 return
             context.append(f"check failed: {result}")
             continue
-        key = hashlib.sha256(json.dumps(step, sort_keys=True).encode()).hexdigest()
+        key = (step["tool"], step["arg"])
         seen[key] = seen.get(key, 0) + 1
         if seen[key] == 3:
             print(f"  stop: {step['tool']}({step['arg']}) proposed 3 times with the same arguments")
@@ -222,7 +219,7 @@ a run with a small token budget:
 Three runs, three ways a loop ends:
 
 - **The first run finishes, but not when the model first says so.** At step 4 the model claims it is done; the harness runs the tests itself and they still fail, so the failure goes back into the context and the loop continues. At step 6 the claim is checked again and the tests pass. Along the way the context passed 70% of its 50-token window, so the four oldest entries were folded into one summary, and the last two were kept word for word.
-- **The second run repeats itself.** The same tool with the same arguments, hashed, is seen a third time and the loop stops. A model that repeats an action with nothing new to learn from it is stuck, and waiting for it to notice costs tokens.
+- **The second run repeats itself.** The same tool with the same argument is counted a third time and the loop stops. A model that repeats an action with nothing new to learn from it is stuck, and waiting for it to notice costs tokens.
 - **The third run hits its token budget.** Every step re-reads the whole context, so tokens spent grow faster than steps. The budget counts what was actually read, and stops the run before the next call.
 
 ```mermaid
@@ -313,7 +310,7 @@ For a run of `s` steps whose context grows by about `c` tokens per step, in a wi
 | Mechanism | Cost |
 |-----------|------|
 | Permission gate | O(r) per action for `r` rules; negligible |
-| Repeat guard | O(1) per action with a hash map of action fingerprints |
+| Repeat guard | O(1) per action with a hash map keyed by tool and argument |
 | Tokens read without compaction | About c · s² / 2 over the run: step `i` re-reads `i` steps |
 | Compaction | One model call per compaction; afterwards the context is back to the summary plus the recent turns |
 | Completion check | Whatever the check costs: a test suite run, per claim of done |
@@ -327,9 +324,9 @@ Compaction changes the growth: with the context held under a fraction of `W`, ea
 - **Circuit breakers.** The 2026 OWASP Top 10 for LLM Applications advises, under Unbounded Consumption, enforcing step limits, recursion depth limits, time limits and per-run cost ceilings on every agent execution, using state hashing to detect loops, and setting spending caps that halt inference rather than thresholds that only alert.
 - **Graduated permissions.** The same list's entry on Excessive Agency describes graduated enforcement, audit, warn, block or escalate, so that low-consequence or easily reversible actions can be approved automatically while irreversible ones go to a person, and asks for authorization enforced in code rather than decided by the model. Its entry on prompt injection adds that a confirmation should show the exact action to be executed, and warns that approval fatigue degrades reviewers' judgement.
 - **Why external checks.** Huang and colleagues found that models struggle to correct their own reasoning without external feedback, and that performance can even get worse after self-correction. A completion check should therefore rest on something outside the model's own opinion.
-- **Step limits in the research.** The ReAct experiments capped runs at 7 and 5 steps on their two question-answering benchmarks because more steps did not improve results. Pick limits from measurements of your own tasks, and treat hitting one as a signal to inspect, not just to retry.
+- **Step limits in the research.** The ReAct experiments capped runs at 7 and 5 steps on their question-answering and fact-verification benchmarks because more steps did not improve results. Pick limits from measurements of your own tasks, and treat hitting one as a signal to inspect, not just to retry.
 - **No session in the protocol.** The Model Context Protocol's current revision is stateless: a server must not treat a connection as a conversation, and state that spans requests is referred to by an explicit identifier on every request. A harness that needs sessions keeps them itself.
-- **Designing the environment.** Published accounts of teams whose code is written largely by agents describe the harness as the environment the agents work in: knowledge kept in the repository as structured documents that serve as the agents' source of truth, architectural rules enforced by linters, structural tests and continuous integration rather than by instructions alone, telemetry the agents can read to reproduce and diagnose problems, and agents that run periodically to find documentation that has drifted or rules that are being broken. When an agent struggles, the gap is treated as a signal about what the environment is missing: a tool, a guardrail or a document.
+- **Designing the environment.** For agents that write software, treat the harness as the whole environment they work in: keep the knowledge they need in the repository as structured documents that serve as their source of truth, enforce architectural rules with linters, structural tests and continuous integration rather than with instructions alone, give them telemetry they can read to reproduce and diagnose problems, and run agents periodically to find documentation that has drifted or rules that are being broken. When an agent struggles, treat it as a signal of what the environment is missing: a tool, a guardrail or a document.
 
 ## Practice
 
@@ -340,9 +337,8 @@ Compaction changes the growth: with the context held under a fraction of `W`, ea
 
 ## Further reading
 
-- [Packer and others, *Towards LLMs as Operating Systems* (2023)](https://arxiv.org/abs/2310.08560): virtual context management, memory pressure warnings and recursive summaries on eviction.
+- [Packer and others, *Towards LLMs as Operating Systems* (2023, title shortened)](https://arxiv.org/abs/2310.08560): virtual context management, memory pressure warnings and recursive summaries on eviction.
 - [Huang and others, *Large Language Models Cannot Self-Correct Reasoning Yet* (2024)](https://arxiv.org/abs/2310.01798): self-correction without external feedback.
 - [Yao and others, *ReAct: Synergizing Reasoning and Acting in Language Models* (2023)](https://arxiv.org/abs/2210.03629): step limits in practice.
 - [Model Context Protocol, base protocol, revision 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/basic): statelessness and explicit identifiers for state.
 - [OWASP Top 10 for LLM Applications 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/): LLM03 Excessive Agency and LLM06 Unbounded Consumption.
-- [*Harness engineering: leveraging Codex in an agent-first world* (2026)](https://openai.com/index/harness-engineering/): an account of designing the environment in which agents write software.

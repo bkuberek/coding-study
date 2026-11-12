@@ -145,43 +145,35 @@ The four runs side by side:
 
 ```mermaid
 flowchart TD
-  accTitle: The ReAct loop
-  accDescr: The model reads the question and the transcript so far and writes a thought and either an action or a final answer. An action runs as a tool call, its observation is appended to the transcript, and the model is called again, until it gives a final answer or the step limit is reached.
-  start["question"] --> model["model: thought, then an action or a final answer"]
-  model --> kind{"final answer?"}
-  kind -- yes --> answer["answer"]
-  kind -- no --> limit{"step limit reached?"}
-  limit -- yes --> stop["stop and say so"]
-  limit -- no --> tool["run the tool"]
-  tool --> observe["append the observation to the transcript"]
-  observe --> model
+  accTitle: One step of the ReAct loop
+  accDescr: Each step first checks the step limit: if it is reached, the run stops and says so. Otherwise the model reads the question and the transcript so far and writes a thought and either an action or a final answer. A final answer ends the run; an action runs as a tool call, and its observation is appended to the transcript before the next step.
+  limit["step limit reached? stop and say so"] --> model["the model writes a thought and an action or an answer"]
+  model --> final["a final answer? return it"]
+  final --> tool["otherwise run the tool"]
+  tool --> observe["append the observation, start the next step"]
 ```
 
-<!-- text-of-mermaid sha256:f4e34666b82116ebd915cd744a77f59c779c2d25eee52ccae77fe54fce2ecbe8 -->
+<!-- text-of-mermaid sha256:e21db477e90b6a60b022f1d9db31e78755b3dc5765f118fd5d9c6caa0b3c4ec3 -->
 ```text
-┌────────────────────────────────────────────────┐
-│                    question                    │
-└────────────────────────┬───────────────────────┘
-                         ▼──────────────────────────┐
-┌────────────────────────────────────────────────┐  │
-│model: thought, then an action or a final answer│  │
-└────────────────────────┬───────────────────────┘  │
-                         ▼                          │
-◇────────────────────────────────────────────────◇  │
-│                 final answer?                  ├──┼──────────no
-◇───────────────────────yes──────────────────────◇  │           │
-                         ▼                          │           ▼
-┌────────────────────────────────────────────────┐  │ ◇───────────────────◇
-│                     answer                     │  ├─┤step limit reached?│
-└───────────────────────yes──────────────────────┘  │ ◇────────no─────────◇
-                         ▼──────────────────────────┤           ▼
-┌────────────────────────────────────────────────┐  │ ┌───────────────────┐
-│                stop and say so                 │  │ │    run the tool   │
-└────────────────────────────────────────────────┘  │ └─────────┬─────────┘
-                                                    │           │
-┌────────────────────────────────────────────────┐  │           │
-│    append the observation to the transcript    │◄─┼───────────┘
-└────────────────────────┬───────────────────────┘  │
+┌─────────────────────────────────────────────────────┐
+│         step limit reached? stop and say so         │
+└──────────────────────────┬──────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────┐
+│the model writes a thought and an action or an answer│
+└──────────────────────────┬──────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────┐
+│              a final answer? return it              │
+└──────────────────────────┬──────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────┐
+│                otherwise run the tool               │
+└──────────────────────────┬──────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────┐
+│     append the observation, start the next step     │
+└─────────────────────────────────────────────────────┘
 ```
 
 ```mermaid
@@ -198,7 +190,7 @@ flowchart LR
 └───────────────────────────┘    └────────────────────────┘    └──────────────────┘
 ```
 
-The first drawing is a loop with two exits, an answer and a limit; the second is a straight line. That difference is the whole trade-off: ReAct can react to every observation and pays a model call for each, while plan-and-execute pays twice and cannot react at all until the end. Designs in between re-plan when a step fails, or let the planner mark which steps can run in parallel.
+The first drawing is one step of the loop, top to bottom, with its two exits, the limit and the answer; its last box starts the next step. The second is a straight line. That difference is the whole trade-off: ReAct can react to every observation and pays a model call for each, while plan-and-execute pays twice and cannot react at all until the end. Designs in between re-plan when a step fails, or let the planner mark which steps can run in parallel.
 
 ## When to use it
 
@@ -232,7 +224,7 @@ The quadratic growth is why a long ReAct run gets expensive faster than its numb
 
 ## Expert notes
 
-- **ReAct.** Yao and colleagues had models generate reasoning traces and task-specific actions interleaved, and argued that the reasoning helps the model induce, track and update its plan and handle exceptions. On question answering and fact checking it reduced the hallucination and error propagation of reasoning alone; on two interactive benchmarks it beat imitation and reinforcement learning methods by 34 and 10 points of success rate, prompted with only one or two examples. They capped runs at 7 and 5 steps on their two question-answering benchmarks, noting that more steps did not help.
+- **ReAct.** Yao and colleagues had models generate reasoning traces and task-specific actions interleaved, and argued that the reasoning helps the model induce, track and update its plan and handle exceptions. On question answering and fact checking it reduced the hallucination and error propagation of reasoning alone; on two interactive benchmarks it beat imitation and reinforcement learning methods by 34 and 10 points of success rate, prompted with only one or two examples. They capped runs at 7 and 5 steps on their question-answering and fact-verification benchmarks, noting that more steps did not help.
 - **Plan-and-solve.** Wang and colleagues identified three kinds of errors in zero-shot step-by-step prompting, calculation errors, missing-step errors and semantic misunderstanding errors, and addressed missing steps by asking the model to first devise a plan dividing the task into subtasks, then carry them out.
 - **Planner, worker, solver.** Xu and colleagues' ReWOO separates the three roles of the plan-and-execute drawing: a planner writes interdependent plans with evidence placeholders before any tool answers, workers fill the placeholders with tool results, and a solver writes the answer from plans and evidence. By not stopping the model for every tool response and re-sending everything before it, they report five times the token efficiency and 4% better accuracy on HotpotQA, a multi-step question-answering benchmark. They also report robustness when tools fail, and found that telling the solver to use the plans and evidence "with caution" helps it work around a failed step.
 - **Learning from failure.** Shinn and colleagues' Reflexion has an agent write a short reflection on the feedback from a failed attempt and keep those reflections in a memory buffer for its next attempt, improving without retraining the model.

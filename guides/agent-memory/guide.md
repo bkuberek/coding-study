@@ -8,7 +8,7 @@ A common vocabulary comes from cognitive science, by way of the paper *Cognitive
 
 | Kind | Holds | In an agent | Example |
 |------|-------|-------------|---------|
-| **Working** | What the current step is working with | The context of the current call: instructions, the recent conversation, retrieved items, tool results | "The user just asked what to buy first" |
+| **Working** | State kept for the current decision, from which each call's context is built | The context of the current call: instructions, the recent conversation, retrieved items, tool results | "The user just asked what to buy first" |
 | **Episodic** | Experiences: what happened, when | A log of past conversations, actions and their outcomes | "On Tuesday the refund tool failed twice for order A-1002" |
 | **Semantic** | Knowledge: facts about the world and the user | Facts extracted and kept, often as subject, attribute and value | "Ana is allergic to peanuts" |
 | **Procedural** | How to do things | The model's weights, the agent's own code and its instructions, saved skills | "To issue a refund, look up the order first" |
@@ -187,30 +187,30 @@ By relevance alone, the top three are Bea's diet, the quick-recipes preference a
 flowchart TD
   accTitle: Working memory and the long-term stores
   accDescr: Before a call, the application retrieves from three long-term stores into the working memory, the context of the call: episodes of what happened, facts that are known, and procedures for how to act. After the call, it writes new episodes and extracted facts back, and changes procedures only after a person's review.
-  episodic["episodic: what happened"] --> working["working memory: this context"]
+  episodic["episodic: what happened"] --> working["working memory → this call's context"]
   semantic["semantic: known facts"] --> working
   procedural["procedural: how to act"] --> working
   working --> after["write back episodes and facts"]
   after --> review["procedures: only after review"]
 ```
 
-<!-- text-of-mermaid sha256:08848cc190c8d8dd1a05d1389ef82d1938625999301e3d11f61c9c6034e359d3 -->
+<!-- text-of-mermaid sha256:e2271652a06fcf860a141461e58b7c92424459bb02d2dd8d1a160c63e8c47351 -->
 ```text
-┌─────────────────────────────┐    ┌─────────────────────┐    ┌──────────────────────┐
-│   episodic: what happened   │    │semantic: known facts│    │procedural: how to act│
-└──────────────┬──────────────┘    └──────────┬──────────┘    └───────────┬──────────┘
-               ▼──────────────────────────────┴───────────────────────────┘
-┌─────────────────────────────┐
-│ working memory: this context│
-└──────────────┬──────────────┘
-               ▼
-┌─────────────────────────────┐
-│write back episodes and facts│
-└──────────────┬──────────────┘
-               ▼
-┌─────────────────────────────┐
-│procedures: only after review│
-└─────────────────────────────┘
+┌────────────────────────────────────┐    ┌─────────────────────┐    ┌──────────────────────┐
+│      episodic: what happened       │    │semantic: known facts│    │procedural: how to act│
+└──────────────────┬─────────────────┘    └──────────┬──────────┘    └───────────┬──────────┘
+                   ▼─────────────────────────────────┴───────────────────────────┘
+┌────────────────────────────────────┐
+│working memory → this call's context│
+└──────────────────┬─────────────────┘
+                   ▼
+┌────────────────────────────────────┐
+│   write back episodes and facts    │
+└──────────────────┬─────────────────┘
+                   ▼
+┌────────────────────────────────────┐
+│   procedures: only after review    │
+└────────────────────────────────────┘
 ```
 
 The drawing funnels the three stores into the context window: a memory that is never retrieved into working memory might as well not exist. The last box is the dangerous write. Changing what the agent knows how to do changes its behaviour on every later task, so it deserves a person's review.

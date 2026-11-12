@@ -55,8 +55,11 @@ INDEX = [embed(document) for document in DOCUMENTS]  # computed once, when docum
 
 def by_meaning(query: str) -> list[int]:
     q = embed(query)
-    scores = {i: dot(q, vector) for i, vector in enumerate(INDEX)}  # unit vectors: dot is cosine
-    return [i for i in sorted(scores, key=lambda i: (-scores[i], i)) if scores[i] > 0]
+    if not any(q):
+        return []  # a zero vector has no direction, so nothing can be compared with it
+    # Every stored vector has length 1, so the dot product is the cosine similarity.
+    scores = {i: dot(q, vector) for i, vector in enumerate(INDEX) if any(vector)}
+    return sorted(scores, key=lambda i: (-scores[i], i))
 
 
 def by_words(query: str) -> list[int]:

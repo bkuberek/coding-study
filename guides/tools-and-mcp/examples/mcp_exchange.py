@@ -5,7 +5,6 @@ and client capabilities in _meta, results tagged with resultType. The model and 
 """
 
 import json
-import re
 
 VERSION = "2026-07-28"
 ORDERS = {"A-1001": "shipped", "A-1002": "processing"}
@@ -20,20 +19,10 @@ TOOLS = [
 ]
 
 
-def schema_problem(schema: dict, arguments: object) -> str:
-    """The first way the arguments break the schema, or "" (only the keywords this server uses)."""
-    if not isinstance(arguments, dict):
-        return "arguments must be an object"
-    for name in schema["required"]:
-        if name not in arguments:
-            return f"missing {name}"
-    for name, value in arguments.items():
-        rule = schema["properties"].get(name)
-        if rule is None:
-            return f"unexpected argument {name}"
-        if not isinstance(value, str) or not re.fullmatch(rule["pattern"], value):
-            return f"{name} must match {rule['pattern']}"
-    return ""
+def schema_problem(schema: dict, arguments: dict) -> str:
+    """Only the required keys; a real server checks the whole schema with a JSON Schema validator."""
+    missing = [name for name in schema["required"] if name not in arguments]
+    return f"missing {', '.join(missing)}" if missing else ""
 
 
 def server(request: dict) -> dict:
@@ -79,7 +68,8 @@ print("tools offered to the model:", [tool["name"] for tool in listing["result"]
 
 proposed = [  # what the scripted model asked for, in order
     ("get_order", {"order_id": "A-1002"}),
-    ("get_order", {"order_id": "1002"}),
+    ("get_order", {}),
+    ("get_order", {"order_id": "A-9999"}),
     ("refund_order", {"order_id": "A-1002"}),
     ("cancel_order", {"order_id": "A-1001"}),
     ("cancel_order", {"order_id": "A-1002"}),

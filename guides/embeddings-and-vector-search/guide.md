@@ -4,7 +4,7 @@
 
 Keyword search finds documents that share words with the question. It fails when the words differ and the meaning does not: someone asks for a "refund" and the help page says "money back". An **embedding** fixes that by turning a text into a **vector**, a list of numbers, chosen so that texts with similar meanings get vectors that point in similar directions. Searching by meaning then becomes geometry: embed the question, and find the stored vectors nearest to it.
 
-An **embedding model** is a model trained for exactly that job. You give it a text and it gives back a vector of fixed length, the same for every text, however long. Nobody chooses what each number means; training arranges them so that related texts land close together. Two vectors are compared with **cosine similarity**, the cosine of the angle between them:
+An **embedding model** is a model trained for exactly that job. You give it a text and it gives back a vector of fixed length, the same for every text, however long, up to the model's input limit. Nobody chooses what each number means; training arranges them so that related texts land close together. Two vectors are compared with **cosine similarity**, the cosine of the angle between them:
 
 ```text
 cosine(a, b) = (a · b) / (|a| * |b|)       a · b = a[0]*b[0] + a[1]*b[1] + ...       |a| = sqrt(a · a)
@@ -76,8 +76,11 @@ INDEX = [embed(document) for document in DOCUMENTS]  # computed once, when docum
 
 def by_meaning(query: str) -> list[int]:
     q = embed(query)
-    scores = {i: dot(q, vector) for i, vector in enumerate(INDEX)}  # unit vectors: dot is cosine
-    return [i for i in sorted(scores, key=lambda i: (-scores[i], i)) if scores[i] > 0]
+    if not any(q):
+        return []  # a zero vector has no direction, so nothing can be compared with it
+    # Every stored vector has length 1, so the dot product is the cosine similarity.
+    scores = {i: dot(q, vector) for i, vector in enumerate(INDEX) if any(vector)}
+    return sorted(scores, key=lambda i: (-scores[i], i))
 
 
 def by_words(query: str) -> list[int]:
@@ -170,7 +173,7 @@ The drawing has two columns because the work happens at two times. Documents are
 
 - **Questions in people's own words** over documents written in other words: help centres, policies, notes, past conversations. This is the retrieval step of the next guide, retrieval-augmented generation.
 - **Similar items**: near-duplicate questions, related articles, grouping texts by topic.
-- **Keyword search instead, or beside it**, when queries hold exact strings: codes, names, numbers, quoted phrases. Most production search uses both and fuses them.
+- **Keyword search instead, or beside it**, when queries hold exact strings: codes, names, numbers, quoted phrases. Many search systems use both and fuse them.
 - **Neither**, when the question is really a filter or a count: "orders from March over 100" is a database query, not a similarity search.
 - **Exact scan or approximate index**: compare against every vector up to tens of thousands of documents, where it is fast enough and never misses. Move to an approximate index when the scan is too slow, and measure what it misses.
 
