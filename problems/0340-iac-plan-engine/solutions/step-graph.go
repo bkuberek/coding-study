@@ -446,8 +446,26 @@ func (e *PlanEngine) build() ([][]string, []*step) {
 			deletes[address] = &step{verb: "delete", address: address, rank: 1, diff: removed(attributes)}
 		}
 	}
+	olds := map[string]*step{}
 	for address, attributes := range e.old {
-		deletes[address] = &step{verb: "delete", address: address, tag: "old", rank: 1, diff: removed(attributes)}
+		olds[address] = &step{verb: "delete", address: address, tag: "old", rank: 1, diff: removed(attributes)}
+	}
+	deletesOf := func(address string) []*step {
+		found := []*step{}
+		if s, ok := olds[address]; ok {
+			found = append(found, s)
+		}
+		if s, ok := deletes[address]; ok {
+			found = append(found, s)
+		}
+		return found
+	}
+	allDeletes := []*step{}
+	for _, s := range deletes {
+		allDeletes = append(allDeletes, s)
+	}
+	for _, s := range olds {
+		allDeletes = append(allDeletes, s)
 	}
 
 	for address, targets := range needs {
@@ -455,13 +473,13 @@ func (e *PlanEngine) build() ([][]string, []*step) {
 			link(applies[target], applies[address])
 		}
 	}
-	for address, s := range deletes {
+	for _, s := range allDeletes {
 		held := e.deps
 		if s.tag == "old" {
 			held = e.oldDeps
 		}
-		for target := range held[address] {
-			if gone, ok := deletes[target]; ok {
+		for target := range held[s.address] {
+			for _, gone := range deletesOf(target) {
 				link(s, gone)
 			}
 		}
@@ -471,7 +489,12 @@ func (e *PlanEngine) build() ([][]string, []*step) {
 			continue
 		}
 		for target := range e.deps[address] {
-			if gone, ok := deletes[target]; ok && gone.mode != deleteFirst {
+			later, ok := deletes[target]
+			replacedAgain := ok && later.tag == "replace"
+			for _, gone := range deletesOf(target) {
+				if gone.mode == deleteFirst || (gone.tag == "old" && replacedAgain) {
+					continue
+				}
 				link(s, gone)
 			}
 		}
@@ -483,13 +506,19 @@ func (e *PlanEngine) build() ([][]string, []*step) {
 			link(applies[address], s)
 		}
 	}
+	for address, stale := range olds {
+		if later, ok := deletes[address]; ok {
+			link(stale, later)
+			if later.tag == "replace" {
+				link(stale, applies[address])
+			}
+		}
+	}
 	all := []*step{}
 	for _, s := range applies {
 		all = append(all, s)
 	}
-	for _, s := range deletes {
-		all = append(all, s)
-	}
+	all = append(all, allDeletes...)
 	return nil, order(all)
 }
 

@@ -310,35 +310,59 @@ class Model:
 
     def rule2(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
         return {
-            (step, deletes[target])
-            for step in deletes.values()
+            (step, gone)
+            for held in deletes.values()
+            for step in held
             for target in self.links_of(step)
-            if target in deletes
+            for gone in deletes.get(target, [])
         }
 
     def rule3(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
         pairs = set()
-        for address, step in deletes.items():
-            if step.order == DELETE_FIRST:
-                pairs.add((step, by[address]))
-            elif step.order == CREATE_FIRST:
-                pairs.add((by[address], step))
+        for address, held in deletes.items():
+            for step in held:
+                if step.order == DELETE_FIRST:
+                    pairs.add((step, by[address]))
+                elif step.order == CREATE_FIRST:
+                    pairs.add((by[address], step))
         return pairs
+
+    @staticmethod
+    def replaced_again(target: str, deletes: dict) -> bool:
+        return any(step.tag == "replace" for step in deletes.get(target, []))
+
+    def holds_back(self, gone: Step, deletes: dict) -> bool:
+        """Whether rule 4 makes the users of an address wait for this delete of it."""
+        if gone.order == DELETE_FIRST:
+            return False
+        return not (gone.tag == "old" and self.replaced_again(gone.address, deletes))
 
     def rule4(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
         return {
-            (by[user], deletes[target])
+            (by[user], gone)
             for user, target in self.links
-            if user in by
-            and user in self.have
-            and target in deletes
-            and deletes[target].order != DELETE_FIRST
+            if user in by and user in self.have
+            for gone in deletes.get(target, [])
+            if self.holds_back(gone, deletes)
         }
+
+    def rule5(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
+        pairs = set()
+        for address, held in deletes.items():
+            for old in (step for step in held if step.tag == "old"):
+                for other in (step for step in held if step.tag != "old"):
+                    pairs.add((old, other))
+                    if other.tag == "replace":
+                        pairs.add((old, by[address]))
+        return pairs
 
     def before(self, items: list[Step]) -> set[tuple[Step, Step]]:
         by = {step.address: step for step in items if step.verb != "delete"}
-        deletes = {step.address: step for step in items if step.verb == "delete"}
-        rules = (self.rule1, self.rule2, self.rule3, self.rule4)
+        deletes: dict[str, list[Step]] = {}
+        for step in items:
+            if step.verb == "delete":
+                deletes.setdefault(step.address, []).append(step)
+        rules = (self.rule1, self.rule2, self.rule3, self.rule4, self.rule5)
         return set().union(*(rule(by, deletes) for rule in rules))
 
     def pick(self, ready: list[Step]) -> Step:
@@ -802,12 +826,8 @@ class NoRuleFour(Model):
 class RuleFourForEveryDelete(Model):
     """Makes users move before any delete, even the delete of a delete-first replace."""
 
-    def rule4(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
-        return {
-            (by[user], deletes[target])
-            for user, target in self.links
-            if user in by and user in self.have and target in deletes
-        }
+    def holds_back(self, gone: Step, deletes: dict) -> bool:
+        return True
 
 
 class RuleTwoOnlyForPlainDeletes(Model):
@@ -815,12 +835,19 @@ class RuleTwoOnlyForPlainDeletes(Model):
 
     def rule2(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
         return {
-            (step, deletes[target])
-            for step in deletes.values()
-            if step.tag != "replace"
-            for target in self.links_of(step)
-            if target in deletes and deletes[target].tag != "replace"
+            (step, gone)
+            for step, gone in super().rule2(by, deletes)
+            if step.tag != "replace" and gone.tag != "replace"
         }
+
+
+class MarkSpreadsOnlyFromReplaced(Model):
+    """Spreads the mark only from a marked resource that is itself replaced."""
+
+    def create_first(self) -> set[str]:
+        table = self.reach_table()
+        marked = {m for m in self.marks if m in self.want and self.action(m) == "replace"}
+        return marked | {b for a in marked for b in self.want if table[(a, b)]}
 
 
 # ------------------------------------------------------------------ level 4 mistakes
@@ -935,6 +962,31 @@ class StateHidesOldObjects(Model):
 
     def state(self) -> list[list[str]]:
         return [row for row in super().state() if row[1] == "current"]
+
+
+class OneDeletePerAddress(Model):
+    """Keeps only the old object's delete at an address that has one."""
+
+    def steps(self) -> list[Step]:
+        return [
+            step
+            for step in super().steps()
+            if not (step.verb == "delete" and step.tag != "old" and step.address in self.old)
+        ]
+
+
+class OldObjectNotFirst(Model):
+    """Leaves the old object's delete unordered against the other steps of its address."""
+
+    def rule5(self, by: dict, deletes: dict) -> set[tuple[Step, Step]]:
+        return set()
+
+
+class OldObjectWaitsForUsersEvenWhenReplacedAgain(Model):
+    """Holds the old object's delete for the users of an address that is replaced again."""
+
+    def holds_back(self, gone: Step, deletes: dict) -> bool:
+        return gone.order != DELETE_FIRST
 
 
 MISTAKES: Sequence[type[Model]] = Model.__subclasses__()

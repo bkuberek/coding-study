@@ -48,7 +48,7 @@ Two resources have the same attributes when they have the same keys with the sam
 
 An update lists only the keys that differ: a key that is only desired is a `+` row, a key that is only actual a `-` row, and a key with two different values a `~` row. A no-op has no attribute rows.
 
-**The order.** First the steps that create, update or leave alone, sorted by address; then the deletes, sorted by address. Removing old things last is a common habit: whatever replaces them is in place first.
+**The order.** First the steps that create, update or leave alone, sorted by address; then the deletes, sorted by address. In this problem deletes go last, so that whatever replaces a resource is in place before it goes.
 
 ### Example 1
 
@@ -118,7 +118,7 @@ A replace ripples: whatever refers to the identifier of a replaced resource gets
 3. A replace without the mark deletes, then creates: its delete comes before its create. With the mark, its create comes before its delete.
 4. When the actual `Y` was recorded as built on `X`, `Y` has a step that is not a delete, and `X` has a delete that is not the delete of a replace without the mark, then that step of `Y` comes before the delete of `X`: `Y` stops using the old `X` before it goes.
 
-**The mark spreads.** A resource that a marked resource depends on, directly or through others, is replaced with the create first too. Without this, rules 1 to 4 can ask two steps to wait for each other. The mark of an address that is not desired, or not replaced, changes nothing.
+**The mark spreads.** The mark spreads from a desired marked resource to every resource it depends on, directly or through others, even when the marked resource itself is not replaced: any of them that is replaced creates first too. Without this, rules 1 to 4 can ask two steps to wait for each other. On an address that is not desired, the mark does nothing.
 
 ### Example 1
 
@@ -143,10 +143,12 @@ Now carry the plan out. The simulated cloud is data: you are told which steps fa
 - Each step that succeeds is recorded in the actual state at once, and the steps after it see the change:
   - A create records the resource with its desired attributes, resolved **now**, plus the values the cloud picked for its computed keys. Its recorded links become the resources it depends on.
   - An update sets the desired attributes, resolved now, keeps the actual values of the computed keys, and drops every other key. Its recorded links become the resources it depends on.
-  - A delete removes the resource and its links.
+  - A delete removes the resource and its own links. Links that other resources have to its address stay recorded.
   - Resolving **now** means: a reference to a computed key takes the value the target has in the actual state at that moment, which, for a target just created, is the value the cloud picked; a reference to any other key resolves to the desired value.
 - A replace without the mark: its delete removes the actual resource, and its create records the new one. A replace with the mark: when its create succeeds, the resource that was there becomes the **old object** of the address, keeping its attributes and links, and the new resource takes its place. The delete of the replace removes the old object. If that delete fails or is skipped, the old object stays.
-- While an address has an old object, every plan has a step `["delete", address, "old"]`, followed by a `-` row for each attribute of the old object. It has rank 1, rule 2 applies to it with the links of the old object, and rule 4 applies to it as to any delete that is not part of a replace without the mark. An address with an old object is never deleted or replaced before the old object is gone.
+- While an address has an old object, every plan has a step `["delete", address, "old"]`, followed by a `-` row for each attribute of the old object. It has rank 1. If the current resource at that address is deleted or replaced as well, both deletes appear. Rules 2 and 4 apply to every delete of an address, the old object's included: rule 2 with the links of the object that the step deletes, and rule 4 as to any delete that is not part of a replace without the mark, with one exception below.
+- **Rule 5** keeps an address to one old object at a time: the delete of an old object comes before the other delete of its address, and before the create of a replace of its address. So a second replace with the mark finds the old object gone before it makes a new one, and nothing is ever overwritten.
+- The exception to rule 4: it does not hold back the delete of an old object when its address is replaced again. The users can only move to the newest resource, which rule 5 creates after that delete, so waiting for them would make the steps wait for each other.
 - `state()`: the actual state, sorted by address. Each resource is a row `[address, "current", key1, value1, key2, value2, ...]` with its keys sorted. An address with an old object has a second row right after it, `[address, "old", ...]`, built the same way.
 
 **Converging.** After a partial failure, the actual state says exactly what happened, so the next plan holds exactly what is left to do, and applying it finishes the job. Once every step succeeds, a new plan is all no-ops.
@@ -205,4 +207,4 @@ For `apply`, keep the edges you built for the order. Walk the steps in plan orde
 
 ### Hint 7
 
-Give the actual state a second dictionary for old objects, with their links. The create of a replace with the mark moves the current resource into it before it records the new one, and the delete of that replace, like the delete of an old object, removes the entry from there. The plan then turns every entry into a delete step, and its rank and rules 2 and 4 put it where it belongs.
+Give the actual state a second dictionary for old objects, with their links. The create of a replace with the mark moves the current resource into it before it records the new one, and the delete of that replace, like the delete of an old object, removes the entry from there. The plan then turns every entry into a delete step of its own, next to any other delete of the address, and its rank and rules 2, 4 and 5 put it where it belongs.

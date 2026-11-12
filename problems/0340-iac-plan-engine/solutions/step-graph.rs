@@ -339,12 +339,16 @@ impl PlanEngine {
                 steps.push(step);
             }
         }
+        let mut olds: BTreeMap<String, usize> = BTreeMap::new();
         for (address, attributes) in &self.old {
             let mut step = Step::new("delete", address, "old", 1);
             step.diff = removed(attributes);
-            deletes.insert(address.clone(), steps.len());
+            olds.insert(address.clone(), steps.len());
             steps.push(step);
         }
+        let deletes_of = |address: &String| -> Vec<usize> {
+            olds.get(address).into_iter().chain(deletes.get(address)).copied().collect()
+        };
 
         let mut edges: Vec<(usize, usize)> = Vec::new();
         for (address, targets) in &needs {
@@ -352,10 +356,10 @@ impl PlanEngine {
                 edges.push((applies[target], applies[address]));
             }
         }
-        for (address, &index) in &deletes {
+        for (address, &index) in deletes.iter().chain(olds.iter()) {
             let held = if steps[index].tag == "old" { &self.old_deps } else { &self.deps };
             for target in held.get(address).into_iter().flatten() {
-                if let Some(&gone) = deletes.get(target) {
+                for gone in deletes_of(target) {
                     edges.push((index, gone));
                 }
             }
@@ -365,8 +369,11 @@ impl PlanEngine {
                 continue;
             }
             for target in self.deps.get(address).into_iter().flatten() {
-                if let Some(&gone) = deletes.get(target) {
-                    if steps[gone].mode != Mode::DeleteFirst {
+                let replaced_again = deletes.get(target).map_or(false, |&later| steps[later].tag == "replace");
+                for gone in deletes_of(target) {
+                    let held_back = steps[gone].mode != Mode::DeleteFirst
+                        && !(steps[gone].tag == "old" && replaced_again);
+                    if held_back {
                         edges.push((index, gone));
                     }
                 }
@@ -377,6 +384,14 @@ impl PlanEngine {
                 Mode::DeleteFirst => edges.push((index, applies[address])),
                 Mode::CreateFirst => edges.push((applies[address], index)),
                 Mode::None => {}
+            }
+        }
+        for (address, &stale) in &olds {
+            if let Some(&later) = deletes.get(address) {
+                edges.push((stale, later));
+                if steps[later].tag == "replace" {
+                    edges.push((stale, applies[address]));
+                }
             }
         }
         for (first, second) in edges {

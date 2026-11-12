@@ -209,24 +209,29 @@ class PlanEngine {
                 deletes[address] = Step("delete", address, "", 1).apply { diff = removed(attributes) }
             }
         }
+        val olds = LinkedHashMap<String, Step>()
         for ((address, attributes) in old) {
-            deletes[address] = Step("delete", address, "old", 1).apply { diff = removed(attributes) }
+            olds[address] = Step("delete", address, "old", 1).apply { diff = removed(attributes) }
         }
 
         fun link(first: Step, second: Step) {
             first.after.add(second)
             second.before.add(first)
         }
+        fun deletesOf(address: String): List<Step> = listOfNotNull(olds[address], deletes[address])
         for ((address, targets) in needs) targets.forEach { link(applies.getValue(it), applies.getValue(address)) }
-        for (step in deletes.values) {
+        for (step in deletes.values + olds.values) {
             val held = if (step.tag == "old") oldDeps else deps
-            held[step.address]?.forEach { target -> deletes[target]?.let { link(step, it) } }
+            held[step.address]?.forEach { target -> deletesOf(target).forEach { link(step, it) } }
         }
         for (step in applies.values) {
             if (step.address !in current) continue
             deps[step.address]?.forEach { target ->
-                val gone = deletes[target]
-                if (gone != null && gone.mode != DELETE_FIRST) link(step, gone)
+                val replacedAgain = deletes[target]?.tag == "replace"
+                for (gone in deletesOf(target)) {
+                    if (gone.mode == DELETE_FIRST || (gone.tag == "old" && replacedAgain)) continue
+                    link(step, gone)
+                }
             }
         }
         for (step in deletes.values) {
@@ -235,7 +240,12 @@ class PlanEngine {
                 CREATE_FIRST -> link(applies.getValue(step.address), step)
             }
         }
-        return emptyList<List<String>>() to order(applies.values + deletes.values)
+        for ((address, stale) in olds) {
+            val later = deletes[address] ?: continue
+            link(stale, later)
+            if (later.tag == "replace") link(stale, applies.getValue(address))
+        }
+        return emptyList<List<String>>() to order(applies.values + deletes.values + olds.values)
     }
 
     private fun classify(address: String, values: Map<String, String>): Step {

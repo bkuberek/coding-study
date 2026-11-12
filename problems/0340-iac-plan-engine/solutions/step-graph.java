@@ -337,10 +337,11 @@ public class PlanEngine {
                 deletes.put(entry.getKey(), step);
             }
         }
+        Map<String, Step> olds = new HashMap<>();
         for (Map.Entry<String, Map<String, String>> entry : old.entrySet()) {
             Step step = new Step("delete", entry.getKey(), "old", 1);
             step.diff = removed(entry.getValue());
-            deletes.put(entry.getKey(), step);
+            olds.put(entry.getKey(), step);
         }
 
         for (Map.Entry<String, Set<String>> entry : needs.entrySet()) {
@@ -348,11 +349,12 @@ public class PlanEngine {
                 link(applies.get(target), applies.get(entry.getKey()));
             }
         }
-        for (Step step : deletes.values()) {
+        List<Step> allDeletes = new ArrayList<>(deletes.values());
+        allDeletes.addAll(olds.values());
+        for (Step step : allDeletes) {
             Map<String, Set<String>> held = step.tag.equals("old") ? oldDeps : deps;
             for (String target : held.getOrDefault(step.address, Set.of())) {
-                Step gone = deletes.get(target);
-                if (gone != null) {
+                for (Step gone : deletesOf(target, deletes, olds)) {
                     link(step, gone);
                 }
             }
@@ -362,8 +364,12 @@ public class PlanEngine {
                 continue;
             }
             for (String target : deps.getOrDefault(step.address, Set.of())) {
-                Step gone = deletes.get(target);
-                if (gone != null && !gone.mode.equals(DELETE_FIRST)) {
+                Step later = deletes.get(target);
+                boolean replacedAgain = later != null && later.tag.equals("replace");
+                for (Step gone : deletesOf(target, deletes, olds)) {
+                    if (gone.mode.equals(DELETE_FIRST) || (gone.tag.equals("old") && replacedAgain)) {
+                        continue;
+                    }
                     link(step, gone);
                 }
             }
@@ -375,9 +381,30 @@ public class PlanEngine {
                 link(applies.get(step.address), step);
             }
         }
+        for (Step stale : olds.values()) {
+            Step later = deletes.get(stale.address);
+            if (later != null) {
+                link(stale, later);
+                if (later.tag.equals("replace")) {
+                    link(stale, applies.get(stale.address));
+                }
+            }
+        }
         List<Step> all = new ArrayList<>(applies.values());
-        all.addAll(deletes.values());
+        all.addAll(allDeletes);
         return new Built(List.of(), order(all));
+    }
+
+    /** The deletes of an address: its old object's first, then its current object's. */
+    private static List<Step> deletesOf(String address, Map<String, Step> deletes, Map<String, Step> olds) {
+        List<Step> found = new ArrayList<>();
+        if (olds.containsKey(address)) {
+            found.add(olds.get(address));
+        }
+        if (deletes.containsKey(address)) {
+            found.add(deletes.get(address));
+        }
+        return found;
     }
 
     private static void link(Step first, Step second) {

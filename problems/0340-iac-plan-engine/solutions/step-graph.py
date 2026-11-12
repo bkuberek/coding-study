@@ -238,36 +238,50 @@ class PlanEngine:
             if address not in self._desired:
                 deletes[address] = Step("delete", address, "", 1)
                 deletes[address].diff = self._removed(attributes)
+        olds: dict[str, Step] = {}
         for address, attributes in self._old.items():
-            deletes[address] = Step("delete", address, "old", 1)
-            deletes[address].diff = self._removed(attributes)
+            olds[address] = Step("delete", address, "old", 1)
+            olds[address].diff = self._removed(attributes)
 
         def link(first: Step, second: Step) -> None:
             first.after.append(second)
             second.before.append(first)
 
+        def deletes_of(address: str) -> list[Step]:
+            return [step for step in (olds.get(address), deletes.get(address)) if step]
+
         for address, targets in needs.items():
             for target in targets:
                 link(applies[target], applies[address])
-        for address, step in deletes.items():
+        for step in [*deletes.values(), *olds.values()]:
             held = self._old_deps if step.tag == "old" else self._deps
-            for target in held.get(address, ()):
-                if target in deletes:
-                    link(step, deletes[target])
+            for target in held.get(step.address, ()):
+                for gone in deletes_of(target):
+                    link(step, gone)
         for address, step in applies.items():
             if address not in self._current:
                 continue
             for target in self._deps.get(address, ()):
-                gone = deletes.get(target)
-                if gone is not None and gone.mode != "destroy-before-create":
+                replaced_again = target in deletes and deletes[target].tag == "replace"
+                for gone in deletes_of(target):
+                    if gone.mode == "destroy-before-create":
+                        continue
+                    if gone.tag == "old" and replaced_again:
+                        continue
                     link(step, gone)
         for address, step in deletes.items():
             if step.mode == "destroy-before-create":
                 link(step, applies[address])
             elif step.mode == "create-before-destroy":
                 link(applies[address], step)
+        for address, old in olds.items():
+            later = deletes.get(address)
+            if later is not None:
+                link(old, later)
+                if later.tag == "replace":
+                    link(old, applies[address])
 
-        return [], self._order([*applies.values(), *deletes.values()])
+        return [], self._order([*applies.values(), *deletes.values(), *olds.values()])
 
     def _classify(self, address: str, values: dict[str, str]) -> tuple[str, Step]:
         computed = sorted(self._computed.get(kind_of(address), ()))

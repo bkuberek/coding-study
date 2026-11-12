@@ -327,26 +327,28 @@ export class PlanEngine {
         deletes.set(address, step);
       }
     }
+    const olds = new Map<string, Step>();
     for (const [address, attributes] of this.old) {
       const step = newStep("delete", address, "old", 1);
       step.diff = removed(attributes);
-      deletes.set(address, step);
+      olds.set(address, step);
     }
 
     const link = (first: Step, second: Step): void => {
       first.after.push(second);
       second.before.push(first);
     };
+    const deletesOf = (address: string): Step[] =>
+      [olds.get(address), deletes.get(address)].filter((step): step is Step => step !== undefined);
     for (const [address, targets] of needs) {
       for (const target of targets) {
         link(applies.get(target)!, applies.get(address)!);
       }
     }
-    for (const [address, step] of deletes) {
+    for (const step of [...deletes.values(), ...olds.values()]) {
       const held = step.tag === "old" ? this.oldDeps : this.deps;
-      for (const target of held.get(address) ?? []) {
-        const gone = deletes.get(target);
-        if (gone !== undefined) {
+      for (const target of held.get(step.address) ?? []) {
+        for (const gone of deletesOf(target)) {
           link(step, gone);
         }
       }
@@ -356,8 +358,11 @@ export class PlanEngine {
         continue;
       }
       for (const target of this.deps.get(address) ?? []) {
-        const gone = deletes.get(target);
-        if (gone !== undefined && gone.mode !== DELETE_FIRST) {
+        const replacedAgain = deletes.get(target)?.tag === "replace";
+        for (const gone of deletesOf(target)) {
+          if (gone.mode === DELETE_FIRST || (gone.tag === "old" && replacedAgain)) {
+            continue;
+          }
           link(step, gone);
         }
       }
@@ -369,7 +374,16 @@ export class PlanEngine {
         link(applies.get(address)!, step);
       }
     }
-    return [[], PlanEngine.order([...applies.values(), ...deletes.values()])];
+    for (const [address, old] of olds) {
+      const later = deletes.get(address);
+      if (later !== undefined) {
+        link(old, later);
+        if (later.tag === "replace") {
+          link(old, applies.get(address)!);
+        }
+      }
+    }
+    return [[], PlanEngine.order([...applies.values(), ...deletes.values(), ...olds.values()])];
   }
 
   private classify(address: string, values: Attributes): [string, Step] {
