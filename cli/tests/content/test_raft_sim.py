@@ -540,6 +540,36 @@ class NoRetryAfterAFailure(Model):
             node["next"][peer] -= 1
 
 
+class NextIndexCanReachZero(Model):
+    """Takes a failure with index 0 for an answer to the latest probe and lowers nextIndex to 0."""
+
+    def retry(self, name: str, peer: str, index: int) -> None:
+        node = self.nodes[name]
+        if index == node["next"][peer] - 1:
+            node["next"][peer] -= 1
+            self.append_to(name, peer)
+
+
+class TermRefusalReportsNoIndex(Model):
+    """Refuses a request of an older term with index 0 instead of its prevLogIndex."""
+
+    def on_append(self, message: Message) -> None:
+        node = self.nodes[message["to"]]
+        if message["term"] < node["term"]:
+            self.send(
+                {
+                    "kind": "append-reply",
+                    "from": message["to"],
+                    "to": message["from"],
+                    "term": node["term"],
+                    "success": False,
+                    "index": 0,
+                }
+            )
+            return
+        super().on_append(message)
+
+
 class AnyNodeAcceptsCommands(Model):
     """Lets every node append a proposed command."""
 

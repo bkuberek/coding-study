@@ -10,7 +10,7 @@ Build `RaftCluster`, a step-by-step simulation of Raft, an algorithm that lets a
 
 **Terms.** Time is divided into terms, numbered 1, 2, 3 and so on. Each term starts with an election and has at most one leader. Every message carries the sender's term, and a server that sees a greater term than its own adopts it at once and becomes a follower: a greater term means newer news. Worked example: `s1` is the leader of term 1 when the network cuts it off. `s2` hears nothing from it, starts term 2 and wins. When `s1` is reachable again, the first message it gets from term 2 tells it that it is out of date, and it steps down. Terms work like edition numbers on a document: whoever holds an older edition knows to discard it.
 
-**The log.** Each server keeps a log: a list of entries, numbered from 1, where each entry holds a command and the term in which the leader received it. This problem writes an entry as `"<term>:<command>"`, so the log `["1:x", "1:y", "2:z"]` holds `x` and `y`, received in term 1, and `z`, received in term 2. Once an entry is safely stored on enough servers it is **committed**: it will never change or disappear, and each server **applies** it, carrying out the command, in log order.
+**The log.** Each server keeps a log: a list of entries, numbered from 1, where each entry holds a command and the term in which the leader received it. This problem writes an entry as `"<term>:<command>"`, so the log `["1:x", "1:y", "2:z"]` holds `x` and `y`, received in term 1, and `z`, received in term 2. Once the leader knows an entry is stored on a majority of the servers (level 3 adds a caveat), the entry is **committed**: it will never change or disappear, and each server **applies** it, carrying out the command, in log order.
 
 **Majorities.** A majority is more than half of all the servers of the cluster: 2 of 3, 3 of 4, 3 of 5. A leader needs the votes of a majority, and an entry needs copies on a majority to be committed. Any two majorities of the same cluster share at least one server, and that shared server is what stops two leaders in one term, or a new leader that has forgotten a committed entry.
 
@@ -75,6 +75,8 @@ Nodes now talk through messages. There are four kinds, and every message carries
 | AppendEntries | the leader | leader id, prevLogIndex, prevLogTerm, entries, leaderCommit (level 3) |
 | AppendEntries reply | the node that got it | success, index (level 3) |
 
+The `index` field of the AppendEntries reply is this problem's addition: in the paper's summary (its Figure 2) the reply carries only the term and the success flag, and the leader remembers what it sent instead.
+
 - `timeout(node)`: the node's election timer fires. A leader ignores it. Any other node starts an election: it adds 1 to its term, becomes a candidate, votes for itself, and sends a RequestVote to every other node, in cluster order. In a cluster of one node, its own vote is a majority and it becomes leader at once. Returns the ids of the messages sent.
 - `heartbeat(node)`: the node's heartbeat timer fires. A leader sends an AppendEntries to every other node, in cluster order; any other node does nothing. Returns the ids sent.
 - `deliver(message)`: the network hands the message with that id to its receiver, which handles it as below. Returns the ids of the messages the receiver sent while handling it. A message that is not in flight (never sent, or already delivered or lost) changes nothing, and the result is `[]`.
@@ -88,7 +90,7 @@ Nodes now talk through messages. There are four kinds, and every message carries
 
 **Becoming leader.** The new leader sets, for every other node, `nextIndex` to its own last log index plus 1 and `matchIndex` to 0 (level 3 uses both), and sends an AppendEntries to every other node, in cluster order, so they learn who leads.
 
-**AppendEntries.** If the request's term is smaller than the receiver's term, the receiver replies with a failure. Otherwise the sender is the leader of the receiver's term: a candidate becomes a follower, and the receiver handles the log fields as level 3 describes and replies. In this level's cases every log is still empty when such a request arrives, so it always succeeds.
+**AppendEntries.** If the request's term is smaller than the receiver's term, the receiver replies with a failure and `index = prevLogIndex` (the request's), and changes nothing else. Otherwise the sender is the leader of the receiver's term: a candidate becomes a follower, and the receiver handles the log fields as level 3 describes and replies. In this level's cases every log is still empty when such a request arrives, so it always succeeds.
 
 **AppendEntries reply.** A leader handles a reply of its own term as level 3 describes; every other reply is ignored once its term has been adopted.
 
@@ -126,7 +128,7 @@ The leader now accepts commands, copies them to the followers and commits them.
 **The leader's side.** A leader that receives a reply of its own term from `f`:
 
 - On a success, sets `matchIndex[f]` to the larger of its value and the reply's index, and `nextIndex[f]` to the larger of its value and the reply's index plus 1. Then it checks its commit index.
-- On a failure, if the reply's index is `nextIndex[f] - 1`, the reply answers the latest probe: the leader lowers `nextIndex[f]` by 1 and sends `f` a new AppendEntries at once. Any other failure is an answer to an older request and is ignored.
+- On a failure, if the reply's index is `nextIndex[f] - 1` and `nextIndex[f]` is greater than 1, the reply answers the latest probe: the leader lowers `nextIndex[f]` by 1 and sends `f` a new AppendEntries at once. Any other failure is ignored. That covers a failure to an older request, and a failure with index 0 when `nextIndex[f]` is already 1: index 0 always matches, so such a failure can only refuse, for its old term, a request the leader sent in an earlier term, and `nextIndex[f]` never goes below 1. Ignoring these failures is this problem's rule; the paper's summary just says to decrement `nextIndex` and retry.
 
 **Committing.** The leader looks for the greatest index `N` above its commit index such that the entry at `N` has the leader's current term and is stored on a majority, counting the leader itself and every follower `f` with `matchIndex[f] >= N`. If there is one, the commit index becomes `N`, which commits every entry before it too. The leader checks after every successful reply and after every `propose`, so a cluster of one node commits a proposal at once. A leader never commits an entry of an earlier term by counting its copies: such an entry can be stored on a majority and still be replaced by a later leader. It is committed only when an entry of the current term after it is. A commit index never goes down.
 
