@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0328"
+slug: sql-guard
+title: SQL Guard
+summary: "Build SqlGuard, which checks model-written SQL before it runs: tokenize a subset, allow one SELECT, enforce a table and column allowlist, cap the rows and flag values that should be placeholders."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+domains: [security, ai-llm]
+job_roles: [ai-engineer, security-engineer, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Tokens and statements}
+  - {level: 2, title: One read-only statement}
+  - {level: 3, title: Tables and columns on an allowlist}
+  - {level: 4, title: Row limits and placeholders}
+signature:
+  class:
+    name: SqlGuard
+    constructor: {params: []}
+    methods:
+      - {name: tokenize, level: 1, params: [{name: sql, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: check, level: 1, params: [{name: sql, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: checkReadOnly, level: 2, params: [{name: sql, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: naiveCheck, level: 2, params: [{name: sql, type: string}], returns: {type: string}}
+      - {name: contrast, level: 2, params: [{name: sql, type: string}], returns: {type: string}}
+      - {name: allowTable, level: 3, params: [{name: table, type: string}, {name: columns, type: "list<string>"}], returns: {type: bool}}
+      - {name: checkAccess, level: 3, params: [{name: sql, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: limitedSql, level: 4, params: [{name: sql, type: string}, {name: maxRows, type: int}], returns: {type: string}}
+      - {name: parameterFindings, level: 4, params: [{name: sql, type: string}, {name: userValues, type: "list<string>"}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: token-rules, name: "One tokenizer, token rules for the early levels and a small recursive-descent parser for the later ones", role: optimal, time: "O(n s) per call, s the sources of the query", space: "O(n + a)", time_class: "n^2", space_class: "n"}
+related: [plan-and-execute, tool-calling-agent-loop-typescript, authorization-policy-engine, memory-write-sanitizer]
+estimate_minutes: 150
