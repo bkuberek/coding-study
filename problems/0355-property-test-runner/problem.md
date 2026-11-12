@@ -146,7 +146,7 @@ A pair draws its first part, then its second. The even filter discards the odd v
 
 <!-- case: ex6 -->
 
-The list of pairs repeats the key `3`. `keys-distinct` keeps the two pairs with that key and shrinks their second parts to `0`, giving `[(3,0),(3,0)]`. `map-keeps-last` needs the two values to differ, so it stops at `[(3,0),(3,1)]`: the map keeps `0` where the last write said `1`. With a limit of 5 discards, lists of 5 to 8 distinct digits from `0` to `3` cannot be drawn, and the check gives up before any run passes.
+The list of pairs repeats the key `3`. `keys-distinct` keeps the two pairs with that key and shrinks their second parts to `0`, giving `[(3,0),(3,0)]`. `map-keeps-last` needs the two values to differ, so it stops at `[(3,0),(3,1)]`: the map keeps `0` where the last write said `1`. No list of 5 or more distinct digits from `0` to `3` exists, so this filter can never let a value through at any limit; the limit of 5 discards is what stops the check, which gives up before any run passes.
 
 ## Level 4: Stateful testing
 
@@ -170,7 +170,7 @@ Some code is not a function from input to output but an object whose answers dep
 
 When the system under test's own queue is empty at a `get` (a bug can lose values), it answers `empty`.
 
-**Random sequences.** One sequence is drawn as follows: its length is an integer between `1` and `maxLength`, from one draw. Then, for each command, with a fresh model that the drawn commands are applied to as they are drawn: the allowed commands, in the order `put`, `get`, `size`, are all three when the model holds a value and `put` and `size` when it is empty; the command is the allowed one at position `r mod (number allowed)` for the next draw `r`; a `put` then draws its value, an integer between `0` and `9`. Sequences are written as their commands joined by `, `, such as `put 3, get, size`.
+**Random sequences.** One sequence is drawn as follows: its length is an integer between `1` and `maxLength`, from one draw. Start a fresh model for the sequence; then, for each command: the allowed commands, in the order `put`, `get`, `size`, are all three when the model holds a value and `put` and `size` when it is empty; the command is the allowed one at position `r mod (number allowed)` for the next draw `r`; a `put` then draws its value, an integer between `0` and `9`; and the command is applied to the model before the next one is drawn. Sequences are written as their commands joined by `, `, such as `put 3, get, size`.
 
 **Running and shrinking.** A run sends the sequence to a new model and a new system under test; it fails when some command gets different answers. The candidates of a sequence of `n` commands are those of a list: first the shorter sequences, by chunk sizes `n`, `n/2`, `n/4` and so on, never shorter than one command; then, for each `put` from the first to the last, its value replaced by each candidate of an `int 0 9` value. A candidate that repeats an earlier one or the sequence itself is left out, and so is a candidate that breaks the precondition: removing a `put` can leave a later `get` with nothing to take. The shrinker moves to the first candidate that fails, as at level 2.
 
@@ -191,7 +191,7 @@ The model accepts two values, refuses the third, and gives them back in order. T
 
 <!-- case: ex8 -->
 
-The first sequence from seed `1` has four `size` commands, since a `get` is never drawn while the model is empty. The first sequence that catches `size-wraps` has ten commands. Shrinking removes all but two puts and a `size`, then shrinks both values to `0`: fill the queue, then ask its size.
+The first sequence from seed `1` happens to draw `size` four times, so its model stays empty and `get` is never offered. The first sequence that catches `size-wraps` has ten commands. Shrinking removes all but two puts and a `size`, then shrinks both values to `0`: fill the queue, then ask its size.
 
 ## Constraints
 
