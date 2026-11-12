@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0343"
+slug: values-templating
+title: Layered Values and Templates
+summary: "Build ValuesRenderer: deep-merge layers of configuration values, fill templates with defaults, conditions and loops, then validate against a schema and show which layer set each value."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [recursion, trees, stack]
+domains: [infrastructure]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: Merging layers}
+  - {level: 2, title: Rendering a template}
+  - {level: 3, title: "Conditions, loops and whitespace"}
+  - {level: 4, title: Schemas and provenance}
+signature:
+  class:
+    name: ValuesRenderer
+    constructor: {params: []}
+    methods:
+      - {name: setLayer, level: 1, params: [{name: name, type: string}, {name: rows, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: merged, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: render, level: 2, params: [{name: template, type: string}], returns: {type: "list<string>"}}
+      - {name: setSchema, level: 4, params: [{name: rows, type: "list<list<string>>"}], returns: {type: void}}
+      - {name: validate, level: 4, params: [], returns: {type: "list<list<string>>"}}
+      - {name: provenance, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: merge-parse-render, name: "Merge into a tree, parse the template once, render with a stack of bindings", role: optimal, time: "O(R + V log V) per merged, provenance or validate, for R rows in all layers and V merged values; render adds O(T + P) for a template of T characters and P printed characters", space: "O(R + T + P)", time_class: "n log n", space_class: "n"}
+related: [manifest-policy, iac-plan-engine, drift-detection, idempotent-converge, decode-string, basic-calculator]
+estimate_minutes: 150

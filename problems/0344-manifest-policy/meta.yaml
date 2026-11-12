@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0344"
+slug: manifest-policy
+title: Manifest Policy Checks
+summary: "Build PolicyChecker: rules as data over deployment manifests, wildcards and label selectors, exceptions that expire, and severities, warn or deny modes and patch fixes that decide admission."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, trees, sorting]
+domains: [infrastructure]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: Rules on one field}
+  - {level: 2, title: Rules across a manifest}
+  - {level: 3, title: Exceptions}
+  - {level: 4, title: "Severity, enforcement and fixes"}
+signature:
+  class:
+    name: PolicyChecker
+    constructor: {params: []}
+    methods:
+      - {name: addManifest, level: 1, params: [{name: rows, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: requireField, level: 1, params: [{name: ruleId, type: string}, {name: kind, type: string}, {name: pointer, type: string}], returns: {type: bool}}
+      - {name: forbidTags, level: 1, params: [{name: ruleId, type: string}, {name: kind, type: string}, {name: pointer, type: string}, {name: tags, type: "list<string>"}], returns: {type: bool}}
+      - {name: check, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: requirePortTargets, level: 2, params: [{name: ruleId, type: string}], returns: {type: bool}}
+      - {name: allow, level: 3, params: [{name: ruleId, type: string}, {name: manifestId, type: string}, {name: reason, type: string}, {name: expires, type: date}], returns: {type: bool}}
+      - {name: checkOn, level: 3, params: [{name: today, type: date}], returns: {type: "list<list<string>>"}}
+      - {name: configure, level: 4, params: [{name: ruleId, type: string}, {name: severity, type: string}, {name: mode, type: string}, {name: fix, type: string}], returns: {type: bool}}
+      - {name: findings, level: 4, params: [{name: today, type: date}], returns: {type: "list<list<string>>"}}
+      - {name: decide, level: 4, params: [{name: today, type: date}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: expand-and-match, name: "Expand each rule's pattern over each manifest, then layer exceptions, modes and fixes", role: optimal, time: "O(M log M + M R P + V M) per check, for M manifests, R rules, P pointers per rule and manifest, and V services; findings add O(F log F) for F findings", space: "O(N + E + F) for N rows in all manifests, E exceptions and F findings", time_class: "n^2", space_class: "n"}
+related: [values-templating, iac-plan-engine, drift-detection, idempotent-converge]
+estimate_minutes: 120
