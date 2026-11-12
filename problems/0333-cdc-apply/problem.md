@@ -55,7 +55,7 @@ Every change in the source's log has a **log sequence number**, its *LSN*: a pos
 - Any other change follows the rules of level 1, where a key with a tombstone counts as absent. When it is applied, the key's version becomes `lsn`. A change with an error code changes nothing, its key's version included.
 - `version(key)`: the key's version, or `-1` when no change to this key has been applied.
 
-The versions are per key, and not one position for the whole replica, because changes to *different* keys may reach the replica in any order: a queue that spreads the changes over several partitions by key keeps them in order only within each partition. Thanks to the versions, applying the log once more, or any part of it that ends at its end, after it has been applied leaves the table exactly as it was.
+The versions are per key, and not one position for the whole replica, because changes to *different* keys may reach the replica in any order: a queue that spreads the changes over several partitions by key keeps them in order only within each partition. Thanks to the versions, after the log has been applied in order, applying it once more, or any part of it that ends at its end, leaves the table exactly as it was. A log that was first applied out of order carries no such promise: see the first follow-up.
 
 Cases that use `applyAt` do not call `apply`.
 

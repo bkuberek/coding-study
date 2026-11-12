@@ -66,8 +66,8 @@ With `gap` 5, key 1's events at 1 and 3 have the windows `[1, 6)` and `[3, 8)`, 
 
 So far the answers describe events that have all arrived. A stream never ends, so a live system must report each window at some point, without knowing whether more events for it are still on the way. It decides with a **watermark**: a time `W` behind which it treats event time as complete, so that a window whose end is at or behind `W` can be reported.
 
-- `configure(size, lateness)`: from this call on, every `add` also feeds a **stream** of tumbling windows of length `size`, with an allowed lateness of `lateness` time units. Cases that use the methods of this level call `configure` once, right after the constructor.
-- The watermark starts at `0`. After each event at time `t` is placed in its window, the watermark becomes `max(W, t - lateness)`: the latest event time seen so far, minus the lateness, and never lower than before. `lateness` is how far out of order an event may arrive and still count as on time.
+- `configure(size, lateness)`: from this call on, every `add` also feeds a **stream** of tumbling windows of length `size`. `lateness` is the watermark's **out-of-orderness bound**: how many time units the watermark trails the newest event. Cases that use the methods of this level call `configure` once, right after the constructor.
+- The watermark starts at `0`. After each event at time `t` is placed in its window, the watermark becomes `max(W, t - lateness)`: the latest event time seen so far, minus the bound, and never lower than before. So an event whose time is at most `lateness` behind the largest event time seen so far is guaranteed to be on time; an event further behind can still be on time, as long as its window is open.
 - A window of the stream is **open** until the watermark reaches its end. When an event moves the watermark so that `W >= end` for some open windows, those windows are **emitted**: their rows go to the output, sorted by `start` and then `key`, and they are open no more.
 - An event whose time is behind the watermark, `t < W`, still joins its window while that window is open: the watermark promises only that windows ending at or behind it are complete.
 - `watermark()`: the current watermark.
@@ -80,19 +80,19 @@ At this level no event arrives for a window that has already been emitted. The b
 
 <!-- case: ex5 -->
 
-With no lateness the watermark is the latest event time: after the event at 9 it is 9, and both windows `[0, 10)` are still open. The event at 11 moves it to 11, which reaches the end 10, so both are emitted, key 1 first. The window `[10, 20)` stays open.
+With a bound of 0 the watermark is the latest event time: after the event at 9 it is 9, and both windows `[0, 10)` are still open. The event at 11 moves it to 11, which reaches the end 10, so both are emitted, key 1 first. The window `[10, 20)` stays open.
 
 ### Example 2
 
 <!-- case: ex6 -->
 
-With a lateness of 5, the event at 12 moves the watermark to 7. The events at 8 and 6 arrive after it, and both still join `[0, 10)`, even the one at 6, which is behind the watermark: their window has not been emitted. The event at 15 moves the watermark to 10 and emits the two windows `[0, 10)`.
+With a bound of 5, the event at 12 moves the watermark to 7. The events at 8 and 6 arrive after it, and both still join `[0, 10)`, even the one at 6, which is behind the watermark: their window has not been emitted. The event at 15 moves the watermark to 10 and emits the two windows `[0, 10)`.
 
 ## Level 4: Late events
 
-A watermark is a guess. Events can arrive later than any lateness allows: a phone that was offline uploads its readings, a network delays a batch. The two clocks of the statement are now far apart: an event's *event time* is when it happened, but the system sees it at its *processing time*, which here is the moment of its `add` call. An event is **late** when its window's end is at or behind the watermark at the moment it arrives: its window has already been reported, or would have been. The engine has two ways to treat it.
+A watermark is a guess. Events can arrive further behind than any bound allows: a phone that was offline uploads its readings, a network delays a batch. The two clocks of the statement are now far apart: an event's *event time* is when it happened, but the system sees it at its *processing time*, which here is the moment of its `add` call. An event is **late** when its window's end is at or behind the watermark at the moment it arrives: its window has already been reported, or would have been. The engine has two ways to treat it.
 
-- `allowUpdates(grace)`: after its end, a window stays **correctable** until the watermark reaches `end + grace`. Cases that use it call it once, right after `configure`. Without it, `grace` is `0`, and no window is ever correctable.
+- `allowUpdates(grace)`: after its end, a window stays **correctable** until the watermark reaches `end + grace`. Cases that use it call it once, right after `configure`. Without it, `grace` is `0`, and no window is ever correctable. Some engines call this extra time *allowed lateness*; it is not the `lateness` of `configure`, which only delays the watermark.
 - A late event whose window is correctable, `W < end + grace`, joins the window, and the window is emitted again at once:
   - if the window was emitted before, the output gets two rows, first a **retraction** of the result emitted last, which is that row with its count and sum negated, `[key, start, end, -count, -sum]`, and then the new result. Adding up every row emitted for a window gives its current result, and that is why a retraction comes first.
   - if the window was never emitted (no event of that key fell in it before), the output gets just its first result.

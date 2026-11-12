@@ -103,7 +103,7 @@ A *backfill* reruns a task over a range of past days, after a fix or after late 
   - and every **done** partition that needs a partition of the plan, through its windows, and every done partition that needs one of those, and so on. A partition that is not done read nothing that changes, so it is not part of the plan.
   - The rows are in **plan order**: oldest day first, and for the same day, in run order.
 - `backfill(task, fromDay, toDay, cap)`: runs the partitions of the plan in **rounds**, as a scheduler that may run at most `cap` tasks at once would:
-  - At the start of each round, every partition of the plan that has no result yet is skipped if one of the partitions it needs is in the plan and has failed or been skipped, or is not in the plan and is not done. Its result is `"skipped"` in this round.
+  - At the start of each round, every partition of the plan that has no result yet is skipped if one of the partitions it needs is in the plan and has failed or been skipped, or is not in the plan and is not done. A skip decided earlier in the same round counts, so a partition that needs one skipped this round is skipped in this round too. Its result is `"skipped"` in this round.
   - Then the partitions of the plan without a result, whose needed partitions that are in the plan have all succeeded in this backfill, are the **ready** ones. The first `cap` of them, in plan order, are attempted, as in `run`, with retries and scripted outcomes. A partition that waits for another one of this round cannot start until the next round.
   - Rounds go on until every partition of the plan has a result. The answer has one row per partition of the plan, `[round, day, task, status, attempts]`, sorted by round, then day, then run order.
 

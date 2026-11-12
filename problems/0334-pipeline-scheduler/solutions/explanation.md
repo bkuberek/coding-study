@@ -56,7 +56,7 @@ Each write has a number that no other write has, and a partition records the num
 
 ### Trade-offs
 
-- A strongly connected components algorithm finds every task on a cycle in one linear pass. The search from each leftover task is shorter to write and quadratic only on graphs that have cycles, which the statement rejects anyway.
+- A strongly connected components algorithm finds every task on a cycle in one linear pass. The search from each leftover task is shorter to write and quadratic only on graphs that have cycles: level 1's `validate` must report those, and from level 2 on the cases promise valid pipelines.
 - A sorted set of ready names works as well as a heap. Sorting the ready tasks of one "layer" at a time does not: it gives another order, because a task that becomes ready after a small name is listed must compete with the names already waiting (`h1`).
 - Write numbers make every rewrite a change, even one with identical data. Storing a checksum of the data instead would let a backfill stop at partitions whose output did not change, at the cost of computing it.
 - The backfill decides in rounds, all tasks of a round taking the same time. A scheduler with durations would hand a free slot to the next ready partition as soon as one finishes, with the same skip and readiness rules.
