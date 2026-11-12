@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 297, url: "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/"}
 related: [tree-from-preorder-inorder, subtree-of-another-tree, encode-decode-strings]
+guides: [recursion-on-trees]
 order: 16
 estimate_minutes: 30

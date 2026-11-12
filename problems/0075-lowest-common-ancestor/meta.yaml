@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 236, url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/"}
 related: [validate-bst, tree-from-preorder-inorder]
+guides: [recursion-on-trees]
 order: 9
 estimate_minutes: 20

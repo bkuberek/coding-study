@@ -30,5 +30,5 @@ perf:
 references:
   leetcode: {number: 347, url: "https://leetcode.com/problems/top-k-frequent-elements/"}
 related: [majority-element, group-anagrams, kth-largest-in-stream]
-guides: [counting-and-frequency]
+guides: [counting-and-frequency, heap-patterns]
 estimate_minutes: 20

@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 355, url: "https://leetcode.com/problems/design-twitter/"}
 related: [merge-k-sorted-lists, lru-cache]
+guides: [heap-patterns]
 order: 5
 estimate_minutes: 35

@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Heap patterns: top k and two heaps"
+summary: Keep the best k of a stream in a heap of size k, with the weakest kept item on top, and split a collection between two heaps to keep its middle in reach.
+level: advanced
+prerequisites: [heaps]
+related: [counting-and-frequency, binary-search-trees]
+problems:
+  - kth-largest-element
+  - k-closest-points
+  - top-k-frequent-elements
+  - design-twitter
+  - merge-k-sorted-lists
+  - median-data-stream
+  - maximize-capital
+  - scheduled-transfers-bank

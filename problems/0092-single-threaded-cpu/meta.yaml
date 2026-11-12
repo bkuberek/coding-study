@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 1834, url: "https://leetcode.com/problems/single-threaded-cpu/"}
 related: [task-scheduler, maximize-capital]
+guides: [heaps]
 order: 6
 estimate_minutes: 30

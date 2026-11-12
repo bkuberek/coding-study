@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 437, url: "https://leetcode.com/problems/path-sum-iii/"}
 related: [subarray-sum-equals-k, invert-binary-tree]
+guides: [recursion-on-trees]
 order: 6
 estimate_minutes: 25

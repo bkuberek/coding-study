@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 543, url: "https://leetcode.com/problems/diameter-of-binary-tree/"}
 related: [max-depth-binary-tree, max-path-sum, balanced-binary-tree]
+guides: [recursion-on-trees]
 order: 5
 estimate_minutes: 15

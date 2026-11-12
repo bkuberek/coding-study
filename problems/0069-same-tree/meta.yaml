@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 100, url: "https://leetcode.com/problems/same-tree/"}
 related: [subtree-of-another-tree, invert-binary-tree, serialize-binary-tree]
+guides: [recursion-on-trees]
 order: 3
 estimate_minutes: 10

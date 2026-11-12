@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Heaps and priority queues
+summary: A complete binary tree in an array that always has its smallest item on top. How push sifts up, pop sifts down, why building a heap takes linear time, and the heaps of Python, Java, Go and Rust.
+level: core
+prerequisites: [trees]
+related: [heap-patterns, binary-search-trees]
+problems: [last-stone-weight, single-threaded-cpu, task-scheduler]
