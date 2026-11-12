@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0341"
+slug: drift-detection
+title: Drift Detection
+summary: "Build DriftDetector, which compares recorded infrastructure with a scan of the real world: report drift, silence false alarms, import unmanaged resources and reconcile by policy."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing, string-matching]
+domains: [infrastructure]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: Records versus the scan}
+  - {level: 2, title: Ignore rules and normalization}
+  - {level: 3, title: Import and the plan}
+  - {level: 4, title: Reconciliation policies}
+signature:
+  class:
+    name: DriftDetector
+    constructor: {params: []}
+    methods:
+      - {name: record, level: 1, params: [{name: address, type: string}, {name: resourceId, type: string}, {name: attributes, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: observe, level: 1, params: [{name: resourceId, type: string}, {name: resourceType, type: string}, {name: attributes, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: drift, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: ignore, level: 2, params: [{name: pattern, type: string}, {name: key, type: string}], returns: {type: bool}}
+      - {name: unordered, level: 2, params: [{name: resourceType, type: string}, {name: key, type: string}], returns: {type: bool}}
+      - {name: defaultValue, level: 2, params: [{name: resourceType, type: string}, {name: key, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: importResource, level: 3, params: [{name: address, type: string}, {name: resourceId, type: string}], returns: {type: string}}
+      - {name: desire, level: 3, params: [{name: address, type: string}, {name: attributes, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: plan, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: policy, level: 4, params: [{name: pattern, type: string}, {name: mode, type: string}], returns: {type: bool}}
+      - {name: reconcile, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: keyed-compare, name: "Look each record up by id, compare normalized values, and filter with star patterns", role: optimal, time: "O(N log N + N K log K + N P L^2) per report, for N resources, K keys, P rules and L the length of a pattern or address", space: "O(N K)", time_class: "n log n", space_class: "n"}
+related: [iac-plan-engine, idempotent-converge, regex-matching]
+estimate_minutes: 120
