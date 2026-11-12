@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Data lineage
+summary: Record where every dataset and column comes from, so that a wrong number can be traced upstream, the effect of a change seen downstream, and sensitive data followed to wherever it is published.
+level: advanced
+prerequisites: [pipeline-orchestration]
+related: [data-quality-and-contracts, table-formats-and-snapshots]
+problems: [lineage-graph]
