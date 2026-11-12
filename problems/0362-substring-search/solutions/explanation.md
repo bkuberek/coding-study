@@ -123,14 +123,14 @@ It is simple, needs no table, and the rolling hash extends to other problems: ma
 ### Pitfalls and edge cases
 
 - Always confirm a hash match. Without it, the answer is wrong whenever two different windows collide. The hidden cases include words built from `Aa` and `BB`: Java documents `String.hashCode` as `s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]` using `int` arithmetic, and with base 31 the two-letter words `Aa` and `BB` both give 65 * 31 + 97 = 66 * 31 + 66 = 2112. Any two texts made of the same number of `Aa` and `BB` blocks therefore get the same base-31 hash, whatever the modulus. A solution that skips the confirmation and uses base 31 reports windows that are not occurrences.
-- Keep the remainder non-negative after the subtraction: add `P` before taking `% P`. In JavaScript and in Rust the result of `%` takes the sign of the left operand, so `-5 % P` is `-5`, and a negative hash then never equals the pattern's. In Python the result takes the sign of the right operand, so the same mistake goes unnoticed there.
+- Keep the remainder non-negative after the subtraction: add `P` before taking `% P`. In every language here except Python the result of `%` takes the sign of the left operand (documented for JavaScript, Java, Kotlin, Go and Rust), so `-5 % P` is `-5`, and a negative hash then never equals the pattern's. In Python the result takes the sign of the right operand, so the same mistake goes unnoticed there.
 - Keep products inside the integer type. With `P` near 10^9 and a factor of at most 131 a product stays below 2^53 (TypeScript) and 2^63 (the others), but a larger base or modulus would need `BigInt` or 128-bit arithmetic.
 - The weight of the leaving letter is `B^(m-1)`, not `B^m`.
 - The window moves only while a next window exists, or the update reads past the end of the text.
 
 ### Language notes
 
-- Python: `pow(BASE, m - 1, MODULUS)` computes the weight by modular exponentiation, and `%` with a positive modulus returns a non-negative result, so the subtraction needs no correction; the confirmation is a slice comparison.
+- Python: `pow(BASE, m - 1, MODULUS)` computes the weight by modular exponentiation, and `%` with a positive modulus returns a non-negative result, so the subtraction needs no correction; the confirmation is `text.startswith(pattern, start)`, which compares in place and, unlike a slice comparison, does not copy the window.
 - TypeScript: every number is a double, which holds integers exactly up to 2^53 - 1; the products stay far below that, and the subtraction is corrected by hand. `startsWith(pattern, start)` confirms a window.
 - Java, Kotlin: `long` arithmetic; `String.startsWith(prefix, offset)` confirms a window without copying it.
 - Go: the language only promises that `int` is 32 or 64 bits wide, and the products here need more than 32, so the reference uses `int64` for the hash values. `strings.HasPrefix(text[start:], pattern)` confirms a window, and slicing a string does not copy it.

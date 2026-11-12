@@ -60,7 +60,7 @@ The pattern is longer than the text, so it cannot occur: the answer is an empty 
 - Which text makes checking every start slowest? What does the check keep repeating on that text?
 - How would you find the occurrences of many patterns in one pass over the text?
 - A rolling hash can report a position by mistake. When, and what does the algorithm do about it?
-- The search never moves back in the text in the failure-function approach. What does it keep instead, and how much space does that take?
+- The search never moves back in the text in the border (failure-function) approach. What does it keep instead, and how much space does that take?
 
 ## Hints
 
@@ -74,7 +74,7 @@ In that example the slide repeats work: when a check fails after matching many l
 
 ### Hint 3
 
-If the pattern `abcabd` matched `abcab` and then failed, the next place it can match must begin with a piece of `abcab` that is also the start of the pattern. The longest such piece is the key: for every prefix of the pattern, precompute how long its longest proper prefix is that is also its suffix. Reading the text once and falling back inside the pattern with that table is one way to get linear time.
+If the pattern `abcabd` matched `abcab` and then failed, the next place it can match must begin with a piece of `abcab` that is also the start of the pattern. The longest such piece is the key: for every prefix of the pattern, precompute the length of its longest border (a **border**: a prefix that is also a suffix, other than the whole word). Reading the text once and falling back inside the pattern with that table is one way to get linear time.
 
 ### Hint 4
 
@@ -82,4 +82,4 @@ Another way avoids comparing letters at all. Turn every window of the text into 
 
 ### Hint 5
 
-Two different words can have the same number, so a window whose number equals the pattern's must still be checked letter by letter before it is reported. In the failure-function approach, keep the table `border[i]` for the pattern prefix of length `i + 1`, extend the matched length by one on each equal letter, fall back to `border[matched - 1]` on a difference, and record an occurrence whenever the matched length reaches `m`, then fall back once more so that overlaps are found.
+Two different words can have the same number, so a window whose number equals the pattern's must still be checked letter by letter before it is reported. In the border (failure-function) approach, keep the table `border[i]` for the pattern prefix of length `i + 1`, extend the matched length by one on each equal letter, fall back to `border[matched - 1]` on a difference, and record an occurrence whenever the matched length reaches `m`, then fall back once more so that overlaps are found.

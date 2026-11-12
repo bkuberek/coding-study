@@ -15,7 +15,7 @@ def find_all_occurrences(text: str, pattern: str) -> list[int]:
         window = (window * BASE + ord(text[i])) % MODULUS
     found = []
     for start in range(len(text) - window_size + 1):
-        if window == target and text[start : start + window_size] == pattern:
+        if window == target and text.startswith(pattern, start):
             found.append(start)
         if start + window_size < len(text):
             window = ((window - ord(text[start]) * leaving_weight) * BASE + ord(text[start + window_size])) % MODULUS
