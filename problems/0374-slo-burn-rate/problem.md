@@ -11,7 +11,7 @@ Aim to finish in 120 minutes. A good split: read the statement in the first 10 m
 ## Input
 
 - `SloMonitor()`: creates an empty monitor.
-- All times are whole seconds, given as numbers; the class never reads a clock. A *window* `[start, end]` holds every time `t` with `start <= t <= end`, both ends included.
+- All times are whole seconds, given as numbers; the class never reads a clock. A *window* `[start, end]` holds every time `t` with `start <= t <= end`, both ends included (level 1 notes where some monitoring tools differ).
 - A **fraction** given as an argument is a string `"p"` or `"p/q"` of whole numbers with `p >= 0` and `q >= 1`, not necessarily in lowest terms: `"99/100"`, `"990/1000"` and `"72/5"` (which is 14.4) are all valid.
 - Each level's section describes the methods it adds and their parameters.
 
@@ -30,7 +30,7 @@ The *increase* of a counter over a window is how much it went up between the fir
 
 For example, the samples 100, 160, 250, 40, 100 increase by 60, 90, 40 and 60: 250 in total. Reading the last value minus the first, `100 - 100 = 0`, would claim nothing happened.
 
-The *rate* over a window is the increase divided by the seconds between the first and the last sample of the window, a value per second. (Some monitoring tools also stretch the result to the edges of the window, to make up for samples that fall just inside it; this problem does not, so that every answer is exact.)
+The *rate* over a window is the increase divided by the seconds between the first and the last sample of the window, a value per second. (Some monitoring tools also stretch the result to the edges of the window, to make up for samples that fall just inside it; this problem does not, so that every answer is exact. Some tools also leave out a sample taken exactly at `start`, while the windows here include both ends: with a sample every 300 seconds, `[at - 300, at]` holds two samples here but only one there.)
 
 - `scrape(series, timestamp, value)`: records a sample of the counter `series`. Returns `"ok"`, or `"out-of-order"` when the series already has a sample at `timestamp` or later, in which case nothing is recorded.
 - `scrapeSeries(series, start, step, values)`: scrapes `values[i]` at time `start + i * step` for each `i` in order, as `scrape` would, and returns how many of them were recorded.
@@ -132,7 +132,7 @@ An alert should wake someone up when the error budget is in real danger, and onl
 
 - `addAlert(slo, severity, longWindow, shortWindow, threshold)`: adds an alert to the SLO. `threshold` is a fraction above 0. A `shortWindow` of `0` means the alert has only the long window. Statuses, in this order: `"unknown-slo"`; `"duplicate"` when the SLO already has an alert with this severity; `"bad-windows"` when `longWindow <= 0`, `shortWindow < 0` or `shortWindow >= longWindow`; otherwise `"ok"`.
 - `firing(slo, at)`: the severities of the SLO's alerts that fire at time `at`, in the order the alerts were added. An alert fires when the burn rate over `[at - longWindow, at]` is above the threshold and, unless `shortWindow` is `0`, so is the burn rate over `[at - shortWindow, at]`. A window whose burn rate is `""` (no requests) is not above anything. `[]` for an unknown SLO.
-- `timeline(slo, start, end, step)`: evaluates every alert of the SLO at the times `start`, `start + step`, `start + 2 * step` and so on, up to and including `end` when it is reached. Before `start` no alert is firing. Each time an alert changes from not firing to firing, the list gets `"<time> <severity> start"`, and each time it changes back, `"<time> <severity> stop"`. Events are in time order, and the events of one time in the order the alerts were added. `[]` for an unknown SLO, or when `start > end`.
+- `timeline(slo, start, end, step)`: evaluates every alert of the SLO at the times `start`, `start + step`, `start + 2 * step` and so on, up to and including `end` when it is reached; `step` is at least 1. Before `start` no alert is firing. Each time an alert changes from not firing to firing, the list gets `"<time> <severity> start"`, and each time it changes back, `"<time> <severity> stop"`. Events are in time order, and the events of one time in the order the alerts were added. `[]` for an unknown SLO, or when `start > end`.
 
 ### Example 1
 
