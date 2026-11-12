@@ -93,7 +93,7 @@ In order: the target holds a space, so the request line has four parts (`bad-req
 
 1. A **size line**: the chunk size in hexadecimal (digits and `a` to `f` in either case), optionally followed by spaces or tabs, a `;` and **chunk extensions**, which you ignore, then CRLF.
 2. Exactly that many bytes of **chunk data**, then CRLF. The data can hold any bytes, CR and LF included. If the two bytes after the data are not CRLF: `bad-chunk`.
-3. A size of zero (written `0`, or `000`) is the **last chunk**. After its size line comes the **trailer section**: zero or more field lines, each checked with the field rules of level 1 (`bad-line-ending`, `obs-fold`, `bad-field`), and then an empty line. Trailer fields describe the message after its content, such as a checksum computed while sending. Report each as `["trailer", name, value]`, apart from the header fields: RFC 9112 forbids merging a trailer into the header section unless that field's definition allows it.
+3. A size of zero (written `0`, or `000`) is the **last chunk**. After its size line comes the **trailer section**: zero or more field lines, each checked with the field rules of level 1 (`bad-line-ending`, `obs-fold`, `bad-field`), and then an empty line. Trailer fields describe the message after its content, such as a checksum computed while sending. The trailer lines are checked once the trailer section's empty line has arrived; until then the message is `incomplete`, even when a line that has arrived is already malformed. Report each as `["trailer", name, value]`, apart from the header fields: RFC 9112 forbids merging a trailer into the header section unless that field's definition allows it.
 
 The body row holds the content: the chunk data joined in order, without the size lines and CRLFs. At this level every size line in a case is valid.
 
@@ -120,7 +120,7 @@ A real connection delivers bytes in pieces of any size: a request can be split a
 
 **Errors end the connection.** When a request fails a rule, `feed` returns the rows of the requests completed before it in the same call, followed by `["error", code]`. The parser has lost track of where messages start, so it never reads that connection again: from then on, `feed` and `close` return `[]`. The same holds after `close`.
 
-A request's errors are found at the same point as in `parseMessage`: the head's rules once its `\r\n\r\n` has arrived, a size line once its CRLF has arrived, and a chunk's closing CRLF once the data and the two bytes after it have arrived.
+A request's errors are found at the same point as in `parseMessage`: the head's rules once its `\r\n\r\n` has arrived, a size line once its CRLF has arrived, a chunk's closing CRLF once the data and the two bytes after it have arrived, and the trailer lines once the trailer section's empty line has arrived.
 
 `parseHead` and `parseMessage` do not change, and they never read or change the bytes the connection is holding.
 
@@ -147,7 +147,7 @@ This level closes the gaps that let two parsers read the same bytes differently,
 **New rules for the framing fields**, checked where level 2 checks the framing, in this order:
 
 1. **Both fields.** A request with a `transfer-encoding` line and a `content-length` line, in any order and with any values: `ambiguous-length`. RFC 9112 says that `Transfer-Encoding` then overrides `Content-Length`, that such a message ought to be handled as an error because it might be an attempt at smuggling, and that a server may reject it. A parser that picks one while a parser next to it picks the other is exactly the disagreement above, so this parser rejects it.
-2. **Several Content-Length values.** All the `content-length` lines are now read as one list: join their values with commas, split at every comma, remove spaces and tabs around each element and drop the empty elements. No elements, or any element that is not decimal digits: `bad-content-length`. Elements that are different numbers: `conflicting-content-length`. Elements that are the same number (such as `5, 5`, or `5` and `005` on two lines) are one length. RFC 9110 and RFC 9112 allow a recipient to accept a repeated value this way, since it most likely comes from an upstream processor that copied or combined the field.
+2. **Several Content-Length values.** All the `content-length` lines are now read as one list: join their values with commas, split at every comma, remove spaces and tabs around each element and drop the empty elements. No elements, or any element that is not decimal digits: `bad-content-length`. Elements that are different numbers: `conflicting-content-length`. Elements that are the same number (such as `5, 5`, or `5` and `005` on two lines) are one length. RFC 9110 (section 8.6) allows a recipient to replace the same decimal value repeated as a comma-separated list with a single instance of it, since such a list likely comes from an upstream processor that duplicated or combined the field; this problem reads `5` and `005` as the same decimal value.
 3. **Body limit.** With limits set, a `Content-Length` above `maxBodyBytes`: `body-too-large`, decided as soon as the head is parsed, before any body byte is read.
 
 **New rules for chunk sizes:**

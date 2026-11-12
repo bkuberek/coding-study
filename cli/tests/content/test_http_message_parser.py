@@ -230,10 +230,14 @@ class Model:
             pos += size + 2
         if data[pos : pos + 2] == "\r\n":
             return content, [], pos + 2
+        self.check_trailers_early(data, pos)
         found = data.find(END, pos)
         if found == -1:
             raise IncompleteError
         return content, self.trailer_rows(data[pos:found]), found + 4
+
+    def check_trailers_early(self, data: str, pos: int) -> None:
+        pass
 
     def message(self, data: str, pos: int) -> tuple[Rows, int]:
         rows, end = self.head(data, pos)
@@ -455,6 +459,16 @@ class TrailersMergedIntoFields(Model):
 
     def trailer_rows(self, text: str) -> Rows:
         return [["field", *row[1:]] for row in super().trailer_rows(text)]
+
+
+class TrailerLinesCheckedOnArrival(Model):
+    """Checks each trailer line as soon as its CRLF arrives, before the trailer section ends."""
+
+    def check_trailers_early(self, data: str, pos: int) -> None:
+        complete = data[pos : data.rfind("\r\n", pos) + 2] if "\r\n" in data[pos:] else ""
+        for line in complete.split("\r\n")[:-1]:
+            if line:
+                self.field(line)
 
 
 class TrailersDropped(Model):
