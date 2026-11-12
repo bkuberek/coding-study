@@ -343,6 +343,12 @@ def test_a_project_problem_has_no_buggy_stub(bank):
     assert f"{DIRECTORY}/buggy: a project problem has none" in found
 
 
+def test_a_project_problem_has_no_starter_helper(bank):
+    found = errors(content(bank, helper_files=("sha256.rs",)))
+    assert f"{DIRECTORY}/helpers: a project problem has none" in found
+    assert [issue for issue in found if "maps to no language" in issue] == []
+
+
 def test_a_project_problem_has_no_generate_cases(bank):
     problem = replace(bank, cases=(*bank.cases, Case("g1", GeneratedInput(10, 1), level=2)))
     assert f"{TESTS}: cases[6] g1: a project problem has no generate cases" in errors(

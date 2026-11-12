@@ -395,6 +395,13 @@ def test_buggy_stub_needs_a_file_per_language(problems):
     assert len(errors(content(problems, problem=problem))) == len(Language)
 
 
+def test_a_helper_for_a_language_the_problem_does_not_list_is_an_error(problems):
+    problem = with_meta(problems, languages=WITHOUT_RUST)
+    found = errors(content(problems, problem=problem, helper_files=("sha256.rs", "tools.py")))
+    assert "problems/0001-two-sum/helpers/sha256.rs: maps to no language in languages" in found
+    assert [issue for issue in found if "tools.py" in issue] == []
+
+
 FLOAT = ComparatorSpec(ComparatorType.FLOAT)
 FLOAT_ON_DECIMAL = (
     '"float" applies its tolerance to doubles only, and {subject} decimal and no double: '
