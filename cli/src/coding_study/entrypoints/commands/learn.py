@@ -37,6 +37,7 @@ READ_WIDTH = 6
 POSITION_WIDTH = 4
 KIND_WIDTH = 9
 STEP_WIDTH = 27
+COLUMN_GAP = 2
 TARGET_WIDTH = 9
 STATUS_WIDTH = 16
 NOT_READ = "-"
@@ -122,14 +123,17 @@ def _print_listing(
     if not listing.guides and not listing.paths:
         output.print(Text(f"no guides in {environment.content_root}"))
         return
+    slugs = [entry.meta.slug for entry in listing.guides]
+    slugs += [view.path.slug for view in listing.paths]
+    slug_width = max(SLUG_WIDTH, *(len(slug) + COLUMN_GAP for slug in slugs))
     output.print(Text("GUIDES", style="bold"))
-    header = f"{'SLUG'.ljust(SLUG_WIDTH)}{'LEVEL'.ljust(LEVEL_WIDTH)}{'READ'.ljust(READ_WIDTH)}"
+    header = f"{'SLUG'.ljust(slug_width)}{'LEVEL'.ljust(LEVEL_WIDTH)}{'READ'.ljust(READ_WIDTH)}"
     output.print(Text(f"{header}TITLE", style="bold"))
     for entry in listing.guides:
         read = "yes" if entry.read_at else NOT_READ
         output.print(
             Text(
-                f"{entry.meta.slug.ljust(SLUG_WIDTH)}{entry.meta.level.ljust(LEVEL_WIDTH)}"
+                f"{entry.meta.slug.ljust(slug_width)}{entry.meta.level.ljust(LEVEL_WIDTH)}"
                 f"{read.ljust(READ_WIDTH)}{entry.meta.title}"
             )
         )
@@ -138,7 +142,7 @@ def _print_listing(
         output.print(Text("PATHS", style="bold"))
         for view in listing.paths:
             counts = f"{view.done} of {view.total} done"
-            output.print(Text(f"{view.path.slug.ljust(SLUG_WIDTH)}{counts:<16}{view.path.title}"))
+            output.print(Text(f"{view.path.slug.ljust(slug_width)}{counts:<16}{view.path.title}"))
         unfinished = next((view for view in listing.paths if view.next_step is not None), None)
         if unfinished is not None:
             output.print(_labelled("next", f"cstudy learn --path {unfinished.path.slug}"))
@@ -182,22 +186,23 @@ def _print_path(output: Console, view: PathView, as_json: bool) -> None:
     output.print(Text(f"{view.path.slug}  {view.path.title}", style="bold"))
     output.print(Text(view.path.summary))
     output.print(Text(f"{view.done} of {view.total} done"))
+    step_width = max(STEP_WIDTH, *(len(step.step.slug) + COLUMN_GAP for step in view.steps))
     header = (
-        f"{'#'.ljust(POSITION_WIDTH)}{'KIND'.ljust(KIND_WIDTH)}{'STEP'.ljust(STEP_WIDTH)}"
+        f"{'#'.ljust(POSITION_WIDTH)}{'KIND'.ljust(KIND_WIDTH)}{'STEP'.ljust(step_width)}"
         f"{'TARGET'.ljust(TARGET_WIDTH)}{'STATUS'.ljust(STATUS_WIDTH)}TITLE"
     )
     output.print(Text(header, style="bold"))
     for position, step in enumerate(view.steps, start=1):
-        output.print(Text(_step_line(position, step)))
+        output.print(Text(_step_line(position, step, step_width)))
     if view.next_step is not None:
         output.print(_labelled("next", _command(view.next_step)))
 
 
-def _step_line(position: int, step: StepProgress) -> str:
+def _step_line(position: int, step: StepProgress, step_width: int) -> str:
     target = f"level {step.step.level}" if step.step.level is not None else NO_TARGET
     return (
         f"{str(position).ljust(POSITION_WIDTH)}{step.step.kind.ljust(KIND_WIDTH)}"
-        f"{step.step.slug.ljust(STEP_WIDTH)}{target.ljust(TARGET_WIDTH)}"
+        f"{step.step.slug.ljust(step_width)}{target.ljust(TARGET_WIDTH)}"
         f"{step.status.ljust(STATUS_WIDTH)}{step.title}"
     )
 
