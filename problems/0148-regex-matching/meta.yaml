@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 10, url: "https://leetcode.com/problems/regular-expression-matching/"}
 related: [edit-distance, interleaving-string]
+guides: [two-dimensional-tables]
 order: 11
 estimate_minutes: 45

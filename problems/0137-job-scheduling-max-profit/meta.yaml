@@ -32,5 +32,6 @@ perf:
 references:
   leetcode: {number: 1235, url: "https://leetcode.com/problems/maximum-profit-in-job-scheduling/"}
 related: [house-robber, longest-increasing-subsequence, non-overlapping-intervals]
+guides: [choosing-states]
 order: 12
 estimate_minutes: 40

@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 39, url: "https://leetcode.com/problems/combination-sum/"}
 related: [combination-sum-no-reuse, subsets, permutations]
+guides: [backtracking]
 order: 3
 estimate_minutes: 20

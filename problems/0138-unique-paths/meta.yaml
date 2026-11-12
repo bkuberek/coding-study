@@ -32,5 +32,6 @@ perf:
 references:
   leetcode: {number: 62, url: "https://leetcode.com/problems/unique-paths/"}
 related: [longest-common-subsequence, maximal-square]
+guides: [two-dimensional-tables]
 order: 1
 estimate_minutes: 20

@@ -32,5 +32,6 @@ perf:
 references:
   leetcode: {number: 97, url: "https://leetcode.com/problems/interleaving-string/"}
 related: [longest-common-subsequence, edit-distance]
+guides: [two-dimensional-tables]
 order: 5
 estimate_minutes: 30

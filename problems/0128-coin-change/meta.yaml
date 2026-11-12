@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 322, url: "https://leetcode.com/problems/coin-change/"}
 related: [climbing-stairs, partition-equal-subset-sum, word-break]
+guides: [one-dimensional-tables]
 order: 3
 estimate_minutes: 25

@@ -32,5 +32,6 @@ perf:
 references:
   leetcode: {number: 494, url: "https://leetcode.com/problems/target-sum/"}
 related: [coin-change-ways, distinct-subsequences]
+guides: [choosing-states]
 order: 7
 estimate_minutes: 25

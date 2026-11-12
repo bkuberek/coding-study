@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 79, url: "https://leetcode.com/problems/word-search/"}
 related: [subsets, palindrome-partitioning]
+guides: [backtracking]
 order: 4
 estimate_minutes: 25

@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 70, url: "https://leetcode.com/problems/climbing-stairs/"}
 related: [house-robber, decode-ways]
+guides: [memoization]
 order: 1
 estimate_minutes: 10

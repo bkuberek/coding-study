@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 72, url: "https://leetcode.com/problems/edit-distance/"}
 related: [longest-common-subsequence, distinct-subsequences, regex-matching]
+guides: [two-dimensional-tables]
 order: 3
 estimate_minutes: 30

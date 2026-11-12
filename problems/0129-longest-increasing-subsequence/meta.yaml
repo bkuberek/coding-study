@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 300, url: "https://leetcode.com/problems/longest-increasing-subsequence/"}
 related: [job-scheduling-max-profit, binary-search, longest-consecutive-sequence]
+guides: [one-dimensional-tables]
 order: 4
 estimate_minutes: 25

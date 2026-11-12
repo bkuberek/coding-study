@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Recursion and dynamic programming: from your first recursive call to choosing states"
+summary: From a function that calls itself to tables in one and two dimensions and the choice of a state, through the problems that practise each idea.
+steps:
+  - guide: recursion
+  - guide: backtracking
+  - problem: subsets
+  - problem: permutations
+  - problem: combination-sum
+  - problem: word-search
+  - problem: n-queens
+  - guide: memoization
+  - problem: climbing-stairs
+  - problem: word-break
+  - guide: one-dimensional-tables
+  - problem: house-robber
+  - problem: decode-ways
+  - problem: coin-change
+  - problem: min-cost-tickets
+  - problem: longest-increasing-subsequence
+  - guide: two-dimensional-tables
+  - problem: unique-paths
+  - problem: longest-common-subsequence
+  - problem: maximal-square
+  - problem: edit-distance
+  - problem: interleaving-string
+  - problem: regex-matching
+  - guide: choosing-states
+  - problem: partition-equal-subset-sum
+  - problem: coin-change-ways
+  - problem: target-sum
+  - problem: jump-game
+  - problem: job-scheduling-max-profit
+  - problem: burst-balloons

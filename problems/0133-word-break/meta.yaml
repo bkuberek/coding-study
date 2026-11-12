@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 139, url: "https://leetcode.com/problems/word-break/"}
 related: [decode-ways, coin-change]
+guides: [memoization]
 order: 8
 estimate_minutes: 25

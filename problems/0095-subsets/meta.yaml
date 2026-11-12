@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 78, url: "https://leetcode.com/problems/subsets/"}
 related: [subsets-with-duplicates, permutations, combination-sum]
+guides: [backtracking]
 order: 1
 estimate_minutes: 15

@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 983, url: "https://leetcode.com/problems/minimum-cost-for-tickets/"}
 related: [coin-change, job-scheduling-max-profit]
+guides: [one-dimensional-tables]
 order: 11
 estimate_minutes: 30
