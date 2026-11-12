@@ -348,23 +348,26 @@ export class PermissionGate {
         : ["ignored", "no-change", ""];
     }
     if (Object.hasOwn(ANSWERS, verb) && REQUEST_ID.test(argument)) {
-      return this.answer(verb, Number(argument));
+      return this.answer(verb, argument);
     }
     return ["ignored", "not-a-directive", ""];
   }
 
-  private answer(verb: string, requestId: number): [string, string, string] {
+  // `requestText` is a valid number written in decimal; it is logged as written, so a number too
+  // large for a double is not rounded.
+  private answer(verb: string, requestText: string): [string, string, string] {
+    const requestId = Number(requestText);
     if (this.status(requestId) !== "pending") {
-      return ["ignored", "not-pending", String(requestId)];
+      return ["ignored", "not-pending", requestText];
     }
     const [decision, scope] = ANSWERS[verb];
     const request = this.requests[requestId - 1];
     request.status = decision;
     if (scope === null) {
-      return ["applied", "answered", String(requestId)];
+      return ["applied", "answered", requestText];
     }
     const remembered = this.remember(request.tool, request.args, decision, scope);
-    return ["applied", remembered ? `answered:${scope}` : "answered", String(requestId)];
+    return ["applied", remembered ? `answered:${scope}` : "answered", requestText];
   }
 
   private log(

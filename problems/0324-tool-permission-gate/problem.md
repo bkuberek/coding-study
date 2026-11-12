@@ -11,7 +11,7 @@ Aim to finish in 120 minutes. A good split: read the statement in the first 10 m
 ## Input
 
 - `PermissionGate()`: creates a gate with no rules, no scopes, no aliases, no marks and nothing remembered.
-- A **tool** is a name of 1 to 30 characters from `a` to `z`, `0` to `9` and `_`.
+- A **tool** is a name made of the characters `a` to `z`, `0` to `9` and `_`.
 - A **pattern** names tools: a tool name (matching that tool only), a prefix of a tool name followed by `*` (such as `read_*`), or `*` alone (matching every tool).
 - An **effect** is `allow`, `deny` or `ask`.
 - The **arguments** of a call are a list of rows `[name, value]`. A name has 1 to 20 characters from `a` to `z` and `_`, and no name appears twice. A value has at most 100 printable ASCII characters (codes 32 to 126).
@@ -117,7 +117,7 @@ Every other method is called by the harness itself, with data it wrote.
 | Directive | Effect |
 |-----------|--------|
 | `allow P`, `deny P`, `ask P` | `addRule` with that effect and the pattern `P`, which must be a valid pattern. `applied` when the rule is new, `ignored` when it was there. |
-| `yes N`, `no N` | Answer the pending question `N` with `allow` or `deny`. `N` is a whole number without a leading zero. |
+| `yes N`, `no N` | Answer the pending question `N` with `allow` or `deny`. `N` is a whole number from 1, without a leading zero. |
 | `yes-tool N`, `no-tool N` | The same, and also `remember` that answer for the tool of the question at scope `tool`. |
 | `yes-exact N`, `no-exact N` | The same, and also `remember` it for the exact call of the question. |
 
