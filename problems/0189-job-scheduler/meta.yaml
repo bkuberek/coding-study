@@ -32,4 +32,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: ordered-queue, name: Ordered queue scanned for the first eligible job, role: optimal, time: "O(q (d + log s)) per runNext; O(q) per submit, retry or cancel", space: "O(j + s)", time_class: "n^2", space_class: "n"}
+related: [pipeline-scheduler]
 estimate_minutes: 90

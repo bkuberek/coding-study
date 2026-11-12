@@ -30,5 +30,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: versioned-fields, name: Per-field version history, role: optimal, time: "O(log v) per field operation; O(f log f + f log v) per scan", space: "O(w)", time_class: "n log n", space_class: "n"}
-related: [transactional-kv-store]
+related: [transactional-kv-store, content-addressed-store]
 estimate_minutes: 90

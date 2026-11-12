@@ -36,5 +36,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: fixpoint-closure, name: Forward chaining to a fixed point and a check on the asserted graph, role: optimal, time: "O(J) to saturate, J the rule joins; O(F V) to validate", space: "O(T) for the T triples of the closure", time_class: "n^2", space_class: "n^2"}
-related: [triple-store, taxonomy, in-memory-database, entity-resolution, graphrag-context]
+related: [triple-store, taxonomy, in-memory-database, entity-resolution, graphrag-context, eval-release-gate]
 estimate_minutes: 120

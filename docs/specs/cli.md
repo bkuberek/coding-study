@@ -1163,13 +1163,13 @@ Reads the [concept guides and learning paths](guides.md) of the content root ([A
 | `cstudy learn <guide> --done` | Marks the guide read; the first time is kept | `marked hash-functions read`, or `hash-functions was marked read on 2026-11-11`, which changes nothing and exits 0 |
 | `cstudy learn <guide> --open` | Finds the guide, then runs [`cstudy serve --open`](#cstudy-serve) on a free port, whose page opens on the guide in the web UI's [Guides view](web-ui.md#guides-view): the URL adds `&view=/guides/<guide>`. It needs a workspace, as `cstudy serve` does, and runs until Ctrl-C | What `cstudy serve --open` prints, the `open` URL naming the view |
 | `cstudy learn --path <path> --open` | The same for the path, `&view=/paths/<path>` | The same |
-| `cstudy learn --path <path>` | The path's steps in order, with what is [done](guides.md#reading-progress) | The heading, the summary, `3 of 21 done`, the steps, and `next    cstudy learn <guide>` or `next    cstudy start <problem>` for the first step not done |
+| `cstudy learn --path <path>` | The path's steps in order, with what is [done](guides.md#reading-progress) | The heading, the summary, `3 of 22 done`, the steps, and `next    cstudy learn <guide>` or `next    cstudy start <problem>` for the first step not done |
 
 ```text
 $ cstudy learn --path hashing
-hashing  Hashing: from your first hash map to tamper-evident ledgers
+hashing  Hashing: from your first hash map to content-addressed storage
 From what a hash function is to Merkle proofs, through the problems that practise each idea.
-3 of 21 done
+3 of 22 done
 #   KIND     STEP                       TARGET   STATUS          TITLE
 1   guide    hash-functions                      read            What a hash function is
 2   guide    hash-maps-and-sets                  read            Hash maps and sets

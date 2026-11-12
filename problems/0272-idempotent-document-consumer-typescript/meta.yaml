@@ -34,5 +34,5 @@ project:
   tests: tests
 approaches:
   - {id: reference, name: One transaction for the effect and its key with the ack sent last, role: optimal, time: "O(b + t) per delivery", space: "O(k + d)", time_class: "n", space_class: "n"}
-related: [transactional-outbox-typescript, debug-async-batch-typescript, warehouse-work-orders-typescript]
+related: [transactional-outbox-typescript, debug-async-batch-typescript, warehouse-work-orders-typescript, cdc-apply]
 estimate_minutes: 100

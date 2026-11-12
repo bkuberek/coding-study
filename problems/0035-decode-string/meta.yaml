@@ -29,5 +29,5 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 394, url: "https://leetcode.com/problems/decode-string/"}
-related: [valid-parentheses, basic-calculator, encode-decode-strings]
+related: [valid-parentheses, basic-calculator, encode-decode-strings, values-templating]
 estimate_minutes: 25

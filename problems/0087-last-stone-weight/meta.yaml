@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 1046, url: "https://leetcode.com/problems/last-stone-weight/"}
-related: [kth-largest-element, task-scheduler]
+related: [kth-largest-element, task-scheduler, kth-largest-in-stream]
 order: 1
 estimate_minutes: 10

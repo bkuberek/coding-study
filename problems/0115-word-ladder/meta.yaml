@@ -31,6 +31,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 127, url: "https://leetcode.com/problems/word-ladder/"}
-related: [open-the-lock, shortest-path-binary-matrix]
+related: [open-the-lock, shortest-path-binary-matrix, architecture-checker]
 order: 11
 estimate_minutes: 35

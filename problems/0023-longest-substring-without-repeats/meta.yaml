@@ -28,6 +28,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 3, url: "https://leetcode.com/problems/longest-substring-without-repeating-characters/"}
-related: [longest-repeating-replacement, fruit-into-baskets, minimum-window-substring]
+related: [longest-repeating-replacement, fruit-into-baskets, minimum-window-substring, max-average-fixed-window]
 order: 1
 estimate_minutes: 20

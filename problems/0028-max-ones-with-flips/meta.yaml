@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 1004, url: "https://leetcode.com/problems/max-consecutive-ones-iii/"}
-related: [longest-repeating-replacement, fruit-into-baskets, min-size-subarray-sum]
+related: [longest-repeating-replacement, fruit-into-baskets, min-size-subarray-sum, max-average-fixed-window]
 order: 6
 estimate_minutes: 15

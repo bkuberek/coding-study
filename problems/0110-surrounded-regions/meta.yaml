@@ -28,6 +28,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 130, url: "https://leetcode.com/problems/surrounded-regions/"}
-related: [number-of-islands, pacific-atlantic-water-flow, max-area-of-island]
+related: [number-of-islands, pacific-atlantic-water-flow, max-area-of-island, flood-fill]
 order: 6
 estimate_minutes: 25

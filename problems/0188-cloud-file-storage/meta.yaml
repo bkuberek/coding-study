@@ -31,5 +31,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: owned-files, name: File map with per-user ownership, role: optimal, time: "O(1) per file operation; O(m log m) per listing, quota change, backup or restore", space: "O(n + b)", time_class: "n log n", space_class: "n"}
-related: [in-memory-database]
+related: [in-memory-database, content-addressed-store]
 estimate_minutes: 60

@@ -51,6 +51,6 @@ project:
     sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
 approaches:
   - {id: reference, name: "The model proposes, the runtime decides: every call judged, every reply counted", role: optimal, time: "per question", space: "per question"}
-related: [loan-extraction-review-typescript, ssrf-safe-webhook-dispatcher-typescript]
+related: [loan-extraction-review-typescript, ssrf-safe-webhook-dispatcher-typescript, loop-controller, tool-permission-gate, context-compaction, sql-guard, plan-and-execute, agent-trace-analyzer]
 guides: [agents-and-workflows, tools-and-mcp, harness-engineering, llm-application-security]
 estimate_minutes: 180

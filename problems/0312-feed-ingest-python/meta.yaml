@@ -44,5 +44,5 @@ project:
     sizes: {install_mb: 11, images_mb: {app: 62, postgres: 117, mocks: 43}, memory_mb: 300}
 approaches:
   - {id: reference, name: "Validate in code, load by id in one transaction, derive points on read, retry within bounds", role: optimal, time: "per feed", space: "per feed"}
-related: [csv-upload-ingestion-typescript, vendor-retry-client-typescript, coworking-availability-python, inventory-reservations-typescript]
+related: [csv-upload-ingestion-typescript, vendor-retry-client-typescript, coworking-availability-python, inventory-reservations-typescript, data-quality-gate]
 estimate_minutes: 240

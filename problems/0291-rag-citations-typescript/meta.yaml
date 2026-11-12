@@ -48,6 +48,6 @@ project:
     sizes: {install_mb: 37, images_mb: {app: 81, mocks: 43, pgvector: 156}, memory_mb: 150}
 approaches:
   - {id: reference, name: "Embed each document in one call, rank by cosine in Postgres, and keep only the citations that were retrieved", role: optimal, time: "per request", space: "per chunk"}
-related: [bm25-hybrid-ranker, token-cost-reconciler, inventory-reservations-typescript]
+related: [bm25-hybrid-ranker, token-cost-reconciler, inventory-reservations-typescript, eval-release-gate, corrective-rag]
 guides: [retrieval-augmented-generation]
 estimate_minutes: 240

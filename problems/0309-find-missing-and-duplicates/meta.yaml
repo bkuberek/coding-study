@@ -27,5 +27,5 @@ perf:
   size_ladder: [1000, 3000, 10000, 30000, 100000]
   expected_from: cyclic-sort
   time_limit: {factor: 5}
-related: [first-missing-positive, missing-number, contains-duplicate]
+related: [first-missing-positive, missing-number, contains-duplicate, data-quality-gate]
 estimate_minutes: 25

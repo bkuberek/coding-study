@@ -23,6 +23,6 @@ signature:
 comparator: {type: exact}
 approaches:
   - {id: sentence-end-table, name: Find the tokens once and look up the last sentence end of each window in a table, role: optimal, time: "O(L + c)", space: "O(t + c)", time_class: "n", space_class: "n"}
-related: [cosine-top-k, rag-citations-typescript]
+related: [cosine-top-k, rag-citations-typescript, corrective-rag]
 guides: [retrieval-augmented-generation]
 estimate_minutes: 35

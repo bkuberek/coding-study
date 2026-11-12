@@ -30,6 +30,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 323, url: "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/"}
-related: [redundant-connection, accounts-merge, number-of-islands-ii]
+related: [redundant-connection, accounts-merge, number-of-islands-ii, path-exists-in-graph]
 order: 1
 estimate_minutes: 20

@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 209, url: "https://leetcode.com/problems/minimum-size-subarray-sum/"}
-related: [max-ones-with-flips, minimum-window-substring]
+related: [max-ones-with-flips, minimum-window-substring, max-average-fixed-window]
 order: 4
 estimate_minutes: 20

@@ -28,4 +28,5 @@ signature:
 comparator: {type: exact}
 approaches:
   - {id: postings-and-fusion, name: Build postings for the query terms and fuse the two rankings by rank, role: optimal, time: "O(t + q + n log n + h log h)", space: "O(t + h + q)", time_class: "n log n", space_class: "n"}
+related: [eval-release-gate, corrective-rag]
 estimate_minutes: 35

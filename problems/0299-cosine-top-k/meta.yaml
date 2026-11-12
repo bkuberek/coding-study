@@ -28,6 +28,6 @@ perf:
   size_param: n documents, with m = 8 numbers each and k = 10
   size_ladder: [100, 1000, 10000, 100000]
   expected_from: bounded-heap
-related: [k-closest-points, bm25-hybrid-ranker]
+related: [k-closest-points, bm25-hybrid-ranker, cache-and-router, corrective-rag]
 guides: [embeddings-and-vector-search]
 estimate_minutes: 25

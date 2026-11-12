@@ -24,6 +24,6 @@ signature:
 comparator: {type: float, tolerance: 1.0e-9}
 approaches:
   - {id: grade-lookup, name: Look up each retrieved document's grade and sort the judged grades for the ideal ranking, role: optimal, time: "O(r + j log j)", space: "O(j)", time_class: "n log n", space_class: "n"}
-related: [calibration-metrics, bm25-hybrid-ranker, cosine-top-k]
+related: [calibration-metrics, bm25-hybrid-ranker, cosine-top-k, cache-and-router, eval-release-gate, corrective-rag]
 guides: [evaluating-llm-applications]
 estimate_minutes: 30

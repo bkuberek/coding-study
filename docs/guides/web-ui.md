@@ -325,7 +325,7 @@ cstudy learn --path hashing --open
 
 | Where | What you see |
 |-------|--------------|
-| The list | Each path with its progress, `3 of 21 steps done`, then every guide with its level and whether you have read it |
+| The list | Each path with its progress, `3 of 22 steps done`, then every guide with its level and whether you have read it |
 | A guide | The guide with its diagrams drawn in the page's light or dark theme, its code highlighted, what to read first, the problems that practise it and what to read next. **Mark as read** at the end records it, as `cstudy learn <guide> --done` does |
 | A path | Each step in order, a check once it is done: a guide once you mark it read, a problem once it passes, or, with a target such as `through level 2`, once that level passes. **Read** opens a guide and **Start** a problem's page, where you start it. `next:` names the first step not done |
 | A problem | Under **read first**, the guides that teach what it practises |

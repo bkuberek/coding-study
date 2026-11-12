@@ -28,5 +28,5 @@ signature:
 comparator: {type: exact}
 approaches:
   - {id: totals-per-model, name: Total the tokens per model and price each total once, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
-related: [versioned-rate-table]
+related: [versioned-rate-table, cache-and-router, agent-trace-analyzer]
 estimate_minutes: 30

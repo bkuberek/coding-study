@@ -59,9 +59,9 @@ The owner, on 2026-11-11: recommend the web UI for learning, and keep full CLI s
 
 The terminal is fully supported. `cstudy learn` lists the guides and the paths; `cstudy learn <guide>` renders a guide's Markdown with Rich on a terminal, and prints it as Markdown text when its output is not a terminal, its diagrams as their text drawings either way; `cstudy learn --path <path>` shows a path's steps and what is done. Each takes `--json`. Reading needs no workspace; `--done` does. The list and a guide end with one quiet line that points to the web UI, `cstudy learn <guide> --open`. Until the Guides page lands, `--open` says plainly that the page comes with the next step: keeping the flag now means the hint and the scripts that use it do not change when the page arrives.
 
-### The first path: "Hashing: from your first hash map to tamper-evident ledgers"
+### The first path: "Hashing: from your first hash map to content-addressed storage"
 
-Seven guides, from what a hash function is to Merkle proofs, around the thirteen problems of the catalog that practise hashing. It covers one topic from its first idea to an expert's, which is the shape every later path takes.
+Seven guides, from what a hash function is to Merkle proofs and content-addressed storage, around the fourteen problems of the catalog that practise hashing. It covers one topic from its first idea to an expert's, which is the shape every later path takes.
 
 ## Consequences
 

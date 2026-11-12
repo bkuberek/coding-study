@@ -33,6 +33,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: rank-then-fill, name: Rank once then fill greedily, role: optimal, time: "O(n log n + n k w) per pack", space: "O(n w)", time_class: "n^2", space_class: "n"}
-related: [memory-store, chat-history-index]
+related: [memory-store, chat-history-index, context-compaction, cache-and-router, corrective-rag]
 guides: [tokens-and-sampling]
 estimate_minutes: 90

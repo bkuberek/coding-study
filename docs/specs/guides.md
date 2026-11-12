@@ -159,7 +159,7 @@ A path is `guides/paths/<slug>.yaml`, validated by `schemas/path.schema.json`:
 
 ```yaml
 # yaml-language-server: $schema=../../schemas/path.schema.json
-title: "Hashing: from your first hash map to tamper-evident ledgers"
+title: "Hashing: from your first hash map to content-addressed storage"
 summary: From what a hash function is to Merkle proofs, through the problems that practise each idea.
 steps:
   - guide: hash-functions

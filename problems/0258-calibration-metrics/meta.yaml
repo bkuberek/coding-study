@@ -25,4 +25,5 @@ signature:
 comparator: {type: float, tolerance: 1.0e-9}
 approaches:
   - {id: per-bin-sums, name: Keep two running sums per bin for each group, role: optimal, time: "O(q (n + b))", space: "O(n + b)", time_class: "n", space_class: "n"}
+related: [eval-release-gate]
 estimate_minutes: 25

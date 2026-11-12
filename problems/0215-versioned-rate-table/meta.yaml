@@ -22,5 +22,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: sorted-versions, name: Keep versions sorted by effective date and binary-search each lookup, role: optimal, time: "O(V + k) per publish, O(log V) per lookup", space: "O(V + K)", time_class: "n^2", space_class: "n"}
-related: [time-based-kv-store, binary-search, premium-rating-breakdown]
+related: [time-based-kv-store, binary-search, premium-rating-breakdown, scd-type2-dimension]
 estimate_minutes: 25

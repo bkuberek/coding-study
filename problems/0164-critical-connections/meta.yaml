@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 1192, url: "https://leetcode.com/problems/critical-connections-in-a-network/"}
-related: [clone-graph, min-cost-connect-points, reconstruct-itinerary]
+related: [clone-graph, min-cost-connect-points, reconstruct-itinerary, architecture-checker]
 order: 7
 estimate_minutes: 40

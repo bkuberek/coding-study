@@ -27,5 +27,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: write-log-and-view, name: Per-field write log plus a sorted current view, role: optimal, time: "O(w) per setValue or getValueAsKnown, O(log w) per getValue, O(f log f + W) per snapshot", space: "O(W)", time_class: "n^2", space_class: "n"}
-related: [time-based-kv-store, in-memory-database, versioned-rate-table, endorsement-replay]
+related: [time-based-kv-store, in-memory-database, versioned-rate-table, endorsement-replay, cdc-apply]
 estimate_minutes: 45

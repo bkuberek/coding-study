@@ -45,5 +45,5 @@ project:
     sizes: {install_mb: 34, images_mb: {app: 81, mocks: 43, valkey: 19}, memory_mb: 150}
 approaches:
   - {id: reference, name: "One atomic script per limit, one fetch per missing price, and stale prices served while one request refreshes them", role: optimal, time: "per request", space: "per cached price and per client"}
-related: [vendor-retry-client-typescript, inventory-reservations-typescript]
+related: [vendor-retry-client-typescript, inventory-reservations-typescript, cache-and-router]
 estimate_minutes: 180

@@ -39,5 +39,5 @@ perf:
   size_ladder: [1000, 10000, 100000]
   budget_ms: 10000
   expected_from: child-lists
-related: [employee-importance, time-to-inform-employees, invert-binary-tree]
+related: [employee-importance, time-to-inform-employees, invert-binary-tree, agent-trace-analyzer]
 estimate_minutes: 75

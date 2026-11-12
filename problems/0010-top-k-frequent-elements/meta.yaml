@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 347, url: "https://leetcode.com/problems/top-k-frequent-elements/"}
-related: [majority-element, group-anagrams]
+related: [majority-element, group-anagrams, kth-largest-in-stream]
 guides: [counting-and-frequency]
 estimate_minutes: 20

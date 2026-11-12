@@ -35,5 +35,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: keyed-compare, name: "Look each record up by id, compare normalized values, and filter with star patterns", role: optimal, time: "O(N log N + N K log K + N P L^2) per report, for N resources, K keys, P rules and L the length of a pattern or address", space: "O(N K)", time_class: "n log n", space_class: "n"}
-related: [iac-plan-engine, idempotent-converge, regex-matching]
+related: [iac-plan-engine, idempotent-converge, regex-matching, values-templating, manifest-policy]
 estimate_minutes: 120

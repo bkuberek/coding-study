@@ -30,6 +30,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 210, url: "https://leetcode.com/problems/course-schedule-ii/"}
-related: [course-schedule, parallel-courses, alien-dictionary, all-possible-recipes]
+related: [course-schedule, parallel-courses, alien-dictionary, all-possible-recipes, plan-and-execute, pipeline-scheduler, lineage-graph, architecture-checker, iac-plan-engine]
 order: 5
 estimate_minutes: 25

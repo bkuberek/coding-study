@@ -35,6 +35,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: wave-runner, name: "Validate once, then run the ready set in waves and settle what never ran at the end", role: optimal, time: "O(w (n + e)) per run, w the waves", space: "O(n + e)", time_class: "n^2", space_class: "n"}
-related: [sql-guard, tool-calling-agent-loop-typescript, course-schedule-ii, parallel-courses, vendor-retry-client-typescript]
+related: [sql-guard, tool-calling-agent-loop-typescript, course-schedule-ii, parallel-courses, vendor-retry-client-typescript, authorization-policy-engine]
 guides: [agents-and-workflows]
 estimate_minutes: 150

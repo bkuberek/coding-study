@@ -28,5 +28,6 @@ perf:
   expected_from: hash-map-dll
 references:
   leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}
+related: [cache-and-router]
 estimate_minutes: 30
 guides: [designing-with-hash-maps]
