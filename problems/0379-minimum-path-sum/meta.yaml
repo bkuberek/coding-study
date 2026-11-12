@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0379"
+slug: minimum-path-sum
+title: Minimum Path Sum
+summary: "Find the smallest total toll on a route from the top-left to the bottom-right cell of a grid, stepping only right or down."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [dp-2d]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: minPathSum
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion from the goal cell with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: tabulation, name: Fill the table of cheapest costs row by row, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells m * n (rows and columns about sqrt(n) each)
+  size_ladder: [1000, 4000, 16000, 40000]
+  expected_from: tabulation
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 64, url: "https://leetcode.com/problems/minimum-path-sum/"}
+related: [unique-paths, maximal-square]
+order: 0
+estimate_minutes: 25
