@@ -54,9 +54,9 @@ function bucket<V>(map: Map<string, Set<V>>, key: string): Set<V> {
 }
 
 /**
- * Applies the rules of the statement until nothing new appears. Every rule has at most two
- * premises, so a new triple is joined with the triples already indexed: the later of the two
- * premises finds the other.
+ * Applies the rules of the statement until nothing new appears. Every rule has two premises,
+ * except the transitive rule, which has three (the declaration and two links). A new triple is
+ * joined with the triples already indexed, so the premise that arrives last finds the others.
  */
 class Saturation {
   private readonly known = new Map<string, Triple>();

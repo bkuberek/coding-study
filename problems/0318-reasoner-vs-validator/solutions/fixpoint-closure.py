@@ -24,8 +24,9 @@ Triple = tuple[str, str, str]
 class _Saturation:
     """Applies the rules of the statement to a set of triples until nothing new appears.
 
-    Every rule has at most two premises, so a new triple only has to be joined with the triples
-    that are already indexed: the one that arrives later finds the other.
+    Every rule has two premises, except the transitive rule, which has three (the declaration and
+    two links). A new triple is joined with the triples that are already indexed, so the premise
+    that arrives last finds the others.
     """
 
     def __init__(self) -> None:
