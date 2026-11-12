@@ -16,7 +16,7 @@ Aim to finish in 90 minutes. A good split: read the statement in the first 10 mi
 | Column | Meaning |
 |--------|---------|
 | `action` | The tool the model chose, 1 to 30 characters from `a` to `z` and `_`, or the word `final` when the model gave its answer instead of calling a tool. |
-| `args` | The arguments of the call, as the text of a JSON object. Its values are strings, integers (at most 10^9 in size), `true`, `false`, `null`, arrays or objects, and no object repeats a key. For a `final` step it is `{}`. |
+| `args` | The arguments of the call, as the text of a JSON object. Its values are strings, integers (at most 10^9 in size, written without a fraction or an exponent), `true`, `false`, `null`, arrays or objects, and no object repeats a key. For a `final` step it is `{}`. |
 | `status` | `ok` or `error`. A `final` step is always `ok`. |
 | `result` | What the tool returned, or its error message. For a `final` step, the answer. |
 | `tokens` | The tokens the step used, a whole number written in decimal. |

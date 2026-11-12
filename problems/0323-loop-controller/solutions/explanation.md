@@ -51,7 +51,7 @@ The loop terminates because every iteration consumes one step of a finite list. 
 - Masking digits merges failures that differ only in a number. That is what a harness wants for line numbers and timings, and wrong for `exit code 1` against `exit code 2`. A production harness would let each tool say which part of its message is the signature.
 - Checking budgets only between steps is the simplest design, and it lets one long step overshoot. The alternative is a deadline passed to the step itself (a timeout on the tool call, a cap on the output length), which the data-only model of this problem cannot show.
 - The check being given as data keeps the problem deterministic. A real check is code that runs, can be slow or flaky, and its cost belongs in the budgets.
-- Unbounded loops are a known risk of language-model applications: the OWASP list names uncontrolled inference as a category and recommends limits and timeouts among its mitigations. A step cap, a token budget and a time budget are exactly those limits applied to an agent.
+- A loop that never stops is the same resource-exhaustion risk that OWASP lists as LLM10:2025 Unbounded Consumption, which is framed around abuse of an application but recommends limits and timeouts among its mitigations. A step cap, a token budget and a time budget are those kinds of limits applied to an agent.
 
 ### Pitfalls and edge cases
 
