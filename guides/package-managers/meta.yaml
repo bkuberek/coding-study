@@ -3,4 +3,4 @@ title: Package managers
 summary: What a package manager does and why you want one, and how to use Homebrew on macOS, apt and dnf on Linux, and WSL on Windows to install the toolchains cstudy needs.
 level: intro
 prerequisites: [using-the-terminal]
-related: [your-first-problem]
+related: [your-first-problem, learn-python-first, learn-typescript-first, learn-java-first, learn-kotlin-first, learn-go-first, learn-rust-first]

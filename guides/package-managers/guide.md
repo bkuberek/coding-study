@@ -226,7 +226,7 @@ The cost of an install is mostly the downloads and the disk space, and both grow
 | Working out the install order | Each package and each dependency link once | As in the example: a package already on the list is not visited again |
 | Downloading and installing | One download per missing package | Already installed packages are skipped |
 | Disk space | The package plus every dependency not yet installed | `editor` cost five packages on an empty machine and four with `unicode` present |
-| Upgrading | Every outdated package, with old versions kept until cleaned up | When you install or upgrade, Homebrew also runs `brew cleanup` for every package once every 30 days, which removes old versions; `brew cleanup` runs it now |
+| Upgrading | Every outdated package, with old versions kept until cleaned up | After each install or upgrade, Homebrew runs `brew cleanup` for those packages, removing their old versions, and every 30 days for all packages; `brew cleanup` runs it now |
 
 When no set of versions meets every requirement, there is nothing to install: uv, for example, stops with `No solution found when resolving dependencies`.
 
@@ -241,7 +241,16 @@ When no set of versions meets every requirement, there is nothing to install: uv
 
 ## Practice
 
-This guide has no cstudy problem of its own. Install the toolchain of the language you want to practise, following the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md), then check it with `cstudy doctor`: the page for your language, such as [learn Python first](../learn-python-first/guide.md), shows what to look for.
+This guide has no cstudy problem of its own. Install the toolchain of the language you want to practise, following the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md), then read the guide for that language. Each says what to learn before your first problem, where to learn it for free, and which `cstudy doctor` rows to check:
+
+- [Learn Python first](../learn-python-first/guide.md)
+- [Learn TypeScript first](../learn-typescript-first/guide.md)
+- [Learn Java first](../learn-java-first/guide.md)
+- [Learn Kotlin first](../learn-kotlin-first/guide.md)
+- [Learn Go first](../learn-go-first/guide.md)
+- [Learn Rust first](../learn-rust-first/guide.md)
+
+Then go on to [your first problem](../your-first-problem/guide.md).
 
 ## Further reading
 

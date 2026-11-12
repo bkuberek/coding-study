@@ -75,7 +75,7 @@ Rows for other languages may show `FAIL` or `WARN` when you have not installed t
 
 ## Complexity
 
-cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time.
+cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time. O(n) means the work grows in step with the input's size n, and O(1) that it stays the same whatever the size.
 
 | Operation | Cost | Source of the fact |
 |-----------|------|--------------------|
@@ -87,7 +87,7 @@ A loop inside a loop over the same array of n items does about n² steps. That i
 
 ## Expert notes
 
-- **How cstudy runs TypeScript.** The runner runs your `.ts` file directly with Node.js's type stripping, which is why Node 24 or newer is needed. Type stripping is enabled by default since Node.js 22.18.0 and 23.6.0.
+- **How cstudy runs TypeScript.** The runner runs your `.ts` file directly with Node.js's type stripping, on by default since 22.18.0 and 23.6.0. cstudy itself needs Node 24 or newer.
 - **Only erasable syntax.** Node.js runs only TypeScript whose types can be removed without generating code. Features that need code generated, such as `enum` declarations, namespaces with runtime code and parameter properties, stop with an error. Plain functions, arrays and type annotations, which is all a cstudy stub uses, are fine.
 - **`--typecheck`** runs `pnpm exec tsc --noEmit` in the workspace's TypeScript project, which reports type errors without writing any JavaScript.
 

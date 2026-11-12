@@ -83,7 +83,7 @@ Rows for other languages may show `FAIL` or `WARN` when you have not installed t
 
 ## Complexity
 
-cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time.
+cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time. O(n) means the work grows in step with the input's size n, and O(1) that it stays the same whatever the size; amortized means averaged over many calls, so an occasional call costs more.
 
 | Operation | Cost | Source of the fact |
 |-----------|------|--------------------|

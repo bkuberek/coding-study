@@ -80,7 +80,7 @@ That is the row before Go is installed: a `WARN`, not a `FAIL`, because Go is op
 
 ## Complexity
 
-cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time.
+cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time. O(n) means the work grows in step with the input's size n, and O(1) that it stays the same whatever the size.
 
 | Operation | What the documentation says | Source |
 |-----------|-----------------------------|--------|

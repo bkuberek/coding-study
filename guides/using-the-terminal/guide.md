@@ -10,7 +10,7 @@ A **shell** is the program running inside the terminal. It reads the line you ty
 
 The two shells you are most likely to meet are **bash** and **zsh**.
 
-- On a Mac, zsh is the default. Apple's support page says that starting with macOS 10.15 (Catalina, released on 7 October 2019), a Mac uses zsh as the default login shell and interactive shell, and that bash was the default in macOS 10.14 and earlier.
+- On a Mac, zsh is the default. Apple's support page says that starting with macOS 10.15 (Catalina, released on 7 October 2019), a Mac uses zsh as the default login shell and interactive shell, and that bash was the default in macOS 10.14 and earlier. A **login shell** is the shell started when you log in, or one started with `--login`; an **interactive shell** is one that reads the commands you type in a terminal, rather than from a script.
 - For everything in this guide, bash and zsh behave the same way. They differ in their config files and in the wording of some messages, which the sections below point out.
 
 To see which shell your account starts, print the `SHELL` variable:
@@ -31,7 +31,7 @@ When you type `python3 --version`, the first word, `python3`, is the command and
 1. If it is a **builtin**, a command the shell does itself, such as `cd`, `pwd` or `export`, the shell runs it. No program is started.
 2. Otherwise the shell looks through the directories listed in the **`PATH`** variable, in order, for a program with that name. The bash manual defines `PATH` as "a colon-separated list of directories in which the shell looks for commands".
 3. It runs the first match. Later directories are never checked.
-4. If no directory has it, the shell prints an error and the command ends with exit status 127. bash says `bash: pyhton3: command not found`, and zsh says `zsh: command not found: pyhton3`.
+4. If no directory has it, the shell prints an error and the command ends with **exit status** 127. Every program ends by reporting a number, its exit status: 0 for success, anything else for a failure, and 127 is the shell's number for a command it could not find ([reading an error message](#reading-an-error-message) has more). bash says `bash: pyhton3: command not found`, and zsh says `zsh: command not found: pyhton3`.
 
 ```mermaid
 flowchart TD
@@ -173,7 +173,7 @@ $ echo "apple" >> fruit.txt
 
 ## Pipes
 
-A **pipe**, written `|`, connects two commands: the output of the one on the left becomes the input of the one on the right. Each command in a pipeline runs as its own process. Small tools that each do one thing combine into a bigger one.
+A **pipe**, written `|`, connects two commands: the output of the one on the left becomes the input of the one on the right. A **process** is a program while it runs, and each command in a pipeline runs as a process of its own. Small tools that each do one thing combine into a bigger one.
 
 ```mermaid
 flowchart LR
@@ -260,10 +260,10 @@ the error went to standard error; its last line is:
 
 ## Shell config files
 
-Every new shell starts empty and reads a config file, which is a script of commands. That is where an `export PATH=...` line goes when you want it in every terminal.
+A new shell starts with only the environment it inherited from the program that started it, then reads a config file, which is a script of commands. That is where an `export PATH=...` line goes when you want it in every terminal.
 
-| Shell | Read by every interactive shell | Also read by a login shell |
-|-------|---------------------------------|----------------------------|
+| Shell | Read by an interactive shell | Also read by a login shell |
+|-------|------------------------------|----------------------------|
 | zsh | `~/.zshrc` | `~/.zprofile` and `~/.zlogin` |
 | bash | `~/.bashrc`, when the shell is not a login shell | the first of `~/.bash_profile`, `~/.bash_login` and `~/.profile` that exists |
 
@@ -296,7 +296,7 @@ Errors look alarming, but they follow a pattern. Read them from the bottom up, o
 1. **Who is talking.** The first word often names the program: `bash:`, `zsh:`, `ls:`, `error:`. A shell error means the command never ran; a program's error means it ran and failed.
 2. **What went wrong.** The message says it in plain words: `command not found`, `No such file or directory`, `permission denied`.
 3. **Where.** A compiler or a test names a file and a line, such as `two_sum.py:13`. Open that line.
-4. **What to do.** Many tools end with a suggested fix. cstudy does: `error: the Python workspace is not set up (python/.venv/bin/python is missing): run uv sync --directory python`.
+4. **What to do.** Many tools end with a suggested fix. cstudy does: `` error: the Python workspace is not set up (python/.venv/bin/python is missing): run `uv sync --directory python` ``.
 
 A Python error comes as a **traceback**, which starts with `Traceback (most recent call last):` and lists the calls that led to the error, the most recent last. The Python tutorial puts it this way: "The last line of the error message indicates what happened". So read the last line first, then the line above it that points into your own file.
 
@@ -398,13 +398,13 @@ The remembered paths have a side effect. If you install a second copy of a tool 
 - **The full lookup order.** Both manuals list shell functions before builtins, and both before the `PATH` search. `type` reports which one a name is, and in zsh `whence -v` does too. A function defined in a config file can therefore hide a program of the same name.
 - **`command -v` is the portable way to ask.** It is defined by POSIX, so it works in any POSIX shell, including in scripts. `which` gives similar answers, but it is a builtin in zsh and a separate program in bash, so its output varies.
 - **zsh's `path` array.** zsh keeps `PATH` and a lowercase array, `path`, in step: `path` holds the same directories, one per element.
-- **Login and interactive shells.** A login shell is the first shell of a session; an interactive shell is one reading what you type. zsh reads `~/.zprofile` for login shells and `~/.zshrc` for interactive ones; bash's rules are in the table above.
+- **Login and interactive shells.** A shell can be both at once. zsh reads `~/.zprofile` for login shells and `~/.zshrc` for interactive ones, so an interactive login shell reads both; bash's rules are in the table above.
 - **A pipeline's exit status** is the status of its last command, so `failing-command | head` succeeds. bash's `pipefail` option, `set -o pipefail`, makes it fail when any command fails.
 - **Changing the default shell.** On macOS, `chsh -s /bin/zsh` (or `/bin/bash`) changes your login shell, with a path from `/etc/shells`. Terminal's settings can also open a different shell. macOS shows a message that the default interactive shell is now zsh when you start bash while zsh is the default.
 
 ## Practice
 
-This guide has no cstudy problem of its own: you practise it by using cstudy. Try the commands of the worked example in a folder of your own, then read [package managers](../package-managers/guide.md) to install the toolchains, the page for your language, and [your first problem](../your-first-problem/guide.md), which runs the whole cstudy loop in the terminal.
+This guide has no cstudy problem of its own: you practise it by using cstudy. Try the commands of the worked example in a folder of your own, then read [package managers](../package-managers/guide.md) to install the toolchains, the guide for your language, which package managers lists, and [your first problem](../your-first-problem/guide.md), which runs the whole cstudy loop in the terminal.
 
 ## Further reading
 

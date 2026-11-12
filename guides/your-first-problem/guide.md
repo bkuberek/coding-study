@@ -50,7 +50,16 @@ The diagram shows the six steps. Steps 3 and 4 repeat: you change your code and 
 - **Test** it. `cstudy test` runs your code against the problem's cases, including hidden ones, and shows what passed and what failed. `cstudy hint` shows the next hint when you are stuck.
 - **Finish** with `cstudy done`, saying how it went. cstudy uses that to schedule a **review**: a later day when `cstudy next` brings the problem back, so you practise it again before you forget it.
 
-You need a **workspace** first, a folder of your own where your solutions, notes and progress live. Create it once, then run the rest from inside it:
+Every problem assumes you can write a small function in the language you practise. If that still needs looking up, read the guide for your language first. Each says what to learn, where to learn it for free, and what your first stub looks like:
+
+- [Learn Python first](../learn-python-first/guide.md)
+- [Learn TypeScript first](../learn-typescript-first/guide.md)
+- [Learn Java first](../learn-java-first/guide.md)
+- [Learn Kotlin first](../learn-kotlin-first/guide.md)
+- [Learn Go first](../learn-go-first/guide.md)
+- [Learn Rust first](../learn-rust-first/guide.md)
+
+You also need a **workspace**, a folder of your own where your solutions, notes and progress live. Create it once, then run the rest from inside it:
 
 ```console
 $ cstudy init ~/cstudy-workspace
@@ -58,7 +67,7 @@ $ cd ~/cstudy-workspace
 $ cstudy doctor --fix
 ```
 
-`cstudy doctor --fix` checks your toolchains and sets up the workspace's projects: `uv sync` for Python, `pnpm install` for TypeScript and a first Gradle build for Java and Kotlin. A `FAIL` for a language you do not use does not stop you; the page for your language, such as [learn Python first](../learn-python-first/guide.md), says which rows matter.
+`cstudy doctor --fix` checks your toolchains and sets up the workspace's projects: `uv sync` for Python, `pnpm install` for TypeScript and a first Gradle build for Java and Kotlin. A `FAIL` for a language you do not use does not stop you; the guide for your language says which rows matter.
 
 ## A worked example
 
@@ -163,11 +172,11 @@ next       cstudy test --watch
 
 ```console
 $ cstudy done --rating ok
-two-sum · kotlin · passed · 18m 40s · rating ok · hints 0
-next review  2026-10-27 (in 3 days) · ease 2.50
+two-sum · python · passed · 3s · rating ok · hints 0
+next review  2026-11-15 (in 3 days) · ease 2.50
 ```
 
-That example comes from cstudy's own documentation, in Kotlin. If you stop without a full pass, finish with `--gave-up` instead; a rating then is refused, with `error: the latest test run did not pass every case; run cstudy test, or finish with --gave-up`:
+The time is the attempt's, from `cstudy start` to `cstudy done`. If you stop without a full pass, finish with `--gave-up` instead; a rating then is refused, with `error: the latest test run did not pass every case; run cstudy test, or finish with --gave-up`:
 
 ```console
 $ cstudy done --gave-up
@@ -194,7 +203,7 @@ ID    SLUG              DIFF    PATTERN          STATUS        DUE         REFS
 
 For a first win, start with problems that a straightforward loop solves:
 
-- `valid-palindrome` and `move-zeroes` need only loops, comparisons and the basics of strings and arrays. Even the simplest approach their solutions list makes a single pass over the input.
+- `valid-palindrome` and `move-zeroes` need only loops, comparisons and the basics of strings and arrays. Even the simplest approach their solutions list takes a few passes over the input, never a loop inside a loop.
 - `contains-duplicate` and `two-sum` are next. Checking every pair is correct for both, but on their largest inputs it is hundreds of millions of steps: slow on one, and stopped by the 30-second guard on the other in the worked example. [Hash maps and sets](../hash-maps-and-sets/guide.md) teaches the faster idea.
 
 Problems about trees, linked lists and the other topics in the list come after; each topic has its own guides and problems.
@@ -243,7 +252,7 @@ Later reviews move further apart while you keep passing, up to 180 days, and a p
 
 Try these in order. Each comes in every language cstudy supports.
 
-- `valid-palindrome`: decide whether a line of text reads the same both ways, skipping punctuation and ignoring case. Strings and characters.
+- `valid-palindrome`: decide whether a line of text reads the same both ways, skipping everything but letters and digits and ignoring case. Strings and characters.
 - `move-zeroes`: move every zero to the end of an array, in place, keeping the order of the other values. Changing the array you were given.
 - `contains-duplicate`: the plainest "have I seen this before?". On its largest input, checking every pair is about 450 million comparisons.
 - `two-sum`: the problem of the worked example. Find two positions whose values add up to a target, faster than by checking every pair.

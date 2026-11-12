@@ -81,7 +81,7 @@ Those are the rows before Rust is installed: `WARN`, not `FAIL`, because Rust is
 
 ## Complexity
 
-cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time. Rust's standard library documents the costs of its collections in one table, marking some costs as amortized and some as expected.
+cstudy's problems state the time and space their solutions take, in Big-O notation, and many have a large hidden input that a slow solution does not finish in time. O(n) means the work grows in step with the input's size n, and O(1) that it stays the same whatever the size; amortized means averaged over many calls, so an occasional call costs more; expected means on average, since with hashing a much slower case is possible but very unlikely. Rust's standard library documents the costs of its collections in one table, marking some costs as amortized and some as expected.
 
 | Operation | Cost | Source |
 |-----------|------|--------|
