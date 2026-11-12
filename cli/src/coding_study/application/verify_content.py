@@ -43,6 +43,7 @@ from coding_study.application.verify_items import (
 )
 from coding_study.application.verify_ladder import LadderResult, verify_ladder
 from coding_study.application.verify_projects import SuiteCheck, verify_project
+from coding_study.application.verify_references import reference_conflicts
 from coding_study.application.verify_service import verify_service_project
 from coding_study.domain.cases import Expected, GeneratedInput, JsonValue
 from coding_study.domain.clock_determinism import DeterminismVerdict
@@ -207,8 +208,9 @@ def verify_content(
             raise UnknownProblemError(slug)
     selected = request.slugs or tuple(dict.fromkeys(known))
     duplicates = _duplicate_issues(environment)
-    for slug, conflicts in problem_slug_conflicts(environment).items():
-        duplicates[slug] = (*duplicates.get(slug, ()), *conflicts)
+    for found in (problem_slug_conflicts(environment), reference_conflicts(environment)):
+        for slug, conflicts in found.items():
+            duplicates[slug] = (*duplicates.get(slug, ()), *conflicts)
     all_slugs = frozenset((*known, *item_slugs))
     verifier = _ProblemVerifier(environment, request, notify, all_slugs)
     checked = (

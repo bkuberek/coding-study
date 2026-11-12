@@ -43,7 +43,5 @@ concurrency:
 approaches:
   - {id: locked-dll, name: Hash map and doubly linked list under one lock, role: optimal, time: "O(1) per op", space: "O(capacity)"}
   - {id: locked-linked-map, name: Access-ordered map from the standard library under one lock, role: optimal, time: "O(1) per op", space: "O(capacity)", languages: [java, kotlin, python]}
-references:
-  leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}
 related: [lru-cache, cache-service, read-write-lock]
 estimate_minutes: 40
