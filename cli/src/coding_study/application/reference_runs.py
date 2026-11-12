@@ -8,6 +8,7 @@ from pathlib import Path
 from coding_study.application.environment import Environment
 from coding_study.application.language_runs import CodeRun, LanguageRun, reference_job_id
 from coding_study.application.ports import ProgressNotice, References, ReferenceSource
+from coding_study.application.starter_helpers import append_helper
 from coding_study.domain import layout
 from coding_study.domain.buggy_stubs import BUGGY_STUB_APPROACH_ID, buggy_file
 from coding_study.domain.comparators import Comparator
@@ -183,7 +184,8 @@ class LanguageVerifier:
         return None
 
     def _write_stub(self) -> Path:
-        stub = self._environment.toolchains.stub_generator(self._language).generate(self._meta)
+        generated = self._environment.toolchains.stub_generator(self._language).generate(self._meta)
+        stub = append_helper(self._environment.files, self._meta.slug, self._language, generated)
         name = layout.reference_file_name(STUB_APPROACH_ID, self._language)
         path = f"{STUB_DIRECTORY}/{self._language}/{self._meta.snake_slug}/{name}"
         workspace = self._environment.workspace

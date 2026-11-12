@@ -81,6 +81,7 @@ from coding_study.domain.problem_files import (
     BUGGY_DIRECTORY,
     EXPLANATION_FILE,
     GENERATOR_FILE,
+    HELPERS_DIRECTORY,
     META_FILE,
     PROBLEM_FILE,
     RUBRIC_FILE,
@@ -259,6 +260,7 @@ def problem_content(environment: Environment, slug: str, problem: Problem) -> Pr
         files=files.file_names(slug),
         solution_files=files.file_names(slug, SOLUTIONS_DIRECTORY),
         buggy_files=files.file_names(slug, BUGGY_DIRECTORY),
+        helper_files=files.file_names(slug, HELPERS_DIRECTORY),
         rubric=files.read_text(slug, RUBRIC_FILE),
         broken_files=files.file_names(slug, BROKEN_DIRECTORY),
     )

@@ -32,6 +32,7 @@ from coding_study.domain.problem_files import (
     CHECKER_FILE,
     EXPLANATION_FILE,
     GENERATOR_FILE,
+    HELPERS_DIRECTORY,
     META_FILE,
     PROBLEM_FILE,
     SOLUTIONS_DIRECTORY,
@@ -307,6 +308,8 @@ class ProjectContent:
     """File names directly in the problem directory."""
     buggy_files: tuple[str, ...]
     """File names in buggy/."""
+    helper_files: tuple[str, ...] = ()
+    """File names in helpers/."""
 
 
 def project_issues(content: ProjectContent) -> tuple[ContentIssue, ...]:
@@ -503,6 +506,8 @@ class _Settings:
                 self._issues.error(name, "a project problem has none")
         if self._content.buggy_files:
             self._issues.error(BUGGY_DIRECTORY, "a project problem has none")
+        if self._content.helper_files:
+            self._issues.error(HELPERS_DIRECTORY, "a project problem has none")
 
     def _cases(self) -> None:
         for index, case in enumerate(self._content.problem.cases):

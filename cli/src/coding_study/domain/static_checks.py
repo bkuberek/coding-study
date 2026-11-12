@@ -47,6 +47,7 @@ from coding_study.domain.problem_files import (
     CHECKER_FILE,
     EXPLANATION_FILE,
     EXPLANATION_NAME,
+    HELPERS_DIRECTORY,
     META_FILE,
     PROBLEM_FILE,
     RUBRIC_FILE,
@@ -60,6 +61,7 @@ from coding_study.domain.service_project import service_of
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, output_type
 from coding_study.domain.statement import example_marker
 from coding_study.domain.stress import StressScenario
+from coding_study.domain.stub_helpers import helper_issues
 from coding_study.domain.type_dsl import Scalar, scalars_of
 from coding_study.domain.value_checks import case_issues
 
@@ -110,6 +112,8 @@ class ProblemContent:
     """File names directly in the problem directory."""
     solution_files: tuple[str, ...] = ()
     buggy_files: tuple[str, ...] = ()
+    helper_files: tuple[str, ...] = ()
+    """File names in helpers/: what generated starters end with."""
     rubric: str | None = None
     """rubric.md, when the problem has one."""
     broken_files: tuple[str, ...] = ()
@@ -171,6 +175,7 @@ def _project_content(content: ProblemContent) -> ProjectContent:
         explanation=content.explanation,
         files=content.files,
         buggy_files=content.buggy_files,
+        helper_files=content.helper_files,
     )
 
 
@@ -359,11 +364,25 @@ def _companion_files(issues: _Issues, content: ProblemContent) -> None:
             issues.error(f"{BUGGY_DIRECTORY}/{name}", "maps to no language in languages")
     elif content.buggy_files:
         issues.error(BUGGY_DIRECTORY, f"present but stub is {meta.stub}")
+    _helper_files(issues, content)
     if meta.track is Track.LLD and RUBRIC_FILE not in files:
         issues.error(RUBRIC_FILE, "missing (track: lld)")
     if content.rubric is not None:
         for message in rubric_issues(content.rubric, LLD_RUBRIC_SECTIONS):
             issues.error(RUBRIC_FILE, message)
+
+
+def _helper_files(issues: _Issues, content: ProblemContent) -> None:
+    """S8: starter helpers, one per listed language, only for a generated starter. A project
+    problem has none, which S14 reports."""
+    meta = content.problem.meta
+    if not content.helper_files or meta.kind is ProblemKind.PROJECT:
+        return
+    if meta.stub is not StubSource.GENERATED:
+        issues.error(HELPERS_DIRECTORY, f"present but stub is {meta.stub}")
+        return
+    for location, message in helper_issues(content.helper_files, meta.languages):
+        issues.error(location, message)
 
 
 def _float_comparator(issues: _Issues, meta: ProblemMeta) -> None:

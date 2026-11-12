@@ -13,6 +13,7 @@ from coding_study.application.project_start import (
     StartedProject,
     start_project,
 )
+from coding_study.application.starter_helpers import append_helper
 from coding_study.application.statement_file import write_statement
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt, AttemptMode, NewAttempt
@@ -137,7 +138,8 @@ def _stub_text(environment: Environment, problem: Problem, language: Language) -
     if meta.stub is StubSource.GENERATED:
         statement = environment.files.read_text(meta.slug, PROBLEM_FILE) or ""
         summarized = replace(meta, summary=starter_summary(meta, statement))
-        return environment.toolchains.stub_generator(language).generate(summarized)
+        stub = environment.toolchains.stub_generator(language).generate(summarized)
+        return append_helper(environment.files, meta.slug, language, stub)
     name = buggy_file(language)
     text = environment.files.read_text(meta.slug, name)
     if text is None:
