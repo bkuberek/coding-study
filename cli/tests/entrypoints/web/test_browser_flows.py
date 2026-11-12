@@ -26,6 +26,7 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not 
 PROBLEM = "two-sum"
 PREFERENCES = Path(".cs") / "serve" / "preferences.json"
 WAIT_MS = 60_000
+NOTICE_WAIT_MS = 1_500
 EDITOR = ".panel:not([hidden]) .cm-editor"
 SHEET = "dialog.sheet[open]"
 QUESTION_PATH = f"/api/v1/problems/{PROBLEM}/solution"
@@ -133,6 +134,9 @@ def _done(page: Any, seen: Practice) -> None:
     page.click(f"{SHEET} label[for=done-gave-up]")
     page.click(f"{SHEET} button[type=submit]")
     seen.outcome = page.locator(f"{SHEET} .outcome-lines").inner_text()
+    # The server tells the page of the change a moment later; the attempt behind the dialog must not
+    # read an attempt that is over, which the browser would log as a 409.
+    page.wait_for_timeout(NOTICE_WAIT_MS)
     page.keyboard.press("Escape")
 
 

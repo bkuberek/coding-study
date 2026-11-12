@@ -5,6 +5,7 @@
  */
 
 import { ApiError } from "../api.ts";
+import { AttemptEnding, type Finishing } from "../attemptEnding.ts";
 import { type AttemptFlows, attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h, rendered } from "../dom.ts";
@@ -40,7 +41,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   const clock = h("span", { class: "timer", role: "timer", "aria-label": "Time on this attempt" });
   const statusClock = h("span", { class: "segment timer-segment" });
   let timer: number | undefined;
-  let ended = false;
+  const ending = new AttemptEnding();
   let shown: {
     readonly head: HTMLElement;
     readonly brief: HTMLElement;
@@ -63,7 +64,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       reread ? api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`) : shown!.statement,
       shown === null ? runs.showToolbar(status) : null,
     ]);
-    if (ended) return;
+    if (ending.ended) return;
     if (shown) {
       // The hints this tab revealed and the controls live on.
       shown.flows.update(status);
@@ -89,7 +90,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       };
       tick();
       timer = window.setInterval(tick, TICK_MS);
-      const flows = attemptFlows(context, status);
+      const flows = attemptFlows(context, status, finishing);
       const files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
       tabs.onSaved(() => void files.refresh().catch(() => {}));
       shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
@@ -110,9 +111,10 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   };
 
   /** Reads the attempt again; once it is no longer in progress, or a reset deleted it, the view says
-   * so and stays read-only. Another failure keeps what shows and is announced, unless nothing shows yet. */
+   * so and stays read-only. Another failure keeps what shows and is announced, unless nothing shows yet.
+   * While this tab finishes the attempt, nothing reads it: it would answer that it ended. */
   const refresh = (statement: boolean) => {
-    if (ended) return;
+    if (ending.holds()) return;
     load(statement).catch((error: unknown) => {
       if (error instanceof ApiError && (error.code === ATTEMPT_ENDED || (error.code === NOT_FOUND && shown !== null))) endedElsewhere();
       else if (shown === null) showFailure(page, error);
@@ -120,27 +122,35 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     });
   };
 
-  const endedElsewhere = () => {
-    ended = true;
-    tabs.freeze();
-    runs.freeze();
-    const slug = shown?.status.slug;
-    shown?.head.append(
-      h(
-        "p",
-        { class: "attempt-ended", role: "alert" },
-        "This attempt is no longer in progress: ",
-        command("cstudy done"),
-        " finished it, abort ended it, a fresh start replaced it, or a reset deleted it. Its files stay read-only here. ",
-        slug ? h("a", { href: problemHash(slug) }, `Open ${slug}`) : null,
-      ),
-    );
+  const endedElsewhere = () =>
+    ending.end(() => {
+      tabs.freeze();
+      runs.freeze();
+      const slug = shown?.status.slug;
+      shown?.head.append(
+        h(
+          "p",
+          { class: "attempt-ended", role: "alert" },
+          "This attempt is no longer in progress: ",
+          command("cstudy done"),
+          " finished it, abort ended it, a fresh start replaced it, or a reset deleted it. Its files stay read-only here. ",
+          slug ? h("a", { href: problemHash(slug) }, `Open ${slug}`) : null,
+        ),
+      );
+    });
+
+  const finishing: Finishing = {
+    begin: () => ending.finishing(),
+    failed: () => {
+      if (ending.failed()) refresh(false);
+    },
+    finished: endedElsewhere,
   };
 
   const treeSoon = settle(() => void shown?.files.refresh().catch(() => {}));
   const statusSoon = settle(() => refresh(false));
   const unfollow = context.notifications.subscribe((notice) => {
-    if (ended || shown === null) return;
+    if (ending.ended || shown === null) return;
     switch (notice.type) {
       case "file_changed":
         if (notice.attempt_id !== id) return;

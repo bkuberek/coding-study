@@ -6,6 +6,7 @@
  * refusal shows the CLI's message.
  */
 
+import type { Finishing } from "./attemptEnding.ts";
 import { quoted, startCommand } from "./commands.ts";
 import type { PageContext } from "./context.ts";
 import { h, rendered } from "./dom.ts";
@@ -219,11 +220,11 @@ export interface AttemptFlows {
 }
 
 /** The attempt's Hint, Solution and Done controls; Hint and Solution follow the mock lock. */
-export function attemptFlows(context: PageContext, status: AttemptStatus): AttemptFlows {
+export function attemptFlows(context: PageContext, status: AttemptStatus, finishing: Finishing): AttemptFlows {
   const hints = new HintControl(context, status);
   context.mock.follow(HINT_COMMAND, hints.button, (lock) => hints.setLock(lock));
   const done = h("button", { type: "button", class: "button", title: `cstudy done ${status.slug}: finish and schedule the review` }, "Done…");
-  done.addEventListener("click", () => openLazily(context, () => import("./sheets.ts"), (dialog) => dialog.openDoneDialog(context, status)));
+  done.addEventListener("click", () => openLazily(context, () => import("./sheets.ts"), (dialog) => dialog.openDoneDialog(context, status, finishing)));
   const abort = h("button", { type: "button", class: "button", title: `cstudy abort ${status.slug}: stop working on this problem; your files stay` }, "Abort…");
   abort.addEventListener("click", () => openLazily(context, () => import("./sheets.ts"), (dialog) => void dialog.abortAttempt(context, status)));
   const actions = h("span", { class: "flow-actions", role: "group", "aria-label": "Attempt" }, hints.button, solutionButton(context, status.slug), done, abort);

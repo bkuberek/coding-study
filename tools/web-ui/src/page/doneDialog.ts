@@ -4,6 +4,7 @@
  * (NFR-12).
  */
 
+import type { Finishing } from "./attemptEnding.ts";
 import { doneCommand, doneLines, type DoneChoice, refreshAttemptsMenu } from "./attempts.ts";
 import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";
@@ -20,7 +21,7 @@ const GAVE_UP = "gave-up";
 const ITEM = "item";
 
 /** The Done dialog: a rating, or giving up, and notes; then the lines `cstudy done` prints. */
-export function openDoneDialog(context: PageContext, status: AttemptStatus): void {
+export function openDoneDialog(context: PageContext, status: AttemptStatus, finishing: Finishing): void {
   const sheet = openSheet(`done · ${status.slug}`);
   const isItem = status.kind === ITEM;
   const choices = [...RATINGS, ...(isItem ? [] : [GAVE_UP])];
@@ -63,14 +64,18 @@ export function openDoneDialog(context: PageContext, status: AttemptStatus): voi
     problemArea.replaceChildren();
     const picked = choice();
     const body = picked.gaveUp ? { gave_up: true } : { rating: picked.rating };
+    // The attempt view hears of the change from the server too, and would read an attempt that is over.
+    finishing.begin();
     context.api
       .post<DoneDocument>(`/api/v1/attempts/${status.attempt_id}/done`, { ...body, notes: picked.notes.trim() || null })
       .then((done) => {
+        finishing.finished();
         showOutcome(context, sheet.body, done, status);
         refreshAttemptsMenu(context);
         void context.mock.refresh();
       })
       .catch((error: unknown) => {
+        finishing.failed();
         problemArea.replaceChildren(failure(error));
         submit.disabled = false;
       });
