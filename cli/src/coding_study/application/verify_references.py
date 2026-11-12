@@ -3,10 +3,7 @@
 A reference names the judge's problem a catalog problem is based on. Two problems with the same
 one are the same problem written twice, so each of them reports the others. Items have no
 `references.leetcode`, so only problems take part. A problem whose files do not load has no
-reference to compare: its own load error is reported instead.
-
-`cstudy verify` reports these as warnings while the catalog holds duplicates that predate the
-check; once they are resolved the check becomes an error, like S2.
+reference to compare: its own load error is reported instead. Like S2, it is an error.
 """
 
 from collections import defaultdict

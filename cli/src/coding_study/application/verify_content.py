@@ -207,12 +207,11 @@ def verify_content(
             raise UnknownProblemError(slug)
     selected = request.slugs or tuple(dict.fromkeys(known))
     duplicates = _duplicate_issues(environment)
-    for slug, conflicts in problem_slug_conflicts(environment).items():
-        duplicates[slug] = (*duplicates.get(slug, ()), *conflicts)
+    for found in (problem_slug_conflicts(environment), reference_conflicts(environment)):
+        for slug, conflicts in found.items():
+            duplicates[slug] = (*duplicates.get(slug, ()), *conflicts)
     all_slugs = frozenset((*known, *item_slugs))
-    verifier = _ProblemVerifier(
-        environment, request, notify, all_slugs, reference_conflicts(environment)
-    )
+    verifier = _ProblemVerifier(environment, request, notify, all_slugs)
     checked = (
         verifier.verify(slug, duplicates.get(slug, ())) for slug in selected if slug in known
     )
@@ -311,14 +310,11 @@ class _ProblemVerifier:
         request: VerifyRequest,
         notify: ProgressNotice,
         known_slugs: frozenset[str],
-        shared_references: dict[str, tuple[str, ...]],
     ) -> None:
         self._environment = environment
         self._request = request
         self._notify = notify
         self._known_slugs = known_slugs
-        self._shared_references = shared_references
-        """S26, by slug; a warning until the catalog's existing duplicates are resolved."""
         self._guide_slugs = frozenset(environment.guides.slugs())
 
     def verify(self, slug: str, duplicates: tuple[str, ...]) -> ProblemVerification | None:
@@ -346,10 +342,7 @@ class _ProblemVerifier:
                 *duplicates,
                 *(str(issue) for issue in (*static.errors, *self._unknown_guides(content))),
             ),
-            warnings=(
-                *self._shared_references.get(slug, ()),
-                *(str(issue) for issue in (*static.warnings, *self._related(content))),
-            ),
+            warnings=tuple(str(issue) for issue in (*static.warnings, *self._related(content))),
             reference_languages=_reference_languages(content),
             ready_errors=ready_problems(content) if self._request.require_ready else (),
         )
