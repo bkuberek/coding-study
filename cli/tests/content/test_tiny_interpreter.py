@@ -980,6 +980,50 @@ def test_every_level_has_two_visible_and_two_hidden_cases():
         assert sum(not case.get("visible") for case in at_level) >= 2
 
 
+CHILDREN = {"num": (), "name": (), "neg": (1,), "bin": (2, 3), "let": (2, 3), "if": (1, 2, 3)}
+
+
+def tree_depth(node: Any) -> int:
+    """The level of the deepest node, the whole program being level 1."""
+    if node[0] == "call":
+        children = [node[1], *node[2]]
+    elif node[0] == "fn":
+        children = [node[3]]
+    else:
+        children = [node[index] for index in CHILDREN[node[0]]]
+    return 1 + max((tree_depth(child) for child in children), default=0)
+
+
+def paren_depth(source: str) -> int:
+    deepest = depth = 0
+    for char in source:
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        deepest = max(deepest, depth)
+    return deepest
+
+
+def test_every_case_stays_within_the_constraints_and_some_sit_on_them():
+    """The statement promises trees at most 15 deep, parentheses at most 15 deep and maxDepth at
+    most 100, which keeps a tree walker on Node's default stack; the deepest cases use all three."""
+    trees, parens = [0], [0]
+    for case in CASES:
+        max_depth = case["args"][0][0]
+        assert 1 <= max_depth <= 100
+        model = Model(max_depth)
+        for op, arguments in zip(case["ops"][1:], case["args"][1:], strict=True):
+            source = arguments[0]
+            assert len(source) <= 2_000
+            if op == "tokenize":
+                continue
+            parens.append(paren_depth(source))
+            try:
+                trees.append(tree_depth(model.tree(source)))
+            except LangError:
+                continue
+    assert max(trees) == 15
+    assert max(parens) == 15
+
+
 def test_run_and_evaluate_agree_on_every_program_of_the_cases():
     for case in CASES:
         model = Model(case["args"][0][0])

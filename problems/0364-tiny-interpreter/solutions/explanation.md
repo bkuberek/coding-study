@@ -77,7 +77,7 @@ Each level reuses the previous one: `parse` tokenizes, `evaluate` and `bytecode`
 - Java and Kotlin compute in `long` and narrow to `int` after the check; Go in `int64`; Rust in `i64`.
 - The tree is a sealed interface of records in Java, a sealed class in Kotlin, a tagged union type in TypeScript, an `enum` in Rust and an interface with one struct per node in Go.
 - Rust shares scopes and closures with `Rc`; a function value holds an `Rc` of its tree node for the walker, or only its block number for the machine.
-- The machine never recurses, but the tree walker and the parser do: the runners give Python, Java, Kotlin and Rust large thread stacks, Go's stacks grow on demand, and TypeScript's default stack holds the 100-deep recursion and 50-deep nesting the constraints allow.
+- The machine never recurses, but the tree walker, the parser and the compiler do. The runners give Python, Java, Kotlin and Rust large thread stacks and Go's stacks grow on demand, while TypeScript runs on Node's default stack, for which content keeps recursion within 3,000 levels. The constraints stay well inside that: a tree at most 15 levels deep and at most 100 calls in progress make a tree walker recurse at most about 1,500 levels. Measured on Node 24 in a fresh process, this TypeScript walker, which computes arguments with `Array.prototype.map` and so spends extra frames on each argument level, overflows at `maxDepth = 100` once calls nest about 23 levels deep inside arguments, and about 43 levels deep inside operators. The hidden cases include programs at the deepest point the constraints allow, in both shapes.
 
 ## Further reading
 

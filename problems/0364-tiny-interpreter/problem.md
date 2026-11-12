@@ -231,7 +231,9 @@ The function is block 1. Block 0 makes the closure, names it `sq`, loads it and 
 
 - At most 20 calls per test.
 - `1 <= maxDepth <= 100`.
-- A source holds at most 2,000 characters, and its expressions nest at most 50 deep.
+- A source holds at most 2,000 characters.
+- The syntax tree of a source that parses is at most 15 levels deep: the whole program is level 1, and each part of a form (an operand, the function or an argument of a call, the value or body of a `let`, the condition or a branch of an `if`, the body of a `fn`) is one level below the form. Parentheses nest at most 15 deep.
+- Together with `maxDepth`, this keeps a tree walker's recursion within about 1,500 levels: at most 100 calls in progress, each at most 15 levels into the tree.
 - Running a program takes at most 50,000 function calls.
 
 ## Follow-ups
