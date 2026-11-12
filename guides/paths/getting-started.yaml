@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Getting started: from the terminal to your first problem"
+summary: The terminal, package managers, the basics of the language you practise in, then the cstudy loop on your first problems. Read the language page for your language; the others are optional.
+steps:
+  - guide: using-the-terminal
+  - guide: package-managers
+  - guide: learn-python-first
+  - guide: learn-typescript-first
+  - guide: learn-java-first
+  - guide: learn-kotlin-first
+  - guide: learn-go-first
+  - guide: learn-rust-first
+  - guide: your-first-problem
+  - problem: valid-palindrome
+  - problem: move-zeroes
+  - problem: contains-duplicate
+  - problem: two-sum
