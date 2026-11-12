@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 105, url: "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/"}
 related: [serialize-binary-tree, level-order-traversal]
+guides: [recursion-on-trees]
 order: 11
 estimate_minutes: 25

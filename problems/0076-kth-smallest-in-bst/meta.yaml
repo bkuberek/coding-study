@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 230, url: "https://leetcode.com/problems/kth-smallest-element-in-a-bst/"}
 related: [validate-bst, bst-iterator]
+guides: [binary-search-trees]
 order: 10
 estimate_minutes: 15

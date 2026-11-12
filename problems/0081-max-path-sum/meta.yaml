@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 124, url: "https://leetcode.com/problems/binary-tree-maximum-path-sum/"}
 related: [diameter-binary-tree, max-depth-binary-tree]
+guides: [recursion-on-trees]
 order: 15
 estimate_minutes: 30

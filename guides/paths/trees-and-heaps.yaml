@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Trees and heaps: from your first tree to a bank that schedules on a heap"
+summary: What a tree is, how to walk it and recurse on it, search trees that keep their keys in order, and heaps with their patterns, through the problems that practise each idea.
+steps:
+  - guide: trees
+  - guide: tree-traversals
+  - problem: invert-binary-tree
+  - problem: level-order-traversal
+  - problem: right-side-view
+  - guide: recursion-on-trees
+  - problem: max-depth-binary-tree
+  - problem: same-tree
+  - problem: subtree-of-another-tree
+  - problem: balanced-binary-tree
+  - problem: diameter-binary-tree
+  - problem: lowest-common-ancestor
+  - problem: tree-path-sum-count
+  - problem: tree-from-preorder-inorder
+  - problem: org-chart-outline
+  - guide: binary-search-trees
+  - problem: validate-bst
+  - problem: kth-smallest-in-bst
+  - problem: bst-iterator
+  - guide: heaps
+  - problem: last-stone-weight
+  - problem: single-threaded-cpu
+  - problem: task-scheduler
+  - guide: heap-patterns
+  - problem: kth-largest-element
+  - problem: k-closest-points
+  - problem: top-k-frequent-elements
+  - problem: design-twitter
+  - problem: merge-k-sorted-lists
+  - problem: median-data-stream
+  - problem: maximize-capital
+  - problem: max-path-sum
+  - problem: serialize-binary-tree
+  - problem: scheduled-transfers-bank

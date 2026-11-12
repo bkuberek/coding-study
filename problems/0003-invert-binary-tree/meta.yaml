@@ -27,4 +27,5 @@ perf:
 references:
   leetcode: {number: 226, url: "https://leetcode.com/problems/invert-binary-tree/"}
 related: [same-tree]
+guides: [tree-traversals]
 estimate_minutes: 10

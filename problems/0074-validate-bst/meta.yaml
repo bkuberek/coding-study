@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 98, url: "https://leetcode.com/problems/validate-binary-search-tree/"}
 related: [kth-smallest-in-bst, bst-iterator, lowest-common-ancestor]
+guides: [binary-search-trees]
 order: 8
 estimate_minutes: 20

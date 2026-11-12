@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 1046, url: "https://leetcode.com/problems/last-stone-weight/"}
 related: [kth-largest-element, task-scheduler]
+guides: [heaps]
 order: 1
 estimate_minutes: 10

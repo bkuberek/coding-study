@@ -27,5 +27,6 @@ perf:
 references:
   leetcode: {number: 104, url: "https://leetcode.com/problems/maximum-depth-of-binary-tree/"}
 related: [balanced-binary-tree, diameter-binary-tree, level-order-traversal]
+guides: [recursion-on-trees]
 order: 2
 estimate_minutes: 10

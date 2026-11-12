@@ -28,5 +28,6 @@ perf:
 references:
   leetcode: {number: 173, url: "https://leetcode.com/problems/binary-search-tree-iterator/"}
 related: [kth-smallest-in-bst, validate-bst]
+guides: [binary-search-trees]
 order: 13
 estimate_minutes: 20

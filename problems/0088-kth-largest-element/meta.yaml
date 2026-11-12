@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 215, url: "https://leetcode.com/problems/kth-largest-element-in-an-array/"}
 related: [last-stone-weight, k-closest-points, top-k-frequent-elements]
+guides: [heap-patterns]
 order: 2
 estimate_minutes: 20

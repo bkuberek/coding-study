@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 295, url: "https://leetcode.com/problems/find-median-from-data-stream/"}
 related: [kth-largest-element, k-closest-points, last-stone-weight]
+guides: [heap-patterns]
 order: 7
 estimate_minutes: 30

@@ -27,5 +27,6 @@ perf:
 references:
   leetcode: {number: 110, url: "https://leetcode.com/problems/balanced-binary-tree/"}
 related: [max-depth-binary-tree, diameter-binary-tree]
+guides: [recursion-on-trees]
 order: 6
 estimate_minutes: 15

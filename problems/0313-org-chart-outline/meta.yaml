@@ -40,4 +40,5 @@ perf:
   budget_ms: 10000
   expected_from: child-lists
 related: [employee-importance, time-to-inform-employees, invert-binary-tree]
+guides: [tree-traversals, recursion-on-trees]
 estimate_minutes: 75

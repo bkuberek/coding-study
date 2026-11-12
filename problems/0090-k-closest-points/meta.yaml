@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 973, url: "https://leetcode.com/problems/k-closest-points-to-origin/"}
 related: [kth-largest-element, top-k-frequent-elements, median-data-stream]
+guides: [heap-patterns]
 order: 4
 estimate_minutes: 20
