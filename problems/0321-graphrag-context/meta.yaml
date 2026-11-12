@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0321"
+slug: graphrag-context
+title: GraphRAG Context
+summary: "Build GraphContext, which turns a weighted, timestamped knowledge graph into model context: facts near an entity, ranked by weight, distance and recency, packed into a token budget, each with a path."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs, greedy]
+domains: [algorithms, backend, ai-llm]
+job_roles: [general, backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Facts around an entity}
+  - {level: 2, title: Ranking the facts}
+  - {level: 3, title: Filling a token budget}
+  - {level: 4, title: Paths and rendered context}
+signature:
+  class:
+    name: GraphContext
+    constructor: {params: []}
+    methods:
+      - {name: addFact, level: 1, params: [{name: subject, type: string}, {name: relation, type: string}, {name: obj, type: string}, {name: weight, type: int}, {name: time, type: int}], returns: {type: bool}}
+      - {name: size, level: 1, params: [], returns: {type: int}}
+      - {name: egoNetwork, level: 1, params: [{name: entity, type: string}, {name: hops, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: rankFacts, level: 2, params: [{name: entity, type: string}, {name: hops, type: int}, {name: now, type: int}, {name: halfLife, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: buildContext, level: 3, params: [{name: entity, type: string}, {name: hops, type: int}, {name: now, type: int}, {name: halfLife, type: int}, {name: budget, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: explain, level: 4, params: [{name: entity, type: string}, {name: subject, type: string}, {name: relation, type: string}, {name: obj, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: renderContext, level: 4, params: [{name: entity, type: string}, {name: hops, type: int}, {name: now, type: int}, {name: halfLife, type: int}, {name: budget, type: int}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: bfs-rank-fill, name: Breadth-first distances then one ranked list then a greedy fill, role: optimal, time: "O(V + E + F log F) per query", space: "O(V + E)", time_class: "n log n", space_class: "n"}
+related: [rag-citations-typescript, context-packer, triple-store, taxonomy, bm25-hybrid-ranker]
+estimate_minutes: 120
