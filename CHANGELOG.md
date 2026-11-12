@@ -2,6 +2,54 @@
 
 <!-- version list -->
 
+## v0.45.0 (2026-11-12)
+
+### Bug Fixes
+
+- **problems**: Keep 0383 settings closed after a failed allocate
+  ([`c8c3072`](https://github.com/bkuberek/coding-study/commit/c8c307277aa2cfb29cc4f7b86253d91b1868a1b3))
+
+- **problems**: Reject 0382 numbers longer than nine digits
+  ([`70ffb79`](https://github.com/bkuberek/coding-study/commit/70ffb79810fc4a9febc8387f3ff0743dfd1187f6))
+
+- **problems**: State that a 0381 range end cannot start another range
+  ([`672d220`](https://github.com/bkuberek/coding-study/commit/672d220b148175d36b661f780114dd34357b1a19))
+
+### Documentation
+
+- Catalog at 398 with 0381–0383
+  ([`97fe7b5`](https://github.com/bkuberek/coding-study/commit/97fe7b50526a34a164ae3bab9d71ee18ef4c6ea6))
+
+- **problems**: Correct the 0381 POSIX null-match note and case wording
+  ([`80b5840`](https://github.com/bkuberek/coding-study/commit/80b58409391da4de6da75cd6990eff8ec09b70ae))
+
+- **problems**: Credit the 0383 free-block footer to Standish
+  ([`a2da6d8`](https://github.com/bkuberek/coding-study/commit/a2da6d80518a8b147060424651bf2bee6eb30869))
+
+- **problems**: Explain the shared position and atom in the first 0381 hint
+  ([`862f0ab`](https://github.com/bkuberek/coding-study/commit/862f0abc6bb510c0c735c9591b54555d9cf64a52))
+
+- **problems**: Link the internals problems from their neighbours
+  ([`59fe05a`](https://github.com/bkuberek/coding-study/commit/59fe05a99f9a1ccb98b28baf300ded1f06485dd5))
+
+- **problems**: Say which 0382 selectivity factors need an index
+  ([`8a952b8`](https://github.com/bkuberek/coding-study/commit/8a952b8d82e49d08d4d1b9744ff0412ae7d0a935))
+
+### Features
+
+- **guides**: Link regex-engine to the evaluating-expressions guide
+  ([`411cd35`](https://github.com/bkuberek/coding-study/commit/411cd35f5e0e91e0f76a987a531f3eb7821b0e5f))
+
+- **problems**: Add 0381 regex-engine, a progressive regex engine in six languages
+  ([`9b9b188`](https://github.com/bkuberek/coding-study/commit/9b9b18884f1b9b22392e56e4a7856c5924247b00))
+
+- **problems**: Add 0382 query-planner, a progressive query planner in six languages
+  ([`e358a7a`](https://github.com/bkuberek/coding-study/commit/e358a7a3d6c017f2c8f74a310a5bec65b3703a09))
+
+- **problems**: Add 0383 memory allocator
+  ([`f66aa62`](https://github.com/bkuberek/coding-study/commit/f66aa62c57e967d2b50c79b34d2284884023b7ef))
+
+
 ## v0.44.0 (2026-11-12)
 
 
