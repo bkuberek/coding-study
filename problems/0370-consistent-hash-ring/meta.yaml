@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0370"
+slug: consistent-hash-ring
+title: Consistent Hash Ring
+summary: "Build HashRing, which places keys on nodes: one position per node, then virtual nodes, a report of the keys that move, replicas and bounded loads."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [binary-search, bit-manipulation]
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Nodes on a ring}
+  - {level: 2, title: Virtual nodes}
+  - {level: 3, title: Keys that move}
+  - {level: 4, title: Replicas and bounded loads}
+signature:
+  class:
+    name: HashRing
+    constructor: {params: []}
+    methods:
+      - {name: positionOf, level: 1, params: [{name: text, type: string}], returns: {type: long}}
+      - {name: addNode, level: 1, params: [{name: node, type: string}], returns: {type: long}}
+      - {name: removeNode, level: 1, params: [{name: node, type: string}], returns: {type: bool}}
+      - {name: nodes, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: nodeFor, level: 1, params: [{name: key, type: string}], returns: {type: string}}
+      - {name: moduloNodeFor, level: 1, params: [{name: key, type: string}], returns: {type: string}}
+      - {name: countMoves, level: 1, params: [{name: keys, type: "list<string>"}, {name: node, type: string}], returns: {type: "list<int>"}}
+      - {name: addVirtualNode, level: 2, params: [{name: node, type: string}, {name: count, type: int}], returns: {type: bool}}
+      - {name: positions, level: 2, params: [{name: node, type: string}], returns: {type: "list<long>"}}
+      - {name: arcShare, level: 2, params: [], returns: {type: "list<long>"}}
+      - {name: keyCounts, level: 2, params: [{name: keys, type: "list<string>"}], returns: {type: "list<int>"}}
+      - {name: trackKeys, level: 3, params: [{name: keys, type: "list<string>"}], returns: {type: int}}
+      - {name: lastMoves, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: ownedKeys, level: 3, params: [{name: node, type: string}], returns: {type: "list<string>"}}
+      - {name: replicas, level: 4, params: [{name: key, type: string}, {name: count, type: int}], returns: {type: "list<string>"}}
+      - {name: assignBounded, level: 4, params: [{name: keys, type: "list<string>"}, {name: numerator, type: int}, {name: denominator, type: int}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: sorted-points, name: Sorted ring points with binary search, role: optimal, time: "O(log p) per lookup; O(p + k log p) per join or leave; O(m p) per assignBounded", space: "O(p + k)", time_class: "n", space_class: "n"}
+related: [logical-clocks, distributed-kv-store]
+guides: [hash-functions]
+estimate_minutes: 90
