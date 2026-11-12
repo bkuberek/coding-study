@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0323"
+slug: loop-controller
+title: Loop Controller
+summary: "Build LoopController, the brakes of an agent loop: stop at a final answer or a step cap, on repeated identical failures, on token or time budgets, and accept 'done' only when a check passes."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [ai-llm, backend]
+job_roles: [backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Running steps until a stop}
+  - {level: 2, title: Repeated failures}
+  - {level: 3, title: Token and time budgets}
+  - {level: 4, title: Checking a claim of done}
+signature:
+  class:
+    name: LoopController
+    constructor: {params: []}
+    methods:
+      - {name: run, level: 1, params: [{name: maxIterations, type: int}, {name: steps, type: "list<list<string>>"}], returns: {type: string}}
+      - {name: iterations, level: 1, params: [], returns: {type: int}}
+      - {name: setNoProgressLimit, level: 2, params: [{name: limit, type: int}], returns: {type: void}}
+      - {name: setBudgets, level: 3, params: [{name: maxTokens, type: int}, {name: maxMillis, type: int}], returns: {type: void}}
+      - {name: tripped, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: setCheck, level: 4, params: [{name: claims, type: "list<string>"}, {name: verdicts, type: "list<string>"}], returns: {type: void}}
+      - {name: summary, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: state-machine, name: One pass with a streak counter and ordered checks, role: optimal, time: "O(L) for L the total length of the steps' texts", space: "O(n) for n steps", time_class: "n", space_class: "n"}
+related: [tool-calling-agent-loop-typescript, llm-gateway-typescript, tool-permission-gate, context-compaction]
+estimate_minutes: 90
