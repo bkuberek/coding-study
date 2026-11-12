@@ -52,5 +52,5 @@ project:
 approaches:
   - {id: reference, name: "The model proposes, the runtime decides: every call judged, every reply counted", role: optimal, time: "per question", space: "per question"}
 related: [loan-extraction-review-typescript, ssrf-safe-webhook-dispatcher-typescript]
-guides: [agents-and-workflows, tools-and-mcp]
+guides: [agents-and-workflows, tools-and-mcp, harness-engineering, llm-application-security]
 estimate_minutes: 180
