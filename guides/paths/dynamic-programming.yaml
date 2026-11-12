@@ -8,23 +8,21 @@ steps:
   - problem: permutations
   - problem: combination-sum
   - problem: word-search
-  - problem: n-queens
   - guide: memoization
   - problem: climbing-stairs
   - problem: word-break
   - guide: one-dimensional-tables
   - problem: house-robber
-  - problem: decode-ways
   - problem: coin-change
-  - problem: min-cost-tickets
   - problem: longest-increasing-subsequence
+  - problem: decode-ways
+  - problem: min-cost-tickets
   - guide: two-dimensional-tables
   - problem: unique-paths
   - problem: longest-common-subsequence
   - problem: maximal-square
   - problem: edit-distance
   - problem: interleaving-string
-  - problem: regex-matching
   - guide: choosing-states
   - problem: partition-equal-subset-sum
   - problem: coin-change-ways
@@ -32,3 +30,5 @@ steps:
   - problem: jump-game
   - problem: job-scheduling-max-profit
   - problem: burst-balloons
+  - problem: n-queens
+  - problem: regex-matching

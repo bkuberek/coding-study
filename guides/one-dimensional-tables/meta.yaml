@@ -4,4 +4,4 @@ summary: Turn a recursion into a loop that fills a table. State the subproblem i
 level: core
 prerequisites: [memoization]
 related: [two-dimensional-tables]
-problems: [house-robber, decode-ways, coin-change, min-cost-tickets, longest-increasing-subsequence]
+problems: [house-robber, coin-change, longest-increasing-subsequence, decode-ways, min-cost-tickets]

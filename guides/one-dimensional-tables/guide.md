@@ -11,7 +11,7 @@ Writing one takes four decisions, in this order:
 3. **The order of filling.** Every cell that a cell reads must be filled before it. If the recurrence reads only smaller indices, fill from the smallest up; if it reads only larger ones, from the largest down.
 4. **Space.** If a cell reads only the last few cells before it, the older cells are never read again, and only the last few need to be kept.
 
-Most one-dimensional states take one of two shapes, and the shape fixes the order:
+Many one-dimensional states take one of two shapes, and the shape fixes the order:
 
 | Shape of the sentence | Reads | Fill | The answer is in |
 |-----------------------|-------|------|------------------|
@@ -185,10 +185,10 @@ Here `k = 3` and `w = 4`. The bounds are worst-case: the loop does a fixed amoun
 ## Practice
 
 - `cstudy start house-robber`: the most cash from a row of houses when no two neighbouring houses may both be chosen.
-- `cstudy start decode-ways`: count the ways a string of digits can be read back as letters.
 - `cstudy start coin-change`: the fewest coins that pay an amount exactly.
-- `cstudy start min-cost-tickets`: the cheapest set of travel passes that covers a year's travel days.
 - `cstudy start longest-increasing-subsequence`: the length of the longest strictly increasing subsequence of an array.
+- `cstudy start decode-ways`: count the ways a string of digits can be read back as letters.
+- `cstudy start min-cost-tickets`: the cheapest set of travel passes that covers a year's travel days.
 
 ## Further reading
 
