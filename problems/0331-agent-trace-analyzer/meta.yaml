@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0331"
+slug: agent-trace-analyzer
+title: Agent Trace Analyzer
+summary: "Build TraceAnalyzer, which reads an agent's trace: rebuild the span tree, flag malformed events, find self time and the critical path, roll up cost, and spot retry loops and the root cause."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [trees, intervals]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, platform, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: From events to a tree}
+  - {level: 2, title: Where the time went}
+  - {level: 3, title: What it cost}
+  - {level: 4, title: What went wrong}
+signature:
+  class:
+    name: TraceAnalyzer
+    constructor: {params: []}
+    methods:
+      - {name: addSpan, level: 1, params: [{name: spanId, type: string}, {name: parentId, type: string}, {name: kind, type: string}, {name: name, type: string}, {name: start, type: int}, {name: end, type: int}, {name: status, type: string}, {name: attributes, type: "list<string>"}], returns: {type: bool}}
+      - {name: errors, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: outline, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: depth, level: 1, params: [], returns: {type: int}}
+      - {name: kindCounts, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: timing, level: 2, params: [{name: spanId, type: string}], returns: {type: "int[]"}}
+      - {name: criticalPath, level: 2, params: [], returns: {type: "list<string>"}}
+      - {name: slowest, level: 2, params: [{name: n, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: setPrice, level: 3, params: [{name: model, type: string}, {name: inputPrice, type: int}, {name: outputPrice, type: int}], returns: {type: bool}}
+      - {name: rollup, level: 3, params: [{name: spanId, type: string}], returns: {type: "long[]"}}
+      - {name: costByKind, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: unpriced, level: 3, params: [], returns: {type: "list<string>"}}
+      - {name: retryLoops, level: 4, params: [{name: minRun, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: rootCause, level: 4, params: [], returns: {type: "list<string>"}}
+      - {name: report, level: 4, params: [{name: minRun, type: int}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: tree-merge-walk, name: Index the spans by parent then merge child intervals and walk back from each end, role: optimal, time: "O(n log n) per query", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [merge-intervals, org-chart-outline, parallel-courses, token-cost-reconciler, tool-calling-agent-loop-typescript, llm-gateway-typescript]
+estimate_minutes: 120
