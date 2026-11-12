@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0336"
+slug: data-quality-gate
+title: Data Quality Gate
+summary: "Build QualityGate, which decides whether a batch may be published: row checks, unique keys and references, row-count bounds, drift by population stability index, freshness, and quarantine."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [data, backend]
+job_roles: [data-engineer, backend]
+scope: function
+levels:
+  - {level: 1, title: Row checks}
+  - {level: 2, title: Dataset checks}
+  - {level: 3, title: Drift and freshness}
+  - {level: 4, title: The gate}
+signature:
+  class:
+    name: QualityGate
+    constructor: {params: [{name: columns, type: "list<string>"}]}
+    methods:
+      - {name: addRule, level: 1, params: [{name: ruleId, type: string}, {name: check, type: string}, {name: columns, type: "list<string>"}, {name: params, type: "list<string>"}], returns: {type: bool}}
+      - {name: validate, level: 1, params: [{name: rows, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+      - {name: failingRows, level: 1, params: [{name: rows, type: "list<list<string>>"}, {name: ruleId, type: string}], returns: {type: "list<int>"}}
+      - {name: loadDimension, level: 2, params: [{name: name, type: string}, {name: keys, type: "list<string>"}], returns: {type: int}}
+      - {name: setPreviousBatch, level: 2, params: [{name: rows, type: "list<list<string>>"}], returns: {type: int}}
+      - {name: setTime, level: 3, params: [{name: now, type: long}], returns: {type: void}}
+      - {name: setAction, level: 4, params: [{name: ruleId, type: string}, {name: action, type: string}], returns: {type: bool}}
+      - {name: decide, level: 4, params: [{name: rows, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+      - {name: quarantined, level: 4, params: [], returns: {type: "list<int>"}}
+comparator: {type: ops}
+approaches:
+  - {id: rules-as-data, name: Rules kept as data and checked one pass each, role: optimal, time: "O(r c + r log b) per validate or decide, r rows, c rule columns, b drift bins", space: "O(r + d) for r rows and d dimension keys", time_class: "n", space_class: "n"}
+related: [scd-type2-dimension, snapshot-table, lineage-graph, find-missing-and-duplicates, csv-upload-ingestion-typescript, feed-ingest-python]
+estimate_minutes: 120
