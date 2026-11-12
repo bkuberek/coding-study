@@ -13,7 +13,7 @@ Implement the class `LRUCache`:
 - `put(key, value)` stores `value` under `key` and marks the entry as just used. If `key` is already present, its value is replaced and no entry is discarded. If `key` is new and the cache is full, the least recently used entry is discarded first.
 - `size()` returns the number of entries in the cache.
 
-Reference: the cache rules are our own wording of LeetCode problem 146, [LRU Cache](https://leetcode.com/problems/lru-cache/); the concurrency requirements are added.
+This problem builds on the single-threaded LRU cache problem: the cache rules are the same, and the concurrency requirements are added.
 
 ## Input
 
