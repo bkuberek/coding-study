@@ -213,7 +213,7 @@ flowchart TD
 └─────────────────────────────┘
 ```
 
-The drawing funnels everything through the context window because everything passes through it: a memory that is never retrieved into working memory might as well not exist. The last box is the dangerous write. Changing what the agent knows how to do changes its behaviour on every later task, so it deserves a person's review.
+The drawing funnels the three stores into the context window: a memory that is never retrieved into working memory might as well not exist. The last box is the dangerous write. Changing what the agent knows how to do changes its behaviour on every later task, so it deserves a person's review.
 
 ## When to use it
 

@@ -171,7 +171,7 @@ flowchart TD
 └────────────────────────────────────┘    └───────────────────────────────────────────┘
 ```
 
-The drawing puts the gate last for a reason: the cases and the rule exist before the change does. A gate designed after looking at the results tends to let through whatever the results were.
+The drawing puts the gate last for a reason: the cases and the rule exist before the change does. A gate designed after looking at the results can be bent, without anyone meaning to, to let through whatever the results were.
 
 ## When to use it
 

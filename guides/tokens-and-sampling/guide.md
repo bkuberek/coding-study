@@ -93,10 +93,10 @@ merges, in the order learned:
 The first merges glue `a` and `y`, then `l` and `ay`, then `p` and `lay`: `play` is the most frequent run of letters in the corpus, so it becomes one symbol after three rounds. `ing_` follows, since `playing` and `staying` share it. Then:
 
 - **A frequent word costs few tokens.** `playing` is 7 letters and 2 tokens.
-- **An unseen word still splits.** `replayed` never occurred in the corpus, but it is cut into pieces the vocabulary knows, with `play` in the middle. Nothing is ever "unknown": in the worst case a word falls back to single characters.
+- **An unseen word still splits.** `replayed` never occurred in the corpus, but it is cut into pieces the vocabulary knows, with `play` in the middle. As long as its characters are in the vocabulary, nothing is "unknown": in the worst case a word falls back to single characters.
 - **A word from nowhere costs the most.** `zebra` shares nothing with the corpus, so each letter is its own token, plus the end marker: 6 tokens for 5 letters.
 
-A real vocabulary is learned the same way from a huge corpus, with tens of thousands of merges, so its pieces fit the languages and kinds of text that were common in that corpus. Text unlike it, such as another language, long numbers, base64 or unusual code, takes more tokens per character. Each model family has its own vocabulary, so the same text has a different token count for each, and the only reliable count is the one made with that model's own tokenizer.
+A real vocabulary is learned the same way from a large corpus, with many more merges, 59,500 in one of Sennrich and colleagues' setups, so its pieces fit the kinds of text that were common in that corpus. Text unlike it, as `zebra` shows on a small scale, falls back to shorter pieces and so takes more tokens per character. Different models can use different vocabularies, so the same text can have a different token count for each, and the only reliable count is the one made with that model's own tokenizer.
 
 ### From scores to one token
 
@@ -233,7 +233,7 @@ flowchart TD
 └─────────────────┬─────────────────┘  │ └──────────┘
 ```
 
-The drawing shows why output is slow and long prompts are not: every token of the answer is one more run of the model, each one waiting for the token before it, while the prompt is read in one go. The original transformer paper describes its decoder as auto-regressive, "consuming the previously generated symbols as additional input when generating the next". Two settings stop the loop: a **stop sequence**, a token or string that ends the answer, and an **output limit**, often called `max_tokens`, the most tokens the answer may use. An answer cut by the limit simply ends mid-sentence, so check whether the answer stopped or was cut.
+The drawing shows why writing costs more time per token than reading: every token of the answer is one more run of the model, each one waiting for the token before it, while the prompt is read in one pass. The original transformer paper describes its decoder as auto-regressive, "consuming the previously generated symbols as additional input when generating the next". Two settings stop the loop: a **stop sequence**, a token or string that ends the answer, and an **output limit**, often called `max_tokens`, the most tokens the answer may use. An answer cut by the limit simply ends mid-sentence, so check whether the answer stopped or was cut.
 
 Because each token is ready before the next one exists, an answer can be shown while it is written. That is **streaming**. Over HTTP it is often sent as server-sent events: a response of type `text/event-stream` in which each `data:` line adds to an event, a blank line sends it, and a line starting with a colon is a comment. A client that waits for the whole answer before showing anything throws that advantage away.
 
@@ -256,7 +256,7 @@ When the conversation grows, something has to give: the oldest turns are dropped
 
 ## When to use it
 
-- **Estimating cost and speed.** Prices and limits are usually per token, with input and output counted apart. Count tokens with the model's own tokenizer, not words or characters.
+- **Estimating cost and speed.** Context limits are counted in tokens, and so is usage wherever a model is billed by the token. Count tokens with the model's own tokenizer, not words or characters.
 - **Sizing a prompt.** Check that the prompt plus the longest answer you allow fits the window, with a margin. Decide in advance what to cut when it does not.
 - **Choosing sampling settings.** Use greedy decoding or a low temperature where there is one right answer: extraction, classification, code that must compile, structured output. Use a higher temperature with top-p where variety helps: brainstorming, several candidate answers to choose from.
 - **Streaming.** Stream whenever a person waits for the answer, so that the first words appear while the rest is written.
@@ -266,9 +266,9 @@ When the conversation grows, something has to give: the oldest turns are dropped
 - **Counting words or characters.** A budget computed in words is wrong by a factor that changes with the language and the content. Numbers, code, URLs and non-English text are the usual surprises.
 - **Forgetting the answer's share of the window.** A prompt that fills the window leaves the model nothing to write with. Reserve the output limit before you fill the rest.
 - **Treating a cut answer as a whole one.** An answer that hit the output limit ends abruptly, and if it was meant to be JSON, it is broken JSON. Check why generation stopped before you use the answer.
-- **Expecting the same output twice.** With sampling on, the same prompt gives different answers by design. Even greedy decoding may differ between runs on real serving systems, so tests should check properties of an answer, not its exact text.
+- **Expecting the same output twice.** With sampling on, the same prompt gives different answers by design, so tests should check properties of an answer, not its exact text.
 - **Stuffing the context.** More text is not always better. Models tend to use information at the start and the end of a long context better than information in the middle, so ten relevant passages can beat fifty.
-- **Assuming one tokenizer.** Token counts, and so limits and prices, differ between model families for the same text.
+- **Assuming one tokenizer.** Two models with different vocabularies give the same text different token counts, and so different limits and costs.
 
 ## Complexity
 

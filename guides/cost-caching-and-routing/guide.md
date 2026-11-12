@@ -2,7 +2,7 @@
 
 ## The idea
 
-A hosted model is typically paid by the token, and the tokens you send and the tokens it writes can be priced differently; a call also takes time in proportion to both. An application that works in a demo can cost too much at a thousand users, not because any one request is expensive but because the same work is done again and again: the same instructions re-read on every call, the same question answered twice, a large model asked what a small one could have answered.
+Where a model is paid by the token, the tokens you send and the tokens it writes can be priced differently, and a call takes time in proportion to both. An application that works in a demo can cost too much at a thousand users, not because any one request is expensive but because the same work is done again and again: the same instructions re-read on every call, the same question answered twice, a large model asked what a small one could have answered.
 
 Four levers cut that cost without making answers worse:
 
