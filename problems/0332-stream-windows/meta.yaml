@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0332"
+slug: stream-windows
+title: Stream Windows
+summary: "Build StreamWindows: group timed events into tumbling, hopping and session windows, then run them as a stream where a watermark closes windows and late events are corrected or dropped."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, intervals]
+domains: [data, backend]
+job_roles: [data-engineer, backend]
+scope: function
+levels:
+  - {level: 1, title: Tumbling windows}
+  - {level: 2, title: Hopping and session windows}
+  - {level: 3, title: Watermarks}
+  - {level: 4, title: Late events}
+signature:
+  class:
+    name: StreamWindows
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: key, type: int}, {name: time, type: int}, {name: value, type: int}], returns: {type: void}}
+      - {name: tumbling, level: 1, params: [{name: size, type: int}], returns: {type: "list<list<int>>"}}
+      - {name: hopping, level: 2, params: [{name: size, type: int}, {name: slide, type: int}], returns: {type: "list<list<int>>"}}
+      - {name: sessions, level: 2, params: [{name: gap, type: int}], returns: {type: "list<list<int>>"}}
+      - {name: configure, level: 3, params: [{name: size, type: int}, {name: lateness, type: int}], returns: {type: void}}
+      - {name: watermark, level: 3, params: [], returns: {type: int}}
+      - {name: pending, level: 3, params: [], returns: {type: "list<list<int>>"}}
+      - {name: poll, level: 3, params: [], returns: {type: "list<list<int>>"}}
+      - {name: allowUpdates, level: 4, params: [{name: grace, type: int}], returns: {type: void}}
+      - {name: dropped, level: 4, params: [], returns: {type: "list<list<int>>"}}
+      - {name: stats, level: 4, params: [], returns: {type: "list<int>"}}
+comparator: {type: ops}
+approaches:
+  - {id: window-state, name: An event log for the views and a map of window totals for the stream, role: optimal, time: "O(1) per event, plus O(w log w) when the watermark moves; O(n h + r log r) per view", space: "O(n) for the log, plus one entry per open or correctable window", time_class: "n log n", space_class: "n"}
+related: [cdc-apply, pipeline-scheduler, merge-intervals, insert-interval, metrics-monitoring]
+estimate_minutes: 90

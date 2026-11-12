@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0334"
+slug: pipeline-scheduler
+title: Pipeline Scheduler
+summary: "Build PipelineScheduler: order a graph of tasks and reject cycles, then run them per daily partition with lookback windows, retries and reruns, and plan backfills that redo stale downstream work."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs, topological-sort, heap]
+domains: [data, backend]
+job_roles: [data-engineer, platform]
+scope: function
+levels:
+  - {level: 1, title: Tasks and their order}
+  - {level: 2, title: Daily partitions}
+  - {level: 3, title: "Runs, retries and reruns"}
+  - {level: 4, title: Backfills}
+signature:
+  class:
+    name: PipelineScheduler
+    constructor: {params: []}
+    methods:
+      - {name: addTask, level: 1, params: [{name: name, type: string}, {name: deps, type: "list<string>"}], returns: {type: bool}}
+      - {name: validate, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: runOrder, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: setWindow, level: 2, params: [{name: task, type: string}, {name: dep, type: string}, {name: days, type: int}], returns: {type: bool}}
+      - {name: markDone, level: 2, params: [{name: task, type: string}, {name: day, type: int}], returns: {type: void}}
+      - {name: runnable, level: 2, params: [{name: day, type: int}], returns: {type: "list<string>"}}
+      - {name: setRetries, level: 3, params: [{name: task, type: string}, {name: retries, type: int}], returns: {type: void}}
+      - {name: script, level: 3, params: [{name: task, type: string}, {name: day, type: int}, {name: outcomes, type: "list<string>"}], returns: {type: void}}
+      - {name: run, level: 3, params: [{name: day, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: status, level: 3, params: [{name: task, type: string}, {name: day, type: int}], returns: {type: string}}
+      - {name: stale, level: 4, params: [{name: day, type: int}], returns: {type: "list<string>"}}
+      - {name: plan, level: 4, params: [{name: task, type: string}, {name: fromDay, type: int}, {name: toDay, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: backfill, level: 4, params: [{name: task, type: string}, {name: fromDay, type: int}, {name: toDay, type: int}, {name: cap, type: int}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: partition-ledger, name: "A heap of ready tasks for the order, and a ledger of numbered partition writes", role: optimal, time: "O((V + E) log V) to order; O(V (V + E)) to find the tasks on cycles; O(V + E w) per run of a day; O(R P i + P log P) per backfill", space: "O(V + E) for the graph, plus each written partition and the writes it read", time_class: "n log n", space_class: "n"}
+related: [stream-windows, cdc-apply, course-schedule-ii, parallel-courses, job-scheduler]
+estimate_minutes: 120

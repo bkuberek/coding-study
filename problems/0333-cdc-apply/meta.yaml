@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0333"
+slug: cdc-apply
+title: CDC Apply
+summary: "Build ReplicaTable, which applies a change log to a copy of a table: fixed error codes, positions that make replays safe, atomic transactions over a snapshot, schema changes and a source check."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [data, backend]
+job_roles: [data-engineer, backend]
+scope: function
+levels:
+  - {level: 1, title: Applying changes}
+  - {level: 2, title: Positions and replays}
+  - {level: 3, title: Transactions and snapshots}
+  - {level: 4, title: Schema changes and checks}
+signature:
+  class:
+    name: ReplicaTable
+    constructor: {params: [{name: columns, type: "list<string>"}]}
+    methods:
+      - {name: apply, level: 1, params: [{name: op, type: string}, {name: row, type: "list<string>"}], returns: {type: string}}
+      - {name: rows, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: applyAt, level: 2, params: [{name: lsn, type: int}, {name: op, type: string}, {name: row, type: "list<string>"}], returns: {type: string}}
+      - {name: version, level: 2, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: loadSnapshot, level: 3, params: [{name: lsn, type: int}, {name: snapshot, type: "list<list<string>>"}], returns: {type: void}}
+      - {name: stage, level: 3, params: [{name: tx, type: string}, {name: op, type: string}, {name: row, type: "list<string>"}], returns: {type: void}}
+      - {name: commit, level: 3, params: [{name: lsn, type: int}, {name: tx, type: string}], returns: {type: string}}
+      - {name: rollback, level: 3, params: [{name: tx, type: string}], returns: {type: void}}
+      - {name: alterAt, level: 4, params: [{name: lsn, type: int}, {name: change, type: "list<string>"}], returns: {type: string}}
+      - {name: columns, level: 4, params: [], returns: {type: "list<string>"}}
+      - {name: compare, level: 4, params: [{name: sourceColumns, type: "list<string>"}, {name: sourceRows, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: versioned-rows, name: "Rows and versions in hash maps, with a buffer per transaction", role: optimal, time: "O(c) per change; O(k c) per commit of k changes; O(n c) per schema change; O(n log n + n c) per rows or compare", space: "O(n c) for the rows, plus a version per key ever changed and the staged changes", time_class: "n log n", space_class: "n"}
+related: [stream-windows, pipeline-scheduler, transactional-kv-store, effective-dated-history, idempotent-document-consumer-typescript, transactional-outbox-typescript]
+estimate_minutes: 120
