@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Greedy choices and how to prove them
+summary: What a greedy algorithm is, why the obvious rule is often wrong, and the two arguments that prove a right one, the exchange argument and greedy stays ahead.
+level: intro
+related: [intervals, scheduling-with-deadlines, greedy-traps]
+problems: [best-time-to-buy-sell-stock, jump-game, partition-labels, gas-station, hand-of-straights, candy-distribution]

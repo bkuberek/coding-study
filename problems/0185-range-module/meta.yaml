@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 715, url: "https://leetcode.com/problems/range-module/"}
 related: [merge-intervals, insert-interval, range-sum-mutable]
+guides: [intervals]
 order: 3
 estimate_minutes: 45

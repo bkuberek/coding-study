@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 134, url: "https://leetcode.com/problems/gas-station/"}
 related: [jump-game, maximum-subarray]
+guides: [greedy-choices]
 order: 3
 estimate_minutes: 25

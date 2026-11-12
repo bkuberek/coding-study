@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 56, url: "https://leetcode.com/problems/merge-intervals/"}
 related: [insert-interval, non-overlapping-intervals, interval-list-intersections]
+guides: [intervals]
 order: 1
 estimate_minutes: 20

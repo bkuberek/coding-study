@@ -32,5 +32,6 @@ perf:
 references:
   leetcode: {number: 502, url: "https://leetcode.com/problems/ipo/"}
 related: [single-threaded-cpu, task-scheduler, kth-largest-element]
+guides: [scheduling-with-deadlines]
 order: 8
 estimate_minutes: 30

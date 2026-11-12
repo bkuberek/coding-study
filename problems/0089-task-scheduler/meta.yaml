@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 621, url: "https://leetcode.com/problems/task-scheduler/"}
 related: [last-stone-weight, single-threaded-cpu]
+guides: [scheduling-with-deadlines]
 order: 3
 estimate_minutes: 25

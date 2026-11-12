@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 435, url: "https://leetcode.com/problems/non-overlapping-intervals/"}
 related: [merge-intervals, min-meeting-rooms]
+guides: [intervals]
 order: 3
 estimate_minutes: 25

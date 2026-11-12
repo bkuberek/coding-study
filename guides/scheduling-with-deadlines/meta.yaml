@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Scheduling with deadlines
+summary: Earliest deadline first, proved by undoing swaps, and the heap that keeps the most jobs on time by giving up the longest one when the schedule falls behind.
+level: advanced
+prerequisites: [greedy-choices]
+related: [intervals, sweep-lines, greedy-traps]
+problems: [task-scheduler, maximize-capital]

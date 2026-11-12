@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 846, url: "https://leetcode.com/problems/hand-of-straights/"}
 related: [partition-labels, contains-duplicate, longest-consecutive-sequence]
+guides: [greedy-choices]
 order: 5
 estimate_minutes: 25

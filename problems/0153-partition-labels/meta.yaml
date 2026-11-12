@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 763, url: "https://leetcode.com/problems/partition-labels/"}
 related: [merge-intervals, jump-game]
+guides: [greedy-choices]
 order: 4
 estimate_minutes: 20

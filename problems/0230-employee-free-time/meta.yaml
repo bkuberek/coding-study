@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 759, url: "https://leetcode.com/problems/employee-free-time/"}
 related: [merge-intervals, interval-list-intersections, merge-k-sorted-lists, coverage-gaps]
+guides: [sweep-lines]
 order: 9
 estimate_minutes: 35

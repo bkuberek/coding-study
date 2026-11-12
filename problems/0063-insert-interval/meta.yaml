@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 57, url: "https://leetcode.com/problems/insert-interval/"}
 related: [merge-intervals, interval-list-intersections]
+guides: [intervals]
 order: 2
 estimate_minutes: 20

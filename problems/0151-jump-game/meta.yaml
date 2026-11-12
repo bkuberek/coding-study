@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 55, url: "https://leetcode.com/problems/jump-game/"}
 related: [gas-station, climbing-stairs]
+guides: [greedy-choices]
 order: 2
 estimate_minutes: 20

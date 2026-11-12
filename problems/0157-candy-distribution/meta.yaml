@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 135, url: "https://leetcode.com/problems/candy/"}
 related: [gas-station, trapping-rain-water, product-except-self]
+guides: [greedy-choices]
 order: 8
 estimate_minutes: 35
