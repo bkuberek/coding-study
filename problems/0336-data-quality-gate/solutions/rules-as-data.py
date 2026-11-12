@@ -212,4 +212,9 @@ class QualityGate:
             return [count / len(sample) or EMPTY_SHARE for count in counts]
 
         actual, expected = shares(values), shares(baseline)
-        return sum((a - e) * math.log(a / e) for a, e in zip(actual, expected, strict=True))
+        # A plain loop, not sum(): since Python 3.12 sum() adds floats with a more accurate
+        # algorithm, and the other languages add the terms one by one in bin order.
+        total = 0.0
+        for a, e in zip(actual, expected, strict=True):
+            total += (a - e) * math.log(a / e)
+        return total

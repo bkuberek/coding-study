@@ -75,6 +75,7 @@ Rounding is computed once, in integer units, so the text and the comparison with
 
 - Integer and date parsing is written by hand in every reference, comparing characters with `'0'` and `'9'`. Python's `int()`, TypeScript's `Number()`, Java's `Integer.parseInt`, Kotlin's `toInt()`, Go's `strconv.Atoi` and Rust's `parse::<i64>()` each accept some text the statement refuses (a leading `+` in all of them, underscores or spaces in some), so they are only called after the hand check.
 - The logarithm is `math.log` in Python, `Math.log` in TypeScript and Java, `ln` in Kotlin, `math.Log` in Go and `f64::ln` in Rust; the results can differ in the last bit, which is why the rounding is checked against ties in a content test.
+- Every reference adds the terms one by one in bin order. Python's `sum()` is avoided on purpose: since Python 3.12 it adds floats with a more accurate algorithm, so its raw total could differ from the other languages in the last bits.
 - Times reach 10^15, so they are `long` in Java and Kotlin, `int64` in Go and `i64` in Rust; integers in rows are parsed as 64-bit too. TypeScript's numbers hold them exactly, since 10^15 is below 2^53.
 - The unique key is a tuple in Python. TypeScript, Java, Kotlin and Go use a string built with a length prefix for each part (`3:abc1:d`), which cannot collide; Rust uses the vector of the key's values, `Vec<&str>`, as the map key.
 - `setTime` returns nothing: `None`, `void`, `Unit`, no result in Go and `()` in Rust.
