@@ -45,4 +45,5 @@ project:
 approaches:
   - {id: reference, name: "Validate in code, load by id in one transaction, derive points on read, retry within bounds", role: optimal, time: "per feed", space: "per feed"}
 related: [csv-upload-ingestion-typescript, vendor-retry-client-typescript, coworking-availability-python, inventory-reservations-typescript]
+guides: [batch-and-streaming, data-quality-and-contracts]
 estimate_minutes: 240
