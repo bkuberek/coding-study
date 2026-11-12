@@ -12,25 +12,28 @@ Reference: this is our own wording of LeetCode problem 64, [Minimum Path Sum](ht
 
 ## Background
 
-This is a first problem on **dynamic programming** (DP): solving a question by answering smaller versions of it first and writing each answer down, so that nothing is worked out twice. When the smaller versions are named by two numbers, such as a row and a column, the written-down answers form a table with the same shape as the grid, and this is called 2D DP.
+This is a first problem on **dynamic programming** (DP): solving a question by answering smaller versions of it first and writing each answer down, so that nothing is worked out twice. When the smaller versions are named by two numbers, the written-down answers form a table with two indexes, a row and a column, and this is called 2D DP.
 
-To see what a table means cell by cell, take a different question on a small grid: *in how many ways can the robot get from the top-left block to each block?* Let `ways[r][c]` be that number for the block in row `r` and column `c`. A table cell is always defined by a sentence like that one, and every cell must keep its sentence true.
+To see what a table means cell by cell, take a different question that has nothing to do with grids. A club has members numbered 1, 2, 3, ... in a list, and you want to know *in how many ways a team of exactly `j` members can be chosen from the first `i` members of the list*. Let `teams[i][j]` be that number. A table cell is always defined by a sentence like that one, and every cell must keep its sentence true.
 
-- The top-left block has exactly one way to be reached: the robot is already there. So `ways[0][0] = 1`.
-- A block in the top row can only be entered from its left neighbour, because there is no block above it. The robot has no other choice, so it has the same number of ways as that neighbour.
-- A block in the left column is the mirror image: it can only be entered from above.
-- Any other block can be entered from the block above it or from the block to its left, and those two ways are different. So its number of ways is the sum of its two neighbours' numbers.
+- In row 0 there are no members to choose from. The only team that exists is the empty one, so `teams[0][0] = 1`, and `teams[0][j] = 0` for every `j` above 0.
+- In column 0 the team has no members, and there is exactly one way to choose nobody. So `teams[i][0] = 1`.
+- For any other cell, look at member `i`. Either member `i` is not on the team, and then all `j` members come from the first `i - 1`: that is `teams[i - 1][j]` ways. Or member `i` is on the team, and then the other `j - 1` come from the first `i - 1`: that is `teams[i - 1][j - 1]` ways. The two cases never describe the same team, so the cell is the sum of those two earlier cells.
 
-For a grid with 2 rows and 3 columns, the table fills in from the top-left:
+For 4 members and teams of up to 3, the table fills in row by row:
 
 ```
-ways:   1  1  1
-        1  2  3
+teams:   j=0  j=1  j=2  j=3
+i=0       1    0    0    0
+i=1       1    1    0    0
+i=2       1    2    1    0
+i=3       1    3    3    1
+i=4       1    4    6    4
 ```
 
-The block in row 1, column 2 has 2 + 1 = 3 ways, because the robot can arrive from the block on its left (2 ways) or from the block above it (1 way). The answer to the whole question sits in the last cell. Each cell is filled once from cells already filled, so the table is built in a single pass over the grid.
+The cell for 4 members and teams of 2 is 3 + 3 = 6: the cell directly above it (3 members, teams of 2) plus the cell above and to its left (3 members, teams of 1). Each cell is filled once, from cells that are already filled, so the table is built in a single pass, and the cell you were asked about sits at the end.
 
-Your question asks for a cheapest total instead of a count, and every block has a toll. The idea is the same, but you must decide what a cell's sentence says and how two neighbours' numbers combine into a cell's number.
+Your question asks for a cheapest total instead of a count, and the table is the same shape as the grid, one cell per block. Work out what a cell's sentence should say, which earlier cells a block can be reached from, and how their numbers combine with the block's toll into the cell's number.
 
 ## Input
 

@@ -4,7 +4,7 @@ slug: minimum-path-sum
 title: Minimum Path Sum
 summary: "Find the smallest total toll on a route from the top-left to the bottom-right cell of a grid, stepping only right or down."
 status: ready
-difficulty: easy
+difficulty: medium
 track: dsa
 kind: function
 patterns: [dp-2d]
