@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0355"
+slug: property-test-runner
+title: Property Test Runner
+summary: "Build PropertyRunner, a property-based testing engine: seeded generators, runs that find a counterexample, greedy shrinking, composed and filtered generators, and stateful tests of a buggy queue."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [greedy]
+domains: [software-design]
+job_roles: [general, backend]
+scope: function
+levels:
+  - {level: 1, title: Generators and runs}
+  - {level: 2, title: Shrinking}
+  - {level: 3, title: Composed generators}
+  - {level: 4, title: Stateful testing}
+signature:
+  class:
+    name: PropertyRunner
+    constructor: {params: []}
+    methods:
+      - {name: randoms, level: 1, params: [{name: seed, type: int}, {name: count, type: int}], returns: {type: "list<long>"}}
+      - {name: generate, level: 1, params: [{name: gen, type: string}, {name: seed, type: int}, {name: count, type: int}], returns: {type: "list<string>"}}
+      - {name: check, level: 1, params: [{name: gen, type: string}, {name: prop, type: string}, {name: seed, type: int}, {name: runs, type: int}], returns: {type: string}}
+      - {name: candidates, level: 2, params: [{name: gen, type: string}, {name: seed, type: int}, {name: index, type: int}], returns: {type: "list<string>"}}
+      - {name: minimize, level: 2, params: [{name: gen, type: string}, {name: prop, type: string}, {name: seed, type: int}, {name: runs, type: int}], returns: {type: "list<string>"}}
+      - {name: setDiscardLimit, level: 3, params: [{name: limit, type: int}], returns: {type: void}}
+      - {name: replay, level: 4, params: [{name: capacity, type: int}, {name: bug, type: string}, {name: commands, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: generateCommands, level: 4, params: [{name: capacity, type: int}, {name: seed, type: int}, {name: count, type: int}, {name: maxLength, type: int}], returns: {type: "list<string>"}}
+      - {name: firstFailure, level: 4, params: [{name: capacity, type: int}, {name: bug, type: string}, {name: seed, type: int}, {name: runs, type: int}, {name: maxLength, type: int}], returns: {type: "list<string>"}}
+      - {name: shrinkFailure, level: 4, params: [{name: capacity, type: int}, {name: bug, type: string}, {name: seed, type: int}, {name: runs, type: int}, {name: maxLength, type: int}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: xorshift-greedy-shrink, name: One xorshift stream with greedy shrinking over generator-built candidates, role: optimal, time: "O(R * S) per run of R values of size S; O(P * C * S) per shrink of P steps with C candidates each", space: "O(S + C * S)", time_class: "n", space_class: "n"}
+related: [test-doubles, debug-sort-comparator, debug-binary-search-bounds, in-memory-database]
+estimate_minutes: 120

@@ -1,0 +1,2206 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "level": 1,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "randoms",
+        "generate",
+        "generate",
+        "check",
+        "check"
+      ],
+      "args": [
+        [],
+        [
+          1,
+          3
+        ],
+        [
+          "int 0 9",
+          1,
+          5
+        ],
+        [
+          "int -10 10",
+          3,
+          4
+        ],
+        [
+          "int 0 100",
+          "lt 50",
+          7,
+          100
+        ],
+        [
+          "int 0 100",
+          "lt 101",
+          7,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          270369,
+          67634689,
+          2647435461
+        ],
+        [
+          "9",
+          "9",
+          "1",
+          "5",
+          "3"
+        ],
+        [
+          "-7",
+          "-8",
+          "-4",
+          "-7"
+        ],
+        "failed 7: 100",
+        "passed 100"
+      ]
+    },
+    {
+      "id": "ex2",
+      "level": 1,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "generate",
+        "check",
+        "check",
+        "check"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 4 int 0 9",
+          7,
+          4
+        ],
+        [
+          "list 0 6 int 0 9",
+          "sort-ordered",
+          1,
+          100
+        ],
+        [
+          "list 0 6 int 0 9",
+          "one-pass-ordered",
+          1,
+          100
+        ],
+        [
+          "list 0 6 int -9 9",
+          "max-from-zero",
+          1,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[5,7,5]",
+          "[6,2]",
+          "[3,6]",
+          "[8]"
+        ],
+        "passed 100",
+        "failed 2: [5,3,4,2,0,9]",
+        "failed 4: [-7]"
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "the generator works on 32 bits: large seeds and outputs above 2^31 stay exact",
+      "ops": [
+        "PropertyRunner",
+        "randoms",
+        "randoms",
+        "randoms",
+        "randoms"
+      ],
+      "args": [
+        [],
+        [
+          2147483647,
+          6
+        ],
+        [
+          123456789,
+          4
+        ],
+        [
+          5,
+          0
+        ],
+        [
+          1,
+          8
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          2148245535,
+          1963948411,
+          3727350027,
+          611617358,
+          312412880,
+          2339050866
+        ],
+        [
+          2714967881,
+          2238813396,
+          1250077441,
+          3820100336
+        ],
+        [],
+        [
+          270369,
+          67634689,
+          2647435461,
+          307599695,
+          2398689233,
+          745495504,
+          632435482,
+          435756210
+        ]
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "a range adds its low end to the remainder: negative ranges, one-value ranges and wide ranges",
+      "ops": [
+        "PropertyRunner",
+        "generate",
+        "generate",
+        "generate",
+        "generate",
+        "generate"
+      ],
+      "args": [
+        [],
+        [
+          "int -20 -5",
+          11,
+          6
+        ],
+        [
+          "int 4 4",
+          11,
+          3
+        ],
+        [
+          "int -1000000 1000000",
+          11,
+          5
+        ],
+        [
+          "int 0 1",
+          2,
+          8
+        ],
+        [
+          "int 0 9",
+          2,
+          0
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "-9",
+          "-9",
+          "-6",
+          "-17",
+          "-13",
+          "-5"
+        ],
+        [
+          "4",
+          "4",
+          "4"
+        ],
+        [
+          "-25942",
+          "-99878",
+          "598934",
+          "325527",
+          "-40017"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "1",
+          "0"
+        ],
+        []
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "a list draws its length first, then each element; fixed and zero lengths",
+      "ops": [
+        "PropertyRunner",
+        "generate",
+        "generate",
+        "generate",
+        "randoms"
+      ],
+      "args": [
+        [],
+        [
+          "list 3 3 int 0 1",
+          2,
+          4
+        ],
+        [
+          "list 0 0 int 0 9",
+          2,
+          3
+        ],
+        [
+          "list 1 3 int -5 5",
+          9,
+          5
+        ],
+        [
+          9,
+          4
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[0,0,0]",
+          "[1,1,0]",
+          "[1,0,1]",
+          "[0,0,0]"
+        ],
+        [
+          "[]",
+          "[]",
+          "[]"
+        ],
+        [
+          "[-4]",
+          "[3]",
+          "[2]",
+          "[4]",
+          "[4]"
+        ],
+        [
+          2433321,
+          604648969,
+          1001376492,
+          2629261621
+        ]
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "one stream feeds every run, and the report names the first run that fails",
+      "ops": [
+        "PropertyRunner",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check"
+      ],
+      "args": [
+        [],
+        [
+          "int 0 1000",
+          "lt 990",
+          4,
+          500
+        ],
+        [
+          "int 0 1000",
+          "lt 990",
+          4,
+          20
+        ],
+        [
+          "int -50 50",
+          "not-multiple 7",
+          13,
+          100
+        ],
+        [
+          "int 1 6",
+          "not-multiple 7",
+          13,
+          100
+        ],
+        [
+          "list 0 5 int 0 9",
+          "len-lt 5",
+          6,
+          100
+        ],
+        [
+          "list 0 5 int 0 9",
+          "len-lt 6",
+          6,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        "failed 75: 992",
+        "passed 20",
+        "failed 7: 7",
+        "passed 100",
+        "failed 5: [2,0,2,4,1]",
+        "passed 100"
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "every property of the menu, on lists that do and do not satisfy it",
+      "ops": [
+        "PropertyRunner",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check",
+        "check"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 5 int 0 9",
+          "sum-lt 30",
+          21,
+          100
+        ],
+        [
+          "list 0 5 int 0 9",
+          "sum-lt 46",
+          21,
+          100
+        ],
+        [
+          "list 0 6 int -3 3",
+          "ordered",
+          21,
+          100
+        ],
+        [
+          "list 0 1 int -3 3",
+          "ordered",
+          21,
+          100
+        ],
+        [
+          "list 0 2 int 0 9",
+          "one-pass-ordered",
+          21,
+          300
+        ],
+        [
+          "list 0 6 int 0 9",
+          "one-pass-ordered",
+          21,
+          100
+        ],
+        [
+          "list 0 6 int -9 9",
+          "sort-ordered",
+          21,
+          100
+        ],
+        [
+          "list 0 6 int 0 9",
+          "max-from-zero",
+          21,
+          100
+        ],
+        [
+          "list 1 6 int -9 -1",
+          "max-from-zero",
+          21,
+          100
+        ],
+        [
+          "int -5 5",
+          "sum-lt 5",
+          21,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        "passed 100",
+        "passed 100",
+        "failed 3: [1,-2,2,-1]",
+        "passed 100",
+        "passed 300",
+        "failed 3: [5,9,4,7]",
+        "passed 100",
+        "passed 100",
+        "failed 1: [-4]",
+        "failed 2: 5"
+      ]
+    },
+    {
+      "id": "ex3",
+      "level": 2,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "candidates",
+        "minimize",
+        "candidates",
+        "minimize"
+      ],
+      "args": [
+        [],
+        [
+          "int 0 100",
+          7,
+          7
+        ],
+        [
+          "int 0 100",
+          "lt 50",
+          7,
+          100
+        ],
+        [
+          "int -10 10",
+          3,
+          1
+        ],
+        [
+          "int 0 100",
+          "not-multiple 7",
+          7,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "0",
+          "50",
+          "75",
+          "88",
+          "94",
+          "97",
+          "99"
+        ],
+        [
+          "100",
+          "50"
+        ],
+        [
+          "0",
+          "-4",
+          "-6"
+        ],
+        [
+          "21",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "ex4",
+      "level": 2,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "candidates",
+        "minimize",
+        "minimize"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 5 int 0 9",
+          7,
+          1
+        ],
+        [
+          "list 0 6 int 0 9",
+          "one-pass-ordered",
+          1,
+          100
+        ],
+        [
+          "list 0 6 int 0 9",
+          "sort-ordered",
+          1,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[]",
+          "[7,5]",
+          "[5,5]",
+          "[5,7]",
+          "[0,7,5]",
+          "[3,7,5]",
+          "[4,7,5]",
+          "[5,0,5]",
+          "[5,4,5]",
+          "[5,6,5]",
+          "[5,7,0]",
+          "[5,7,3]",
+          "[5,7,4]"
+        ],
+        [
+          "[5,3,4,2,0,9]",
+          "[3,4,2,0,9]",
+          "[4,2,0,9]",
+          "[4,2,0]",
+          "[2,2,0]",
+          "[1,2,0]",
+          "[1,1,0]"
+        ],
+        []
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 2,
+      "note": "an integer shrinks toward the end of its range nearest zero, halving the distance, rounded toward zero",
+      "ops": [
+        "PropertyRunner",
+        "candidates",
+        "candidates",
+        "candidates",
+        "generate",
+        "candidates",
+        "candidates",
+        "candidates",
+        "candidates"
+      ],
+      "args": [
+        [],
+        [
+          "int 5 20",
+          3,
+          1
+        ],
+        [
+          "int -20 -5",
+          3,
+          1
+        ],
+        [
+          "int -1000000 1000000",
+          11,
+          1
+        ],
+        [
+          "int -1000000 1000000",
+          11,
+          1
+        ],
+        [
+          "int -10 10",
+          3,
+          2
+        ],
+        [
+          "int -10 10",
+          3,
+          5
+        ],
+        [
+          "int 0 9",
+          1,
+          3
+        ],
+        [
+          "int 0 9",
+          1,
+          1
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "5",
+          "7"
+        ],
+        [
+          "-5",
+          "-11",
+          "-14",
+          "-16"
+        ],
+        [
+          "0",
+          "-12971",
+          "-19457",
+          "-22700",
+          "-24321",
+          "-25132",
+          "-25537",
+          "-25740",
+          "-25841",
+          "-25892",
+          "-25917",
+          "-25930",
+          "-25936",
+          "-25939",
+          "-25941"
+        ],
+        [
+          "-25942"
+        ],
+        [
+          "0",
+          "-4",
+          "-6",
+          "-7"
+        ],
+        [],
+        [
+          "0"
+        ],
+        [
+          "0",
+          "5",
+          "7",
+          "8"
+        ]
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 2,
+      "note": "list candidates: removals by halving chunk sizes, never below the minimum length, then element shrinks, without repeats",
+      "ops": [
+        "PropertyRunner",
+        "candidates",
+        "generate",
+        "candidates",
+        "generate",
+        "candidates",
+        "candidates",
+        "generate",
+        "candidates"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 6 int 0 9",
+          1,
+          1
+        ],
+        [
+          "list 0 6 int 0 9",
+          1,
+          1
+        ],
+        [
+          "list 2 6 int 0 9",
+          1,
+          1
+        ],
+        [
+          "list 2 6 int 0 9",
+          1,
+          1
+        ],
+        [
+          "list 3 3 int 0 1",
+          2,
+          2
+        ],
+        [
+          "list 0 3 int 0 1",
+          2,
+          1
+        ],
+        [
+          "list 0 3 int 0 1",
+          2,
+          1
+        ],
+        [
+          "list 2 5 int 0 9",
+          7,
+          3
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[]",
+          "[0]",
+          "[5]",
+          "[7]",
+          "[8]"
+        ],
+        [
+          "[9]"
+        ],
+        [
+          "[3,4,2]",
+          "[9,1,5]",
+          "[1,5,3,4,2]",
+          "[9,5,3,4,2]",
+          "[9,1,3,4,2]",
+          "[9,1,5,4,2]",
+          "[9,1,5,3,2]",
+          "[9,1,5,3,4]",
+          "[0,1,5,3,4,2]",
+          "[5,1,5,3,4,2]",
+          "[7,1,5,3,4,2]",
+          "[8,1,5,3,4,2]",
+          "[9,0,5,3,4,2]",
+          "[9,1,0,3,4,2]",
+          "[9,1,3,3,4,2]",
+          "[9,1,4,3,4,2]",
+          "[9,1,5,0,4,2]",
+          "[9,1,5,2,4,2]",
+          "[9,1,5,3,0,2]",
+          "[9,1,5,3,2,2]",
+          "[9,1,5,3,3,2]",
+          "[9,1,5,3,4,0]",
+          "[9,1,5,3,4,1]"
+        ],
+        [
+          "[9,1,5,3,4,2]"
+        ],
+        [
+          "[0,1,0]",
+          "[1,0,0]"
+        ],
+        [
+          "[]",
+          "[0]"
+        ],
+        [
+          "[0,0]"
+        ],
+        []
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 2,
+      "note": "shrinking is greedy: the first failing candidate wins, and the result can be a local minimum",
+      "ops": [
+        "PropertyRunner",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 8 int -5 9",
+          "sum-lt 20",
+          7,
+          100
+        ],
+        [
+          "list 0 8 int -5 9",
+          "ordered",
+          7,
+          100
+        ],
+        [
+          "list 0 8 int -5 9",
+          "len-lt 4",
+          7,
+          100
+        ],
+        [
+          "list 0 6 int -9 9",
+          "max-from-zero",
+          7,
+          100
+        ],
+        [
+          "int 0 1000",
+          "lt 990",
+          4,
+          500
+        ],
+        [
+          "int 0 1000",
+          "lt 990",
+          4,
+          20
+        ],
+        [
+          "int -50 50",
+          "not-multiple 7",
+          13,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[5,6,1,8,0,4,9,6]",
+          "[5,6,1,8]"
+        ],
+        [
+          "[2,-5,2,1,2,2,3]",
+          "[2,-5,2,3]",
+          "[2,-5]",
+          "[0,-5]",
+          "[0,-3]",
+          "[0,-2]",
+          "[0,-1]"
+        ],
+        [
+          "[2,-5,2,1,2,2,3]",
+          "[1,2,2,3]",
+          "[0,2,2,3]",
+          "[0,0,2,3]",
+          "[0,0,0,3]",
+          "[0,0,0,0]"
+        ],
+        [
+          "[-1,-3,-9]",
+          "[-3,-9]",
+          "[-9]",
+          "[-5]",
+          "[-3]",
+          "[-2]",
+          "[-1]"
+        ],
+        [
+          "992",
+          "991",
+          "990"
+        ],
+        [],
+        [
+          "7",
+          "0"
+        ]
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 2,
+      "note": "shrinking inside a range that does not hold zero, and from negative values",
+      "ops": [
+        "PropertyRunner",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize"
+      ],
+      "args": [
+        [],
+        [
+          "int 100 900",
+          "lt 300",
+          5,
+          100
+        ],
+        [
+          "int -900 -100",
+          "sum-lt -300",
+          5,
+          100
+        ],
+        [
+          "list 2 4 int 3 9",
+          "ordered",
+          5,
+          100
+        ],
+        [
+          "list 0 4 int -9 9",
+          "sum-lt -10",
+          5,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "658",
+          "379",
+          "310",
+          "304",
+          "301",
+          "300"
+        ],
+        [
+          "-250",
+          "-100"
+        ],
+        [
+          "[3,8,4,6]",
+          "[8,4,6]",
+          "[8,6]",
+          "[7,6]",
+          "[7,3]",
+          "[5,3]",
+          "[4,3]"
+        ],
+        [
+          "[]"
+        ]
+      ]
+    },
+    {
+      "id": "ex5",
+      "level": 3,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "generate",
+        "generate",
+        "minimize",
+        "minimize"
+      ],
+      "args": [
+        [],
+        [
+          "pair int 0 9 list 0 3 int 1 2",
+          3,
+          4
+        ],
+        [
+          "filter even int 0 100",
+          3,
+          6
+        ],
+        [
+          "filter even int 0 100",
+          "lt 11",
+          3,
+          100
+        ],
+        [
+          "int 0 100",
+          "lt 11",
+          3,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "(7,[2,2,2])",
+          "(7,[1,2,2])",
+          "(3,[2,1])",
+          "(5,[2,2,1])"
+        ],
+        [
+          "38",
+          "4",
+          "70",
+          "60",
+          "54",
+          "88"
+        ],
+        [
+          "38",
+          "34",
+          "26",
+          "20",
+          "18",
+          "14"
+        ],
+        [
+          "77",
+          "39",
+          "20",
+          "15",
+          "12",
+          "11"
+        ]
+      ]
+    },
+    {
+      "id": "ex6",
+      "level": 3,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "generate",
+        "minimize",
+        "minimize",
+        "setDiscardLimit",
+        "check"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 6 pair int 0 5 int 0 9",
+          11,
+          1
+        ],
+        [
+          "list 0 6 pair int 0 5 int 0 9",
+          "keys-distinct",
+          11,
+          100
+        ],
+        [
+          "list 0 6 pair int 0 5 int 0 9",
+          "map-keeps-last",
+          11,
+          100
+        ],
+        [
+          5
+        ],
+        [
+          "filter distinct list 5 8 int 0 3",
+          "len-lt 9",
+          3,
+          10
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[(5,6),(1,9),(3,3),(3,7)]"
+        ],
+        [
+          "[(5,6),(1,9),(3,3),(3,7)]",
+          "[(3,3),(3,7)]",
+          "[(3,0),(3,7)]",
+          "[(3,0),(3,0)]"
+        ],
+        [
+          "[(5,6),(1,9),(3,3),(3,7)]",
+          "[(3,3),(3,7)]",
+          "[(3,0),(3,7)]",
+          "[(3,0),(3,4)]",
+          "[(3,0),(3,2)]",
+          "[(3,0),(3,1)]"
+        ],
+        null,
+        "gave up after 0"
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 3,
+      "note": "a pair shrinks its first part, then its second; a filter keeps only the candidates it lets through",
+      "ops": [
+        "PropertyRunner",
+        "candidates",
+        "generate",
+        "candidates",
+        "generate",
+        "candidates",
+        "generate",
+        "candidates",
+        "generate"
+      ],
+      "args": [
+        [],
+        [
+          "pair int 0 9 int 0 9",
+          4,
+          2
+        ],
+        [
+          "pair int 0 9 int 0 9",
+          4,
+          2
+        ],
+        [
+          "filter odd int 0 99",
+          4,
+          2
+        ],
+        [
+          "filter odd int 0 99",
+          4,
+          2
+        ],
+        [
+          "filter positive int -50 50",
+          6,
+          2
+        ],
+        [
+          "filter positive int -50 50",
+          6,
+          2
+        ],
+        [
+          "list 1 3 pair int 0 2 int 0 2",
+          8,
+          1
+        ],
+        [
+          "list 1 3 pair int 0 2 int 0 2",
+          8,
+          1
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "(0,4)",
+          "(4,4)",
+          "(6,4)",
+          "(7,4)",
+          "(8,0)",
+          "(8,2)",
+          "(8,3)"
+        ],
+        [
+          "(6,0)",
+          "(8,4)"
+        ],
+        [
+          "27",
+          "47"
+        ],
+        [
+          "3",
+          "53"
+        ],
+        [
+          "13",
+          "20",
+          "23",
+          "25"
+        ],
+        [
+          "3",
+          "26"
+        ],
+        [
+          "[(0,0)]",
+          "[(0,1)]"
+        ],
+        [
+          "[(0,2)]"
+        ]
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 3,
+      "note": "shrinking respects every layer: filtered elements, pairs inside lists, and lengths",
+      "ops": [
+        "PropertyRunner",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize",
+        "minimize"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 6 filter odd int 0 9",
+          "sum-lt 10",
+          2,
+          100
+        ],
+        [
+          "filter nonempty list 0 5 int 0 9",
+          "sum-lt 1",
+          2,
+          100
+        ],
+        [
+          "list 0 5 int 0 9",
+          "sum-lt 1",
+          2,
+          100
+        ],
+        [
+          "pair int 0 50 int 0 50",
+          "sum-lt 30",
+          2,
+          100
+        ],
+        [
+          "filter unequal pair int 0 3 int 0 3",
+          "sum-lt 3",
+          2,
+          100
+        ],
+        [
+          "list 0 5 filter nonzero int -9 9",
+          "max-from-zero",
+          2,
+          100
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "[7,1,3]",
+          "[7,3]"
+        ],
+        [
+          "[2,4]",
+          "[4]",
+          "[2]",
+          "[1]"
+        ],
+        [
+          "[2,4]",
+          "[4]",
+          "[2]",
+          "[1]"
+        ],
+        [
+          "(36,48)",
+          "(0,48)",
+          "(0,36)",
+          "(0,32)",
+          "(0,30)"
+        ],
+        [
+          "(2,3)",
+          "(0,3)"
+        ],
+        [
+          "[-1,-4]",
+          "[-4]",
+          "[-2]",
+          "[-1]"
+        ]
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 3,
+      "note": "discards count across the whole call; the call gives up when they go above the limit, which starts at 100",
+      "ops": [
+        "PropertyRunner",
+        "check",
+        "generate",
+        "setDiscardLimit",
+        "check",
+        "setDiscardLimit",
+        "check",
+        "generate",
+        "minimize",
+        "candidates",
+        "check",
+        "setDiscardLimit",
+        "check",
+        "setDiscardLimit",
+        "check",
+        "generate"
+      ],
+      "args": [
+        [],
+        [
+          "filter distinct list 4 8 int 0 4",
+          "len-lt 9",
+          3,
+          50
+        ],
+        [
+          "filter distinct list 4 8 int 0 4",
+          3,
+          50
+        ],
+        [
+          1000
+        ],
+        [
+          "filter distinct list 4 8 int 0 4",
+          "len-lt 9",
+          3,
+          50
+        ],
+        [
+          0
+        ],
+        [
+          "filter even int 0 9",
+          "lt 100",
+          3,
+          20
+        ],
+        [
+          "filter even int 0 9",
+          3,
+          20
+        ],
+        [
+          "filter even int 0 9",
+          "lt 5",
+          3,
+          20
+        ],
+        [
+          "filter even int 0 9",
+          3,
+          4
+        ],
+        [
+          "int 0 9",
+          "lt 100",
+          3,
+          20
+        ],
+        [
+          41
+        ],
+        [
+          "filter even int 0 9",
+          "lt 100",
+          3,
+          20
+        ],
+        [
+          40
+        ],
+        [
+          "filter even int 0 9",
+          "lt 100",
+          3,
+          20
+        ],
+        [
+          "filter even int 0 9",
+          3,
+          20
+        ]
+      ],
+      "expected": [
+        null,
+        "gave up after 5",
+        [
+          "[3,2,4,0]",
+          "[2,3,4,0]",
+          "[2,3,1,4]",
+          "[3,2,0,1]",
+          "[2,1,3,4,0]"
+        ],
+        null,
+        "passed 50",
+        null,
+        "gave up after 0",
+        [],
+        [],
+        [],
+        "passed 20",
+        null,
+        "passed 20",
+        null,
+        "gave up after 17",
+        [
+          "6",
+          "4",
+          "8",
+          "8",
+          "6",
+          "2",
+          "2",
+          "8",
+          "8",
+          "6",
+          "2",
+          "2",
+          "4",
+          "8",
+          "8",
+          "8",
+          "4"
+        ]
+      ]
+    },
+    {
+      "id": "h13",
+      "level": 3,
+      "note": "a filter inside a list discards element by element; a run that gives up does not count as passed",
+      "ops": [
+        "PropertyRunner",
+        "setDiscardLimit",
+        "generate",
+        "check",
+        "setDiscardLimit",
+        "check",
+        "check"
+      ],
+      "args": [
+        [],
+        [
+          3
+        ],
+        [
+          "list 3 3 filter even int 0 9",
+          5,
+          10
+        ],
+        [
+          "list 3 3 filter even int 0 9",
+          "len-lt 4",
+          5,
+          10
+        ],
+        [
+          100
+        ],
+        [
+          "list 3 3 filter even int 0 9",
+          "len-lt 4",
+          5,
+          10
+        ],
+        [
+          "list 3 3 filter even int 0 9",
+          "sum-lt 20",
+          5,
+          10
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        [],
+        "gave up after 0",
+        null,
+        "passed 10",
+        "passed 10"
+      ]
+    },
+    {
+      "id": "h14",
+      "level": 3,
+      "note": "the menus at level 3: keys, maps and sums over pairs, nested pairs, and the filters",
+      "ops": [
+        "PropertyRunner",
+        "check",
+        "check",
+        "check",
+        "generate",
+        "minimize",
+        "generate",
+        "generate"
+      ],
+      "args": [
+        [],
+        [
+          "list 0 4 pair int 0 9 int 0 9",
+          "keys-distinct",
+          17,
+          100
+        ],
+        [
+          "list 0 4 pair int 0 9 int 0 0",
+          "map-keeps-last",
+          17,
+          100
+        ],
+        [
+          "list 0 4 pair int 0 9 int 0 9",
+          "map-keeps-last",
+          17,
+          100
+        ],
+        [
+          "pair pair int 0 3 int 0 3 list 0 2 int 5 6",
+          17,
+          3
+        ],
+        [
+          "pair pair int 0 3 int 0 3 list 0 2 int 5 6",
+          "sum-lt 8",
+          17,
+          100
+        ],
+        [
+          "filter nonzero int -2 2",
+          17,
+          6
+        ],
+        [
+          "filter unequal pair int 0 1 int 0 1",
+          17,
+          4
+        ]
+      ],
+      "expected": [
+        null,
+        "failed 14: [(1,2),(1,8),(2,4),(4,7)]",
+        "passed 100",
+        "failed 14: [(1,2),(1,8),(2,4),(4,7)]",
+        [
+          "((0,2),[6])",
+          "((0,0),[])",
+          "((1,1),[5])"
+        ],
+        [
+          "((0,2),[6])"
+        ],
+        [
+          "-2",
+          "-1",
+          "-2",
+          "2",
+          "-1",
+          "1"
+        ],
+        [
+          "(0,1)",
+          "(1,0)",
+          "(0,1)",
+          "(0,1)"
+        ]
+      ]
+    },
+    {
+      "id": "ex7",
+      "level": 4,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "replay",
+        "replay",
+        "replay"
+      ],
+      "args": [
+        [],
+        [
+          2,
+          "none",
+          [
+            "put 3",
+            "put 4",
+            "put 5",
+            "size",
+            "get",
+            "get",
+            "size"
+          ]
+        ],
+        [
+          2,
+          "size-wraps",
+          [
+            "put 3",
+            "put 4",
+            "put 5",
+            "size",
+            "get",
+            "get",
+            "size"
+          ]
+        ],
+        [
+          2,
+          "none",
+          [
+            "put 1",
+            "get",
+            "get",
+            "size"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "ok",
+          "ok",
+          "full",
+          "2",
+          "3",
+          "4",
+          "0"
+        ],
+        [
+          "ok",
+          "ok",
+          "full",
+          "0",
+          "3",
+          "4",
+          "0"
+        ],
+        [
+          "ok",
+          "1",
+          "invalid"
+        ]
+      ]
+    },
+    {
+      "id": "ex8",
+      "level": 4,
+      "visible": true,
+      "ops": [
+        "PropertyRunner",
+        "generateCommands",
+        "firstFailure",
+        "shrinkFailure"
+      ],
+      "args": [
+        [],
+        [
+          2,
+          1,
+          3,
+          6
+        ],
+        [
+          2,
+          "size-wraps",
+          1,
+          100,
+          10
+        ],
+        [
+          2,
+          "size-wraps",
+          1,
+          100,
+          10
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "size, size, size, size",
+          "put 0, size, get, size, size",
+          "put 9, put 2, put 9, get, size"
+        ],
+        [
+          "size",
+          "put 4",
+          "put 7",
+          "size",
+          "size",
+          "get",
+          "size",
+          "put 5",
+          "get",
+          "get"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "size"
+        ]
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 4,
+      "note": "each planted bug, as replay shows it",
+      "ops": [
+        "PropertyRunner",
+        "replay",
+        "replay",
+        "replay",
+        "replay",
+        "replay"
+      ],
+      "args": [
+        [],
+        [
+          2,
+          "full-overwrites",
+          [
+            "put 1",
+            "put 2",
+            "put 3",
+            "get",
+            "get",
+            "size"
+          ]
+        ],
+        [
+          3,
+          "repeat-dropped",
+          [
+            "put 1",
+            "put 1",
+            "put 2",
+            "put 1",
+            "size",
+            "get",
+            "get",
+            "get",
+            "get"
+          ]
+        ],
+        [
+          2,
+          "wrap-lifo",
+          [
+            "put 1",
+            "get",
+            "put 2",
+            "put 3",
+            "get",
+            "get",
+            "put 4",
+            "put 5",
+            "get"
+          ]
+        ],
+        [
+          3,
+          "size-wraps",
+          [
+            "size",
+            "put 0",
+            "put 0",
+            "put 0",
+            "size",
+            "put 0",
+            "size"
+          ]
+        ],
+        [
+          1,
+          "none",
+          [
+            "put 7",
+            "put 8",
+            "get",
+            "size",
+            "get",
+            "put 1",
+            "size"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "ok",
+          "ok",
+          "ok",
+          "2",
+          "3",
+          "0"
+        ],
+        [
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "3",
+          "1",
+          "2",
+          "1",
+          "invalid"
+        ],
+        [
+          "ok",
+          "1",
+          "ok",
+          "ok",
+          "3",
+          "2",
+          "ok",
+          "ok",
+          "5"
+        ],
+        [
+          "0",
+          "ok",
+          "ok",
+          "ok",
+          "0",
+          "full",
+          "0"
+        ],
+        [
+          "ok",
+          "full",
+          "7",
+          "0",
+          "invalid"
+        ]
+      ]
+    },
+    {
+      "id": "h16",
+      "level": 4,
+      "note": "generation only offers get when the model holds a value, and draws a value only for put",
+      "ops": [
+        "PropertyRunner",
+        "generateCommands",
+        "generateCommands",
+        "generateCommands"
+      ],
+      "args": [
+        [],
+        [
+          1,
+          3,
+          6,
+          4
+        ],
+        [
+          3,
+          9,
+          3,
+          10
+        ],
+        [
+          2,
+          4,
+          4,
+          1
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "size, size, size, size",
+          "size, put 5, size, put 4",
+          "put 5, put 7, size, put 6",
+          "size, size, put 9, size",
+          "size, size",
+          "put 3, size, put 9, put 6"
+        ],
+        [
+          "size, put 1",
+          "put 4, get, size, size, size, put 6, size, get",
+          "put 7, put 8, put 2, get, get, get, put 5"
+        ],
+        [
+          "put 8",
+          "put 3",
+          "size",
+          "size"
+        ]
+      ]
+    },
+    {
+      "id": "h17",
+      "level": 4,
+      "note": "the first failing sequence and its shrunk form for every bug",
+      "ops": [
+        "PropertyRunner",
+        "firstFailure",
+        "shrinkFailure",
+        "shrinkFailure",
+        "firstFailure",
+        "shrinkFailure",
+        "shrinkFailure",
+        "shrinkFailure"
+      ],
+      "args": [
+        [],
+        [
+          2,
+          "full-overwrites",
+          1,
+          100,
+          10
+        ],
+        [
+          2,
+          "full-overwrites",
+          1,
+          100,
+          10
+        ],
+        [
+          3,
+          "full-overwrites",
+          5,
+          100,
+          10
+        ],
+        [
+          3,
+          "wrap-lifo",
+          9,
+          100,
+          10
+        ],
+        [
+          3,
+          "wrap-lifo",
+          9,
+          100,
+          10
+        ],
+        [
+          2,
+          "wrap-lifo",
+          1,
+          100,
+          10
+        ],
+        [
+          3,
+          "size-wraps",
+          5,
+          100,
+          10
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "put 0",
+          "put 4",
+          "put 4",
+          "get"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "put 0"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "put 0",
+          "put 0"
+        ],
+        [
+          "put 3",
+          "put 1",
+          "put 6",
+          "size",
+          "get",
+          "put 9",
+          "get",
+          "get",
+          "size",
+          "size"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "put 0",
+          "get",
+          "put 1",
+          "get"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "get",
+          "put 1",
+          "get"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "put 0",
+          "size"
+        ]
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 4,
+      "note": "one value at a time cannot shrink two values that must stay equal; shrinking keeps every get allowed",
+      "ops": [
+        "PropertyRunner",
+        "firstFailure",
+        "shrinkFailure",
+        "firstFailure",
+        "shrinkFailure",
+        "shrinkFailure",
+        "shrinkFailure",
+        "shrinkFailure"
+      ],
+      "args": [
+        [],
+        [
+          2,
+          "repeat-dropped",
+          1,
+          100,
+          10
+        ],
+        [
+          2,
+          "repeat-dropped",
+          1,
+          100,
+          10
+        ],
+        [
+          3,
+          "repeat-dropped",
+          9,
+          100,
+          10
+        ],
+        [
+          3,
+          "repeat-dropped",
+          9,
+          100,
+          10
+        ],
+        [
+          2,
+          "repeat-dropped",
+          9,
+          100,
+          10
+        ],
+        [
+          3,
+          "repeat-dropped",
+          30,
+          100,
+          12
+        ],
+        [
+          2,
+          "wrap-lifo",
+          16,
+          100,
+          12
+        ]
+      ],
+      "expected": [
+        null,
+        [
+          "put 4",
+          "put 4",
+          "get",
+          "get"
+        ],
+        [
+          "put 4",
+          "put 4",
+          "get",
+          "get"
+        ],
+        [
+          "size",
+          "put 9",
+          "size",
+          "put 9",
+          "get",
+          "size"
+        ],
+        [
+          "put 9",
+          "put 9",
+          "size"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "put 0"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "put 0",
+          "put 0"
+        ],
+        [
+          "put 0",
+          "put 0",
+          "get",
+          "put 1",
+          "get"
+        ]
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 4,
+      "note": "a correct queue never fails; too few runs or too short sequences can miss a bug",
+      "ops": [
+        "PropertyRunner",
+        "firstFailure",
+        "shrinkFailure",
+        "firstFailure",
+        "shrinkFailure",
+        "firstFailure"
+      ],
+      "args": [
+        [],
+        [
+          3,
+          "none",
+          2,
+          200,
+          12
+        ],
+        [
+          3,
+          "none",
+          2,
+          200,
+          12
+        ],
+        [
+          3,
+          "size-wraps",
+          2,
+          1,
+          2
+        ],
+        [
+          3,
+          "size-wraps",
+          2,
+          3,
+          3
+        ],
+        [
+          3,
+          "size-wraps",
+          2,
+          200,
+          4
+        ]
+      ],
+      "expected": [
+        null,
+        [],
+        [],
+        [],
+        [],
+        [
+          "put 0",
+          "put 0",
+          "put 7",
+          "size"
+        ]
+      ]
+    }
+  ]
+}
