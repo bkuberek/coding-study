@@ -12,14 +12,17 @@ steps:
   - guide: evaluating-expressions
   - problem: evaluate-rpn
   - problem: basic-calculator
+  - problem: tiny-interpreter
   - guide: queues-and-deques
   - guide: monotonic-stacks
+  - problem: price-after-rebate
   - problem: daily-temperatures
   - problem: stock-span
   - problem: car-fleet
   - problem: remove-k-digits
   - problem: sum-of-subarray-minimums
   - guide: tries
+  - problem: count-words-by-prefix
   - problem: implement-trie
   - problem: replace-words
   - problem: wildcard-word-dictionary

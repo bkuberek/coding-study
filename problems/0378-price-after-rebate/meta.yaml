@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 1475, url: "https://leetcode.com/problems/final-prices-with-a-special-discount-in-a-shop/"}
 related: [daily-temperatures, stock-span]
+guides: [monotonic-stacks]
 order: 0
 estimate_minutes: 20

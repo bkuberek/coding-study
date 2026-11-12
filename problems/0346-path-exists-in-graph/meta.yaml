@@ -33,5 +33,6 @@ perf:
 references:
   leetcode: {number: 1971, url: "https://leetcode.com/problems/find-if-path-exists-in-graph/"}
 related: [count-connected-components, number-of-islands, redundant-connection]
+guides: [breadth-first-search]
 order: 0
 estimate_minutes: 20

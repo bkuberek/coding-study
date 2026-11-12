@@ -302,6 +302,7 @@ The step count has the [same proof](../searching-a-sorted-array/guide.md#complex
 ## Practice
 
 - `cstudy start search-insert-position`: where a value sits in a sorted array of distinct values, or where it would have to go.
+- `cstudy start first-bad-commit`: the first commit of a history that fails its test, or every position it could be when some commits cannot be tested.
 - `cstudy start first-last-position`: the first and the last position of a value in a sorted array with duplicates, in a logarithmic number of steps.
 - `cstudy start time-based-kv-store`: a store that keeps every value a key has had, each with its time, and reads a key as it was at a given time.
 - `cstudy start snapshot-array`: an array that takes snapshots and can read any position as it was in any snapshot.

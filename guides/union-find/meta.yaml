@@ -4,4 +4,4 @@ summary: Keep track of which things are connected while connections keep arrivin
 level: core
 prerequisites: [graph-representations]
 related: [depth-first-search, breadth-first-search]
-problems: [count-connected-components, redundant-connection, duplicate-contractor-records, accounts-merge, smallest-string-with-swaps, evaluate-division, number-of-islands-ii, referral-rewards]
+problems: [village-paths, count-connected-components, redundant-connection, duplicate-contractor-records, accounts-merge, smallest-string-with-swaps, evaluate-division, number-of-islands-ii, referral-rewards]

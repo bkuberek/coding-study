@@ -398,6 +398,7 @@ A grid of R rows and C columns has R · C nodes and O(R · C) edges, so a search
 
 ## Practice
 
+- `cstudy start flood-fill`: repaint one tile of a courtyard and every tile joined to it through its colour.
 - `cstudy start number-of-islands`: count the separate pieces of land on a map.
 - `cstudy start max-area-of-island`: the size of the largest piece.
 - `cstudy start surrounded-regions`: fill in the regions that cannot reach the edge of the board.

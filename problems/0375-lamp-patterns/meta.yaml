@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 3211, url: "https://leetcode.com/problems/generate-binary-strings-without-adjacent-zeros/"}
 related: [subsets, generate-parentheses, phone-letter-combinations]
+guides: [backtracking]
 order: 0
 estimate_minutes: 15

@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 64, url: "https://leetcode.com/problems/minimum-path-sum/"}
 related: [unique-paths, maximal-square]
+guides: [two-dimensional-tables]
 order: 0
 estimate_minutes: 25

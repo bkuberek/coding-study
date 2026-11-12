@@ -5,6 +5,7 @@ level: advanced
 prerequisites: [heaps]
 related: [counting-and-frequency, binary-search-trees]
 problems:
+  - kth-largest-in-stream
   - kth-largest-element
   - k-closest-points
   - top-k-frequent-elements

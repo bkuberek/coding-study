@@ -321,6 +321,7 @@ For an implicit graph, V and E are the states and moves the search actually reac
 
 ## Practice
 
+- `cstudy start path-exists-in-graph`: whether some walk along two-way trails leads from one campsite to another.
 - `cstudy start clone-graph`: copy every node of a graph that has cycles, exactly once each.
 - `cstudy start shortest-path-binary-matrix`: the shortest route across a grid where diagonal steps are allowed.
 - `cstudy start rotting-oranges`: how many minutes until something spreading through a grid has reached everything it can.

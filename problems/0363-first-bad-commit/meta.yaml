@@ -27,5 +27,6 @@ perf:
   expected_from: binary-search
   time_limit: {factor: 5}
 related: [binary-search, first-last-position, search-insert-position]
+guides: [lower-and-upper-bounds]
 order: 12
 estimate_minutes: 20

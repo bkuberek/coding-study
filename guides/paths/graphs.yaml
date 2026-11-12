@@ -4,6 +4,7 @@ summary: From nodes and edges to breadth- and depth-first search, union-find, to
 steps:
   - guide: graph-representations
   - guide: breadth-first-search
+  - problem: path-exists-in-graph
   - problem: employee-importance
   - problem: time-to-inform-employees
   - problem: clone-graph
@@ -13,6 +14,7 @@ steps:
   - problem: word-ladder
   - problem: shortest-path-with-removals
   - guide: depth-first-search
+  - problem: flood-fill
   - problem: number-of-islands
   - problem: max-area-of-island
   - problem: surrounded-regions
@@ -22,6 +24,7 @@ steps:
   - problem: referral-rewards
     level: 2
   - guide: union-find
+  - problem: village-paths
   - problem: count-connected-components
   - problem: redundant-connection
   - problem: duplicate-contractor-records
@@ -31,6 +34,7 @@ steps:
   - problem: number-of-islands-ii
   - problem: referral-rewards
   - guide: topological-order
+  - problem: check-task-order
   - problem: course-schedule
   - problem: course-schedule-ii
   - problem: parallel-courses

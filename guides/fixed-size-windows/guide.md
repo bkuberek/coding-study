@@ -195,6 +195,7 @@ Each position enters the window once and leaves it once, so there are at most `2
 
 ## Practice
 
+- `cstudy start max-average-fixed-window`: the best average over any run of exactly `k` days of takings.
 - `cstudy start permutation-in-string`: a window whose size comes from another string, compared with that string's letter counts.
 - `cstudy start chunking-with-overlap`: windows of words that overlap and jump forward, with a practical rule for where each one ends.
 - `cstudy start sliding-window-maximum`: a summary that cannot be undone, and the structure that makes it slide anyway.

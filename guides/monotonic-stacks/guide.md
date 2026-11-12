@@ -183,6 +183,7 @@ Both assume a comparison costs O(1).
 
 ## Practice
 
+- `cstudy start price-after-rebate`: what each item on a shelf costs after a rebate taken from the first item to its right that costs no more.
 - `cstudy start daily-temperatures`: how long, for every day, until a warmer day comes.
 - `cstudy start stock-span`: a measure of a price's run-up, asked once per day as prices arrive.
 - `cstudy start car-fleet`: cars on a road where nobody can overtake: how many groups arrive.

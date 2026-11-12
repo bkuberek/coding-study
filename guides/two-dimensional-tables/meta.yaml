@@ -4,4 +4,4 @@ summary: When one number cannot name what is left to solve, the table gets rows 
 level: core
 prerequisites: [one-dimensional-tables]
 related: [choosing-states]
-problems: [unique-paths, longest-common-subsequence, maximal-square, edit-distance, interleaving-string, regex-matching]
+problems: [minimum-path-sum, unique-paths, longest-common-subsequence, line-diff-and-merge, maximal-square, edit-distance, interleaving-string, regex-matching]

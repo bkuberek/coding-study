@@ -247,6 +247,7 @@ Pruning changes how many nodes are visited, often by a lot, but the bounds above
 
 ## Practice
 
+- `cstudy start lamp-patterns`: list every way to light a row of lamps so that no two neighbours are on.
 - `cstudy start subsets`: list every collection that can be kept from a set of distinct values.
 - `cstudy start permutations`: list every ordering of a set of distinct values.
 - `cstudy start combination-sum`: list the combinations of candidates, each usable any number of times, that add up to a target.

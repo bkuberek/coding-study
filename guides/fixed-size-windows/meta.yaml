@@ -4,4 +4,4 @@ summary: Slide a window of k consecutive values along an array and update its su
 level: core
 prerequisites: [two-pointers]
 related: [variable-size-windows, prefix-sums-with-hash-maps, counting-and-frequency]
-problems: [permutation-in-string, chunking-with-overlap, sliding-window-maximum]
+problems: [max-average-fixed-window, permutation-in-string, chunking-with-overlap, sliding-window-maximum]

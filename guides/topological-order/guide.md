@@ -225,6 +225,7 @@ With V nodes and E arrows:
 
 ## Practice
 
+- `cstudy start check-task-order`: whether a proposed order of tasks lists each task once and after all of its prerequisites.
 - `cstudy start course-schedule`: can every course be completed?
 - `cstudy start course-schedule-ii`: in what order?
 - `cstudy start parallel-courses`: how few terms are needed when you may take many courses at once?

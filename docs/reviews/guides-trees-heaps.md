@@ -88,7 +88,7 @@ The six guides of the path "Trees and heaps: from your first tree to a bank that
 
 ## Problems on the path, and the ones left out
 
-The path takes 28 of the 41 problems whose `patterns` include `trees`, `heap` or `tries`, from easiest to hardest within each guide, with the hard ones of both halves at the end: `max-path-sum`, `serialize-binary-tree`, `merge-k-sorted-lists`, `median-data-stream`, `maximize-capital` and the four-level `scheduled-transfers-bank`.
+The path takes 29 of the 52 problems whose `patterns` include `trees`, `heap` or `tries`, from easiest to hardest within each guide, with the hard ones of both halves at the end: `max-path-sum`, `serialize-binary-tree`, `merge-k-sorted-lists`, `median-data-stream`, `maximize-capital` and the four-level `scheduled-transfers-bank`.
 
 | Left out | Why |
 |----------|-----|
@@ -98,6 +98,8 @@ The path takes 28 of the 41 problems whose `patterns` include `trees`, `heap` or
 | `min-meeting-rooms`, `min-interval-per-query`, `employee-free-time` (`intervals`, `heap`) | They belong with the intervals material |
 | `network-delay-time`, `swim-rising-water` (`advanced-graphs`, `heap`) | They need shortest paths, which a graphs path teaches |
 | `cosine-top-k` (`heap`) | A fourth top-k problem on a bounded heap; three are enough here |
+| `count-words-by-prefix` (`tries`) | It practises the tries guide, in the stacks, queues and tries path |
+| `agent-trace-analyzer`, `btree-index`, `content-addressed-store`, `iac-plan-engine`, `manifest-policy`, `pipeline-scheduler`, `test-doubles`, `undo-redo-editor`, `values-templating` | Practical problems in which a tree or a heap serves a larger design; they belong with the material of their own domains |
 
 ## Spoiler check
 
@@ -125,6 +127,7 @@ Every worked example, trap and note was read against each linked problem's state
 | `last-stone-weight` | heaps | Hint 3's facts as language facts: a heap's costs, and how each language gets a max-heap (Python 3.14's `_max` functions or negated numbers, `Comparator.reverseOrder()`, Rust's default) | The game loop; follow-up 1's cost of re-sorting each round; follow-up 3's counting |
 | `single-threaded-cpu` | heaps | Hint 2's shape: a tuple with a tie-breaker (from the `heapq` documentation; the problem's statement fixes the index as the tie-breaker); heaps for schedulers, as `heapq` describes | Hints 1 and 3: feeding tasks by arrival time, the pointer, jumping the clock |
 | `task-scheduler` | heaps | none | The counts, the greedy rule, the cooldown queue, the frame formula |
+| `kth-largest-in-stream` | heap-patterns | Its statement defines the cutoff as the lowest score still in the top k and introduces the min-heap, and its summary names the bounded heap. The guide's first pattern and the podium example are hints 2 and 3, as an on-ramp to that pattern intends; "dismissed after a single comparison" answers follow-ups 1 and 2, and "turn every comparison around" follow-up 3, in general | Hint 4: offering the starting scores by the same rule and returning the top. The note on other languages no longer gives the offer, poll and peek sequence, only which heap each language has; the guide never says that the root is the k-th largest |
 | `kth-largest-element` | heap-patterns | Hints 1 and 2: the bounded min-heap with the item to beat at the root (named in the brief, and already taught by `counting-and-frequency`). The guide calls the root "the smallest of the items kept so far" and its trace prints "the lightest kept weighs ...": once the reader sees that the kept items are the k largest, the answer is the root. With the brief's topic, the problem is close to a recall exercise of this pattern | Saying that the root is the k-th largest (the wording "the weakest member of the current top k" was cut); hint 3's quickselect, never named; follow-ups 2 and 3 |
 | `k-closest-points` | heap-patterns | Hint 2 in general: "to keep the k smallest, turn every comparison around"; follow-up 3 in general, since a bounded heap works on a stream | Hint 1's squared distances; hint 3's quickselect |
 | `top-k-frequent-elements` | heap-patterns | Hint 2, the bounded heap, already taught by `counting-and-frequency` | Hints 1 and 3 belong to `counting-and-frequency` and are not repeated |

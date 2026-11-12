@@ -31,4 +31,5 @@ comparator: {type: ops}
 approaches:
   - {id: lcs-table, name: A suffix table of common subsequences and chunked three-way merge, role: optimal, time: "O(n * m) per diff, unified diff or merge; O(k * p + h * n) per patch", space: "O(n * m)", time_class: "n^2", space_class: "n^2"}
 related: [longest-common-subsequence, edit-distance, tiny-interpreter, undo-redo-editor]
+guides: [two-dimensional-tables]
 estimate_minutes: 120

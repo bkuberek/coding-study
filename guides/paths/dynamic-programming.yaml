@@ -4,6 +4,7 @@ summary: From a function that calls itself to tables in one and two dimensions a
 steps:
   - guide: recursion
   - guide: backtracking
+  - problem: lamp-patterns
   - problem: subsets
   - problem: permutations
   - problem: combination-sum
@@ -18,8 +19,11 @@ steps:
   - problem: decode-ways
   - problem: min-cost-tickets
   - guide: two-dimensional-tables
+  - problem: minimum-path-sum
   - problem: unique-paths
   - problem: longest-common-subsequence
+  - problem: line-diff-and-merge
+    level: 1
   - problem: maximal-square
   - problem: edit-distance
   - problem: interleaving-string

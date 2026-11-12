@@ -28,5 +28,6 @@ perf:
   expected_from: counting-trie
   time_limit: {factor: 5}
 related: [implement-trie, search-suggestions, replace-words]
+guides: [tries]
 order: 0
 estimate_minutes: 20

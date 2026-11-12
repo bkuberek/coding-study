@@ -356,6 +356,7 @@ Compare a hash set: a lookup hashes the whole key and compares it, O(L) expected
 
 ## Practice
 
+- `cstudy start count-words-by-prefix`: how many words of a list begin with each of several prefixes.
 - `cstudy start implement-trie`: the trie itself: stored words, and whether any stored word starts with a prefix.
 - `cstudy start replace-words`: replace each word of a sentence by the shortest stored root it starts with.
 - `cstudy start wildcard-word-dictionary`: stored words searched with patterns in which a dot matches any one letter.

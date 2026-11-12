@@ -210,12 +210,13 @@ For two heaps holding n values:
 
 - **`heappushpop` and `heapreplace`.** Python's documentation says `heappushpop` runs more efficiently than a push followed by a pop, and that `heapreplace`, a pop then a push, "can be more appropriate when using a fixed-size heap". Both do a single sift instead of two.
 - **The expected cost on random order.** CPython's `Lib/heapq.py` notes analyse the bounded heap behind its own top-k tools: one comparison for each item against the root, and a heap operation only for the roughly `k · ln(n/k)` items that enter. For k = 100, its measured comparisons are 5.7% more than `min()` needs on 100,000 random items, and 0.8% more on a million. Its worst case is input in the opposite order, where every item enters.
-- **Bounded heaps in other languages.** In Java, a `PriorityQueue` in natural order holds the k largest: `offer` each item, and `poll` when the size passes k; `peek` shows the item to beat. In Rust, `BinaryHeap` is a max-heap, so the k largest are kept with `Reverse` around each item. Go's `container/heap` takes its order from your `Less`.
+- **Bounded heaps in other languages.** In Java, a `PriorityQueue` in natural order is a min-heap, the kind that keeps the k largest. In Rust, `BinaryHeap` is a max-heap, so keeping the k largest needs `Reverse` around each item. Go's `container/heap` takes its order from your `Less`.
 - **Percentiles and their cost.** Two heaps track one fixed rank. To answer any rank on demand, or to let values expire from a window, the collection needs a structure that can find and remove any value, which a heap does not provide cheaply.
 - **Why the root, and not a sorted list of k.** A sorted list of the k best also exposes its weakest item, but inserting a winner into it costs O(k) shifts, against O(log k) for the heap.
 
 ## Practice
 
+- `cstudy start kth-largest-in-stream`: report the `k`-th largest score after every new score, when the scores far outnumber `k`.
 - `cstudy start kth-largest-element`: find the value at a given rank from the top, without sorting the whole array.
 - `cstudy start k-closest-points`: return the k points nearest to the origin.
 - `cstudy start top-k-frequent-elements`: return the k values that occur most often.

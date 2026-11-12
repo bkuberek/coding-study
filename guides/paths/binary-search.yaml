@@ -6,6 +6,7 @@ steps:
   - problem: binary-search
   - guide: lower-and-upper-bounds
   - problem: search-insert-position
+  - problem: first-bad-commit
   - problem: debug-binary-search-bounds
   - guide: binary-search-mistakes
   - problem: first-last-position

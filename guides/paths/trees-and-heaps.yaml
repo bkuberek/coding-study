@@ -26,6 +26,7 @@ steps:
   - problem: single-threaded-cpu
   - problem: task-scheduler
   - guide: heap-patterns
+  - problem: kth-largest-in-stream
   - problem: kth-largest-element
   - problem: k-closest-points
   - problem: top-k-frequent-elements

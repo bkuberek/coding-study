@@ -4,4 +4,4 @@ summary: Search for the first position where a yes/no question turns true, and e
 level: core
 prerequisites: [searching-a-sorted-array]
 related: [binary-search-mistakes, binary-search-on-the-answer, rotated-and-implicit-search]
-problems: [search-insert-position, first-last-position, time-based-kv-store, snapshot-array]
+problems: [search-insert-position, first-bad-commit, first-last-position, time-based-kv-store, snapshot-array]

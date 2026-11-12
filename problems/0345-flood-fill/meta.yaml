@@ -32,5 +32,6 @@ perf:
 references:
   leetcode: {number: 733, url: "https://leetcode.com/problems/flood-fill/"}
 related: [number-of-islands, max-area-of-island, surrounded-regions]
+guides: [depth-first-search]
 order: 0
 estimate_minutes: 15

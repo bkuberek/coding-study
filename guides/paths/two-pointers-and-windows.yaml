@@ -14,6 +14,7 @@ steps:
   - problem: container-with-most-water
   - problem: trapping-rain-water
   - guide: fixed-size-windows
+  - problem: max-average-fixed-window
   - problem: permutation-in-string
   - problem: chunking-with-overlap
   - problem: sliding-window-maximum

@@ -300,6 +300,7 @@ Writing each operator before its operands, `+ 2 * 3 4`, is prefix order, also ca
 
 - `cstudy start evaluate-rpn`: postfix arithmetic on integers, with a rule of its own for division.
 - `cstudy start basic-calculator`: infix arithmetic with two levels of precedence and no parentheses.
+- `cstudy start tiny-interpreter`: a small expression language in four levels: tokens, a syntax tree that respects precedence, evaluation with closures, and bytecode run on a stack machine.
 
 ## Further reading
 

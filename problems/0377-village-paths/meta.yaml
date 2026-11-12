@@ -31,5 +31,6 @@ perf:
   expected_from: disjoint-set-forest
   time_limit: {factor: 5}
 related: [count-connected-components, redundant-connection, number-of-islands-ii]
+guides: [union-find]
 order: 0
 estimate_minutes: 20

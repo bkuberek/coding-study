@@ -4,4 +4,4 @@ summary: For every item, the first later item that beats it, in one pass. Why th
 level: core
 prerequisites: [stacks]
 related: [queues-and-deques, evaluating-expressions]
-problems: [daily-temperatures, stock-span, car-fleet, remove-k-digits, sum-of-subarray-minimums, trapping-rain-water, largest-rectangle-histogram, maximal-rectangle]
+problems: [price-after-rebate, daily-temperatures, stock-span, car-fleet, remove-k-digits, sum-of-subarray-minimums, trapping-rain-water, largest-rectangle-histogram, maximal-rectangle]

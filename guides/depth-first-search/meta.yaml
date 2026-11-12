@@ -4,4 +4,4 @@ summary: Follow one path as deep as it goes before backing up, with recursion or
 level: core
 prerequisites: [graph-representations]
 related: [breadth-first-search, topological-order, union-find]
-problems: [number-of-islands, max-area-of-island, surrounded-regions, pacific-atlantic-water-flow, bipartite-graph, contractor-exposure-rollup, referral-rewards]
+problems: [flood-fill, number-of-islands, max-area-of-island, surrounded-regions, pacific-atlantic-water-flow, bipartite-graph, contractor-exposure-rollup, referral-rewards]

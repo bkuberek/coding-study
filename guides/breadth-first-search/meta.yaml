@@ -4,4 +4,4 @@ summary: Explore a graph in rings of equal distance with a queue, to find the fe
 level: core
 prerequisites: [graph-representations]
 related: [depth-first-search, weighted-shortest-paths]
-problems: [clone-graph, shortest-path-binary-matrix, rotting-oranges, open-the-lock, word-ladder, shortest-path-with-removals]
+problems: [path-exists-in-graph, clone-graph, shortest-path-binary-matrix, rotting-oranges, open-the-lock, word-ladder, shortest-path-with-removals]

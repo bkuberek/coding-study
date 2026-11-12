@@ -30,4 +30,5 @@ comparator: {type: ops}
 approaches:
   - {id: pratt-and-stack-vm, name: A Pratt parser with a tree walker and a bytecode stack machine, role: optimal, time: "O(s) per tokenize, parse or compile; O(s + w * h) per evaluate or run", space: "O(s + w)", time_class: "n", space_class: "n"}
 related: [basic-calculator, evaluate-rpn, line-diff-and-merge, undo-redo-editor]
+guides: [evaluating-expressions]
 estimate_minutes: 150

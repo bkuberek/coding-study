@@ -248,12 +248,14 @@ The rule is the one-dimensional rule: the number of cells times the work of one 
 - **From O(k²) to O(k) per row.** Each cell of the café's table needs the smallest value of the row above, leaving out its own column. Find the smallest and the second smallest of the row above once: a cell whose own column holds the smallest uses the second smallest, every other cell uses the smallest. That makes each row O(k), which matters when there are many choices.
 - **A table of choices.** Instead of working the plan out backwards from the costs, store in each cell the column it took its value from. The plan is then read by following those pointers back, with no arithmetic. When several cells tie, the stored pointer also fixes which of the equally cheap plans you get, which a test with one expected answer may care about.
 - **Read the answer back from the cell that holds it.** The walk starts at the cell where the answer is: the corner of a grid, the last cell of two sequences, the best cell of the last row. Starting anywhere else reconstructs a plan for a different question.
-- **The shape of the dependencies decides the order, and the space.** A cell that reads the row above and the cell to its left allows row-by-row filling and two rows of memory. Some tables read in other directions, and must be filled in another order: by diagonals, by the length of a stretch, or from the bottom-right corner. Draw the arrows for one cell before writing the loops.
+- **The shape of the dependencies decides the order, and the space.** Draw the arrows for one cell before writing the loops: every cell an arrow starts from must be filled before the cell it points to, and only the rows the arrows still reach need to stay in memory. Some tables must be filled in an order other than row by row: by diagonals, by the length of a stretch, or from the bottom-right corner.
 
 ## Practice
 
+- `cstudy start minimum-path-sum`: the smallest total toll on a route across a grid when every move goes one cell right or one cell down.
 - `cstudy start unique-paths`: count the routes across a grid when every move goes one cell right or one cell down.
 - `cstudy start longest-common-subsequence`: the length of the longest subsequence that two strings share.
+- `cstudy start line-diff-and-merge`, level 1: the lines two files share and the diff between them, from a longest common subsequence of their lines. Its later levels build unified hunks, patches and a three-way merge.
 - `cstudy start maximal-square`: the area of the largest square made only of ones in a grid.
 - `cstudy start edit-distance`: the fewest single-character insertions, deletions and replacements that turn one word into another.
 - `cstudy start interleaving-string`: whether a string is a merge of two others that keeps the order of each.

@@ -52,6 +52,12 @@ These are the guides' own arguments, written out as proofs in the guide that sta
 | A13 | The valid windows ending at `r` number `r - L(r) + 1`; "exactly `k` different values" is "at most `k`" minus "at most `k - 1`" | variable-size-windows, When to use it and Expert notes |
 | A14 | Left out: the history and names of the classic algorithms (the Dutch national flag, Hoare's partition, Floyd's cycle finding, saddleback search, Rabin–Karp), since no primary source was checked | |
 
+## Spoiler check of the on-ramp
+
+| Problem | Guide | Overlap the guide states | Kept back |
+|---------|-------|--------------------------|-----------|
+| `max-average-fixed-window` | fixed-size-windows | Its statement explains a window of fixed width and how it slides. The rainfall example adds up the first window once and then subtracts the day that leaves and adds the day that enters: hints 1 and 3, and the sliding part of hint 4, the technique this on-ramp practises; follow-up 1 is the guide's O(n) | Hint 2, comparing sums and dividing once at the end; hint 4's best kept from the first window, so that all-negative inputs work; follow-ups 2 and 3 |
+
 ## Changes from the first accuracy review (2026-11-12)
 
 The review found every proof correct, every citation confirmed and every example printing what its guide shows; these are its findings and what changed.

@@ -29,5 +29,6 @@ perf:
   expected_from: position-table
   time_limit: {factor: 5}
 related: [course-schedule, course-schedule-ii]
+guides: [topological-order]
 order: 0
 estimate_minutes: 20

@@ -4,4 +4,4 @@ summary: Order the nodes of a directed graph so that every edge points forward, 
 level: core
 prerequisites: [depth-first-search]
 related: [breadth-first-search]
-problems: [course-schedule, course-schedule-ii, parallel-courses, all-possible-recipes, alien-dictionary, longest-increasing-path-matrix]
+problems: [check-task-order, course-schedule, course-schedule-ii, parallel-courses, all-possible-recipes, alien-dictionary, longest-increasing-path-matrix]

@@ -297,6 +297,7 @@ For n elements:
 
 ## Practice
 
+- `cstudy start village-paths`: which villages can reach each other, and how large their groups are, while footpaths are built one at a time.
 - `cstudy start count-connected-components`: how many pieces a graph falls into.
 - `cstudy start redundant-connection`: which edge to remove so that a network is a tree again.
 - `cstudy start duplicate-contractor-records`: which records describe the same subcontractor, when a match on either of two fields counts.

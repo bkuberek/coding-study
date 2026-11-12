@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 643, url: "https://leetcode.com/problems/maximum-average-subarray-i/"}
 related: [min-size-subarray-sum, max-ones-with-flips, longest-substring-without-repeats]
+guides: [fixed-size-windows]
 order: 0
 estimate_minutes: 15
