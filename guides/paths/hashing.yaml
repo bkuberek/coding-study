@@ -24,3 +24,4 @@ steps:
   - problem: tamper-evident-ledger
     level: 2
   - problem: tamper-evident-ledger
+  - problem: content-addressed-store
