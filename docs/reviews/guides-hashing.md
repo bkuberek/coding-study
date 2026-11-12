@@ -1,6 +1,6 @@
 # Review: the facts of the hashing guides
 
-The seven guides of the path "Hashing: from your first hash map to tamper-evident ledgers" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about languages, libraries and standards. This page lists each one with where it was checked, so that a later review starts from the sources, and records what the first independent accuracy review changed.
+The seven guides of the path "Hashing: from your first hash map to content-addressed storage" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about languages, libraries and standards. This page lists each one with where it was checked, so that a later review starts from the sources, and records what the first independent accuracy review changed.
 
 "Quote" means the exact text was read on that page. "Run" means an example of the guide, or a one-off program, printed it: on CPython 3.13, OpenJDK 21.0.2, Go 1.27.3 and Node 24.18.0. A fact that could not be checked was left out of the guides.
 

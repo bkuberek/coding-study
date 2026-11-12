@@ -20,7 +20,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 
 ## Status
 
-Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 213 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
+Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 347 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
 
 | Item | Phase | Needs |
 |------|-------|-------|

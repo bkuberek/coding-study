@@ -2,7 +2,7 @@
 
 The eleven guides of the path "AI engineering: from your first model call to agent harnesses" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about standards, papers, a security ranking and Python. This page lists each one with where it was checked, so that the independent review starts from the sources.
 
-"Quote" means the exact text was read at that source: on the web page, or in the text extracted from the PDF with `pdftotext`. "Run" means an example of the guide, or a one-off program, printed it, on CPython 3.13.12. "Arithmetic" means the number was computed from the stated inputs. A fact that could not be checked was left out of the guides; the last sections list those, and the citation choices made for the owner's rule against naming companies, products, models and post authors.
+"Quote" means the exact text was read at that source: on the web page, or in the text extracted from the PDF with `pdftotext`. "Run" means an example of the guide, or a one-off program, printed it, on CPython 3.13.12. "Arithmetic" means the number was computed from the stated inputs. A fact that could not be checked was left out of the guides; the last sections list those, and the citation choices made under the guides' rule against naming companies, products, models and post authors.
 
 | Guide | Slug |
 |-------|------|
@@ -166,7 +166,7 @@ Abstracts were read on arXiv; claims beyond an abstract were checked in the pape
 
 ## The harness engineering article
 
-The owner shared *Harness engineering: leveraging Codex in an agent-first world*, published on OpenAI's site ([openai.com/index/harness-engineering](https://openai.com/index/harness-engineering/)), as a source for `harness-engineering`. The article itself could not be read: WebFetch got HTTP 403 for the URL and its `/en/` variant, and the web archive could not be fetched. It is not cited in the guide: after the independent review, its Further reading line was removed, and the guide states the ideas below as its own advice, without attribution. What was checked, against two secondary sources that were read:
+*Harness engineering: leveraging Codex in an agent-first world*, published on OpenAI's site ([openai.com/index/harness-engineering](https://openai.com/index/harness-engineering/)), is a source of ideas for `harness-engineering`. The article itself could not be read: the URL and its `/en/` variant answered HTTP 403, and the web archive could not be fetched. It is not cited in the guide, which states the ideas below as its own advice, without attribution. What was checked, against two secondary sources that were read:
 
 - [InfoQ news, *OpenAI Introduces Harness Engineering: Codex Agents Power Large-Scale Software Development*, by Leela Kumili, 21 February 2026](https://www.infoq.com/news/2026/02/openai-harness-engineering-codex): human engineers shift "from implementing code to designing environments, specifying intent, and providing structured feedback"; a structured docs directory of "maps, execution plans, and design specifications" serves as "the single source of truth for agents"; architecture documentation is "mechanically enforced with linters and CI validation" and structural tests check modular layering; agents use telemetry (logs, metrics, spans) to monitor performance and reproduce bugs.
 - [*Harness Engineering - first thoughts*, by Birgitta Böckeler, 17 February 2026, in the "Exploring Gen AI" series on martinfowler.com](https://www.martinfowler.com/articles/exploring-gen-ai/harness-engineering-memo.html): names the article and calls it recent; describes the harness as context engineering ("continuously enhanced knowledge base in the codebase"), architectural constraints ("deterministic custom linters and structural tests") and garbage collection ("agents that run periodically to find inconsistencies in documentation or violations of architectural constraints"); quotes the article: "When the agent struggles, we treat it as a signal: identify what is missing — tools, guardrails, documentation"; and its "no manually typed code" for five months.
@@ -194,9 +194,9 @@ The guides name no company, product, vendor, model or post author in their prose
 | The harness engineering article | Not cited in the guide, since its title and URL name a product and a company and it was never read; recorded here only |
 | Python | Named, as the language of the examples, with its official documentation |
 
-## Practice links to problems not yet merged
+## Practice links to the AI problems
 
-At the main session's direction, the guides and the path reference seven problems written on another branch, by the slugs of their folders: `loop-controller` (0323), `tool-permission-gate` (0324), `context-compaction` (0325), `cache-and-router` (0326), `eval-release-gate` (0327), `sql-guard` (0328) and `plan-and-execute` (0329). Their statements were not available, so their practice lines describe them only from their names, and the guides' examples could not be checked against their solutions for spoilers. Both need a look once they are merged, along with each problem's `guides:` list in its `meta.yaml`.
+The guides and the path practise eight problems of the catalog, by their slugs: `loop-controller` (0323), `tool-permission-gate` (0324), `context-compaction` (0325), `cache-and-router` (0326), `eval-release-gate` (0327), `sql-guard` (0328), `plan-and-execute` (0329) and `corrective-rag` (0330). Each names its guides in the `guides:` list of its `meta.yaml`, and each practice line was checked against the problem's statement. The guides' examples were checked against the problems' solutions for spoilers: `permission_gate.py` and `harness_loop.py` use their own precedence, path, repeat and compaction rules, which differ from those of `tool-permission-gate`, `loop-controller` and `context-compaction`, so neither gives a solution away.
 
 ## Independent accuracy review (2026-11-12)
 
@@ -225,5 +225,3 @@ An independent read-only review checked every claim of this page against its sou
 | 19 | Jargon in guides that start from little background | `tokens-and-sampling` defines transformer, layer, self-attention, key and value where they first appear; `llm-application-security` spells out cross-site scripting and server-side request forgery; `evaluating-llm-applications` defines a standard error before the example prints it, and words precision and recall as shares |
 | 20 | The ReAct diagram's text drawing put a "yes" label on the answer box | The step is drawn as a straight sequence of five boxes |
 | 21 | Shortened titles were not marked, and RouteLLM's carries no model brand | "title shortened" added to the three shortened titles; RouteLLM's full title restored |
-
-Left for the integrator: `permission_gate.py` and `harness_loop.py` are unchanged apart from fix 15, and should be checked for spoilers against `loop-controller`, `tool-permission-gate` and `context-compaction` once those problems land.
