@@ -12,9 +12,22 @@ const everyEdge = (_: Edge): boolean => true;
 const identityOnly = (edge: Edge): boolean => edge.usage === "identity";
 const carriesValue = (edge: Edge): boolean => edge.usage !== "filter" && !edge.masking;
 
+// A dataset or column name: 1 to 20 characters from a-z, 0-9 and _.
+function isName(text: string): boolean {
+  if (text.length < 1 || text.length > 20) {
+    return false;
+  }
+  for (const ch of text) {
+    if (!((ch >= "a" && ch <= "z") || (ch >= "0" && ch <= "9") || ch === "_")) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function isColumnRef(text: string): boolean {
   const parts = text.split(".");
-  return parts.length === 2 && parts[0] !== "" && parts[1] !== "";
+  return parts.length === 2 && parts.every(isName);
 }
 
 function datasetOf(column: string): string {
@@ -50,7 +63,7 @@ export class LineageGraph {
 
   // Level 1
   addDataset(name: string, columns: string[], edges: string[][]): boolean {
-    if (this.columns.has(name) || new Set(columns).size !== columns.length) {
+    if (this.columns.has(name) || !isName(name) || !columns.every(isName) || new Set(columns).size !== columns.length) {
       return false;
     }
     const pairs = new Set<string>();

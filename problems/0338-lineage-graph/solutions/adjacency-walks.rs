@@ -16,11 +16,14 @@ impl Edge {
     }
 }
 
+/// A dataset or column name: 1 to 20 characters from a-z, 0-9 and _.
+fn is_name(text: &str) -> bool {
+    (1..=20).contains(&text.len())
+        && text.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+}
+
 fn is_column_ref(text: &str) -> bool {
-    match text.split_once('.') {
-        Some((dataset, column)) => !dataset.is_empty() && !column.is_empty() && !column.contains('.'),
-        None => false,
-    }
+    text.split_once('.').is_some_and(|(dataset, column)| is_name(dataset) && is_name(column))
 }
 
 fn dataset_of(column: &str) -> &str {
@@ -64,7 +67,8 @@ impl LineageGraph {
     // Level 1
     pub fn add_dataset(&mut self, name: String, columns: Vec<String>, edges: Vec<Vec<String>>) -> bool {
         let distinct: HashSet<&String> = columns.iter().collect();
-        if self.columns.contains_key(&name) || distinct.len() != columns.len() {
+        let all_names = is_name(&name) && columns.iter().all(|column| is_name(column));
+        if self.columns.contains_key(&name) || !all_names || distinct.len() != columns.len() {
             return false;
         }
         let mut pairs: HashSet<(&str, &str)> = HashSet::new();

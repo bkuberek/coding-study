@@ -23,9 +23,22 @@ func datasetOf(column string) string {
 	return dataset
 }
 
+// isName checks a dataset or column name: 1 to 20 characters from a-z, 0-9 and _.
+func isName(text string) bool {
+	if len(text) < 1 || len(text) > 20 {
+		return false
+	}
+	for _, ch := range text {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') {
+			return false
+		}
+	}
+	return true
+}
+
 func isColumnRef(text string) bool {
 	dataset, column, found := strings.Cut(text, ".")
-	return found && dataset != "" && column != "" && !strings.Contains(column, ".")
+	return found && isName(dataset) && isName(column)
 }
 
 func lessRows(a, b []string) bool {
@@ -72,12 +85,12 @@ func NewLineageGraph() *LineageGraph {
 
 // Level 1
 func (g *LineageGraph) AddDataset(name string, columns []string, edges [][]string) bool {
-	if _, taken := g.columns[name]; taken {
+	if _, taken := g.columns[name]; taken || !isName(name) {
 		return false
 	}
 	seen := map[string]bool{}
 	for _, column := range columns {
-		if seen[column] {
+		if seen[column] || !isName(column) {
 			return false
 		}
 		seen[column] = true

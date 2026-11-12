@@ -18,7 +18,7 @@ Aim to finish in 120 minutes. A good split: read the statement in the first 10 m
 
 ## Output
 
-Columns are named in full (`dataset.column`). Lists are sorted by the numeric value of their characters, so that `B` comes before `a`, and `10` before `9`, unless a method states another order; a list of lists is sorted by its first string, then its second, and so on. A method that finds nothing returns `[]`.
+Columns are named in full (`dataset.column`). Lists are sorted by the numeric value of their characters, so that `10` comes before `9`, and `_` before the letters, unless a method states another order; a list of lists is sorted by its first string, then its second, and so on. A method that finds nothing returns `[]`.
 
 ## Level 1: Specs and validation
 
@@ -34,7 +34,7 @@ Columns are named in full (`dataset.column`). Lists are sorted by the numeric va
   | `aggregate` | is computed from the input's values over many rows | `total` is the sum of `amount_eur` |
   | `filter` | does not contain the input's value, but the input decides which rows there are | only rows with `status = 'paid'` |
 
-- `addDataset` returns `true`. It returns `false`, and declares nothing, when the name is already declared, a column is listed twice, an edge's output is not one of `columns`, an input is not of the form `dataset.column`, a usage is not one of the four, a fourth element is not exactly `"masking"`, masking is given on an `identity` or `filter` edge (a copy hides nothing, and a filter carries no value), an edge has fewer than 3 or more than 4 elements, or two edges join the same output and input.
+- `addDataset` returns `true`. It returns `false`, and declares nothing, when the name is already declared, the name or a column is not a valid name (1 to 20 characters from `a`-`z`, `0`-`9` and `_`: no capitals, dashes or spaces), a column is listed twice, an edge's output is not one of `columns`, an input is not two valid names joined by one dot (`dataset.column`), a usage is not one of the four, a fourth element is not exactly `"masking"`, masking is given on an `identity` or `filter` edge (a copy hides nothing, and a filter carries no value), an edge has fewer than 3 or more than 4 elements, or two edges join the same output and input.
 - An input may name a dataset that is not declared yet: specs arrive from many jobs, in any order.
 - `validate()`: the problems of the whole graph as it is now, as a sorted list of issues:
   - `["unknown-dataset", consumer, input]` for each edge whose input's dataset is not declared, where `consumer` is the full name of the edge's output column;

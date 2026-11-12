@@ -15,9 +15,13 @@ private val ROWS = Comparator<List<String>> { a, b ->
     a.size.compareTo(b.size)
 }
 
+/** A dataset or column name: 1 to 20 characters from a-z, 0-9 and _. */
+private fun isName(text: String): Boolean =
+    text.length in 1..20 && text.all { it in 'a'..'z' || it in '0'..'9' || it == '_' }
+
 private fun isColumnRef(text: String): Boolean {
     val parts = text.split(".")
-    return parts.size == 2 && parts.all { it.isNotEmpty() }
+    return parts.size == 2 && parts.all(::isName)
 }
 
 private fun datasetOf(column: String): String = column.substringBefore('.')
@@ -39,7 +43,7 @@ class LineageGraph {
 
     // Level 1
     fun addDataset(name: String, columns: List<String>, edges: List<List<String>>): Boolean {
-        if (name in this.columns || columns.toSet().size != columns.size) {
+        if (name in this.columns || !isName(name) || !columns.all(::isName) || columns.toSet().size != columns.size) {
             return false
         }
         val pairs = HashSet<Pair<String, String>>()

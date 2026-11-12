@@ -56,6 +56,7 @@ Kosaraju's algorithm is correct because the component of the column that finishe
 ### Pitfalls and edge cases
 
 - `addDataset` is all or nothing: one bad edge refuses the whole dataset. Masking is allowed only on `transform` and `aggregate`, and usages are compared exactly.
+- Names are checked character by character: a capital, a dash, a space or a 21st character refuses the dataset, whether it is in the dataset's name, a column, or either half of an input.
 - Inputs are checked when `validate` runs, not when a dataset is added: a dataset declared later clears the issue. A missing dataset and a missing column have different codes, and every consumer of an unknown input is its own issue.
 - A cycle is reported once per group, with its members sorted; a column that reads itself is a cycle of one.
 - Upstream follows inputs and downstream follows consumers. A filter input is a dependency. Undeclared inputs are still walked.
@@ -70,7 +71,7 @@ Kosaraju's algorithm is correct because the component of the column that finishe
 
 - Python's `deque`, TypeScript's array with a moving head index, Java's `ArrayDeque`, Kotlin's `ArrayDeque`, Go's slice with a head index and Rust's `VecDeque` serve as the queue.
 - The first pass of Kosaraju's algorithm keeps an explicit stack of columns, each with its position in its edge list (an iterator in Python, an index elsewhere), so a long chain of columns cannot overflow the call stack.
-- Splitting `dataset.column`: Python's `split`, TypeScript's `split`, Java's `indexOf` with `substring`, Kotlin's `split`, Go's `strings.Cut` and Rust's `split_once`. An input is well formed when it has exactly one dot with text on both sides.
+- Splitting `dataset.column`: Python's `split`, TypeScript's `split`, Java's `indexOf` with `substring`, Kotlin's `split`, Go's `strings.Cut` and Rust's `split_once`. An input is well formed when it has exactly one dot with a valid name on each side, and a name is checked against the characters `a`-`z`, `0`-`9` and `_` by comparing each character, not with a regular expression.
 - Labels per column are a set in every language; the answers are sorted at the end.
 
 ## Further reading

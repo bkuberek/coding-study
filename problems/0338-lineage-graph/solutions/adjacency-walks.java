@@ -40,8 +40,13 @@ public class LineageGraph {
 
     // Level 1
     public boolean addDataset(String name, List<String> columns, List<List<String>> edges) {
-        if (this.columns.containsKey(name) || new HashSet<>(columns).size() != columns.size()) {
+        if (this.columns.containsKey(name) || !isName(name) || new HashSet<>(columns).size() != columns.size()) {
             return false;
+        }
+        for (String column : columns) {
+            if (!isName(column)) {
+                return false;
+            }
         }
         Set<List<String>> pairs = new HashSet<>();
         List<Edge> parsed = new ArrayList<>();
@@ -181,9 +186,23 @@ public class LineageGraph {
     }
 
     // Helpers
+    /** A dataset or column name: 1 to 20 characters from a-z, 0-9 and _. */
+    private static boolean isName(String text) {
+        if (text.isEmpty() || text.length() > 20) {
+            return false;
+        }
+        for (int at = 0; at < text.length(); at++) {
+            char ch = text.charAt(at);
+            if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static boolean isColumnRef(String text) {
         int dot = text.indexOf('.');
-        return dot > 0 && dot < text.length() - 1 && text.indexOf('.', dot + 1) < 0;
+        return dot >= 0 && isName(text.substring(0, dot)) && isName(text.substring(dot + 1));
     }
 
     private boolean declared(String column) {

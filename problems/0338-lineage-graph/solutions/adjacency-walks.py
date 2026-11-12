@@ -2,6 +2,7 @@ from collections import deque
 
 USAGES = frozenset({"identity", "transform", "aggregate", "filter"})
 MASKABLE = frozenset({"transform", "aggregate"})
+NAME_CHARACTERS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789_")
 
 
 class _Edge:
@@ -17,9 +18,13 @@ class _Edge:
         return self.usage != "filter" and not self.masking
 
 
+def _is_name(text: str) -> bool:
+    return 1 <= len(text) <= 20 and all(ch in NAME_CHARACTERS for ch in text)
+
+
 def _is_column_ref(text: str) -> bool:
     parts = text.split(".")
-    return len(parts) == 2 and all(parts)
+    return len(parts) == 2 and all(_is_name(part) for part in parts)
 
 
 class LineageGraph:
@@ -39,7 +44,9 @@ class LineageGraph:
 
     # Level 1
     def add_dataset(self, name: str, columns: list[str], edges: list[list[str]]) -> bool:
-        if name in self._columns or len(set(columns)) != len(columns):
+        if name in self._columns or not _is_name(name) or not all(map(_is_name, columns)):
+            return False
+        if len(set(columns)) != len(columns):
             return False
         pairs = set()
         parsed = []

@@ -28,7 +28,7 @@ SCRIPTED_CASES = [case for case in CASES if "ops" in case]
 HIDDEN_CASES = [case for case in SCRIPTED_CASES if not case.get("visible", False)]
 USAGES = ("identity", "transform", "aggregate", "filter")
 Edge = tuple[str, str, str, bool]
-COLUMN_REF = re.compile(r"[^.]+\.[^.]+")
+NAME = re.compile(r"[a-z0-9_]{1,20}")
 
 
 class Model:
@@ -52,8 +52,12 @@ class Model:
             return edge[3] == "masking" and self.may_mask(edge[2])
         return True
 
+    def name_ok(self, text: str) -> bool:
+        return NAME.fullmatch(text) is not None
+
     def reference_ok(self, text: str) -> bool:
-        return COLUMN_REF.fullmatch(text) is not None
+        parts = text.split(".")
+        return len(parts) == 2 and all(self.name_ok(part) for part in parts)
 
     def usage_ok(self, usage: str) -> bool:
         return usage in USAGES
@@ -160,7 +164,9 @@ class Model:
 
     # --- level 1
     def add_dataset(self, name: str, columns: list[str], edges: list[list[str]]) -> bool:
-        if self.name_taken(name) or len(set(columns)) != len(columns):
+        if self.name_taken(name) or not all(map(self.name_ok, [name, *columns])):
+            return False
+        if len(set(columns)) != len(columns):
             return False
         if not all(self.edge_ok(edge, columns) for edge in edges) or not self.pairs_ok(edges):
             return False
@@ -254,6 +260,13 @@ class MalformedInputAccepted(Model):
 
     def reference_ok(self, text: str) -> bool:
         return text != ""
+
+
+class NamesInAnyCharacters(Model):
+    """Accepts names with capitals, dashes, spaces or more than 20 characters."""
+
+    def name_ok(self, text: str) -> bool:
+        return text != "" and "." not in text
 
 
 class UsageIgnoresCase(Model):
