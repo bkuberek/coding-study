@@ -2,6 +2,172 @@
 
 <!-- version list -->
 
+## v0.41.0 (2026-11-12)
+
+### Bug Fixes
+
+- **code-intelligence**: Keep the Kotlin LSP sidecar's shared data in its data folder
+  ([`ba7607f`](https://github.com/bkuberek/coding-study/commit/ba7607f18498ddae40d71c815d20319a4433b2c3))
+
+- **content**: List the knowledge representation siblings in related
+  ([`61d34a5`](https://github.com/bkuberek/coding-study/commit/61d34a5c5f22db4f0a81d42b18d6ffc17e2c4be2))
+
+- **guides**: A path step reads a pass through level N of M as levels 1 to N
+  ([`8e662f3`](https://github.com/bkuberek/coding-study/commit/8e662f344b81c2eb5afe59dc791092886bb36c61))
+
+- **guides**: Apply the accuracy review: no spoilers of the linked problems, corrected details,
+  clearer drawings
+  ([`59e1540`](https://github.com/bkuberek/coding-study/commit/59e1540aecdb2df9e67221243d961996d0e3ffc5))
+
+- **problems**: Keep the 0317 and 0319 summaries within the 200-character header cap
+  ([`e94ffa5`](https://github.com/bkuberek/coding-study/commit/e94ffa514d3d3033a8c2a250d70aca645dcc98a3))
+
+- **web-ui**: A preference changed while an editor loads reaches that editor
+  ([`6aa0a75`](https://github.com/bkuberek/coding-study/commit/6aa0a7513444252be46ea01cf041e8ede6b95fca))
+
+- **web-ui**: An attempt view says once that its attempt ended
+  ([`2ee0ce6`](https://github.com/bkuberek/coding-study/commit/2ee0ce6f7999a4bab906b1a61275733065caab41))
+
+- **web-ui**: The attempt view does not read an attempt its own Done just ended
+  ([`3901354`](https://github.com/bkuberek/coding-study/commit/3901354d607e6794564aa07c216bfabbba253fdd))
+
+### Build System
+
+- **guides**: Pin a Mermaid text renderer and draw each diagram as text
+  ([`b0c7ae7`](https://github.com/bkuberek/coding-study/commit/b0c7ae717180d82ce3aa8d0189d27d155b33701f))
+
+### Chores
+
+- **guides**: Renumber the ADR to 0025 and the migration to 0007, clear of the level-passes work
+  ([`a1beb7f`](https://github.com/bkuberek/coding-study/commit/a1beb7f6a199a69edfc62e8ed6a5be55b7680a26))
+
+### Code Style
+
+- **tests**: Wrap a docstring over the line limit
+  ([`2453e6b`](https://github.com/bkuberek/coding-study/commit/2453e6bcc35156ade0e745fc490fc59cb8e8ef07))
+
+### Documentation
+
+- Add a security policy and code of conduct, and open the README to every level
+  ([`a0c671d`](https://github.com/bkuberek/coding-study/commit/a0c671d1764b17acab0233874a8f822e4fd9ffd6))
+
+- Catalog at 333 with 0317 and 0319
+  ([`55b2587`](https://github.com/bkuberek/coding-study/commit/55b25873f4c1becee0c6c9eaa4f5243d5096cc9c))
+
+- Catalog at 336 with 0318, 0320 and 0321
+  ([`3fd9bc6`](https://github.com/bkuberek/coding-study/commit/3fd9bc62813c694559f02adecb61d7c11b6f9b76))
+
+- Diagrams are SVG drawings made when a guide is written
+  ([`83be0ee`](https://github.com/bkuberek/coding-study/commit/83be0ee36ad44c471921aaca8be8d67675eb7301))
+
+- Go service projects have code intelligence since 0.40.0
+  ([`4458ef6`](https://github.com/bkuberek/coding-study/commit/4458ef695750e9c06e4836724f82f44dba54915b))
+
+- Plan knowledge representation problems and content-addressed storage on the roadmap
+  ([`f091696`](https://github.com/bkuberek/coding-study/commit/f09169675381ed6d1c4b23895a5b2e654957de16))
+
+- Specify concept guides, learning paths and cstudy learn (ADR 0024)
+  ([`58ddbf8`](https://github.com/bkuberek/coding-study/commit/58ddbf8d39d3094afca1613e9d8f5a509c5f01ae))
+
+- The Guides page in the web UI spec and guide, guides and CLI specs
+  ([`3dcf429`](https://github.com/bkuberek/coding-study/commit/3dcf429e455de163da9e0d7a6e134879061b1fc1))
+
+- **guides**: Introduce guides in the README, web first, and tighten two sourced claims
+  ([`814c98c`](https://github.com/bkuberek/coding-study/commit/814c98cc377a0a54f41fd72189c8b028901c7b2d))
+
+- **guides**: Record the hashing guides' facts, sources and review fixes
+  ([`4dfc653`](https://github.com/bkuberek/coding-study/commit/4dfc6531cc9bc32433695e71e7596945e978fe49))
+
+- **problems**: Correct the 0318 rule counts, wording and primer citation after review
+  ([`de0eb5f`](https://github.com/bkuberek/coding-study/commit/de0eb5f633fafe290d2ccacb220492762d8e6b61))
+
+- **problems**: Correct the 0320 canonical hint, guard wording and citations after review
+  ([`ef6bb99`](https://github.com/bkuberek/coding-study/commit/ef6bb99f82d17d7e049cf336c9323d477fdd55ed))
+
+- **problems**: Correct the 0321 ego network, ranking and knapsack wording and citations after
+  review
+  ([`31afb27`](https://github.com/bkuberek/coding-study/commit/31afb2768212229bdedd87ea67540ffaf69fb265))
+
+### Features
+
+- **cli**: Cstudy learn --open serves the page landing on the guide or path
+  ([`5e832c2`](https://github.com/bkuberek/coding-study/commit/5e832c2303e4ef2ae98c386743b68e3d2d01085a))
+
+- **guides**: Add cstudy learn, with reading progress in progress.db
+  ([`97f3d05`](https://github.com/bkuberek/coding-study/commit/97f3d0575559bb93c8016d1aab6dbc94e204a676))
+
+- **guides**: Add the guides on canonical keys and prefix sums
+  ([`127c5a1`](https://github.com/bkuberek/coding-study/commit/127c5a1645c52756febddf5ca34e43c042fc4ecb))
+
+- **guides**: Add the guides on designing with hash maps and on cryptographic hashes
+  ([`9ba36a7`](https://github.com/bkuberek/coding-study/commit/9ba36a7840723eb72d9d9564b82b3e1f2ee53084))
+
+- **guides**: Add the guides on hash functions, hash maps and counting, with tested examples
+  ([`5488780`](https://github.com/bkuberek/coding-study/commit/5488780a3f01bf4a031a56bdde06faf533aeeef7))
+
+- **guides**: Add the hashing path, and link its problems back to their guides
+  ([`db817be`](https://github.com/bkuberek/coding-study/commit/db817becc4b9292850c55ad8dfe34c67b45c4a92))
+
+- **guides**: Draw each diagram as light and dark SVG, checked by G10
+  ([`1eaa7c2`](https://github.com/bkuberek/coding-study/commit/1eaa7c2c503e9bb842dade771373d3de0e552c12))
+
+- **guides**: Load guides and paths, ship them, and check them in cstudy verify
+  ([`b315a72`](https://github.com/bkuberek/coding-study/commit/b315a72acd59f4123d9657392435a770f8579427))
+
+- **guides**: Model guides and paths, and check them statically
+  ([`6f9e3f5`](https://github.com/bkuberek/coding-study/commit/6f9e3f5c2820833b18b37849b033ff4c68dd3198))
+
+- **problems**: Add 0317 taxonomy progressive problem
+  ([`990b009`](https://github.com/bkuberek/coding-study/commit/990b009b2bcdf596e27319a9e2edcd984dcfd0be))
+
+- **problems**: Add 0318 reasoner-vs-validator, open-world inference against closed-world validation
+  ([`679fc64`](https://github.com/bkuberek/coding-study/commit/679fc64a59b31b44a0edeb46a7dc13982be21326))
+
+- **problems**: Add 0319 triple-store progressive problem
+  ([`d169405`](https://github.com/bkuberek/coding-study/commit/d16940590a57f8ce2d949bc13b150d31e8da7813))
+
+- **problems**: Add 0320 entity-resolution, normalize, block, score, cluster and grade records
+  ([`17f86a3`](https://github.com/bkuberek/coding-study/commit/17f86a3a96003624d0328e36b0517c4b67968263))
+
+- **problems**: Add 0321 graphrag-context, neighbourhood, ranking, token budget and cited paths
+  ([`9e6f5da`](https://github.com/bkuberek/coding-study/commit/9e6f5da2e4b82e8e60c6a9ebc3a533fbca117004))
+
+- **progress**: A pass through level N of M is a pass
+  ([`7850a6e`](https://github.com/bkuberek/coding-study/commit/7850a6e2cc0475bad41a70478162f8fd5c554668))
+
+- **progress**: Mastery per level
+  ([`97929df`](https://github.com/bkuberek/coding-study/commit/97929dfe5bc797bade88a21aa7348650dbce9863))
+
+- **progress**: Show the best level and the level to try next
+  ([`1f21491`](https://github.com/bkuberek/coding-study/commit/1f21491b2a481a3c4cd0e7ec2398e958d4fd5730))
+
+- **sets**: Target levels on set entries
+  ([`7a591a3`](https://github.com/bkuberek/coding-study/commit/7a591a394e94a9b8d9b4c6cd5ff2716895682414))
+
+- **web**: Guides and paths API with diagrams ready to draw
+  ([`5ec504a`](https://github.com/bkuberek/coding-study/commit/5ec504a9d430aa15fa7adb97b6133f6c032b0727))
+
+- **web**: Show each diagram as its pre-rendered SVG and drop runtime Mermaid
+  ([`af6ea63`](https://github.com/bkuberek/coding-study/commit/af6ea63d0fe7042232c35cd089735366ec3ea5c7))
+
+- **web-api**: The done document gives levels_passed and levels_total
+  ([`f328c77`](https://github.com/bkuberek/coding-study/commit/f328c773747c7d9288f51e36fb07fb04eefaef89))
+
+- **web-ui**: Guides view with diagrams drawn by a lazy Mermaid chunk
+  ([`5e01661`](https://github.com/bkuberek/coding-study/commit/5e016613de2a4d0284a63120e6f19682cf331173))
+
+- **web-ui**: Show level passes in the Done dialog and the Problem view
+  ([`2cbac05`](https://github.com/bkuberek/coding-study/commit/2cbac05ad87d3f9069f468bf086ce1cd0ed5c114))
+
+### Testing
+
+- **guides**: Expect guide_reads and the latest schema in progress.db snapshots
+  ([`f0e4724`](https://github.com/bkuberek/coding-study/commit/f0e47242c405e87162f3be9cff66bcfa7ab3bc5b))
+
+- **web**: Axe waits for the diagram image the theme shows
+  ([`544be49`](https://github.com/bkuberek/coding-study/commit/544be497cfb543b91d372015818f92e71f72a76b))
+
+
 ## v0.40.0 (2026-11-11)
 
 ### Bug Fixes
