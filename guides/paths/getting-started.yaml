@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Getting started: from the terminal to your first problem"
+summary: The terminal, package managers, then the cstudy loop on your first problems. Before your first problem, read the learn-it-first guide of your language, which package managers and your first problem link.
+steps:
+  - guide: using-the-terminal
+  - guide: package-managers
+  - guide: your-first-problem
+  - problem: valid-palindrome
+  - problem: move-zeroes
+  - problem: contains-duplicate
+  - problem: two-sum

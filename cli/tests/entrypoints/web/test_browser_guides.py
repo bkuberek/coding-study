@@ -113,7 +113,7 @@ def seen(engine: str, server: RunningServer) -> Seen:
         page.wait_for_selector(PATH_CARD)
         found.nav_href = page.get_attribute(GUIDES_LINK, "href") or ""
         found.nav_current = page.get_attribute(GUIDES_LINK, "aria-current")
-        found.path_card = page.inner_text(PATH_CARD)
+        found.path_card = page.inner_text(f"{PATH_CARD}:has(a[href='#/paths/{PATH}'])")
         found.drawings_on_list = any("/diagrams/" in url for url in requests)
         _read_the_guide(page, found, server)
         _switch_themes(page, found)
