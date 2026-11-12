@@ -37,4 +37,5 @@ perf:
   budget_ms: 60000
   expected_from: forest-counts
 related: [employee-importance, time-to-inform-employees, redundant-connection, accounts-merge]
+guides: [depth-first-search, union-find]
 estimate_minutes: 90

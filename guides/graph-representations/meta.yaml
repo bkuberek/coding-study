@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Graphs and how to store them
+summary: What nodes and edges are, directed and undirected graphs, and how to store one as an edge list, an adjacency list or an adjacency matrix, or not at all, as with a grid.
+level: intro
+related: [breadth-first-search, depth-first-search]
+problems: [employee-importance, time-to-inform-employees]

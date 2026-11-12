@@ -31,4 +31,5 @@ references:
   leetcode: {number: 1293, url: "https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/"}
 related: [shortest-path-binary-matrix, min-obstacle-removal, open-the-lock]
 order: 12
+guides: [breadth-first-search]
 estimate_minutes: 40

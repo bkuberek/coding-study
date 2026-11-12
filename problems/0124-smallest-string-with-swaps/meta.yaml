@@ -31,4 +31,5 @@ references:
   leetcode: {number: 1202, url: "https://leetcode.com/problems/smallest-string-with-swaps/"}
 related: [count-connected-components, accounts-merge]
 order: 4
+guides: [union-find]
 estimate_minutes: 25

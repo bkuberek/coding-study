@@ -31,4 +31,5 @@ references:
   leetcode: {number: 690, url: "https://leetcode.com/problems/employee-importance/"}
 related: [contractor-exposure-rollup, clone-graph, max-depth-binary-tree]
 order: 13
+guides: [graph-representations]
 estimate_minutes: 15

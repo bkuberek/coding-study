@@ -31,4 +31,5 @@ references:
   leetcode: {number: 200, url: "https://leetcode.com/problems/number-of-islands/"}
 related: [max-area-of-island, surrounded-regions, pacific-atlantic-water-flow, flood-fill, path-exists-in-graph]
 order: 1
+guides: [depth-first-search]
 estimate_minutes: 20

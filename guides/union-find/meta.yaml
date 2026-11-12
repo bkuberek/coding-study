@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Union-find
+summary: Keep track of which things are connected while connections keep arriving, with a forest of parent pointers, union by size and path compression, in almost constant time per operation.
+level: core
+prerequisites: [graph-representations]
+related: [depth-first-search, breadth-first-search]
+problems: [count-connected-components, redundant-connection, duplicate-contractor-records, accounts-merge, smallest-string-with-swaps, evaluate-division, number-of-islands-ii, referral-rewards]

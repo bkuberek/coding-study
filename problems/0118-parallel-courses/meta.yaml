@@ -32,4 +32,5 @@ references:
   leetcode: {number: 1136, url: "https://leetcode.com/problems/parallel-courses/"}
 related: [course-schedule, all-possible-recipes, plan-and-execute, agent-trace-analyzer, pipeline-scheduler, iac-plan-engine]
 order: 2
+guides: [topological-order]
 estimate_minutes: 25

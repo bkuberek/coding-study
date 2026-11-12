@@ -33,4 +33,5 @@ references:
   leetcode: {number: 2115, url: "https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/"}
 related: [course-schedule, parallel-courses]
 order: 3
+guides: [topological-order]
 estimate_minutes: 25

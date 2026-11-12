@@ -30,4 +30,5 @@ references:
   leetcode: {number: 721, url: "https://leetcode.com/problems/accounts-merge/"}
 related: [count-connected-components, smallest-string-with-swaps]
 order: 3
+guides: [union-find]
 estimate_minutes: 30

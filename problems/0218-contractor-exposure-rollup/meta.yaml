@@ -24,4 +24,5 @@ comparator: {type: exact}
 approaches:
   - {id: iterative-dfs, name: Iterative depth-first search with on-path and finished sets, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
 related: [course-schedule]
+guides: [depth-first-search]
 estimate_minutes: 25

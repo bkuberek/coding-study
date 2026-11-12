@@ -30,4 +30,5 @@ references:
   leetcode: {number: 269, url: "https://leetcode.com/problems/alien-dictionary/"}
 related: [course-schedule, parallel-courses]
 order: 4
+guides: [topological-order]
 estimate_minutes: 35

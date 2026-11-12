@@ -22,4 +22,5 @@ comparator: {type: exact}
 approaches:
   - {id: union-find, name: Union records that share a normalized name or tax id, role: optimal, time: "O(L + n log n)", space: "O(n + L)", time_class: "n log n", space_class: "n"}
 related: [accounts-merge, count-connected-components, payroll-report-validation]
+guides: [union-find]
 estimate_minutes: 35

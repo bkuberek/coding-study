@@ -30,4 +30,5 @@ references:
   leetcode: {number: 785, url: "https://leetcode.com/problems/is-graph-bipartite/"}
 related: [evaluate-division, clone-graph, number-of-islands]
 order: 7
+guides: [depth-first-search]
 estimate_minutes: 20
