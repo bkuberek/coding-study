@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0364"
+slug: tiny-interpreter
+title: Tiny Interpreter
+summary: "Build Interpreter for a small expression language: tokens with positions, a syntax tree with precedence, evaluation with closures and a depth limit, and bytecode for a stack machine."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [recursion, stack]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+levels:
+  - {level: 1, title: Tokens}
+  - {level: 2, title: A syntax tree}
+  - {level: 3, title: Evaluation with closures}
+  - {level: 4, title: Bytecode and a stack machine}
+signature:
+  class:
+    name: Interpreter
+    constructor: {params: [{name: maxDepth, type: int}]}
+    methods:
+      - {name: tokenize, level: 1, params: [{name: source, type: string}], returns: {type: "list<string>"}}
+      - {name: parse, level: 2, params: [{name: source, type: string}], returns: {type: string}}
+      - {name: evaluate, level: 3, params: [{name: source, type: string}], returns: {type: string}}
+      - {name: bytecode, level: 4, params: [{name: source, type: string}], returns: {type: "list<string>"}}
+      - {name: run, level: 4, params: [{name: source, type: string}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: pratt-and-stack-vm, name: A Pratt parser with a tree walker and a bytecode stack machine, role: optimal, time: "O(s) per tokenize, parse or compile; O(s + w * h) per evaluate or run", space: "O(s + w)", time_class: "n", space_class: "n"}
+related: [basic-calculator, evaluate-rpn, line-diff-and-merge, undo-redo-editor]
+estimate_minutes: 150
