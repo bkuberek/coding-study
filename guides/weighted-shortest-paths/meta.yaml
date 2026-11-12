@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Weighted shortest paths
+summary: When edges have costs, breadth-first search is not enough. Dijkstra's algorithm settles nodes in order of distance with a priority queue, as long as no cost is negative.
+level: advanced
+prerequisites: [breadth-first-search]
+related: [graph-representations]
+problems: [network-delay-time, min-obstacle-removal, swim-rising-water]

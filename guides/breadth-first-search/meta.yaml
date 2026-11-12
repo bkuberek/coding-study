@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Breadth-first search
+summary: Explore a graph in rings of equal distance with a queue, to find the fewest steps from a start to everything else, and why a node is marked when it is discovered.
+level: core
+prerequisites: [graph-representations]
+related: [depth-first-search, weighted-shortest-paths]
+problems: [clone-graph, shortest-path-binary-matrix, rotting-oranges, open-the-lock, word-ladder, shortest-path-with-removals]
