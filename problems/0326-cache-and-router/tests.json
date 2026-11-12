@@ -1,0 +1,8131 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "key",
+        "put",
+        "lookup",
+        "lookup",
+        "put",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "  What IS\tthe   capital of France?\n"
+        ],
+        [
+          "What is the capital of France?",
+          "Paris"
+        ],
+        [
+          "  what is THE capital of france?  "
+        ],
+        [
+          "What is the capital of Spain?"
+        ],
+        [
+          "what is the capital of france?",
+          "Lyon"
+        ],
+        [
+          "WHAT IS THE CAPITAL OF FRANCE?"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        "what is the capital of france?",
+        true,
+        [
+          "hit",
+          "Paris"
+        ],
+        [
+          "miss"
+        ],
+        false,
+        [
+          "hit",
+          "Paris"
+        ],
+        [
+          2,
+          1,
+          1,
+          66
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "ex2",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "stats",
+        "put",
+        "lookup",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [],
+        [
+          "How do I reset my password?",
+          "Use the reset link on the sign-in page."
+        ],
+        [
+          "how do i reset my password"
+        ],
+        [
+          "HOW  DO I RESET\nMY PASSWORD?"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        true,
+        [
+          "miss"
+        ],
+        [
+          "hit",
+          "Use the reset link on the sign-in page."
+        ],
+        [
+          1,
+          1,
+          1,
+          50
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "put",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "key",
+        "key",
+        "key",
+        "key",
+        "key",
+        "key",
+        "key",
+        "key",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "Hello World",
+          "greeting"
+        ],
+        [
+          "hello world"
+        ],
+        [
+          "  HELLO   WORLD  "
+        ],
+        [
+          "Hello\tWorld"
+        ],
+        [
+          "hello\nworld"
+        ],
+        [
+          "\n\nhello \t world\n"
+        ],
+        [
+          "helloworld"
+        ],
+        [
+          "hello  world!"
+        ],
+        [
+          "hello_world"
+        ],
+        [
+          "Hello,World"
+        ],
+        [
+          "hello world ."
+        ],
+        [
+          "A  B"
+        ],
+        [
+          " \t x \n"
+        ],
+        [
+          "MiXeD 123 !?"
+        ],
+        [
+          "no-change"
+        ],
+        [
+          "Tab\there"
+        ],
+        [
+          "A\n\nB"
+        ],
+        [
+          "Q"
+        ],
+        [
+          "\tq\t"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        [
+          "hit",
+          "greeting"
+        ],
+        [
+          "hit",
+          "greeting"
+        ],
+        [
+          "hit",
+          "greeting"
+        ],
+        [
+          "hit",
+          "greeting"
+        ],
+        [
+          "hit",
+          "greeting"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        "a b",
+        "x",
+        "mixed 123 !?",
+        "no-change",
+        "tab here",
+        "a b",
+        "q",
+        "q",
+        [
+          5,
+          5,
+          1,
+          50
+        ]
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "stats",
+        "put",
+        "put",
+        "stats",
+        "lookup",
+        "lookup",
+        "lookup",
+        "stats",
+        "lookup",
+        "stats",
+        "lookup",
+        "lookup",
+        "lookup",
+        "stats",
+        "lookup",
+        "lookup",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [],
+        [
+          "one",
+          "1"
+        ],
+        [
+          "two",
+          "2"
+        ],
+        [],
+        [
+          "one"
+        ],
+        [
+          "nine"
+        ],
+        [
+          "ten"
+        ],
+        [],
+        [
+          "two"
+        ],
+        [],
+        [
+          "x"
+        ],
+        [
+          "y"
+        ],
+        [
+          "z"
+        ],
+        [],
+        [
+          "one"
+        ],
+        [
+          "two"
+        ],
+        [
+          "one"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        true,
+        true,
+        [
+          0,
+          0,
+          2,
+          0
+        ],
+        [
+          "hit",
+          "1"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          1,
+          2,
+          2,
+          33
+        ],
+        [
+          "hit",
+          "2"
+        ],
+        [
+          2,
+          2,
+          2,
+          50
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          2,
+          5,
+          2,
+          28
+        ],
+        [
+          "hit",
+          "1"
+        ],
+        [
+          "hit",
+          "2"
+        ],
+        [
+          "hit",
+          "1"
+        ],
+        [
+          5,
+          5,
+          2,
+          50
+        ]
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "put",
+        "put",
+        "put",
+        "lookup",
+        "stats",
+        "put",
+        "lookup",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "Is the sky blue?",
+          "Yes"
+        ],
+        [
+          "is the SKY blue?",
+          "No"
+        ],
+        [
+          "  is the sky   blue?\n",
+          "Maybe"
+        ],
+        [
+          "IS THE SKY BLUE?"
+        ],
+        [],
+        [
+          "is the sky blue",
+          "Sometimes"
+        ],
+        [
+          "is the sky blue"
+        ],
+        [
+          "is the sky blue?"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        false,
+        false,
+        [
+          "hit",
+          "Yes"
+        ],
+        [
+          1,
+          0,
+          1,
+          100
+        ],
+        true,
+        [
+          "hit",
+          "Sometimes"
+        ],
+        [
+          "hit",
+          "Yes"
+        ],
+        [
+          3,
+          0,
+          2,
+          100
+        ]
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "lookup",
+        "stats",
+        "lookup",
+        "put",
+        "lookup",
+        "stats",
+        "put",
+        "put",
+        "put",
+        "put",
+        "put",
+        "put",
+        "stats",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "never stored"
+        ],
+        [],
+        [
+          "never stored"
+        ],
+        [
+          "never stored",
+          "now stored"
+        ],
+        [
+          "never stored"
+        ],
+        [],
+        [
+          "question 0",
+          "answer 0"
+        ],
+        [
+          "question 1",
+          "answer 1"
+        ],
+        [
+          "question 2",
+          "answer 2"
+        ],
+        [
+          "question 3",
+          "answer 3"
+        ],
+        [
+          "question 4",
+          "answer 4"
+        ],
+        [
+          "Question 3",
+          "other"
+        ],
+        [],
+        [
+          "QUESTION 0"
+        ],
+        [
+          "QUESTION 1"
+        ],
+        [
+          "QUESTION 2"
+        ],
+        [
+          "QUESTION 3"
+        ],
+        [
+          "QUESTION 4"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        [
+          "miss"
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          "miss"
+        ],
+        true,
+        [
+          "hit",
+          "now stored"
+        ],
+        [
+          1,
+          2,
+          1,
+          33
+        ],
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        [
+          1,
+          2,
+          6,
+          33
+        ],
+        [
+          "hit",
+          "answer 0"
+        ],
+        [
+          "hit",
+          "answer 1"
+        ],
+        [
+          "hit",
+          "answer 2"
+        ],
+        [
+          "hit",
+          "answer 3"
+        ],
+        [
+          "hit",
+          "answer 4"
+        ],
+        [
+          6,
+          2,
+          6,
+          75
+        ]
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "put",
+        "lookup",
+        "put",
+        "lookup",
+        "put",
+        "lookup",
+        "lookup",
+        "put",
+        "lookup",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "A",
+          "upper"
+        ],
+        [
+          "a"
+        ],
+        [
+          "7",
+          "digit"
+        ],
+        [
+          " 7 "
+        ],
+        [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "long"
+        ],
+        [
+          "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        ],
+        [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        [
+          "a b",
+          "spaced"
+        ],
+        [
+          "ab"
+        ],
+        [
+          "a   b"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        [
+          "hit",
+          "upper"
+        ],
+        true,
+        [
+          "hit",
+          "digit"
+        ],
+        true,
+        [
+          "hit",
+          "long"
+        ],
+        [
+          "miss"
+        ],
+        true,
+        [
+          "miss"
+        ],
+        [
+          "hit",
+          "spaced"
+        ],
+        [
+          4,
+          2,
+          4,
+          66
+        ]
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "ops": [
+        "CacheRouter",
+        "put",
+        "key",
+        "put",
+        "lookup",
+        "put",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "  Mixed   Case\tPrompt ",
+          "first"
+        ],
+        [
+          "  Mixed   Case\tPrompt "
+        ],
+        [
+          "mixed case prompt",
+          "second"
+        ],
+        [
+          "mixed case prompt"
+        ],
+        [
+          "mixed case prompt?",
+          "third"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        "mixed case prompt",
+        false,
+        [
+          "hit",
+          "first"
+        ],
+        true,
+        [
+          1,
+          0,
+          2,
+          100
+        ]
+      ]
+    },
+    {
+      "id": "ex3",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "How do I get a refund?",
+          [
+            30,
+            12,
+            4,
+            0
+          ],
+          "Refunds take 5 days from the orders page.",
+          "policy"
+        ],
+        [
+          "How do I ship abroad?",
+          [
+            3,
+            2,
+            40,
+            20
+          ],
+          "Pick international at checkout.",
+          "shipping"
+        ],
+        [
+          "How can I be refunded",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          950
+        ],
+        [
+          "HOW do I get a REFUND?",
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          1000
+        ],
+        [
+          "Where is my parcel",
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          900
+        ],
+        [
+          "How can I be refunded",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          991
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        [
+          "hit",
+          "semantic",
+          "Refunds take 5 days from the orders page.",
+          "how do i get a refund?",
+          "990"
+        ],
+        [
+          "hit",
+          "exact",
+          "Refunds take 5 days from the orders page."
+        ],
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          2,
+          2,
+          2,
+          50
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "ex4",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "setSourceVersion",
+        "lookupSemantic",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "How do I get a refund?",
+          [
+            30,
+            12,
+            4,
+            0
+          ],
+          "Refunds take 5 days from the orders page.",
+          "policy"
+        ],
+        [
+          "How do I cancel my order?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          900
+        ],
+        [
+          "How do I cancel my order?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          950
+        ],
+        [
+          "How do I cancel my order?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          "Open the order and press Cancel.",
+          "policy"
+        ],
+        [
+          "cancel an order please",
+          [
+            25,
+            23,
+            2,
+            5
+          ],
+          950
+        ],
+        [
+          "refund me please",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          950
+        ],
+        [
+          "policy",
+          2
+        ],
+        [
+          "refund me please",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          950
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        [
+          "hit",
+          "semantic",
+          "Refunds take 5 days from the orders page.",
+          "how do i get a refund?",
+          "932"
+        ],
+        [
+          "miss"
+        ],
+        true,
+        [
+          "hit",
+          "semantic",
+          "Open the order and press Cancel.",
+          "how do i cancel my order?",
+          "998"
+        ],
+        [
+          "hit",
+          "semantic",
+          "Refunds take 5 days from the orders page.",
+          "how do i get a refund?",
+          "990"
+        ],
+        2,
+        [
+          "miss"
+        ],
+        [
+          3,
+          2,
+          0,
+          60
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "h7",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic"
+      ],
+      "args": [
+        [],
+        [
+          "zulu",
+          [
+            1,
+            0,
+            0
+          ],
+          "zulu answer",
+          "a"
+        ],
+        [
+          "alpha",
+          [
+            2,
+            0,
+            0
+          ],
+          "alpha answer",
+          "a"
+        ],
+        [
+          "mike",
+          [
+            5,
+            0,
+            0
+          ],
+          "mike answer",
+          "a"
+        ],
+        [
+          "query one",
+          [
+            3,
+            0,
+            0
+          ],
+          1000
+        ],
+        [
+          "close",
+          [
+            10,
+            1,
+            0
+          ],
+          "close answer",
+          "a"
+        ],
+        [
+          "query two",
+          [
+            10,
+            0,
+            0
+          ],
+          500
+        ],
+        [
+          "query three",
+          [
+            1,
+            1,
+            0
+          ],
+          500
+        ],
+        [
+          "query four",
+          [
+            7,
+            0,
+            0
+          ],
+          1000
+        ]
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        true,
+        [
+          "hit",
+          "semantic",
+          "zulu answer",
+          "zulu",
+          "1000"
+        ],
+        true,
+        [
+          "hit",
+          "semantic",
+          "zulu answer",
+          "zulu",
+          "1000"
+        ],
+        [
+          "hit",
+          "semantic",
+          "close answer",
+          "close",
+          "773"
+        ],
+        [
+          "hit",
+          "semantic",
+          "zulu answer",
+          "zulu",
+          "1000"
+        ]
+      ],
+      "note": "equal similarity goes to the entry stored first, whatever its text"
+    },
+    {
+      "id": "h8",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic"
+      ],
+      "args": [
+        [],
+        [
+          "far",
+          [
+            46,
+            33,
+            19,
+            11
+          ],
+          "far answer",
+          "a"
+        ],
+        [
+          "near",
+          [
+            35,
+            26,
+            16,
+            8
+          ],
+          "near answer",
+          "a"
+        ],
+        [
+          "q",
+          [
+            20,
+            15,
+            9,
+            4
+          ],
+          990
+        ],
+        [
+          "q again",
+          [
+            20,
+            15,
+            9,
+            4
+          ],
+          999
+        ],
+        [
+          "q last",
+          [
+            20,
+            15,
+            9,
+            4
+          ],
+          1000
+        ]
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        [
+          "hit",
+          "semantic",
+          "near answer",
+          "near",
+          "999"
+        ],
+        [
+          "hit",
+          "semantic",
+          "near answer",
+          "near",
+          "999"
+        ],
+        [
+          "miss"
+        ]
+      ],
+      "note": "a later entry that is closer by a hair wins over an earlier one with the same permille"
+    },
+    {
+      "id": "h9",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic"
+      ],
+      "args": [
+        [],
+        [
+          "half",
+          [
+            0,
+            2,
+            2
+          ],
+          "half answer",
+          "a"
+        ],
+        [
+          "q1",
+          [
+            -2,
+            2,
+            0
+          ],
+          500
+        ],
+        [
+          "q2",
+          [
+            -2,
+            2,
+            0
+          ],
+          501
+        ],
+        [
+          "eighty",
+          [
+            2,
+            -2,
+            0
+          ],
+          "eighty answer",
+          "a"
+        ],
+        [
+          "q3",
+          [
+            5,
+            -3,
+            -4
+          ],
+          800
+        ],
+        [
+          "q4",
+          [
+            5,
+            -3,
+            -4
+          ],
+          801
+        ],
+        [
+          "ninety",
+          [
+            0,
+            6,
+            -2
+          ],
+          "ninety answer",
+          "a"
+        ],
+        [
+          "q5",
+          [
+            2,
+            6,
+            0
+          ],
+          900
+        ],
+        [
+          "q6",
+          [
+            2,
+            6,
+            0
+          ],
+          901
+        ],
+        [
+          "q7",
+          [
+            3,
+            4,
+            0
+          ],
+          600
+        ],
+        [
+          "axis",
+          [
+            1,
+            0,
+            0
+          ],
+          "axis answer",
+          "a"
+        ],
+        [
+          "q8",
+          [
+            3,
+            4,
+            0
+          ],
+          600
+        ],
+        [
+          "q9",
+          [
+            3,
+            4,
+            0
+          ],
+          601
+        ]
+      ],
+      "expected": [
+        null,
+        true,
+        [
+          "hit",
+          "semantic",
+          "half answer",
+          "half",
+          "500"
+        ],
+        [
+          "miss"
+        ],
+        true,
+        [
+          "hit",
+          "semantic",
+          "eighty answer",
+          "eighty",
+          "800"
+        ],
+        [
+          "miss"
+        ],
+        true,
+        [
+          "hit",
+          "semantic",
+          "ninety answer",
+          "ninety",
+          "900"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "hit",
+          "semantic",
+          "ninety answer",
+          "ninety",
+          "758"
+        ],
+        true,
+        [
+          "hit",
+          "semantic",
+          "ninety answer",
+          "ninety",
+          "758"
+        ],
+        [
+          "hit",
+          "semantic",
+          "ninety answer",
+          "ninety",
+          "758"
+        ]
+      ],
+      "note": "the threshold is exact: no floating point"
+    },
+    {
+      "id": "h10",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "zero entry",
+          [
+            0,
+            0
+          ],
+          "zero answer",
+          "a"
+        ],
+        [
+          "plain entry",
+          [
+            1,
+            0
+          ],
+          "plain answer",
+          "a"
+        ],
+        [
+          "other entry",
+          [
+            -1,
+            0
+          ],
+          "opposite answer",
+          "a"
+        ],
+        [
+          "zero query",
+          [
+            0,
+            0
+          ],
+          1
+        ],
+        [
+          "orthogonal",
+          [
+            0,
+            5
+          ],
+          1
+        ],
+        [
+          "opposite",
+          [
+            -3,
+            0
+          ],
+          1
+        ],
+        [
+          "opposite two",
+          [
+            -3,
+            1
+          ],
+          1
+        ],
+        [
+          "aligned",
+          [
+            4,
+            0
+          ],
+          1
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        true,
+        [
+          "miss"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "hit",
+          "semantic",
+          "opposite answer",
+          "other entry",
+          "1000"
+        ],
+        [
+          "hit",
+          "semantic",
+          "opposite answer",
+          "other entry",
+          "948"
+        ],
+        [
+          "hit",
+          "semantic",
+          "plain answer",
+          "plain entry",
+          "1000"
+        ],
+        [
+          3,
+          2,
+          3,
+          60
+        ]
+      ],
+      "note": "no direction, no similarity"
+    },
+    {
+      "id": "h11",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "put",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookup",
+        "lookupSemantic",
+        "lookupSemantic",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "Reset password",
+          "plain exact answer"
+        ],
+        [
+          "reset my password",
+          [
+            5,
+            1,
+            0
+          ],
+          "semantic answer",
+          "kb"
+        ],
+        [
+          "RESET   PASSWORD",
+          [
+            5,
+            1,
+            0
+          ],
+          900
+        ],
+        [
+          "reset my password",
+          [
+            -5,
+            -1,
+            0
+          ],
+          1
+        ],
+        [
+          "Reset My Password"
+        ],
+        [
+          "reset my passwords",
+          [
+            5,
+            1,
+            0
+          ],
+          900
+        ],
+        [
+          "reset a password",
+          [
+            0,
+            0,
+            0
+          ],
+          1
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        [
+          "hit",
+          "exact",
+          "plain exact answer"
+        ],
+        [
+          "hit",
+          "exact",
+          "semantic answer"
+        ],
+        [
+          "hit",
+          "semantic answer"
+        ],
+        [
+          "hit",
+          "semantic",
+          "semantic answer",
+          "reset my password",
+          "1000"
+        ],
+        [
+          "miss"
+        ],
+        [
+          4,
+          1,
+          2,
+          80
+        ]
+      ],
+      "note": "an exact key wins whatever the embeddings say, and every entry has a key"
+    },
+    {
+      "id": "h12",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic"
+      ],
+      "args": [
+        [],
+        [
+          "  The   QUICK Brown Fox ",
+          [
+            4,
+            4,
+            1
+          ],
+          "fox answer",
+          "kb"
+        ],
+        [
+          "a fast brown fox",
+          [
+            4,
+            5,
+            1
+          ],
+          900
+        ],
+        [
+          "a fast brown fox",
+          [
+            4,
+            5,
+            1
+          ],
+          1000
+        ]
+      ],
+      "expected": [
+        null,
+        true,
+        [
+          "hit",
+          "semantic",
+          "fox answer",
+          "the quick brown fox",
+          "993"
+        ],
+        [
+          "miss"
+        ]
+      ],
+      "note": "a hit reports the stored key, not the query and not the text as first written"
+    },
+    {
+      "id": "h13",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "putSemantic",
+        "put",
+        "setSourceVersion",
+        "stats",
+        "lookup",
+        "lookup",
+        "lookup",
+        "putSemantic",
+        "setSourceVersion",
+        "setSourceVersion",
+        "lookup",
+        "setSourceVersion",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "q one",
+          [
+            1,
+            0
+          ],
+          "a one",
+          "kb"
+        ],
+        [
+          "q two",
+          [
+            0,
+            1
+          ],
+          "a two",
+          "kb"
+        ],
+        [
+          "q three",
+          [
+            1,
+            1
+          ],
+          "a three",
+          "pricing"
+        ],
+        [
+          "q four",
+          "a four"
+        ],
+        [
+          "kb",
+          1
+        ],
+        [],
+        [
+          "q one"
+        ],
+        [
+          "q three"
+        ],
+        [
+          "q four"
+        ],
+        [
+          "q five",
+          [
+            2,
+            1
+          ],
+          "a five",
+          "kb"
+        ],
+        [
+          "kb",
+          1
+        ],
+        [
+          "kb",
+          2
+        ],
+        [
+          "q five"
+        ],
+        [
+          "other",
+          9
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        true,
+        true,
+        2,
+        [
+          0,
+          0,
+          2,
+          0
+        ],
+        [
+          "miss"
+        ],
+        [
+          "hit",
+          "a three"
+        ],
+        [
+          "hit",
+          "a four"
+        ],
+        true,
+        0,
+        1,
+        [
+          "miss"
+        ],
+        0,
+        [
+          2,
+          2,
+          2,
+          50
+        ]
+      ],
+      "note": "a source version retires the entries built from another version"
+    },
+    {
+      "id": "h14",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "setSourceVersion",
+        "putSemantic",
+        "putSemantic",
+        "setSourceVersion",
+        "setSourceVersion",
+        "lookup",
+        "putSemantic",
+        "setSourceVersion",
+        "lookupSemantic",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "docs",
+          3
+        ],
+        [
+          "a",
+          [
+            1,
+            0
+          ],
+          "answer a",
+          "docs"
+        ],
+        [
+          "b",
+          [
+            0,
+            1
+          ],
+          "answer b",
+          "docs"
+        ],
+        [
+          "docs",
+          3
+        ],
+        [
+          "docs",
+          2
+        ],
+        [
+          "a"
+        ],
+        [
+          "a",
+          [
+            1,
+            0
+          ],
+          "answer a2",
+          "docs"
+        ],
+        [
+          "docs",
+          3
+        ],
+        [
+          "a close",
+          [
+            3,
+            1
+          ],
+          900
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        0,
+        true,
+        true,
+        0,
+        2,
+        [
+          "miss"
+        ],
+        true,
+        1,
+        [
+          "miss"
+        ],
+        [
+          0,
+          2,
+          0,
+          0
+        ]
+      ],
+      "note": "later stores take the current version, and going back to an older version also retires"
+    },
+    {
+      "id": "h15",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "put",
+        "put",
+        "putSemantic",
+        "lookupSemantic",
+        "lookup",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "Same Key",
+          [
+            1,
+            2
+          ],
+          "first",
+          "kb"
+        ],
+        [
+          "same key",
+          [
+            2,
+            1
+          ],
+          "second",
+          "kb"
+        ],
+        [
+          "SAME KEY",
+          "third"
+        ],
+        [
+          "other",
+          "o"
+        ],
+        [
+          "other",
+          [
+            1,
+            1
+          ],
+          "p",
+          "kb"
+        ],
+        [
+          "different",
+          [
+            1,
+            2
+          ],
+          1000
+        ],
+        [
+          "same key"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        false,
+        false,
+        true,
+        false,
+        [
+          "hit",
+          "semantic",
+          "first",
+          "same key",
+          "1000"
+        ],
+        [
+          "hit",
+          "first"
+        ],
+        [
+          2,
+          0,
+          2,
+          100
+        ]
+      ],
+      "note": "one entry per key, whichever way it came in"
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "ops": [
+        "CacheRouter",
+        "putSemantic",
+        "putSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "lookupSemantic",
+        "stats"
+      ],
+      "args": [
+        [],
+        [
+          "tiny",
+          [
+            1,
+            2
+          ],
+          "tiny answer",
+          "a"
+        ],
+        [
+          "huge",
+          [
+            50,
+            50
+          ],
+          "huge answer",
+          "a"
+        ],
+        [
+          "q1",
+          [
+            20,
+            40
+          ],
+          1000
+        ],
+        [
+          "q2",
+          [
+            -1,
+            -2
+          ],
+          1
+        ],
+        [
+          "q3",
+          [
+            1,
+            1
+          ],
+          1000
+        ],
+        [
+          "q4",
+          [
+            1,
+            2
+          ],
+          999
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        true,
+        true,
+        [
+          "hit",
+          "semantic",
+          "tiny answer",
+          "tiny",
+          "1000"
+        ],
+        [
+          "miss"
+        ],
+        [
+          "hit",
+          "semantic",
+          "huge answer",
+          "huge",
+          "1000"
+        ],
+        [
+          "hit",
+          "semantic",
+          "tiny answer",
+          "tiny",
+          "1000"
+        ],
+        [
+          3,
+          1,
+          2,
+          75
+        ]
+      ],
+      "note": "only the direction matters, never the length"
+    },
+    {
+      "id": "ex5",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "answer",
+        "answer"
+      ],
+      "args": [
+        [],
+        [
+          [
+            20,
+            50,
+            200
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "I cannot",
+            "ERROR"
+          ]
+        ],
+        [
+          "simple",
+          12
+        ],
+        [
+          "simple",
+          21
+        ],
+        [
+          "standard",
+          12
+        ],
+        [
+          "hard",
+          12
+        ],
+        [
+          "simple",
+          201
+        ],
+        [
+          "simple",
+          12,
+          [
+            "Paris",
+            "Paris, France",
+            "The capital is Paris."
+          ]
+        ],
+        [
+          "simple",
+          12,
+          [
+            "I cannot say",
+            "Paris, France",
+            "The capital is Paris."
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        0,
+        1,
+        1,
+        2,
+        -1,
+        [
+          "ok",
+          "0",
+          "Paris"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "Paris, France"
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "ex6",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "route"
+      ],
+      "args": [
+        [],
+        [
+          [
+            20,
+            50,
+            200
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "I cannot",
+            "ERROR"
+          ]
+        ],
+        [
+          "hard",
+          100,
+          [
+            "a",
+            "b",
+            "ERROR: no data"
+          ]
+        ],
+        [
+          "simple",
+          5,
+          [
+            "  \n",
+            "ERROR",
+            "fine"
+          ]
+        ],
+        [
+          "simple",
+          5,
+          [
+            "ERROR",
+            "I cannot help",
+            "fine"
+          ]
+        ],
+        [
+          "simple",
+          500,
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "mystery",
+          10
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        [
+          "invalid",
+          "2",
+          "ERROR: no data"
+        ],
+        [
+          "invalid",
+          "0>1",
+          "ERROR"
+        ],
+        [
+          "invalid",
+          "0>1",
+          "I cannot help"
+        ],
+        [
+          "too_long",
+          "",
+          ""
+        ],
+        2
+      ],
+      "visible": true
+    },
+    {
+      "id": "h17",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route"
+      ],
+      "args": [
+        [],
+        [
+          [
+            20,
+            50,
+            200
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "I cannot",
+            "ERROR"
+          ]
+        ],
+        [
+          "simple",
+          1
+        ],
+        [
+          "simple",
+          19
+        ],
+        [
+          "simple",
+          20
+        ],
+        [
+          "simple",
+          21
+        ],
+        [
+          "simple",
+          49
+        ],
+        [
+          "simple",
+          50
+        ],
+        [
+          "simple",
+          51
+        ],
+        [
+          "simple",
+          199
+        ],
+        [
+          "simple",
+          200
+        ],
+        [
+          "simple",
+          201
+        ],
+        [
+          "standard",
+          1
+        ],
+        [
+          "standard",
+          19
+        ],
+        [
+          "standard",
+          20
+        ],
+        [
+          "standard",
+          21
+        ],
+        [
+          "standard",
+          49
+        ],
+        [
+          "standard",
+          50
+        ],
+        [
+          "standard",
+          51
+        ],
+        [
+          "standard",
+          199
+        ],
+        [
+          "standard",
+          200
+        ],
+        [
+          "standard",
+          201
+        ],
+        [
+          "hard",
+          1
+        ],
+        [
+          "hard",
+          19
+        ],
+        [
+          "hard",
+          20
+        ],
+        [
+          "hard",
+          21
+        ],
+        [
+          "hard",
+          49
+        ],
+        [
+          "hard",
+          50
+        ],
+        [
+          "hard",
+          51
+        ],
+        [
+          "hard",
+          199
+        ],
+        [
+          "hard",
+          200
+        ],
+        [
+          "hard",
+          201
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        -1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        -1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        -1
+      ],
+      "note": "a prompt that exactly fills a tier stays in it"
+    },
+    {
+      "id": "h18",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route"
+      ],
+      "args": [
+        [],
+        [
+          [
+            20,
+            50,
+            200
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "I cannot",
+            "ERROR"
+          ]
+        ],
+        [
+          "other",
+          1
+        ],
+        [
+          "other",
+          60
+        ],
+        [
+          "other",
+          200
+        ],
+        [
+          "other",
+          201
+        ],
+        [
+          "simple2",
+          1
+        ],
+        [
+          "simple2",
+          60
+        ],
+        [
+          "simple2",
+          200
+        ],
+        [
+          "simple2",
+          201
+        ],
+        [
+          "hardest",
+          1
+        ],
+        [
+          "hardest",
+          60
+        ],
+        [
+          "hardest",
+          200
+        ],
+        [
+          "hardest",
+          201
+        ],
+        [
+          "mystery",
+          1
+        ],
+        [
+          "mystery",
+          60
+        ],
+        [
+          "mystery",
+          200
+        ],
+        [
+          "mystery",
+          201
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        2,
+        2,
+        2,
+        -1,
+        2,
+        2,
+        2,
+        -1,
+        2,
+        2,
+        2,
+        -1,
+        2,
+        2,
+        2,
+        -1
+      ],
+      "note": "an unknown label is treated as the hardest"
+    },
+    {
+      "id": "h19",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "route",
+        "route",
+        "route",
+        "route",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer"
+      ],
+      "args": [
+        [],
+        [
+          [
+            5,
+            5
+          ],
+          [
+            "a",
+            "b",
+            "c"
+          ],
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            "bad"
+          ]
+        ],
+        [
+          "a",
+          5
+        ],
+        [
+          "b",
+          6
+        ],
+        [
+          "c",
+          1
+        ],
+        [
+          "zzz",
+          1
+        ],
+        [
+          "a",
+          3,
+          [
+            "has bad word",
+            "good"
+          ]
+        ],
+        [
+          "b",
+          3,
+          [
+            "good",
+            "other"
+          ]
+        ],
+        [
+          "c",
+          3,
+          [
+            "good",
+            "has bad word"
+          ]
+        ],
+        [
+          "c",
+          3,
+          [
+            "bad",
+            "bad again"
+          ]
+        ],
+        [
+          "a",
+          6,
+          [
+            "x",
+            "y"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        0,
+        -1,
+        1,
+        1,
+        [
+          "escalated",
+          "0>1",
+          "good"
+        ],
+        [
+          "ok",
+          "0",
+          "good"
+        ],
+        [
+          "invalid",
+          "1",
+          "has bad word"
+        ],
+        [
+          "invalid",
+          "1",
+          "bad again"
+        ],
+        [
+          "too_long",
+          "",
+          ""
+        ]
+      ],
+      "note": "labels may share a tier and tiers may share a limit"
+    },
+    {
+      "id": "h20",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "route",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            20,
+            40,
+            80
+          ],
+          [
+            "fast",
+            "mid",
+            "deep"
+          ],
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            "!!"
+          ]
+        ],
+        [
+          "fast",
+          5
+        ],
+        [
+          "fast",
+          11
+        ],
+        [
+          "fast",
+          21
+        ],
+        [
+          "fast",
+          81
+        ],
+        [
+          "mid",
+          3
+        ],
+        [
+          "mid",
+          41
+        ],
+        [
+          "deep",
+          3
+        ],
+        [
+          "deep",
+          80
+        ],
+        [
+          "fast",
+          11,
+          [
+            "t0",
+            "t1!!",
+            "t2",
+            "t3"
+          ]
+        ],
+        [
+          "fast",
+          11,
+          [
+            "t0",
+            "t1",
+            "t2!!",
+            "t3"
+          ]
+        ],
+        [
+          "fast",
+          21,
+          [
+            "t0",
+            "t1",
+            "t2!!",
+            "t3"
+          ]
+        ],
+        [
+          "fast",
+          21,
+          [
+            "t0",
+            "t1",
+            "t2!!",
+            "t3!!"
+          ]
+        ],
+        [
+          "deep",
+          21,
+          [
+            "t0",
+            "t1",
+            "t2",
+            "t3!!"
+          ]
+        ],
+        [
+          "mid",
+          41,
+          [
+            "t0",
+            "t1",
+            "t2",
+            "t3"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        1,
+        1,
+        2,
+        -1,
+        2,
+        3,
+        3,
+        3,
+        [
+          "escalated",
+          "1>2",
+          "t2"
+        ],
+        [
+          "ok",
+          "1",
+          "t1"
+        ],
+        [
+          "escalated",
+          "2>3",
+          "t3"
+        ],
+        [
+          "invalid",
+          "2>3",
+          "t3!!"
+        ],
+        [
+          "invalid",
+          "3",
+          "t3!!"
+        ],
+        [
+          "ok",
+          "3",
+          "t3"
+        ]
+      ],
+      "note": "the label sets where to start and the length can only move it up"
+    },
+    {
+      "id": "h21",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer"
+      ],
+      "args": [
+        [],
+        [
+          [
+            20,
+            50,
+            200
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "I cannot",
+            "ERROR"
+          ]
+        ],
+        [
+          "simple",
+          5,
+          [
+            "ERROR a",
+            "ERROR b",
+            "good c"
+          ]
+        ],
+        [
+          "simple",
+          5,
+          [
+            "good a",
+            "ERROR b",
+            "ERROR c"
+          ]
+        ],
+        [
+          "standard",
+          5,
+          [
+            "good a",
+            "ERROR b",
+            "ERROR c"
+          ]
+        ],
+        [
+          "standard",
+          5,
+          [
+            "good a",
+            "",
+            "good c"
+          ]
+        ],
+        [
+          "standard",
+          5,
+          [
+            "good a",
+            "ERROR b",
+            "good c"
+          ]
+        ],
+        [
+          "standard",
+          60,
+          [
+            "good a",
+            "ERROR b",
+            "good c"
+          ]
+        ],
+        [
+          "hard",
+          5,
+          [
+            "good a",
+            "good b",
+            "ERROR c"
+          ]
+        ],
+        [
+          "hard",
+          5,
+          [
+            "good a",
+            "good b",
+            ""
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        [
+          "invalid",
+          "0>1",
+          "ERROR b"
+        ],
+        [
+          "ok",
+          "0",
+          "good a"
+        ],
+        [
+          "invalid",
+          "1>2",
+          "ERROR c"
+        ],
+        [
+          "escalated",
+          "1>2",
+          "good c"
+        ],
+        [
+          "escalated",
+          "1>2",
+          "good c"
+        ],
+        [
+          "ok",
+          "2",
+          "good c"
+        ],
+        [
+          "invalid",
+          "2",
+          "ERROR c"
+        ],
+        [
+          "invalid",
+          "2",
+          ""
+        ]
+      ],
+      "note": "a call that fails the check escalates once and the answer of the last call is the result"
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer"
+      ],
+      "args": [
+        [],
+        [
+          [
+            20,
+            50,
+            200
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "I cannot",
+            "ERROR"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            " ",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "\t\n ",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            " ok ",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "i cannot",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "I Cannot",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "I cannot",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "xx I cannot yy",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "TERRORS",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "Error",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "error: none",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "The ERROR code is 7",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "I can not",
+            "next tier",
+            "top tier"
+          ]
+        ],
+        [
+          "simple",
+          1,
+          [
+            "E R R O R",
+            "next tier",
+            "top tier"
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "ok",
+          "0",
+          " ok "
+        ],
+        [
+          "ok",
+          "0",
+          "i cannot"
+        ],
+        [
+          "ok",
+          "0",
+          "I Cannot"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "ok",
+          "0",
+          "Error"
+        ],
+        [
+          "ok",
+          "0",
+          "error: none"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "next tier"
+        ],
+        [
+          "ok",
+          "0",
+          "I can not"
+        ],
+        [
+          "ok",
+          "0",
+          "E R R O R"
+        ]
+      ],
+      "note": "what the check calls valid"
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer",
+        "answer"
+      ],
+      "args": [
+        [],
+        [
+          [
+            3,
+            9
+          ],
+          [
+            "x"
+          ],
+          [
+            0
+          ],
+          []
+        ],
+        [
+          "x",
+          2,
+          [
+            "ERROR",
+            "second"
+          ]
+        ],
+        [
+          "x",
+          2,
+          [
+            "",
+            "second"
+          ]
+        ],
+        [
+          "x",
+          2,
+          [
+            "  ",
+            ""
+          ]
+        ],
+        [
+          "x",
+          9,
+          [
+            "unused",
+            "ERROR"
+          ]
+        ],
+        [
+          "x",
+          10,
+          [
+            "unused",
+            "ERROR"
+          ]
+        ],
+        [
+          "x",
+          4,
+          [
+            "unused",
+            ""
+          ]
+        ]
+      ],
+      "expected": [
+        null,
+        null,
+        [
+          "ok",
+          "0",
+          "ERROR"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "second"
+        ],
+        [
+          "invalid",
+          "0>1",
+          ""
+        ],
+        [
+          "ok",
+          "1",
+          "ERROR"
+        ],
+        [
+          "too_long",
+          "",
+          ""
+        ],
+        [
+          "invalid",
+          "1",
+          ""
+        ]
+      ],
+      "note": "with no marker only an empty answer is invalid"
+    },
+    {
+      "id": "ex7",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "What does the premium plan include?",
+          [
+            30,
+            12,
+            4,
+            0
+          ],
+          "simple",
+          "plans",
+          [
+            "Premium has all features.",
+            "mid",
+            "big"
+          ],
+          "sys"
+        ],
+        [
+          "How do I reset my password?",
+          [
+            2,
+            3,
+            40,
+            22
+          ],
+          "simple",
+          "help",
+          [
+            "Use the reset link.",
+            "mid",
+            "big"
+          ],
+          "sys"
+        ],
+        [
+          "WHAT DOES THE PREMIUM PLAN INCLUDE?",
+          [
+            2,
+            3,
+            40,
+            22
+          ],
+          "simple",
+          "plans",
+          [
+            "Premium has all features.",
+            "mid",
+            "big"
+          ],
+          "sys"
+        ],
+        [
+          "which things come with the premium plan",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          "simple",
+          "plans",
+          [
+            "Premium has all features.",
+            "mid",
+            "big"
+          ],
+          "sys"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "ok",
+          "0",
+          "Premium has all features.",
+          "46",
+          "220"
+        ],
+        [
+          "ok",
+          "0",
+          "Use the reset link.",
+          "27",
+          "180"
+        ],
+        [
+          "exact",
+          "",
+          "Premium has all features.",
+          "0",
+          "220"
+        ],
+        [
+          "semantic",
+          "",
+          "Premium has all features.",
+          "0",
+          "240"
+        ],
+        [
+          [
+            "total",
+            "4",
+            "73",
+            "860",
+            "787",
+            "91"
+          ],
+          [
+            "cache",
+            "1",
+            "1",
+            "2"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "9",
+            "7",
+            "12",
+            "73"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "ex8",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "setSourceVersion",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "How do I cancel the premium plan?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          "simple",
+          "plans",
+          [
+            "SORRY, no idea",
+            "Press Cancel on the plan page.",
+            "big"
+          ],
+          "sys"
+        ],
+        [
+          "How do I cancel the premium plan?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          "simple",
+          "plans",
+          [
+            "SORRY, no idea",
+            "Press Cancel on the plan page.",
+            "big"
+          ],
+          "sys"
+        ],
+        [
+          "Explain the plan limits",
+          [
+            5,
+            5,
+            5,
+            5
+          ],
+          "hard",
+          "plans",
+          [
+            "a",
+            "b",
+            "SORRY"
+          ],
+          "doc"
+        ],
+        [
+          "Explain the plan limits",
+          [
+            5,
+            5,
+            5,
+            5
+          ],
+          "hard",
+          "plans",
+          [
+            "a",
+            "b",
+            "Limits are generous."
+          ],
+          "doc"
+        ],
+        [
+          "plans",
+          2
+        ],
+        [
+          "How do I cancel the premium plan?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          "simple",
+          "plans",
+          [
+            "Press Cancel.",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "escalated",
+          "0>1",
+          "Press Cancel on the plan page.",
+          "184",
+          "220"
+        ],
+        [
+          "exact",
+          "",
+          "Press Cancel on the plan page.",
+          "0",
+          "220"
+        ],
+        [
+          "invalid",
+          "2",
+          "SORRY",
+          "200",
+          "200"
+        ],
+        [
+          "ok",
+          "2",
+          "Limits are generous.",
+          "230",
+          "320"
+        ],
+        2,
+        [
+          "ok",
+          "0",
+          "Press Cancel.",
+          "26",
+          "220"
+        ],
+        [
+          [
+            "total",
+            "5",
+            "640",
+            "1180",
+            "540",
+            "45"
+          ],
+          [
+            "cache",
+            "1",
+            "0",
+            "4"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "10",
+            "8",
+            "8",
+            "60"
+          ],
+          [
+            "tier",
+            "1",
+            "1",
+            "9",
+            "0",
+            "8",
+            "150"
+          ],
+          [
+            "tier",
+            "2",
+            "2",
+            "6",
+            "6",
+            "7",
+            "430"
+          ]
+        ]
+      ],
+      "visible": true
+    },
+    {
+      "id": "h24",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "aaaa bbbb cccc dddd eeee ffff gggg hhhh",
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "SORRY",
+            "t1 answer",
+            "t2 answer"
+          ],
+          "sys"
+        ],
+        [
+          "ones bbbb cccc dddd eeee ffff gggg hhhh",
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "t0 answer",
+            "t1 answer",
+            "t2 answer"
+          ],
+          "sys"
+        ],
+        [
+          "twos bbbb cccc dddd eeee ffff gggg hhhh",
+          [
+            0,
+            0,
+            1,
+            0
+          ],
+          "standard",
+          "s",
+          [
+            "t0 answer",
+            "t1 answer",
+            "t2 answer"
+          ],
+          "sys"
+        ],
+        [
+          "tres bbbb cccc dddd eeee ffff gggg hhhh",
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          "hard",
+          "s",
+          [
+            "t0 answer",
+            "t1 answer",
+            "t2 answer"
+          ],
+          "sys"
+        ],
+        [
+          "four bbbb cccc dddd eeee ffff gggg hhhh",
+          [
+            1,
+            1,
+            0,
+            0
+          ],
+          "hard",
+          "s",
+          [
+            "t0 answer",
+            "t1 answer",
+            "t2 answer"
+          ],
+          "sys"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "escalated",
+          "0>1",
+          "t1 answer",
+          "124",
+          "320"
+        ],
+        [
+          "ok",
+          "0",
+          "t0 answer",
+          "24",
+          "320"
+        ],
+        [
+          "ok",
+          "1",
+          "t1 answer",
+          "64",
+          "320"
+        ],
+        [
+          "ok",
+          "2",
+          "t2 answer",
+          "320",
+          "320"
+        ],
+        [
+          "ok",
+          "2",
+          "t2 answer",
+          "200",
+          "320"
+        ],
+        [
+          [
+            "total",
+            "5",
+            "732",
+            "1600",
+            "868",
+            "54"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "5"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "12",
+            "8",
+            "5",
+            "52"
+          ],
+          [
+            "tier",
+            "1",
+            "2",
+            "12",
+            "8",
+            "6",
+            "160"
+          ],
+          [
+            "tier",
+            "2",
+            "2",
+            "12",
+            "8",
+            "6",
+            "520"
+          ]
+        ]
+      ],
+      "note": "the prefix is paid in full once per tier, then at the cached price"
+    },
+    {
+      "id": "h25",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "definePrefix",
+        "handle",
+        "handle",
+        "definePrefix",
+        "handle",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "short one",
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "a1",
+            "b",
+            "c"
+          ],
+          "doc"
+        ],
+        [
+          "short two",
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "a2",
+            "b",
+            "c"
+          ],
+          "doc"
+        ],
+        [
+          "short three",
+          [
+            0,
+            0,
+            1,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "a3",
+            "b",
+            "c"
+          ],
+          "unknown"
+        ],
+        [
+          "short four",
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "a4",
+            "b",
+            "c"
+          ],
+          "unknown"
+        ],
+        [
+          "short five",
+          [
+            1,
+            1,
+            1,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "a5",
+            "b",
+            "c"
+          ],
+          ""
+        ],
+        [
+          "short six",
+          [
+            1,
+            0,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "a6",
+            "b",
+            "c"
+          ],
+          ""
+        ],
+        [
+          "unknown",
+          2
+        ],
+        [
+          "short seven",
+          [
+            0,
+            1,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "a7",
+            "b",
+            "c"
+          ],
+          "unknown"
+        ],
+        [
+          "short eight",
+          [
+            1,
+            1,
+            0,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "a8",
+            "b",
+            "c"
+          ],
+          "unknown"
+        ],
+        [
+          "sys",
+          1
+        ],
+        [
+          "eight eight eight eight eight",
+          [
+            1,
+            1,
+            0,
+            1
+          ],
+          "standard",
+          "s",
+          [
+            "a8",
+            "b8",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "nine nine nine nine nine nine",
+          [
+            3,
+            0,
+            0,
+            1
+          ],
+          "standard",
+          "s",
+          [
+            "a9",
+            "b9",
+            "c"
+          ],
+          "sys"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "ok",
+          "0",
+          "a1",
+          "10",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a2",
+          "7",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a3",
+          "10",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a4",
+          "10",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a5",
+          "10",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a6",
+          "10",
+          "100"
+        ],
+        null,
+        [
+          "ok",
+          "0",
+          "a7",
+          "10",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a8",
+          "8",
+          "100"
+        ],
+        null,
+        [
+          "ok",
+          "1",
+          "b8",
+          "60",
+          "200"
+        ],
+        [
+          "semantic",
+          "",
+          "a1",
+          "0",
+          "200"
+        ],
+        [
+          [
+            "total",
+            "10",
+            "135",
+            "1200",
+            "1065",
+            "88"
+          ],
+          [
+            "cache",
+            "0",
+            "1",
+            "9"
+          ],
+          [
+            "tier",
+            "0",
+            "8",
+            "19",
+            "5",
+            "8",
+            "75"
+          ],
+          [
+            "tier",
+            "1",
+            "1",
+            "8",
+            "0",
+            "1",
+            "60"
+          ],
+          [
+            "tier",
+            "2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ]
+      ],
+      "note": "the reused part is never more than the prompt, and an unknown or empty prefix is no prefix"
+    },
+    {
+      "id": "h26",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "stats",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "first question",
+          [
+            1,
+            2,
+            3,
+            4
+          ],
+          "hard",
+          "s",
+          [
+            "a",
+            "b",
+            "SORRY"
+          ],
+          "sys"
+        ],
+        [
+          "first question",
+          [
+            1,
+            2,
+            3,
+            4
+          ],
+          "hard",
+          "s",
+          [
+            "a",
+            "b",
+            "SORRY"
+          ],
+          "sys"
+        ],
+        [
+          "second question",
+          [
+            4,
+            3,
+            2,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "SORRY",
+            "SORRY",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "second question",
+          [
+            4,
+            3,
+            2,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "fine",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "second question",
+          [
+            4,
+            3,
+            2,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          " SECOND   question ",
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "third question",
+          [
+            4,
+            3,
+            2,
+            2
+          ],
+          "simple",
+          "s",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "invalid",
+          "2",
+          "SORRY",
+          "160",
+          "160"
+        ],
+        [
+          "invalid",
+          "2",
+          "SORRY",
+          "100",
+          "160"
+        ],
+        [
+          "invalid",
+          "0>1",
+          "SORRY",
+          "64",
+          "120"
+        ],
+        [
+          "ok",
+          "0",
+          "fine",
+          "8",
+          "120"
+        ],
+        [
+          "exact",
+          "",
+          "fine",
+          "0",
+          "120"
+        ],
+        [
+          "exact",
+          "",
+          "fine",
+          "0",
+          "140"
+        ],
+        [
+          "semantic",
+          "",
+          "fine",
+          "0",
+          "120"
+        ],
+        [
+          3,
+          4,
+          1,
+          42
+        ],
+        [
+          [
+            "total",
+            "7",
+            "332",
+            "940",
+            "608",
+            "64"
+          ],
+          [
+            "cache",
+            "2",
+            "1",
+            "4"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "4",
+            "4",
+            "3",
+            "24"
+          ],
+          [
+            "tier",
+            "1",
+            "1",
+            "4",
+            "0",
+            "2",
+            "48"
+          ],
+          [
+            "tier",
+            "2",
+            "2",
+            "4",
+            "4",
+            "4",
+            "260"
+          ]
+        ]
+      ],
+      "note": "hits are free, and an answer that failed the check is never stored"
+    },
+    {
+      "id": "h27",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "report",
+        "putSemantic",
+        "handle",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            4,
+            8,
+            12
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          900
+        ],
+        [
+          "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "a",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+          [
+            1,
+            1,
+            1,
+            2
+          ],
+          "simple",
+          "s",
+          [
+            "a",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww ",
+          [
+            -5,
+            20,
+            1,
+            0
+          ],
+          "hard",
+          "s",
+          [
+            "a",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww ",
+          [
+            -5,
+            20,
+            1,
+            0
+          ],
+          "hard",
+          "s",
+          [
+            "a",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [],
+        [
+          "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+          [
+            2,
+            2,
+            2,
+            2
+          ],
+          "stored long answer",
+          "s"
+        ],
+        [
+          "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+          [
+            9,
+            9,
+            9,
+            9
+          ],
+          "simple",
+          "s",
+          [
+            "a",
+            "b",
+            "big answer"
+          ],
+          "sys"
+        ],
+        [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          [
+            3,
+            3,
+            3,
+            3
+          ],
+          "hard",
+          "s",
+          [
+            "a",
+            "b",
+            "big answer"
+          ],
+          "sys"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "too_long",
+          "",
+          "",
+          "0",
+          "0"
+        ],
+        [
+          "ok",
+          "2",
+          "c",
+          "280",
+          "280"
+        ],
+        [
+          "too_long",
+          "",
+          "",
+          "0",
+          "0"
+        ],
+        [
+          "too_long",
+          "",
+          "",
+          "0",
+          "0"
+        ],
+        [
+          [
+            "total",
+            "4",
+            "280",
+            "280",
+            "0",
+            "0"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "4"
+          ],
+          [
+            "tier",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "2",
+            "1",
+            "12",
+            "0",
+            "1",
+            "280"
+          ]
+        ],
+        true,
+        [
+          "exact",
+          "",
+          "stored long answer",
+          "0",
+          "0"
+        ],
+        [
+          "semantic",
+          "",
+          "stored long answer",
+          "0",
+          "0"
+        ],
+        [
+          [
+            "total",
+            "6",
+            "280",
+            "280",
+            "0",
+            "0"
+          ],
+          [
+            "cache",
+            "1",
+            "1",
+            "4"
+          ],
+          [
+            "tier",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "2",
+            "1",
+            "12",
+            "0",
+            "1",
+            "280"
+          ]
+        ]
+      ],
+      "note": "a prompt no tier takes costs nothing and has no baseline"
+    },
+    {
+      "id": "h28",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "setThreshold",
+        "handle",
+        "report",
+        "handle",
+        "report",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            100
+          ],
+          [
+            "easy",
+            "hard"
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            "BAD"
+          ]
+        ],
+        [
+          [
+            5,
+            10
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            1,
+            2
+          ]
+        ],
+        [
+          1000
+        ],
+        [
+          "need an answer here",
+          [
+            1,
+            0
+          ],
+          "easy",
+          "s",
+          [
+            "BAD",
+            "good enough answer"
+          ],
+          ""
+        ],
+        [],
+        [
+          "another prompt for you",
+          [
+            0,
+            1
+          ],
+          "easy",
+          "s",
+          [
+            "BAD",
+            "BAD"
+          ],
+          ""
+        ],
+        [],
+        [
+          "x",
+          [
+            1,
+            1
+          ],
+          "hard",
+          "s",
+          [
+            "whatever",
+            "z"
+          ],
+          ""
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        [
+          "escalated",
+          "0>1",
+          "good enough answer",
+          "130",
+          "100"
+        ],
+        [
+          [
+            "total",
+            "1",
+            "130",
+            "100",
+            "-30",
+            "-30"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "1"
+          ],
+          [
+            "tier",
+            "0",
+            "1",
+            "5",
+            "0",
+            "1",
+            "30"
+          ],
+          [
+            "tier",
+            "1",
+            "1",
+            "5",
+            "0",
+            "5",
+            "100"
+          ]
+        ],
+        [
+          "invalid",
+          "0>1",
+          "BAD",
+          "105",
+          "70"
+        ],
+        [
+          [
+            "total",
+            "2",
+            "235",
+            "170",
+            "-65",
+            "-39"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "2"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "11",
+            "0",
+            "2",
+            "65"
+          ],
+          [
+            "tier",
+            "1",
+            "2",
+            "11",
+            "0",
+            "6",
+            "170"
+          ]
+        ],
+        [
+          "ok",
+          "1",
+          "z",
+          "20",
+          "20"
+        ],
+        [
+          [
+            "total",
+            "3",
+            "255",
+            "190",
+            "-65",
+            "-35"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "3"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "11",
+            "0",
+            "2",
+            "65"
+          ],
+          [
+            "tier",
+            "1",
+            "3",
+            "12",
+            "0",
+            "7",
+            "190"
+          ]
+        ]
+      ],
+      "note": "when the cheap call fails, the plan can cost more than the large model alone"
+    },
+    {
+      "id": "h29",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "report",
+        "handle",
+        "report",
+        "handle",
+        "report",
+        "handle",
+        "report",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            4,
+            8
+          ],
+          [
+            "a"
+          ],
+          [
+            0
+          ],
+          []
+        ],
+        [
+          [
+            3,
+            7
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            1,
+            4
+          ]
+        ],
+        [],
+        [
+          "abcd",
+          [
+            1,
+            0
+          ],
+          "a",
+          "s",
+          [
+            "xx",
+            "yyyyyy"
+          ],
+          ""
+        ],
+        [],
+        [
+          "abcdefgh",
+          [
+            0,
+            1
+          ],
+          "a",
+          "s",
+          [
+            "xxxxxxxx",
+            "yyyy"
+          ],
+          ""
+        ],
+        [],
+        [
+          "abcdefghi",
+          [
+            0,
+            1
+          ],
+          "a",
+          "s",
+          [
+            "",
+            "yyyy"
+          ],
+          ""
+        ],
+        [],
+        [
+          "abcdefghiabcdefghi",
+          [
+            1,
+            1
+          ],
+          "a",
+          "s",
+          [
+            "",
+            "yyyy"
+          ],
+          ""
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        [
+          [
+            "total",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ],
+        [
+          "ok",
+          "0",
+          "xx",
+          "5",
+          "17"
+        ],
+        [
+          [
+            "total",
+            "1",
+            "5",
+            "17",
+            "12",
+            "70"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "1"
+          ],
+          [
+            "tier",
+            "0",
+            "1",
+            "1",
+            "0",
+            "1",
+            "5"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ],
+        [
+          "ok",
+          "0",
+          "xxxxxxxx",
+          "10",
+          "19"
+        ],
+        [
+          [
+            "total",
+            "2",
+            "15",
+            "36",
+            "21",
+            "58"
+          ],
+          [
+            "cache",
+            "0",
+            "0",
+            "2"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "3",
+            "0",
+            "3",
+            "15"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ],
+        [
+          "semantic",
+          "",
+          "xxxxxxxx",
+          "0",
+          "26"
+        ],
+        [
+          [
+            "total",
+            "3",
+            "15",
+            "62",
+            "47",
+            "75"
+          ],
+          [
+            "cache",
+            "0",
+            "1",
+            "2"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "3",
+            "0",
+            "3",
+            "15"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ],
+        [
+          "ok",
+          "1",
+          "yyyy",
+          "40",
+          "40"
+        ],
+        [
+          [
+            "total",
+            "4",
+            "55",
+            "102",
+            "47",
+            "46"
+          ],
+          [
+            "cache",
+            "0",
+            "1",
+            "3"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "3",
+            "0",
+            "3",
+            "15"
+          ],
+          [
+            "tier",
+            "1",
+            "1",
+            "5",
+            "0",
+            "1",
+            "40"
+          ]
+        ]
+      ],
+      "note": "savings are rounded down, and are 0 percent when nothing has a baseline"
+    },
+    {
+      "id": "h30",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "handle",
+        "handle",
+        "setThreshold",
+        "handle",
+        "setThreshold",
+        "handle",
+        "setThreshold",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          "What does the premium plan include?",
+          [
+            30,
+            12,
+            4,
+            0
+          ],
+          "simple",
+          "plans",
+          [
+            "Premium has all features.",
+            "m",
+            "b"
+          ],
+          "sys"
+        ],
+        [
+          "which things come with the premium plan",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          "simple",
+          "plans",
+          [
+            "Second answer.",
+            "m",
+            "b"
+          ],
+          "sys"
+        ],
+        [
+          990
+        ],
+        [
+          "premium plan features?",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          "simple",
+          "plans",
+          [
+            "unused",
+            "m",
+            "b"
+          ],
+          "sys"
+        ],
+        [
+          991
+        ],
+        [
+          "premium plan features",
+          [
+            28,
+            15,
+            6,
+            2
+          ],
+          "simple",
+          "plans",
+          [
+            "Third answer.",
+            "m",
+            "b"
+          ],
+          "sys"
+        ],
+        [
+          900
+        ],
+        [
+          "How do I cancel the premium plan?",
+          [
+            26,
+            22,
+            2,
+            6
+          ],
+          "simple",
+          "plans",
+          [
+            "unused",
+            "m",
+            "b"
+          ],
+          "sys"
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "ok",
+          "0",
+          "Premium has all features.",
+          "46",
+          "220"
+        ],
+        [
+          "ok",
+          "0",
+          "Second answer.",
+          "28",
+          "240"
+        ],
+        null,
+        [
+          "semantic",
+          "",
+          "Second answer.",
+          "0",
+          "160"
+        ],
+        null,
+        [
+          "semantic",
+          "",
+          "Second answer.",
+          "0",
+          "160"
+        ],
+        null,
+        [
+          "semantic",
+          "",
+          "Second answer.",
+          "0",
+          "220"
+        ],
+        [
+          [
+            "total",
+            "5",
+            "74",
+            "1000",
+            "926",
+            "92"
+          ],
+          [
+            "cache",
+            "0",
+            "3",
+            "2"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "11",
+            "8",
+            "11",
+            "74"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ]
+      ],
+      "note": "the threshold of the pipeline is the one that was set, 1000 at the start"
+    },
+    {
+      "id": "h31",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "   spaced     out    prompt   with    gaps   ",
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "fine",
+            "b",
+            "c"
+          ],
+          ""
+        ],
+        [
+          "SPACED OUT PROMPT WITH GAPS",
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          ""
+        ],
+        [
+          "spaced\t\tout\n\nprompt with gaps",
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          "simple",
+          "s",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          ""
+        ],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "ok",
+          "1",
+          "b",
+          "84",
+          "280"
+        ],
+        [
+          "exact",
+          "",
+          "b",
+          "0",
+          "180"
+        ],
+        [
+          "exact",
+          "",
+          "b",
+          "0",
+          "200"
+        ],
+        [
+          [
+            "total",
+            "3",
+            "84",
+            "660",
+            "576",
+            "87"
+          ],
+          [
+            "cache",
+            "2",
+            "0",
+            "1"
+          ],
+          [
+            "tier",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "1",
+            "1",
+            "12",
+            "0",
+            "1",
+            "84"
+          ],
+          [
+            "tier",
+            "2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ]
+      ],
+      "note": "tokens come from the prompt as sent, not from its normal form"
+    },
+    {
+      "id": "h32",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "setSourceVersion",
+        "handle",
+        "handle",
+        "setSourceVersion",
+        "handle",
+        "stats",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          900
+        ],
+        [
+          "one",
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          "simple",
+          "kb",
+          [
+            "first",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "two",
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          "simple",
+          "other",
+          [
+            "second",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "kb",
+          5
+        ],
+        [
+          "one",
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          "simple",
+          "kb",
+          [
+            "first again",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "two",
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          "simple",
+          "other",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [
+          "kb",
+          5
+        ],
+        [
+          "one",
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          "simple",
+          "kb",
+          [
+            "unused",
+            "b",
+            "c"
+          ],
+          "sys"
+        ],
+        [],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "ok",
+          "0",
+          "first",
+          "10",
+          "60"
+        ],
+        [
+          "ok",
+          "0",
+          "second",
+          "9",
+          "60"
+        ],
+        1,
+        [
+          "ok",
+          "0",
+          "first again",
+          "13",
+          "60"
+        ],
+        [
+          "exact",
+          "",
+          "second",
+          "0",
+          "60"
+        ],
+        0,
+        [
+          "exact",
+          "",
+          "first again",
+          "0",
+          "60"
+        ],
+        [
+          2,
+          3,
+          2,
+          40
+        ],
+        [
+          [
+            "total",
+            "5",
+            "32",
+            "300",
+            "268",
+            "89"
+          ],
+          [
+            "cache",
+            "2",
+            "0",
+            "3"
+          ],
+          [
+            "tier",
+            "0",
+            "3",
+            "1",
+            "2",
+            "7",
+            "32"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        ]
+      ],
+      "note": "a source version retires the answers, and the new answer is stored under the new version"
+    },
+    {
+      "id": "h33",
+      "level": 4,
+      "ops": [
+        "CacheRouter",
+        "configureRouting",
+        "setPrices",
+        "definePrefix",
+        "definePrefix",
+        "setThreshold",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "setSourceVersion",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "setSourceVersion",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "handle",
+        "stats",
+        "report"
+      ],
+      "args": [
+        [],
+        [
+          [
+            10,
+            30,
+            100
+          ],
+          [
+            "simple",
+            "standard",
+            "hard"
+          ],
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            "SORRY"
+          ]
+        ],
+        [
+          [
+            2,
+            6,
+            20
+          ],
+          [
+            4,
+            12,
+            40
+          ],
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        [
+          "sys",
+          8
+        ],
+        [
+          "doc",
+          40
+        ],
+        [
+          950
+        ],
+        [
+          "  how  can  I  change  the  billing  address",
+          [
+            19,
+            5,
+            1,
+            1
+          ],
+          "simple",
+          "plans",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "  HOW  DO  I  DELETE  MY  ACCOUNT?",
+          [
+            2,
+            19,
+            3,
+            2
+          ],
+          "simple",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "sys"
+        ],
+        [
+          "WHAT ARE THE SUPPORT HOURS?",
+          [
+            9,
+            10,
+            0,
+            2
+          ],
+          "standard",
+          "plans",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "Please explain the refund policy in detail for annual plans",
+          [
+            3,
+            1,
+            26,
+            6
+          ],
+          "simple",
+          "plans",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "Summarise the incident report that you were sent earlier today, and list the owners",
+          [
+            -1,
+            5,
+            5,
+            30
+          ],
+          "simple",
+          "plans",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "doc"
+        ],
+        [
+          "  How  do  I  delete  my  account?",
+          [
+            3,
+            18,
+            3,
+            1
+          ],
+          "hard",
+          "plans",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "What are the support hours?",
+          [
+            9,
+            8,
+            0,
+            2
+          ],
+          "hard",
+          "kb",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "sys"
+        ],
+        [
+          "how can I change the billing address",
+          [
+            19,
+            6,
+            3,
+            1
+          ],
+          "simple",
+          "kb",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "How do I update my billing address?",
+          [
+            20,
+            5,
+            0,
+            -1
+          ],
+          "hard",
+          "help",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "  REFUND  POLICY  FOR  ANNUAL  PLANS,  EXPLAIN",
+          [
+            3,
+            2,
+            25,
+            8
+          ],
+          "simple",
+          "kb",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "  how  can  I  change  the  billing  address",
+          [
+            19,
+            4,
+            2,
+            0
+          ],
+          "standard",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "none"
+        ],
+        [
+          "How do I update my billing address?",
+          [
+            20,
+            5,
+            0,
+            1
+          ],
+          "standard",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "none"
+        ],
+        [
+          "refund policy for annual plans, explain",
+          [
+            2,
+            4,
+            23,
+            8
+          ],
+          "hard",
+          "kb",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "  Hi",
+          [
+            0,
+            2,
+            0,
+            0
+          ],
+          "simple",
+          "help",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "how can I change the billing address",
+          [
+            20,
+            4,
+            1,
+            -1
+          ],
+          "standard",
+          "help",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "Summarise the incident report that you were sent earlier today, and list the owners",
+          [
+            0,
+            5,
+            4,
+            29
+          ],
+          "simple",
+          "plans",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          ""
+        ],
+        [
+          "  What  are  the  support  hours?",
+          [
+            10,
+            10,
+            1,
+            0
+          ],
+          "simple",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "doc"
+        ],
+        [
+          "how can I change the billing address",
+          [
+            20,
+            6,
+            3,
+            1
+          ],
+          "standard",
+          "help",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          ""
+        ],
+        [
+          "HOW DO I UPDATE MY BILLING ADDRESS?",
+          [
+            19,
+            3,
+            0,
+            0
+          ],
+          "hard",
+          "plans",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "What are the support hours?",
+          [
+            8,
+            10,
+            1,
+            2
+          ],
+          "standard",
+          "help",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "help",
+          20
+        ],
+        [
+          "How do I delete my account?",
+          [
+            3,
+            18,
+            4,
+            2
+          ],
+          "simple",
+          "plans",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          ""
+        ],
+        [
+          "How do I delete my account?",
+          [
+            3,
+            19,
+            3,
+            2
+          ],
+          "standard",
+          "kb",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "Please explain the refund policy in detail for annual plans",
+          [
+            1,
+            2,
+            25,
+            5
+          ],
+          "standard",
+          "kb",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "Summarise the incident report that you were sent earlier today, and list the owners",
+          [
+            -1,
+            4,
+            6,
+            30
+          ],
+          "standard",
+          "help",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          ""
+        ],
+        [
+          "Please explain the refund policy in detail for annual plans",
+          [
+            3,
+            1,
+            26,
+            7
+          ],
+          "standard",
+          "kb",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "What are the support hours?",
+          [
+            10,
+            8,
+            0,
+            2
+          ],
+          "hard",
+          "help",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "What are the support hours?",
+          [
+            10,
+            9,
+            0,
+            1
+          ],
+          "simple",
+          "help",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "REFUND POLICY FOR ANNUAL PLANS, EXPLAIN",
+          [
+            1,
+            4,
+            25,
+            7
+          ],
+          "simple",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "doc"
+        ],
+        [
+          "HOW CAN I CHANGE THE BILLING ADDRESS",
+          [
+            19,
+            6,
+            1,
+            1
+          ],
+          "hard",
+          "plans",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "HOW DO I UPDATE MY BILLING ADDRESS?",
+          [
+            21,
+            4,
+            2,
+            -1
+          ],
+          "hard",
+          "plans",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "refund policy for annual plans, explain",
+          [
+            1,
+            2,
+            23,
+            7
+          ],
+          "simple",
+          "plans",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "PLEASE EXPLAIN THE REFUND POLICY IN DETAIL FOR ANNUAL PLANS",
+          [
+            3,
+            1,
+            24,
+            5
+          ],
+          "standard",
+          "help",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          "doc"
+        ],
+        [
+          "REFUND POLICY FOR ANNUAL PLANS, EXPLAIN",
+          [
+            2,
+            4,
+            25,
+            8
+          ],
+          "hard",
+          "help",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          "doc"
+        ],
+        [
+          "how can I change the billing address",
+          [
+            20,
+            6,
+            3,
+            -1
+          ],
+          "standard",
+          "help",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "PLEASE EXPLAIN THE REFUND POLICY IN DETAIL FOR ANNUAL PLANS",
+          [
+            1,
+            2,
+            24,
+            5
+          ],
+          "standard",
+          "help",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "  how  can  I  change  the  billing  address",
+          [
+            20,
+            6,
+            3,
+            -1
+          ],
+          "standard",
+          "kb",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          ""
+        ],
+        [
+          "  Summarise  the  incident  report  that  you  were  sent  earlier  today,  and  list  the  owners",
+          [
+            0,
+            5,
+            6,
+            30
+          ],
+          "standard",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "sys"
+        ],
+        [
+          "HOW DO I DELETE MY ACCOUNT?",
+          [
+            3,
+            18,
+            5,
+            2
+          ],
+          "simple",
+          "plans",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          ""
+        ],
+        [
+          "Summarise the incident report that you were sent earlier today, and list the owners",
+          [
+            -1,
+            6,
+            4,
+            30
+          ],
+          "standard",
+          "plans",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "sys"
+        ],
+        [
+          "How do I update my billing address?",
+          [
+            20,
+            3,
+            2,
+            0
+          ],
+          "hard",
+          "plans",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          ""
+        ],
+        [
+          "PLEASE EXPLAIN THE REFUND POLICY IN DETAIL FOR ANNUAL PLANS",
+          [
+            2,
+            1,
+            25,
+            7
+          ],
+          "standard",
+          "help",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "help",
+          41
+        ],
+        [
+          "how can I change the billing address",
+          [
+            19,
+            6,
+            3,
+            0
+          ],
+          "hard",
+          "plans",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "sys"
+        ],
+        [
+          "  refund  policy  for  annual  plans,  explain",
+          [
+            1,
+            4,
+            23,
+            6
+          ],
+          "standard",
+          "plans",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          "none"
+        ],
+        [
+          "Summarise the incident report that you were sent earlier today, and list the owners",
+          [
+            1,
+            4,
+            4,
+            31
+          ],
+          "standard",
+          "plans",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          ""
+        ],
+        [
+          "How do I update my billing address?",
+          [
+            20,
+            5,
+            2,
+            1
+          ],
+          "hard",
+          "plans",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "none"
+        ],
+        [
+          "What are the support hours?",
+          [
+            10,
+            9,
+            1,
+            0
+          ],
+          "standard",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "none"
+        ],
+        [
+          "What are the support hours?",
+          [
+            10,
+            8,
+            1,
+            0
+          ],
+          "standard",
+          "plans",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "Hi",
+          [
+            2,
+            1,
+            2,
+            2
+          ],
+          "hard",
+          "help",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "sys"
+        ],
+        [
+          "REFUND POLICY FOR ANNUAL PLANS, EXPLAIN",
+          [
+            3,
+            2,
+            23,
+            8
+          ],
+          "hard",
+          "help",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          "doc"
+        ],
+        [
+          "How do I update my billing address?",
+          [
+            20,
+            4,
+            2,
+            0
+          ],
+          "hard",
+          "kb",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "REFUND POLICY FOR ANNUAL PLANS, EXPLAIN",
+          [
+            1,
+            4,
+            25,
+            8
+          ],
+          "standard",
+          "kb",
+          [
+            "",
+            "ok",
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          ],
+          "sys"
+        ],
+        [
+          "SUMMARISE THE INCIDENT REPORT THAT YOU WERE SENT EARLIER TODAY, AND LIST THE OWNERS",
+          [
+            0,
+            5,
+            6,
+            30
+          ],
+          "hard",
+          "plans",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          "sys"
+        ],
+        [
+          "HOW CAN I CHANGE THE BILLING ADDRESS",
+          [
+            19,
+            6,
+            1,
+            -1
+          ],
+          "simple",
+          "help",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "Please explain the refund policy in detail for annual plans",
+          [
+            3,
+            3,
+            24,
+            5
+          ],
+          "standard",
+          "help",
+          [
+            "fine short",
+            "",
+            "x"
+          ],
+          "doc"
+        ],
+        [
+          "What are the support hours?",
+          [
+            8,
+            10,
+            2,
+            1
+          ],
+          "simple",
+          "plans",
+          [
+            "SORRY",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "How do I delete my account?",
+          [
+            3,
+            19,
+            5,
+            2
+          ],
+          "hard",
+          "kb",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "sys"
+        ],
+        [
+          "how can I change the billing address",
+          [
+            18,
+            5,
+            3,
+            -1
+          ],
+          "hard",
+          "plans",
+          [
+            "fine short",
+            "fine medium answer here",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "Please explain the refund policy in detail for annual plans",
+          [
+            1,
+            3,
+            25,
+            6
+          ],
+          "standard",
+          "help",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "none"
+        ],
+        [
+          "What are the support hours?",
+          [
+            8,
+            9,
+            1,
+            1
+          ],
+          "simple",
+          "kb",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "doc"
+        ],
+        [
+          "Summarise the incident report that you were sent earlier today, and list the owners",
+          [
+            0,
+            6,
+            4,
+            29
+          ],
+          "standard",
+          "help",
+          [
+            "SORRY",
+            "SORRY",
+            "a long and careful answer from the large tier"
+          ],
+          "sys"
+        ],
+        [],
+        []
+      ],
+      "expected": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "escalated",
+          "1>2",
+          "a long and careful answer from the large tier",
+          "790",
+          "700"
+        ],
+        [
+          "escalated",
+          "0>1",
+          "ok",
+          "84",
+          "500"
+        ],
+        [
+          "ok",
+          "1",
+          "fine medium answer here",
+          "114",
+          "620"
+        ],
+        [
+          "escalated",
+          "1>2",
+          "a long and careful answer from the large tier",
+          "894",
+          "780"
+        ],
+        [
+          "ok",
+          "1",
+          "ok",
+          "138",
+          "740"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "660"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "720"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "540"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "500"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "680"
+        ],
+        [
+          "semantic",
+          "",
+          "ok",
+          "0",
+          "500"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "460"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "500"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "220"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        1,
+        [
+          "ok",
+          "0",
+          "fine short",
+          "26",
+          "180"
+        ],
+        [
+          "exact",
+          "",
+          "fine short",
+          "0",
+          "620"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "780"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "460"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "780"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "520"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "680"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "340"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "240"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "780"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "700"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "820"
+        ],
+        [
+          "exact",
+          "",
+          "fine short",
+          "0",
+          "180"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "740"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "500"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "780"
+        ],
+        0,
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "280"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "740"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "500"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "460"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        [
+          "ok",
+          "2",
+          "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+          "340",
+          "340"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "240"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "semantic",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "520"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "460"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "340"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        [
+          "exact",
+          "",
+          "fine short",
+          "0",
+          "620"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "660"
+        ],
+        [
+          "exact",
+          "",
+          "a long and careful answer from the large tier",
+          "0",
+          "780"
+        ],
+        [
+          "exact",
+          "",
+          "fine medium answer here",
+          "0",
+          "620"
+        ],
+        [
+          "exact",
+          "",
+          "ok",
+          "0",
+          "900"
+        ],
+        [
+          53,
+          7,
+          6,
+          88
+        ],
+        [
+          [
+            "total",
+            "60",
+            "2386",
+            "35000",
+            "32614",
+            "93"
+          ],
+          [
+            "cache",
+            "37",
+            "16",
+            "7"
+          ],
+          [
+            "tier",
+            "0",
+            "2",
+            "16",
+            "0",
+            "3",
+            "44"
+          ],
+          [
+            "tier",
+            "1",
+            "5",
+            "63",
+            "0",
+            "12",
+            "522"
+          ],
+          [
+            "tier",
+            "2",
+            "3",
+            "27",
+            "0",
+            "32",
+            "1820"
+          ]
+        ]
+      ],
+      "note": "one long run of 60 requests"
+    }
+  ]
+}

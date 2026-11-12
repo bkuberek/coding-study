@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0326"
+slug: cache-and-router
+title: Cache and Router
+summary: "Build CacheRouter, which cuts the cost of model calls: an exact cache, a semantic cache with versioned sources, tier routing with one escalation, and a savings report against an always-large baseline."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, greedy]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: An exact cache}
+  - {level: 2, title: A semantic cache}
+  - {level: 3, title: Routing to a tier}
+  - {level: 4, title: What it costs and what it saves}
+signature:
+  class:
+    name: CacheRouter
+    constructor: {params: []}
+    methods:
+      - {name: key, level: 1, params: [{name: prompt, type: string}], returns: {type: string}}
+      - {name: put, level: 1, params: [{name: prompt, type: string}, {name: response, type: string}], returns: {type: bool}}
+      - {name: lookup, level: 1, params: [{name: prompt, type: string}], returns: {type: "list<string>"}}
+      - {name: stats, level: 1, params: [], returns: {type: "list<int>"}}
+      - {name: putSemantic, level: 2, params: [{name: prompt, type: string}, {name: embedding, type: "int[]"}, {name: response, type: string}, {name: source, type: string}], returns: {type: bool}}
+      - {name: lookupSemantic, level: 2, params: [{name: prompt, type: string}, {name: embedding, type: "int[]"}, {name: threshold, type: int}], returns: {type: "list<string>"}}
+      - {name: setSourceVersion, level: 2, params: [{name: source, type: string}, {name: version, type: int}], returns: {type: int}}
+      - {name: configureRouting, level: 3, params: [{name: tierLimits, type: "int[]"}, {name: labels, type: "string[]"}, {name: labelTiers, type: "int[]"}, {name: invalidMarkers, type: "string[]"}], returns: {type: void}}
+      - {name: route, level: 3, params: [{name: label, type: string}, {name: promptTokens, type: int}], returns: {type: int}}
+      - {name: answer, level: 3, params: [{name: label, type: string}, {name: promptTokens, type: int}, {name: answers, type: "string[]"}], returns: {type: "list<string>"}}
+      - {name: setPrices, level: 4, params: [{name: inputPrices, type: "int[]"}, {name: outputPrices, type: "int[]"}, {name: cachedPrices, type: "int[]"}], returns: {type: void}}
+      - {name: definePrefix, level: 4, params: [{name: prefixId, type: string}, {name: tokens, type: int}], returns: {type: void}}
+      - {name: setThreshold, level: 4, params: [{name: threshold, type: int}], returns: {type: void}}
+      - {name: handle, level: 4, params: [{name: prompt, type: string}, {name: embedding, type: "int[]"}, {name: label, type: string}, {name: source, type: string}, {name: answers, type: "string[]"}, {name: prefixId, type: string}], returns: {type: "list<string>"}}
+      - {name: report, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: entry-table-pipeline, name: "One table of entries, an exact key lookup, then a scan for the nearest embedding", role: optimal, time: "O(1) per exact lookup, O(n m) per semantic lookup", space: "O(n m)", time_class: "n", space_class: "n"}
+related: [token-cost-reconciler, cosine-top-k, context-packer, llm-gateway-typescript, price-cache-rate-limits-typescript, lru-cache, eval-release-gate]
+estimate_minutes: 150
