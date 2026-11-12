@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0374"
+slug: slo-burn-rate
+title: SLO Burn Rate
+summary: "Build SloMonitor: rates from counters across restarts, latency SLIs and quantiles from histograms, error budgets and burn rates, then multi-window alerts with their start and stop times."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [sliding-window, binary-search]
+domains: [systems]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: Counters and rates}
+  - {level: 2, title: Latency histograms}
+  - {level: 3, title: Error budgets}
+  - {level: 4, title: Multi-window burn-rate alerts}
+signature:
+  class:
+    name: SloMonitor
+    constructor: {params: []}
+    methods:
+      - {name: scrape, level: 1, params: [{name: series, type: string}, {name: timestamp, type: long}, {name: value, type: long}], returns: {type: string}}
+      - {name: scrapeSeries, level: 1, params: [{name: series, type: string}, {name: start, type: long}, {name: step, type: long}, {name: values, type: "list<long>"}], returns: {type: int}}
+      - {name: increase, level: 1, params: [{name: series, type: string}, {name: start, type: long}, {name: end, type: long}], returns: {type: long}}
+      - {name: rate, level: 1, params: [{name: series, type: string}, {name: start, type: long}, {name: end, type: long}], returns: {type: string}}
+      - {name: resets, level: 1, params: [{name: series, type: string}, {name: start, type: long}, {name: end, type: long}], returns: {type: int}}
+      - {name: scrapeHistogram, level: 2, params: [{name: name, type: string}, {name: timestamp, type: long}, {name: bounds, type: "list<long>"}, {name: counts, type: "list<long>"}], returns: {type: string}}
+      - {name: fractionWithin, level: 2, params: [{name: name, type: string}, {name: threshold, type: long}, {name: start, type: long}, {name: end, type: long}], returns: {type: string}}
+      - {name: quantile, level: 2, params: [{name: name, type: string}, {name: q, type: string}, {name: start, type: long}, {name: end, type: long}], returns: {type: string}}
+      - {name: defineSlo, level: 3, params: [{name: name, type: string}, {name: goodSeries, type: string}, {name: totalSeries, type: string}, {name: objective, type: string}, {name: window, type: long}], returns: {type: string}}
+      - {name: sli, level: 3, params: [{name: name, type: string}, {name: at, type: long}], returns: {type: string}}
+      - {name: budgetRemaining, level: 3, params: [{name: name, type: string}, {name: at, type: long}], returns: {type: string}}
+      - {name: burnRate, level: 3, params: [{name: name, type: string}, {name: at, type: long}, {name: lookback, type: long}], returns: {type: string}}
+      - {name: timeToExhaustion, level: 3, params: [{name: name, type: string}, {name: at, type: long}, {name: lookback, type: long}], returns: {type: long}}
+      - {name: addAlert, level: 4, params: [{name: slo, type: string}, {name: severity, type: string}, {name: longWindow, type: long}, {name: shortWindow, type: long}, {name: threshold, type: string}], returns: {type: string}}
+      - {name: firing, level: 4, params: [{name: slo, type: string}, {name: at, type: long}], returns: {type: "list<string>"}}
+      - {name: timeline, level: 4, params: [{name: slo, type: string}, {name: start, type: long}, {name: end, type: long}, {name: step, type: long}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: exact-window-increases, name: Reset-aware window increases and exact fractions, role: optimal, time: "O(log S + k) per window over S samples with k inside it; O(B (log S + k)) per histogram query of B buckets; O(N A (log S + k)) per timeline of N instants and A alerts", space: "O(S) for all the samples", time_class: "n", space_class: "n"}
+related: [token-bucket-limiter, time-based-kv-store, median-data-stream, sliding-window-maximum, certificate-expiry-alerts, semver-resolver]
+estimate_minutes: 120

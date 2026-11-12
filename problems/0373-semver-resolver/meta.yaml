@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0373"
+slug: semver-resolver
+title: Semver Resolver
+summary: "Build SemverResolver: order versions by SemVer 2.0.0 precedence, expand caret, tilde and wildcard ranges, resolve dependencies with backtracking, then explain conflicts and update a lockfile."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [backtracking, graphs]
+domains: [infrastructure]
+job_roles: [platform, backend]
+scope: function
+levels:
+  - {level: 1, title: Versions and precedence}
+  - {level: 2, title: Ranges}
+  - {level: 3, title: Resolving a dependency graph}
+  - {level: 4, title: "Conflicts and lockfiles"}
+signature:
+  class:
+    name: SemverResolver
+    constructor: {params: []}
+    methods:
+      - {name: isValid, level: 1, params: [{name: version, type: string}], returns: {type: bool}}
+      - {name: compare, level: 1, params: [{name: first, type: string}, {name: second, type: string}], returns: {type: int}}
+      - {name: sortVersions, level: 1, params: [{name: versions, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: changeKind, level: 1, params: [{name: before, type: string}, {name: after, type: string}], returns: {type: string}}
+      - {name: expandRange, level: 2, params: [{name: versionRange, type: string}], returns: {type: "list<string>"}}
+      - {name: satisfies, level: 2, params: [{name: version, type: string}, {name: versionRange, type: string}], returns: {type: bool}}
+      - {name: maxSatisfying, level: 2, params: [{name: versions, type: "list<string>"}, {name: versionRange, type: string}], returns: {type: string}}
+      - {name: publish, level: 3, params: [{name: name, type: string}, {name: version, type: string}, {name: dependencies, type: "list<list<string>>"}], returns: {type: string}}
+      - {name: candidates, level: 3, params: [{name: name, type: string}, {name: versionRange, type: string}], returns: {type: "list<string>"}}
+      - {name: resolve, level: 3, params: [{name: requirements, type: "list<list<string>>"}], returns: {type: "list<string>"}}
+      - {name: explain, level: 4, params: [{name: requirements, type: "list<list<string>>"}], returns: {type: "list<string>"}}
+      - {name: lockedResolve, level: 4, params: [{name: requirements, type: "list<list<string>>"}, {name: lock, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: update, level: 4, params: [{name: requirements, type: "list<list<string>>"}, {name: lock, type: "list<string>"}, {name: unlock, type: "list<string>"}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: depth-first-resolve, name: "Precedence keys, expanded ranges and a depth-first search", role: optimal, time: "O(L) per version or range of length L; O(V^P) per search in the worst case; O(C) searches per explanation", space: "O(R + P) for R published releases and P packages", time_class: "2^n", space_class: "n"}
+related: [course-schedule-ii, reconstruct-itinerary, n-queens, taxonomy, slo-burn-rate]
+estimate_minutes: 120
