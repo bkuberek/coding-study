@@ -18,8 +18,8 @@ So an encoder takes the context as input, and a context it does not know is refu
 
 | `context` | Where the text goes | Example spot, with `X` for the text |
 |-----------|---------------------|-------------------------------------|
-| `html-text` | Between tags, as text | `<p>X</p>` |
-| `html-attribute` | Inside an attribute value in double quotes | `<input value="X">` |
+| `html-text` | Between the tags of an ordinary element, as text | `<p>X</p>` |
+| `html-attribute` | Inside an ordinary text attribute's value, in double quotes | `<input value="X">` |
 | `url-query` | One value in a URL's query string | `/search?q=X` |
 | `js-string` | Inside a JavaScript string literal, in a `<script>` element | `<script>let name = "X";</script>` |
 
@@ -39,6 +39,8 @@ The rules, exactly:
 - `url-query`: write the text as UTF-8 bytes. Each byte that is an ASCII letter, an ASCII digit, `-`, `.`, `_` or `~` stays as that character. Every other byte becomes `%` followed by its value as two **uppercase** hexadecimal digits. A space is `%20` (not `+`), `é` (bytes `C3 A9`) is `%C3%A9`.
 - `js-string`: each ASCII letter and ASCII digit stays. Every other character becomes `\u` followed by four **uppercase** hexadecimal digits of its UTF-16 code unit. A character outside the Basic Multilingual Plane, such as most emoji, is two UTF-16 code units (a *surrogate pair*) and becomes two escapes: `😀` (U+1F600) is `\uD83D\uDE00`. Escaping everything except letters and digits is a deny-by-default rule: it covers both kinds of quote, the backslash, every line break, and the `<` that would let the HTML parser end the script early (in `</script`) or change how it reads the script (in `<!--`).
 - Any other `context`, including a different spelling or case of these four names: return `""`. Writing the text unencoded would be the unsafe default.
+
+**Where the HTML rule stops.** `html-attribute` is only for an ordinary text attribute, such as `title` or `value`, in quotes. Some attributes are read a second time after the HTML parser has decoded the entities, and the five replacements do nothing for that second reader: a URL attribute (`href`, `src`) still takes a `javascript:` URL, which has none of the five characters in it; an event-handler attribute (`onclick` and the other `on*` attributes) runs its value as JavaScript; `style` is read as CSS; and `srcdoc` is read as a whole HTML document. The OWASP Cross Site Scripting Prevention Cheat Sheet says it plainly: "HTML attribute encoding alone does not protect JavaScript in an event-handler attribute", "URL-bearing attributes require URL validation", and "There is no universally safe list of HTML attributes." In the same way, `html-text` is only for ordinary elements: inside `<script>` or `<style>` the HTML parser does not decode entities at all, so an entity there stays as its literal characters, and the content is read as JavaScript or CSS, with rules of its own.
 
 ## Input
 

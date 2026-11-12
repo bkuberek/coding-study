@@ -50,6 +50,7 @@ Refusal: every name outside the table returns `""`, which is safe in any context
 
 - **Falling through on an unknown context.** `HTML-TEXT`, `html`, `html-attr` and `""` are refused (`h24` to `h27`). A default branch that returns the text unchanged would write untrusted text raw.
 - **Skipping "already encoded" text.** Encoding is not idempotent and must not try to be: the text `&amp;` is five characters chosen by a user, and is written as `&amp;amp;` (`h1`). An encoder that leaves existing entities alone lets the user write any entity they like.
+- **Attributes and elements read twice.** The HTML rule is right for `title` or `value`, not for `href`, `src`, `on*`, `style` or `srcdoc`, whose values a second parser reads after the entities are decoded, and not for the content of `<script>` or `<style>`, where entities are not decoded at all. A URL from a user needs its scheme checked against an allow-list before it goes into `href`; no encoding does that.
 - **Forgetting `>` or `'`.** `h3` and `h5` need both; `'` becomes `&#x27;`, as in the cheat sheet's table.
 - **Built-in URL encoders.** JavaScript's `encodeURIComponent` leaves `! ' ( ) *` unencoded, following the older RFC 2396 list (`h8`). Python's `quote` keeps `/` by default (`h11`), and `quote_plus` writes a space as `+` (`h9`). Only the exact rule passes every case.
 - **Encoding characters instead of bytes.** `é` is `%C3%A9`, not `%E9`, and an emoji is four bytes (`h10`).
@@ -57,7 +58,7 @@ Refusal: every name outside the table returns `""`, which is safe in any context
 - **Unicode "alphanumerics".** Python's `str.isalnum()` is true for `é`, `²` and `٣`, which must be escaped (`h21`). The test must be ASCII.
 - **Characters above U+FFFF in JavaScript.** One emoji is two escapes, `\uD83D\uDE00`; a single `\U0001F600` or `\u{1F600}` does not follow the rule (`h19`).
 - **Lowercase hex.** `\u00e9` or `%c3` decode the same but do not match the stated output (`h19`, `h10`).
-- **Line separators.** U+2028 and U+2029 have been allowed inside string literals since ECMAScript 2019, but older engines treat them as line breaks; carriage return and line feed are never allowed (`h18`).
+- **Line separators.** U+2028 and U+2029 have been allowed inside string literals since ECMAScript 2019 (the 2018 edition's grammar does not allow them), but older engines treat them as line breaks; carriage return and line feed are never allowed (`h18`).
 - **Template literals.** `${` starts a substitution in a backtick string. Escaping `$` and `{` keeps even that case inert (`h22`), though this problem's context is an ordinary quoted string.
 
 ### Language notes
@@ -67,10 +68,11 @@ Refusal: every name outside the table returns `""`, which is safe in any context
 
 ## Further reading
 
-- [OWASP Cross Site Scripting Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html): output encoding per context, the five HTML entity replacements, always quoting attributes, encoding URL parameter values rather than whole URLs, and why JavaScript contexts need an encoder that also accounts for the enclosing script.
+- [OWASP Cross Site Scripting Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html): output encoding per context, the five HTML entity replacements, always quoting attributes, why attribute encoding does not protect URL, event-handler, style or srcdoc attributes, encoding URL parameter values rather than whole URLs, and why JavaScript contexts need an encoder that also accounts for the enclosing script.
 - [HTML Standard, 13.2.5 Tokenization](https://html.spec.whatwg.org/multipage/parsing.html#tokenization): the data state, the attribute value states (double-quoted, single-quoted and unquoted) and the characters each one reacts to.
 - [HTML Standard, 4.12.1.3 Restrictions for contents of script elements](https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements): why `</script` and `<!--` inside a script's strings are dangerous, and the advice to escape them.
 - [RFC 3986, Uniform Resource Identifier (URI): Generic Syntax](https://www.rfc-editor.org/rfc/rfc3986), sections 2.1 (percent-encoding, uppercase hex), 2.3 (unreserved characters), 2.5 (UTF-8 for text) and 3.4 (the query ends at `#`).
 - [URL Standard, application/x-www-form-urlencoded parsing](https://url.spec.whatwg.org/#urlencoded-parsing): a query is split on `&` and `+` is read as a space.
 - [ECMAScript Language Specification, String Literals](https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-literals-string-literals): which characters may appear in a string literal, and the `\uXXXX` escape of one UTF-16 code unit.
+- [ECMAScript 2019 Language Specification](https://262.ecma-international.org/10.0/), the edition whose string literal grammar first lists `<LS>` and `<PS>` as string characters, and the [TC39 list of finished proposals](https://github.com/tc39/proposals/blob/main/finished-proposals.md), where the JSON superset proposal is dated 2019.
 - [ECMAScript Language Specification, encodeURIComponent](https://tc39.es/ecma262/multipage/global-object.html#sec-encodeuricomponent-uricomponent): the characters it leaves unescaped.
