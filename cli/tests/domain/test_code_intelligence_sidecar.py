@@ -129,12 +129,20 @@ def test_the_linux_build_imports_with_the_images_jdk_and_its_gradle_home_in_the_
     ) == (True, True, True)
 
 
-def test_the_linux_build_keeps_its_shared_data_in_the_data_folder_not_under_the_images_home():
-    """The build creates `$XDG_DATA_HOME/JetBrains` at startup; the image's `~/.local` is
-    read-only."""
+def test_the_linux_build_keeps_its_homes_in_the_data_folder_not_under_the_images_home():
+    """The build creates `$XDG_DATA_HOME/JetBrains` at startup, its license store in
+    `$XDG_CONFIG_HOME/JetBrains/IntelliJServer`, and its index databases under
+    `$XDG_CACHE_HOME/JetBrains/IntelliJServer/workspaces/`, not under `--system-path`; the image's
+    home is read-only."""
     launch = Launch("/work/.cs/lsp", "/data", platform="linux", java_home="/opt/java/openjdk")
+    environment = KOTLIN_LSP_LINUX.environment(launch)
+    homes = ("XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_CONFIG_HOME")
 
-    assert KOTLIN_LSP_LINUX.environment(launch)["XDG_DATA_HOME"] == "/data/share"
+    assert {name: environment.get(name) for name in homes} == {
+        "XDG_DATA_HOME": "/data/share",
+        "XDG_CACHE_HOME": "/data/cache",
+        "XDG_CONFIG_HOME": "/data/config",
+    }
 
 
 def test_the_linux_build_needs_no_jdk_of_this_machine_and_no_warm_up():
