@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0366"
+slug: undo-redo-editor
+title: Undo and Redo Editor
+summary: "Build Editor, a text buffer with undo and redo: edits that can be taken back, typing grouped into one step, named checkpoints, and a history that keeps every branch."
+status: ready
+difficulty: easy
+track: practical
+kind: progressive
+patterns: [stack, trees]
+domains: [software-design]
+job_roles: [general, frontend]
+scope: function
+levels:
+  - {level: 1, title: Undo and redo stacks}
+  - {level: 2, title: Grouping typing}
+  - {level: 3, title: Checkpoints}
+  - {level: 4, title: A history tree}
+signature:
+  class:
+    name: Editor
+    constructor: {params: [{name: initial, type: string}]}
+    methods:
+      - {name: insert, level: 1, params: [{name: position, type: int}, {name: text, type: string}], returns: {type: void}}
+      - {name: erase, level: 1, params: [{name: position, type: int}, {name: count, type: int}], returns: {type: void}}
+      - {name: undo, level: 1, params: [], returns: {type: bool}}
+      - {name: redo, level: 1, params: [], returns: {type: bool}}
+      - {name: text, level: 1, params: [], returns: {type: string}}
+      - {name: typeText, level: 2, params: [{name: timestamp, type: long}, {name: position, type: int}, {name: text, type: string}], returns: {type: void}}
+      - {name: checkpoint, level: 3, params: [{name: name, type: string}], returns: {type: void}}
+      - {name: restore, level: 3, params: [{name: name, type: string}], returns: {type: bool}}
+      - {name: state, level: 4, params: [], returns: {type: int}}
+      - {name: branches, level: 4, params: [], returns: {type: "list<int>"}}
+      - {name: jump, level: 4, params: [{name: state, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: history-tree, name: Edits as commands in a history tree, role: optimal, time: "O(n) per edit, undo or redo; O(n * d) per jump", space: "O(n + e)", time_class: "n", space_class: "n"}
+related: [min-stack, snapshot-array, in-memory-database, transactional-kv-store]
+estimate_minutes: 60
