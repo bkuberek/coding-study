@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Recursion on trees: values up, state down"
+summary: Write a tree function by trusting the answers of the subtrees. Values travel up as return values, state travels down as arguments, and most tree problems use one or both.
+level: core
+prerequisites: [tree-traversals]
+related: [binary-search-trees]
+problems:
+  - max-depth-binary-tree
+  - same-tree
+  - subtree-of-another-tree
+  - balanced-binary-tree
+  - diameter-binary-tree
+  - lowest-common-ancestor
+  - tree-path-sum-count
+  - tree-from-preorder-inorder
+  - org-chart-outline
+  - max-path-sum
+  - serialize-binary-tree

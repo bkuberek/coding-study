@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Binary search trees
+summary: The ordering invariant, search, insert, delete and the nearest key in time proportional to the height, why insertion order can ruin that height, and how balanced trees keep it logarithmic.
+level: core
+prerequisites: [tree-traversals]
+related: [recursion-on-trees, heaps, hash-maps-and-sets]
+problems: [validate-bst, kth-smallest-in-bst, bst-iterator]
