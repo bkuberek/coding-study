@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0338"
+slug: lineage-graph
+title: Lineage Graph
+summary: "Build LineageGraph from column-level specs: validation with cycles, upstream and downstream walks, the impact of a dropped, renamed or retyped column, and sensitive labels reaching published data."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs, advanced-graphs]
+domains: [data, backend]
+job_roles: [data-engineer, backend]
+scope: function
+levels:
+  - {level: 1, title: Specs and validation}
+  - {level: 2, title: Upstream and downstream}
+  - {level: 3, title: Impact of a change}
+  - {level: 4, title: Sensitive data}
+signature:
+  class:
+    name: LineageGraph
+    constructor: {params: []}
+    methods:
+      - {name: addDataset, level: 1, params: [{name: name, type: string}, {name: columns, type: "list<string>"}, {name: edges, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: validate, level: 1, params: [], returns: {type: "list<list<string>>"}}
+      - {name: inputsOf, level: 1, params: [{name: column, type: string}], returns: {type: "list<string>"}}
+      - {name: upstream, level: 2, params: [{name: column, type: string}], returns: {type: "list<string>"}}
+      - {name: downstream, level: 2, params: [{name: column, type: string}], returns: {type: "list<string>"}}
+      - {name: impact, level: 3, params: [{name: column, type: string}, {name: change, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: isBreaking, level: 3, params: [{name: column, type: string}, {name: change, type: string}], returns: {type: bool}}
+      - {name: impactedDatasets, level: 3, params: [{name: column, type: string}, {name: change, type: string}], returns: {type: "list<string>"}}
+      - {name: tag, level: 4, params: [{name: column, type: string}, {name: label, type: string}], returns: {type: bool}}
+      - {name: tagsOf, level: 4, params: [{name: column, type: string}], returns: {type: "list<string>"}}
+      - {name: publish, level: 4, params: [{name: dataset, type: string}], returns: {type: bool}}
+      - {name: exposures, level: 4, params: [{name: label, type: string}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: adjacency-walks, name: Forward and backward adjacency with breadth-first walks and cycle groups, role: optimal, time: "O(V + E + A log A) per validation or walk, V columns, E edges, A answers; O(S (V + E)) per exposure report of S labelled sources", space: "O(V + E)", time_class: "n log n", space_class: "n"}
+related: [course-schedule, course-schedule-ii, taxonomy, scd-type2-dimension, data-quality-gate, snapshot-table]
+estimate_minutes: 120
