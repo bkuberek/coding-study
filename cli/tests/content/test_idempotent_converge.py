@@ -193,11 +193,12 @@ class Model:
 
     def gate(self, host: str, task: str) -> str | None:
         """None to run the task, or the status it ends with instead."""
-        results = [self.holds(host, *c) for c in self.conditions.get(task, [])]
-        if any(result is None for result in results):
-            return "failed"
-        if not all(results):
-            return "skipped"
+        for condition in self.conditions.get(task, []):
+            result = self.holds(host, *condition)
+            if result is None:
+                return "failed"
+            if not result:
+                return "skipped"
         return None
 
     def batches(self) -> list[list[str]]:
@@ -707,6 +708,37 @@ class FactAlwaysNew(Model):
 
     def set_fact(self, host: str, key: str, value: str) -> bool:
         return super().set_fact(host, key, value) or host in self.hosts
+
+
+class UndecidableAnywhereFails(Model):
+    """Fails a task when any of its conditions cannot be decided, even after a false one."""
+
+    def gate(self, host: str, task: str) -> str | None:
+        results = [self.holds(host, *c) for c in self.conditions.get(task, [])]
+        if any(result is None for result in results):
+            return "failed"
+        if not all(results):
+            return "skipped"
+        return None
+
+
+class LeadingZerosRejected(Model):
+    """Refuses a whole number written with leading zeros."""
+
+    def holds(self, host: str, fact: str, operator: str, value: str) -> bool | None:
+        have = self.facts[host].get(fact, "")
+        if operator not in ("==", "!=") and re.fullmatch(r"-?0[0-9]+", have):
+            return None
+        return super().holds(host, fact, operator, value)
+
+
+class FirstBatchSizeOfAllHostsIsNotNew(Model):
+    """Says a first batch size that equals the number of hosts changes nothing."""
+
+    def set_batch_size(self, size: int) -> bool:
+        effective = self.size if self.size > 0 else len(self.hosts)
+        self.size = size
+        return size != effective
 
 
 MISTAKES: Sequence[type[Model]] = Model.__subclasses__()

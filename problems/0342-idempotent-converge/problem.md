@@ -108,9 +108,10 @@ Hosts differ: some are web servers, some are databases, some have little memory.
 - `setFact(host, key, value)`: records a fact about the host. It returns `true` when the host had no fact with that key, and `false` when this replaces one or when the host does not exist (then nothing changes).
 - `onlyIf(task, fact, comparison, value)`: adds a condition to the task: the host's fact `fact` compared with `value` by `comparison`, one of `==`, `!=`, `<`, `<=`, `>` and `>=`. The task runs on a host only when all its conditions hold there; otherwise it reports `skipped`, changes nothing and notifies nothing. It returns `true`, or `false` without changing anything when no task has that name (handlers have no conditions).
   - `==` and `!=` compare the fact and `value` as text.
-  - `<`, `<=`, `>` and `>=` compare them as whole numbers, written in decimal with an optional leading `-`, so `10` is greater than `9`.
+  - `<`, `<=`, `>` and `>=` compare them as whole numbers, written in decimal with an optional leading `-`, so `10` is greater than `9`. Leading zeros are allowed: `007` is the number 7.
   - A condition that cannot be decided fails the task: the host has no such fact, or a numeric comparison meets a fact that is not a whole number.
-- `setBatchSize(size)`: from now on, runs and checks take the hosts in **batches** of `size` (at least 1), in host order. A batch runs every task and then every handler on its hosts before the next batch starts. It returns `true` when this changes the batch size and `false` when it was already `size`. Before any call, all hosts form one batch.
+  - The conditions are checked in the order they were added, and the first one that settles the result decides it: a false one makes the task `skipped`, and one that cannot be decided makes it `failed`. The conditions after it are not looked at.
+- `setBatchSize(size)`: from now on, runs and checks take the hosts in **batches** of `size` (at least 1), in host order. A batch runs every task and then every handler on its hosts before the next batch starts. It returns `true` when this changes the batch size and `false` when it was already `size`. Before any call, all hosts form one batch, and there is no batch size yet, so the first call returns `true` even when `size` equals the number of hosts.
 - If every host of a batch has failed by the end of that batch, the run stops: later batches do not start. Rolling a change out batch by batch, and stopping when a whole batch breaks, limits the damage of a bad change.
 - `summary()`: one row per host, in host order: `[host, ok, changed, failed, skipped]`, where each is the number of tasks and handlers that ended that way on the host in the latest `run`, written as a decimal number. `changed` is not counted in `ok`. A check run does not change the summary, and a host that the latest run never reached, or that was added since, has four zeros.
 
@@ -159,7 +160,7 @@ Keep, per host, the set of handlers notified during the run, and the set of host
 
 ### Hint 5
 
-Evaluate a task's conditions before the task itself. Look the fact up first: if it is missing, the task fails. For a numeric comparison, parse both sides; if a side does not parse, the task fails. If any condition is false, the task is skipped.
+Evaluate a task's conditions before the task itself. Look the fact up first: if it is missing, the task fails. For a numeric comparison, parse both sides; if a side does not parse, the task fails. Walk the conditions in the order they were added and stop at the first one that is false (the task is skipped) or that cannot be decided (the task fails).
 
 ### Hint 6
 
