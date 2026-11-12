@@ -32,7 +32,7 @@ The simplest cache keeps the answer under the question and returns it when the s
 
 - `key(prompt)`: the normal form of the prompt. Take the prompt, remove the spaces, tabs and newlines at both ends, replace each run of spaces, tabs and newlines inside it by one space, and turn each letter `A` to `Z` into `a` to `z`. Nothing else changes: a question mark, a comma and a digit all stay.
 - `put(prompt, response)`: stores the response under the key of the prompt. It returns `true` when the key is new. It returns `false` when the key is already stored, and then nothing changes: the response that was stored first stays.
-- `lookup(prompt)`: asks for the response stored under the key of the prompt. It returns `["hit", response]`, or `["miss"]` when nothing is stored. It counts as one hit or one miss.
+- `lookup(prompt)`: asks for the response stored under the key of the prompt. It returns `["hit", response]`, or `["miss"]` when nothing is stored. It counts as one hit or one miss; a hit is counted as an **exact** hit in the books of level 4.
 - `stats()`: `[hits, misses, entries, hitPercent]`: the hits and the misses counted so far, the number of entries stored, and the share of lookups that hit as a whole percent rounded **down** (`floor(100 * hits / (hits + misses))`, and 0 when there has been no lookup).
 
 An *entry* is one stored key with its response.
@@ -88,7 +88,7 @@ The cancel question has an embedding at 932 permille from the refund question's.
 
 Models come in sizes. A small one is cheap and quick, and is often enough for a simple question. A large one is better and many times dearer. A **router** picks one for each question. A **tier** is one model size; tiers are numbered from `0`, the cheapest, upward, and there are 2 to 4 of them.
 
-- `configureRouting(tierLimits, labels, labelTiers, invalidMarkers)`: sets the router once, before any other method of this level and of the next. `tierLimits[t]` is the most prompt tokens tier `t` accepts (a longer prompt does not fit its window). The limits do not decrease from one tier to the next. `labels[i]` is a difficulty label that a classifier gave the question, and `labelTiers[i]` the tier where questions with that label start. `invalidMarkers` are pieces of text that mark an answer as unusable.
+- `configureRouting(tierLimits, labels, labelTiers, invalidMarkers)`: sets the router once, before any other method of this level and of the next. `tierLimits[t]` is the most prompt tokens tier `t` accepts (a longer prompt does not fit its window). The limits do not decrease from one tier to the next. `labels` has no repeated label. `labels[i]` is a difficulty label that a classifier gave the question, and `labelTiers[i]` the tier where questions with that label start. `invalidMarkers` are pieces of text that mark an answer as unusable.
 - `route(label, promptTokens)`: the tier for a question. Start at the tier of the label, or at the **highest tier** when the label is not in `labels` (when unsure, do not risk the quality). If the prompt does not fit that tier, move up to the first tier whose limit is at least `promptTokens`. A prompt that fits a tier fits it exactly when `promptTokens <= limit`. When no tier fits, the answer is `-1`.
 - `answer(label, promptTokens, answers)`: runs the question through the tiers and returns `[status, calls, text]`. `answers[t]` is what tier `t` would answer, for every tier.
 
@@ -143,9 +143,9 @@ The gateway now has everything needed to handle a request: look in the cache, ot
 cost = (n - c) * input[t] + c * cached[t] + m * output[t]
 ```
 
-where `c` is the reused part of the prefix: `min(prefixTokens, n)` when `prefixId` has been defined and the prefix is **warm** at tier `t`, and `0` otherwise. A prefix is warm at a tier once **a call to that tier has been made with it** (the first call pays in full and warms it; a later call at the same tier gets the cached price; another tier is cold until it is called itself). An empty or never defined prefix id is no prefix. The cost of a request is the sum of the costs of its calls.
+where `c` is the reused part of the prefix: `min(prefixTokens, n)` when `prefixId` has been defined and the prefix is **warm** at tier `t`, and `0` otherwise. A prefix is warm at a tier once **a call to that tier has been made with it** (the first call pays in full and warms it; a later call at the same tier gets the cached price; another tier is cold until it is called itself). An empty prefix id, or one that has not been defined when the call is made, is no prefix: it is not warmed by that call, so a call made before `definePrefix` leaves the prefix cold, and the first call after `definePrefix` pays in full. The cost of a request is the sum of the costs of its calls.
 
-**The baseline** is what the same request would have cost if every request went to the largest tier with no cache and no prefix discount: `n * input[last] + m * output[last]`, with `m` the tokens of `answers[last]`. It is `0` for a `too_long` request, which the largest tier could not take either. The baseline is counted for every request, hit or not.
+**The baseline** is what the same request would have cost if every request went to the largest tier with no cache and no prefix discount: `n * input[last] + m * output[last]`, with `m` the tokens of `answers[last]`. It is `0` for a prompt longer than the limit of the last tier, whether or not the cache answers it, since no tier could have answered it. The baseline is counted for every request, hit or not.
 
 **The report.** `report()` returns these rows, as text, in this order:
 

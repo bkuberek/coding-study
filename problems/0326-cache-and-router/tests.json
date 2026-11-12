@@ -4263,6 +4263,7 @@
         "handle",
         "definePrefix",
         "handle",
+        "handle",
         "definePrefix",
         "handle",
         "handle",
@@ -4442,6 +4443,23 @@
           "unknown"
         ],
         [
+          "short eight",
+          [
+            1,
+            1,
+            0,
+            0
+          ],
+          "simple",
+          "s",
+          [
+            "a8",
+            "b",
+            "c"
+          ],
+          "unknown"
+        ],
+        [
           "sys",
           1
         ],
@@ -4535,6 +4553,13 @@
           "ok",
           "0",
           "a7",
+          "10",
+          "100"
+        ],
+        [
+          "ok",
+          "0",
+          "a8",
           "8",
           "100"
         ],
@@ -4556,26 +4581,26 @@
         [
           [
             "total",
-            "9",
-            "125",
-            "1100",
-            "975",
+            "10",
+            "135",
+            "1200",
+            "1065",
             "88"
           ],
           [
             "cache",
             "0",
             "1",
-            "8"
+            "9"
           ],
           [
             "tier",
             "0",
-            "7",
-            "16",
+            "8",
+            "19",
             "5",
-            "7",
-            "65"
+            "8",
+            "75"
           ],
           [
             "tier",
@@ -4912,6 +4937,10 @@
         "handle",
         "handle",
         "handle",
+        "report",
+        "putSemantic",
+        "handle",
+        "handle",
         "report"
       ],
       "args": [
@@ -5028,6 +5057,52 @@
           ],
           "sys"
         ],
+        [],
+        [
+          "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+          [
+            2,
+            2,
+            2,
+            2
+          ],
+          "stored long answer",
+          "s"
+        ],
+        [
+          "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+          [
+            9,
+            9,
+            9,
+            9
+          ],
+          "simple",
+          "s",
+          [
+            "a",
+            "b",
+            "big answer"
+          ],
+          "sys"
+        ],
+        [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          [
+            3,
+            3,
+            3,
+            3
+          ],
+          "hard",
+          "s",
+          [
+            "a",
+            "b",
+            "big answer"
+          ],
+          "sys"
+        ],
         []
       ],
       "expected": [
@@ -5077,6 +5152,64 @@
             "cache",
             "0",
             "0",
+            "4"
+          ],
+          [
+            "tier",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "tier",
+            "2",
+            "1",
+            "12",
+            "0",
+            "1",
+            "280"
+          ]
+        ],
+        true,
+        [
+          "exact",
+          "",
+          "stored long answer",
+          "0",
+          "0"
+        ],
+        [
+          "semantic",
+          "",
+          "stored long answer",
+          "0",
+          "0"
+        ],
+        [
+          [
+            "total",
+            "6",
+            "280",
+            "280",
+            "0",
+            "0"
+          ],
+          [
+            "cache",
+            "1",
+            "1",
             "4"
           ],
           [

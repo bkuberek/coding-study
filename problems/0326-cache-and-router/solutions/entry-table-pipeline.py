@@ -242,7 +242,7 @@ class CacheRouter:
         cached = min(self._prefix_tokens.get(prefix_id, 0), tokens) if reused else 0
         output = token_count(answer)
         cost = (tokens - cached) * input_price + cached * cached_price + output * output_price
-        if prefix_id != "":
+        if prefix_id in self._prefix_tokens:
             self._warm[tier].add(prefix_id)
         ledger = self._tiers[tier]
         ledger.calls += 1

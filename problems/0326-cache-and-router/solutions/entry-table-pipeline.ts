@@ -296,7 +296,7 @@ export class CacheRouter {
     const cached = reused ? Math.min(this.prefixTokens.get(prefixId) ?? 0, tokens) : 0;
     const output = tokenCount(answer);
     const cost = (tokens - cached) * inputPrice + cached * cachedPrice + output * outputPrice;
-    if (prefixId !== "") {
+    if (this.prefixTokens.has(prefixId)) {
       this.warm[tier].add(prefixId);
     }
     const ledger = this.tiers[tier];

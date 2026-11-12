@@ -322,7 +322,7 @@ class Model:
         return min(self.prefix_length.get(prefix_id, 0), tokens)
 
     def mark_warm(self, tier: int, prefix_id: str, valid: bool) -> None:
-        if prefix_id != "":
+        if prefix_id in self.prefix_length:
             self.warm.add(self.warm_key(tier, prefix_id))
 
     def bill(self, tier: int, tokens: int, text: str, prefix_id: str) -> int:
@@ -1032,17 +1032,21 @@ class PrefixIsWarmOnlyAfterAGoodAnswer(Model):
             super().mark_warm(tier, prefix_id, valid)
 
 
-class UnknownPrefixCostsNothing(Model):
-    """Treats a prefix that was never defined as the whole prompt, at the cached price."""
+class UndefinedPrefixIsWarmedAnyway(Model):
+    """Warms a prefix id by a call made before the prefix was defined."""
 
-    def reused(self, tier: int, tokens: int, prefix_id: str) -> int:
-        if (
-            prefix_id != ""
-            and prefix_id not in self.prefix_length
-            and (tier, prefix_id) in self.warm
-        ):
-            return tokens
-        return super().reused(tier, tokens, prefix_id)
+    def mark_warm(self, tier: int, prefix_id: str, valid: bool) -> None:
+        if prefix_id != "":
+            self.warm.add(self.warm_key(tier, prefix_id))
+
+
+class BaselineOfACachedLongPromptIsNotZero(Model):
+    """Gives a baseline of 0 only to a request that no tier took, not to a hit on a long prompt."""
+
+    def baseline(self, status: str, tokens: int, answers: list[str], calls: list[int]) -> int:
+        if status == "too_long":
+            return 0
+        return tokens * self.prices[0][-1] + self.tokens(answers[-1]) * self.prices[1][-1]
 
 
 class CachedTokensAreAlsoCountedAsFull(Model):
