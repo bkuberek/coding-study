@@ -1,0 +1,28 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 5, "prerequisites": [[3, 0], [3, 1], [1, 4], [0, 2], [4, 2]], "order": [3, 1, 0, 4, 2]}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"n": 5, "prerequisites": [[3, 0], [3, 1], [1, 4], [0, 2], [4, 2]], "order": [3, 0, 1, 2, 4]}, "expected": false},
+    {"id": "ex3", "visible": true, "input": {"n": 3, "prerequisites": [[0, 1], [1, 2], [2, 0]], "order": [0, 1, 2]}, "expected": false},
+    {"id": "h1", "input": {"n": 1, "prerequisites": [], "order": [0]}, "expected": true, "note": "one task, no prerequisites"},
+    {"id": "h2", "input": {"n": 3, "prerequisites": [], "order": [2, 0, 1]}, "expected": true, "note": "no prerequisites: every arrangement of the tasks is valid"},
+    {"id": "h3", "input": {"n": 3, "prerequisites": [[0, 1], [1, 2]], "order": [2, 1, 0]}, "expected": false, "note": "a chain listed in reverse"},
+    {"id": "h4", "input": {"n": 3, "prerequisites": [[0, 1]], "order": [0, 1]}, "expected": false, "note": "the order leaves task 2 out"},
+    {"id": "h5", "input": {"n": 3, "prerequisites": [[0, 1]], "order": [0, 1, 1]}, "expected": false, "note": "task 1 appears twice and task 2 not at all"},
+    {"id": "h6", "input": {"n": 2, "prerequisites": [[0, 1], [1, 0]], "order": [1, 0]}, "expected": false, "note": "two tasks that need each other: neither order works"},
+    {"id": "h7", "input": {"n": 4, "prerequisites": [[0, 1], [1, 2], [2, 3], [3, 1]], "order": [0, 1, 2, 3]}, "expected": false, "note": "a cycle behind a free task"},
+    {"id": "h8", "input": {"n": 4, "prerequisites": [[0, 1], [0, 2], [1, 3], [2, 3]], "order": [0, 2, 1, 3]}, "expected": true, "note": "a diamond: either middle task may go first"},
+    {"id": "h9", "input": {"n": 4, "prerequisites": [[0, 1], [0, 2], [1, 3], [2, 3]], "order": [0, 1, 3, 2]}, "expected": false, "note": "a diamond with the last task placed too early"},
+    {"id": "h10", "input": {"n": 3, "prerequisites": [[0, 1], [1, 2], [0, 2]], "order": [0, 1, 2]}, "expected": true, "note": "a shortcut pair that the chain already satisfies"},
+    {"id": "h11", "input": {"n": 2, "prerequisites": [[1, 0]], "order": []}, "expected": false, "note": "an empty order lists no task"},
+    {"id": "h12", "input": {"n": 3, "prerequisites": [[2, 0], [2, 1]], "order": [2, 1, 0]}, "expected": true, "note": "the last-numbered task goes first"},
+    {"id": "h13", "input": {"n": 5, "prerequisites": [[0, 1], [1, 2], [2, 3], [3, 4]], "order": [0, 1, 3, 2, 4]}, "expected": false, "note": "two neighbours on a chain swapped"},
+    {"id": "h14", "input": {"n": 4, "prerequisites": [[3, 2], [2, 1], [1, 0]], "order": [3, 2, 1, 0]}, "expected": true, "note": "a chain whose valid order counts down"},
+    {"id": "h15", "input": {"n": 6, "prerequisites": [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5]], "order": [4, 3, 2, 1, 0, 5]}, "expected": true, "note": "one task needs all the others"},
+    {"id": "g1", "generate": {"n": 2000, "seed": 380}, "hang_guard_ms": 30000, "note": "valid order of 2000 tasks: scanning for positions is quadratic here"},
+    {"id": "g2", "generate": {"n": 2000, "seed": 381}, "hang_guard_ms": 30000, "note": "valid order of 2000 tasks"},
+    {"id": "g3", "generate": {"n": 30, "seed": 382}, "note": "small mixed input"},
+    {"id": "g4", "generate": {"n": 30, "seed": 383}, "note": "small mixed input"}
+  ]
+}
