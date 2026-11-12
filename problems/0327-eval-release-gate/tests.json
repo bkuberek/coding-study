@@ -14,6 +14,8 @@
         "check",
         "check",
         "check",
+        "check",
+        "check",
         "check"
       ],
       "args": [
@@ -65,6 +67,12 @@
         ],
         [
           "{\"answer\":\"Obviously fine\",\"confidence\":80,\"needs_human\":false,\"sources\":[\"a\",2]}"
+        ],
+        [
+          "{\"answer\":\"ok\",\"confidence\":1e400,\"needs_human\":false}"
+        ],
+        [
+          "{\"answer\":\"ok\",\"confidence\":1.00000000000000000001,\"needs_human\":false}"
         ]
       ],
       "expected": [
@@ -88,7 +96,11 @@
         [
           "type:sources",
           "banned:obviously"
-        ]
+        ],
+        [
+          "type:confidence"
+        ],
+        []
       ],
       "visible": true
     },
@@ -418,6 +430,9 @@
         "check",
         "check",
         "check",
+        "check",
+        "check",
+        "check",
         "check"
       ],
       "args": [
@@ -487,6 +502,15 @@
         ],
         [
           "{\"answer\":\"a\",\"needs_human\":false,\"confidence\":2.5e1}"
+        ],
+        [
+          "{\"answer\":\"a\",\"needs_human\":false,\"confidence\":1.00000000000000000001}"
+        ],
+        [
+          "{\"answer\":\"a\",\"needs_human\":false,\"confidence\":-1e400}"
+        ],
+        [
+          "{\"answer\":\"a\",\"needs_human\":false,\"confidence\":1.5e300}"
         ],
         [
           "{\"answer\":\"a\",\"confidence\":1,\"needs_human\":true}"
@@ -579,6 +603,11 @@
         [
           "type:confidence"
         ],
+        [
+          "type:confidence"
+        ],
+        [],
+        [],
         [
           "type:confidence"
         ],
