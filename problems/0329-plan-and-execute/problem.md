@@ -61,7 +61,7 @@ A plan with two tasks that wait for each other and one with a dependency that do
 
 ## Level 2: Waves and a timeline
 
-The runner executes a plan in **waves**. At the start of a wave, the **ready** tasks are those that are not done yet and whose dependencies are all done. The wave takes the first `cap` of them in order of id (the rest wait for a later wave, together with the tasks that become ready). All tasks of a wave start at the same moment, the wave ends when the slowest of them ends, and the next wave starts then. The first wave starts at time 0. This is a deliberate simplification: a task whose dependencies finished early still waits for the end of the wave.
+The runner executes a plan in **waves**. At the start of a wave, the **ready** tasks are those that have not started yet and whose dependencies are all done. (At this level every task runs once, so "not started" and "not done" are the same; from level 3 on, a task that has run is never ready again, whether it succeeded or failed.) The wave takes the first `cap` of them in order of id (the rest wait for a later wave, together with the tasks that become ready). All tasks of a wave start at the same moment, the wave ends when the slowest of them ends, and the next wave starts then. The first wave starts at time 0. This is a deliberate simplification: a task whose dependencies finished early still waits for the end of the wave.
 
 At this level every task runs once and succeeds; `script`, `cost` and `output` are not used.
 
@@ -93,8 +93,8 @@ The critical path runs through `c` and `d` and not through the longer-looking `b
 
 **Replanning.** After a wave, look at the tasks of that wave that failed for good, in order of id. For one that has a replan registered, and whose replan has not been tried yet in this run, try it:
 
-1. Form the **new plan**: the rows of all tasks that are `done` at this moment, followed by the rows of the replan. Check it with the stages of level 1. Then also refuse it if a task of the replan has the id of any task of this run that is not done: ids are never reused.
-2. If there is an error, the replan is **rejected**: the first error of the sorted list becomes the detail `code:detail` of a log row `[wave, failedId, "rejected", detail]`, and the next failed task is tried.
+1. Form the **new plan**: the rows of all tasks that are `done` at this moment, followed by the rows of the replan. Check it with the three stages of level 1, in order, each reached only if the one before found nothing. Only when all three find nothing, check that ids are never reused: every task of the replan whose id is the id of a task of this run that is not done (failed, replaced, or not started) gives the error `["duplicate-id", id]`. These errors are sorted by id, and they are the only errors of the new plan. (A replan task with the id of a done task is already a `duplicate-id` of the second stage.)
+2. If there is an error, the replan is **rejected**: the first error of the sorted list (for a reused id, the smallest) becomes the detail `code:detail` of a log row `[wave, failedId, "rejected", detail]` (for example `duplicate-id:a`), and the next failed task is tried.
 3. Otherwise the replan is **applied**. Every task of the run that has not started gets the status `replaced`; the tasks of the replan are added, ready to run in the next wave and free to depend on done tasks; the log row is `[wave, failedId, "applied", "removed N, added M"]` with the number of replaced tasks and of added ones. Failed tasks stay `failed`. The wave is now finished with replanning: no other failure of the same wave is tried.
 
 A replan is tried at most once per run. The tasks that a replan adds are ordinary tasks of the run: they are listed by `run`, they can fail and be replaced again by a replan registered for their id, and the ones that never started are `blocked` like any others.
@@ -177,7 +177,7 @@ A cycle is not just "the loop did not finish". The tasks that the order cannot p
 
 ### Hint 4
 
-Level 2 is a loop over waves. Keep the set of done tasks and the clock. In each pass, find the ready tasks (not done, dependencies all done), sort them, cut to `cap`, give each the start time and its end, mark them done, and move the clock to the largest end. The critical path is a longest-path problem on an acyclic graph: go through the tasks in dependency order and, for each, remember the best total and the chain that gives it.
+Level 2 is a loop over waves. Keep the set of done tasks and the clock. In each pass, find the ready tasks (not started, dependencies all done), sort them, cut to `cap`, give each the start time and its end, mark them done, and move the clock to the largest end. The critical path is a longest-path problem on an acyclic graph: go through the tasks in dependency order and, for each, remember the best total and the chain that gives it.
 
 ### Hint 5
 
