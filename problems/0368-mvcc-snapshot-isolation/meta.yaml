@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0368"
+slug: mvcc-snapshot-isolation
+title: MVCC Snapshot Isolation
+summary: "Build MvccStore, multiversion storage with snapshot reads: version chains, first committer wins, write skew caught as a dangerous structure of read-write antidependencies, and vacuum."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, graphs]
+domains: [backend]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Versions and snapshots}
+  - {level: 2, title: Writers and first committer wins}
+  - {level: 3, title: Write skew and dangerous structures}
+  - {level: 4, title: Horizon and vacuum}
+signature:
+  class:
+    name: MvccStore
+    constructor: {params: []}
+    methods:
+      - {name: put, level: 1, params: [{name: key, type: string}, {name: value, type: string}], returns: {type: int}}
+      - {name: begin, level: 1, params: [], returns: {type: int}}
+      - {name: read, level: 1, params: [{name: tx, type: int}, {name: key, type: string}], returns: {type: string}}
+      - {name: versions, level: 1, params: [{name: key, type: string}], returns: {type: "list<string>"}}
+      - {name: write, level: 2, params: [{name: tx, type: int}, {name: key, type: string}, {name: value, type: string}], returns: {type: bool}}
+      - {name: commit, level: 2, params: [{name: tx, type: int}], returns: {type: string}}
+      - {name: abort, level: 2, params: [{name: tx, type: int}], returns: {type: bool}}
+      - {name: status, level: 2, params: [{name: tx, type: int}], returns: {type: string}}
+      - {name: beginSerializable, level: 3, params: [], returns: {type: int}}
+      - {name: antidependencies, level: 3, params: [{name: tx, type: int}], returns: {type: "list<string>"}}
+      - {name: horizon, level: 4, params: [], returns: {type: int}}
+      - {name: vacuum, level: 4, params: [], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: version-chains, name: Version chains with read records and conflict edges, role: optimal, time: "O(log v) per plain read; O(w + e) per commit; O(v + t + e) per serializable read or write; O(V + K log K) per vacuum", space: "O(V + T + R + E)", time_class: "log n", space_class: "n"}
+related: [transactional-kv-store, in-memory-database, supplier-records-locking-typescript, btree-index]
+estimate_minutes: 150
