@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"prices": [8, 4, 6, 2, 3]}, "expected": [4, 2, 4, 2, 3]},
+    {"id": "ex2", "visible": true, "input": {"prices": [7, 7, 9, 3, 3]}, "expected": [0, 4, 6, 0, 3]},
+    {"id": "h1", "input": {"prices": [5]}, "expected": [5], "note": "a single item has nothing to its right"},
+    {"id": "h2", "input": {"prices": [4, 4, 4, 4]}, "expected": [0, 0, 0, 4], "note": "all prices equal: an equal price counts as no more"},
+    {"id": "h3", "input": {"prices": [1, 2, 3, 4, 5]}, "expected": [1, 2, 3, 4, 5], "note": "strictly rising: nobody earns a rebate"},
+    {"id": "h4", "input": {"prices": [9, 7, 4, 3, 1]}, "expected": [2, 3, 1, 2, 1], "note": "strictly falling: each item earns the next price"},
+    {"id": "h5", "input": {"prices": [1000000, 1, 1000000, 1]}, "expected": [999999, 0, 999999, 1], "note": "extreme prices"},
+    {"id": "h6", "input": {"prices": [10, 20, 30, 5]}, "expected": [5, 15, 25, 5], "note": "one cheap item at the end answers every item before it"},
+    {"id": "h7", "input": {"prices": [6, 2, 7, 2, 8, 2]}, "expected": [4, 0, 5, 0, 6, 2], "note": "a later price equal to the item's own earns the whole price back"},
+    {"id": "h8", "input": {"prices": [3, 9]}, "expected": [3, 9], "note": "two items, rising"},
+    {"id": "h9", "input": {"prices": [9, 3]}, "expected": [6, 3], "note": "two items, falling"},
+    {"id": "h10", "input": {"prices": [5, 8, 5, 8, 5]}, "expected": [0, 3, 0, 3, 5], "note": "zigzag with repeated prices"},
+    {"id": "h11", "input": {"prices": [2, 6, 7, 8, 9, 10, 2]}, "expected": [0, 4, 5, 6, 7, 8, 2], "note": "a long rising run waits for the last item"},
+    {"id": "h12", "input": {"prices": [10, 1, 10, 1, 10, 1, 10]}, "expected": [9, 0, 9, 0, 9, 1, 10], "note": "alternating high and low"},
+    {"id": "h13", "input": {"prices": [4, 7, 3, 8, 6, 9, 5]}, "expected": [1, 4, 3, 2, 1, 4, 5], "note": "nested waits answered in different orders"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large shelf with a long rising run: scanning right is quadratic here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 5}, "hang_guard_ms": 30000, "note": "large shelf with a long rising run"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 2}}
+  ]
+}
