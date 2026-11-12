@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0359"
+slug: cpu-scheduler-sim
+title: CPU Scheduler Sim
+summary: "Build CpuScheduler, which simulates how an operating system shares a CPU: first come, first served, shortest job first, round robin, a multi-level feedback queue and several cores."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+domains: [systems]
+job_roles: [general, platform, backend]
+scope: function
+levels:
+  - {level: 1, title: "First come, first served and shortest job first"}
+  - {level: 2, title: Round robin}
+  - {level: 3, title: Multi-level feedback queue}
+  - {level: 4, title: Several cores}
+signature:
+  class:
+    name: CpuScheduler
+    constructor: {params: []}
+    methods:
+      - {name: addProcess, level: 1, params: [{name: pid, type: string}, {name: arrival, type: int}, {name: burst, type: int}], returns: {type: bool}}
+      - {name: runFcfs, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: runSjf, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: waitingTime, level: 1, params: [{name: pid, type: string}], returns: {type: int}}
+      - {name: turnaroundTime, level: 1, params: [{name: pid, type: string}], returns: {type: int}}
+      - {name: averageWaiting, level: 1, params: [], returns: {type: string}}
+      - {name: averageTurnaround, level: 1, params: [], returns: {type: string}}
+      - {name: runRoundRobin, level: 2, params: [{name: quantum, type: int}], returns: {type: "list<string>"}}
+      - {name: responseTime, level: 2, params: [{name: pid, type: string}], returns: {type: int}}
+      - {name: averageResponse, level: 2, params: [], returns: {type: string}}
+      - {name: contextSwitches, level: 2, params: [], returns: {type: int}}
+      - {name: runMlfq, level: 3, params: [{name: quanta, type: "int[]"}, {name: boostPeriod, type: int}], returns: {type: "list<string>"}}
+      - {name: runMulticore, level: 4, params: [{name: cores, type: int}, {name: quantum, type: int}, {name: steal, type: bool}], returns: {type: "list<list<string>>"}}
+      - {name: utilization, level: 4, params: [{name: core, type: int}], returns: {type: string}}
+      - {name: migrations, level: 4, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: clock-loop, name: One clock loop with a ready queue per core, role: optimal, time: "O(n^2) for shortest job first; O(n log n + T (k + c^2)) for the clock loops, T the ticks simulated", space: "O(n + s) for s timeline segments", time_class: "n^2", space_class: "n"}
+related: [single-threaded-cpu, task-scheduler, virtual-memory-sim]
+estimate_minutes: 120
