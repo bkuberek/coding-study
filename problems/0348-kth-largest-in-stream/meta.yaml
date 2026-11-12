@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0348"
+slug: kth-largest-in-stream
+title: Kth Largest in a Stream
+summary: "Build a class that takes new numbers one at a time and always reports the kth largest so far. A first heap problem: a small min-heap that only holds the top k."
+status: ready
+difficulty: easy
+track: dsa
+kind: design
+patterns: [heap]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  class:
+    name: KthLargestTracker
+    constructor:
+      params: [{name: k, type: int}, {name: nums, type: "int[]"}]
+    methods:
+      - {name: add, params: [{name: value, type: int}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: sorted-list, name: Keep every number in a sorted list, role: brute, time: "O(n) per add", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: min-heap, name: Min-heap holding only the k largest, role: optimal, time: "O(log k) per add", space: "O(k)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of add calls, with k = n/2 and n/2 starting numbers
+  size_ladder: [1000, 4000, 16000, 40000]
+  expected_from: min-heap
+  time_limit: {factor: 5}
+related: [kth-largest-element, last-stone-weight, top-k-frequent-elements]
+order: 0
+estimate_minutes: 20

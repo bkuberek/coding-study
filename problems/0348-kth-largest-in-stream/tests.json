@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["KthLargestTracker", "add", "add", "add", "add", "add"], "args": [[2, [15, 7, 22]], [9], [30], [22], [5], [25]], "expected": [null, 15, 22, 22, 22, 25]},
+    {"id": "ex2", "visible": true, "ops": ["KthLargestTracker", "add", "add", "add", "add"], "args": [[1, []], [-4], [-9], [0], [0]], "expected": [null, -4, -4, 0, 0]},
+    {"id": "h1", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[1, [5]], [5], [7], [1]], "expected": [null, 5, 7, 7], "note": "k = 1: the answer is the running maximum"},
+    {"id": "h2", "ops": ["KthLargestTracker", "add", "add", "add", "add"], "args": [[3, [1, 1]], [1], [2], [2], [2]], "expected": [null, 1, 1, 1, 2], "note": "exactly k - 1 starting numbers, so the first add completes the top k"},
+    {"id": "h3", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[2, [4, 4, 4]], [4], [4], [4]], "expected": [null, 4, 4, 4], "note": "all numbers equal"},
+    {"id": "h4", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[4, [10, 20, 30]], [5], [25], [1]], "expected": [null, 5, 10, 10], "note": "the first add is smaller than everything and becomes the kth"},
+    {"id": "h5", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[2, [9, 8]], [7], [6], [5]], "expected": [null, 8, 8, 8], "note": "every add is smaller than the kth largest"},
+    {"id": "h6", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[2, [1, 2]], [3], [4], [5]], "expected": [null, 2, 3, 4], "note": "every add enters the top k"},
+    {"id": "h7", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[2, [-5, -3]], [-4], [-1], [-10]], "expected": [null, -4, -3, -3], "note": "negative numbers"},
+    {"id": "h8", "ops": ["KthLargestTracker", "add", "add", "add", "add", "add", "add"], "args": [[5, [3, 1, 4, 1]], [5], [9], [2], [6], [5], [3]], "expected": [null, 1, 1, 2, 3, 4, 4], "note": "k close to the number of numbers, with ties"},
+    {"id": "h9", "ops": ["KthLargestTracker", "add", "add", "add", "add"], "args": [[2, [10000, -10000]], [-10000], [10000], [10000], [-10000]], "expected": [null, -10000, 10000, 10000, 10000], "note": "extreme values"},
+    {"id": "h10", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[2, [5, 5]], [5], [5], [5]], "expected": [null, 5, 5, 5], "note": "adding the value that the kth place already holds"},
+    {"id": "h11", "ops": ["KthLargestTracker", "add", "add", "add"], "args": [[2, [7]], [3], [8], [8]], "expected": [null, 3, 7, 8], "note": "one starting number and k = 2"},
+    {"id": "h12", "ops": ["KthLargestTracker", "add", "add", "add", "add"], "args": [[3, [9, 6, 3]], [6], [3], [9], [6]], "expected": [null, 6, 6, 6, 6], "note": "adds that tie with the kth largest"},
+    {"id": "h13", "ops": ["KthLargestTracker", "add"], "args": [[1, []], [2]], "expected": [null, 2], "note": "no starting numbers, a single add"},
+    {"id": "g1", "generate": {"n": 40000, "seed": 7}, "note": "20,000 starting numbers, k = 20,000 and 40,000 adds"},
+    {"id": "g2", "generate": {"n": 5000, "seed": 3}}
+  ]
+}
