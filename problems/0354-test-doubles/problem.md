@@ -41,7 +41,7 @@ A **stub** gives scripted answers. The test writes **rules**: "when method `m` i
 - `otherwise(name, method, answer)`: sets the answer for calls to `method` that no rule answers. A second `otherwise` for the same method replaces the first. It returns `true`, or `false` when no double has the name.
 - `call(name, method, args)`: the code under test calls `method` of the double `name` with the arguments `args`. Of the rules for this method whose pattern fits `args`, the one added most recently answers; with none, the `otherwise` answer for the method; with neither, `""`. A rule that did not answer keeps its place in its list of answers. Calling a name that no double has returns `"!unknown"`.
 
-**Why the newest rule wins.** Tests often set up broad rules first ("every `fetch` answers `ok`") and then, for one test, a narrower rule ("`fetch("order7")` times out"). Taking the newest rule lets the later, specific rule override the earlier, general one, whichever is more specific.
+**Why the newest rule wins.** Tests often set up broad rules first ("every `fetch` answers `ok`") and then, for one test, a narrower rule ("`fetch("order7")` times out"). Taking the newest rule lets the later, specific rule override the earlier, general one. Specificity plays no part: whichever of them is more specific, the newest always wins.
 
 **A worked example.** Suppose the code under test is a `greeting()` function that asks a clock for the hour and says "Good morning" before noon. With the real clock, the result depends on when the test runs. With a stub, the test fixes the hour: `addStub("clock")`, `onCall("clock", "hour", [], ["9"])`, and when `greeting()` calls `clock.hour()` it receives `"9"`, every time. A second test scripts `"15"` and checks the afternoon greeting.
 
@@ -91,7 +91,7 @@ A **mock** turns the spy's check around: the test says *before* the run which ca
 
 1. The expectations for this method, in the order they were set: the first one whose pattern fits and which has received fewer than `times` calls takes the call and answers it.
 2. Otherwise, the stub rules and the `otherwise` answer, as at level 1, if one of them applies. Such a call is **allowed**: the test does not care how often it happens, which suits questions the code asks, such as "what is the quota?".
-3. Otherwise the call is **unexpected**. A **strict** mock answers `"!unexpected"`, so that the problem shows up at the line that made the call. A **lenient** mock answers `""` and lets the run go on. Either way the mock remembers the unexpected call for the final check.
+3. Otherwise the call is **unexpected**. A **strict** mock answers `"!unexpected"`, so that the problem shows up at the line that made the call. A **lenient** mock answers `""` and lets the run go on. Either way the mock remembers the unexpected call for the final check. The book that named these patterns uses *strict* and *lenient* for call order (a strict mock fails when expected calls arrive out of order, and any mock fails at once on a call nobody expected); this problem uses the words, as many mock libraries do, for what happens to calls nobody expected.
 
 A stub never finds a call unexpected: with no rule, it answers `""` as at level 1.
 

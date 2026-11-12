@@ -84,5 +84,5 @@ Timers: the heap orders entries by `(due, sequence)`. The sequence number grows 
 
 ## Further reading
 
-- G. Meszaros, *xUnit Test Patterns: Refactoring Test Code*, Addison-Wesley, 2007: chapter 11, "Using Test Doubles", and chapter 23, "Test Double Patterns" (Test Stub, Test Spy, Mock Object and Fake Object), the source of the vocabulary used here; the Dummy Object is in chapter 27.
+- G. Meszaros, *xUnit Test Patterns: Refactoring Test Code*, Addison-Wesley, 2007: chapter 11, "Using Test Doubles", and chapter 23, "Test Double Patterns" (Test Stub, Test Spy, Mock Object and Fake Object), the source of the names stub, spy, mock and fake used here; the book uses strict and lenient for call order rather than for unexpected calls; the Dummy Object is in chapter 27.
 - S. Freeman, N. Pryce, T. Mackinnon and J. Walnes, "Mock Roles, not Objects", Companion to the 19th ACM SIGPLAN Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA 2004), pp. 236–246, [doi:10.1145/1028664.1028765](https://doi.org/10.1145/1028664.1028765): mocks as a design tool, the difference between stubbing a call and expecting it, and why to mock only types you own.
