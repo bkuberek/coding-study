@@ -2,7 +2,7 @@
 
 The nine guides of the path "Getting started: from the terminal to your first problem" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about shells, package managers, six languages and cstudy itself. This page lists each one with where it was checked, so that a later review starts from the sources, and records what the independent accuracy review changes.
 
-"Quote" means the exact text was read on that page. "Search" means the text came from a web search result for that official page, which could not be fetched itself. "Run" means an example of the guide, or a one-off command, printed it: on GNU bash 5.2.21, zsh 5.9, CPython 3.13.12, Node 24.21.0 and OpenJDK 21.0.2 on Ubuntu, with cstudy 0.41.0 from this branch in a scratch workspace. "Repo" means it was read in this repository: cstudy's own specs, guides, code or problems. A fact that could not be checked was left out of the guides; the last section lists them.
+"Quote" means the exact text was read on that page. "Run" means an example of the guide, or a one-off command, printed it: on GNU bash 5.2.21, zsh 5.9, CPython 3.13.12, Node 24.21.0 and OpenJDK 21.0.2 on Ubuntu, with cstudy 0.41.0 from this branch in a scratch workspace. "Repo" means it was read in this repository: cstudy's own specs, guides, code or problems. A fact that could not be checked was left out of the guides; the last section lists them.
 
 ## Shells and the terminal
 
@@ -11,7 +11,7 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | T1 | A Unix shell is "both a command interpreter and a programming language" | Quote: [Bash manual, What is a shell?](https://www.gnu.org/software/bash/manual/html_node/What-is-a-shell_003f.html) |
 | T2 | Starting with macOS 10.15, zsh is the default login and interactive shell; bash was the default in 10.14 and earlier; `chsh -s` with a path from `/etc/shells`; starting bash shows a message that the default interactive shell is now zsh | Quote: [Apple, Use zsh as the default shell on Mac](https://support.apple.com/en-us/102360) |
 | T3 | macOS Catalina 10.15 was released on 7 October 2019 | Quote: [About the security content of macOS Catalina 10.15](https://support.apple.com/en-us/103107) ("Released October 7, 2019"); [Apple Newsroom, 7 October 2019](https://www.apple.com/newsroom/2019/10/macos-catalina-is-available-today/) |
-| T4 | Terminal is in `/Applications/Utilities` | Search: [Open or quit Terminal on Mac](https://support.apple.com/guide/terminal/open-or-quit-terminal-apd5265185d-f365-44cb-8b09-71a064a42125/mac) |
+| T4 | Terminal is in `/Applications/Utilities` | Quote: [Open or quit Terminal on Mac](https://support.apple.com/guide/terminal/open-or-quit-terminal-apd5265185d-f365-44cb-8b09-71a064a42125/mac) |
 | T5 | Terminal's settings choose the shell it opens ("Shells open with") | Quote: [Change the default shell in Terminal](https://support.apple.com/guide/terminal/change-the-default-shell-trml113/mac) |
 | T6 | Windows Terminal hosts Command Prompt, PowerShell and bash through WSL | Quote: [Windows Terminal overview](https://learn.microsoft.com/en-us/windows/terminal/) |
 | T7 | bash runs a function, then a builtin, then searches `PATH`, remembering found paths in a hash table; a failed search prints an error and returns 127 | Quote: [Bash manual, Command Search and Execution](https://www.gnu.org/software/bash/manual/html_node/Command-Search-and-Execution.html) |
@@ -44,6 +44,8 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | T34 | The worked session: `>` replacing the three lines with `kiwi`, `>>` adding lines, `sort fruit.txt \| head -n 2` printing `apple` and `banana` | Run: zsh 5.9, with the home directory renamed |
 | T35 | zsh's default prompt ends in `%` | Run: `zsh -f` |
 | T36 | `command_search.py` prints the lookup it models | Run: `command_search.py` (a model, not a shell) |
+| T37 | A login shell is one whose argument zero starts with `-` or one started with `--login`; an interactive shell has its input and error output connected to terminals, and is not running a script or `-c` | Quote: Bash Reference Manual §6.1, §6.3.1 |
+| T38 | The exact message of a Python workspace that is not set up | Repo: `cli/src/coding_study/adapters/languages/python/runner.py`. Run |
 
 ## Package managers
 
@@ -53,7 +55,7 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | K2 | The installer prints directions for the shell config, `eval "$(<prefix>/bin/brew shellenv)"`, and without them Homebrew will not work | Quote: Homebrew installation |
 | K3 | Prefixes: `/opt/homebrew` on Apple silicon, `/usr/local` on Intel (legacy), `/home/linuxbrew/.linuxbrew` on Linux | Quote: [Homebrew FAQ](https://docs.brew.sh/FAQ); [Homebrew on Linux](https://docs.brew.sh/Homebrew-on-Linux) |
 | K4 | Each package goes into its own keg in the Cellar and is linked into the prefix; casks install pre-built binaries such as applications, fonts and plugins | Quote: brew.sh |
-| K5 | `install`, `uninstall`, `update`, `upgrade`, `search` (substring of names), `list`, `deps --tree`, `doctor`, `cleanup` (removes old versions); `brew cleanup` runs every 30 days on install, upgrade and reinstall | Quote: [Homebrew manual page](https://docs.brew.sh/Manpage) |
+| K5 | `install`, `uninstall`, `update`, `upgrade`, `search` (substring of names), `list`, `deps --tree`, `doctor`, `cleanup` (removes old versions); after an install or upgrade, `brew cleanup` runs for those packages, and every 30 days for all packages | Quote: [Homebrew manual page](https://docs.brew.sh/Manpage) |
 | K6 | Homebrew runs installs as the account that owns it, which is why not `sudo` | Quote: Homebrew FAQ |
 | K7 | Homebrew supports WSL 2 and recommends moving off WSL 1 | Quote: Homebrew on Linux |
 | K8 | APT is Ubuntu's package manager; `apt update` refreshes the database; `apt upgrade` installs newer versions; `apt install` also installs dependencies; `sudo` gives administrator rights for one command; `apt remove`, `apt search`, `apt show` | Quote: [Ubuntu Server, managing your software](https://ubuntu.com/server/docs/tutorial/managing-software/) |
@@ -74,7 +76,7 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | # | Claim | Source |
 |---|-------|--------|
 | PY1 | The tutorial is "designed for programmers that are new to the Python language, not beginners who are new to programming"; its chapters 2 (interpreter), 3 (numbers, text, lists), 4 (control flow, functions), 5 (data structures), 8 (errors), 12 (virtual environments) | Quote: [The Python Tutorial](https://docs.python.org/3/tutorial/index.html) and its chapter pages |
-| PY2 | python.org's Beginner's Guide for non-programmers lists tutorials that "don't assume that you have previous experience" | Quote: [Beginner's Guide, non-programmers](https://wiki.python.org/python/getting-started/BeginnersGuide/NonProgrammers.html), linked from [Python For Beginners](https://www.python.org/about/gettingstarted/) |
+| PY2 | The Python Wiki's Beginner's Guide for non-programmers is a community list of tutorials that "don't assume that you have previous experience"; it is a legacy page that warns "Information may be outdated or no longer applicable", and some entries are paid | Quote: [Beginner's Guide, non-programmers](https://wiki.python.org/python/getting-started/BeginnersGuide/NonProgrammers.html), linked from [Python For Beginners](https://www.python.org/about/gettingstarted/) |
 | PY3 | "indentation is Python's way of grouping statements" | Quote: [tutorial §3.2](https://docs.python.org/3/tutorial/introduction.html) |
 | PY4 | "The default value is evaluated only once", which matters for a mutable default | Quote: [tutorial §4.9.1](https://docs.python.org/3/tutorial/controlflow.html) |
 | PY5 | Arguments are passed by object reference, so the caller sees changes to a mutable argument; a function without `return` returns `None` | Quote: tutorial §4.8 and its footnote |
@@ -99,7 +101,7 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | TS6 | `??` replaces only `null` and `undefined`, `\|\|` any falsy value such as `0` or `""` | Quote: [MDN, nullish coalescing](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing) |
 | TS7 | `Number.MAX_SAFE_INTEGER` is 9,007,199,254,740,991 (2⁵³ − 1); `2 ** 53 + 1` prints `9007199254740992` | Quote: [MDN, MAX_SAFE_INTEGER](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER). Run: Node 24.21.0 |
 | TS8 | The specification requires `Map` and `Set` access to be sublinear on average; `set.has` is on average faster than `includes` on an array of the same length | Quote: MDN [Map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set) |
-| TS9 | Node.js replaces types with whitespace and does no type checking; type stripping is on by default since 23.6.0 and 22.18.0; only erasable syntax runs, and `enum`, namespaces with runtime code and parameter properties need transformation | Quote: [Node.js, TypeScript](https://nodejs.org/api/typescript.html) |
+| TS9 | Node.js replaces types with whitespace and does no type checking; type stripping is on by default since 22.18.0 and 23.6.0; only erasable syntax runs, and `enum`, namespaces with runtime code and parameter properties need transformation | Quote: [Node.js, TypeScript](https://nodejs.org/api/typescript.html) |
 | TS10 | `noEmit` writes no output files, leaving TypeScript as a type checker | Quote: [TSConfig, noEmit](https://www.typescriptlang.org/tsconfig/#noEmit) |
 
 ## Java
@@ -169,6 +171,7 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | R10 | Items are private by default; `pub` makes them public | Quote: [§7.3](https://doc.rust-lang.org/book/ch07-03-paths-for-referring-to-an-item-in-the-module-tree.html) |
 | R11 | `todo!()` indicates unfinished code and panics with "not yet implemented" | Quote: [todo!](https://doc.rust-lang.org/std/macro.todo.html) |
 | R12 | `Vec` `get(i)` is O(1), `insert(i)` O(n − i) amortized, `remove(i)` O(n − i); `HashMap` `get`, `insert` and `remove` O(1) expected; `*` marks amortized and `~` expected costs | Quote: [std::collections](https://doc.rust-lang.org/std/collections/index.html) |
+| R13 | Amortized costs average resizes over a long series of operations; `HashMap`'s expected costs can, very unlikely, be much worse because hashing is probabilistic | Quote: std::collections, Performance |
 
 ## cstudy itself
 
@@ -177,20 +180,20 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | C1 | Every command and option the guides use: `init`, `doctor` (`--fix`), `next` (`--difficulty`), `list` (`--difficulty`, `--track`), `show`, `start` (`--lang`, `--no-open`, `--fresh`, `--timer`), `test` (`--case`, `--watch`, `--typecheck`, `--debug`), `hint`, `status`, `done` (`--rating`, `--gave-up`), `abort`, `solution` (`--all`), `history`, `learn` (`--path`, `--done`), `config edit`, `serve --open` | Run: each command's `--help`. Repo: [cli spec](../specs/cli.md) |
 | C2 | The two-sum stubs in all six languages, and their paths | Run: `cstudy start two-sum --lang <language> --no-open` |
 | C3 | The worked example's outputs: `next` on a new workspace, `start`, `test` with `ERROR`, `FAIL` and `TIMEOUT` (30000 ms hang guard), `hint` (1 of 3), `status`, `done --gave-up`, and the refusal of `done --rating` | Run: a scratch workspace |
-| C4 | The `done --rating ok` output, in Kotlin | Repo: cli spec, `cstudy done` |
+| C4 | The `done --rating ok` output of a passed Python attempt; the attempt's time runs from `start` to `done` | Run: a scratch workspace. Repo: [progress and scheduling](../specs/progress-and-scheduling.md), solve time |
 | C5 | Exit codes 1 (test failures), 2 (build or load failure), 3 (usage, no workspace), 4 (environment) | Repo: cli spec, Exit codes |
 | C6 | `doctor` rows: `ok`, `WARN`, `FAIL` with a `fix:` hint; Go and Rust only warn; a missing Node.js, pnpm or JDK fails without stopping other languages; the `gradle` row warns | Repo: cli spec; README. Run: `cstudy doctor` |
 | C7 | Grades: `--gave-up` or a solution opened before a pass is `again`; a hint caps at `ok`; over a `--timer`, or a `suboptimal` bench verdict, caps at `hard`; first reviews after 1, 2, 3 and 5 days; at most 180 days; mastered from 21 days | Repo: [progress and scheduling](../specs/progress-and-scheduling.md#grade); cli spec, Configuration |
 | C8 | Every command but `init`, `doctor`, `list`, `show` and `learn` needs a workspace | Repo: cli spec, Command summary |
-| C9 | `valid-palindrome` and `move-zeroes` list only single-pass approaches; simple Python solutions pass every case; checking every pair passes `contains-duplicate` in Python (20.5 s) and times out on `two-sum`'s generated case | Repo: their `meta.yaml` and `tests.json`. Run |
+| C9 | The simplest approaches of `valid-palindrome` and `move-zeroes` take a few linear passes (filter, reverse and compare; filter and write back), none nested; simple Python solutions pass every case; checking every pair passes `contains-duplicate` in Python (20.5 s) and times out on `two-sum`'s generated case | Repo: their `meta.yaml`, `tests.json` and `solutions/explanation.md`. Run |
 | C10 | The practice lines summarise each problem's statement or bug report | Repo: each `problem.md` |
 | C11 | cstudy supports macOS and Linux, not Windows; CI runs on Ubuntu | Repo: [PRD](../prd.md) |
-| C12 | 272 of 320 problems have a Python reference; the four practice problems have all six languages | Run: `cstudy list --json` |
-| C13 | The TypeScript runner uses Node's type stripping, so Node 24 or newer; `--typecheck` runs `pnpm exec tsc --noEmit` | Repo: toolchains guide; cli spec |
+| C12 | 272 of 320 problems have a Python reference; the 48 without one are 17 debugging problems built on another language's trap and 31 project problems written for one other language; the four practice problems have all six languages | Run: `cstudy list --json` |
+| C13 | The TypeScript runner uses Node's type stripping, and cstudy needs Node 24 or newer; `--typecheck` runs `pnpm exec tsc --noEmit` | Repo: toolchains guide; cli spec |
 | C14 | Rust builds use the release profile with `overflow-checks = true`, so an `i32` overflow panics; `--debug` uses the dev profile with the same checks; vendored crates, offline | Repo: [runners spec](../specs/runners.md); toolchains guide |
 | C15 | Go builds use `GOTOOLCHAIN=local` and a pinned environment, and need no download; JDK selection by `JAVA_HOME`, else the first `java` on `PATH`; Kotlin compiles through the Gradle plugin | Repo: toolchains guide |
 | C16 | `cstudy start` opens `$VISUAL` or `$EDITOR`; `default_lang` is `python` | Repo: README; cli spec, Configuration |
-| C17 | `cstudy learn --path getting-started` lists the 13 steps | Run |
+| C17 | `cstudy learn --path getting-started` lists 7 steps: three guides and four problems; the six language guides are linked from package managers and your first problem, not steps | Run |
 | C18 | `cstudy doctor --fix` runs `uv sync`, `pnpm install` and a first Gradle build; the Python project includes `debugpy` for `cstudy test --debug`; `cstudy test` on Java and Kotlin prints a `build` line | Repo: toolchains guide, Check everything; cli spec, `cstudy test` |
 | C19 | `cstudy serve --open` runs the same loop in a page on your own computer, and Ctrl-C stops it | Repo: README, Practise in the browser |
 | C20 | Several easy problems take up to 10⁵ numbers, such as `missing-number` and `move-zeroes` | Repo: their `problem.md` constraints |
@@ -214,6 +217,23 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 
 gnu.org refused most requests (HTTP 429), so the Bash Reference Manual was read on the Bash maintainer's site, [tiswww.case.edu](https://tiswww.case.edu/php/chet/bash/bashtop.html), which publishes the same manual.
 
-## Independent review
+## Independent accuracy review (2026-11-12)
 
-Pending. The facts above have not yet had an independent accuracy review; its findings and the changes they bring will be recorded here.
+The review checked all 135 links, every cstudy command and option against the CLI, and the facts above. Every link resolves and every command and option exists. These are its findings and what changed.
+
+| Finding | Change |
+|---------|--------|
+| `valid-palindrome` and `move-zeroes` were said to be solved in a single pass; their simplest approaches take several | "A few passes over the input, never a loop inside a loop"; C9 corrected |
+| Type stripping was given as why cstudy needs Node 24, but it is on by default since 22.18.0 and 23.6.0 | The two facts are stated separately; TS9 and C13 corrected |
+| Homebrew's cleanup was described as every 30 days only | After each install or upgrade for those packages, and every 30 days for all packages; K5 corrected |
+| The Beginner's Guide for non-programmers was presented as Python's own documentation | Named as the Python Wiki's community list, which warns it may be out of date and lists some paid entries; PY2 corrected |
+| The quoted cstudy error message dropped the backticks around its command | Quoted exactly; T38 added |
+| "A few debugging problems" did not account for the 48 problems without Python | Debugging problems built on another language's trap and project problems written for one other language; C12 corrected |
+| "Every new shell starts empty" ignored the inherited environment | A new shell starts with the environment it inherited, then reads a config file |
+| The path counted all six language guides, so `cstudy learn --path` sent a Python learner on to the TypeScript guide | The path has 7 steps; the language guides are linked from package managers and your first problem; C17 corrected |
+| Login shell, interactive shell, exit status and process were used before they were explained | Each is defined where it first appears; T37 added |
+| The language guides' Complexity sections used Big-O and amortized without saying what they mean | One plain sentence in each; R13 added for Rust's expected costs |
+| The config files table said "Read by every interactive shell", which bash's `~/.bashrc` row contradicted | "Read by an interactive shell" |
+| The `done --rating ok` example was a Kotlin one from the CLI spec | A real Python run; C4 corrected |
+| "Skipping punctuation" undersold what `valid-palindrome` skips | "Skipping everything but letters and digits" |
+| T4 was marked as a search result | The Apple page loads, so it is a quote |
