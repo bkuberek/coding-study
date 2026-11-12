@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0337"
+slug: snapshot-table
+title: Snapshot Table
+summary: "Build SnapshotTable, a table format of immutable data files and snapshots: manifests, deletes and overwrites, time travel, optimistic commits that rebase or conflict, snapshot expiry and compaction."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [data, backend]
+job_roles: [data-engineer, backend]
+scope: function
+levels:
+  - {level: 1, title: Append-only snapshots}
+  - {level: 2, title: Deletes and time travel}
+  - {level: 3, title: Optimistic commits}
+  - {level: 4, title: Expiry and compaction}
+signature:
+  class:
+    name: SnapshotTable
+    constructor: {params: []}
+    methods:
+      - {name: append, level: 1, params: [{name: files, type: "list<list<string>>"}, {name: timestamp, type: long}], returns: {type: int}}
+      - {name: currentSnapshot, level: 1, params: [], returns: {type: int}}
+      - {name: scan, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: manifest, level: 1, params: [{name: snapshotId, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: deleteFiles, level: 2, params: [{name: paths, type: "list<string>"}, {name: timestamp, type: long}], returns: {type: int}}
+      - {name: overwrite, level: 2, params: [{name: partition, type: string}, {name: files, type: "list<list<string>>"}, {name: timestamp, type: long}], returns: {type: int}}
+      - {name: scanAt, level: 2, params: [{name: snapshotId, type: int}], returns: {type: "list<string>"}}
+      - {name: snapshotAsOf, level: 2, params: [{name: timestamp, type: long}], returns: {type: int}}
+      - {name: history, level: 2, params: [], returns: {type: "list<list<string>>"}}
+      - {name: commit, level: 3, params: [{name: base, type: int}, {name: adds, type: "list<list<string>>"}, {name: removes, type: "list<string>"}, {name: timestamp, type: long}], returns: {type: "list<string>"}}
+      - {name: expireSnapshots, level: 4, params: [{name: olderThan, type: long}, {name: retainLast, type: int}], returns: {type: "list<string>"}}
+      - {name: compact, level: 4, params: [{name: partition, type: string}, {name: maxFileRows, type: int}, {name: timestamp, type: long}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: file-lifetimes, name: One lifetime per data file over a line of snapshots, role: optimal, time: "O(F log F) per scan, manifest or expiry and O(F) per overwrite or compaction, F the files ever added; O(k + D) per commit of k changes, D the files changed since its base", space: "O(F + S) for F files and S snapshots", time_class: "n log n", space_class: "n"}
+related: [snapshot-array, time-based-kv-store, versioned-memory-store, scd-type2-dimension, data-quality-gate, lineage-graph]
+estimate_minutes: 120
