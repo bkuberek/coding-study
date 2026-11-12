@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0330"
+slug: corrective-rag
+title: Corrective RAG
+summary: "Build CorrectiveRag, which checks what retrieval found before trusting it: rank by cosine, keep what is relevant, refine or fall back, retry with rewrites, then cite the evidence or refuse."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing, greedy]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Retrieve and grade}
+  - {level: 2, title: Refine or fall back}
+  - {level: 3, title: Rewrite and retry}
+  - {level: 4, title: Grounded answer}
+signature:
+  class:
+    name: CorrectiveRag
+    constructor: {params: []}
+    methods:
+      - {name: addPassage, level: 1, params: [{name: passageId, type: string}, {name: embedding, type: "int[]"}, {name: text, type: string}], returns: {type: bool}}
+      - {name: addQuery, level: 1, params: [{name: query, type: string}, {name: embedding, type: "int[]"}], returns: {type: bool}}
+      - {name: addVerdict, level: 1, params: [{name: query, type: string}, {name: itemId, type: string}, {name: verdict, type: string}], returns: {type: bool}}
+      - {name: retrieve, level: 1, params: [{name: query, type: string}, {name: k, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: keepRelevant, level: 1, params: [{name: query, type: string}, {name: k, type: int}], returns: {type: "list<string>"}}
+      - {name: verdictCounts, level: 1, params: [{name: query, type: string}, {name: k, type: int}], returns: {type: "int[]"}}
+      - {name: addFallback, level: 2, params: [{name: query, type: string}, {name: fallbackId, type: string}, {name: text, type: string}], returns: {type: bool}}
+      - {name: decide, level: 2, params: [{name: query, type: string}, {name: k, type: int}], returns: {type: string}}
+      - {name: evidence, level: 2, params: [{name: query, type: string}, {name: k, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: addRewrite, level: 3, params: [{name: query, type: string}, {name: rewrite, type: string}], returns: {type: bool}}
+      - {name: attempts, level: 3, params: [{name: query, type: string}, {name: k, type: int}, {name: need, type: int}, {name: maxRetries, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: groundedContext, level: 4, params: [{name: query, type: string}, {name: k, type: int}, {name: need, type: int}, {name: maxRetries, type: int}, {name: budget, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: answer, level: 4, params: [{name: query, type: string}, {name: k, type: int}, {name: need, type: int}, {name: maxRetries, type: int}, {name: budget, type: int}, {name: minSupport, type: int}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: rank-grade-gate, name: Exact cosine ranking then verdicts decide what is trusted retried and cited, role: optimal, time: "O(r (n m + n log n + s)) per query", space: "O(n + v)", time_class: "n log n", space_class: "n"}
+related: [cosine-top-k, retrieval-metrics, context-packer, graphrag-context, rag-citations-typescript, chunking-with-overlap, bm25-hybrid-ranker]
+estimate_minutes: 120
