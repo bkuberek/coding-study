@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Variable-size sliding windows
+summary: Grow a window on the right and shrink it on the left to find the longest or shortest stretch that obeys a rule, and know which rules allow it.
+level: core
+prerequisites: [fixed-size-windows]
+related: [prefix-sums-with-hash-maps, pairs-in-sorted-arrays, counting-and-frequency]
+problems: [best-time-to-buy-sell-stock, min-size-subarray-sum, longest-substring-without-repeats, max-ones-with-flips, fruit-into-baskets, longest-repeating-replacement, minimum-window-substring]
