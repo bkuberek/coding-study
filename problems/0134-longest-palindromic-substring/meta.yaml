@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 5, url: "https://leetcode.com/problems/longest-palindromic-substring/"}
-related: [valid-palindrome, almost-palindrome]
+related: [valid-palindrome, almost-palindrome, substring-search]
 order: 9
 estimate_minutes: 30

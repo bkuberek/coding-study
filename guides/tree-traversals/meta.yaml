@@ -4,4 +4,4 @@ summary: Visit every node of a tree in pre-order, in-order, post-order or level 
 level: core
 prerequisites: [trees]
 related: [recursion-on-trees, binary-search-trees]
-problems: [invert-binary-tree, level-order-traversal, right-side-view]
+problems: [invert-binary-tree, level-order-traversal, right-side-view, org-chart-outline]

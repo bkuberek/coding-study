@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 1143, url: "https://leetcode.com/problems/longest-common-subsequence/"}
-related: [edit-distance, distinct-subsequences, interleaving-string]
+related: [edit-distance, distinct-subsequences, interleaving-string, line-diff-and-merge]
 guides: [two-dimensional-tables]
 order: 2
 estimate_minutes: 25

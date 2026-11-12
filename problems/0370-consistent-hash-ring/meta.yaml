@@ -40,6 +40,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: sorted-points, name: Sorted ring points with binary search, role: optimal, time: "O(log p) per lookup; O(p + k log p) per join or leave; O(m p) per assignBounded", space: "O(p + k)", time_class: "n", space_class: "n"}
-related: [logical-clocks, distributed-kv-store]
+related: [logical-clocks, distributed-kv-store, crdt-replicas, raft-sim]
 guides: [hash-functions]
 estimate_minutes: 90

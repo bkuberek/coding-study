@@ -29,7 +29,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 621, url: "https://leetcode.com/problems/task-scheduler/"}
-related: [last-stone-weight, single-threaded-cpu]
+related: [last-stone-weight, single-threaded-cpu, cpu-scheduler-sim]
 guides: [heaps, scheduling-with-deadlines]
 order: 3
 estimate_minutes: 25

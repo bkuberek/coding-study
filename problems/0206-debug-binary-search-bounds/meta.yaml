@@ -23,6 +23,6 @@ approaches:
   - {id: closed-interval, name: Closed-interval binary search, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
 limits:
   hang_guard_ms: 3000
-related: [binary-search, first-last-position]
+related: [binary-search, first-last-position, property-test-runner]
 guides: [binary-search-mistakes]
 estimate_minutes: 15

@@ -23,5 +23,5 @@ signature:
 comparator: {type: exact}
 approaches:
   - {id: latest-per-contractor, name: Keep each contractor's latest expiry then filter and sort, role: optimal, time: "O(n + m log m)", space: "O(m)", time_class: "n log n", space_class: "n"}
-related: [coverage-gaps]
+related: [coverage-gaps, slo-burn-rate]
 estimate_minutes: 25

@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 239, url: "https://leetcode.com/problems/sliding-window-maximum/"}
-related: [min-size-subarray-sum, trapping-rain-water]
+related: [min-size-subarray-sum, trapping-rain-water, slo-burn-rate]
 guides: [fixed-size-windows, queues-and-deques]
 order: 8
 estimate_minutes: 35

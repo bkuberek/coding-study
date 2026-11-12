@@ -28,6 +28,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 150, url: "https://leetcode.com/problems/evaluate-reverse-polish-notation/"}
-related: [basic-calculator, valid-parentheses]
+related: [basic-calculator, valid-parentheses, tiny-interpreter]
 guides: [evaluating-expressions]
 estimate_minutes: 15

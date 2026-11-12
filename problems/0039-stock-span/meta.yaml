@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 901, url: "https://leetcode.com/problems/online-stock-span/"}
-related: [daily-temperatures, min-stack]
+related: [daily-temperatures, min-stack, price-after-rebate]
 guides: [monotonic-stacks]
 order: 3
 estimate_minutes: 20

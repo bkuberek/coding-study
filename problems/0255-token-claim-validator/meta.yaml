@@ -26,5 +26,5 @@ signature:
 comparator: {type: exact}
 approaches:
   - {id: ordered-checks, name: Index the claims and run the rules in their stated order, role: optimal, time: "O(c + s)", space: "O(c)", time_class: "n", space_class: "n"}
-related: [refresh-token-rotation, authorization-policy-engine]
+related: [refresh-token-rotation, authorization-policy-engine, cors-policy-evaluator, cert-chain-validator]
 estimate_minutes: 25

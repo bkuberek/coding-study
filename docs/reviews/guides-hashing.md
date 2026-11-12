@@ -70,6 +70,14 @@ The seven guides of the path "Hashing: from your first hash map to content-addre
 | S8 | Linear probing: about (1 + 1/(1 − α))/2 probes for a hit and (1 + 1/(1 − α)²)/2 for a miss | Knuth, The Art of Computer Programming, vol. 3, §6.4; recalled, the arithmetic at α = 0.5 and 0.9 checked |
 | S9 | Generic attack costs of about 2ⁿ for preimages and 2^(n/2) for collisions; universal hashing bounds a pair's collision probability by 1/m | Standard results, stated without a fetched source |
 
+## Spoiler check of consistent-hash-ring
+
+`consistent-hash-ring` names hash-functions as its guide, and the guide lists it in its practice section; it is not a step of the path.
+
+| Problem | Guide | Overlap the guide states | Kept back |
+|---------|-------|--------------------------|-----------|
+| `consistent-hash-ring` | hash-functions | Its statement explains why plain modulo placement moves almost every key, and specifies FNV-1a. The guide teaches the hash-then-modulo step, spreading, and a count of how keys of the form `user0` to `user999` fill the buckets, which answers follow-up 5 in general | The ring, its sorted points and the search for the next point (hint 2), virtual nodes and their labels, arcs, moves, replicas and bounded loads; FNV is not mentioned |
+
 ## Changes from the first accuracy review (2026-11-11)
 
 The review found no factual errors that needed rework; these are its findings and what changed.

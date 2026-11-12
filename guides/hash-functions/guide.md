@@ -250,7 +250,9 @@ BBBB -> 2031744
 
 ## Practice
 
-This guide has no problem of its own: hash functions are practised through the tables built on them. Continue with [hash maps and sets](../hash-maps-and-sets/guide.md), whose problems use exactly the idea above: compute where a key belongs, then look only there.
+- `cstudy start consistent-hash-ring`: spread keys over a set of nodes that changes, so that a node joining or leaving moves as few keys as possible, in four levels. It is not a step of the hashing path.
+
+The hashing path continues with [hash maps and sets](../hash-maps-and-sets/guide.md), whose problems use exactly the idea above: compute where a key belongs, then look only there.
 
 ## Further reading
 

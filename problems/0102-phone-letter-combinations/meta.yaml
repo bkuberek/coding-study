@@ -28,6 +28,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 17, url: "https://leetcode.com/problems/letter-combinations-of-a-phone-number/"}
-related: [subsets, generate-parentheses]
+related: [subsets, generate-parentheses, lamp-patterns]
 order: 8
 estimate_minutes: 15

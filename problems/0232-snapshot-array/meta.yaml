@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 1146, url: "https://leetcode.com/problems/snapshot-array/"}
-related: [time-based-kv-store, binary-search, first-last-position, content-addressed-store, snapshot-table]
+related: [time-based-kv-store, binary-search, first-last-position, content-addressed-store, snapshot-table, undo-redo-editor]
 guides: [lower-and-upper-bounds]
 order: 12
 estimate_minutes: 25

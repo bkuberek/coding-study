@@ -28,7 +28,7 @@ perf:
   expected_from: array-trie
 references:
   leetcode: {number: 208, url: "https://leetcode.com/problems/implement-trie-prefix-tree/"}
-related: [wildcard-word-dictionary, search-suggestions, word-search-ii]
+related: [wildcard-word-dictionary, search-suggestions, word-search-ii, count-words-by-prefix]
 guides: [tries]
 order: 1
 estimate_minutes: 20

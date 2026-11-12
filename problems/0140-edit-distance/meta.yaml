@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 72, url: "https://leetcode.com/problems/edit-distance/"}
-related: [longest-common-subsequence, distinct-subsequences, regex-matching]
+related: [longest-common-subsequence, distinct-subsequences, regex-matching, line-diff-and-merge]
 guides: [two-dimensional-tables]
 order: 3
 estimate_minutes: 30

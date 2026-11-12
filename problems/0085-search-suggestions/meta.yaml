@@ -29,7 +29,7 @@ perf:
   expected_from: binary-search
 references:
   leetcode: {number: 1268, url: "https://leetcode.com/problems/search-suggestions-system/"}
-related: [implement-trie, wildcard-word-dictionary]
+related: [implement-trie, wildcard-word-dictionary, count-words-by-prefix]
 guides: [tries]
 order: 3
 estimate_minutes: 25

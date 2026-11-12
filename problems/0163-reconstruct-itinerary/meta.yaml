@@ -28,6 +28,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 332, url: "https://leetcode.com/problems/reconstruct-itinerary/"}
-related: [critical-connections, network-delay-time]
+related: [critical-connections, network-delay-time, semver-resolver]
 order: 6
 estimate_minutes: 35

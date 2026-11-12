@@ -27,7 +27,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 75, url: "https://leetcode.com/problems/sort-colors/"}
-related: [move-zeroes]
+related: [move-zeroes, sorting-workbench]
 guides: [in-place-compaction]
 order: 7
 estimate_minutes: 20

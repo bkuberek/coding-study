@@ -45,5 +45,5 @@ project:
     sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43, keycloak: 265}, memory_mb: 650}
 approaches:
   - {id: reference, name: "Check the state before the code, the signature before the claims, and keep only the newest refresh token", role: optimal, time: "per request", space: "per session"}
-related: [token-claim-validator, refresh-token-rotation]
+related: [token-claim-validator, refresh-token-rotation, cert-chain-validator]
 estimate_minutes: 240

@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 648, url: "https://leetcode.com/problems/replace-words/"}
-related: [implement-trie, search-suggestions, wildcard-word-dictionary]
+related: [implement-trie, search-suggestions, wildcard-word-dictionary, count-words-by-prefix]
 guides: [tries]
 order: 5
 estimate_minutes: 20

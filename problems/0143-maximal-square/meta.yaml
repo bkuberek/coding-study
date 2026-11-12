@@ -29,7 +29,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 221, url: "https://leetcode.com/problems/maximal-square/"}
-related: [maximal-rectangle, unique-paths]
+related: [maximal-rectangle, unique-paths, minimum-path-sum]
 guides: [two-dimensional-tables]
 order: 6
 estimate_minutes: 25

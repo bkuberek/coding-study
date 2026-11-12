@@ -31,6 +31,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 155, url: "https://leetcode.com/problems/min-stack/"}
-related: [valid-parentheses, randomized-set]
+related: [valid-parentheses, randomized-set, undo-redo-editor]
 guides: [stacks]
 estimate_minutes: 20

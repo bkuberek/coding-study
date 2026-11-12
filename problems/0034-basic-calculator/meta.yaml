@@ -28,6 +28,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 227, url: "https://leetcode.com/problems/basic-calculator-ii/"}
-related: [evaluate-rpn, decode-string, values-templating]
+related: [evaluate-rpn, decode-string, values-templating, tiny-interpreter]
 guides: [evaluating-expressions]
 estimate_minutes: 25

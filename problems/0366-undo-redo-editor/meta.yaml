@@ -35,5 +35,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: history-tree, name: Edits as commands in a history tree, role: optimal, time: "O(n) per edit, undo or redo; O(n * d) per jump", space: "O(n + e)", time_class: "n", space_class: "n"}
-related: [min-stack, snapshot-array, in-memory-database, transactional-kv-store]
+related: [min-stack, snapshot-array, in-memory-database, transactional-kv-store, tiny-interpreter, line-diff-and-merge]
 estimate_minutes: 60

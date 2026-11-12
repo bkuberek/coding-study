@@ -43,5 +43,5 @@ project:
     sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
 approaches:
   - {id: reference, name: "Resolve once, check every address, connect to what was checked", role: optimal, time: "per request", space: "per request"}
-related: [vendor-retry-client-typescript, coworking-availability-typescript]
+related: [vendor-retry-client-typescript, coworking-availability-typescript, cors-policy-evaluator]
 estimate_minutes: 180

@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 1834, url: "https://leetcode.com/problems/single-threaded-cpu/"}
-related: [task-scheduler, maximize-capital]
+related: [task-scheduler, maximize-capital, cpu-scheduler-sim]
 guides: [heaps]
 order: 6
 estimate_minutes: 30

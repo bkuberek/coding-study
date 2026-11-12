@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 23, url: "https://leetcode.com/problems/merge-k-sorted-lists/"}
-related: [merge-two-sorted-lists, sort-linked-list, kth-largest-element]
+related: [merge-two-sorted-lists, sort-linked-list, kth-largest-element, sorting-workbench]
 guides: [heap-patterns]
 order: 8
 estimate_minutes: 30

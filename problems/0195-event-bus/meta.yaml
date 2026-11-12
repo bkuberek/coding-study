@@ -25,4 +25,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: topic-matcher, name: Subscribers with compiled patterns and bounded inboxes, role: optimal, time: "O(s p k^2) per publish; O(m) per poll or drain", space: "O(s p + e)", time_class: "n", space_class: "n"}
+related: [test-doubles]
 estimate_minutes: 45

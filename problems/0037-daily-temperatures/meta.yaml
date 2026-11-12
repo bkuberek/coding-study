@@ -28,7 +28,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 739, url: "https://leetcode.com/problems/daily-temperatures/"}
-related: [stock-span, largest-rectangle-histogram, trapping-rain-water]
+related: [stock-span, largest-rectangle-histogram, trapping-rain-water, price-after-rebate]
 guides: [monotonic-stacks]
 order: 1
 estimate_minutes: 20

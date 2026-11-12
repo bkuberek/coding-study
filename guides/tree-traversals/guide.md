@@ -360,6 +360,7 @@ On a path of 100,000 nodes, the recursive walk hits CPython's limit of 1000 fram
 - `cstudy start invert-binary-tree`: rearrange every node of a tree, recursively and then without recursion.
 - `cstudy start level-order-traversal`: list a tree's values level by level, as one list per level.
 - `cstudy start right-side-view`: report the nodes you would see looking at the tree from its right side.
+- `cstudy start org-chart-outline`: a chart of who reports to whom, printed at level 4 as an indented outline, parents before their reports, on charts too deep for recursion.
 
 ## Further reading
 

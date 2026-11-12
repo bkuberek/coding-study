@@ -29,6 +29,6 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 148, url: "https://leetcode.com/problems/sort-list/"}
-related: [merge-two-sorted-lists, merge-k-sorted-lists, reorder-list]
+related: [merge-two-sorted-lists, merge-k-sorted-lists, reorder-list, sorting-workbench]
 order: 7
 estimate_minutes: 30

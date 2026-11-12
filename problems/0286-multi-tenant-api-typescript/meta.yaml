@@ -44,5 +44,5 @@ project:
     sizes: {install_mb: 37, images_mb: {app: 81, postgres: 117}, memory_mb: 120}
 approaches:
   - {id: reference, name: "Scope twice: every query by the caller's organization, every table by a policy, the organization set per transaction", role: optimal, time: "per request", space: "per request"}
-related: [authorization-policy-engine, inventory-reservations-typescript]
+related: [authorization-policy-engine, inventory-reservations-typescript, cors-policy-evaluator]
 estimate_minutes: 240

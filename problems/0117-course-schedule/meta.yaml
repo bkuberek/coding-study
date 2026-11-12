@@ -30,7 +30,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 207, url: "https://leetcode.com/problems/course-schedule/"}
-related: [parallel-courses, all-possible-recipes, alien-dictionary, lineage-graph, architecture-checker]
+related: [parallel-courses, all-possible-recipes, alien-dictionary, lineage-graph, architecture-checker, check-task-order]
 order: 1
 guides: [topological-order]
 estimate_minutes: 25

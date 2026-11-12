@@ -31,7 +31,7 @@ perf:
   time_limit: {factor: 5}
 references:
   leetcode: {number: 305, url: "https://leetcode.com/problems/number-of-islands-ii/"}
-related: [count-connected-components, redundant-connection]
+related: [count-connected-components, redundant-connection, village-paths]
 order: 5
 guides: [union-find]
 estimate_minutes: 35

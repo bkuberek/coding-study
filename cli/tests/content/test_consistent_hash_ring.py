@@ -27,7 +27,7 @@ CASES: Sequence[Mapping[str, Any]] = json.loads(
 )["cases"]
 HIDDEN_CASES = [case for case in CASES if not case.get("visible", False)]
 RING = 2**32
-# FNV-1a 32-bit test values from the FNV reference (draft-eastlake-fnv, section 8.3).
+# FNV-1a 32-bit test values from RFC 9923, "The FNV Non-Cryptographic Hash Algorithm", section 8.3.
 FNV_REFERENCE = {"": 0x811C9DC5, "a": 0xE40C292C, "foobar": 0xBF9CF968}
 
 Point = tuple[int, str, str]
