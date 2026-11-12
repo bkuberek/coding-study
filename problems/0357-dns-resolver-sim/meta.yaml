@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0357"
+slug: dns-resolver-sim
+title: DNS Resolver Sim
+summary: "Build DnsResolver: answer from a zone, follow CNAME chains, walk from the root through referrals with a TTL cache on a virtual clock, then cache negative answers and refuse unrelated glue."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [graphs, arrays-hashing]
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Zone lookups}
+  - {level: 2, title: Following aliases}
+  - {level: 3, title: Walking the tree}
+  - {level: 4, title: Negative answers and glue you cannot trust}
+signature:
+  class:
+    name: DnsResolver
+    constructor: {params: []}
+    methods:
+      - {name: addRecord, level: 1, params: [{name: server, type: string}, {name: name, type: string}, {name: rtype, type: string}, {name: ttl, type: int}, {name: data, type: string}], returns: {type: void}}
+      - {name: lookup, level: 1, params: [{name: server, type: string}, {name: name, type: string}, {name: qtype, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: follow, level: 2, params: [{name: server, type: string}, {name: name, type: string}, {name: qtype, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: addRootHint, level: 3, params: [{name: name, type: string}, {name: address, type: string}], returns: {type: void}}
+      - {name: resolve, level: 3, params: [{name: name, type: string}, {name: qtype, type: string}, {name: now, type: long}], returns: {type: "list<list<string>>"}}
+      - {name: trace, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: negatives, level: 4, params: [{name: now, type: long}], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: walk-and-cache, name: Referral walk from the closest known zone with separate answer and referral caches, role: optimal, time: "O(r) per lookup of a server holding r records; per resolve, the queries sent times that", space: "O(r + c) for the records and the c cache entries", time_class: "n", space_class: "n"}
+related: [stream-reassembler, http-message-parser, reliable-transport-sim]
+estimate_minutes: 120
