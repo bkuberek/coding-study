@@ -110,7 +110,7 @@ Merging only ever joins the groups of the two ends of a real trail, so two nodes
 
 ### Complexity
 
-- Time: O(V + E * α(V)) — creating the arrays costs V and each edge makes two `find` calls and at most one merge; with union by size and a path-shortening `find`, each call costs an amortised α(V), where α is the inverse of Ackermann's function and grows so slowly that it is effectively constant. The bound for this family of algorithms is due to Tarjan, "Efficiency of a Good But Not Linear Set Union Algorithm", Journal of the ACM 22(2), 1975, pages 215 to 225, doi:10.1145/321879.321884.
+- Time: O(V + E * α(V)) — creating the arrays costs V and each edge makes two `find` calls and at most one merge; with union by size and a path-shortening `find`, each call costs an amortised α(V), where α is the inverse of Ackermann's function and grows so slowly that it is effectively constant. Tarjan, "Efficiency of a Good But Not Linear Set Union Algorithm", Journal of the ACM 22(2), 1975, pages 215 to 225, doi:10.1145/321879.321884, gives a bound in terms of this slowly growing inverse for the algorithm with path compression, where `find` points every node on its path at the root. This reference uses path halving instead, where `find` points every other node on the path at its grandparent in a single pass. Tarjan and van Leeuwen, "Worst-case Analysis of Set Union Algorithms", Journal of the ACM 31(2), 1984, pages 245 to 281, doi:10.1145/62.2160, show that linking by size or by rank combined with compression, splitting or halving runs in O(n + m·α(m + n, n)) time for n elements and m operations.
 - Space: O(V) — a parent and a size entry per node.
 
 ### Trade-offs
