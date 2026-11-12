@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0329"
+slug: plan-and-execute
+title: Plan and Execute
+summary: "Build PlanRunner, which runs a plan of subtasks with dependencies: validate it, run it in parallel waves under a cap, retry and replan on failure, and stop cleanly inside a cost and step budget."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [topological-sort, graphs]
+domains: [algorithms, backend, ai-llm]
+job_roles: [general, backend, ai-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Validating a plan}
+  - {level: 2, title: Waves and a timeline}
+  - {level: 3, title: "Failures, retries and replanning"}
+  - {level: 4, title: Budgets and the final report}
+signature:
+  class:
+    name: PlanRunner
+    constructor: {params: []}
+    methods:
+      - {name: setPlan, level: 1, params: [{name: tasks, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+      - {name: order, level: 1, params: [], returns: {type: "list<string>"}}
+      - {name: timeline, level: 2, params: [{name: cap, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: makespan, level: 2, params: [{name: cap, type: int}], returns: {type: int}}
+      - {name: criticalPath, level: 2, params: [], returns: {type: "list<string>"}}
+      - {name: setReplan, level: 3, params: [{name: failedId, type: string}, {name: tasks, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: run, level: 3, params: [{name: cap, type: int}, {name: maxRetries, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: replanLog, level: 3, params: [], returns: {type: "list<list<string>>"}}
+      - {name: setBudget, level: 4, params: [{name: maxCost, type: int}, {name: maxSteps, type: int}], returns: {type: void}}
+      - {name: report, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: wave-runner, name: "Validate once, then run the ready set in waves and settle what never ran at the end", role: optimal, time: "O(w (n + e)) per run, w the waves", space: "O(n + e)", time_class: "n^2", space_class: "n"}
+related: [sql-guard, tool-calling-agent-loop-typescript, course-schedule-ii, parallel-courses, vendor-retry-client-typescript]
+estimate_minutes: 150
