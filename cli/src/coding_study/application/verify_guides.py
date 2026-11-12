@@ -68,6 +68,7 @@ def _verify_guide(
         markdown=catalog.read_guide(meta.slug),
         files=catalog.files(meta.slug),
         examples=catalog.examples(meta.slug),
+        diagrams=catalog.diagrams(meta.slug),
     )
     issues = guide_static_checks(content, facts)
     return GuideVerification(directory, tuple(str(issue) for issue in issues))

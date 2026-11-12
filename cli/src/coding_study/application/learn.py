@@ -2,12 +2,13 @@
 far a learner has come (docs/specs/guides.md#reading-progress)."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
 from coding_study.application.environment import Environment
 from coding_study.domain.concept_guides import (
+    DIAGRAMS_DIRECTORY,
     GuideMeta,
     LearningPath,
     PathStep,
@@ -19,8 +20,8 @@ from coding_study.domain.concept_guides import (
     problem_step_progress,
     unknown_slug_message,
 )
-from coding_study.domain.errors import UsageError
-from coding_study.domain.guide_markdown import GuideMarkdown
+from coding_study.domain.errors import UnknownGuideError
+from coding_study.domain.guide_markdown import GuideMarkdown, is_svg_file
 from coding_study.domain.problem import ProblemSummary
 from coding_study.domain.problem_sets import target_reached
 from coding_study.domain.scheduling import ProblemProgress
@@ -70,6 +71,8 @@ class GuidePage:
     """The absolute path of every example."""
     examples_folder: Path | None
     """None for a guide without examples."""
+    diagrams: Mapping[str, str] = field(default_factory=dict[str, str])
+    """The SVG drawings of its diagrams, by path relative to the guide (`diagrams/1-light.svg`)."""
 
     @property
     def terminal_text(self) -> str:
@@ -100,7 +103,7 @@ def learn_listing(environment: Environment) -> LearnListing:
 
 
 def guide_page(environment: Environment, slug: str) -> GuidePage:
-    """Raises UsageError for a guide that does not exist, ContentError for one that does not
+    """Raises UnknownGuideError for a guide that does not exist, ContentError for one that does not
     load."""
     catalog = environment.guides
     _require(slug, catalog.slugs(), "guide")
@@ -112,7 +115,21 @@ def guide_page(environment: Environment, slug: str) -> GuidePage:
         markdown=catalog.read_guide(slug) or "",
         examples=examples,
         examples_folder=folder if examples else None,
+        diagrams=catalog.diagrams(slug),
     )
+
+
+def guide_drawing(environment: Environment, slug: str, name: str) -> str:
+    """The SVG drawing `name`, such as `1-dark.svg`, of a guide's diagram. Raises
+    UnknownGuideError for a guide that does not exist or a drawing it does not have."""
+    catalog = environment.guides
+    _require(slug, catalog.slugs(), "guide")
+    drawing = (
+        catalog.diagrams(slug).get(f"{DIAGRAMS_DIRECTORY}/{name}") if is_svg_file(name) else None
+    )
+    if drawing is None:
+        raise UnknownGuideError(f'guide "{slug}" has no drawing "{name}"')
+    return drawing
 
 
 def mark_read(environment: Environment, slug: str) -> MarkedRead:
@@ -124,16 +141,25 @@ def mark_read(environment: Environment, slug: str) -> MarkedRead:
 
 
 def path_view(environment: Environment, slug: str) -> PathView:
-    """Raises UsageError for a path that does not exist, ContentError for one that does not
+    """Raises UnknownGuideError for a path that does not exist, ContentError for one that does not
     load."""
     catalog = environment.guides
     _require(slug, catalog.path_slugs(), "path")
     return _path_view(environment, catalog.load_path(slug))
 
 
+def guide_entries(environment: Environment, slugs: tuple[str, ...]) -> tuple[GuideEntry, ...]:
+    """The guides of `slugs` that exist, in that order, each with whether it is read: a
+    problem's `guides` as the Problem view lists them."""
+    catalog = environment.guides
+    known = catalog.slugs()
+    reads = environment.progress.guide_reads()
+    return tuple(GuideEntry(catalog.load(slug), reads.get(slug)) for slug in slugs if slug in known)
+
+
 def _require(slug: str, known: tuple[str, ...], noun: str) -> None:
     if slug not in known:
-        raise UsageError(unknown_slug_message(noun, slug, known))
+        raise UnknownGuideError(unknown_slug_message(noun, slug, known))
 
 
 def _path_view(environment: Environment, path: LearningPath) -> PathView:

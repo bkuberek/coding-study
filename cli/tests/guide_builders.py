@@ -4,10 +4,18 @@
 import shutil
 from pathlib import Path
 
-from coding_study.domain.guide_markdown import text_marker
+from coding_study.domain.guide_markdown import (
+    SVG_THEMES,
+    GuideMarkdown,
+    svg_file,
+    svg_marker,
+    text_marker,
+)
 from tests.helpers import CATALOG_PROBLEMS
 
 DIAGRAM = "flowchart LR\n  accTitle: Buckets\n  accDescr: A key lands in a bucket.\n  k --> b\n"
+SVG = '<svg width="40" height="20" xmlns="http://www.w3.org/2000/svg"><text>{theme}</text></svg>'
+"""A small SVG drawing; its text names its theme."""
 EXAMPLE = 'print("hi")\n'
 LEDGER = "0311-tamper-evident-ledger"
 """A progressive catalog problem with four levels, for level targets."""
@@ -52,7 +60,17 @@ def write_guide(
     (folder / "meta.yaml").write_text("\n".join(lines) + "\n")
     text = guide_markdown(title, problems) if markdown is None else markdown
     (folder / "guide.md").write_text(text)
+    write_svg_drawings(folder, text)
     return folder
+
+
+def write_svg_drawings(folder: Path, markdown: str) -> None:
+    """A light and a dark SVG for each diagram of `markdown`, as `pnpm render` writes them."""
+    for position, diagram in enumerate(GuideMarkdown(markdown).mermaid_fences(), start=1):
+        for theme in SVG_THEMES:
+            path = folder / "diagrams" / svg_file(position, theme)
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(f"{svg_marker(diagram.content)}\n{SVG.format(theme=theme)}\n")
 
 
 def write_path(root: Path, slug: str, steps: list[str], title: str = "Hashing") -> Path:

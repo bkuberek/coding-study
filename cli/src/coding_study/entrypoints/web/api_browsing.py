@@ -8,6 +8,7 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from coding_study.application.environment import Environment
+from coding_study.application.learn import guide_entries
 from coding_study.application.list_problems import ProblemFilter
 from coding_study.application.next_problem import NextRequest, next_source, recommend
 from coding_study.application.problem_details import problem_details
@@ -110,7 +111,8 @@ def _slug(request: Request) -> str:
 
 def _problem(environment: Environment, slug: str) -> dict[str, JsonValue]:
     details = problem_details(environment, slug)
-    return problem_document(_list_entry(environment, slug), details)
+    guides = guide_entries(environment, details.guides)
+    return problem_document(_list_entry(environment, slug), details, guides)
 
 
 def _list_entry(environment: Environment, slug: str) -> dict[str, JsonValue]:

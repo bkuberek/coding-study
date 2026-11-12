@@ -138,11 +138,47 @@ def test_done_as_json(environment: Environment):
     assert document == {"slug": "hash-maps", "read_at": NOW.isoformat(), "already": False}
 
 
-def test_open_says_the_guides_page_comes_next(environment: Environment):
+@pytest.fixture
+def served(environment: Environment, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """The views `cstudy learn --open` asked the server to land on, which then stops at once as
+    after Ctrl-C."""
+    views: list[str] = []
+
+    def run_server(_context: object, *, port: int, open_browser: bool, view: str | None) -> None:
+        assert (port, open_browser) == (0, True)
+        views.append(view or "")
+
+    monkeypatch.setattr(learn, "run_server", run_server)
+    return views
+
+
+def test_open_serves_the_page_landing_on_the_guide(served: list[str]):
     result = invoke("hash-maps", "--open")
-    assert (result.exit_code, "Guides page comes with the next step" in result.output) == (
-        ExitCode.SUCCESS,
+    assert (result.exit_code, served) == (ExitCode.SUCCESS, ["/guides/hash-maps"])
+
+
+def test_open_with_a_path_lands_on_the_path(served: list[str]):
+    result = invoke("--path", "hashing", "--open")
+    assert (result.exit_code, served) == (ExitCode.SUCCESS, ["/paths/hashing"])
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (("hash-map", "--open"), 'unknown guide "hash-map"; did you mean hash-maps'),
+        (("--path", "hashin", "--open"), 'unknown path "hashin"; did you mean hashing'),
+        (("hash-maps", "--open", "--done"), "--open takes no --done or --json"),
+        (("hash-maps", "--open", "--json"), "--open takes no --done or --json"),
+    ],
+)
+def test_open_starts_no_server_for_a_usage_error(
+    served: list[str], arguments: tuple[str, ...], message: str
+):
+    result = invoke(*arguments)
+    assert (result.exit_code, message in result.output, served) == (
+        ExitCode.USAGE_ERROR,
         True,
+        [],
     )
 
 
@@ -197,7 +233,7 @@ def test_a_path_as_json(environment: Environment):
         (("--path", "hashin"), 'unknown path "hashin"; did you mean hashing'),
         (("hash-maps", "--path", "hashing"), "give a guide or --path, not both"),
         (("--done",), "--done needs a guide"),
-        (("--open",), "--open needs a guide"),
+        (("--open",), "--open needs a guide or a path: cstudy learn <guide> --open"),
     ],
 )
 def test_usage_errors_exit_3(environment: Environment, arguments: tuple[str, ...], message: str):

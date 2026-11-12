@@ -12,6 +12,7 @@ and none carries CORS headers.
 """
 
 import hmac
+import re
 import secrets
 from collections import deque
 from dataclasses import dataclass
@@ -29,6 +30,11 @@ SECRET_BYTES = 32
 """256 bits for the token, the cookie and the CSRF token."""
 NONCE_BYTES = 16
 TOKEN_PARAMETER = "token"
+VIEW_PARAMETER = "view"
+"""The view the login sends the browser on to, such as `/guides/hash-functions`, which the page
+shows from the fragment `#/guides/hash-functions` (`cstudy learn <guide> --open`)."""
+_VIEW = re.compile(r"(/[a-z0-9]+(-[a-z0-9]+)*)+")
+"""Only a route of slugs: a view can name a place in the page, never another page or site."""
 CSRF_HEADER = "X-Cstudy-CSRF"
 SAFE_METHODS = frozenset({"GET", "HEAD"})
 PAGE_PATH = "/"
@@ -62,12 +68,12 @@ UNAUTHORIZED_PAGE = f"""<!doctype html>
 <p>This browser has no session with this server: {OPEN_THE_URL} in your terminal.</p>
 </html>
 """
-LOGIN_PAGE = f"""<!doctype html>
+LOGIN_PAGE = """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url={PAGE_PATH}">
+<meta http-equiv="refresh" content="0; url={target}">
 <title>cstudy</title>
-<p><a href="{PAGE_PATH}">Open cstudy</a></p>
+<p><a href="{target}">Open cstudy</a></p>
 </html>
 """
 
@@ -92,8 +98,19 @@ def cookie_name(port: int) -> str:
     return f"cstudy-{port}"
 
 
-def login_url(port: int, token: str) -> str:
-    return f"http://{LOOPBACK}:{port}{PAGE_PATH}?{TOKEN_PARAMETER}={token}"
+def login_url(port: int, token: str, view: str | None = None) -> str:
+    """`view`, such as `/guides/hash-functions`, is the view the page opens on; None for the
+    first one."""
+    url = f"http://{LOOPBACK}:{port}{PAGE_PATH}?{TOKEN_PARAMETER}={token}"
+    return url if view is None else f"{url}&{VIEW_PARAMETER}={view}"
+
+
+def landing(view: str | None) -> str:
+    """Where the login sends the browser on to: the page, at the fragment of `view` when that is
+    a route of slugs."""
+    if view is None or _VIEW.fullmatch(view) is None:
+        return PAGE_PATH
+    return f"{PAGE_PATH}#{view}"
 
 
 def new_nonce() -> str:
@@ -152,8 +169,9 @@ class SecurityMiddleware:
         host_refusal = self._host_refusal(request)
         if host_refusal is not None:
             return host_refusal
-        if request.scope["path"] == PAGE_PATH and TOKEN_PARAMETER in request.query_params:
-            return self._login(request.query_params[TOKEN_PARAMETER])
+        query = request.query_params
+        if request.scope["path"] == PAGE_PATH and TOKEN_PARAMETER in query:
+            return self._login(query[TOKEN_PARAMETER], landing(query.get(VIEW_PARAMETER)))
         if not self._has_session(request):
             return _unauthorized(request)
         if request.method not in SAFE_METHODS:
@@ -185,14 +203,16 @@ class SecurityMiddleware:
     def _has_session(self, connection: HTTPConnection) -> bool:
         return matches(connection.cookies.get(self._cookie), self._session.cookie)
 
-    def _login(self, token: str) -> Response:
-        """The token buys the cookie, then a page that sends the browser on to the page takes it
-        out of the address bar. Not a redirect: after a navigation another site started, as the
-        `--open` file does, a browser withholds a SameSite=Strict cookie from the redirect it
-        follows, and sends it on a navigation this server's own page starts."""
+    def _login(self, token: str, target: str) -> Response:
+        """The token buys the cookie, then a page that sends the browser on to the page, at
+        `target`, takes it out of the address bar. Not a redirect: after a navigation another
+        site started, as the `--open` file does, a browser withholds a SameSite=Strict cookie
+        from the redirect it follows, and sends it on a navigation this server's own page
+        starts."""
         if not matches(token, self._session.token):
             return HTMLResponse(UNAUTHORIZED_PAGE, status_code=401)
-        response = HTMLResponse(LOGIN_PAGE, headers={"cache-control": NO_STORE})
+        page = LOGIN_PAGE.format(target=target)
+        response = HTMLResponse(page, headers={"cache-control": NO_STORE})
         response.set_cookie(
             self._cookie, self._session.cookie, path=PAGE_PATH, httponly=True, samesite="strict"
         )

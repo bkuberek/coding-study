@@ -30,6 +30,7 @@ from coding_study.domain.errors import (
     RunnerProtocolError,
     RunnerStartError,
     SandboxError,
+    UnknownGuideError,
     UnknownProblemError,
     UnknownSetError,
     UsageError,
@@ -55,6 +56,7 @@ class ExitCode(IntEnum):
 ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {
     UnknownProblemError: ExitCode.USAGE_ERROR,
     UnknownSetError: ExitCode.USAGE_ERROR,
+    UnknownGuideError: ExitCode.USAGE_ERROR,
     ContentError: ExitCode.CONTENT_ERROR,
     ConfigError: ExitCode.ENVIRONMENT_ERROR,
     LanguageNotSetUpError: ExitCode.ENVIRONMENT_ERROR,

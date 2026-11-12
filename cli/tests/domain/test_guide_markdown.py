@@ -1,6 +1,57 @@
 import hashlib
 
-from coding_study.domain.guide_markdown import GuideMarkdown, mermaid_digest, text_marker
+import pytest
+
+from coding_study.domain.guide_markdown import (
+    DiagramText,
+    GuideMarkdown,
+    diagram_text,
+    is_svg_file,
+    mermaid_digest,
+    svg_digest,
+    svg_file,
+    svg_marker,
+    svg_size,
+    text_marker,
+)
+
+
+def test_an_svg_drawing_is_named_by_the_diagrams_position_and_theme():
+    assert (svg_file(2, "dark"), is_svg_file("2-dark.svg"), is_svg_file("0-light.svg")) == (
+        "2-dark.svg",
+        True,
+        False,
+    )
+
+
+def test_an_svg_drawings_marker_holds_the_hash_of_its_source():
+    svg = f"{svg_marker(DIAGRAM)}\n<svg/>\n"
+    assert (svg_digest(svg), svg_digest("<svg/>\n")) == (mermaid_digest(DIAGRAM), None)
+
+
+def test_an_svg_drawings_size_is_its_roots_width_and_height():
+    svg = '<!-- m -->\n<svg width="611" xmlns="http://www.w3.org/2000/svg" height="240"><g/></svg>'
+    assert (svg_size(svg), svg_size("<svg/>")) == ((611, 240), None)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        (
+            "flowchart LR\n  accTitle: Buckets\n  accDescr: One key.\n",
+            DiagramText("Buckets", "One key."),
+        ),
+        (
+            "graph TD\n  accTitle: T\n  accDescr {\n    Two\n    lines.\n  }\n",
+            DiagramText("T", "Two lines."),
+        ),
+        ("graph TD\n  accDescr { One line. }\n", DiagramText("", "One line.")),
+        ("graph TD\n  a --> b\n", DiagramText("", "")),
+    ],
+)
+def test_a_diagrams_text_is_its_accessibility_lines(source: str, expected: DiagramText):
+    assert diagram_text(source) == expected
+
 
 DIAGRAM = "flowchart LR\n  accTitle: Two boxes\n  accDescr: A points to B.\n  a --> b\n"
 DIGEST = hashlib.sha256(DIAGRAM.encode()).hexdigest()

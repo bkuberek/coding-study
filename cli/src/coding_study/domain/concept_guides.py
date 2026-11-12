@@ -20,6 +20,8 @@ PATHS_DIRECTORY = "paths"
 GUIDE_FILE = "guide.md"
 GUIDE_META_FILE = "meta.yaml"
 EXAMPLES_DIRECTORY = "examples"
+DIAGRAMS_DIRECTORY = "diagrams"
+"""The light and dark SVG drawings of a guide's diagrams (docs/specs/guides.md#svg-drawings)."""
 PATH_SUFFIX = ".yaml"
 MAX_SLUG_LENGTH = 64
 _SLUG = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")

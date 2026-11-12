@@ -1,7 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ABOUT_HASH, attemptHash, parseRoute, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
+import { ABOUT_HASH, attemptHash, GUIDES_HASH, guideHash, parseRoute, pathHash, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
+
+test("the guides view and a guide and a path have routes of their own", () => {
+  assert.deepEqual(
+    [parseRoute(GUIDES_HASH), parseRoute(guideHash("hash-functions")), parseRoute(pathHash("hashing"))],
+    [{ view: "guides" }, { view: "guide", slug: "hash-functions" }, { view: "path", slug: "hashing" }],
+  );
+});
+
+test("a guide's and a path's hashes are the routes `cstudy learn --open` lands on", () => {
+  assert.deepEqual([GUIDES_HASH, guideHash("hash-functions"), pathHash("hashing")], ["#/guides", "#/guides/hash-functions", "#/paths/hashing"]);
+});
+
+test("a path with no slug, or a guide with more segments, is missing", () => {
+  assert.deepEqual([parseRoute("#/paths").view, parseRoute("#/guides/a/b").view], ["missing", "missing"]);
+});
 
 test("an empty fragment is the problems view without filters", () => {
   assert.deepEqual(parseRoute(""), { view: "problems", filters: {} });

@@ -190,6 +190,74 @@ export interface ProblemDocument extends ListEntry {
   readonly hints_total: number;
   readonly bench: boolean;
   readonly oracle: boolean;
+  /** The concept guides its meta.yaml names, each with whether it is read. */
+  readonly guides: readonly GuideLink[];
+}
+
+export interface GuideLink {
+  readonly slug: string;
+  readonly title: string;
+  readonly read: boolean;
+}
+
+export type GuideLevel = "intro" | "core" | "advanced";
+
+/** A guide's entry of `cstudy learn --json`. */
+export interface GuideEntry {
+  readonly slug: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly level: GuideLevel;
+  readonly prerequisites: readonly string[];
+  readonly related: readonly string[];
+  readonly problems: readonly string[];
+  readonly read: boolean;
+  readonly read_at: string | null;
+}
+
+export interface PathSummary {
+  readonly slug: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly done: number;
+  readonly total: number;
+}
+
+/** `cstudy learn --json`. */
+export interface GuideListing {
+  readonly guides: readonly GuideEntry[];
+  readonly paths: readonly PathSummary[];
+}
+
+/** `cstudy learn <guide> --json`, with the HTML the Guides view shows. */
+export interface GuideDocument extends GuideEntry {
+  readonly markdown: string;
+  readonly html: string;
+}
+
+/** A step of `cstudy learn --path <path> --json`. */
+export interface PathStep {
+  readonly position: number;
+  readonly kind: "guide" | "problem";
+  readonly slug: string;
+  readonly title: string;
+  readonly level: number | null;
+  readonly done: boolean;
+  readonly status: string;
+  readonly level_passed: number | null;
+}
+
+/** `cstudy learn --path <path> --json`. */
+export interface PathDocument extends PathSummary {
+  readonly next: PathStep | null;
+  readonly steps: readonly PathStep[];
+}
+
+/** `cstudy learn <guide> --done --json`. */
+export interface MarkedRead {
+  readonly slug: string;
+  readonly read_at: string;
+  readonly already: boolean;
 }
 
 export interface Rendered {

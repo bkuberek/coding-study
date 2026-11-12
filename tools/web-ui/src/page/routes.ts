@@ -13,6 +13,9 @@ export type Route =
   | { readonly view: "problem"; readonly slug: string }
   | { readonly view: "sets" }
   | { readonly view: "set"; readonly name: string }
+  | { readonly view: "guides" }
+  | { readonly view: "guide"; readonly slug: string }
+  | { readonly view: "path"; readonly slug: string }
   | { readonly view: "attempt"; readonly id: number }
   | { readonly view: "mock" }
   | { readonly view: "progress" }
@@ -22,7 +25,7 @@ export type Route =
   | { readonly view: "missing"; readonly fragment: string };
 
 /** The views addressed by one segment, such as `#/health`. */
-const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "settings", "about"] as const;
+const SINGLE_VIEWS = ["sets", "guides", "mock", "progress", "health", "settings", "about"] as const;
 type SingleView = (typeof SINGLE_VIEWS)[number];
 
 function isSingleView(segment: string): segment is SingleView {
@@ -39,6 +42,8 @@ export function parseRoute(fragment: string): Route {
     return { view: "problem", slug: decodeURIComponent(second) };
   }
   if (first === "sets" && second !== undefined && rest.length === 0) return { view: "set", name: decodeURIComponent(second) };
+  if (first === "guides" && second !== undefined && rest.length === 0) return { view: "guide", slug: decodeURIComponent(second) };
+  if (first === "paths" && second !== undefined && rest.length === 0) return { view: "path", slug: decodeURIComponent(second) };
   if (first === "attempts" && second !== undefined && rest.length === 0 && /^[1-9]\d*$/.test(second)) {
     return { view: "attempt", id: Number(second) };
   }
@@ -63,6 +68,11 @@ export const MOCK_HASH = "#/mock";
 export const ABOUT_HASH = "#/about";
 export const SETS_HASH = "#/sets";
 export const setHash = (name: string): string => `${SETS_HASH}/${encodeURIComponent(name)}`;
+/** The Guides view, and a guide's and a path's: where `cstudy learn <guide> --open` and
+ * `cstudy learn --path <path> --open` land. */
+export const GUIDES_HASH = "#/guides";
+export const guideHash = (slug: string): string => `${GUIDES_HASH}/${encodeURIComponent(slug)}`;
+export const pathHash = (slug: string): string => `#/paths/${encodeURIComponent(slug)}`;
 
 function filtersOf(query: URLSearchParams): Filters {
   const filters: Filters = {};

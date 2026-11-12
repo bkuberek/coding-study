@@ -317,7 +317,7 @@ def _broken_file(page: Any, workspace: Path, found: Seen) -> None:
 
 
 def test_the_views_are_numbered_with_sets_second(seen):
-    assert [name.split(":")[0] for name in seen.tab_names] == ["1", "2", "3", "4", "5", "6"]
+    assert [name.split(":")[0] for name in seen.tab_names] == ["1", "2", "3", "4", "5", "6", "7"]
 
 
 def test_the_view_after_problems_is_sets(seen):

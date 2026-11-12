@@ -26,6 +26,7 @@ from coding_study.application.learn import (
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.concept_guides import StepKind, StepProgress
 from coding_study.domain.errors import UsageError
+from coding_study.entrypoints.commands.serve import run_server
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
 NAME = "learn"
@@ -41,13 +42,17 @@ STATUS_WIDTH = 16
 NOT_READ = "-"
 NO_TARGET = ""
 WEB_HINT = "Read with rendered diagrams in the web UI: cstudy learn {slug} --open"
-OPEN_LATER = (
-    "the web UI's Guides page comes with the next step of cstudy; until then, read the guide "
-    "here with cstudy learn {slug}"
-)
 BOTH = "give a guide or --path, not both"
 DONE_NEEDS_GUIDE = "--done needs a guide: cstudy learn <guide> --done"
-OPEN_NEEDS_GUIDE = "--open needs a guide: cstudy learn <guide> --open"
+OPEN_NEEDS_GUIDE = (
+    "--open needs a guide or a path: cstudy learn <guide> --open, "
+    "or cstudy learn --path <path> --open"
+)
+OPEN_PRINTS_NOTHING = "--open takes no --done or --json: it serves the page and opens it"
+GUIDE_VIEW = "/guides/{slug}"
+PATH_VIEW = "/paths/{slug}"
+"""The Guides page's views of a guide and of a path (docs/specs/web-ui.md#guides-view)."""
+FREE_PORT = 0
 
 
 def register(app: typer.Typer) -> None:
@@ -64,7 +69,8 @@ def learn(
     ] = None,
     done: Annotated[bool, typer.Option("--done", help="Mark the guide read.")] = False,
     open_page: Annotated[
-        bool, typer.Option("--open", help="Open the guide in the web UI.")
+        bool,
+        typer.Option("--open", help="Serve the web UI and open the guide or the path there."),
     ] = False,
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the text.")
@@ -75,12 +81,10 @@ def learn(
         raise UsageError(BOTH)
     if guide is None and done:
         raise UsageError(DONE_NEEDS_GUIDE)
-    if guide is None and open_page:
-        raise UsageError(OPEN_NEEDS_GUIDE)
-    output = console(context)
-    if guide is not None and open_page:
-        output.print(Text(OPEN_LATER.format(slug=guide)))
+    if open_page:
+        _open(context, guide, path, done or as_json)
         return
+    output = console(context)
     if guide is not None and done:
         environment = load_environment(Path.cwd(), command_environ(context), Path.home())
         _print_marked(output, mark_read(environment, guide), as_json)
@@ -92,6 +96,21 @@ def learn(
         _print_guide(output, guide_page(environment, guide), as_json)
     else:
         _print_listing(output, environment, learn_listing(environment), as_json)
+
+
+def _open(context: typer.Context, guide: str | None, path: str | None, printing: bool) -> None:
+    """`cstudy serve --open`, landing on the guide's or the path's view of the Guides page, once
+    the guide or the path is found; `printing` is `--done` or `--json`, which it refuses."""
+    if guide is None and path is None:
+        raise UsageError(OPEN_NEEDS_GUIDE)
+    if printing:
+        raise UsageError(OPEN_PRINTS_NOTHING)
+    environment = load_catalog_environment(Path.cwd(), command_environ(context), Path.home())
+    if guide is not None:
+        view = GUIDE_VIEW.format(slug=guide_page(environment, guide).entry.meta.slug)
+    else:
+        view = PATH_VIEW.format(slug=path_view(environment, path or "").path.slug)
+    run_server(context, port=FREE_PORT, open_browser=True, view=view)
 
 
 def _print_listing(
@@ -149,12 +168,7 @@ def _print_guide(output: Console, page: GuidePage, as_json: bool) -> None:
 
 def _print_marked(output: Console, marked: MarkedRead, as_json: bool) -> None:
     if as_json:
-        document = {
-            "slug": marked.slug,
-            "read_at": marked.read_at.isoformat(),
-            "already": marked.already,
-        }
-        typer.echo(json.dumps(document, indent=2))
+        typer.echo(json.dumps(marked_document(marked), indent=2))
     elif marked.already:
         output.print(Text(f"{marked.slug} was marked read on {marked.read_at.date().isoformat()}"))
     else:
@@ -222,6 +236,10 @@ def guide_document(page: GuidePage) -> dict[str, JsonValue]:
         "markdown": page.markdown,
         "examples": [str(example) for example in page.examples],
     }
+
+
+def marked_document(marked: MarkedRead) -> dict[str, JsonValue]:
+    return {"slug": marked.slug, "read_at": marked.read_at.isoformat(), "already": marked.already}
 
 
 def path_document(view: PathView) -> dict[str, JsonValue]:

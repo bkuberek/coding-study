@@ -47,10 +47,11 @@ The top bar holds the views, the attempts in progress while one is open, and the
 | Problem | A click on a row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over. For a problem with levels, it also shows your best level in each language and, when you stopped below the last level, the level to try next. A problem whose reviews keep reaching level 2 of 4 reads *mastered through level 2 of 4*: each level is mastered on its own reviews, so a level you have just reached starts over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Sets | <kbd>Alt</kbd>+<kbd>2</kbd> | [Your own lists of problems](#problem-sets), with passed of total; one open shows its pick and its rows, to start, resume or reorder |
-| Mock | <kbd>Alt</kbd>+<kbd>3</kbd> | The start form, or the running mock's countdown and problems |
-| Progress | <kbd>Alt</kbd>+<kbd>4</kbd> | `cstudy stats`, the reviews due, export and import |
-| Health | <kbd>Alt</kbd>+<kbd>5</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
-| Settings | <kbd>Alt</kbd>+<kbd>6</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
+| Guides | <kbd>Alt</kbd>+<kbd>3</kbd> | [Short readings that teach an idea](#learn-with-guides) before you practise it, and the paths that order them with problems, with how far you have come |
+| Mock | <kbd>Alt</kbd>+<kbd>4</kbd> | The start form, or the running mock's countdown and problems |
+| Progress | <kbd>Alt</kbd>+<kbd>5</kbd> | `cstudy stats`, the reviews due, export and import |
+| Health | <kbd>Alt</kbd>+<kbd>6</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
+| Settings | <kbd>Alt</kbd>+<kbd>7</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
 | About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the license, the website and project links, and the credits, with the full license texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
 
 ![The problem list in the light theme](../images/web-ui-problems-light.png)
@@ -311,6 +312,26 @@ cstudy list --set backend-loop
 
 Sets live in `sets.yaml` at the root of your workspace, so you can read it, edit it by hand and commit it. A change from `cstudy` or the page touches only the lines it must, so your comments stay. `cstudy reset` keeps your sets, with `--files` and `--archive` too. A problem the catalog no longer has shows as `missing` and stops nothing, and a file that does not parse shows as an error and is never overwritten. For a problem with levels, an entry may aim lower than every level: write `- {slug: tamper-evident-ledger, level: 2}` in the file, or run `cstudy set add <set> tamper-evident-ledger --level 2`, and the set counts it once you pass level 2; the row says `through level 2 (target)`. Every command: [`cstudy set`](../specs/cli.md#cstudy-set).
 
+## Learn with guides
+
+A guide is a short reading that teaches one idea before you practise it: the idea in plain words, a worked example, when to use it, the common traps, the cost, notes for experts, the problems that practise it and where to read more. A path puts guides and problems in order, from a topic's first idea to an expert's. The page is the recommended place to read them, since it draws the diagrams; the terminal reads every guide too, with `cstudy learn`.
+
+Open **Guides** (<kbd>Alt</kbd>+<kbd>3</kbd>), or start from the terminal, which serves the page and opens it on the guide or the path:
+
+```bash
+cstudy learn hash-functions --open
+cstudy learn --path hashing --open
+```
+
+| Where | What you see |
+|-------|--------------|
+| The list | Each path with its progress, `3 of 21 steps done`, then every guide with its level and whether you have read it |
+| A guide | The guide with its diagrams drawn in the page's light or dark theme, its code highlighted, what to read first, the problems that practise it and what to read next. **Mark as read** at the end records it, as `cstudy learn <guide> --done` does |
+| A path | Each step in order, a check once it is done: a guide once you mark it read, a problem once it passes, or, with a target such as `through level 2`, once that level passes. **Read** opens a guide and **Start** a problem's page, where you start it. `next:` names the first step not done |
+| A problem | Under **read first**, the guides that teach what it practises |
+
+Each diagram is a picture that ships with cstudy, in the page's light or dark colours, and it switches with the theme. It comes from `cstudy serve` itself: nothing is fetched from the internet. Under it, a caption says what the diagram shows, and a screen reader reads the diagram's title with it. Every command: [`cstudy learn`](../specs/cli.md#cstudy-learn).
+
 ## Mock interviews
 
 The Mock view starts a mock as `cstudy mock` does: new medium and hard problems, a shared timer, and hints and solutions locked until the timer ends or every problem is done. Each problem opens as an ordinary attempt. A mock started in the terminal shows in the page too.
@@ -350,7 +371,7 @@ Every view works with the keyboard alone. On Linux, read <kbd>Ctrl</kbd> for <kb
 
 | Keys | Do |
 |------|----|
-| <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>6</kbd> | Problems, Sets, Mock, Progress, Health, Settings |
+| <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>7</kbd> | Problems, Sets, Guides, Mock, Progress, Health, Settings |
 | <kbd>Cmd</kbd>+<kbd>S</kbd> | Save the active tab |
 | <kbd>Cmd</kbd>+<kbd>Enter</kbd> | Run the tests |
 | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | Submit a project level |

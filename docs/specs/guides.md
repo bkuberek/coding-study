@@ -2,7 +2,7 @@
 
 A **guide** is a short, original reading page that teaches one idea before you practise it: the plain idea, a worked example, when to use it, the traps, the complexity, notes for experts, the problems that practise it, and where to read more. A **path** orders guides and problems into a track, from a topic's first idea to an expert's. Both are content: they ship with `cstudy` like the problems, and [`cstudy learn`](cli.md#cstudy-learn) reads them ([ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)).
 
-The web UI is the recommended place to read them: the [Guides page](#guides-page-next) of `cstudy serve` draws the diagrams, links the guides to each other and shows a path's progress beside its steps. The terminal is fully supported: `cstudy learn` renders a guide's Markdown with Rich, shows each diagram as its [text drawing](#text-drawings), and has `--json` for scripts.
+The web UI is the recommended place to read them: the [Guides page](#guides-page) of `cstudy serve` shows the diagrams, links the guides to each other and shows a path's progress beside its steps. The terminal is fully supported: `cstudy learn` renders a guide's Markdown with Rich, shows each diagram as its [text drawing](#text-drawings), and has `--json` for scripts.
 
 A guide is written for everyone from beginner to expert, where a beginner is new to the topic, not to programming: it assumes the reader can write a function in one language and nothing about the topic. It starts plainly and goes deep.
 
@@ -15,11 +15,14 @@ guides/
     guide.md             # the guide
     examples/            # runnable programs, each embedded in guide.md
       buckets.py
+    diagrams/            # the SVG drawings of its diagrams, which tools/guides/ makes
+      1-light.svg
+      1-dark.svg
   paths/
     hashing.yaml         # a path
 ```
 
-`guides/` sits at the [content root](installation-and-workspaces.md#content-root) beside `problems/` and `tracks/`; the wheel ships it as `coding_study/content/guides/`. A content root without it has no guides, and `cstudy learn` says so. A guide folder holds `meta.yaml`, `guide.md` and, when it has examples, `examples/` with files only; nothing else. There are no image files: diagrams are [Mermaid](#diagrams) in `guide.md`.
+`guides/` sits at the [content root](installation-and-workspaces.md#content-root) beside `problems/` and `tracks/`; the wheel ships it as `coding_study/content/guides/`, the SVG drawings with it. A content root without it has no guides, and `cstudy learn` says so. A guide folder holds `meta.yaml`, `guide.md`, when it has examples `examples/` with files only, and when it has diagrams `diagrams/` with their [SVG drawings](#svg-drawings) only; nothing else. A diagram's source is [Mermaid](#diagrams) in `guide.md`; its text drawing and its SVG drawings are made from it.
 
 A guide's slug is its folder's name and a path's is its file's name without `.yaml`: lowercase letters, digits and single hyphens, a letter first, at most 64 characters. `paths` is not a guide slug. Guide and path slugs are their own namespace: a guide may share a slug with a problem.
 
@@ -90,7 +93,7 @@ Only these fences are examples: a plain ```` ```python ```` block without a path
 
 ### Diagrams
 
-A diagram is a fenced `mermaid` block in `guide.md`, and its source is the only source: there are no `.mmd` or image files. GitHub draws it, the page's [Guides view](#guides-page-next) will draw it, and the terminal shows its [text drawing](#text-drawings).
+A diagram is a fenced `mermaid` block in `guide.md`, and its source is the only source: there are no `.mmd` files, and no image is drawn by hand. GitHub draws it, the page's [Guides view](#guides-page) shows its [SVG drawings](#svg-drawings), and the terminal shows its [text drawing](#text-drawings); both drawings are made from the source when the guide is written.
 
 | Rule | Detail |
 |------|--------|
@@ -99,7 +102,7 @@ A diagram is a fenced `mermaid` block in `guide.md`, and its source is the only 
 | Accessibility | An `accTitle: <title>` line and an `accDescr: <description>` line |
 | Prose | A guide makes sense with its diagrams shown as source, as a terminal without the text drawing would show them: the prose says what each diagram shows |
 
-`cstudy verify` checks the type, the first line and the accessibility lines. It does not parse the rest: the renderer of `tools/guides/` does when it draws the text, and the page's tests will when the Guides view draws Mermaid.
+`cstudy verify` checks the type, the first line and the accessibility lines. It does not parse the rest: the renderers of `tools/guides/` do when they draw the text and the SVG drawings.
 
 ### Text drawings
 
@@ -129,6 +132,26 @@ flowchart LR
 | Checked | `cstudy verify` recomputes each hash. A missing or stale drawing fails, telling the author to run `pnpm render` in `tools/guides/` |
 
 The renderer is [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) 1.1.3 (MIT), pinned in `tools/guides/package.json` and `pnpm-lock.yaml` as a development dependency. It is never shipped: a user reads the drawings, made when the guide was written, and installs nothing. GitHub shows both the diagram and its drawing, which is accepted for one source of truth and no wrapper markup.
+
+### SVG drawings
+
+Each diagram also has two SVG files in the guide's `diagrams/`, one per theme of the [web UI](web-ui.md#guides-view): `<n>-light.svg` and `<n>-dark.svg`, where `<n>` counts the guide's `mermaid` blocks from 1 in their order.
+
+```text
+<!-- svg-of-mermaid sha256:4c1f…(64 hex digits) -->
+<svg width="611" height="240" viewBox="0 0 610.69 239.57" xmlns="http://www.w3.org/2000/svg" fill="#24272d" font-family="Helvetica, Arial, sans-serif" font-size="15px">…</svg>
+```
+
+| Rule | Detail |
+|------|--------|
+| Marker | The first line, `<!-- svg-of-mermaid sha256:<hex> -->`, with the same hash as the text drawing's marker: the SHA-256 of the block's content |
+| Drawing | Mermaid's drawing of the block in the web UI's palette for the theme (`tools/web-ui/src/page/app.css`): nodes in the accent's soft tint bordered by the accent, text in the ink, lines in the soft ink. Text is SVG text in Helvetica, Arial or a sans-serif, which share their metrics. The root has `width` and `height` in pixels and a `viewBox` |
+| Self-contained | Every style is a presentation attribute. No stylesheet, `class`, `style` attribute, script, font, external reference or HTML label; no `title` or `desc`, since the page's alt text and caption carry the accessibility lines; ids only where a marker is referred to; numbers to two decimals. In all, the 15 diagrams of the hashing guides take 30 files and 145 KB |
+| Made by | `pnpm render` in `tools/guides/`, after the text drawings: Mermaid 11.17.2 (MIT) draws in headless Chromium, driven by playwright-core 1.64.1 (Apache-2.0), both development dependencies there. A drawing whose marker matches is kept byte for byte, and a file of `diagrams/` that belongs to no diagram is removed; `pnpm render:all` draws every one again, and `pnpm check` reports what is missing, stale or orphaned and exits 1 |
+| Checked | `cstudy verify --static`, [G10](#guides) |
+| Shown | The Guides view shows the drawing of the page's theme as an `<img>`, with `accTitle` as its alt text and `accDescr` as its caption; a diagram without both drawings up to date shows its text drawing instead |
+
+The drawings are made when the guide is written, as the text drawings are, so the page runs no diagram code and a reader installs nothing ([ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)).
 
 ## Paths
 
@@ -164,7 +187,7 @@ The same problem may come twice with different levels, so a path can return to i
 | Id | Check |
 |----|-------|
 | G1 | `meta.yaml` valid against `schemas/guide.schema.json` |
-| G2 | The folder's name is a valid slug and not `paths`; it holds `meta.yaml`, `guide.md` and an optional `examples/` of files, and nothing else |
+| G2 | The folder's name is a valid slug and not `paths`; it holds `meta.yaml`, `guide.md`, an optional `examples/` of files and an optional `diagrams/` of files, and nothing else |
 | G3 | `guide.md`: `# <title>` with the title of `meta.yaml`, the [sections](#sections) non-empty and in order, no `TODO` |
 | G4 | `prerequisites` and `related` name other guides that exist; `problems` name problems that exist, each named in `## Practice` |
 | G5 | Prerequisites form no cycle, across every guide |
@@ -172,6 +195,7 @@ The same problem may come twice with different levels, so a path can return to i
 | G7 | Every `mermaid` block starts with a supported type and has `accTitle` and `accDescr` lines |
 | G8 | Every `mermaid` block is followed by a text drawing whose marker hash matches its source, no line of it wider than 100 characters; no marker stands without its block |
 | G9 | `## Further reading` holds at least one `https://` link |
+| G10 | The n-th `mermaid` block has `diagrams/<n>-light.svg` and `diagrams/<n>-dark.svg`, each starting with a marker whose hash matches its source; every file in `diagrams/` is one of them. A missing or stale drawing, and a file that belongs to no diagram, fail with the hint to run `pnpm render` in `tools/guides/`, which removes such a file |
 
 ### Paths
 
@@ -208,10 +232,12 @@ The path's next step is its first step that is not done.
 1. Read the problems the guide will link, their `problem.md` and `solutions/explanation.md`, so the guide matches the catalog. Teach the idea with other examples: a guide never gives away a linked problem's solution.
 2. Write `meta.yaml` and `guide.md` in your own words ([ADR 0004](../decisions/0004-original-problem-wording.md)). State every complexity with its conditions, and check every fact about a language against its official documentation, citing it.
 3. Write the examples, run them, and paste each one's output into its `output` block.
-4. Draw the diagrams in Mermaid, then `pnpm install` and `pnpm render` in `tools/guides/`.
+4. Draw the diagrams in Mermaid, then `pnpm install` and `pnpm render` in `tools/guides/`, which writes the text drawings and the SVG drawings; look at the SVGs, light and dark, in the Guides view of `cstudy serve`.
 5. `cstudy verify --static`, then `uv run pytest tests/content/test_guide_examples.py` in `cli/`.
 6. List every fact about a language, library or standard with its source in a review page, as [the hashing guides' review](../reviews/guides-hashing.md) does, so that an independent review can check it.
 
-## Guides page (next)
+## Guides page
 
-The page of [`cstudy serve`](web-ui.md) will gain a Guides view, the recommended way to read: the guides and the paths with their progress, a guide drawn from its Markdown with its `mermaid` blocks drawn by a lazily loaded, locally bundled Mermaid chunk that follows the page's light or dark theme, the text drawings hidden, links between guides, and a control that marks a guide read through the same use case as `--done`. `cstudy learn <guide> --open` will open a guide there, as `cstudy serve --open` opens the page. It is not built yet, and will come after the page's current changes land; until then `--open` says so in one line and exits 0, and the terminal reads every guide in full.
+The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
+
+`cstudy learn <guide> --open` and `cstudy learn --path <path> --open` run `cstudy serve --open` landing on the guide or the path ([cli](cli.md#cstudy-learn)). The terminal still reads every guide in full.

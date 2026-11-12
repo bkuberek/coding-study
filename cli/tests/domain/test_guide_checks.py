@@ -10,7 +10,7 @@ from coding_study.domain.guide_checks import (
     guide_static_checks,
     path_static_checks,
 )
-from coding_study.domain.guide_markdown import text_marker
+from coding_study.domain.guide_markdown import GuideMarkdown, svg_marker, text_marker
 
 DIRECTORY = "guides/hash-maps"
 DIAGRAM = "flowchart LR\n  accTitle: Buckets\n  accDescr: Two buckets.\n  a --> b\n"
@@ -58,14 +58,27 @@ def content(
     files: tuple[str, ...] = ("meta.yaml", "guide.md", "examples/hello.py"),
     examples: Mapping[str, str] | None = None,
     meta: GuideMeta = META,
+    diagrams: Mapping[str, str] | None = None,
 ) -> GuideContent:
+    """`diagrams` defaults to the SVG drawings of every diagram of `markdown`, up to date."""
+    text = guide_markdown() if markdown is None else markdown
     return GuideContent(
         directory=DIRECTORY,
         meta=meta,
-        markdown=guide_markdown() if markdown is None else markdown,
+        markdown=text,
         files=files,
         examples={"examples/hello.py": EXAMPLE} if examples is None else examples,
+        diagrams=svg_drawings(text) if diagrams is None else diagrams,
     )
+
+
+def svg_drawings(markdown: str) -> dict[str, str]:
+    """A light and a dark SVG for each diagram, whose markers hold the hash of its source."""
+    return {
+        f"diagrams/{position}-{theme}.svg": f"{svg_marker(diagram.content)}\n<svg/>\n"
+        for position, diagram in enumerate(GuideMarkdown(markdown).mermaid_fences(), start=1)
+        for theme in ("light", "dark")
+    }
 
 
 def messages(found: object) -> list[str]:
@@ -80,8 +93,13 @@ def test_g2_a_folder_holds_nothing_but_the_guide_files():
     found = guide_static_checks(content(files=("meta.yaml", "guide.md", "diagram.svg")), CATALOG)
     assert messages(found) == [
         'guides/hash-maps: "diagram.svg" does not belong in a guide: '
-        "a guide holds meta.yaml, guide.md and examples/"
+        "a guide holds meta.yaml, guide.md, examples/ and diagrams/"
     ]
+
+
+def test_g2_svg_drawings_belong_in_diagrams():
+    files = ("meta.yaml", "guide.md", "examples/hello.py", "diagrams/1-light.svg")
+    assert messages(guide_static_checks(content(files=files), CATALOG)) == []
 
 
 def test_g2_examples_hold_files_only():
@@ -273,6 +291,60 @@ def test_g8_a_stale_drawing_fails_and_says_how_to_redraw_it():
         "guides/hash-maps/guide.md: line 7: the text drawing is stale: "
         "run pnpm render in tools/guides/"
     ]
+
+
+def test_g10_up_to_date_svg_drawings_pass():
+    assert messages(guide_static_checks(content(), CATALOG)) == []
+
+
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_g10_a_missing_svg_drawing_fails_and_says_how_to_draw_it(theme: str):
+    drawings = svg_drawings(guide_markdown())
+    del drawings[f"diagrams/1-{theme}.svg"]
+    found = guide_static_checks(content(diagrams=drawings), CATALOG)
+    assert messages(found) == [
+        f"guides/hash-maps/guide.md: line 7: the diagram has no {theme} SVG drawing "
+        f"diagrams/1-{theme}.svg: run pnpm render in tools/guides/"
+    ]
+
+
+def test_g10_a_stale_svg_drawing_fails():
+    stale = svg_drawings(guide_markdown(diagram=DIAGRAM.replace("a --> b", "a --> c")))
+    drawings = {
+        **svg_drawings(guide_markdown()),
+        "diagrams/1-dark.svg": stale["diagrams/1-dark.svg"],
+    }
+    found = guide_static_checks(content(diagrams=drawings), CATALOG)
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 7: the SVG drawing diagrams/1-dark.svg is stale: "
+        "run pnpm render in tools/guides/"
+    ]
+
+
+def test_g10_an_svg_without_its_marker_is_stale():
+    drawings = {**svg_drawings(guide_markdown()), "diagrams/1-light.svg": "<svg/>\n"}
+    found = guide_static_checks(content(diagrams=drawings), CATALOG)
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 7: the SVG drawing diagrams/1-light.svg is stale: "
+        "run pnpm render in tools/guides/"
+    ]
+
+
+@pytest.mark.parametrize("orphan", ["diagrams/2-light.svg", "diagrams/notes.txt"])
+def test_g10_a_file_of_diagrams_that_belongs_to_no_diagram_fails(orphan: str):
+    drawings = {**svg_drawings(guide_markdown()), orphan: "<svg/>\n"}
+    found = guide_static_checks(content(diagrams=drawings), CATALOG)
+    assert messages(found) == [
+        f"guides/hash-maps/{orphan}: belongs to no diagram: "
+        "run pnpm render in tools/guides/, which removes it"
+    ]
+
+
+def test_g10_a_guide_without_diagrams_needs_no_svg():
+    markdown = guide_markdown().replace(
+        f"```mermaid\n{DIAGRAM}```\n\n{text_marker(DIAGRAM)}\n```text\n[a] --> [b]\n```\n\n", ""
+    )
+    assert messages(guide_static_checks(content(markdown, diagrams={}), CATALOG)) == []
 
 
 def test_g8_a_missing_drawing_fails():

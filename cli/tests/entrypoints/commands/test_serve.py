@@ -1,6 +1,7 @@
 """`cstudy serve` (docs/specs/cli.md#cstudy-serve), with the server loop replaced."""
 
 import asyncio
+import html
 import signal
 import socket
 import stat
@@ -18,12 +19,14 @@ from coding_study.adapters.workspace_marker import tool_version
 from coding_study.application.installs import Install, InstallKind, InstallScan
 from coding_study.application.ports import WebServerLibraries, WebUiAssets
 from coding_study.entrypoints import cli
-from coding_study.entrypoints.commands import serve
+from coding_study.entrypoints.commands import learn, serve
 from coding_study.entrypoints.shared import ExitCode
 from coding_study.entrypoints.web import app, server
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.context import ServerSettings
 from coding_study.entrypoints.web.runs import Children
+from tests.fakes import make_environment
+from tests.guide_builders import write_guide
 from tests.web_server import web_workspace
 
 runner = CliRunner()
@@ -411,6 +414,24 @@ def test_the_redirect_file_is_readable_by_its_owner_only(workspace, monkeypatch,
     loop.during = lambda: modes.append(stat.S_IMODE(redirect_file(workspace, loop).stat().st_mode))
     serving(monkeypatch, loop, "--open")
     assert modes == [0o600]
+
+
+def test_learn_open_serves_the_page_landing_on_the_guide(workspace, monkeypatch, opened):
+    """`cstudy learn <guide> --open` is `cstudy serve --open` whose URL names the guide's view."""
+    write_guide(workspace, "hash-maps", "Hash maps")
+    monkeypatch.setattr(learn, "load_catalog_environment", lambda *_: make_environment(workspace))
+    contents: list[str] = []
+    loop = ServerLoop(KeyboardInterrupt)
+    loop.during = lambda: contents.append(redirect_file(workspace, loop).read_text())
+    monkeypatch.setattr(server, "serve_forever", loop)
+    result = runner.invoke(cli.app, ["learn", "hash-maps", "--open"])
+    url = printed_url(result.stdout)
+    assert (
+        result.exit_code,
+        url.endswith("&view=/guides/hash-maps"),
+        f'<meta http-equiv="refresh" content="0; url={html.escape(url)}">' in contents[0],
+        opened,
+    ) == (ExitCode.INTERRUPTED, True, True, [redirect_file(workspace, loop).as_uri()])
 
 
 def test_the_redirect_file_is_removed_when_the_server_stops(workspace, monkeypatch, opened):
