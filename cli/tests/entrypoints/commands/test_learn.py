@@ -9,8 +9,14 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
-from coding_study.application.learn import PathView, guide_page
-from coding_study.domain.concept_guides import LearningPath, PathStep, StepProgress
+from coding_study.application.learn import GuideEntry, LearnListing, PathView, guide_page
+from coding_study.domain.concept_guides import (
+    GuideLevel,
+    GuideMeta,
+    LearningPath,
+    PathStep,
+    StepProgress,
+)
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
 from coding_study.entrypoints.shared import ExitCode
@@ -262,3 +268,25 @@ def test_a_path_with_long_slugs_keeps_its_columns_aligned():
         )
     } == {rows[0].index("TITLE")}
     assert {row.index("not read") for row in rows[1:]} == {rows[0].index("STATUS")}
+
+
+def test_the_list_with_long_slugs_keeps_its_columns_aligned(environment: Environment):
+    long_guide = "a-guide-whose-slug-is-longer-than-the-column"
+    long_path = "a-path-whose-slug-is-longer-than-the-column"
+    guides = tuple(
+        GuideEntry(GuideMeta(slug, "Title", "Summary.", GuideLevel.CORE), None)
+        for slug in ("short", long_guide)
+    )
+    paths = tuple(
+        PathView(LearningPath(slug, "Path title", "Summary.", ()), ())
+        for slug in ("short", long_path)
+    )
+    buffer = io.StringIO()
+    learn._print_listing(
+        Console(file=buffer, width=200), environment, LearnListing(guides, paths), as_json=False
+    )
+    lines = buffer.getvalue().splitlines()
+    guide_rows = [line for line in lines if "Title" in line]
+    path_rows = [line for line in lines if "Path title" in line]
+    assert {row.index("core") for row in guide_rows} == {lines[1].index("LEVEL")}
+    assert {row.index("0 of 0") for row in path_rows} == {len(long_guide) + 2}
