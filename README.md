@@ -149,7 +149,7 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 | Track | Items | Graded by | Format |
 |-------|------:|-----------|--------|
 | `dsa` | 210 | Tests, in all 6 languages | Functions and data-structure designs across 24 patterns |
-| `practical` | 132 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, a business task with money and dates, a security or AI/LLM task in Python and TypeScript, a small service to extend, or a service project in Docker with mock servers and backing services |
+| `practical` | 135 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, a business task with money and dates, a security or AI/LLM task in Python and TypeScript, a small service to extend, or a service project in Docker with mock servers and backing services |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |
 | `concurrency` | 6 | Stress tests against invariants | Thread-safe classes, per-language models |
 | `debugging` | 23 | Tests | Buggy code to fix, including Go- and Rust-only bugs and JavaScript traps |
