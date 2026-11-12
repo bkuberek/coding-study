@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0325"
+slug: context-compaction
+title: Context Compaction
+summary: "Build ContextWindow, which fits a long chat in a token budget: count tokens, keep recent turns, compact old ones into summaries without splitting tool calls, keep a stable prefix, pin key facts."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [sliding-window, greedy]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend, ml-engineer]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Counting tokens and keeping the latest turns}
+  - {level: 2, title: Compacting old turns into a summary}
+  - {level: 3, title: A stable prefix}
+  - {level: 4, title: Pinned facts}
+signature:
+  class:
+    name: ContextWindow
+    constructor: {params: []}
+    methods:
+      - {name: countTokens, level: 1, params: [{name: text, type: string}], returns: {type: int}}
+      - {name: addTurn, level: 1, params: [{name: role, type: string}, {name: content, type: string}], returns: {type: int}}
+      - {name: window, level: 1, params: [{name: budget, type: int}, {name: maxTurns, type: int}], returns: {type: "list<int>"}}
+      - {name: addCall, level: 2, params: [{name: callId, type: string}, {name: content, type: string}], returns: {type: int}}
+      - {name: addResult, level: 2, params: [{name: callId, type: string}, {name: content, type: string}], returns: {type: int}}
+      - {name: setSummaries, level: 2, params: [{name: texts, type: "list<string>"}], returns: {type: void}}
+      - {name: setCompaction, level: 2, params: [{name: threshold, type: int}, {name: keepRecent, type: int}], returns: {type: void}}
+      - {name: context, level: 2, params: [], returns: {type: "list<list<string>>"}}
+      - {name: compactions, level: 2, params: [], returns: {type: int}}
+      - {name: setStablePrefix, level: 3, params: [{name: lowWater, type: int}], returns: {type: void}}
+      - {name: prefixReuse, level: 3, params: [], returns: {type: "list<int>"}}
+      - {name: pinFact, level: 4, params: [{name: factId, type: string}, {name: text, type: string}], returns: {type: bool}}
+      - {name: setPinBudget, level: 4, params: [{name: tokens, type: int}], returns: {type: void}}
+      - {name: recall, level: 4, params: [{name: factId, type: string}], returns: {type: bool}}
+      - {name: dropped, level: 4, params: [], returns: {type: "list<list<string>>"}}
+comparator: {type: ops}
+approaches:
+  - {id: rolling-summary, name: Units and one live list rebuilt on every add, role: optimal, time: "O(F n^2 L) per add for n live turns, F pinned facts and texts of length L", space: "O(T L) for T turns of length L", time_class: "n^2", space_class: "n"}
+related: [context-packer, memory-store, chat-history-index, graphrag-context, loop-controller, tool-permission-gate, tool-calling-agent-loop-typescript]
+estimate_minutes: 120
