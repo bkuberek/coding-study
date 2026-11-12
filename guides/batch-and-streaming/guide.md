@@ -141,7 +141,7 @@ flowchart LR
             └───────────────────────────────────┘
 ```
 
-**Kappa.** A 2014 article, *Questioning the Lambda Architecture*, points at Lambda's cost: the same logic must be written twice, for two different systems, and kept producing the same results. Its alternative keeps only the stream processor. The input is kept as a log that holds the full history. To recompute, you start a second copy of the stream job from the beginning of the log, writing to a new output table; when it has caught up, the application switches to the new table, and the old job and its table are removed. The article suggests, tentatively, calling this the **Kappa Architecture**.
+**Kappa.** A 2014 article, *Questioning the Lambda Architecture*, points at Lambda's cost: the same logic must be written twice, for two different systems, and kept producing the same results. Its alternative keeps only the stream processor. The input is kept in a log that retains as much history as you may want to reprocess. To recompute, you start a second copy of the stream job from the beginning of the log, writing to a new output table; when it has caught up, the application switches to the new table, and the old job and its table are removed. The article suggests, tentatively, calling this the **Kappa Architecture**.
 
 The Dataflow paper reports an experience that weighs on the choice: a team ran a stream that gave weakly consistent results, with a nightly batch job to produce the truth, and found that its users stopped trusting the stream's numbers; the team rebuilt the system around strong consistency.
 
@@ -182,7 +182,7 @@ The stream's memory is the real bound: it must keep a group's state as long as a
 
 ## Practice
 
-- `cstudy start feed-ingest-python`: a daily batch feed from shops. Load each file once however often it is sent, and refuse the rows you cannot trust.
+- `cstudy start feed-ingest-python`: a daily batch feed from shops. Its level 1, the step of this path, reads a feed line by line and stores each purchase, with its amount in whole cents; the later levels, which refuse bad rows and load each file once, come back after the guide on data quality.
 - `cstudy start stream-windows`: its first two levels answer questions over every event received so far, as a batch view would; its last two run the same events as a live stream that must decide when to report.
 
 ## Further reading

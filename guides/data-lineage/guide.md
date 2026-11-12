@@ -4,7 +4,7 @@
 
 A number in a report looks wrong. Where does it come from? The report reads a revenue table, which is built from an order table, which is built from raw orders and exchange rates, each loaded by a job of its own. Without a record of those steps, finding the cause means reading the code of every job. And before anyone changes a column of the raw orders, a second question matters as much: what will this break?
 
-**Data lineage** is the record that answers both. It is a graph: each **dataset** (a table, a file, a topic) is a node, and an edge goes from each dataset a job reads to each dataset it writes. Walking the edges backwards from a dataset gives its **upstream**, everything it is built from; walking them forwards gives its **downstream**, everything built from it.
+**Data lineage** is the record that answers both. It is a graph: each **dataset** (a table, a file, a stream of messages) is a node, and an edge goes from each dataset a job reads to each dataset it writes. Walking the edges backwards from a dataset gives its **upstream**, everything it is built from; walking them forwards gives its **downstream**, everything built from it.
 
 Lineage comes at two levels of detail.
 
@@ -166,7 +166,7 @@ The drawing has one line per column edge, with how the input is used in the midd
 - **Tracing a wrong number** to its source: walk upstream from the bad column, and check each step's latest run.
 - **Before changing or dropping a column**: walk downstream to list every dataset, report and export that reads it, and their owners. Column-level lineage separates the columns that merely copy it from those that compute with it.
 - **Backfills**: the downstream walk from a rewritten dataset is the list of what must run again, as the guide on orchestration explains.
-- **Sensitive data**: mark the columns that hold personal data, follow the edges that carry their values, and find every published dataset they reach. An edge that only filters, or one that hashes or counts, carries no value onward.
+- **Sensitive data**: mark the columns that hold personal data, follow the edges that carry their values, and find every published dataset they reach. An edge that only filters carries no value onward. A masking edge, such as a hash or a count, hides the value but may still identify a person: a hash of an email still matches that email. Whether a masked edge stops a label is a policy you choose, not something the lineage proves.
 - **Audits and trust**: show where a published figure came from, which job versions built it, and which checks its inputs passed.
 
 ## Common traps
@@ -174,7 +174,7 @@ The drawing has one line per column edge, with how the input is used in the midd
 - **Lineage written by hand.** A diagram or a spec maintained apart from the code drifts as soon as the code changes. Collect lineage from the runs, or generate it from the code, and compare the two.
 - **Only dataset-level lineage.** Every change then seems to affect everything downstream, so people stop looking. Column-level lineage is what makes impact analysis precise enough to act on.
 - **Forgetting indirect edges.** A filter or a join key contributes no value to an output, but changing it changes the output. A lineage that records only the columns copied or computed misses those dependencies.
-- **Treating every edge as carrying data.** For sensitive data the opposite mistake: a column used only to filter, or hashed before it is used, does not carry its values onward. Following it overstates where personal data went.
+- **Treating every edge as carrying data, or a masked one as safe.** For sensitive data, a column used only to filter does not carry its values onward, and following it overstates where personal data went. A hashed or counted column hides its values but may still identify a person, so stopping a label there is a policy decision, not a fact the lineage shows.
 - **Names that do not match.** The same table called `orders` by one job and `prod.sales.orders` by another becomes two nodes, and the graph breaks in two. Agree on how datasets are named, with a namespace that says where they live.
 - **No versions.** Knowing that a table reads another is less useful than knowing which run, of which code version, read which version of it. Record runs, and the dataset versions where the storage provides them.
 

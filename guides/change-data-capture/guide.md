@@ -4,7 +4,7 @@
 
 An application keeps its data in a database. Other systems need the same data: a search index, a cache, an analytics store, another service. Copying the whole table every night is slow and a day out of date. **Change data capture** (CDC) copies the *changes* instead: every insert, update and delete, as it happens, to whoever needs them.
 
-The changes are already written down. A database such as PostgreSQL records each change in a **write-ahead log** (WAL), an append-only file of changes in the order they were made, before it changes its data files; its documentation calls this a standard method for ensuring data integrity. That rule is what lets the database recover after a crash, by replaying the log. Each record of the log sits at a **log sequence number** (LSN), a position that only grows. PostgreSQL's documentation, for example, defines its LSN as a byte offset into the WAL, increasing with each new record.
+The changes are already written down. A database such as PostgreSQL records each change in a **write-ahead log** (WAL), an append-only log, kept as a series of files, of changes in the order they were written, before it changes its data files; its documentation calls this a standard method for ensuring data integrity. That rule is what lets the database recover after a crash, by replaying the log. Each record of the log sits at a **log sequence number** (LSN), a position that only grows. PostgreSQL's documentation, for example, defines its LSN as a byte offset into the WAL, increasing with each new record.
 
 Log-based CDC reads that log and turns each entry into a **change event**:
 
@@ -70,7 +70,7 @@ class Database:
     def __init__(self) -> None:
         self.rows: dict[str, dict[str, str]] = {}
         self.updated_at: dict[str, int] = {}
-        self.log: list[dict] = []  # one change event per write, in commit order
+        self.log: list[dict] = []  # one change event per write, in the order written
 
     def write(self, time: int, op: str, key: str, row: dict[str, str] | None = None) -> None:
         before = self.rows.get(key)
@@ -118,7 +118,7 @@ The second poll sees only that `ana` is now on `team`. It missed two things: tha
 
 ### A replica that catches up
 
-A new replica starts from a snapshot, taken as of position 30, and then reads the log. The log reader was started a little before the snapshot finished, so it delivers from position 10. Later, its connection drops and the log delivers again from position 40.
+A new replica starts from a snapshot, taken as of position 30, and then reads the log. The log still holds every change from position 10, and the reader starts there, before the snapshot's position. Later, its connection drops and the log delivers again from position 40.
 
 The replica keeps its rows and the position it has applied up to, and changes the two together. That one rule handles both overlaps: an event at or below the position is already in the replica, whether it came from the snapshot or from an earlier delivery.
 
@@ -196,7 +196,7 @@ replica: {'1': 'team'} at position 50
 without positions, lsn 10 again: insert of key 1 fails, duplicate key
 ```
 
-The replica ends exactly where the source is, `ana` on `team` and `ben` gone, however many times the events came. The last line shows the replica without positions: when the insert of key 1 is delivered again, it fails on a duplicate key, and a replica that turned it into an upsert instead would quietly put an old row back over a newer one.
+The replica ends exactly where the source is, `ana` on `team` and `ben` gone, however many times the events came. The last line shows the replica without positions: when the insert of key 1 is delivered again, it fails on a duplicate key, and a replica that turned it into an upsert (insert, or update if the key exists) instead would quietly put an old row back over a newer one.
 
 ```mermaid
 sequenceDiagram
@@ -267,7 +267,7 @@ The drawing is the same story as a conversation. The one position is enough here
 - **Changes applied out of order.** An update applied before the insert of its row, or an old update applied after a newer one, leaves the wrong row. Keep order per key, and compare positions before applying.
 - **A reader that stops.** The database keeps the log a reader still needs. A reader that is gone, but still registered, makes the database keep log, and use storage, until someone notices.
 - **Forgetting the schema.** Columns are added, dropped and renamed in the source, and those changes travel in the same order as the rows. A consumer that ignores them breaks on the first event with a new shape, or misreads values by position.
-- **Losing deletes downstream.** A consumer that only upserts what it receives never removes anything. Deletes must be applied, and kept as markers long enough that an old insert delivered late cannot bring the row back.
+- **Losing deletes downstream.** A consumer that only applies an upsert (insert, or update if the key exists) for each event it receives never removes anything. Deletes must be applied, and kept as markers long enough that an old insert delivered late cannot bring the row back.
 
 ## Complexity
 
@@ -286,7 +286,7 @@ A replica applying events needs O(1) average work per event with a hash map from
 - **Write-ahead logging.** PostgreSQL's documentation states the rule plainly: changes to data files must be written only after the log records describing them have been flushed to permanent storage, so after a crash, changes not yet in the data files can be redone from the log. The log exists for recovery; CDC reuses it.
 - **Logical decoding and slots.** The same documentation defines logical decoding as extracting all persistent changes to a database's tables into a format that can be understood without knowing the database's internal state. A replication slot represents a stream of changes replayed to a client in the order they were made. Slots persist across crashes and prevent removal of the log they still need, which consumes storage, so an unused slot should be dropped. A slot emits each change once in normal operation, but its position is saved only at checkpoints, so after a crash it may go back to an earlier position and send recent changes again; the documentation makes clients responsible for handling the same message more than once.
 - **The shape of change events.** Debezium, an open-source CDC platform, gives each event optional `before` and `after` fields and an operation: `c` for create, `u` update, `d` delete, `r` read, used for rows read during a snapshot, `t` truncate and `m` message. A delete's `after` is null. After each delete it can emit a **tombstone**, an event with the same key and no value, so that a log that keeps only the latest event per key can drop every earlier event for that key.
-- **What log-based capture gives.** The same project's documentation lists the advantages over polling and dual writes: every change is captured, deletes included; delays are low without the load of frequent polling; the data model needs no last-updated column; and, depending on the database, the event can carry the old row and metadata such as the transaction id. When a connector starts and the database has already discarded the log it would need, it begins with a snapshot of the current state. Its FAQ is clear that when things go wrong, consumers can see some events more than once.
+- **What log-based capture gives.** The same project's documentation lists the advantages over polling and dual writes: every change is captured, deletes included; delays are low without the load of frequent polling; the data model needs no last-updated column; and, depending on the database, the event can carry the old row and metadata such as the transaction id. When the capture process starts and the database has already discarded the log it would need, it begins with a snapshot of the current state. Its FAQ is clear that when things go wrong, consumers can see some events more than once.
 - **Snapshots without stopping the log.** Copying a large table takes time while the table keeps changing. The DBLog paper (Andreakis and Papapanagiotou, 2020) notes that transaction logs typically do not hold the full history, and describes interleaving log events with rows selected from the tables in chunks, each chunk framed by a low and a high watermark written to a table, so that they show up in the log as change events; the snapshot can pause and resume, takes no locks, and never stops the log events from flowing.
 
 ## Practice

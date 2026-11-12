@@ -10,7 +10,7 @@ class Database:
     def __init__(self) -> None:
         self.rows: dict[str, dict[str, str]] = {}
         self.updated_at: dict[str, int] = {}
-        self.log: list[dict] = []  # one change event per write, in commit order
+        self.log: list[dict] = []  # one change event per write, in the order written
 
     def write(self, time: int, op: str, key: str, row: dict[str, str] | None = None) -> None:
         before = self.rows.get(key)

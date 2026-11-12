@@ -177,7 +177,7 @@ flowchart LR
 
 The drawing follows one fix. The rewritten partition makes stale the partitions that read it directly, and those make stale the partitions that read them, through every window: one change on day 2 reruns nine partitions. An orchestrator finds them by recording, for every partition it writes, which partitions it read, and in which version.
 
-A **deadline** says when a partition must be ready: the revenue of a day by 08:00 the next morning, say. It is often called an **SLA**, for service-level agreement. Measure it on the data, not on the job: "the partition for 3 March exists and passed its checks by 08:00 on 4 March". A job that finished on time but wrote nothing has not met it.
+A **deadline** says when a partition must be ready: the revenue of a day by 08:00 the next morning, say. When it is promised to the readers, it is part of a **service-level agreement** (SLA). Measure it on the data, not on the job: "the partition for 3 March exists and passed its checks by 08:00 on 4 March". A job that finished on time but wrote nothing has not met it.
 
 ## When to use it
 

@@ -7,7 +7,7 @@ An analytics store answers questions like "revenue by product category and month
 - A **fact table** records measurements of a business process, one row per event: a sale, a payment, a shipment. Its columns are mostly numbers you can add up, such as an amount or a quantity, plus a key for each thing that took part.
 - A **dimension table** describes the things that take part: products, customers, stores, dates. The Kimball Group's definition of dimensions is the "who, what, where, when, why, and how" around an event. Its columns are descriptive text, used to filter and group: a product's name and category, a store's city.
 
-A fact table in the middle with its dimension tables around it, each joined by a key, is a **star schema**. A report joins the facts to the dimensions it needs, filters and groups by dimension columns, and adds up the facts.
+A fact table in the middle with its dimension tables around it, each joined by a key, is a **star schema**. A report **joins** the facts to the dimensions it needs, which means it matches each fact row to its dimension row by the key; then it filters and groups by dimension columns, and adds up the facts.
 
 ```mermaid
 flowchart TD
@@ -152,7 +152,7 @@ The last line is a **late-arriving fact**: a sale dated 10 April that reaches th
 - **Joining facts to the current row by accident.** A join on the natural key with a "current" filter gives history as it is now. If the report wanted history as it was, the numbers are wrong without any error.
 - **Giving a late fact the current key.** A fact must point at the version valid on its event date, not on its load date.
 - **Making every column type 2.** Each change of any tracked column adds a row. Track the columns reports group by, and treat the rest as type 1.
-- **Dropping facts whose dimension row is missing.** An inner join silently loses facts that point at a product the dimension has not received yet. Keep a reserved "unknown" row for them, so totals stay complete and the gap is visible.
+- **Dropping facts whose dimension row is missing.** A join that keeps only matching rows (an inner join) silently loses facts that point at a product the dimension has not received yet. Keep a reserved "unknown" row for them, so totals stay complete and the gap is visible.
 
 ## Complexity
 
@@ -175,7 +175,7 @@ Type 2 grows with changes, not with facts: a dimension of a million customers th
 - **Hybrid types.** Type 6 adds the current value of an attribute, overwritten on every version, beside the type 2 value, so facts can be grouped by either. Type 7 puts both the durable key and the surrogate key in the fact table, giving one view joined by the durable key to current rows (as it is) and one joined by the surrogate key (as it was).
 - **Conformed dimensions.** When two fact tables share a dimension with the same column names and values, their results can be lined up on the same rows of one report, the Kimball Group's **drill-across**. Conformed dimensions are what make separate star schemas one warehouse.
 - **Retroactive changes.** When a type 2 change is learned late, after facts were loaded with the old key, the Kimball Group's advice is to insert the new row and restate the affected facts.
-- **Two kinds of time.** The SQL:2011 standard, as described by Kulkarni and Michels, distinguishes **valid time**, when a row is true in the world, from **transaction time**, when it was recorded in the database; application-time period tables hold the first, system-versioned tables the second. Periods are closed-open, like the versions above, and an update for part of a row's period splits the row into two or three contiguous rows, only the part inside the period being changed. A type 2 dimension keeps valid time; a store that also keeps transaction time can answer "what did we believe on 1 May about 10 April?", which is the question of the effective-dated practice problem.
+- **Two kinds of time.** The SQL:2011 standard, as described by Kulkarni and Michels, distinguishes **valid time**, when a row is true in the world, from **transaction time**, when it was recorded in the database; application-time period tables hold the first, system-versioned tables the second. Periods are closed-open, like the versions above, and an update for part of a row's period splits the row into two or three contiguous rows, only the part inside the period being changed. A type 2 dimension keeps valid time when its dates come from the source, and something closer to transaction time when they are load dates; a store that keeps both can answer "what did we believe on 1 May about 10 April?", which is the question of the effective-dated practice problem.
 
 ## Practice
 

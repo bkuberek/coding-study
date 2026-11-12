@@ -14,7 +14,7 @@ A stream never ends, so a question about it must be cut into finite pieces of ti
 | Window | Defined by | Each event falls in |
 |--------|-----------|---------------------|
 | **Tumbling** (also called fixed) | A size: `[0, 10)`, `[10, 20)`, ... | Exactly one window |
-| **Sliding** (also called hopping) | A size and a period: windows of 10 minutes starting every 5 | `size / period` windows when the period divides the size; none, if the period is longer than the size and the event falls in a gap |
+| **Sliding** (the Dataflow paper's word; some engines, and the practice problem, call them hopping) | A size and a period: windows of 10 minutes starting every 5 | `size / period` windows when the period divides the size; none, if the period is longer than the size and the event falls in a gap |
 | **Session** | A gap of inactivity, per key | One session: the burst of that key's activity it belongs to |
 
 ```mermaid
@@ -171,7 +171,7 @@ That is the whole trade-off of a heuristic watermark, in the words of the Datafl
 
 ### The life of a window
 
-Late data can be handled in a few ways, alone or together. It can be dropped, and counted, as one pipeline in the MillWheel paper did. Each window can be kept open for a while after it is first reported, a **grace period**, with a corrected result reported when late data arrives, as other pipelines in that paper corrected their aggregates. Or late data can go to a separate output, for someone to look at.
+Late data can be handled in a few ways, alone or together. It can be dropped, and counted, as one pipeline in the MillWheel paper did. Each window can be kept open for a while after it is first reported, a **grace period**, with a corrected result reported when late data arrives. Other pipelines in the MillWheel paper corrected their aggregates when late records came; the paper does not say for how long. Or late data can go to a separate output, for someone to look at.
 
 ```mermaid
 flowchart TD
