@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0354"
+slug: test-doubles
+title: Test Doubles
+summary: "Build Doubles, a test-double library: stubs with scripted answers, spies that record calls, strict and lenient mocks with a final check, and a fake clock whose timers fire in order."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing, heap]
+domains: [software-design]
+job_roles: [general, backend]
+scope: function
+levels:
+  - {level: 1, title: Stubs}
+  - {level: 2, title: Spies}
+  - {level: 3, title: Mocks}
+  - {level: 4, title: A fake clock}
+signature:
+  class:
+    name: Doubles
+    constructor: {params: []}
+    methods:
+      - {name: addStub, level: 1, params: [{name: name, type: string}], returns: {type: bool}}
+      - {name: onCall, level: 1, params: [{name: name, type: string}, {name: method, type: string}, {name: args, type: "list<string>"}, {name: answers, type: "list<string>"}], returns: {type: bool}}
+      - {name: otherwise, level: 1, params: [{name: name, type: string}, {name: method, type: string}, {name: answer, type: string}], returns: {type: bool}}
+      - {name: call, level: 1, params: [{name: name, type: string}, {name: method, type: string}, {name: args, type: "list<string>"}], returns: {type: string}}
+      - {name: callCount, level: 2, params: [{name: name, type: string}, {name: method, type: string}], returns: {type: int}}
+      - {name: matchCount, level: 2, params: [{name: name, type: string}, {name: method, type: string}, {name: args, type: "list<string>"}], returns: {type: int}}
+      - {name: nthCall, level: 2, params: [{name: name, type: string}, {name: n, type: int}], returns: {type: "list<string>"}}
+      - {name: inOrder, level: 2, params: [{name: steps, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: addMock, level: 3, params: [{name: name, type: string}, {name: strict, type: bool}], returns: {type: bool}}
+      - {name: expect, level: 3, params: [{name: name, type: string}, {name: method, type: string}, {name: args, type: "list<string>"}, {name: answer, type: string}, {name: times, type: int}], returns: {type: bool}}
+      - {name: verify, level: 3, params: [{name: name, type: string}], returns: {type: "list<string>"}}
+      - {name: verifyAll, level: 3, params: [], returns: {type: "list<string>"}}
+      - {name: now, level: 4, params: [], returns: {type: long}}
+      - {name: schedule, level: 4, params: [{name: delay, type: long}, {name: name, type: string}, {name: method, type: string}, {name: args, type: "list<string>"}], returns: {type: int}}
+      - {name: every, level: 4, params: [{name: interval, type: long}, {name: name, type: string}, {name: method, type: string}, {name: args, type: "list<string>"}], returns: {type: int}}
+      - {name: cancel, level: 4, params: [{name: timerId, type: int}], returns: {type: bool}}
+      - {name: advance, level: 4, params: [{name: ms, type: long}], returns: {type: "list<string>"}}
+      - {name: pending, level: 4, params: [], returns: {type: "list<string>"}}
+      - {name: callTimes, level: 4, params: [{name: name, type: string}, {name: method, type: string}], returns: {type: "list<long>"}}
+comparator: {type: ops}
+approaches:
+  - {id: rule-lists-timer-heap, name: Rule lists per method and one call log with a timer heap, role: optimal, time: "O(r) per call for r rules and expectations; O(c) per spy question over a double's c calls; O(log t) per timer event", space: "O(r + c + t)", time_class: "n", space_class: "n"}
+related: [property-test-runner, event-bus, job-scheduler, token-bucket-limiter, vendor-retry-client-typescript]
+estimate_minutes: 90
