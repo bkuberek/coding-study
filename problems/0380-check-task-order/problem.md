@@ -11,6 +11,8 @@ Someone proposes an `order`: the sequence in which they will do the tasks. The o
 
 Return `true` when the order is valid, and `false` otherwise.
 
+This is a standard exercise on topological orders, in our own wording.
+
 ## Background
 
 A task's **position** is its place in the proposed order, counting from 0. In the order `[3, 1, 0]`, task 3 has position 0, task 1 has position 1 and task 0 has position 2. Every pair `[before, after]` is an arrow from `before` to `after`, and the order respects the arrow when the position of `before` is smaller than the position of `after`. An order that respects every arrow, and lists each task once, is called a **topological order** of the tasks.
@@ -64,7 +66,8 @@ The three pairs form a cycle: task 0 must come before 1, task 1 before 2, and ta
 
 - Can you make the check run in time proportional to `n` plus the number of pairs?
 - Instead of `true` or `false`, how would you return the first pair in `prerequisites` that the order breaks?
-- Building a valid order yourself, instead of checking one, is the topological sort. Can you see how a check like this one tells you your answer is right?
+- How would you produce a valid order yourself, instead of checking a given one? Which task could safely go first, and what changes for the others once it is done? A check like this one can then confirm your answer.
+- Building a valid order, and reporting when none exists, is the topological sort of Course Schedule and Course Schedule II.
 
 ## Hints
 

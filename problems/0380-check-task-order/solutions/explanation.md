@@ -85,7 +85,7 @@ Linear instead of quadratic, for the price of an array of n integers. The idea i
 - Use -1, or another marker that is not a valid position, for "not seen"; position 0 is a real place, so 0 cannot mean "unseen".
 - Check the length of the order before indexing, so that an order longer than `n` cannot be mistaken for a valid one.
 - Tasks that appear in no pair are still part of the order, so they still count towards the length and repeat check.
-- Compare with `>=`, not `>`, for the failing test: a pair whose tasks share a place would otherwise pass.
+- The failing test is `position[before] >= position[after]`, the exact opposite of the rule `before < after`. Equal places cannot occur once the repeat check has passed, so `>` would give the same answers, but `>=` states the failing condition without relying on that.
 
 ### Language notes
 
