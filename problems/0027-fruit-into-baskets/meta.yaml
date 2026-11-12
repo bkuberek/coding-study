@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 904, url: "https://leetcode.com/problems/fruit-into-baskets/"}
 related: [longest-substring-without-repeats, max-ones-with-flips]
+guides: [variable-size-windows]
 order: 5
 estimate_minutes: 20

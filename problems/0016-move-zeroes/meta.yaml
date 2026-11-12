@@ -29,5 +29,6 @@ perf:
 references:
   leetcode: {number: 283, url: "https://leetcode.com/problems/move-zeroes/"}
 related: [sort-colors, valid-palindrome]
+guides: [in-place-compaction]
 order: 2
 estimate_minutes: 10

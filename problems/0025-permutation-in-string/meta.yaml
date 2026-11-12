@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 567, url: "https://leetcode.com/problems/permutation-in-string/"}
 related: [minimum-window-substring, longest-substring-without-repeats]
+guides: [fixed-size-windows]
 order: 3
 estimate_minutes: 25

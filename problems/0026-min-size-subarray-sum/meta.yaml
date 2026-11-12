@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 209, url: "https://leetcode.com/problems/minimum-size-subarray-sum/"}
 related: [max-ones-with-flips, minimum-window-substring]
+guides: [variable-size-windows]
 order: 4
 estimate_minutes: 20

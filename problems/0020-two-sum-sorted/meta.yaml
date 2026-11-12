@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 167, url: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/"}
 related: [two-sum, three-sum, valid-palindrome]
+guides: [pairs-in-sorted-arrays]
 order: 6
 estimate_minutes: 15
