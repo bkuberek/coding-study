@@ -124,7 +124,7 @@ class Model:
         found: list[list[str]] = []
         frontier = [[leaf_id]]
         while frontier:
-            done = [chain for chain in frontier if self.is_anchor(chain[-1])]
+            done = [chain for chain in frontier if len(chain) > 1 and self.is_anchor(chain[-1])]
             found += self.order(done)
             growing = [chain for chain in frontier if not self.is_anchor(chain[-1])]
             frontier = [[*c, s] for c in growing for s in self.links(c[-1]) if self.extend(c, s)]
@@ -144,6 +144,8 @@ class Model:
         return True
 
     def structure(self, path: list[str]) -> list[str] | None:
+        if self.is_anchor(path[0]):
+            return ["leaf-is-anchor", path[0]]
         for cert_id in path:
             if cert_id not in self.certs:
                 return ["unknown-certificate", cert_id]
@@ -218,6 +220,8 @@ class Model:
     def verify(self, leaf_id: str, hostname: str, now: int) -> list[list[str]]:
         if leaf_id not in self.certs:
             return [["unknown-certificate", leaf_id]]
+        if self.is_anchor(leaf_id):
+            return [["leaf-is-anchor", leaf_id]]
         rows: list[list[str]] = []
         for chain in self.chains(leaf_id):
             rows.append(self.validate_path(chain, hostname, now) + chain)
@@ -656,6 +660,60 @@ class NoPathReportsNothing(Model):
         return [] if rows[0][0] == "no-path" else rows
 
 
+class AnchoredLeafIsItsOwnChain(Model):
+    """A leaf that is a trust anchor is a chain of one."""
+
+    def build_chain(self, leaf_id: str) -> list[str]:
+        return [leaf_id] if self.is_anchor(leaf_id) else super().build_chain(leaf_id)
+
+
+class AnchoredLeafSearchesOn(Model):
+    """A leaf that is a trust anchor is treated like any leaf, and the search goes past it."""
+
+    def chains(self, leaf_id: str) -> list[list[str]]:
+        if not self.is_anchor(leaf_id):
+            return super().chains(leaf_id)
+        self.anchors.remove(leaf_id)
+        try:
+            return super().chains(leaf_id)
+        finally:
+            self.anchors.append(leaf_id)
+
+    def verify(self, leaf_id: str, hostname: str, now: int) -> list[list[str]]:
+        rows: list[list[str]] = []
+        for chain in self.chains(leaf_id):
+            rows.append(self.walk(chain, now) or ["ok", ""])
+            rows[-1] += chain
+            if self.done(rows):
+                break
+        return rows or super().verify(leaf_id, hostname, now)
+
+
+class AnchoredLeafChecksOnlyTheHostname(Model):
+    """`verify` on a leaf that is a trust anchor checks nothing but its name."""
+
+    def verify(self, leaf_id: str, hostname: str, now: int) -> list[list[str]]:
+        if leaf_id in self.certs and self.is_anchor(leaf_id):
+            if self.matched_name(leaf_id, hostname):
+                return [["ok", "", leaf_id]]
+            return [["hostname-mismatch", leaf_id, leaf_id]]
+        return super().verify(leaf_id, hostname, now)
+
+
+class AnchoredLeafCheckedLast(Model):
+    """`validatePath` looks for a trusted leaf only after the other structure checks."""
+
+    def structure(self, path: list[str]) -> list[str] | None:
+        anchors, self.anchors = self.anchors, [a for a in self.anchors if a != path[0]]
+        try:
+            problem = super().structure(path)
+        finally:
+            self.anchors = anchors
+        if problem is not None and problem[0] != "not-trusted":
+            return problem
+        return super().structure(path)
+
+
 MISTAKES: Sequence[type[Model]] = Model.__subclasses__()
 
 
@@ -719,4 +777,5 @@ def test_the_hidden_cases_give_every_reason():
         "missing-key-cert-sign",
         "hostname-mismatch",
         "no-path",
+        "leaf-is-anchor",
     }

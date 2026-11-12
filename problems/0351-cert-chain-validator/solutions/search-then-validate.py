@@ -1,4 +1,5 @@
 OK = "ok"
+LEAF_IS_ANCHOR = "leaf-is-anchor"
 KEY_CERT_SIGN = "keyCertSign"
 NO_LIMIT = -1
 MIN_LABELS_AFTER_WILDCARD = 2
@@ -127,6 +128,8 @@ class ChainValidator:
     def verify(self, leaf_id: str, hostname: str, now: int) -> list[list[str]]:
         if leaf_id not in self._certificates:
             return [["unknown-certificate", leaf_id]]
+        if leaf_id in self._anchors:
+            return [[LEAF_IS_ANCHOR, leaf_id]]
         candidates = self._candidates(leaf_id)
         if not candidates:
             return [["no-path", leaf_id]]
@@ -148,7 +151,8 @@ class ChainValidator:
         ]
 
     def _candidates(self, leaf_id: str) -> list[list[str]]:
-        if leaf_id not in self._certificates:
+        # A chain needs a certificate besides its anchor, so an anchored leaf has none.
+        if leaf_id not in self._certificates or leaf_id in self._anchors:
             return []
         chains: list[list[str]] = []
 
@@ -167,6 +171,8 @@ class ChainValidator:
 
     # Validation, in the order of RFC 5280 section 6.1.
     def _structure(self, path: list[str]) -> tuple[str, str] | None:
+        if path[0] in self._anchors:
+            return (LEAF_IS_ANCHOR, path[0])
         for cert_id in path:
             if cert_id not in self._certificates:
                 return ("unknown-certificate", cert_id)

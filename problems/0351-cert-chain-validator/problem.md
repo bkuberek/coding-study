@@ -64,7 +64,7 @@ A server sends its certificate, usually with some others, and the client may kno
 
 **Links.** Certificate `C` can be followed by certificate `P` in a chain when `P`'s subject is exactly `C`'s issuer **and** the signature of `P` on `C` was recorded as valid. A name alone is not enough: anyone can write a certificate with any issuer name, and only the signature shows who really issued it. A signature alone is not enough either.
 
-**Chains.** A chain starts at the leaf, follows links, never uses a certificate twice, and **ends at the first trust anchor** it reaches. Among all chains, `buildChain` returns the one with the fewest certificates; among equally short ones, the one whose list of ids is smallest, compared id by id from the leaf. Several chains can exist when two CA certificates have the same subject, for example a CA that was **cross-signed** by two different roots.
+**Chains.** A chain starts at the leaf, follows links, never uses a certificate twice, and **ends at the first trust anchor** it reaches. It holds at least one certificate besides that anchor, so a leaf that is itself a trust anchor has no chain, and `buildChain` returns `[]` for it. Among all chains, `buildChain` returns the one with the fewest certificates; among equally short ones, the one whose list of ids is smallest, compared id by id from the leaf. Several chains can exist when two CA certificates have the same subject, for example a CA that was **cross-signed** by two different roots.
 
 The trust anchor's own signature, dates and other contents are not checked: it is trusted because it was configured, and only its name and key are used.
 
@@ -85,11 +85,11 @@ The leaf was signed by the issuing CA, which was signed by the root, a trust anc
 Being in a chain is not enough: a certificate in the middle signs other certificates, and only some certificates are allowed to. If a client skipped this check, the owner of any ordinary site certificate could use its key to sign a certificate for a different site.
 
 - `setConstraints(certId, isCa, pathLen, keyUsage)`: records two extensions of the certificate. *Basic constraints*: `isCa` says whether it is a CA, and `pathLen` is how many more non-self-issued intermediate certificates may follow it in a chain, `-1` for no limit. *Key usage*: the purposes its key may be used for, such as `keyCertSign` (signing certificates) and `digitalSignature`; `[]` means the extension is absent. A later call replaces the earlier values. Returns `false` for an unknown id, else `true`. A certificate for which this is never called has neither extension, so it is not a CA.
-- `validatePath(path, hostname, now)`: validates the given chain `[leaf, ..., anchor]` (at least two ids, the first never a trust anchor) and returns `[reason, certId]` for the first problem found, or `["ok", ""]`.
+- `validatePath(path, hostname, now)`: validates the given chain `[leaf, ..., anchor]` (at least two ids) and returns `[reason, certId]` for the first problem found, or `["ok", ""]`.
 
 The checks follow the path validation of RFC 5280, section 6.1, in this order:
 
-1. **Structure**, over the whole list: an id that is not a known certificate gives `unknown-certificate` (the first such id from the leaf); a certificate that appears again gives `repeated-certificate` (the id at its second appearance, scanning from the leaf); a last id that is not a trust anchor gives `not-trusted`.
+1. **Structure**, over the whole list. First, a leaf that is itself a trust anchor gives `leaf-is-anchor`, with the leaf's id, before any other check: path validation needs at least one certificate besides the anchor, and an anchor is never checked, so a trusted leaf would skip its dates and revocation. Then an id that is not a known certificate gives `unknown-certificate` (the first such id from the leaf); a certificate that appears again gives `repeated-certificate` (the id at its second appearance, scanning from the leaf); a last id that is not a trust anchor gives `not-trusted`.
 2. **Each certificate, from the one the anchor signed down to the leaf.** In RFC 5280 the path is these `n` certificates, without the anchor, which only provides the first issuer name and key. For each certificate, with the one before it (closer to the anchor) as its signer:
    1. `bad-signature`: the signer's signature on it is not recorded as valid.
    2. `not-yet-valid` or `expired`, as in level 1.
@@ -121,7 +121,7 @@ A CA can withdraw a certificate before it expires, for example when its private 
 
 - `revoke(certId)`: records that the certificate is on a revocation list its issuer published. Returns `true`, or `false` when the id is unknown or already revoked.
 - From now on, path validation checks revocation, right after the dates (step 2.2): `revoked`, with the certificate's id. As with every other check of step 2, the trust anchor is not checked: a revoked anchor still anchors. Revocation is part of path validation only; `checkLeaf` and `buildChain` do not look at it.
-- `verify(leafId, hostname, now)`: tries every chain that `buildChain` considers, in the same order (fewest certificates first, then the smallest list of ids), and validates each with `validatePath`. It returns one row per chain tried, `[reason, certId, ...chain]`, and stops after the first `ok` row, whose `certId` is `""`. When the leaf is unknown it returns `[["unknown-certificate", leafId]]`, and when no chain exists `[["no-path", leafId]]`.
+- `verify(leafId, hostname, now)`: tries every chain that `buildChain` considers, in the same order (fewest certificates first, then the smallest list of ids), and validates each with `validatePath`. It returns one row per chain tried, `[reason, certId, ...chain]`, and stops after the first `ok` row, whose `certId` is `""`. Before any chain is tried, an unknown leaf returns `[["unknown-certificate", leafId]]`, and a leaf that is itself a trust anchor returns `[["leaf-is-anchor", leafId]]`, whatever its dates. When no chain exists it returns `[["no-path", leafId]]`.
 
 ### Example 1
 

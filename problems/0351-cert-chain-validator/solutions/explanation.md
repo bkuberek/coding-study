@@ -31,9 +31,9 @@ Walking from the anchor down mirrors that flow, and it is what makes the path le
 
 1. Names: lowercase and split on dots. Without `*`, the label lists must be equal. With `*`, the name is usable only when its first label is exactly `*`, no other label has a `*`, and at least two labels follow; then the hostname must have one more label and the same labels after its first.
 2. Links: the issuers of `C` are the certificates whose subject equals `C`'s issuer and whose signature on `C` is recorded as valid.
-3. Chains: depth-first from the leaf; append an issuer not already on the chain; record the chain when its last certificate is an anchor, and do not go past it. Sort by length, then by the list of ids.
-4. `validatePath`: check the structure (unknown ids, a repeated id, the last one an anchor). Reverse the path. For each certificate after the anchor, with the previous one as signer: signature, dates, revocation, issuer name; and for an intermediate: CA flag, remaining length (decrement when not self-issued, fail at 0), cap by `pathLen`, `keyCertSign`. Then the hostname.
-5. `verify`: for each sorted chain, validate and append `[reason, certId, ...chain]`; stop at the first `ok`.
+3. Chains: none when the leaf is itself an anchor. Otherwise depth-first from the leaf; append an issuer not already on the chain; record the chain when its last certificate is an anchor, and do not go past it. Sort by length, then by the list of ids.
+4. `validatePath`: check the structure (a leaf that is an anchor, unknown ids, a repeated id, the last one an anchor). Reverse the path. For each certificate after the anchor, with the previous one as signer: signature, dates, revocation, issuer name; and for an intermediate: CA flag, remaining length (decrement when not self-issued, fail at 0), cap by `pathLen`, `keyCertSign`. Then the hostname.
+5. `verify`: an unknown leaf and a leaf that is an anchor each get one row before any search. Otherwise, for each sorted chain, validate and append `[reason, certId, ...chain]`; stop at the first `ok`.
 
 ### Correctness
 
@@ -64,6 +64,7 @@ Validation: each check is the statement's, tested in the statement's order, and 
 - **Links need both.** A name without a recorded valid signature is no link (`ex4`, `h8`, `h9`), and a valid signature under a different name is no link either (`h10`, where the names differ only in case). A signature recorded the other way round does not count (`h9`).
 - **Loops and cross-signing.** Two CAs that signed each other must not send the search in circles (`h11`); two anchors with the same subject give two chains of equal length, ordered by id (`h7`).
 - **Shortest first.** A shorter chain wins over one with smaller ids (`h8`), and a chain stops at the first anchor even if a longer one would continue (`h12`).
+- **A trusted leaf.** A leaf that is itself a trust anchor has no chain, and is refused as `leaf-is-anchor` before any other check, whatever its dates or revocation (`h27` to `h30`). Treating it as a chain of one would check only its name, since an anchor is never processed.
 - **Structure before content.** Unknown ids come before repeated ones, which come before an untrusted end (`h14`).
 - **Order within a certificate.** Signature, then dates, then revocation, then issuer name (`h15`, `h25`); a certificate closer to the anchor is reported before one closer to the leaf (`h16`).
 - **Only intermediates are constrained.** The leaf may be a CA or not and have any key usage, and the anchor's constraints and dates are ignored (`h18`, `h19`).

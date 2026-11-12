@@ -1,4 +1,5 @@
 const OK = "ok";
+const LEAF_IS_ANCHOR = "leaf-is-anchor";
 const KEY_CERT_SIGN = "keyCertSign";
 const NO_LIMIT = -1;
 const MIN_LABELS_AFTER_WILDCARD = 2;
@@ -145,6 +146,9 @@ export class ChainValidator {
     if (!this.certificates.has(leafId)) {
       return [["unknown-certificate", leafId]];
     }
+    if (this.anchors.has(leafId)) {
+      return [[LEAF_IS_ANCHOR, leafId]];
+    }
     const candidates = this.candidates(leafId);
     if (candidates.length === 0) {
       return [["no-path", leafId]];
@@ -173,7 +177,8 @@ export class ChainValidator {
   }
 
   private candidates(leafId: string): string[][] {
-    if (!this.certificates.has(leafId)) {
+    // A chain needs a certificate besides its anchor, so an anchored leaf has none.
+    if (!this.certificates.has(leafId) || this.anchors.has(leafId)) {
       return [];
     }
     const chains: string[][] = [];
@@ -197,6 +202,9 @@ export class ChainValidator {
 
   // Validation, in the order of RFC 5280 section 6.1.
   private structure(path: string[]): string[] | null {
+    if (this.anchors.has(path[0])) {
+      return [LEAF_IS_ANCHOR, path[0]];
+    }
     const unknown = path.find((certId) => !this.certificates.has(certId));
     if (unknown !== undefined) {
       return ["unknown-certificate", unknown];
