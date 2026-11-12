@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0376"
+slug: count-words-by-prefix
+title: Count Words by Prefix
+summary: "Given a list of words and a list of prefixes, report for each prefix how many of the words begin with it, counting repeated words every time."
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [tries]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: countByPrefix
+    params:
+      - {name: words, type: "string[]"}
+      - {name: prefixes, type: "string[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: scan-words, name: Compare every prefix with every word, role: brute, time: "O(P * W * L)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: counting-trie, name: A trie that counts the words passing through each node, role: optimal, time: "O((W + P) * L)", space: "O(26 * W * L)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n = words.length = prefixes.length
+  size_ladder: [250, 500, 1000, 2000]
+  expected_from: counting-trie
+  time_limit: {factor: 5}
+related: [implement-trie, search-suggestions, replace-words]
+order: 0
+estimate_minutes: 20

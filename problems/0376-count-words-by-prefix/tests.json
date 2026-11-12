@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"words": ["tea", "team", "ten", "tent", "tin"], "prefixes": ["te", "tea", "t", "x", "tens"]}, "expected": [4, 2, 5, 0, 0]},
+    {"id": "ex2", "visible": true, "input": {"words": ["go", "go", "gold", "golf"], "prefixes": ["go", "gol", "golf", "golfs"]}, "expected": [4, 2, 1, 0]},
+    {"id": "h1", "input": {"words": ["a"], "prefixes": ["a"]}, "expected": [1], "note": "one word, asked about itself"},
+    {"id": "h2", "input": {"words": ["a"], "prefixes": ["b"]}, "expected": [0], "note": "one word, a different letter"},
+    {"id": "h3", "input": {"words": ["abc", "abc", "abc"], "prefixes": ["a", "ab", "abc", "abcd"]}, "expected": [3, 3, 3, 0], "note": "the same word three times; a prefix longer than the word"},
+    {"id": "h4", "input": {"words": ["apple", "app", "apply", "ape", "apt"], "prefixes": ["ap", "app", "appl", "apple", "apples", "a"]}, "expected": [5, 3, 2, 1, 0, 5], "note": "a word that is a prefix of another counts for itself"},
+    {"id": "h5", "input": {"words": ["abcdefghijklmnopqrst", "abcdefghijklmnopqrst", "abcdefghijklmnopqrsu"], "prefixes": ["abcdefghijklmnopqrs", "abcdefghijklmnopqrst", "abcdefghijklmnopqrsu", "abcdefghijklmnopqrsx"]}, "expected": [3, 2, 1, 0], "note": "20-letter words that differ in the last letter"},
+    {"id": "h6", "input": {"words": ["dog", "dot", "door"], "prefixes": ["do", "do", "d", "do"]}, "expected": [3, 3, 3, 3], "note": "the same prefix asked several times"},
+    {"id": "h7", "input": {"words": ["hi", "hit"], "prefixes": ["hits", "hithere"]}, "expected": [0, 0], "note": "prefixes longer than every word"},
+    {"id": "h8", "input": {"words": ["z", "zz", "zzz"], "prefixes": ["z", "zz", "zzz", "zzzz"]}, "expected": [3, 2, 1, 0], "note": "the last letter of the alphabet, nested words"},
+    {"id": "h9", "input": {"words": ["north", "south", "east", "west"], "prefixes": ["a", "b", "c"]}, "expected": [0, 0, 0], "note": "no prefix matches any word"},
+    {"id": "h10", "input": {"words": ["ant", "bee", "cat"], "prefixes": ["cat", "ant", "bee"]}, "expected": [1, 1, 1], "note": "answers follow the order of the prefixes, not of the words"},
+    {"id": "h11", "input": {"words": ["banana", "bandana", "band", "bank"], "prefixes": ["ban", "band", "bana", "bank", "bane"]}, "expected": [4, 2, 1, 1, 0], "note": "branches that split in the middle of a word"},
+    {"id": "h12", "input": {"words": ["b", "ba", "bab", "baba"], "prefixes": ["b", "ba", "bab", "baba", "babab"]}, "expected": [4, 3, 2, 1, 0], "note": "every prefix of one word is also a word"},
+    {"id": "g1", "generate": {"n": 2000, "seed": 376}, "note": "stems with shared prefixes at the largest size"}
+  ]
+}
