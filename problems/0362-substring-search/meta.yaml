@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0362"
+slug: substring-search
+title: Substring Search
+summary: "Given a text and a pattern, list every position where the pattern occurs in the text, overlapping occurrences included, in increasing order."
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [string-matching]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: findAllOccurrences
+    params:
+      - {name: text, type: string}
+      - {name: pattern, type: string}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Compare the pattern at every start, role: brute, time: "O(n * m)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: kmp, name: Failure function that never moves back in the text, role: optimal, time: "O(n + m)", space: "O(m)", time_class: "n", space_class: "n"}
+  - {id: rabin-karp, name: Rolling hash of each window with a check on a match, role: optimal, time: "O(n + m) expected, O(n * m) worst case", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length n of the text, with a pattern of n/2 letters
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: kmp
+  time_limit: {factor: 5}
+related: [permutation-in-string, minimum-window-substring, longest-palindromic-substring]
+order: 1
+estimate_minutes: 30
