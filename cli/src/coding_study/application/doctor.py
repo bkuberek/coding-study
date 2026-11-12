@@ -872,7 +872,7 @@ def _node(tools: ToolProbe) -> CheckResult:
     if isinstance(version, _Unavailable):
         return CheckResult("node", CheckStatus.FAIL, version.reason, fix=fix)
     if _major(version) < MINIMUM_NODE_MAJOR:
-        detail = f"v{version} (need {MINIMUM_NODE_MAJOR} or newer for type stripping)"
+        detail = f"v{version} (need {MINIMUM_NODE_MAJOR} or newer)"
         return CheckResult("node", CheckStatus.FAIL, detail, fix=fix)
     return CheckResult("node", CheckStatus.OK, f"v{version} (type stripping)")
 

@@ -398,7 +398,7 @@ def test_node_older_than_24_fails():
     tools = tools_with(("node", "--version"), ProbeResult(0, "v22.11.0\n"))
     assert summary(doctor(tools), "node") == (
         FAIL,
-        "v22.11.0 (need 24 or newer for type stripping)",
+        "v22.11.0 (need 24 or newer)",
     )
 
 
