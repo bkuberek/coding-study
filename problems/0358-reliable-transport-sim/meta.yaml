@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0358"
+slug: reliable-transport-sim
+title: Reliable Transport Sim
+summary: "Build ReliableTransport: reorder and deduplicate segments, retransmit on an RFC 6298 timer, slide a send window under flow control, then add slow start, congestion avoidance and fast retransmit."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [sliding-window, arrays-hashing]
+domains: [systems]
+job_roles: [backend, platform]
+scope: function
+levels:
+  - {level: 1, title: Putting bytes back in order}
+  - {level: 2, title: Acknowledgements and retransmission}
+  - {level: 3, title: The sliding window}
+  - {level: 4, title: Congestion control}
+signature:
+  class:
+    name: ReliableTransport
+    constructor: {params: []}
+    methods:
+      - {name: receive, level: 1, params: [{name: seq, type: int}, {name: data, type: string}], returns: {type: string}}
+      - {name: buffered, level: 1, params: [], returns: {type: int}}
+      - {name: ackNumber, level: 1, params: [], returns: {type: int}}
+      - {name: send, level: 2, params: [{name: length, type: int}, {name: now, type: long}], returns: {type: "int[][]"}}
+      - {name: ack, level: 2, params: [{name: ackNo, type: int}, {name: now, type: long}], returns: {type: "int[][]"}}
+      - {name: tick, level: 2, params: [{name: now, type: long}], returns: {type: "int[][]"}}
+      - {name: timerState, level: 2, params: [], returns: {type: "long[]"}}
+      - {name: ackWindow, level: 3, params: [{name: ackNo, type: int}, {name: window, type: int}, {name: now, type: long}], returns: {type: "int[][]"}}
+      - {name: enableCongestionControl, level: 4, params: [{name: ssthresh, type: int}, {name: now, type: long}], returns: {type: void}}
+      - {name: congestionTrace, level: 4, params: [], returns: {type: "long[][]"}}
+comparator: {type: ops}
+approaches:
+  - {id: timer-and-windows, name: "Segment list with una and nxt marks, one retransmission timer and two windows", role: optimal, time: "O(k) per receive of k bytes; O(s) per sender call over s segments", space: "O(b + s) for b held bytes and s segments", time_class: "n", space_class: "n"}
+related: [stream-reassembler, http-message-parser, dns-resolver-sim]
+estimate_minutes: 120
