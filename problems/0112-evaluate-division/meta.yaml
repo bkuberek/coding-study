@@ -32,4 +32,5 @@ references:
   leetcode: {number: 399, url: "https://leetcode.com/problems/evaluate-division/"}
 related: [bipartite-graph, clone-graph]
 order: 8
+guides: [union-find]
 estimate_minutes: 30

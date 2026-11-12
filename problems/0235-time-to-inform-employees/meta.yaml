@@ -33,4 +33,5 @@ references:
   leetcode: {number: 1376, url: "https://leetcode.com/problems/time-needed-to-inform-all-employees/"}
 related: [employee-importance, contractor-exposure-rollup, max-depth-binary-tree]
 order: 14
+guides: [graph-representations]
 estimate_minutes: 20

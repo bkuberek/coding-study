@@ -30,4 +30,5 @@ references:
   leetcode: {number: 133, url: "https://leetcode.com/problems/clone-graph/"}
 related: [number-of-islands, critical-connections]
 order: 2
+guides: [breadth-first-search]
 estimate_minutes: 20

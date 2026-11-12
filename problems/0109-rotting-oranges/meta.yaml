@@ -30,4 +30,5 @@ references:
   leetcode: {number: 994, url: "https://leetcode.com/problems/rotting-oranges/"}
 related: [shortest-path-binary-matrix, number-of-islands, pacific-atlantic-water-flow]
 order: 5
+guides: [breadth-first-search]
 estimate_minutes: 20

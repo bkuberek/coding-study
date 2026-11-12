@@ -32,4 +32,5 @@ references:
   leetcode: {number: 210, url: "https://leetcode.com/problems/course-schedule-ii/"}
 related: [course-schedule, parallel-courses, alien-dictionary, all-possible-recipes]
 order: 5
+guides: [topological-order]
 estimate_minutes: 25

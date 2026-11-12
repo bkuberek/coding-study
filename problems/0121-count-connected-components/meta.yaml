@@ -32,4 +32,5 @@ references:
   leetcode: {number: 323, url: "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/"}
 related: [redundant-connection, accounts-merge, number-of-islands-ii]
 order: 1
+guides: [union-find]
 estimate_minutes: 20

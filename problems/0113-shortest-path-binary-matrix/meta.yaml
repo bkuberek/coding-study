@@ -30,4 +30,5 @@ references:
   leetcode: {number: 1091, url: "https://leetcode.com/problems/shortest-path-in-binary-matrix/"}
 related: [rotting-oranges, shortest-path-with-removals, min-obstacle-removal]
 order: 9
+guides: [breadth-first-search]
 estimate_minutes: 20

@@ -32,4 +32,5 @@ references:
   leetcode: {number: 1136, url: "https://leetcode.com/problems/parallel-courses/"}
 related: [course-schedule, all-possible-recipes]
 order: 2
+guides: [topological-order]
 estimate_minutes: 25

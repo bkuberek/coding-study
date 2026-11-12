@@ -30,4 +30,5 @@ references:
   leetcode: {number: 417, url: "https://leetcode.com/problems/pacific-atlantic-water-flow/"}
 related: [number-of-islands, surrounded-regions, rotting-oranges]
 order: 3
+guides: [depth-first-search]
 estimate_minutes: 30

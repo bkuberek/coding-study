@@ -31,4 +31,5 @@ references:
   leetcode: {number: 684, url: "https://leetcode.com/problems/redundant-connection/"}
 related: [count-connected-components, course-schedule]
 order: 2
+guides: [union-find]
 estimate_minutes: 20

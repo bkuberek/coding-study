@@ -30,4 +30,5 @@ references:
   leetcode: {number: 2290, url: "https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/"}
 related: [shortest-path-with-removals, swim-rising-water, network-delay-time]
 order: 8
+guides: [weighted-shortest-paths]
 estimate_minutes: 30

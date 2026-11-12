@@ -30,4 +30,5 @@ references:
   leetcode: {number: 130, url: "https://leetcode.com/problems/surrounded-regions/"}
 related: [number-of-islands, pacific-atlantic-water-flow, max-area-of-island]
 order: 6
+guides: [depth-first-search]
 estimate_minutes: 25

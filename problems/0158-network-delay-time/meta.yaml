@@ -33,4 +33,5 @@ references:
   leetcode: {number: 743, url: "https://leetcode.com/problems/network-delay-time/"}
 related: [cheapest-flights-k-stops, city-fewest-neighbors, swim-rising-water, min-obstacle-removal]
 order: 1
+guides: [weighted-shortest-paths]
 estimate_minutes: 25

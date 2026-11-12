@@ -31,4 +31,5 @@ references:
   leetcode: {number: 329, url: "https://leetcode.com/problems/longest-increasing-path-in-a-matrix/"}
 related: [maximal-square, unique-paths]
 order: 10
+guides: [topological-order]
 estimate_minutes: 40

@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Graphs: traversal, connectivity and ordering"
+summary: From nodes and edges to breadth- and depth-first search, union-find, topological order and Dijkstra's algorithm, through the problems that practise each idea.
+steps:
+  - guide: graph-representations
+  - guide: breadth-first-search
+  - problem: employee-importance
+  - problem: time-to-inform-employees
+  - problem: clone-graph
+  - problem: shortest-path-binary-matrix
+  - problem: rotting-oranges
+  - problem: open-the-lock
+  - problem: word-ladder
+  - problem: shortest-path-with-removals
+  - guide: depth-first-search
+  - problem: number-of-islands
+  - problem: max-area-of-island
+  - problem: surrounded-regions
+  - problem: pacific-atlantic-water-flow
+  - problem: bipartite-graph
+  - problem: contractor-exposure-rollup
+  - problem: referral-rewards
+    level: 2
+  - guide: union-find
+  - problem: count-connected-components
+  - problem: redundant-connection
+  - problem: duplicate-contractor-records
+  - problem: accounts-merge
+  - problem: smallest-string-with-swaps
+  - problem: evaluate-division
+  - problem: number-of-islands-ii
+  - problem: referral-rewards
+  - guide: topological-order
+  - problem: course-schedule
+  - problem: course-schedule-ii
+  - problem: parallel-courses
+  - problem: all-possible-recipes
+  - problem: alien-dictionary
+  - problem: longest-increasing-path-matrix
+  - guide: weighted-shortest-paths
+  - problem: network-delay-time
+  - problem: min-obstacle-removal
+  - problem: swim-rising-water
