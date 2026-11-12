@@ -46,5 +46,5 @@ comparator:
   per_method: {jaroWinkler: float, tokenJaccard: float, similarity: float, pairwiseScores: float, bcubedScores: float}
 approaches:
   - {id: block-score-union, name: Blocking keys then pair scores then guarded union-find, role: optimal, time: "O(R + P w^2 + M k^2)", space: "O(R + P)", time_class: "n^2", space_class: "n"}
-related: [duplicate-contractor-records, accounts-merge, taxonomy, triple-store]
+related: [duplicate-contractor-records, accounts-merge, taxonomy, triple-store, reasoner-vs-validator, graphrag-context]
 estimate_minutes: 120

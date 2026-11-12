@@ -49,5 +49,5 @@ perf:
   size_ladder: [1000, 10000, 100000]
   budget_ms: 20000
   expected_from: adjacency-walks
-related: [org-chart-outline, lowest-common-ancestor, course-schedule, referral-rewards]
+related: [org-chart-outline, lowest-common-ancestor, course-schedule, referral-rewards, triple-store, reasoner-vs-validator, entity-resolution, graphrag-context]
 estimate_minutes: 120

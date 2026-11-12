@@ -38,5 +38,5 @@ perf:
   size_ladder: [1000, 10000, 100000]
   budget_ms: 20000
   expected_from: six-indexes
-related: [in-memory-database, time-based-kv-store, versioned-memory-store, taxonomy]
+related: [in-memory-database, time-based-kv-store, versioned-memory-store, taxonomy, reasoner-vs-validator, entity-resolution, graphrag-context]
 estimate_minutes: 120
