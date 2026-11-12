@@ -4,7 +4,7 @@
 
 Some questions ask for **every arrangement that obeys a set of rules**, or for one of them: every way to seat a group, every route through a maze, every way to fill a grid. An arrangement is built from a sequence of choices, and the choices form a tree: the first choice branches into its options, each of those branches into the options for the second choice, and so on. A complete arrangement is a path from the top of the tree to the bottom.
 
-**Backtracking** walks that tree depth first, holding one partial arrangement that it changes in place:
+**Backtracking** walks that tree **depth first**, following one branch all the way down, to a complete arrangement or a dead end, before it comes back up to try the next branch. It holds one partial arrangement that it changes in place:
 
 1. **Choose**: make the next choice, adding it to the partial arrangement.
 2. **Explore**: recurse to make all the choices after it.
@@ -162,7 +162,7 @@ Follow the trace, one indentation step per region:
 - North takes red. South does not border North, so red is fine for it too.
 - Harbour borders South, so red is **pruned**: no colouring that starts with North red, South red and Harbour red can be valid, and none of the 27 ways to colour the three remaining regions after it is ever looked at. Harbour takes green.
 - East borders North (red) and Harbour (green), so only blue is left. West borders North and South, both red, and takes green, the first colour that fits.
-- Centre borders North (red), West (green) and East (blue): every colour clashes. The branch is a **dead end**, found three levels after the choice that caused it. The search **undoes** West = green and tries the next option for West, blue, and now Centre can be green.
+- Centre borders North (red), West (green) and East (blue): every colour clashes. The branch is a **dead end**, and the choice that caused it is one level up: West = green clashed with nothing when it was made, but leaves Centre no colour. The search **undoes** West = green and tries the next option for West, blue, and now Centre can be green.
 
 ```mermaid
 flowchart TD

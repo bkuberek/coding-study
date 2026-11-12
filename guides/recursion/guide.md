@@ -185,7 +185,7 @@ The limit is not part of the idea of recursion; it comes from each language's ru
 | Language | What bounds the depth | What happens beyond it |
 |----------|-----------------------|------------------------|
 | Python (CPython) | A count of frames, the **recursion limit**: `sys.getrecursionlimit()` reads it (1000 when CPython 3.13 starts) and `sys.setrecursionlimit()` changes it. The limit is there to stop the C stack underneath from overflowing, and the documentation warns that a limit set too high can crash Python | `RecursionError`, since Python 3.5 (before, a plain `RuntimeError`) |
-| Java | The thread's stack size in bytes, set by `java -Xss`. JDK 21's defaults include 1024 KB on Linux and macOS on x64 and 2048 KB on Linux and macOS on AArch64. A thread can ask for its own size through a `Thread` constructor, which the virtual machine may round, cap or ignore | `StackOverflowError`, an `Error`, not an `Exception` |
+| Java | The thread's stack size in bytes, set by `java -Xss`. JDK 21's defaults include 1024 KB on Linux and macOS on x64 and 2048 KB on Linux and macOS on AArch64. A thread can ask for its own size through a `Thread` constructor, which the virtual machine may round up or down, or ignore | `StackOverflowError`, an `Error`, not an `Exception` |
 | JavaScript | The engine's stack. The language sets no number | `RangeError: Maximum call stack size exceeded` in Chrome, Safari and Node.js, `InternalError: too much recursion` in Firefox |
 | Go | A goroutine's stack starts at a few kilobytes and grows (and shrinks) as needed, up to a maximum of 1 GB on 64-bit systems and 250 MB on 32-bit ones, which `debug.SetMaxStack` changes | The program crashes with `fatal error: stack overflow` |
 | Rust | A spawned thread's stack, currently 2 MiB on all Tier-1 platforms, changed by `thread::Builder::stack_size` or the `RUST_MIN_STACK` environment variable. The main thread's stack is not set by Rust | The process aborts, saying the thread has overflowed its stack |
@@ -233,7 +233,7 @@ Every call adds a frame, and the last line has a million and one of them on the 
 - **A base case the input never reaches.** Counting down by 2 from an odd number skips 0; a negative input never meets a base case written as `n == 0`. Write the base case as a range (`n <= 0`, `n < 10`) when in doubt, and check that every recursive call is on a strictly smaller input.
 - **Forgetting to return the result.** In Python, `digit_sum(n // 10) + n % 10` computed but not returned makes the function return `None`, and the caller fails one level up with a confusing `TypeError`.
 - **Copying the input on every call.** Recursing on `values[1:]` copies the rest of the list each time, which turns a linear recursion into a quadratic one. Pass the list and an index instead.
-- **Raising the limit and hoping.** `sys.setrecursionlimit(10**6)` lets Python try deeper calls, but the stack underneath does not grow with it, and a deep enough recursion can then crash the interpreter instead of raising a clean `RecursionError`.
+- **Raising the limit and hoping.** `sys.setrecursionlimit(10**6)` lets Python try deeper calls, but the documentation warns that a limit set too high can lead to a crash, and the highest safe limit depends on the platform. Set it with care, or turn the recursion into a loop.
 - **Assuming the depth is the number of calls.** Hanoi makes `2ⁿ - 1` moves but is only `n + 1` frames deep. The depth is the longest chain of calls waiting at once, and it is what the limit counts.
 
 ## Complexity

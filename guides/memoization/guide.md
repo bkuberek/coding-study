@@ -243,7 +243,7 @@ The rule behind the second row is general: a memoized recursion costs **the numb
 - **The cache keeps things alive.** It holds references to the arguments and the results until they leave the cache or it is cleared, so caching a function of large objects keeps those objects in memory.
 - **Java: do not memoize with `computeIfAbsent` recursively.** `HashMap.computeIfAbsent` is documented as a way to store a memoized result, but its mapping function should not modify the map, and a recursive mapping function that stores smaller answers in the same map does exactly that. The method then throws `ConcurrentModificationException` on a best-effort basis: on Java 21, a recursive count written this way threw it. Use `get`, compute, then `put`.
 - **Top-down computes only what it reaches.** A memoized recursion answers only the questions the original question leads to, which can be far fewer than every question up to `n` when the steps jump, as division does. A bottom-up table computes all of them, but in a simple loop, with no recursion and no hashing.
-- **The words.** Donald Michie wrote about "memo" functions in Nature in 1968, under the title "Memo Functions and Machine Learning". The term "dynamic programming" is Richard Bellman's: his publisher describes him as the scientist who coined it.
+- **The words.** Donald Michie wrote about "memo" functions in Nature in 1968, in a paper titled *"Memo" Functions and Machine Learning*. The term "dynamic programming" is Richard Bellman's: his publisher describes him as the scientist who coined it.
 
 ## Practice
 

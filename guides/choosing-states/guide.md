@@ -191,7 +191,7 @@ The last line of the example is how to test a greedy idea before trusting it: co
 
 ## Intervals: the stretch still in play
 
-Some problems consume a row from its ends, or split it, so that what remains is always one unbroken stretch, `row[i..j]`. Then the stretch is the state.
+Some problems break into subproblems that are each **one stretch** of a row, `row[i..j]`. Then the stretch is the state.
 
 Two players take turns removing a coin from either end of a row and keep what they take; both play as well as they can. Take the row `8, 15, 3, 7`. What can the first player get?
 
@@ -310,7 +310,7 @@ Taking the larger end every time is a greedy rule, and it fails: the first playe
 ## When to use it
 
 - **Take or skip** fits when there are items, each used at most once, a budget they consume, and an order of the items that does not matter to the answer. The state is the next item and what is left of the budget, never the set of items taken.
-- **Intervals** fit when what remains after any number of moves is a single stretch of the original row, as when coins are taken only from the ends. Fill by length.
+- **Intervals** fit when each subproblem is one stretch of the original row, as when coins are taken only from the ends. Fill by length.
 - **Greedy** fits when an exchange argument shows that the locally best choice can always be part of an optimal answer. Without that argument, test it against brute force on small cases, and keep the table if a single case fails.
 - **To find any state**, list what the rules of the remaining choices depend on: budgets left, the last choice made, whose turn it is, what is still available. That list, and nothing else, is the state.
 

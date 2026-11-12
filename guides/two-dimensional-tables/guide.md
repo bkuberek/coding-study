@@ -38,7 +38,7 @@ flowchart TD
 └────────────┘
 ```
 
-Filling **row by row, left to right** has all three ready: the row above is complete, and the cell to the left was just filled. The same order serves a grid whose paths move right and down, since such a path arrives at a square from above or from the left.
+Filling **row by row, left to right** has all three ready: the row above is complete, and the cell to the left was just filled.
 
 ## A worked example
 
@@ -229,7 +229,7 @@ The last line keeps only two rows, the one being filled and the one above, which
 ## Common traps
 
 - **Mixing prefix lengths with indices.** Cell `(i, j)` of a two-sequence table is about `a[:i]` and `b[:j]`, whose last items are `a[i - 1]` and `b[j - 1]`. Comparing `a[i]` with `b[j]` there is off by one, and fails at the last item or at the borders.
-- **Forgetting the borders.** Row 0 and column 0, the empty prefixes, must be filled before the loop, from what the problem says about nothing being left; they are rarely all zeros.
+- **Forgetting the borders.** Row 0 and column 0, the empty prefixes, must be filled before the loop, from what the problem says about nothing being left; they are not always all zeros.
 - **Filling in an order that reads unfilled cells.** Check the three cells the recurrence reads against the order of the loops. A table filled column by column, when a cell reads the cell to its right, reads cells not yet filled.
 - **Choosing greedily row by row.** The cheapest allowed choice for today ignores what it does to tomorrow, as the café's 26 shows. That is why each cell keeps one answer per possible choice, not only the best one.
 - **Dropping rows you still need.** Two rows are enough for the value, not for the plan. If the plan is wanted, keep the whole table, or record in each cell which cell it came from.
