@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 33, url: "https://leetcode.com/problems/search-in-rotated-sorted-array/"}
 related: [binary-search, min-in-rotated-array]
+guides: [rotated-and-implicit-search]
 order: 2
 estimate_minutes: 25

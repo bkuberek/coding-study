@@ -30,5 +30,6 @@ perf:
 references:
   leetcode: {number: 704, url: "https://leetcode.com/problems/binary-search/"}
 related: [first-last-position, search-rotated-array, search-2d-matrix]
+guides: [searching-a-sorted-array]
 order: 1
 estimate_minutes: 10

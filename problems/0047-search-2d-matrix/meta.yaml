@@ -31,5 +31,6 @@ perf:
 references:
   leetcode: {number: 74, url: "https://leetcode.com/problems/search-a-2d-matrix/"}
 related: [binary-search]
+guides: [rotated-and-implicit-search]
 order: 5
 estimate_minutes: 20

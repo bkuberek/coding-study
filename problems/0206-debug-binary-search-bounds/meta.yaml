@@ -24,4 +24,5 @@ approaches:
 limits:
   hang_guard_ms: 3000
 related: [binary-search, first-last-position]
+guides: [binary-search-mistakes]
 estimate_minutes: 15
