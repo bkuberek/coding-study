@@ -2,6 +2,53 @@
 
 <!-- version list -->
 
+## v0.46.0 (2026-11-13)
+
+### Bug Fixes
+
+- **code-intelligence**: Keep the local Kotlin LSP's index in its data directory
+  ([`51a3a4c`](https://github.com/bkuberek/coding-study/commit/51a3a4c96b3a73bb71e5d4b91970f22366d3e329))
+
+- **doctor**: Warn when a Kotlin LSP build's last day is not known
+  ([`3aec8a9`](https://github.com/bkuberek/coding-study/commit/3aec8a9f10783fb87df831fc2a0ad6940a1da949))
+
+- **guides**: Apply the independent accuracy review of the tracing guide
+  ([`cb2bcbb`](https://github.com/bkuberek/coding-study/commit/cb2bcbbdffa32a906591cb89b2678e83fd693256))
+
+- **web-ui**: Stop offering Stop once the dev stack is down
+  ([`86c34ac`](https://github.com/bkuberek/coding-study/commit/86c34acc9b109c1c5b647e13dec6213967efa312))
+
+### Documentation
+
+- Guides at 74 with tracing-agent-runs
+  ([`34fbab9`](https://github.com/bkuberek/coding-study/commit/34fbab919d392ebdeebaecbfe2c7437fc4f6d9db))
+
+- Say Kotlin LSP builds stop a few weeks after their release
+  ([`8a93a1e`](https://github.com/bkuberek/coding-study/commit/8a93a1e0fdcec3ece96df3ed80c8a1bcfd7f1f2d))
+
+- **reviews**: List the facts of the tracing agent runs guide with their sources
+  ([`eda2c59`](https://github.com/bkuberek/coding-study/commit/eda2c5980af40c3ed97ad18cd797fef38b967883))
+
+- **reviews**: Record the independent accuracy review of the tracing guide
+  ([`6758300`](https://github.com/bkuberek/coding-study/commit/67583008189525d3ccd51c11f0f3737b16c25cfb))
+
+### Features
+
+- **guides**: Add the tracing agent runs guide
+  ([`2faad1a`](https://github.com/bkuberek/coding-study/commit/2faad1a98bf3039604adb30cc959d3e7c9263ede))
+
+- **guides**: Put tracing on the AI engineering path and link agent-trace-analyzer
+  ([`9cccf92`](https://github.com/bkuberek/coding-study/commit/9cccf924d97685a67d8398d61709f2396368661d))
+
+### Testing
+
+- **sandbox**: Give the backing-services verify test time for ten stacks
+  ([`510afdf`](https://github.com/bkuberek/coding-study/commit/510afdf0296140fe4070341f3fb2e45f779a7a11))
+
+- **web**: Wait for the dev panel to offer Start before restarting
+  ([`fc7cd47`](https://github.com/bkuberek/coding-study/commit/fc7cd47dd528aa5e496042bfb739156f39f03953))
+
+
 ## v0.45.0 (2026-11-12)
 
 ### Bug Fixes
