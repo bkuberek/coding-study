@@ -947,6 +947,14 @@ class TestLinuxBuild:
         assert isinstance(probe, Fetched)
         assert probe.last_day is None
 
+    def test_this_machines_build_of_its_version_recorded_later_gives_its_last_day(self, tmp_path):
+        """Its record names none, being written first; its row and this machine's then agree."""
+        lsp, _result, _commands, workspace = self.installed(tmp_path, host_version=None)
+        this_machines_build(workspace, "263.9000.0")
+        probe = lsp.probe(KOTLIN_LSP_LINUX)
+        assert isinstance(probe, Fetched)
+        assert probe.last_day == date(2026, 11, 12)
+
     def test_its_record_names_the_gradle_tooling_api_it_bundles(self, tmp_path):
         _lsp, _result, _commands, workspace = self.installed(tmp_path)
         record = json.loads((workspace / ".cs/lsp/kotlin-lsp/linux.json").read_text())

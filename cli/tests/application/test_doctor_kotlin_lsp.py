@@ -385,6 +385,25 @@ def test_the_sidecar_build_has_a_row_once_a_kotlin_service_project_is_installed(
     ]
 
 
+def test_a_sidecar_build_fetched_without_this_machines_build_of_its_version_warns_its_day_unknown():
+    """Its last day is that of this machine's build of the same version, which `--fix` found none
+    of: the record names no last day."""
+    undated = replace(INSTALLED_SERVERS["kotlin-lsp-linux"], last_day=None)
+    servers = FakeLanguageServers(
+        {**INSTALLED_SERVERS, "kotlin-lsp-linux": undated}, service_languages=KOTLIN_SERVICE
+    )
+    assert sidecar_rows(servers) == [
+        CheckResult(
+            SIDECAR_ROW,
+            WARN,
+            "kotlin-lsp-linux 263.7084.0 runs until a day cstudy does not know, as JetBrains' "
+            "early-access builds stop a few weeks after their release; cstudy doctor --fix "
+            "fetches a newer one once there is",
+            FIX,
+        )
+    ]
+
+
 def test_a_sidecar_build_not_fetched_yet_warns_with_the_fix():
     servers = FakeLanguageServers(WITHOUT_LINUX, service_languages=KOTLIN_SERVICE)
     assert sidecar_rows(servers) == [
