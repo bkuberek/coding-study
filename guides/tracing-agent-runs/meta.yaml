@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Tracing agent runs
+summary: How a trace records an agent run as a tree of spans, and how to read it to roll up tokens and cost, find repeated tool calls and retry loops, and locate where a failure started rather than where it surfaced.
+level: advanced
+prerequisites: [harness-engineering]
+related: [evaluating-llm-applications, cost-caching-and-routing, tools-and-mcp]
+problems: [agent-trace-analyzer]

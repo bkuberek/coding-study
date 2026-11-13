@@ -41,4 +41,5 @@ comparator: {type: ops}
 approaches:
   - {id: tree-merge-walk, name: Index the spans by parent then merge child intervals and walk back from each end, role: optimal, time: "O(n log n) per query", space: "O(n)", time_class: "n log n", space_class: "n"}
 related: [merge-intervals, org-chart-outline, parallel-courses, token-cost-reconciler, tool-calling-agent-loop-typescript, llm-gateway-typescript]
+guides: [tracing-agent-runs]
 estimate_minutes: 120
