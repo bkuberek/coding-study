@@ -11,7 +11,7 @@ import "./dev-panel.css";
 
 import { ApiError, CSRF_HEADER } from "./api.ts";
 import type { PageContext } from "./context.ts";
-import { DEV_EVENT_TYPES, type DevEvent, DevModel } from "./dev-model.ts";
+import { DEV_EVENT_TYPES, type DevEvent, DevModel, type DevPress, devPress } from "./dev-model.ts";
 import { badge, command, fixHint, h } from "./dom.ts";
 import { LiveStream } from "./event-stream.ts";
 import { stackText } from "./results-model.ts";
@@ -80,8 +80,13 @@ export class DevPanel {
     this.#stream?.close();
   }
 
+  get #action(): DevPress {
+    return devPress(this.#devId !== null, this.#model);
+  }
+
+  /** A stack to stop: one this panel follows that is not yet down. */
   get #running(): boolean {
-    return this.#devId !== null && this.#model.phase !== "ended";
+    return this.#action === "stop";
   }
 
   /** A stack this attempt has already, started by another tab or before a reload. */
@@ -93,8 +98,9 @@ export class DevPanel {
 
   async #press(): Promise<void> {
     if (this.#busy) return;
-    if (this.#running) await this.#stop();
-    else await this.#start();
+    const action = this.#action;
+    if (action === "stop") await this.#stop();
+    else if (action === "start") await this.#start();
   }
 
   async #start(): Promise<void> {
@@ -124,6 +130,7 @@ export class DevPanel {
       if (!(error instanceof ApiError && error.code === "conflict")) this.#note.replaceChildren(failure(error));
     } finally {
       this.#busy = false;
+      this.#draw();
     }
   }
 
@@ -176,13 +183,14 @@ export class DevPanel {
 
   #draw(): void {
     const model = this.#model;
-    const running = this.#running;
+    const action = this.#action;
+    const running = action === "stop";
     this.element.dataset["phase"] = this.#devId === null ? "idle" : model.phase;
     this.#state.replaceChildren(this.#stateBadge());
     this.#url.replaceChildren(...(model.appUrl ? [h("a", { href: model.appUrl, target: "_blank", rel: "noopener noreferrer", class: "dev-app-link" }, model.appUrl, h("span", { "aria-hidden": "true" }, " ↗"))] : []));
     this.#button.textContent = running ? "Stop" : "Start dev stack";
     this.#button.classList.toggle("primary", !running);
-    this.#button.disabled = this.#busy;
+    this.#button.disabled = this.#busy || action === "wait";
     this.#button.title = running ? "Stop the stack as Ctrl-C does; its data stays" : `cstudy dev ${this.#status.slug}`;
     this.#mocks.replaceChildren(...model.mocks.map((mock) => this.#picker(mock.name, mock.scenario, mock.scenarios, model.phase === "ready")));
     this.#drawNote();
