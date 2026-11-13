@@ -130,8 +130,23 @@ def test_on_windows_the_launcher_is_an_executable():
     assert KOTLIN_LSP.command(windows)[0] == f"{HOME}/bin/intellij-server.exe"
 
 
-def test_it_keeps_its_index_and_caches_in_the_sessions_data_directory():
+def test_it_keeps_its_system_directory_in_the_sessions_data_directory():
     assert f"--system-path={DATA}/system" in KOTLIN_LSP.command(LAUNCH)
+
+
+def test_it_keeps_its_index_and_license_store_in_the_sessions_data_directory():
+    """The build keeps its index databases under `$XDG_CACHE_HOME/JetBrains/IntelliJServer/
+    workspaces/`, one per root whatever the system path, and its license store in
+    `$XDG_CONFIG_HOME/JetBrains/IntelliJServer`; a second session of the root needs an index of
+    its own, since the first one's lock refuses it."""
+    linux = Launch(LSP, DATA, java="/jdk/bin/java", platform="linux", java_home="/jdk")
+    environment = KOTLIN_LSP.environment(linux)
+    homes = ("XDG_CACHE_HOME", "XDG_CONFIG_HOME")
+
+    assert {name: environment.get(name) for name in homes} == {
+        "XDG_CACHE_HOME": f"{DATA}/cache",
+        "XDG_CONFIG_HOME": f"{DATA}/config",
+    }
 
 
 def test_its_heap_is_capped_through_the_launchers_options():

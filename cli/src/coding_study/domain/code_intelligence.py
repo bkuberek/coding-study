@@ -641,27 +641,28 @@ def _kotlin_lsp_linux_command(_server: LanguageServer, launch: Launch) -> tuple[
 
 def _kotlin_lsp_linux_environment(launch: Launch) -> dict[str, str]:
     """As this machine's build, with Gradle's user home in the sidecar's data folder, where the
-    import finds the image's Gradle as its tooling API's own distribution, and the build's other
-    homes there too: the shared data folder it creates at startup (`$XDG_DATA_HOME/JetBrains`), its
-    license store (`$XDG_CONFIG_HOME/JetBrains/IntelliJServer`) and its index databases, which go
-    under `$XDG_CACHE_HOME/JetBrains/IntelliJServer/workspaces/` rather than the system path. The
-    image's `~/.local`, `~/.config` and `~/.cache`, which it uses otherwise, are read-only in a
-    sidecar."""
+    import finds the image's Gradle as its tooling API's own distribution, and the shared data
+    folder the build creates at startup (`$XDG_DATA_HOME/JetBrains`) there too: the image's
+    `~/.local`, like its `~/.config` and `~/.cache`, is read-only in a sidecar."""
     data = launch.data_directory
-    options = _kotlin_lsp_environment(launch)["IJ_JAVA_OPTIONS"]
+    environment = _kotlin_lsp_environment(launch)
     home = f"-Dcom.jetbrains.ls.imports.gradle.gradleUserHome={data}/gradle"
     return {
-        "IJ_JAVA_OPTIONS": f"{options} {home}",
+        **environment,
+        "IJ_JAVA_OPTIONS": f"{environment['IJ_JAVA_OPTIONS']} {home}",
         "XDG_DATA_HOME": f"{data}/share",
-        "XDG_CONFIG_HOME": f"{data}/config",
-        "XDG_CACHE_HOME": f"{data}/cache",
     }
 
 
 def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
-    """Its configuration, logs and plugins in the session's data directory beside its index, no
-    update check (which would reach JetBrains), and the Gradle import on the selected JDK, as every
-    Gradle call of cstudy runs. The launcher splits the variable as a shell does."""
+    """Its configuration, logs and plugins in the session's data directory, no update check (which
+    would reach JetBrains), and the Gradle import on the selected JDK, as every Gradle call of
+    cstudy runs. The launcher splits the variable as a shell does. The build keeps its index
+    databases under `$XDG_CACHE_HOME/JetBrains/IntelliJServer/workspaces/`, one per root whatever
+    the system path, and its license store in `$XDG_CONFIG_HOME/JetBrains/IntelliJServer`: in the
+    data directory too, each session of a root has an index of its own, which a second server
+    could not open beside the first, and nothing goes into `~/.cache` or `~/.config`. Only the
+    Linux build reads these two; on macOS and Windows it keeps them in the user's own folders."""
     data = launch.data_directory
     options = [
         *KOTLIN_LSP_JVM_OPTIONS,
@@ -672,7 +673,11 @@ def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
     ]
     if launch.java_home is not None:
         options.append(f"-Dcom.jetbrains.ls.imports.gradle.java.home={launch.java_home}")
-    return {"IJ_JAVA_OPTIONS": shlex.join(options)}
+    return {
+        "IJ_JAVA_OPTIONS": shlex.join(options),
+        "XDG_CACHE_HOME": f"{data}/cache",
+        "XDG_CONFIG_HOME": f"{data}/config",
+    }
 
 
 KOTLIN_LSP = LanguageServer(
