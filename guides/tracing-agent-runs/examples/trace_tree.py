@@ -57,7 +57,7 @@ def own_usage(span_id: str) -> tuple[int, int, int]:
     """Input tokens, output tokens and cost in millionths of a unit, for a model call only."""
     attributes = spans[span_id]["attributes"]
     if attributes["gen_ai.operation.name"] not in MODEL_CALLS:
-        return 0, 0, 0  # an agent's own token counts would repeat its model calls' counts
+        return 0, 0, 0  # an agent's own token counts may repeat its model calls' counts
     model = attributes.get("gen_ai.response.model", attributes["gen_ai.request.model"])
     price = PRICES[model]
     inputs = attributes.get("gen_ai.usage.input_tokens", 0)

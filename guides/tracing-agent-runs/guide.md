@@ -4,7 +4,7 @@
 
 An agent answers one request in many steps: it calls a model to decide what to do, calls tools, perhaps hands part of the work to another agent, and calls the model again. When a run is slow, costs too much or gives up, its final answer does not say why. A **trace** does. It is the record of one run, step by step: what each step was, when it started and ended, what ran inside it, what it used, and how it ended.
 
-The words for it come from **OpenTelemetry**, an open-source framework, agnostic of vendors and tools, for the telemetry that software emits, such as traces, metrics and logs. Its specification defines the pieces this guide uses, and its tracing API is stable:
+The words for it come from **OpenTelemetry**, an open-source framework, agnostic of vendors and tools, for telemetry, the data software emits about what it is doing, such as traces, metrics and logs. Its specification defines the pieces this guide uses, and its tracing API is stable:
 
 | Term | What it is |
 |------|------------|
@@ -18,7 +18,7 @@ The words for it come from **OpenTelemetry**, an open-source framework, agnostic
 
 So a trace is a tree, and each span is a node with a time interval and a bag of facts. Code that creates spans is called **instrumentation**; an **exporter** is the part that sends finished spans to wherever traces are stored.
 
-The facts are only useful if every tool names them the same way. OpenTelemetry publishes **semantic conventions** for that: agreed names for attributes and spans. The conventions for generative AI, the `gen_ai.*` names, have moved to a repository of their own. Their overview and the pages this guide uses are marked **Development**, the stage before stable, where names can still change, and so is every `gen_ai.*` attribute of their registry. These are the three spans an agent run is made of:
+The facts are only useful if every tool names them the same way. OpenTelemetry publishes **semantic conventions** for that: agreed names for attributes and spans. The conventions for generative AI, the `gen_ai.*` names, have moved to a repository of their own. Their overview and the pages this guide uses are marked **Development**, the stage before stable, where names can still change, and so is every attribute of their registry, the list of every `gen_ai.*` attribute with its type and status. These are the three spans an agent run is made of:
 
 | Operation | Span name | `gen_ai.operation.name` | Attributes it carries |
 |-----------|-----------|-------------------------|-----------------------|
@@ -105,7 +105,7 @@ def own_usage(span_id: str) -> tuple[int, int, int]:
     """Input tokens, output tokens and cost in millionths of a unit, for a model call only."""
     attributes = spans[span_id]["attributes"]
     if attributes["gen_ai.operation.name"] not in MODEL_CALLS:
-        return 0, 0, 0  # an agent's own token counts would repeat its model calls' counts
+        return 0, 0, 0  # an agent's own token counts may repeat its model calls' counts
     model = attributes.get("gen_ai.response.model", attributes["gen_ai.request.model"])
     price = PRICES[model]
     inputs = attributes.get("gen_ai.usage.input_tokens", 0)
@@ -323,7 +323,7 @@ failures that were handled, under a parent that did not fail:
   execute_tool search_docs under invoke_agent docs_helper: the index refused: too many requests
 ```
 
-**Repeated calls.** Two calls are the same call when they use the same tool with the same arguments. The arguments are compared in one canonical form: parsed as JSON, then written back with the keys sorted and no spaces, which is what `json.dumps` does with `sort_keys=True` and `separators=(",", ":")`. The three `lookup_order` calls are written three ways, with the keys in another order and spaces in other places, and they are one call. The conventions expect `gen_ai.tool.call.arguments` to be an object, and ask instrumentation that only has the text to make a best effort to parse it, so a trace may hold an object or, where parsing failed, the text; bringing both into one form is the point. The calls are grouped under the agent that made them, and each group gets a verdict:
+**Repeated calls.** Two calls are the same call when they use the same tool with the same arguments. The arguments are compared in one canonical form: parsed as JSON, then written back with the keys sorted and no spaces, which is what `json.dumps` does with `sort_keys=True` and `separators=(",", ":")`. The three `lookup_order` calls are written three ways, with the keys in another order and spaces in other places, and they are one call. The conventions expect `gen_ai.tool.call.arguments` to be an object, and ask instrumentation that only has the text to make a best effort to parse it. Instrumentation that skips that step leaves text, as in this example, so a reader may meet either; bringing both into one form is the point. The calls are grouped under the agent that made them, and each group gets a verdict:
 
 - **The same result fetched again**: `get_customer` twice, both successful. Nothing broke, but the second call cost time and, if the result went back into the model's context, tokens.
 - **Retried until it worked**: the first `search_docs` was refused for too many requests, and the second worked. That is what a retry is for.
@@ -380,7 +380,7 @@ Use something else when the question is different. Metrics answer totals over ma
 - **Comparing arguments as raw text.** `{"a": 1, "b": 2}` and `{"b":2,"a":1}` are the same call. The opposite trap is normalizing too much: two orders whose ids differ only in case may be two different orders, so change the form of the arguments, not their values.
 - **Blaming the span where the error surfaced.** The root failed because something below it did. Follow the failures down.
 - **Blaming every failed span.** A failure under a parent that did not fail was handled. It may be worth fixing, as a source of slowness, but it did not end the run.
-- **Reading `Unset` as unknown.** `Unset` is what a successful span has: the conventions say a span that ended without an error keeps status `Unset`. `Ok` means that an application developer or operator checked the result, and instrumentation libraries should not set it unless configured to.
+- **Reading `Unset` as unknown.** `Unset` is what a successful span normally has: the conventions say a span that ended without an error keeps status `Unset`. `Ok` means that an application developer or operator checked the result, and instrumentation libraries should not set it unless configured to.
 - **Trusting the clocks.** Ending a span has no effect on its children, which may still be running and end later, and the clocks of different machines need not agree. A child can end after its parent or start before it; clip it to its parent's interval before doing arithmetic with both.
 - **Recording everything.** Prompts, answers, tool arguments and tool results are opt-in in the conventions, which warn that tool arguments and results may contain sensitive information. Decide what to keep, what to redact and who may read it before you turn them on.
 
@@ -408,13 +408,13 @@ With the agent passed down a walk, every step reads each span a few times at mos
 - **Span kinds.** Separate from the operation, every span has a kind. A model call should be `CLIENT`, a request to another process, and may be `INTERNAL` when the model runs in the same process; an agent invoked in process and a tool execution should be `INTERNAL`. Kind says how a span relates to other processes, such as a request to a remote service or an internal operation; the operation name says what the work was.
 - **Across services.** A trace can cross processes: OpenTelemetry propagates a span's context, which identifies it in its trace, to its child spans and across process boundaries. Over HTTP, the W3C Trace Context recommendation carries it in the `traceparent` header: a version; the trace id, the ID of the whole trace (16 bytes, 32 hexadecimal digits); the parent id, the ID of the request as known by the caller (8 bytes); and flags, as in `00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01`.
 - **More than a tree.** OpenTelemetry's overview describes a trace as a directed acyclic graph of spans, whose edges are the parent and child relationships, and lets a span carry links to spans in the same trace or in other traces, for example for a batch started by several spans. A conversation that runs over many requests can span many traces; the conventions' `gen_ai.conversation.id` ties a model call to its conversation.
-- **Names for groups, attributes for details.** A span name should be the most general string that identifies an interesting class of spans: `get_account` is a good name, and `get_account/42` is too specific, with the 42 better kept as an attribute. That is why a tool span is named after the tool, never its arguments, and why, in the example, the order id is in `gen_ai.tool.call.arguments` while the request's span name holds the template `/orders/{id}`, not the id.
+- **Names for groups, attributes for details.** A span name should be the most general string that identifies an interesting class of spans: `get_account` is a good name, and `get_account/42` is too specific, with the 42 better kept as an attribute. That is why a tool span is named after the tool, never its arguments, and why, in the example, the order id is in `gen_ai.tool.call.arguments` while the request's span name holds the template `/orders/{id}`, not the id (when the instrumentation knows the template, which HTTP clients often do not; otherwise the name is just `GET`).
 - **Billed counts.** When a provider reports both the tokens it billed and the tokens the model consumed, the conventions ask instrumentation to record the billed count, so that `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` match the units the customer is charged for. A cost roll-up built on them then counts what was billed, not what was consumed.
 - **Versions and stability.** At the time of writing, the specification is at 1.62.0 and the semantic conventions at 1.45.0. The tracing API is stable, as are the HTTP conventions and `error.type`; the generative AI pages this guide uses, every `gen_ai.*` attribute, and the page on recording errors are in Development, and the convention for exceptions recorded on spans is deprecated. Pin the version of the conventions your tools read, and expect names in Development to change.
 
 ## Practice
 
-- `cstudy start agent-trace-analyzer`: rebuilding a trace's tree from events that arrive out of order, repeated or broken; where the time went; what each subtree cost; and the retry loops and the root cause of a failed run, over four levels.
+- `cstudy start agent-trace-analyzer`: rebuilding a trace's tree from events that arrive out of order, repeated or broken; where the time went; what each subtree cost; and the retry loops and the root cause of a failed run, over four levels. The problem defines its own rules for loops and the root cause; read them rather than reusing this guide's.
 
 ## Further reading
 
@@ -426,6 +426,6 @@ With the agent passed down a walk, every step reads each span a few times at mos
 - [OpenTelemetry semantic conventions, recording errors](https://opentelemetry.io/docs/specs/semconv/general/recording-errors/): status `Error` and `error.type` on failure, `Unset` on success, and handled errors.
 - [OpenTelemetry semantic conventions, HTTP spans](https://opentelemetry.io/docs/specs/semconv/http/http-spans/): one span per attempt, and `http.request.resend_count`.
 - [OpenTelemetry semantic conventions, exceptions on spans](https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/): the deprecated `exception` event.
-- [OpenTelemetry blog, *Deprecating Span Events API* (2026)](https://opentelemetry.io/blog/2026/deprecating-span-events/): events as logs correlated with a span.
+- [OpenTelemetry blog, *Deprecating Span Events API* (17 March 2026)](https://opentelemetry.io/blog/2026/deprecating-span-events/): events as logs correlated with a span.
 - [W3C, *Trace Context*, W3C Recommendation, 23 November 2021](https://www.w3.org/TR/trace-context/): the `traceparent` header.
 - [Python `json`](https://docs.python.org/3/library/json.html): `sort_keys` and compact `separators` for a canonical form of the arguments.
