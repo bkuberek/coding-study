@@ -53,8 +53,13 @@ export const DEV_EVENT_TYPES: readonly DevEvent["type"][] = ["output", "dev_read
 
 export type DevPhase = "idle" | "starting" | "ready" | "ended";
 
+/** What the panel's one button does: start a stack, stop the one it follows, or wait while that one comes down. */
+export type DevPress = "start" | "stop" | "wait";
+
 export class DevModel {
   phase: DevPhase = "idle";
+  /** The stream closed: `cstudy dev` exited, and the server holds its stack no more. */
+  exited = false;
   stack: StackStanding | null = null;
   appUrl: string | null = null;
   mocks: MockState[];
@@ -92,6 +97,7 @@ export class DevModel {
 
   /** The server's last message: the child exited, with or without its own end. */
   close(closed: Closed): void {
+    this.exited = true;
     if (this.end === null) this.#ended(closed.stderr.join("\n") || `cstudy dev exited ${closed.exit_code}`, null);
   }
 
@@ -100,4 +106,14 @@ export class DevModel {
     this.appUrl = null;
     this.end = { message, output };
   }
+}
+
+/**
+ * What the button does for the stack the panel follows, if any. One that is down, or whose `dev_end`
+ * came, has nothing left to stop, yet the server holds the attempt's dev stack until `cstudy dev`
+ * exits: a start before then is refused and attaches to the stack coming down, so the button waits.
+ */
+export function devPress(following: boolean, model: DevModel): DevPress {
+  if (!following || model.exited) return "start";
+  return model.phase === "ended" || model.stack?.down === true ? "wait" : "stop";
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { DevModel, type DevEvent, MAX_APP_LINES } from "../src/page/dev-model.ts";
+import { DevModel, type DevEvent, devPress, MAX_APP_LINES } from "../src/page/dev-model.ts";
 
 const MOCKS = [{ name: "room-vendor", scenarios: ["outage", "slow"] }];
 
@@ -51,6 +51,28 @@ test("the end says how the stack ended and leaves no app url", () => {
 test("an app that would not start keeps its output", () => {
   const model = played({ type: "dev_end", outcome: "load_failed", exit_code: 2, message: "your app exited", output: "boom" });
   assert.equal(model.end?.output, "boom");
+});
+
+test("the button starts a stack when none is followed, and stops one that is starting or ready", () => {
+  assert.deepEqual(
+    [devPress(false, new DevModel(MOCKS)), devPress(true, played({ type: "output", text: "starting the stack", stack: "starting" })), devPress(true, played(READY))],
+    ["start", "stop", "stop"],
+  );
+});
+
+test("a click after the stack reports down, before its dev_end, stops nothing and starts a stack once cstudy dev has exited", () => {
+  const model = played(READY, { type: "output", text: "the stack is down", stack: "stopped" });
+  const down = devPress(true, model);
+  model.apply({ type: "dev_end", outcome: "stopped", exit_code: 0, message: "the stack is down and its data is kept" });
+  const ended = devPress(true, model);
+  model.close({ exit_code: 0, signal: null, stderr: [] });
+  assert.deepEqual([down, ended, devPress(true, model)], ["wait", "wait", "start"]);
+});
+
+test("a stream the server no longer keeps lets the button start a stack", () => {
+  const model = played(READY);
+  model.close({ exit_code: 0, signal: null, stderr: ["The server no longer keeps this dev stack, as after a restart."] });
+  assert.equal(devPress(true, model), "start");
 });
 
 test("a child that ended without its end says what standard error held", () => {
