@@ -1,6 +1,6 @@
 # Review: the facts of the AI engineering guides
 
-The eleven guides of the path "AI engineering: from your first model call to agent harnesses" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about standards, papers, a security ranking and Python. This page lists each one with where it was checked, so that the independent review starts from the sources.
+The twelve guides of the path "AI engineering: from your first model call to agent harnesses" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about standards, papers, a security ranking and Python. This page lists each one with where it was checked, so that the independent review starts from the sources.
 
 "Quote" means the exact text was read at that source: on the web page, or in the text extracted from the PDF with `pdftotext`. "Run" means an example of the guide, or a one-off program, printed it, on CPython 3.13.12. "Arithmetic" means the number was computed from the stated inputs. A fact that could not be checked was left out of the guides; the last sections list those, and the citation choices made under the guides' rule against naming companies, products, models and post authors.
 
@@ -17,6 +17,7 @@ The eleven guides of the path "AI engineering: from your first model call to age
 | Harness engineering | `harness-engineering` |
 | Cost: caching, routing and output limits | `cost-caching-and-routing` |
 | Security of LLM applications | `llm-application-security` |
+| Tracing agent runs | `tracing-agent-runs` |
 
 ## Model Context Protocol
 
@@ -200,7 +201,7 @@ The guides and the path practise eight problems of the catalog, by their slugs: 
 
 ## Independent accuracy review (2026-11-12)
 
-An independent read-only review checked every claim of this page against its source and ran the fifteen examples. It confirmed the headline claims: the Model Context Protocol's current revision, 2026-07-28, with its statelessness, `_meta` on every request and no `initialize` handshake; the numbering of the 2026 OWASP list; and the output of all fifteen examples. These are its findings and what changed.
+An independent read-only review checked every claim of the sections above against its source and ran the fifteen examples. It confirmed the headline claims: the Model Context Protocol's current revision, 2026-07-28, with its statelessness, `_meta` on every request and no `initialize` handshake; the numbering of the 2026 OWASP list; and the output of all fifteen examples. These are its findings and what changed.
 
 | # | Finding | Change |
 |---|---------|--------|
@@ -225,3 +226,72 @@ An independent read-only review checked every claim of this page against its sou
 | 19 | Jargon in guides that start from little background | `tokens-and-sampling` defines transformer, layer, self-attention, key and value where they first appear; `llm-application-security` spells out cross-site scripting and server-side request forgery; `evaluating-llm-applications` defines a standard error before the example prints it, and words precision and recall as shares |
 | 20 | The ReAct diagram's text drawing put a "yes" label on the answer box | The step is drawn as a straight sequence of five boxes |
 | 21 | Shortened titles were not marked, and RouteLLM's carries no model brand | "title shortened" added to the three shortened titles; RouteLLM's full title restored |
+
+## Tracing agent runs
+
+The facts of `tracing-agent-runs`, read on 2026-11-12. The versions are those the sources served that day: the OpenTelemetry Specification 1.62.0 ([opentelemetry.io/docs/specs/otel](https://opentelemetry.io/docs/specs/otel/), heading "OpenTelemetry Specification 1.62.0"), the semantic conventions 1.45.0 ([opentelemetry.io/docs/specs/semconv](https://opentelemetry.io/docs/specs/semconv/), heading "OpenTelemetry semantic conventions 1.45.0"), and the generative AI conventions on the `main` branch of [open-telemetry/semantic-conventions-genai](https://github.com/open-telemetry/semantic-conventions-genai), which shows no release. Pages on GitHub were read as raw Markdown from `raw.githubusercontent.com`. "Quote", "Run" and "Arithmetic" mean what they mean above; the examples ran on CPython 3.13.12.
+
+| Short name | Source |
+|------------|--------|
+| Tracing API | [opentelemetry.io/docs/specs/otel/trace/api](https://opentelemetry.io/docs/specs/otel/trace/api/), and its source [specification/trace/api.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md) |
+| Tracing SDK | [opentelemetry.io/docs/specs/otel/trace/sdk](https://opentelemetry.io/docs/specs/otel/trace/sdk/) |
+| Overview | [specification/overview.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/overview.md) |
+| trace.proto | [opentelemetry-proto, trace/v1/trace.proto](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/trace/v1/trace.proto) |
+| Client inference | [docs/gen-ai/client-inference.md](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/client-inference.md) |
+| GenAI spans | [docs/gen-ai/gen-ai-spans.md](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md) |
+| Agent spans | [docs/gen-ai/gen-ai-agent-spans.md](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md) |
+| Execute tool | [docs/gen-ai/execute-tool.md](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/execute-tool.md) |
+| GenAI registry | [docs/registry/attributes/gen-ai.md](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/registry/attributes/gen-ai.md) |
+| Recording errors | [opentelemetry.io/docs/specs/semconv/general/recording-errors](https://opentelemetry.io/docs/specs/semconv/general/recording-errors/), and its source [docs/general/recording-errors.md](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/general/recording-errors.md) |
+| HTTP spans | [opentelemetry.io/docs/specs/semconv/http/http-spans](https://opentelemetry.io/docs/specs/semconv/http/http-spans/) |
+
+| # | Claim | Source |
+|---|-------|--------|
+| T1 | OpenTelemetry is an observability framework and toolkit, open source and vendor- and tool-agnostic, for telemetry such as traces, metrics and logs | Quote: [What is OpenTelemetry?](https://opentelemetry.io/docs/what-is-opentelemetry/) |
+| T2 | The Tracing API and the Tracing SDK are Stable, except where otherwise specified | Quote: Tracing API and Tracing SDK, status lines |
+| T3 | A span represents a single operation within a trace; it holds a name, a SpanContext, a parent, a SpanKind, start and end timestamps, attributes, links, timestamped events and a status | Quote: Tracing API |
+| T4 | Each span has zero or one parent span and zero or more child spans; a span without a parent is a root span; a tree of related spans comprises a trace; each trace includes a single root span, the shared ancestor of all other spans in the trace | Quote: Tracing API |
+| T5 | A valid trace id is a 16-byte array and a valid span id an 8-byte array, each with at least one non-zero byte | Quote: Tracing API, "SpanContext" |
+| T6 | All spans of a trace share its `trace_id`; `parent_span_id` is empty for a root span; attributes are a collection of key/value pairs | Quote: trace.proto, `Span` |
+| T7 | An event has a name, a timestamp and zero or more attributes | Quote: Tracing API, "Add Events"; trace.proto, `Span.Event` |
+| T8 | Status codes: `Unset`, the default; `Ok`, validated by an application developer or operator to have completed successfully; `Error`; a description only with `Error`; the total order `Ok > Error > Unset`; once `Ok`, further attempts to change the status should be ignored; instrumentation libraries should not set `Ok` unless explicitly configured to | Quote: Tracing API, "Set Status" |
+| T9 | A span name should be the most general string that identifies a (statistically) interesting class of spans; `get_account/42` is too specific, and `get_account` good, with `account_id=42` as an attribute | Quote: Tracing API, the table of example span names |
+| T10 | `End` must not have any effect on child spans, which may still be running and can be ended later | Quote: Tracing API, "End" |
+| T11 | The simple processor passes finished spans to the exporter as soon as they are finished; the batching processor creates batches of finished spans | Quote: Tracing SDK |
+| T12 | A trace can be thought of as a directed acyclic graph of spans whose edges are parent/child relationships; links can point to spans in the same or other traces, and can represent batched operations initiated by several spans; a SpanContext identifies a span in the trace and must be propagated to child spans and across process boundaries | Quote: Overview |
+| T13 | Span kinds: `CLIENT` describes a request to some remote service; `INTERNAL` an internal operation within an application; `SERVER`, `PRODUCER` and `CONSUMER` the others | Quote: trace.proto, `SpanKind` |
+| T14 | OpenTelemetry is deprecating the API for recording span events (`Span.AddEvent`, `Span.RecordException`), not span events: new code should write events as logs correlated with the current span; data that already uses span events remains part of the OTLP trace model, and views that show events on spans keep working | Quote: [OpenTelemetry blog, *Deprecating Span Events API*](https://opentelemetry.io/blog/2026/deprecating-span-events/) (the page shows no date; 2026 is from its URL). The Tracing API's source on `main` does not yet mark these methods deprecated, so the guide says "is deprecating" |
+| T15 | The semantic conventions page shows version 1.45.0; the generative AI conventions moved to the repository `open-telemetry/semantic-conventions-genai` | Quote: semantic conventions index ("Moved to the OpenTelemetry GenAI semantic conventions repository"); [the old gen-ai page](https://opentelemetry.io/docs/specs/semconv/gen-ai/) ("GenAI semantic conventions have moved") |
+| T16 | Development status: the overview `docs/gen-ai/README.md`, Client inference, GenAI spans, Agent spans and Execute tool are each marked "Status: Development"; every attribute of the GenAI registry, 85 rows, carries the Development badge, none Stable | Quote: each page's status line; GenAI registry |
+| T17 | Inference span name `{gen_ai.operation.name} {gen_ai.request.model}`; span kind should be `CLIENT`, and may be `INTERNAL` for a model in the same process | Quote: Client inference |
+| T18 | Well-known values of `gen_ai.operation.name` include `chat`, `text_completion`, `generate_content`, `embeddings`, `invoke_agent` and `execute_tool` | Quote: GenAI spans, the list of well-known values |
+| T19 | Inference attributes: `gen_ai.operation.name` required; `gen_ai.request.model`, "The name of the GenAI model a request is being made to", conditionally required; `gen_ai.response.model`, "The model name returned in the response", recommended; `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`, "reported by the provider for this inference operation", recommended; `gen_ai.usage.cache_read.input_tokens`, "The number of input tokens served from a provider-managed cache"; `gen_ai.input.messages` and `gen_ai.output.messages` opt-in | Quote: Client inference, attribute table |
+| T20 | `gen_ai.usage.input_tokens` should include cached tokens and input tokens of all modalities; detailed usage attributes are subsets of the total; `gen_ai.usage.output_tokens` should include reasoning tokens; when a provider reports both billed and consumed counts, the billed count should be reported, so the value matches the units the customer is charged for | Quote: GenAI registry, the notes on `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` |
+| T21 | Invoke agent (internal) span: name `{gen_ai.operation.name} {gen_ai.agent.name}`; span kind `INTERNAL`; `gen_ai.operation.name` `invoke_agent` when a model drives the control flow; `gen_ai.agent.name` conditionally required; `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` recommended when the operation is `invoke_agent` | Quote: Agent spans |
+| T22 | Execute tool span: name `execute_tool {gen_ai.tool.name}`; span kind `INTERNAL`; operation `execute_tool`; `gen_ai.tool.name` required; `gen_ai.tool.call.id` conditionally required, if and only if the model or provider supplied one; `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result` opt-in, each with "This attribute may contain sensitive information"; the arguments are expected to be an object, an instrumentation with only a serialized string should make a best effort to deserialize it, and the value is recorded as an AnyValue | Quote: Execute tool |
+| T23 | In the conventions' agent examples, an `execute_tool` span is a child of the `invoke_agent` span that called it, and an agent invoked by a tool is a child of that tool's span | Quote: [examples-agent-calls.md](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/non-normative/examples-agent-calls.md) (`invoke_agent root_agent` > `execute_tool weather_specialist` > `invoke_agent weather_specialist`) |
+| T24 | `gen_ai.conversation.id`: the unique identifier for a conversation (session, thread), conditionally required on inference spans | Quote: Client inference |
+| T25 | `error.type` is Stable, "Describes a class of error the operation ended with", with `timeout` among its examples; it is conditionally required if the operation ended in an error | Quote: [error attributes registry](https://opentelemetry.io/docs/specs/semconv/registry/attributes/error/); Client inference; Execute tool |
+| T26 | Recording errors (status Development): on failure, set the span status code to `Error` and set `error.type`; the status code must be left unset if the operation ended without errors; errors that were retried or handled, allowing an operation to complete gracefully, should not be recorded on spans or metrics that describe that operation; an exception should be recorded as a log record | Quote: Recording errors |
+| T27 | The convention for exceptions recorded on spans is Deprecated ("Use Semantic conventions for exceptions in logs instead"); the event name must be `exception`, with `exception.type`, `exception.message` and `exception.stacktrace` | Quote: [exceptions on spans](https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/) |
+| T28 | HTTP spans are Stable; instrumentations should create an HTTP span for each attempt to send an HTTP request over the wire; `http.request.resend_count`, Stable, is the ordinal number of the resending attempt; an HTTP client span's kind must be `CLIENT` | Quote: HTTP spans |
+| T29 | HTTP span names should be `{method} {target}`, the target of a client span being `url.template` (Development) when available, so the example's request span is `GET /orders/{id}` | Quote: HTTP spans |
+| T30 | W3C Trace Context is a W3C Recommendation of 23 November 2021; the `traceparent` header has four fields, `version`, `trace-id` ("the ID of the whole trace forest", 16 bytes, 32 lowercase hex digits), `parent-id` ("the ID of this request as known by the caller", 8 bytes) and `trace-flags`; the example value `00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01` | Quote: [W3C Trace Context](https://www.w3.org/TR/trace-context/) |
+| T31 | `json.dumps` with `sort_keys=True` outputs dictionaries sorted by key; `separators=(",", ":")` gives the most compact JSON | Quote: [Python `json`](https://docs.python.org/3/library/json.html) (the page served 3.15.2's documentation); run: `what_went_wrong.py` |
+| T32 | `trace_tree.py`: 8 spans and 1 root; own costs 3,600, 920 and 98,500 millionths for the three model calls, 920 for the subtree of `convert_currency`, and 103,020 with 5,500 input and 890 output tokens for the run | Run: `trace_tree.py`; arithmetic: 1200 × 2 + 150 × 8 = 3,600; 300 × 2 + 40 × 8 = 920; 1500 × 20 + 2500 × 5 + 700 × 80 = 98,500 |
+| T33 | `what_went_wrong.py`: three groups of repeated calls (2 calls with 0 failed, 2 with 1, 3 with 3), one origin seen 3 times at `GET /orders/{id}` with `error.type` `timeout`, and one handled failure under `docs_helper` | Run: `what_went_wrong.py` |
+| T34 | Against giving up after the first timeout (`m2`, `t1`, `m3`), the loop (`m2`, `t1`, `m3`, `t2`, `m4`, `t3`, `m5`) adds two lookups, each with its timeout, and two model calls | Arithmetic: the span list of `what_went_wrong.py` |
+
+Not verified, so not in the guide:
+
+- Whether the token counts of an `invoke_agent` span include those of its nested model calls: Agent spans describes them as totals across modalities and says nothing of nesting. The guide says only that they may repeat the model calls' counts, as they do in the example, and adds the model calls alone.
+- A switch for moving between versions of the generative AI conventions: none is named on the pages read.
+- Any attribute for money: the GenAI registry has none, so the example's prices are made up and the guide names no real price.
+
+Names: the guide names OpenTelemetry, the W3C and Python, and no company, product, vendor or model. The models are `small-model` and `large-model`. The GenAI registry's note on billed counts names a provider as its example; the guide states the rule without it.
+
+Practice link and spoilers: `agent-trace-analyzer` (0331) names `tracing-agent-runs` in the `guides:` list of its `meta.yaml`, and the practice line was checked against its statement. The examples were checked against its statement and solution for spoilers: `trace_tree.py` treats only a span without a parent as a root and handles no duplicate, lost parent or cycle; prices are whole units per million tokens with a cached rate, so nothing is rounded; `what_went_wrong.py` compares arguments as parsed JSON with sorted keys, groups calls by their enclosing agent whether or not they are consecutive, and finds origins by following failed children down from the root, with no critical path and no timing. Each rule differs from the problem's.
+
+### Independent review
+
+Pending.
