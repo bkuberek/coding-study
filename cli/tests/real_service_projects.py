@@ -69,13 +69,15 @@ class FixtureProject:
             "EDITOR": "true",
         }
 
-    def cstudy(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+    def cstudy(
+        self, *arguments: str, timeout_s: float = COMMAND_WAIT_S
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [CSTUDY, *arguments],
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            timeout=COMMAND_WAIT_S,
+            timeout=timeout_s,
             check=False,
             cwd=self.root,
             env=self.environment(),

@@ -507,9 +507,18 @@ def _has_stopped(probe: Fetched, today: date) -> bool:
 
 
 def _expiry_warning(server: LanguageServer, probe: ServerProbe, today: date) -> str | None:
-    """Set while a fetched build has fewer than `EXPIRY_WARNING_DAYS` days left to run."""
-    if not isinstance(probe, Fetched) or probe.last_day is None:
+    """Set while a fetched build has fewer than `EXPIRY_WARNING_DAYS` days left to run, and for one
+    whose last day is not known, which would otherwise stop with no warning ahead and never show
+    as expired: a build that named none, or a Linux build fetched with no build of this machine
+    of the same version to take it from."""
+    if not isinstance(probe, Fetched):
         return None
+    if probe.last_day is None:
+        return (
+            f"{server.name} {probe.version} runs until a day cstudy does not know, as JetBrains' "
+            f"early-access builds stop a few weeks after their release; {FIX_COMMAND} fetches "
+            "a newer one once there is"
+        )
     days = (probe.last_day - today).days + 1
     if days >= EXPIRY_WARNING_DAYS:
         return None

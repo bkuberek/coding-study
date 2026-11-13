@@ -245,11 +245,18 @@ def test_a_build_that_warns_still_runs():
     assert state.status is ServerStatus.INSTALLED
 
 
-def test_a_build_without_a_last_day_never_warns():
+def test_a_build_without_a_known_last_day_still_runs_and_warns_that_it_is_not_known():
+    """Nothing else would warn before it stops, nor mark it expired after."""
     undated = Fetched("263.7084.0", None, KOTLIN_LSP_LICENSE)
     servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: undated})
     state = states(servers)[Language.KOTLIN]
-    assert (state.detail, state.warning) == ("kotlin-lsp 263.7084.0", None)
+    assert (state.status, state.detail, state.warning) == (
+        ServerStatus.INSTALLED,
+        "kotlin-lsp 263.7084.0",
+        "kotlin-lsp 263.7084.0 runs until a day cstudy does not know, as JetBrains' early-access "
+        "builds stop a few weeks after their release; cstudy doctor --fix fetches a newer one "
+        "once there is",
+    )
 
 
 def test_the_other_servers_never_warn():

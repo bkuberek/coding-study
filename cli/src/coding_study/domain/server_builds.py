@@ -1,6 +1,6 @@
 """Builds of a language server that its vendor publishes on its own schedule, which `cstudy doctor
 --fix` fetches at their newest instead of pinning one (ADR 0018, Kotlin revisited): JetBrains'
-Kotlin LSP ships early-access builds that stop working about a month after their release.
+Kotlin LSP ships early-access builds that stop working a few weeks after their release.
 
 The releases are GitHub's list of the vendor's repository (`GET /repos/{owner}/{repo}/releases`),
 newest first. A release's notes link each standalone archive and, beside it, the `.sha256` file the

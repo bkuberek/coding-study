@@ -198,7 +198,10 @@ class LspDirectory:
         (self._directory / str(server.script)).write_text(json.dumps(record, indent=2) + "\n")
 
     def _fetched(self, server: LanguageServer) -> ServerProbe:
-        """Not installed without a readable record or the build it names."""
+        """Not installed without a readable record or the build it names. A Linux build's last day
+        is the one this machine's record of the same version names, which Settings and this
+        machine's doctor row show, even when the Linux build was recorded first; its own record's
+        otherwise."""
         known = server.license
         try:
             record = json.loads((self._directory / str(server.script)).read_text())
@@ -217,6 +220,8 @@ class LspDirectory:
         launcher = server.command(Launch(str(self._directory), platform=on))[0]
         if not isinstance(version, str) or not Path(launcher).is_file():
             return NotInstalled()
+        if server.linux_build:
+            ends = self._last_day_of_this_machines(version) or ends
         return Fetched(version, ends, license, tooling if isinstance(tooling, str) else None)
 
     @property
