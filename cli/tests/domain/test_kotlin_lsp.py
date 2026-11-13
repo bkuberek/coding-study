@@ -51,7 +51,7 @@ def test_the_kotlin_lsp_comes_after_java_in_the_catalog():
 
 
 def test_cstudy_pins_no_build_of_it():
-    """`cstudy doctor --fix` fetches JetBrains' newest, since each stops after about a month."""
+    """`cstudy doctor --fix` fetches JetBrains' newest, since each stops weeks after release."""
     assert (KOTLIN_LSP.version, KOTLIN_LSP.archive) == (None, None)
 
 

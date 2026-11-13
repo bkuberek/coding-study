@@ -193,7 +193,7 @@ WARN  code intelligence kotlin kotlin-lsp needs you to accept the JetBrains Free
 - **Memory.** A Kotlin session takes about 1.9 GB, under a 1 GB heap, the most of any language, plus the Gradle daemon its import may start.
 - **Definitions into the standard library.** A function such as `mutableListOf` lives in a sources jar: a Cmd-click on it shows a note naming the jar and the file, and hover shows its documentation. Your project's files open in tabs.
 - **It leaves your folders as they were,** apart from Gradle's own `.gradle/`, as `cstudy test` leaves it.
-- **Each build stops after about a month.** JetBrains ships the Kotlin LSP as early-access builds that stop working once their built-in license ends, and publishes a new one every few weeks. `cstudy doctor` shows the last day of yours, and warns in its last week:
+- **Each build stops a few weeks after its release.** JetBrains ships the Kotlin LSP as early-access builds that stop working once their built-in license ends, and publishes a new one every few weeks. `cstudy doctor` shows the last day of yours, and warns in its last week:
 
   ```text
   WARN  code intelligence kotlin kotlin-lsp 263.7084.0 runs until 2026-11-12 (4 days left), as JetBrains' early-access builds stop; cstudy doctor --fix fetches a newer one once there is

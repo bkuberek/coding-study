@@ -704,7 +704,8 @@ its own runtime. It answers diagnostics only when asked (`textDocument/diagnosti
 a refresh as its import and index progress. It reads the sources of the build's libraries from
 Gradle's cache, which `cstudy doctor --fix` fills by warming it up once online. cstudy pins no
 build: `--fix` fetches JetBrains' newest, checked by the SHA-256 JetBrains publishes beside it,
-since each early-access build stops about a month after its release."""
+since each early-access build stops a few weeks after its release, on the last day the doctor
+row shows."""
 
 KOTLIN_LSP_LINUX = replace(
     KOTLIN_LSP,
