@@ -33,6 +33,7 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not 
 SLUG = "coworking-availability-typescript"
 PANEL = ".dev-stack"
 BUTTON = f"{PANEL} .dev-button"
+START_OFFERED = f"{BUTTON}:enabled:text-is('Start dev stack')"
 STATE = f"{PANEL} .dev-state"
 APP_LINK = f"{PANEL} .dev-app-link"
 LOG = f"{PANEL} .dev-log"
@@ -102,6 +103,7 @@ def seen(engine: str, server: RunningServer, lab: Lab) -> Seen:
         page.wait_for_selector(f"{STATE}:has-text('down')")
         found.stopped_state = page.locator(STATE).inner_text()
         found.calls_after_stop = logged_calls(lab.sandbox)
+        page.wait_for_selector(START_OFFERED)
         page.click(BUTTON)
         page.wait_for_selector(APP_LINK)
         page.evaluate("() => { location.hash = '#/' }")
