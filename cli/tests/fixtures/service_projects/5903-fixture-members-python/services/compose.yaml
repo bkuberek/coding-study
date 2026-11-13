@@ -5,10 +5,14 @@ services:
   db:
     image: postgres:17.11-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
     user: postgres
+    # Its data goes with each stack, so nothing is synced to disk: on a slow disk, initdb's sync
+    # and the checkpoints' fsync take most of the 20 to 40 s a start otherwise waits for Postgres.
+    command: [postgres, -c, fsync=off]
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
       POSTGRES_DB: app
+      POSTGRES_INITDB_ARGS: --no-sync
     volumes:
       - pgdata:/var/lib/postgresql/data
     tmpfs:
