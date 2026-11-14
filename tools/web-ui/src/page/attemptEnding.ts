@@ -8,9 +8,18 @@ export class AttemptEnding {
   #ended = false;
   #finishing = false;
   #held = false;
+  readonly #reads = new Set<Promise<unknown>>();
 
   get ended(): boolean {
     return this.#ended;
+  }
+
+  /** `read`, a read of the attempt that went out, noted until it is answered or fails. */
+  reading<Answer>(read: Promise<Answer>): Promise<Answer> {
+    this.#reads.add(read);
+    const answered = () => this.#reads.delete(read);
+    read.then(answered, answered);
+    return read;
   }
 
   /**
@@ -22,9 +31,14 @@ export class AttemptEnding {
     return this.#ended || this.#finishing;
   }
 
-  /** This tab is about to finish the attempt: the changes it causes need no read. */
-  finishing(): void {
+  /**
+   * This tab is about to finish the attempt: the changes it causes need no read. Resolves once
+   * every read that went out before is answered: the server takes requests in the order they
+   * reach it, not the order they were sent, and would answer one that came after the finish 409.
+   */
+  finishing(): Promise<void> {
     this.#finishing = true;
+    return Promise.allSettled(this.#reads).then(() => undefined);
   }
 
   /** Finishing failed, so the attempt stands; true when a read was held back meanwhile. */
@@ -47,8 +61,8 @@ export class AttemptEnding {
 
 /** What the Done dialog tells the view of finishing the attempt. */
 export interface Finishing {
-  /** The Done request is about to go out. */
-  begin(): void;
+  /** The Done request is about to go out: it goes once this resolves. */
+  begin(): Promise<void>;
   /** It was refused, or failed. */
   failed(): void;
   /** The attempt is finished. */

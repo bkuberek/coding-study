@@ -57,7 +57,10 @@ export function attemptView(context: PageContext, id: number): Cleanup {
    * when the level changed), and the tree, so the focus and the statement's scroll stay put.
    */
   const load = async (statement: boolean) => {
-    const [status, tree] = await Promise.all([api.get<AttemptStatus>(`/api/v1/attempts/${id}`), api.get<Tree>(`/api/v1/attempts/${id}/files`)]);
+    const [status, tree] = await Promise.all([
+      ending.reading(api.get<AttemptStatus>(`/api/v1/attempts/${id}`)),
+      ending.reading(api.get<Tree>(`/api/v1/attempts/${id}/files`)),
+    ]);
     const reread = shown === null || statement || headKey(status) !== headKey(shown.status);
     // The header is drawn at its final height, toolbar included, so nothing below it moves later.
     const [text] = await Promise.all([
@@ -112,7 +115,8 @@ export function attemptView(context: PageContext, id: number): Cleanup {
 
   /** Reads the attempt again; once it is no longer in progress, or a reset deleted it, the view says
    * so and stays read-only. Another failure keeps what shows and is announced, unless nothing shows yet.
-   * While this tab finishes the attempt, nothing reads it: it would answer that it ended. */
+   * While this tab finishes the attempt, nothing reads it: it would answer that it ended. A read that
+   * went out before, Done waits for. */
   const refresh = (statement: boolean) => {
     if (ending.holds()) return;
     load(statement).catch((error: unknown) => {
@@ -147,7 +151,12 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     finished: endedElsewhere,
   };
 
-  const treeSoon = settle(() => void shown?.files.refresh().catch(() => {}));
+  // Held back while this tab finishes the attempt, as `refresh` is, whose read after a failed Done
+  // shows the tree too.
+  const treeSoon = settle(() => {
+    if (shown === null || ending.holds()) return;
+    void ending.reading(shown.files.refresh()).catch(() => {});
+  });
   const statusSoon = settle(() => refresh(false));
   const unfollow = context.notifications.subscribe((notice) => {
     if (ending.ended || shown === null) return;

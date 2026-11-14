@@ -64,10 +64,11 @@ export function openDoneDialog(context: PageContext, status: AttemptStatus, fini
     problemArea.replaceChildren();
     const picked = choice();
     const body = picked.gaveUp ? { gave_up: true } : { rating: picked.rating };
-    // The attempt view hears of the change from the server too, and would read an attempt that is over.
-    finishing.begin();
-    context.api
-      .post<DoneDocument>(`/api/v1/attempts/${status.attempt_id}/done`, { ...body, notes: picked.notes.trim() || null })
+    // The attempt view hears of the change from the server too, and would read an attempt that is
+    // over: it reads nothing from here on, and Done goes once the reads it sent before are answered.
+    finishing
+      .begin()
+      .then(() => context.api.post<DoneDocument>(`/api/v1/attempts/${status.attempt_id}/done`, { ...body, notes: picked.notes.trim() || null }))
       .then((done) => {
         finishing.finished();
         showOutcome(context, sheet.body, done, status);
