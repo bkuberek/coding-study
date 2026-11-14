@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "CRDTs: replicated data that merges without conflicts"
+summary: Replicas that accept every update at once, offline included, and still agree; strong eventual consistency, merges that are commutative, associative and idempotent, state-based and operation-based designs, and why removal is the hard part.
+level: advanced
+prerequisites: [time-and-order, consistency-models]
+related: [replication-and-quorums, idempotency-and-exactly-once]
+problems: [crdt-replicas, logical-clocks]
