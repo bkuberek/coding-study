@@ -470,14 +470,20 @@ def test_a_compose_setting_in_the_folder_you_ran_cstudy_in_changes_nothing(
 
 
 def test_a_stop_of_a_stack_takes_seconds_not_the_default_grace(engine, tmp_path):
-    """`init: true` and the short grace: without them each `down` costs 10 s."""
-    plan = plan_of(tmp_path, stack_name("grace"))
+    """`init: true` and the short grace: without them each `down` costs 10 s. The containers
+    carry both, which is what bounds a stop; a wall-clock bound measured the daemon's load too,
+    and a busy machine took 14 s to remove a stack whose every container stopped in 2."""
+    name = stack_name("grace")
+    plan = plan_of(tmp_path, name)
     engine.start(plan, BUDGET)
+    containers = resources_of(name)["containers"]
+    settings = docker(
+        "inspect", "--format", "{{.HostConfig.Init}} {{.Config.StopTimeout}}", *containers
+    ).stdout.split("\n")
 
-    began = time.monotonic()
-    engine.stop(plan)
+    stopped = engine.stop(plan)
 
-    assert time.monotonic() - began < 10.0
+    assert (containers != [], set(filter(None, settings)), stopped) == (True, {"true 2"}, None)
 
 
 def test_an_app_that_crashes_is_said_with_its_output_and_the_stack_comes_down(engine, tmp_path):
