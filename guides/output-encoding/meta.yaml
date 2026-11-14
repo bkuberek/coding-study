@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Output encoding by context
+summary: Why the same untrusted text needs a different encoding in HTML text, an attribute, a URL and a script, how cross-site scripting follows when it gets none, and the layers around encoding.
+level: core
+prerequisites: [trust-boundaries-and-injection]
+related: [same-origin-and-cors, llm-application-security]
+problems: [output-encoding-by-context]

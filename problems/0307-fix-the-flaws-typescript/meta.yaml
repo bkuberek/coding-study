@@ -41,4 +41,5 @@ project:
 approaches:
   - {id: reference, name: "Check the owner, keep names inside their folder, read only the fields a user may set, bind every value, and keep secrets and internals out of what the service says", role: optimal, time: "per request", space: "per request"}
 related: [multi-tenant-api-typescript, secure-file-upload-typescript, output-encoding-by-context]
+guides: [trust-boundaries-and-injection, secrets-and-redaction, threat-modeling]
 estimate_minutes: 180

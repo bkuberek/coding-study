@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Secrets and redaction
+summary: Where credentials and personal data leak, from source code and URLs to logs and error pages, how to keep secrets out of them and rotate the ones that escape, and how to redact what must still be written down.
+level: core
+prerequisites: [trust-boundaries-and-injection]
+related: [authentication-and-authorization, cryptographic-hashes, llm-application-security]
+problems: [safe-redaction-python, fix-the-flaws-typescript]

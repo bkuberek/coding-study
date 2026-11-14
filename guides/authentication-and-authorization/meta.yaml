@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Authentication, authorization and policy engines
+summary: Proving who is asking and deciding what they may do, kept apart. Passwords, sessions and signed tokens on one side; roles, attributes, policy engines that fail closed and checks on every object on the other.
+level: core
+prerequisites: [trust-boundaries-and-injection]
+related: [secrets-and-redaction, tls-and-certificates, cryptographic-hashes, tools-and-mcp]
+problems: [token-claim-validator, refresh-token-rotation, oauth-pkce-client-typescript, payment-webhook-receiver-typescript, authorization-policy-engine, tool-permission-gate, multi-tenant-api-typescript]

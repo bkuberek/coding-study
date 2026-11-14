@@ -36,4 +36,5 @@ comparator: {type: ops}
 approaches:
   - {id: search-then-validate, name: Enumerate the chains shortest first then validate each in the order of RFC 5280, role: optimal, time: "O(K n C) per verify", space: "O(C + K n)", time_class: "n", space_class: "n"}
 related: [token-claim-validator, cors-policy-evaluator, output-encoding-by-context, oauth-pkce-client-typescript, tamper-evident-ledger]
+guides: [tls-and-certificates]
 estimate_minutes: 120

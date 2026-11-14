@@ -22,5 +22,5 @@ comparator: {type: exact}
 approaches:
   - {id: stack-scan, name: Remove delimiters on a stack in one pass then cut and flag the lines, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
 related: [memory-facts-with-merge, forgettable-inverted-index, tool-permission-gate, sql-guard, output-encoding-by-context]
-guides: [llm-application-security]
+guides: [llm-application-security, trust-boundaries-and-injection]
 estimate_minutes: 30

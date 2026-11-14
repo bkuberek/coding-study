@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Threat modeling
+summary: A repeatable way to find what can go wrong in a design before an attacker does. Draw the data flows and trust boundaries, ask the STRIDE questions where data crosses them, rank and answer each threat, and check the result.
+level: advanced
+prerequisites: [trust-boundaries-and-injection]
+related: [authentication-and-authorization, secrets-and-redaction, same-origin-and-cors, llm-application-security]
+problems: [fix-the-flaws-typescript, ssrf-safe-webhook-dispatcher-typescript, secure-file-upload-typescript, multi-tenant-api-typescript]

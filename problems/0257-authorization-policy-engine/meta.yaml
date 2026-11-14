@@ -25,4 +25,5 @@ comparator: {type: ops}
 approaches:
   - {id: walk-per-check, name: Walk the roles once per check and compare each rule against the resource's ancestors, role: optimal, time: "O(r + e + k + d) per check, O(1) per other call", space: "O(r + e + k)", time_class: "n^2", space_class: "n"}
 related: [token-claim-validator, refresh-token-rotation, sql-guard, plan-and-execute]
+guides: [authentication-and-authorization]
 estimate_minutes: 40

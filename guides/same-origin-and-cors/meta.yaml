@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Same-origin policy and CORS
+summary: What an origin is, why a browser lets a page send requests to other sites but not read their answers, and how CORS lets a server share responses on purpose, with preflights, credentials and the settings that leak.
+level: core
+prerequisites: [trust-boundaries-and-injection]
+related: [output-encoding, authentication-and-authorization, tls-and-certificates]
+problems: [cors-policy-evaluator]

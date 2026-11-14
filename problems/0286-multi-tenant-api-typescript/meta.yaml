@@ -45,4 +45,5 @@ project:
 approaches:
   - {id: reference, name: "Scope twice: every query by the caller's organization, every table by a policy, the organization set per transaction", role: optimal, time: "per request", space: "per request"}
 related: [authorization-policy-engine, inventory-reservations-typescript, cors-policy-evaluator]
+guides: [authentication-and-authorization, threat-modeling]
 estimate_minutes: 240

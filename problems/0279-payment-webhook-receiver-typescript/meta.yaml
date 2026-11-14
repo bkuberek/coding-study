@@ -43,4 +43,5 @@ project:
 approaches:
   - {id: reference, name: "Verify the bytes, then apply each order's events in sequence", role: optimal, time: "per request", space: "per event"}
 related: [idempotent-document-consumer-typescript, vendor-retry-client-typescript]
+guides: [authentication-and-authorization]
 estimate_minutes: 120

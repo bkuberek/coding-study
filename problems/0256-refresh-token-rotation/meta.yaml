@@ -24,4 +24,5 @@ comparator: {type: ops}
 approaches:
   - {id: family-records, name: One record per family and a lookup from token to family, role: optimal, time: "O(1) per call", space: "O(t)", time_class: "n", space_class: "n"}
 related: [token-claim-validator, authorization-policy-engine]
+guides: [authentication-and-authorization]
 estimate_minutes: 35
