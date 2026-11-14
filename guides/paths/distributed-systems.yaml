@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Distributed systems: from partial failure to consensus"
+summary: From partial failure and missing clocks to logical time, partitioning, replication, idempotency, consistency models, CRDTs and Raft, with the problems that practise each idea.
+steps:
+  - guide: why-distribution-is-hard
+  - guide: time-and-order
+  - problem: logical-clocks
+    level: 2
+  - guide: partitioning-and-consistent-hashing
+  - problem: consistent-hash-ring
+  - guide: replication-and-quorums
+  - problem: cdc-apply
+  - guide: idempotency-and-exactly-once
+  - problem: idempotent-document-consumer-typescript
+  - problem: transactional-outbox-typescript
+  - guide: consistency-models
+  - problem: mvcc-snapshot-isolation
+  - guide: crdts
+  - problem: crdt-replicas
+  - problem: logical-clocks
+  - guide: consensus-with-raft
+  - problem: raft-sim

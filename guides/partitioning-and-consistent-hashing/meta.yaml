@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Partitioning and consistent hashing
+summary: Split data that outgrows one machine across many; ranges against hashes, why hashing modulo the number of nodes moves almost every key when a node joins, and how consistent hashing moves only the keys it must.
+level: core
+prerequisites: [why-distribution-is-hard]
+related: [hash-functions, replication-and-quorums]
+problems: [consistent-hash-ring]
