@@ -37,4 +37,5 @@ project:
 approaches:
   - {id: reference, name: One retry loop over a table of verdicts with a client-wide hold and a breaker, role: optimal, time: "O(a) per call", space: "O(a)", time_class: "n", space_class: "n"}
 related: [debug-async-batch-typescript, idempotent-document-consumer-typescript, plan-and-execute, test-doubles]
+guides: [deterministic-tests]
 estimate_minutes: 100

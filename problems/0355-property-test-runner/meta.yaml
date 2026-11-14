@@ -35,4 +35,5 @@ comparator: {type: ops}
 approaches:
   - {id: xorshift-greedy-shrink, name: One xorshift stream with greedy shrinking over generator-built candidates, role: optimal, time: "O(R * S) per run of R values of size S; O(P * C * S) per shrink of P steps with C candidates each", space: "O(S + C * S)", time_class: "n", space_class: "n"}
 related: [test-doubles, debug-sort-comparator, debug-binary-search-bounds, in-memory-database]
+guides: [property-based-testing, stateful-and-model-based-testing]
 estimate_minutes: 120

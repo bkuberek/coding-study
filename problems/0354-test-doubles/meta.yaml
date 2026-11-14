@@ -44,4 +44,5 @@ comparator: {type: ops}
 approaches:
   - {id: rule-lists-timer-heap, name: Rule lists per method and one call log with a timer heap, role: optimal, time: "O(r) per call for r rules and expectations; O(c) per spy question over a double's c calls; O(log t) per timer event", space: "O(r + c + t)", time_class: "n", space_class: "n"}
 related: [property-test-runner, event-bus, job-scheduler, token-bucket-limiter, vendor-retry-client-typescript]
+guides: [stubs-spies-mocks-and-fakes, deterministic-tests]
 estimate_minutes: 90

@@ -22,4 +22,5 @@ comparator: {type: exact}
 approaches:
   - {id: key-ordering, name: Lexicographic key comparison, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
 related: [debug-running-total-overflow, property-test-runner, sorting-workbench]
+guides: [what-a-test-checks]
 estimate_minutes: 20
