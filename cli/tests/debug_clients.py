@@ -21,6 +21,12 @@ JDWP_HEADER = struct.Struct(">IIBBB")
 JDWP_REPLY_FLAG = 0x80
 JDWP_VIRTUAL_MACHINE = 1
 JDWP_RESUME = 9
+JDWP_EVENT = 64
+JDWP_COMPOSITE = 100
+JDWP_VM_START = 90
+_JDWP_FIRST_EVENT_KIND = 5
+"""In a composite event: its suspend policy (1 byte), how many events (4), then the first
+event's kind."""
 HOST = "127.0.0.1"
 
 
@@ -173,9 +179,13 @@ class JdwpClient:
         return cls(connection)
 
     def resume(self) -> None:
+        """Only once the JVM has sent its VM_START event, as a debugger does: a resume that comes
+        sooner can reach the JVM before it suspends its threads for that event, and then nothing
+        resumes them: 8 runs in 100 hang so on JDK 26, on 2 CPUs under load."""
         self._socket.sendall(JDWP_HANDSHAKE)
         if self._receive(len(JDWP_HANDSHAKE)) != JDWP_HANDSHAKE:
             raise ConnectionError("the JVM did not answer the JDWP handshake")
+        self._wait_for_vm_start()
         size = JDWP_HEADER.size
         self._socket.sendall(JDWP_HEADER.pack(size, 1, 0, JDWP_VIRTUAL_MACHINE, JDWP_RESUME))
         while True:
@@ -190,6 +200,18 @@ class JdwpClient:
 
     def close(self) -> None:
         self._socket.close()
+
+    def _wait_for_vm_start(self) -> None:
+        size = JDWP_HEADER.size
+        while True:
+            length, _, flags, command_set, command = JDWP_HEADER.unpack(self._receive(size))
+            body = self._receive(length - size)
+            event = not flags & JDWP_REPLY_FLAG and (command_set, command) == (
+                JDWP_EVENT,
+                JDWP_COMPOSITE,
+            )
+            if event and body[_JDWP_FIRST_EVENT_KIND] == JDWP_VM_START:
+                return
 
     def _receive(self, count: int) -> bytes:
         data = b""
