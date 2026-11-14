@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Timeouts, retries and idempotency
+summary: What a timeout tells you and what it does not; which requests are safe to repeat, idempotency keys, exponential backoff with jitter, Retry-After and rate limits, deadlines, and how retries multiply across layers.
+level: core
+prerequisites: [http-messages]
+related: [congestion-control, pipeline-orchestration, change-data-capture]
+problems: [vendor-retry-client-typescript]
