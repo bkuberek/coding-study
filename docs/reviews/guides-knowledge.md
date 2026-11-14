@@ -29,10 +29,11 @@ The five guides of the path "Knowledge representation: from taxonomies to triple
 | K9 | `skos:exactMatch` is a sub-property of `skos:closeMatch` (S42); both are symmetric (S44); `skos:exactMatch` is transitive (S45); `skos:closeMatch` is not declared transitive, to avoid "compound errors" when combining mappings across more than two schemes; exact match: "a high degree of confidence" that the concepts can be used interchangeably across a wide range of information retrieval applications; close match: "sufficiently similar" to be used interchangeably in some; `skos:exactMatch` is disjoint with `skos:broadMatch` and `skos:relatedMatch` (S46) | Quote: §10.1, §10.3 and §10.4 |
 | K10 | `skos:related` is symmetric (S23) and disjoint with `skos:broaderTransitive` (S27) | Quote: §8.3 and §8.4 |
 | K11 | The only statement about OWL classes is that `skos:Concept` is an instance of `owl:Class`, deliberately, so a resource can be both; the namespace is `http://www.w3.org/2004/02/skos/core#` | Quote: §3.5.1 and §2 |
+| K12 | OWL is the W3C's Web Ontology Language: the reference names "the Web Ontology language (OWL)" and cites *OWL Web Ontology Language Guide* and *OWL Web Ontology Language Reference*, W3C Recommendations of 10 February 2004 | Quote: §1.1 and the references |
 
 ## RDF 1.1 Concepts, N-Triples and Turtle
 
-[*RDF 1.1 Concepts and Abstract Syntax*](https://www.w3.org/TR/rdf11-concepts/), [*RDF 1.1 N-Triples*](https://www.w3.org/TR/n-triples/) and [*RDF 1.1 Turtle*](https://www.w3.org/TR/turtle/), W3C Recommendations of 25 February 2014, and the draft [*RDF 1.2 Concepts and Abstract Syntax*](https://www.w3.org/TR/rdf12-concepts/). Used in `rdf-triples`, and where noted in other guides.
+[*RDF 1.1 Concepts and Abstract Syntax*](https://www.w3.org/TR/rdf11-concepts/), [*RDF 1.1 N-Triples*](https://www.w3.org/TR/n-triples/) and [*RDF 1.1 Turtle*](https://www.w3.org/TR/turtle/), W3C Recommendations of 25 February 2014, and the draft [*RDF 1.2 Concepts and Abstract Data Model*](https://www.w3.org/TR/rdf12-concepts/). Used in `rdf-triples`, and where noted in other guides.
 
 | # | Claim | Source |
 |---|-------|--------|
@@ -45,7 +46,7 @@ The five guides of the path "Knowledge representation: from taxonomies to triple
 | D7 | A dataset has exactly one default graph, which has no name and may be empty, and zero or more named graphs, each a pair of an IRI or blank node and a graph; graph names are unique within a dataset; blank nodes can be shared between its graphs; the name is not required to denote the graph; some implementations do not track empty named graphs | Quote: Concepts, §4 |
 | D8 | Anything can be a resource, including physical things, documents, abstract concepts, numbers and strings; a predicate denotes a property, a resource that can be thought of as a binary relation; relations involving more than two entities can only be expressed indirectly | Quote: Concepts, §1.2 |
 | D9 | Generalized triples, in which each position can be an IRI, a blank node or a literal, are described in a non-normative section; they make, for example, the completeness of the RDFS entailment rules easier to show | Quote: Concepts, §7 |
-| D10 | RDF 1.2 was a Candidate Recommendation Draft dated 13 November 2026; compared to RDF 1.1 it introduces triple terms in the object position of another triple, and directional language-tagged strings | Quote: RDF 1.2 Concepts, status line and abstract |
+| D10 | RDF 1.2 was a Candidate Recommendation Draft dated 13 November 2026; its title is *RDF 1.2 Concepts and Abstract Data Model*; compared to RDF 1.1 it introduces triple terms in the object position of another triple, directional language-tagged strings, and a mechanism for explicitly conveying the version of RDF that a piece of data uses | Quote: RDF 1.2 Concepts, title, status line, abstract and §1.10 |
 | T1 | N-Triples is a line-based, plain text format and an easy-to-parse subset of Turtle; a triple is a subject, a predicate and an object separated by white space and terminated by a `.` and a new line | Quote: N-Triples, §1 and §2 |
 | T2 | In Turtle, `@prefix` and prefixed names abbreviate IRIs, a `;` repeats the subject (predicate lists), a `,` repeats the subject and predicate (object lists), and the token `a` in the predicate position is `rdf:type` | Quote: Turtle, §2, §2.2, §2.3 and §2.4 (IRIs) |
 
@@ -64,6 +65,7 @@ The five guides of the path "Knowledge representation: from taxonomies to triple
 | Q7 | Connectivity matching does not introduce duplicates (it does not count the ways a connection can be made), and is defined so that cycles do not lead to undefined or infinite results; `ZeroOrMorePath` and `OneOrMorePath` match distinct nodes; the specifying algorithm detects nodes already visited on a path, and an implementation may use any method with the same results | Quote: §9.4 and §18.4, the function ALP |
 | Q8 | A property path is a sequence of triples where the object of each is the subject of the next; it starts at the subject of the first and ends at the object of the last; it does not span multiple graphs in a dataset | Quote: §18.1.7 |
 | Q9 | `ZeroOrMorePath` with both ends variables pairs every node of the graph (every subject or object) with itself, since ALP adds its start node to the result | Quote: §18.4, the evaluation of `ZeroOrMorePath`, the function ALP and the definition of `nodes(G)` |
+| Q10 | A multiset is an unordered collection of elements in which each element may appear more than once | Quote: §18.3 |
 
 ## RDF 1.1 Semantics and RDF Schema 1.1
 
@@ -104,7 +106,7 @@ The papers, read from the copies linked; bibliographic data from Crossref, excep
 | L4 | Simplifying assumption: the components are conditionally independent under each of the two distributions, so errors in names are independent of errors in addresses for matched pairs, and accidental agreements are independent for unmatched pairs; nothing is assumed about the unconditional distribution; weights `log m − log u` then add, and only one weight per configuration of each component is needed | Quote: Fellegi and Sunter, §3.2 |
 | L5 | With frequency-based weights, agreement on name gives a positive weight, larger the rarer the name; disagreement a negative weight; a name missing on either record a weight of zero | Quote: Fellegi and Sunter, §3.3.1 |
 | L6 | For medium-sized files of 10^5 records each, the comparisons would number 10^10; files are blocked, for example on a phonetic code of the surname, and pairs in different blocks are implicit non-links; blocking lowers the level of wrong links by the u-probabilities of pairs that would have been links, and raises the level of missed links by the m-probabilities of pairs that would have been links or possible links | Quote: Fellegi and Sunter, §3.1 (c) and §3.4 |
-| L7 | Their rule is quite similar to the intuitively appealing approach of Newcombe, whose papers include *Automatic Linkage of Vital Records*, Science 130 (1959) | Quote: Fellegi and Sunter, §1 and references [4] to [6]; Crossref for the Science paper: volume 130, issue 3381, pages 954 to 959, authors Newcombe, Kennedy, Axford and James |
+| L7 | The theory "leads to a linkage rule which is quite similar to the intuitively appealing approach of Newcombe", whose papers include *Automatic Linkage of Vital Records*, Science 130 (1959) | Quote: Fellegi and Sunter, §1 and references [4] to [6], where the reprint's text layer reads "~ewcombe" for the scanned name; Crossref for the Science paper: volume 130, issue 3381, pages 954 to 959, authors Newcombe, Kennedy, Axford and James |
 | W1 | A string comparator maps a pair of strings to the interval [0, 1] and is not necessarily a metric | Quote: W. E. Winkler, *String Comparator Metrics and Enhanced Decision Rules in the Fellegi-Sunter Model of Record Linkage*, Proceedings of the Section on Survey Research Methods, American Statistical Association, 1990, pages 354 to 359, [PDF](http://www.asasrms.org/Proceedings/papers/1990_056.pdf), §1 |
 | W2 | Jaro introduced the comparator; it accounts for the lengths of the strings and partially for typical human errors; two characters are in common only if no further apart than half the longer length minus one; transpositions are counted among the assigned characters | Quote: Winkler, §2.4 |
 | W3 | The new comparator modifies the basic one according to whether the first few characters agree, for up to four characters | Quote: Winkler, §2.4 |
@@ -124,12 +126,13 @@ The guide gives the initials of Newcombe's co-authors from Fellegi and Sunter's 
 | X5 | 8 asserted triples and 12 in the closure after 3 passes; `:talk42` entailed a book; `kim hasRelative bob` unknown; `:atlas` violates the title shape while the reasoner says unknown; `:talk42` is not a focus node of the asserted graph | Run: `open_and_closed.py` |
 | X6 | Agreement weights: smith 6.57, nakamura 10.89, okafor 12.21, lindqvist 13.21 bits; 6 of 25 pairs compared; three links, three possible links; `c4` and `r4` never compared | Run: `fellegi_sunter.py` |
 | X7 | log2(0.95 / 0.01) = 6.57 and log2(0.95 / 0.0001) = 13.21, a factor of 100 in u; 5 · 5 = 25 pairs | Arithmetic |
+| X8 | The closure of the six rules is finite: each rule's conclusion takes its terms from its premises or from the fixed vocabulary (`rdf:type`, `rdfs:subPropertyOf`, `rdfs:subClassOf`) | Reading the six patterns of E1 |
 
 ## Citations and names
 
 The guides name no company and no product. Where they name something, it is a W3C Recommendation or draft, a paper cited by its authors, or a census named by a paper. Papers are cited by their authors; Jaro is named as the author of the comparator, through Winkler's paper.
 
-| Left out | Where it appears in a source |
+| Not named in the guides | Where it appears in a source |
 |----------|------------------------------|
 | The phonetic code of Fellegi and Sunter's blocking example, named by its proper name | Fellegi and Sunter, §3.3.1 and §3.4 |
 | The edit distance named by its authors as a second example of a string comparator | Winkler, §1 |
@@ -144,7 +147,7 @@ The guides name no company and no product. Where they name something, it is a W3
 - Newcombe and others' 1959 paper was not read; the guide cites it only for its title and bibliographic data, and for what Fellegi and Sunter say of it.
 - The OWL 2 profiles, which the reasoner problem uses for transitive and inverse properties and disjoint classes, were not read for this path; the reasoning guide covers RDFS and SHACL only, and says nothing about OWL beyond K11's note on SKOS concepts.
 - B-cubed scoring, the evaluation of the entity resolution problem's last level, was not checked against its primary source and is not in the guide.
-- RDF 1.2 is cited only for its status on the day it was read and the two additions its abstract lists.
+- RDF 1.2 is cited only for its status on the day it was read and the three additions its abstract lists.
 
 ## Practice links and back-links
 
@@ -164,7 +167,7 @@ The path takes `triple-store` twice: level 1, the store and its indexes, after t
 
 Each linked problem's statement, hints, solutions and follow-ups are compared with the guides. Each guide teaches its idea with examples of its own; these are the places the review should weigh against the rule that a guide never gives away a linked problem's solution:
 
-| Problem | Guide | Overlap the guide states | Kept back |
+| Problem | Guide | Overlap the guide states | Not in the guide |
 |---------|-------|--------------------------|-----------|
 | `taxonomy` level 1 | taxonomies-and-skos | Broader and narrower links, several parents, ancestors as the transitive closure computed as a set, and paths of different lengths, which the statement's rule on distance also shows | Ancestors nearest first, levels of a breadth-first walk, ties by id |
 | `taxonomy` level 2 | taxonomies-and-skos | SKOS calls a cycle consistent and many applications refuse one, as the statement says; code that assumes one parent gives wrong answers for "the closest common ancestor" | Which way the cycle check walks, and how to find the lowest common ancestors in a DAG |
@@ -181,8 +184,21 @@ Each linked problem's statement, hints, solutions and follow-ups are compared wi
 | `reasoner-vs-validator` level 4 and follow-up 2 | reasoning-and-validation | SHACL targets, focus nodes and the three constraints; SHACL types through `rdfs:subClassOf` only; a check of the asserted triples next to the reasoner's "unknown"; a term typed only by a domain is not a focus node, and would be in the closure, which touches follow-up 2 with one instance | `contrast` and its three answers, the violation rows, and when validating the closure hides a mistake or removes a violation in general |
 | `entity-resolution` levels 1 and 2 | record-linkage | The steps; normalization in general (case, punctuation, the order of the name, titles, spaces); blocking keys; Jaro's and Winkler's comparators in words, from Winkler's paper | The problem's normalization rules and their order, its blocking keys, the Jaro-Winkler formula with unrounded transpositions, token overlap, the score's weights and threshold |
 | `entity-resolution` level 3 | record-linkage | Matches are not transitive and union-find merges chains, as the statement says; check a group as a whole before merging | The guard's floor and order of merges, canonical records, aliases |
-| `entity-resolution` follow-ups 2 to 4 | record-linkage | Fellegi and Sunter's frequency-based weights and placeholder values; several blocking keys from different fields; thresholds chosen from a labelled sample by counting wrong and missed links: each touches its follow-up in general | How to weigh or count a shared key in the problem, which keys to add and what each costs, and the use of the level 4 scores |
+| `entity-resolution` follow-ups 2 to 4 | record-linkage | The trade-offs, named: a blocking key saves comparisons and can hide matches; thresholds trade wrong links, missed links and pairs left for review; a placeholder value agrees across strangers, and ignoring the field loses the records that filled it in correctly. Fellegi and Sunter's frequency-based weights stay in the example and the expert notes, as the theory's own content | Several keys, or which keys to add; choosing thresholds from a labelled sample; how to weigh or count a shared key in the problem |
 
-## Independent accuracy review
+## Independent accuracy review (2026-11-14)
 
-Pending: the owner runs it.
+The review checks every claim of the five guides against the source this page gives for it, runs every example and compares what it prints with the guide, checks the guides for names, and reads them against the linked problems' statements, hints, solutions and follow-ups. All six examples match their output blocks, and the guides name no company or product. The example of basic graph patterns is not a spoiler of `triple-store` and stays. The review finds one wrong title, one spoiler of three follow-ups, claims to state more precisely, terms a beginner needs explained, and two column headings of this record to change. These are its findings and what changes.
+
+| Finding | Change |
+|---------|--------|
+| The query guide presents the join of per-pattern solutions as SPARQL's definition of a basic graph pattern's solution; SPARQL defines a solution by subgraph matching (§18.3.1), and `Join` (§18.5) is an operator of its algebra | The guide gives subgraph matching as SPARQL's definition, then says that because a solution must satisfy every pattern at once, joining the per-pattern solutions with SPARQL's compatible-mapping `Join` gives the same answer (Q2, Q3) |
+| The RDF guide and this record give the RDF 1.2 draft's title as *RDF 1.2 Concepts and Abstract Syntax*, and list two of its additions | The title is *RDF 1.2 Concepts and Abstract Data Model*, and the draft lists three additions: triple terms, directional language-tagged strings, and a way to convey the version of RDF that data uses (D10) |
+| "Most applications treat a cycle as an error" claims more than SKOS says | "Many applications" (K6) |
+| The reasoning guide states monotonicity for RDF entailment in general, where RDF 1.1 Semantics states it for simple entailment and requires richer regimes to extend it monotonically | The guide says that the specification states it for simple entailment (E3) |
+| The closure "must stop, because the rules only combine terms already in the graph": rdfs2 and the others add vocabulary terms such as `rdf:type` | These six rules combine the graph's terms with a fixed vocabulary, so there are finitely many triples they can build (X8) |
+| "Quite similar" is quoted out of Fellegi and Sunter's sentence | Their own words: a linkage rule "quite similar to the intuitively appealing approach of Newcombe" (L7) |
+| "Winkler reports that the comparators were used" changes his tense and wording | "Winkler writes that the comparators are used in production computer matching software during the post-enumeration survey" (W5) |
+| Three traps of the record linkage guide answer `entity-resolution` follow-ups 3, 4 and 2, and one reuses follow-up 2's shared office mailbox | Each trap names its trade-off without the method: what a blocking key saves and hides, what thresholds trade, and what a placeholder value costs either way, with a placeholder date of birth as the example |
+| "OWL", "multiset" and the subject of "It is not a formal knowledge representation language" are unclear to a beginner | "The W3C's Web Ontology Language (OWL)" (K12); a multiset is an unordered collection in which the same element may appear more than once (Q10); "SKOS itself is not" |
+| This record's headings "Kept back" and "Left out" speak of the writing | "Not in the guide" and "Not named in the guides" |

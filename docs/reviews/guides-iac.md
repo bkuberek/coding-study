@@ -68,8 +68,8 @@ The RFCs as plain text from rfc-editor.org. Used in `plan-and-apply`, `state-and
 | # | Claim | Source |
 |---|-------|--------|
 | Y1 | The YAML 1.2 specification was published in 2009; its primary focus was making YAML a strict superset of JSON, and it removed many of the problematic implicit typing recommendations; YAML 1.2.2 was published in October 2021 | Quote: 1.2.2, the history in its introduction |
-| Y2 | The core schema is the recommended default schema; plain scalars are matched against a list of regular expressions, for null, booleans (`true`, `True`, `TRUE`, `false`, `False`, `FALSE`), integers in base 10, 8 (`0o`) and 16 (`0x`) and floats, and resolve to a string when none matches | Quote: 1.2.2, §10.3 and §10.3.2, the table copied into `scalars.py` |
-| Y3 | The YAML 1.1 boolean type, a working draft of 2005-01-18, matches `y`, `Y`, `yes`, `Yes`, `YES`, `n`, `N`, `no`, `No`, `NO`, the true and false forms, and `on`, `On`, `ON`, `off`, `Off`, `OFF` | Quote: the 1.1 boolean type page, its regular expression copied into `scalars.py` |
+| Y2 | The core schema is the recommended default schema; plain scalars are matched against a list of regular expressions, for null, booleans (`true`, `True`, `TRUE`, `false`, `False`, `FALSE`), integers in base 10, 8 (`0o`) and 16 (`0x`) and floats, and resolve to a string when none matches; the table also has rows for infinity and not-a-number | Quote: 1.2.2, §10.3 and §10.3.2, the table copied into `scalars.py` except its infinity and not-a-number rows |
+| Y3 | The YAML 1.1 boolean type, a working draft of 2005-01-18, matches `yes`, `no`, `on` and `off` in lower-case, capitalized and upper-case forms, the single letters `y`, `Y`, `n`, `N`, and the true and false forms | Quote: the 1.1 boolean type page, its regular expression copied into `scalars.py` |
 
 ## Python
 
@@ -91,7 +91,7 @@ The documentation as served at docs.python.org/3, version 3.15.2 at the time of 
 | E1 | Appending reports `changed` on both runs and leaves the hosts line twice; the checking task reports `changed` then `ok`; `p` and `q` are each idempotent alone, and `p` then `q` changes something on runs 1 and 2 and nothing on run 3 | Run: `converge.py` |
 | E2 | The first plan creates the bucket, replaces the disk because of `zone`, deletes `server/old` and updates `server/web`; the plan after the apply is all no-ops; the third plan is refused after the hand-made resize | Run: `plan_apply.py` |
 | E3 | Four waves: the bucket and the network; the firewall and both subnets; the server; the DNS record; deletes in reverse; the added reference makes a cycle through `network/main` and `subnet/b`, the only cycle it creates | Run: `resource_graph.py` |
-| E4 | `disk/data` deleted outside the tool, `server/api.size` drift, `server/api.zone` pending, `server/web.monitoring` conflict, `server/web.size` stale record, `i-999` unmanaged | Run: `three_way.py` |
+| E4 | Grouped by verdict: `b-12` unmanaged, `volume/cache` (`vol-b`) deleted outside the tool, `vm/build.memory_gb` conflict, `vm/docs.cpus` drift, `vm/docs.image` pending, `vm/build.cpus` stale record | Run: `three_way.py` |
 | E5 | `replicas` 3 from production, `port` 8080 from the defaults, `image` reduced to the production tag; `substitute` raises `KeyError` for `repo`, `safe_substitute` leaves `$repo` | Run: `layers.py` |
 | E6 | Under the core schema, `no`, `on` and `web-1` are strings, `1.10` and `12e3` floats, `007` and `0x1A` integers, `true` a boolean; under the 1.1 boolean type, `no`, `on` and `true` are booleans | Run: `scalars.py`, checked by hand against the tables of Y2 and Y3 |
 | E7 | `1.10` is the number 1.1, `007` is 7, `0x1A` is 26, `12e3` is 12,000 | Arithmetic |
@@ -101,7 +101,7 @@ The documentation as served at docs.python.org/3, version 3.15.2 at the time of 
 
 The guides name no company and no product. Where they name something, it is a paper cited by its authors, an open specification (an RFC, JSON Schema, YAML), or Python's standard library, the language of the examples.
 
-| Left out | Where it appears in a source |
+| Not named in the guides | Where it appears in a source |
 |----------|------------------------------|
 | The names of the configuration tools given as examples of the imperative, convergent and generative approaches | Couch and Sun, §1 |
 | The file permission command given as an example of a convergent action that is not stateless | Couch and Sun, §4 |
@@ -134,7 +134,7 @@ The path takes `iac-plan-engine` twice: level 1, the diff, after the plan guide,
 
 Each linked problem's statement, hints, solutions and follow-ups are compared with the guides. Each guide teaches its idea with examples of its own; these are the places the review should weigh against the rule that a guide never gives away a linked problem's solution:
 
-| Problem | Guide | Overlap the guide states | Kept back |
+| Problem | Guide | Overlap the guide states | Not in the guide |
 |---------|-------|--------------------------|-----------|
 | `idempotent-converge` levels 1 and 2 | declarative-desired-state | Tasks that compare before changing and report `ok` or `changed`; a second run that reports `ok`; a dry run that reports what would change with old and new values, as the statement describes | Files, packages and services and their rules, copies of hosts for a check run, the diff rows |
 | `idempotent-converge` level 3 | declarative-desired-state | Running an action only after another task reported a change, such as a restart after a configuration change, which the statement introduces as a handler | Handler order, at most once per host, failures that stop a host and drop its handlers |
@@ -144,7 +144,7 @@ Each linked problem's statement, hints, solutions and follow-ups are compared wi
 | `iac-plan-engine` level 3 | plan-and-apply, resource-dependency-graphs | Replacement when an attribute that cannot change in place changes, naming the attribute; values unknown until a resource exists, treated as differing from every value; a replacement that ripples to what refers to it; delete-first against create-first, and dependents moving to the new object before the old one goes, all as the statement describes | Computed keys and how a reference to one resolves, the `forces-replacement` tag, the mark and how it spreads to dependencies, and rules 3 and 4 |
 | `iac-plan-engine` level 4 | plan-and-apply, resource-dependency-graphs | After a partial failure, a tool that records each success can plan again and the new plan holds what is left; a failed step blocks what depends on it while the rest carries on | How outcomes propagate through the before-rules, recorded links, old objects and rule 5 |
 | `iac-plan-engine` follow-ups 1 to 3 | state-and-drift, resource-dependency-graphs | Refresh defined as reading every managed resource before planning; waves show what could run side by side; create-first avoids the gap of delete-first | What a refresh adds and can no longer promise; limiting calls in flight and what a failure does to running steps; which resources cannot be replaced create-first, and why |
-| `drift-detection` level 1 | state-and-drift | Matching the record to the scan by identifier, never by name; deleted, changed and unmanaged resources; the example adds a third version, the description, to classify each attribute | The report's rows, their order, and `""` for a missing key |
+| `drift-detection` level 1 | state-and-drift | Matching the record to the scan by identifier, never by name; deleted, changed and unmanaged resources, as the statement describes. The example uses resources, identifiers and attributes of its own, adds a third version, the description, to classify each attribute, and prints its findings grouped by verdict, unmanaged first | The report's rows, their order, and `""` for a missing key |
 | `drift-detection` level 2 | state-and-drift | False alarms from attributes that change on their own, lists in another order and defaults the provider fills in; a rule that hides a difference also hides real drift, which is the risk follow-up 4 names | Star patterns and how they match, `unordered` and `defaultValue`, which rules can hide a deleted or unmanaged resource |
 | `drift-detection` level 3 | state-and-drift | Import defined; an imported resource the description does not mention is deleted by the next plan, as the statement says | The refusals and their order, the plan's rows, and the ignore rules leaving the plan alone |
 | `drift-detection` level 4 | state-and-drift | Revert, accept and alert defined; a world that already matches the description needs no change, which the statement's rule for leaving out a row also says | The newest rule wins, and the mapping of drift rows to reconcile rows |
@@ -154,6 +154,18 @@ Each linked problem's statement, hints, solutions and follow-ups are compared wi
 | `values-templating` follow-ups 1 and 2 | templates-and-layered-values | Lists that replace against lists that append, as a trade-off; a value quoted as a JSON string stays a string in YAML 1.2, and a pasted newline, colon or quote can change a document's structure: encoding for the context, which touches follow-up 2 in general | Merging lists by a key field and what a `null` item would mean; what goes wrong inside a quoted string, and the problem's filters |
 | `manifest-policy` levels 1 to 4 | templates-and-layered-values | Policy as code; rules such as an owner label, a memory limit and no moving tags, with digests as the fixed alternative; warn before deny; exceptions with an owner, a reason and an end date; pointers to name fields and JSON Patch operations as fixes, as the statement describes | Tag parsing, wildcard expansion, selectors and the port rule, when an exception expires, severity order, and how each fix is built |
 
-## Independent accuracy review
+## Independent accuracy review (2026-11-14)
 
-Pending: the owner runs it.
+The review checks every claim of the five guides against the source this page gives for it, runs every example and compares what it prints with the guide, checks the guides for names, and reads them against the linked problems' statements, hints, solutions and follow-ups. All six examples match their output blocks, and the guides name no company or product. It finds one spoiler, claims to state more precisely, terms a beginner needs explained, and two column headings of this record to change. These are its findings and what changes.
+
+| Finding | Change |
+|---------|--------|
+| `three_way.py` reuses the data of `drift-detection` level 1, example 1, and prints its rows in the same order; the guide's examples of drift, the identifier `i-100` and a tag written by a billing job echo the statement's | New resources, identifiers and attributes (`vm/build`, `vol-b`, `b-12`), findings grouped by verdict with the unmanaged ones first; in the prose, new examples of drift, the identifier `vm-31`, and a last-modified time and a counter as attributes that change on their own (E4, and the `drift-detection` level 1 row of the table above) |
+| The templating guide and `scalars.py` say the patterns are copied from the core schema, which also has rows for infinity and not-a-number | "Copied from the core schema, except the infinity and not-a-number rows" (Y2) |
+| The YAML 1.1 boolean type is described as `y`, `yes`, `n`, `no`, `on` and `off` "in their capitalized forms" | `yes`, `no`, `on` and `off` in lower-case, capitalized and upper-case forms, and the single letters `y`, `Y`, `n`, `N` (Y3) |
+| The bound on passes until a run is quiet holds only under conditions the guide does not state | It holds when no step undoes another's change, and each step settles once what it reads is final |
+| Convergence "from wherever it started" overstates Couch and Sun, for whom convergence is meaningful only relative to a baseline state (C3) | "From any starting state the description allows" |
+| The state guide uses "drift" both for any difference between the record and the world and for the case where only the world changed | The guide says that, below, drift means the narrow case, where only the world changed |
+| "Provider", "SHA-256 hash" and "image" appear without explanation | A provider is the cloud or other system that creates and runs the resources; a SHA-256 hash is a short fixed-size digest that any change to the state would alter, with a link to the guide on cryptographic hashes; an image is the packaged program a service runs |
+| "The user would be left pointing at nothing" names no user | "What depends on it would be left pointing at nothing" |
+| This record's headings "Kept back" and "Left out" speak of the writing | "Not in the guide" and "Not named in the guides" |
