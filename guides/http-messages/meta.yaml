@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: HTTP messages and connections
+summary: What an HTTP/1.1 message is on the wire; the start line, header fields and the two ways to frame a body, then persistent connections, pipelining, why framing must be unambiguous, and what HTTP/2 and HTTP/3 change.
+level: core
+prerequisites: [network-layers]
+related: [retries-and-idempotency, reliable-transport]
+problems: [http-message-parser]
