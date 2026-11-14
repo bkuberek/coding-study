@@ -46,6 +46,9 @@ The nine guides of the path "Getting started: from the terminal to your first pr
 | T36 | `command_search.py` prints the lookup it models | Run: `command_search.py` (a model, not a shell) |
 | T37 | A login shell is one whose argument zero starts with `-` or one started with `--login`; an interactive shell has its input and error output connected to terminals, and is not running a script or `-c` | Quote: Bash Reference Manual §6.1, §6.3.1 |
 | T38 | The exact message of a Python workspace that is not set up | Repo: `cli/src/coding_study/adapters/languages/python/runner.py`. Run |
+| T39 | `command_search.sh` runs bash's own search: in a subshell whose `PATH` lists directories it made, `command -v` prints the path of the first match, or nothing and a non-zero status; `type -t` prints `builtin` for a builtin; its output equals the model's | Quote: Bash Reference Manual §4.2 (`type -t`); POSIX `command`. Run: `command_search.sh` and `command_search.py` |
+| T40 | An assignment whose value holds a command substitution has the exit status of that substitution, so `$?` after `output=$(...)` is the child's | Quote: Bash Reference Manual §3.7.1. Run: `environment.sh` |
+| T41 | A `bash -c` child that divides by zero in an arithmetic expansion ends with status 1 and writes a message ending `division by 0 (error token is "0")` to standard error | Run: `environment.sh` on GNU bash 5.2.21; not run on the bash 3.2 of macOS |
 
 ## Package managers
 
