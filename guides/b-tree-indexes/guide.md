@@ -4,13 +4,14 @@
 
 A heap stores rows in no order, so finding the row whose `order_id` is 4711 means reading every page. An **index** is a second structure, kept sorted by one or more columns, that maps each value, the **key**, to the address of the row that holds it: in PostgreSQL the page and slot of the row, in SQLite the row's integer id. A lookup searches the index, then reads the one page the address names.
 
-The index lives on disk too, in pages, so what it costs is the number of pages a search reads. A balanced binary search tree reads one node per level and needs about 20 levels for a million keys: 20 page reads, if each node is a page. The **B-tree**, introduced by Rudolf Bayer and Edward McCreight for an index kept on a disc or a drum, puts many keys in one node, a page's worth, so each node has many children and the tree is very shallow. Their paper shows that retrieval, insertion and deletion take time proportional to log_k I, where I is the size of the index and k a number fixed by the page size, and that at least half of every page's space is used.
+The index lives on disk too, in pages, so what it costs is the number of pages a search reads. A balanced binary search tree reads one node per level and needs about 20 levels for a million keys: 20 page reads, if each node is a page. The **B-tree**, introduced by Rudolf Bayer and Edward McCreight for an index kept on a disc or a drum, puts many keys in one node, a page's worth, so each node has many children and the tree is very shallow. Their paper shows that retrieval, insertion and deletion take time proportional to log_k I, where I is the size of the index and k a number fixed by the page size, and that at least half of the space of every page but the root is used.
 
-Bayer and McCreight define the shape precisely. A B-tree with parameter k and height h satisfies three rules:
+Bayer and McCreight define the shape precisely. A B-tree with parameter k and height h satisfies four rules:
 
 1. every path from the root to a leaf has the same length, h;
 2. every node except the root and the leaves has at least k + 1 children, and the root is a leaf or has at least two;
-3. every node has at most 2k + 1 children.
+3. every node has at most 2k + 1 children;
+4. every page except the root holds between k and 2k keys; the root between 1 and 2k.
 
 A node with j children holds j − 1 keys in sorted order, and the keys between two child pointers bound everything below that pointer, as in a binary search tree with more than two ways out of each node. To search, read the root, find where the key falls among its keys (a binary search when the node is large), follow that pointer, and repeat down to a leaf. Douglas Comer's survey of 1979 states the payoff: a search never visits more than 1 + log_d n nodes in a B-tree of order d holding n keys, where a node of order d holds from d to 2d keys.
 
@@ -61,7 +62,7 @@ flowchart LR
 
 Comer points out what the links buy: a plain B-tree may need log_d n accesses to move to the next key, a B+ tree at most one, and a scan of the whole file reads each leaf once.
 
-Where does the name come from? Comer notes that the authors never explained it: "balanced", "broad" and "bushy" all fit, some say the B stands for Boeing, where both authors worked, and Comer himself suggests thinking of them as "Bayer" trees.
+Where does the name come from? Comer notes that the authors never explained it: "balanced", "broad" and "bushy" all fit, some read the B as the initial of the laboratory where both authors worked, and Comer himself suggests thinking of them as "Bayer" trees.
 
 ## A worked example
 
@@ -116,7 +117,7 @@ a full page holds 512 entries
 1,000,000,000,000           40            6          5      5
 ```
 
-A trillion keys need 40 levels in a binary tree and 5 in a B-tree whose pages hold 512 entries. Half-full pages, the worst case the B-tree rules allow apart from the root, cost one level at most here, because each level multiplies the reach by the fan-out: 256⁵ is already over a trillion. The top levels are few and read by every lookup, so they tend to stay in the buffer pool, and a lookup often reads only the last level or two from disk.
+A trillion keys need 40 levels in a binary tree and 5 in a B-tree whose pages hold 512 entries. Half-full pages, k keys out of 2k, the worst case the rules allow for every page but the root, cost one level at most here, because each level multiplies the reach by the fan-out: 256⁵ is already over a trillion. The top levels are few and read by every lookup, so they tend to stay in the buffer pool, and a lookup often reads only the last level or two from disk.
 
 ### What an index scan still has to read
 
@@ -212,7 +213,7 @@ With 512 entries per full page, a tree of four levels reaches 512⁴, about 6.9 
 
 ## Further reading
 
-- [R. Bayer and E. McCreight, *Organization and Maintenance of Large Ordered Indexes*, Acta Informatica 1(3), 1972, pages 173 to 189](https://doi.org/10.1007/BF00288683): the B-tree, its rules, splitting, catenation and overflow; first published in 1970 as a report of the Boeing Scientific Research Laboratories.
+- [R. Bayer and E. McCreight, *Organization and Maintenance of Large Ordered Indexes*, Acta Informatica 1(3), 1972, pages 173 to 189](https://doi.org/10.1007/BF00288683): the B-tree, its rules, splitting, catenation and overflow; first published in 1970 as Mathematical and Information Sciences Report No. 20.
 - [D. Comer, *The Ubiquitous B-Tree*, ACM Computing Surveys 11(2), 1979, pages 121 to 137](https://doi.org/10.1145/356770.356776): the variants, among them the B+ tree with its sequence set, and their costs.
 - [P. G. Selinger and others, *Access Path Selection in a Relational Database Management System*, SIGMOD 1979](https://doi.org/10.1145/582095.582099): the cost of clustered and non-clustered index scans.
 - [PostgreSQL documentation, *Index Types*](https://www.postgresql.org/docs/current/indexes-types.html), [*Multicolumn Indexes*](https://www.postgresql.org/docs/current/indexes-multicolumn.html) and [*Index-Only Scans*](https://www.postgresql.org/docs/current/indexes-index-only-scans.html): what a B-tree can answer, the leading-column rule and skip scan, and the visibility map.

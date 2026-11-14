@@ -283,7 +283,7 @@ Every disk-based database already stores pages; the decisions you make are about
 
 - **Expecting rows back in insertion order.** A heap has no order. PostgreSQL's documentation says that without `ORDER BY`, rows are returned in whatever order the system finds fastest to produce. A fresh table may happen to return them in the order they were inserted; nothing keeps it so once deletes free space in old pages and new rows land there.
 - **Counting only the data bytes.** A row of two integers is not 8 bytes on disk: the slot, the row header and alignment come first. Estimates of table size that skip them are off by a large factor for narrow rows.
-- **Treating a row's address as permanent.** The slot number survives compaction within the page, but an update in PostgreSQL writes a new version of the row, often elsewhere, as the guide on MVCC shows. A stored CTID is a hint, not a key.
+- **Treating a row's address as permanent.** The slot number survives compaction within the page, but an update in PostgreSQL writes a new version of the row, often elsewhere, as the guide on MVCC (multiversion concurrency control) shows. A stored CTID is a hint, not a key.
 - **Assuming a write reached the disk.** A dirty page lives in the buffer pool, and even a page handed to the operating system may sit in its cache. Durability needs the write-ahead log, not a hope about when pages are flushed.
 - **Believing a bigger buffer pool always helps.** The example's repeated scan of four pages gets nothing from three frames; it needs four. A workload that scans more than fits gains little until the whole working set fits.
 
@@ -293,7 +293,7 @@ Every disk-based database already stores pages; the decisions you make are about
 |-----------|------|
 | Read a row by its address (page, slot) | one page read, or none on a buffer pool hit |
 | Insert a row | find a page with room (PostgreSQL keeps a free space map for this), then one page write, deferred |
-| Delete a row | mark its slot free; the space is reclaimed later by compaction (PostgreSQL first keeps the deleted row for transactions that may still see it, as the guide on MVCC explains) |
+| Delete a row | mark its slot free; the space is reclaimed later by compaction (PostgreSQL first keeps the deleted row for transactions, groups of reads and writes run as one unit, that may still see it, as the guide on MVCC explains) |
 | Full scan of a table of n rows | ⌈n / rows per page⌉ page reads, in file order |
 | Compact one page | O(page size): every live record is copied once |
 
@@ -302,7 +302,7 @@ A worked number: with 8,192-byte pages, a 24-byte page header, a 4-byte slot, a 
 ## Expert notes
 
 - **Files beyond one gigabyte.** PostgreSQL splits a table or index larger than 1 GB into gigabyte-sized segment files, so no single file exceeds the limits of some platforms; 1 GB is the default and can be changed when PostgreSQL is built.
-- **Maps beside the heap.** PostgreSQL keeps two small companions for each table. The **free space map** records, in one byte per heap page, how much space the page has, in a tree of map pages, so an insert finds a page with room without reading the heap. The **visibility map** keeps two bits per heap page: whether every row on it is visible to all transactions, and whether every row on it is frozen; the guides on B-trees and MVCC use both.
+- **Maps beside the heap.** PostgreSQL keeps two small companions for each table. The **free space map** records, in one byte per heap page, how much space the page has, in a tree of map pages, so an insert finds a page with room without reading the heap. The **visibility map** keeps two bits per heap page: whether every row on it is visible to all transactions, and whether every row on it is frozen, marked as written so long ago that every current and future transaction sees it; the guides on B-trees and MVCC use both.
 - **Heap-only tuples.** An update in PostgreSQL adds a new version of the row. When the update changes no indexed column and the old row's page has room, PostgreSQL makes it a **heap-only tuple** (HOT): no new index entries are needed, and when old versions are removed, the item identifier the indexes point to becomes a redirect to the oldest version some transaction may still see. Lowering a table's `fillfactor` makes room for such updates more likely.
 - **Rows in the index itself.** SQLite stores an ordinary table as a B-tree keyed by a 64-bit signed integer, the rowid, with all row data in the leaves; its indexes are separate B-trees with arbitrary keys and no data, and a payload too large for a page continues on overflow pages. PostgreSQL keeps every table as a heap beside its indexes. The next guide shows what each layout means for a lookup.
 - **Torn pages.** A page is larger than the unit a disk writes atomically, so a power failure can leave half a page new and half old. The guide on write-ahead logging shows how PostgreSQL protects against it.

@@ -2,7 +2,7 @@
 
 ## The idea
 
-A B-tree changes its pages **in place**: to insert a key, it reads the leaf where the key belongs, changes it, and writes it back where it was. When the index is much larger than memory and keys arrive in no order, nearly every insert lands on a leaf that is not in the buffer pool, so every insert costs a random read and, sooner or later, a random write. Patrick O'Neil and his co-authors, in the 1996 paper that introduced the **log-structured merge tree** (LSM tree), measured this for an index on a fast-growing history table: a B-tree would effectively double the I/O cost of each transaction, raising the total system cost by up to fifty percent.
+A B-tree changes its pages **in place**: to insert a key, it reads the leaf where the key belongs, changes it, and writes it back where it was. When the index is much larger than memory and keys arrive in no order, nearly every insert lands on a leaf that is not in the buffer pool, so every insert costs a random read and, sooner or later, a random write. Patrick O'Neil and his co-authors, in the 1996 paper that introduced the **log-structured merge tree** (LSM tree), estimated this for an index on a fast-growing history table: a B-tree would effectively double the I/O cost of each transaction, raising the total system cost by up to fifty percent.
 
 The LSM tree changes data **out of place**. Chen Luo and Michael Carey, in their 2019 survey of LSM techniques, put the contrast this way: an in-place structure overwrites old records with new ones, while an out-of-place structure always stores an update in a new location. Writing out of place turns random writes into sequential ones, and leaves old data untouched, which simplifies recovery. The price is on the read side: the newest value of a key may be in any of several places, and the structure needs a background process that reorganizes its data continually.
 
@@ -171,7 +171,7 @@ may have to search.
 
 4,096 distinct keys arrive; every 16 of them fill the memtable, which is flushed as a run. The size
 ratio is T = 4. Leveling keeps one run per level, level i holding up to 16 * 4**(i + 1) entries:
-each flush is merged into level 0, and a level that reaches its limit is merged into the next.
+each flush is merged into level 0, and a level pushed past its limit is merged into the next.
 Tiering keeps up to 4 runs per level: a flush adds a run to level 0, and a level with 4 runs merges
 them into one new run at the next level. A merge writes every entry of its inputs once.
 """
@@ -190,7 +190,7 @@ def leveling() -> tuple[int, int]:
             levels[i] += carry
             written += levels[i]
             carry = 0
-            if levels[i] >= FLUSH * T ** (i + 1):
+            if levels[i] > FLUSH * T ** (i + 1):
                 carry, levels[i] = levels[i], 0
                 i += 1
         most_runs = max(most_runs, sum(1 for size in levels if size))
@@ -226,11 +226,11 @@ for name, policy in [("leveling", leveling), ("tiering", tiering)]:
 It prints:
 
 ```output examples/merge_policies.py
-leveling  45,056 entries written for 4,096 keys: 11.0 writes per key, at most 4 runs to search
+leveling  39,616 entries written for 4,096 keys: 9.7 writes per key, at most 4 runs to search
 tiering   20,480 entries written for 4,096 keys: 5.0 writes per key, at most 12 runs to search
 ```
 
-Tiering writes each key five times, once on each level it passes through; leveling writes it 11 times, because a level's run is merged again with every run that arrives from above. In exchange, a lookup under leveling has at most four runs to search, one per level, and under tiering up to twelve. The four levels are what the survey's formula predicts: with N entries, a memory component of B · P entries and a size ratio T, the number of levels is about ⌈log_T((N / (B · P)) · T / (T + 1))⌉, here ⌈log_4(256 · 4 / 5)⌉ = ⌈3.84⌉ = 4.
+Tiering writes each key five times, once on each level it passes through; leveling writes it 9.7 times on average, because a level's run is merged again with every run that arrives from above. In exchange, a lookup under leveling has at most four runs to search, one per level, and under tiering up to twelve. The four levels are what the survey's formula predicts: with N entries, a memory component of B · P entries and a size ratio T, the number of levels is about ⌈log_T((N / (B · P)) · T / (T + 1))⌉, here ⌈log_4(256 · 4 / 5)⌉ = ⌈3.84⌉ = 4.
 
 ### How good is a Bloom filter?
 
@@ -238,7 +238,7 @@ The survey gives the false positive rate of a Bloom filter with m bits, n keys a
 
 ## When to use it
 
-- **Many more writes than reads.** O'Neil and others built the LSM tree for indexes where inserts are more common than finds that need an answer at once: history tables and logs, for example. The batching pays off most when writes arrive fast and in no key order.
+- **Many more writes than reads.** O'Neil and others built the LSM tree for indexes where inserts are more common than "finds that retrieve the entries": history tables and logs, for example. The batching pays off most when writes arrive fast and in no key order.
 - **Reads of recent data.** Recent entries are in the memtable or the small runs, so reads that mostly concern new data rarely touch the large levels.
 - **A B-tree instead** for read-mostly data with frequent point lookups and short range scans: a B-tree answers from one place, with no reconciliation and no background merging.
 - **Leveling** when reads and disk space matter most; **tiering** when the write rate is the limit. The survey's analysis below gives the trade in numbers.
@@ -272,7 +272,7 @@ The number of levels grows only logarithmically with the data, L ≈ log_T(N / (
 
 - **Older roots.** The survey traces out-of-place updates to the 1970s: **differential files** (1976) applied all updates to a separate file merged periodically into the main one. In the 1980s the Postgres research project appended all writes to a sequential log, which allowed fast recovery and queries about the past, with a background "vacuum cleaner" removing obsolete records. Those designs had no principled model of the cost of reorganizing; the LSM tree's analysis supplied one.
 - **Geometric sizes.** O'Neil and others prove that, for a fixed largest component, memory component and insert rate, the total I/O rate of all the merges is smallest when every component is the same factor r larger than the one before (their Theorem 3.1). The size ratio T of today's level layouts is that factor.
-- **Rolling merges against immutable runs.** The original paper merges continuously, a leaf at a time, while today's implementations, the survey notes, usually exploit the immutability of disk components instead: merges write new components and never modify existing ones, which simplifies concurrency control and recovery.
+- **Rolling merges against immutable runs.** The original paper merges continuously: each step merges one page-sized leaf of the larger component, read and written in multi-page blocks, while today's implementations, the survey notes, usually exploit the immutability of disk components instead: merges write new components and never modify existing ones, which simplifies concurrency control and recovery.
 - **Partitioning.** A commonly adopted optimization, the survey says, splits each level into many small SSTables with disjoint key ranges. Compaction then merges one SSTable with only the SSTables of the next level whose ranges overlap it, which bounds the time and temporary space of each merge.
 - **Recovery comes from the log.** Entries in C0 are lost in a crash. O'Neil and others recover them from the log records written before each insert, which they treat as logical log records: replaying them rebuilds C0.
 
@@ -283,4 +283,4 @@ No problem in the catalog builds an LSM tree yet. The ideas reappear elsewhere i
 ## Further reading
 
 - [P. O'Neil, E. Cheng, D. Gawlick and E. O'Neil, *The Log-Structured Merge-Tree (LSM-Tree)*, Acta Informatica 33(4), 1996, pages 351 to 385](https://www.cs.umb.edu/~poneil/lsmtree.pdf): the motivation, the two-component and multi-component trees, rolling merges, deletes and Theorem 3.1.
-- [C. Luo and M. J. Carey, *LSM-based Storage Techniques: A Survey*, The VLDB Journal 29(1), 2019, pages 393 to 418](https://arxiv.org/abs/1812.07527): in-place and out-of-place updates, today's structure, leveling and tiering, Bloom filters, partitioning and the cost analysis.
+- [C. Luo and M. J. Carey, *LSM-based Storage Techniques: A Survey*, The VLDB Journal 29(1), 2020 (online 2019), pages 393 to 418](https://arxiv.org/abs/1812.07527): in-place and out-of-place updates, today's structure, leveling and tiering, Bloom filters, partitioning and the cost analysis.

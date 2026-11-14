@@ -54,7 +54,7 @@ Reading from one instant is strong: a transaction never sees part of another's c
 
 That is **write skew**. Fekete, O'Neil and O'Neil give the standard example: x and y are the checking balances of a married couple, the bank allows either to go negative as long as x + y stays positive, and x = 70, y = 80. T1 reads both, sees 150, and takes 100 from x. T2, at the same time, reads both, sees 150, and takes 100 from y. They wrote different rows, so both commit, and x + y = −50. Run one after the other, the second would have seen a sum of 50 and refused.
 
-The same thing happens with rows that do not exist yet. Berenson and others' example: tasks matching some condition may add up to 8 hours at most; T1 sums them, finds 7, and inserts a 1-hour task; T2 does the same at the same time. They insert different rows, first-committer-wins sees no conflict, and the total is 9. In a serial order, the second would have seen a phantom, the first one's task.
+The same thing happens with rows that do not exist yet. Berenson and others' example: tasks matching some condition may add up to 8 hours at most; T1 sums them, finds 7, and inserts a 1-hour task; T2 does the same at the same time. They insert different rows, first-committer-wins sees no conflict, and the total is 9. In a serial order, the second would see the first one's task, a row matching its condition, and refuse.
 
 Even a transaction that writes nothing can see an impossible state. Fekete, O'Neil and O'Neil found that under snapshot isolation a read-only transaction can observe a history that no serial order explains, although the update transactions on their own run serializably: in their example, a customer's statement shows a deposit already made and a balance without the overdraft charge that, in the final data, the bank applied because the deposit had not yet arrived. PostgreSQL's documentation gives its own example of the effect at its repeatable read level: a read-only transaction that sees a control record marking a batch complete but not a detail record that belongs to the batch.
 
@@ -219,7 +219,7 @@ How long must an old version stay? Until the oldest transaction that could see i
 | SSI on top | record reads and rw-antidependencies; Ports and Grittner measured under 7% over snapshot isolation |
 | Space | old versions kept for as long as the oldest snapshot that may need them |
 
-A worked number: a row updated 1,000 times a second, while a one-hour report holds its snapshot, keeps 1,000 × 3,600 = 3.6 million versions of that row that cannot be removed until the report ends.
+A worked number: a row is updated 1,000 times a second while a one-hour report holds its snapshot. A cleanup that, like PostgreSQL's, removes only versions older than the oldest running snapshot keeps 1,000 × 3,600 = 3.6 million versions of that row until the report ends.
 
 ## Expert notes
 

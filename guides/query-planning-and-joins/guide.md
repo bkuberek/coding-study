@@ -290,7 +290,7 @@ You rarely plan by hand; you read the planner's choices and fix what misleads it
 - **Correlated conditions.** `city = 'Paris' AND country = 'France'` is estimated as if the two were independent, so the factors multiply and the estimate is far too small. The independence assumption is built into the product of factors.
 - **Skewed values.** Rules that assume an even spread mis-estimate a common value, as the second example shows.
 - **Reading costs as milliseconds.** PostgreSQL's costs are in arbitrary units, conventionally the cost of reading one page sequentially; `EXPLAIN ANALYZE` reports milliseconds of real time, and the two are not comparable.
-- **Joining too many tables.** Below `geqo_threshold`, 12 tables by default, PostgreSQL searches the join orders almost exhaustively; from there on it uses a genetic algorithm that finds a reasonable plan, not necessarily the best.
+- **Joining too many tables.** Below `geqo_threshold`, 12 tables by default, PostgreSQL searches the join orders almost exhaustively, within the collapse limits, 8 by default; from there on it uses a genetic algorithm that finds a reasonable plan, not necessarily the best.
 - **Assuming an index is always used.** A plan that reads a large share of a scattered table through an index costs more than a full scan, and the planner, if its estimates are right, avoids it; the guide on B-trees shows why.
 
 ## Complexity
@@ -298,7 +298,7 @@ You rarely plan by hand; you read the planner's choices and fix what misleads it
 | Quantity | Cost |
 |----------|------|
 | Join orders of n tables | n!; with only left-deep plans and no Cartesian products, fewer, but still exponential |
-| Dynamic programming over subsets | one entry per subset of tables and interesting order: O(2ⁿ) entries, each built from at most n smaller ones |
+| Dynamic programming over subsets | one entry per subset of tables: O(2ⁿ) entries, each built from at most n smaller ones |
 | Nested loop join of R and S rows | R × S condition checks, without an index |
 | Hash join | about R + S operations on average, plus memory for the build side |
 | Sort-merge join | sorting, O(R log R + S log S) when the inputs are not already ordered, then one pass over both |

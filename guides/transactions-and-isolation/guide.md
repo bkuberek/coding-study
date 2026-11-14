@@ -21,11 +21,13 @@ Weaker promises let more work run in parallel, at the price of **anomalies**, ou
 |------|---------|-----------------|
 | P0, dirty write | `w1[x] ... w2[x] ...` before T1 ends | T2 overwrites a value T1 may still roll back; if either aborts, the right value of x is unclear |
 | P1, dirty read | `w1[x] ... r2[x] ...` before T1 ends | T2 reads a value that may never be committed |
-| P2, fuzzy or non-repeatable read | `r1[x] ... w2[x] ... c2 ... r1[x]` | T1 reads x twice and gets two values |
-| P3, phantom | `r1[P] ... w2[y in P] ... c2 ... r1[P]` | T1 reads the rows matching a condition P, T2 adds or changes a row that matches, and T1's second read sees a different set |
+| P2, fuzzy or non-repeatable read | `r1[x] ... w2[x] ...` before T1 ends | T2 changes a value T1 has read; if T1 reads it again, it gets another value |
+| P3, phantom | `r1[P] ... w2[y in P] ...` before T1 ends | T1 reads the rows matching a condition P, and T2 adds or changes a row that matches; if T1 repeats its read, it sees a different set |
 | P4, lost update | `r1[x] ... w2[x] ... w1[x] ... c1` | T1 writes a value computed from what it read before T2's write, and T2's update is lost |
 | A5A, read skew | `r1[x] ... w2[x] ... w2[y] ... c2 ... r1[y]` | T1 sees x before T2's change and y after it, a state that never existed |
 | A5B, write skew | `r1[x] ... r2[y] ... w1[y] ... w2[x]`, both commit | each writes on the basis of what the other is about to change, and a rule linking x and y breaks |
+
+The P rows are Berenson and others' **broad** reading of the phenomena: the pattern is forbidden as soon as it occurs before T1 ends, whatever happens next. They also write the **strict** reading, which forbids only the completed anomaly: A1 is `w1[x] ... r2[x] ...` followed by T1's abort and T2's commit, A2 is `r1[x] ... w2[x] ... c2 ... r1[x] ... c1`, and A3 is `r1[P] ... w2[y in P] ... c2 ... r1[P] ... c1`.
 
 ```mermaid
 sequenceDiagram
@@ -74,7 +76,7 @@ The SQL standard defines four **isolation levels**. Serializable is defined as s
 | Repeatable read | not possible | not possible | possible |
 | Serializable | not possible | not possible | not possible |
 
-Berenson and others showed that these definitions are weaker than they look. The English phenomena are ambiguous, and read strictly they allow non-serializable histories even at the top: their history H1, a transfer of 40 between x and y while another transaction reads both, shows a total balance of 60 instead of 100 without matching any of the three strict patterns. They argue that dirty writes should be forbidden at every level, and that lost updates and the skews need names of their own. And the most common multiversion technique, **snapshot isolation**, fits none of the levels: it forbids all three strict phenomena, yet allows write skew. The guide on MVCC is about it.
+Berenson and others showed that these definitions are weaker than they look. The English phenomena are ambiguous, and read strictly they allow non-serializable histories even at the top: their history H1, a transfer of 40 between x and y while another transaction reads both, shows a total balance of 60 instead of 100 without matching any of the three strict patterns. They argue that dirty writes should be forbidden at every level, and that lost updates and the skews need names of their own. A multiversion technique, **snapshot isolation**, shows the gap. It forbids all three strict phenomena, so by the strict reading it qualifies as serializable, yet it allows write skew. Under the broad reading it sits above read committed and is incomparable with repeatable read. The guide on MVCC is about it.
 
 ```mermaid
 flowchart TD
@@ -104,7 +106,7 @@ flowchart TD
 
 Each arrow names what the next level adds. Snapshot isolation has no place on this line: it is stronger than read committed, and neither stronger nor weaker than repeatable read.
 
-How does a database enforce isolation? The classic answer is **locking**. A transaction takes a **read lock** (shared) before reading an item and a **write lock** (exclusive) before writing it; two locks on the same item conflict when at least one is a write lock, and a conflicting request waits until the holder releases its lock. A **predicate lock** covers every row that matches a condition, including rows that do not exist yet, which is what it takes to stop phantoms. A lock is of **long duration** when it is held until the transaction commits or aborts. Berenson and others state the fundamental theorem: transactions that lock every item before touching it, and never take a new lock after releasing one, which is **two-phase locking**, produce only serializable histories. They also describe each SQL level by its locks:
+How does a database enforce isolation? The classic answer is **locking**. A transaction takes a **read lock** (shared) before reading an item and a **write lock** (exclusive) before writing it; two locks on the same item conflict when at least one is a write lock, and a conflicting request waits until the holder releases its lock. A **predicate lock** covers every row that matches a condition, including rows that do not exist yet, which is what it takes to stop phantoms. A lock is of **long duration** when it is held until the transaction commits or aborts. Berenson and others state the fundamental theorem: transactions that lock every item, and every condition they read by, before touching it, and never take a new lock after releasing one, which is **two-phase locking**, produce only serializable histories. They also describe each SQL level by its locks:
 
 | Locking level | Read locks | Write locks |
 |---------------|------------|-------------|
@@ -191,7 +193,7 @@ write skew (H5): r1[x] r1[y] r2[x] r2[y] w1[y] w2[x] c1 c2
 ```
 
 - **The lost update** has edges both ways: T1 read x before T2 wrote it, so T1 must come first; T2 read x before T1 wrote it, so T2 must come first. No order satisfies both.
-- **The inconsistent analysis** is H1: T2 read x after T1's write and y before it. Neither the dirty read nor the fuzzy read pattern matches it exactly, yet the graph has a cycle.
+- **The inconsistent analysis** is H1: T2 read x after T1's write and y before it. None of the strict patterns A1, A2, A3 matches it, yet the broad dirty read P1 does: T2 reads x after T1's write and before T1 ends. That is why Berenson and others want the broad reading. The graph has a cycle.
 - **The harmless interleaving** has only edges from T1 to T2, so it is equivalent to running T1, then T2, although their actions alternate.
 - **The write skew** has the same cycle shape as the lost update, but on two different items: each transaction read the item the other wrote.
 
@@ -333,14 +335,14 @@ The number of possible interleavings explains why concurrency bugs are hard to f
 - **Read committed**, PostgreSQL's default, for statements that read and write the same rows in one go. Its documentation's example is an `UPDATE` that adds to a balance: the second of two concurrent updates waits for the first and then applies its change to the updated row, so nothing is lost.
 - **A row lock** for read-then-write at read committed: `SELECT ... FOR UPDATE` locks the rows it returns, and other transactions that try to update, delete or lock them wait until this transaction ends. Row locks do not block plain reads.
 - **One statement instead of two**: an `UPDATE` whose `WHERE` clause carries the condition checks and writes in one step (at read committed, PostgreSQL re-evaluates the `WHERE` clause on the newest version of a row another transaction just updated), and a unique key or a check constraint refuses what must never happen, whatever the interleaving.
-- **Serializable** when correctness depends on several rows that other transactions may change, such as a rule across accounts, and you would rather the database find conflicts than reason about every interleaving. Be ready to retry: PostgreSQL's documentation says applications at repeatable read or serializable must be prepared to retry transactions that fail with SQLSTATE 40001, `serialization_failure`.
+- **Serializable** when correctness depends on several rows that other transactions may change, such as a rule across accounts, and you would rather the database find conflicts than reason about every interleaving. Be ready to retry, as the common traps below explain.
 - **`SKIP LOCKED`** for many workers taking items from a queue-like table: rows that cannot be locked at once are skipped instead of waited for. PostgreSQL's documentation warns that this gives an inconsistent view of the data, so it is not for general-purpose queries.
 
 ## Common traps
 
 - **Reading, deciding, then writing at read committed.** Between the read and the write another transaction can change the row; the write then rests on a stale read. Lock the row at the read, or let one statement do both.
 - **Believing repeatable read means serializable.** In PostgreSQL, repeatable read is snapshot isolation; its documentation warns that enforcing business rules at this level is not likely to work without careful use of explicit locks. Write skew passes it, as the guide on MVCC shows.
-- **Not retrying.** Serialization failures and deadlock aborts are normal at the stronger levels. PostgreSQL's documentation advises retrying the whole transaction from the beginning, including the decisions made from what it read, and may advise retrying deadlocks (SQLSTATE 40P01) too.
+- **Not retrying.** Serialization failures and deadlock aborts are normal at the stronger levels. PostgreSQL's documentation says applications at repeatable read or serializable must be prepared to retry transactions that fail with SQLSTATE 40001, `serialization_failure`; it advises retrying the whole transaction from the beginning, including the decisions made from what it read, and says retrying deadlocks (40P01) may also be advisable.
 - **Locking in different orders.** PostgreSQL detects deadlocks and resolves them by aborting one of the transactions involved; its documentation calls acquiring locks on multiple objects in a consistent order the best defense.
 - **Acting on reads before commit.** PostgreSQL's documentation notes that at serializable, data read from a table should not be considered valid until the transaction that read it has committed.
 - **Assuming a level name means the same everywhere.** PostgreSQL's documentation points out that some other systems offer repeatable read and snapshot isolation as two distinct levels; its own repeatable read is snapshot isolation.
@@ -359,11 +361,11 @@ The real cost of isolation is not CPU but waiting and retrying: the stronger the
 
 ## Expert notes
 
-- **Degrees of consistency.** The levels go back to the degrees of consistency of Gray, Lorie, Putzolu and Traiger, first published in 1977, which Berenson and others relate to locking: degrees 1, 2 and 3 correspond to locking read uncommitted, read committed and serializable, and no degree matches locking repeatable read. They also record that the name "repeatable read" first meant serializable, and call its later meaning, which lets phantoms through, unfortunate.
+- **Degrees of consistency.** The levels go back to the degrees of consistency of Gray, Lorie, Putzolu and Traiger, published in 1976, which Berenson and others relate to locking: degrees 1, 2 and 3 correspond to locking read uncommitted, read committed and serializable, and no degree matches locking repeatable read. They also record that the name "repeatable read" first meant serializable, and call its later meaning, which lets phantoms through, unfortunate.
 - **Cursor stability.** Between read committed and repeatable read, Berenson and others describe cursor stability, which holds a read lock on the row a cursor is positioned on, preventing the lost update for rows read through a cursor.
 - **PostgreSQL's levels.** You can request any of the four, but PostgreSQL implements three: read uncommitted behaves like read committed. Its repeatable read also prevents phantoms, which the standard allows there. Its serializable level is serializable snapshot isolation, whose predicate locks never block anyone and so cannot cause a deadlock; they only detect dangerous patterns, as the guide on MVCC explains. A unique-key violation can be in effect a serialization failure, its documentation notes, when two transactions choose the same new key at once.
 - **SQLite's serializability.** Apart from one special shared-cache setting, SQLite's documentation says all its transactions are serializable, achieved by actually serializing the writes: only one connection writes at a time.
-- **Isolation is not replica consistency.** An isolation level speaks of transactions over many items; a consistency model, such as linearizability, speaks of single operations on replicated data. The guide on consistency models in the distributed systems path covers the second.
+- **Isolation is not replica consistency.** An isolation level speaks of transactions over many items; a consistency model, such as linearizability, speaks of single operations on one object, often replicated. The guide on consistency models in the distributed systems path covers the second.
 - **Where the word comes from.** Härder and Reuter trace the transaction, as a unit of database work with its current name, to a 1976 paper by Eswaran and others.
 
 ## Practice

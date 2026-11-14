@@ -3,7 +3,7 @@ may have to search.
 
 4,096 distinct keys arrive; every 16 of them fill the memtable, which is flushed as a run. The size
 ratio is T = 4. Leveling keeps one run per level, level i holding up to 16 * 4**(i + 1) entries:
-each flush is merged into level 0, and a level that reaches its limit is merged into the next.
+each flush is merged into level 0, and a level pushed past its limit is merged into the next.
 Tiering keeps up to 4 runs per level: a flush adds a run to level 0, and a level with 4 runs merges
 them into one new run at the next level. A merge writes every entry of its inputs once.
 """
@@ -22,7 +22,7 @@ def leveling() -> tuple[int, int]:
             levels[i] += carry
             written += levels[i]
             carry = 0
-            if levels[i] >= FLUSH * T ** (i + 1):
+            if levels[i] > FLUSH * T ** (i + 1):
                 carry, levels[i] = levels[i], 0
                 i += 1
         most_runs = max(most_runs, sum(1 for size in levels if size))
