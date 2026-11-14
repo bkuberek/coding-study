@@ -104,7 +104,7 @@ Fawcett, *Pattern Recognition Letters* 27(8):861–874, 2006, DOI 10.1016/j.patr
 
 ## Python
 
-The documentation at `docs.python.org/3` (3.15.2 at the time of reading); the examples run on CPython 3.13.12.
+The documentation at `docs.python.org/3` (3.15.2); the examples run on CPython 3.13.12.
 
 | # | Claim | Source |
 |---|-------|--------|
@@ -122,7 +122,7 @@ The documentation at `docs.python.org/3` (3.15.2 at the time of reading); the ex
 | E4 | The one-weight loss has curvature 15, so rates below 2/15 = 0.1333 converge, since each step multiplies the distance to the best weight by `1 - rate * curvature`; the best weight is 1.99 with loss 0.0243; the table of four rates, the last diverging to a loss of 1,344.26 | Run: `learning_rates.py`; arithmetic: the factor's size must be below 1 |
 | E5 | With the area in square metres the curvatures are 1.334 × 10⁴ and 0.09914, a condition number of 1.346 × 10⁵, and after 10,000 steps the loss is still 27.28 above its lowest; standardized, both are 2 and one step at rate 0.5 reaches the bottom | Run: `scaling.py` |
 | E6 | The k-nearest-neighbour table, test error lowest at k = 3 (0.871), about twice the noise at k = 1 (1.484), and the second worst model being the one the training error prefers; the noise's MSE is 3² / 12 = 0.75 | Run: `neighbours.py`; arithmetic: the variance of a uniform spread over a width of 3 |
-| E7 | Least squares gives weights 10.20 and -8.25, adding up to about 2, with a test error 4.4 times the training error; strengths 0.1 and 1 lower the test error by about a quarter; 10 raises both errors | Run: `ridge_shrinkage.py` |
+| E7 | Least squares gives weights 10.20 and -8.25, adding up to about 2, with a test error 4.4 times the training error; a disagreement of one unit between the measurements moves the prediction by (10.20 + 8.25) / 2, about 9; with `n * strength` on the diagonal, the penalized mean squared error of the guide, strengths 0.01 and 0.1 lower the test error by about a quarter and 1 raises both errors | Run: `ridge_shrinkage.py`; arithmetic: one measurement half a unit above the size and the other half a unit below |
 | E8 | Positives held out per fold: [0, 0, 6] as stored, [4, 1, 1] after a shuffle, [2, 2, 2] stratified | Run: `stratified_folds.py` |
 | E9 | Of 50 coin-flip models on 40 validation examples, the worst scores 0.325, the median 0.512, the best 0.675, and the best scores 0.509 on fresh data; one answer of 40 moves an accuracy by 2.5 points | Run: `winners_curse.py`; arithmetic |
 | E10 | The confusion matrix and rates at five thresholds; the best F1, 0.714, at 0.35; 28 of the 36 spam and good-email pairs in order, an AUC of 0.778 | Run: `thresholds.py`, and a one-off program counting the pairs |
@@ -132,24 +132,29 @@ The documentation at `docs.python.org/3` (3.15.2 at the time of reading); the ex
 | E14 | A 2.7-point lead built on 22 against 14 disagreements; a 95% paired bootstrap interval from -0.013 to +0.067; A at least as good in 10.4% of 2,000 resamples; each model's own interval is 0.087 and 0.083 wide, about the width of the difference's (0.080); 600,000 draws in all | Run: `paired_bootstrap.py`, and a one-off program for the single-model intervals; arithmetic: 2,000 × 300 |
 | E15 | Half a point of accuracy on 1,000 cases is five answers; with a constant factor per step, the steps needed grow with the logarithm of the precision wanted | Arithmetic |
 | E16 | The complexity tables: operation counts of the algorithms as written, such as O(n d²) to form `X^T X` and O(d³) to solve it, O(n log n) to sort scores, O(B n) for `B` bootstrap resamples of `n` cases | Arithmetic |
+| E17 | `\|w\|` has slope -1 left of 0 and +1 right of it, and none at 0, so plain gradient descent does not apply to an L1 penalty as it stands | Arithmetic |
 
 ## Citations and names
 
 The guides name no company, product or vendor. Papers and books are cited by their authors, and the affiliations printed in them are not repeated. Where a paper names the systems or datasets it studied, the guides leave them out: Recht and others' two benchmarks are "two long-used image benchmarks", and appear only in the paper's own title in the further reading; Kohavi's two learning algorithms and Niculescu-Mizil and Caruana's model families are described, not named. Python's standard library is the language of the examples, cited from its official documentation; no third-party library is named or used.
 
-## Not verified, so left out or reworded
+## Not read in the original
 
-- Brier's 1950 paper: the publisher returned HTTP 403. The Brier score is defined in the guide from the calibration problem's own definition and cited through Gneiting and Raftery, who attribute it to Brier.
-- Hanley and McNeil (1982): the publisher returned a page without the article. The AUC's equivalence with the Wilcoxon test is cited through Fawcett.
-- Hoerl and Kennard (1970) and Tibshirani (1996) were not read in the original; the guide cites ESL for ridge and the lasso. A copy of Tibshirani's paper found on a course page, taken from a journal archive, was not used.
-- Robbins and Monro (1951) and Efron (1979): the publisher's site did not serve the PDF. They are cited through Bottou, Curtis and Nocedal and through ESL.
-- Polyak (1964), Platt (1999) and Zadrozny and Elkan (2002) were not read; they appear only as the attributions that *Deep Learning*, Guo and others, and Niculescu-Mizil and Caruana make.
-- Kaufman and others' 2012 paper on leakage was not read and is not cited.
-- Significance tests for comparing two classifiers, such as McNemar's test: the copy found of Dietterich's 1998 paper, which compares them, had an unreadable text layer, so the guides use the bootstrap, sourced from ESL, and name no test.
-- A paper on cross-validation for time series and an online forecasting textbook's page on time-series cross-validation could not be read (no accessible copy; HTTP 403). The guides describe forward-in-time validation from Kapoor and Narayanan's rule on temporal leakage, without a citation for the procedure itself.
-- The DOI links of Davis and Goadrich and of Gneiting and Raftery resolve to publishers that refused the request (HTTP 403); their metadata was checked on Crossref, and the papers were read from the copies named above.
+- Brier (1950): not read; cited through Gneiting and Raftery, who attribute the quadratic score to Brier. The guide defines the Brier score as the calibration problem does.
+- Hanley and McNeil (1982): not read; the AUC's equivalence with the Wilcoxon test is cited through Fawcett.
+- Hoerl and Kennard (1970): not read; cited through ESL.
+- Tibshirani (1996): not read; cited through ESL.
+- Robbins and Monro (1951): not read; cited through Bottou, Curtis and Nocedal.
+- Efron (1979): not read; cited through ESL.
+- Polyak (1964): not read; cited through *Deep Learning*.
+- Platt (1999): not read; cited through Guo and others and through Niculescu-Mizil and Caruana.
+- Zadrozny and Elkan (2002): not read; cited through Guo and others and through Niculescu-Mizil and Caruana.
+- Kaufman and others (2012): not read; not cited.
+- Dietterich (1998): not read, since the only copy found has an unreadable text layer; the guides name no significance test, such as McNemar's, and use the bootstrap, cited through ESL.
+- Bergmeir, Hyndman and Koo (2018), and a forecasting textbook's page on time-series cross-validation: not read; forward-in-time validation is described from Kapoor and Narayanan's rule on temporal leakage, with no citation for the procedure itself.
+- Davis and Goadrich, and Gneiting and Raftery: their DOI links resolve to publishers that refuse automated requests (HTTP 403); their metadata is checked on Crossref, and the papers are read from the copies named above.
 - The paradox of an average that reverses within every group is described, not named.
-- Two traps are left out because they would repeat hints 3 and 5 of `gradient-descent-models`, although its statement states both rules: updating the weights one at a time (`gradient-descent`) and reusing a model across folds (`cross-validation`).
+- No trap repeats hints 3 and 5 of `gradient-descent-models`, updating the weights one at a time and reusing a model across folds, although its statement states both rules.
 
 ## Practice links
 
@@ -177,7 +182,31 @@ Each guide teaches its idea with examples of its own, but some ideas are the pro
 | `classifier-metrics` | `classification-metrics` | The binary confusion matrix and its rates at five thresholds, computed by plain division with no empty denominator; F1 as a harmonic mean; the AUC as the pair probability the statement defines, counted in prose; macro and micro averages in one sentence each, as the statement defines them; the complexity table gives the AUC by pairs, O(P N), and a sort only for drawing curves | No zero-denominator helper (hint 2), no rank-sum AUC (hint 4), no ties, per-class rows, averages in code or rounding. Follow-up 3 (precision-recall against ROC under skew) and follow-up 1 (on which data to choose a threshold) are answered in general |
 | `classifier-metrics` | `calibration-metrics` | A calibration error as the size-weighted gap, with one group per stated probability; the Brier score; the base-rate forecaster that is calibrated and useless, which the problem's explanation also notes | No bins, bin index or `p = 1.0` cap (hint 3), no cancellation of the bin size (hint 1), no slices in code (hint 2) |
 | `evaluation-pitfalls` | `classification-metrics` follow-up 2, `calibration-metrics` follow-up 3, `gradient-descent-models` level 4 | A paired bootstrap of an accuracy difference; the advice to report a small group's size and interval; the practice line describes level 4 as its statement does | No per-class interval method; nothing of level 4's code |
+| `gradient-descent` | `gradient-descent-models` follow-ups 1 and 2 | Minibatch and stochastic steps, why their noise calls for a decaying rate, and when a closed form is cheaper than gradient descent (`d³` for `d` features) | Nothing of the follow-ups' specific questions about what a test would fix |
+| `cross-validation`, `data-splits-and-leakage` | `gradient-descent-models` follow-ups 3, 4 and 5 | The winner's curse and nested cross-validation (3); folds on data sorted by label, and splits by time (4); fitting every learned step inside each fold, on the training part only (5) | Nothing of the problem's own `chooseStrength`, fold bounds or scaler |
+| `classifier-metrics` | `classification-metrics` pitfall `h8` | The trap of computing the AUC from yes-or-no answers instead of the scores | No test case, and no AUC code |
 
-## Independent accuracy review
+## Independent accuracy review (2026-11-13)
 
-Pending.
+The review checks every claim of the seven guides against the source this page gives for it, runs every example and compares what it prints with the guide, and reads the guides against the linked problems' statements, hints and solutions. It finds no wrong citation and no spoiler; all 13 examples and the arithmetic match, and the second-hand citations are attributed to the sources that make them. These are its findings and what changes.
+
+| # | Finding | Change |
+|---|---------|--------|
+| 1, 17 | The README and ADR 0025 path lists change in the next release, and the integrator updates the list and the counts when this branch merges | This branch leaves both files as they are on `main` |
+| 2 | `classifier-metrics` said the overconfident forecaster gives "the same answers" at any threshold | Every split one can make with a threshold the other can make with some threshold, so the AUC is the same |
+| 3 | `classifier-metrics` named only the rainy days the overconfident forecaster called at 1% | It also names the two dry days it called at 99% |
+| 4 | `overfitting-and-regularization` defines the penalty on the mean squared error, while its example added the strength itself to the diagonal of the summed equations | The example adds `n * strength`, keeping the guide's definition and the scale of `gradient-descent-models`; the strengths are 0, 0.01, 0.1 and 1, and the table is the same (E7) |
+| 5 | "Ten times as much as it should" had no basis | The noise between the measurements moves the price by about 9 per unit of disagreement, when it should not move it at all (E7) |
+| 6 | `classifier-metrics`: an AUC of 0.5 does not mean the scores say nothing | 0.5 is what scores that say nothing get, as a coin flip would |
+| 7 | `classifier-metrics`: a reliability diagram is not the expected calibration error's comparison itself | Guo and others draw a version of it for the predicted class (GU1) |
+| 8 | `overfitting-and-regularization` did not name the trade-off it introduced | The **bias-variance trade-off** (H5) |
+| 9 | The statistical bias could be confused with a linear model's bias | The guide says they are the same word for different things |
+| 10 | `cross-validation`: recall is not the only number a fold with no positive cannot measure | How many positives the model finds cannot be measured |
+| 11 | `linear-and-logistic-regression` wrote the normal equations with `b`, the guide's name for the bias alone | `w` holds the bias and the weights, in `X^T (y - X w) = 0` and `w = (X^T X)^(-1) X^T y` (H1) |
+| 12 | `linear-and-logistic-regression` used "negative log-likelihood" and "gradient methods" before defining them | A plain gloss of the likelihood, and gradient descent named as the next guide's method |
+| 13 | `gradient-descent` gave "most losses with a penalty that has no closed form" without an example | L2 on a large model, and an L1 penalty, which needs a variant since `\|w\|` has no slope at 0 (E17) |
+| 14 | `evaluation-pitfalls` counted the bootstrap's sort twice | O(B n + B log B) time and O(B) space for the differences |
+| 15 | `data-splits-and-leakage` said "correlate" in an intro guide, and that the notes "quote" a case they paraphrase | The features that move most closely with the label; the notes describe the case |
+| 16 | `cross-validation`: "naive standard error" was jargon | An error bar computed as if the folds were independent is too small (G1) |
+| 18 | History wording on this page | The section on second-hand citations states what was not read and where each claim is cited from |
+| 19 | The table of places close to a problem missed three | Rows for `gradient-descent-models` follow-ups 1 to 5 and for `classification-metrics` pitfall `h8` |
