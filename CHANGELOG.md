@@ -2,6 +2,130 @@
 
 <!-- version list -->
 
+## v0.50.0 (2026-11-14)
+
+### Bug Fixes
+
+- **docs**: Read only the prompts and fixes of a terminal's output for commands
+  ([`99237f3`](https://github.com/bkuberek/coding-study/commit/99237f3b5bb94bf707a7cde6a89789e7a2c93e5e))
+
+- **fixtures**: Name valkey among the members fixture's required services
+  ([`2a3008a`](https://github.com/bkuberek/coding-study/commit/2a3008add94aabaf3df35a15e82b79eabe7c0bc2))
+
+- **fixtures**: Use Valkey instead of the non-open-source Redis 7.4 image
+  ([`69ae11d`](https://github.com/bkuberek/coding-study/commit/69ae11d352acc9ffe04445035ce8430d7d84cd14))
+
+- **sandbox**: Give a one-off's container time beyond its command's limit
+  ([`f7fa08b`](https://github.com/bkuberek/coding-study/commit/f7fa08be71ec0ea78e89771c2aa11ce37246632f))
+
+- **sandbox**: Start a stopped backing service with up --wait, which compose v2 has
+  ([`d7c2838`](https://github.com/bkuberek/coding-study/commit/d7c28387ebe8985b27ea41cf233383279c0e7b06))
+
+- **web-ui**: Let the column names of a docs page's tables wrap
+  ([`06f6273`](https://github.com/bkuberek/coding-study/commit/06f627399c8db2104b6bf425ff83e6eb8a22bea2))
+
+- **web-ui**: Make guide and path titles targets at least 24 pixels high
+  ([`479e321`](https://github.com/bkuberek/coding-study/commit/479e321c100b3e12f70f25f4da1e65ad5ec9847b))
+
+- **web-ui**: Wrap long commands in a docs page's tables on narrow windows
+  ([`d7b29c5`](https://github.com/bkuberek/coding-study/commit/d7b29c52f29647818d86f59951e49498b4aa7a44))
+
+### Code Style
+
+- **web-ui**: Sort the API schema test's imports
+  ([`1b32448`](https://github.com/bkuberek/coding-study/commit/1b324484f3f75cd2894dc7eeaa70e2716aabf07d))
+
+### Continuous Integration
+
+- **release**: Keep releasable runs queued and check CI before a manual release
+  ([`8d23d28`](https://github.com/bkuberek/coding-study/commit/8d23d288495064a180db26b53cd4470aa6f770a8))
+
+- **release**: Version and publish only after CI passes on main
+  ([`3bf8a03`](https://github.com/bkuberek/coding-study/commit/3bf8a03f8fcad37746a62b6df11d71e55ba24650))
+
+### Documentation
+
+- **authoring**: Name G11's warnings beside the guide checks
+  ([`1080002`](https://github.com/bkuberek/coding-study/commit/1080002a1537bad7c381e1516200e4b457a7e587))
+
+- **guides**: Design examples in several languages, shown as tabs
+  ([`60d3446`](https://github.com/bkuberek/coding-study/commit/60d3446e74acf8d3fa949644eb2890398f4478e9))
+
+- **roadmap**: Add the operations batch, open the licence rule to accepted images, re-estimate from
+  velocity
+  ([`8790209`](https://github.com/bkuberek/coding-study/commit/879020937760e29418b5f7f39945d19558d8ab0b))
+
+- **roadmap**: Mark v0.50 released and count the operations guides at 22
+  ([`257ded4`](https://github.com/bkuberek/coding-study/commit/257ded4fb21b4c433e6dbc3a70f3af73f36a8d6d))
+
+- **user-docs**: Design shipped user docs read with cstudy docs and a Docs view
+  ([`11b91ab`](https://github.com/bkuberek/coding-study/commit/11b91ab36910682d5238e4ebc6006f99bb4b1ef5))
+
+- **user-docs**: Write the user docs and move the guides into them
+  ([`4e74d20`](https://github.com/bkuberek/coding-study/commit/4e74d208e9f794808a64a211558908c724b3edfe))
+
+### Features
+
+- **docs**: Add cstudy docs and check user pages in cstudy verify
+  ([`c95a63f`](https://github.com/bkuberek/coding-study/commit/c95a63fff0cbf2751556ad72a02214ca718ad5f5))
+
+- **guides**: Let an example come in several languages
+  ([`b8ebe3f`](https://github.com/bkuberek/coding-study/commit/b8ebe3ffe317f8a97ed4d034b42e62cf7da51207))
+
+- **guides**: Show the hash map examples in TypeScript, Java, Kotlin and Go
+  ([`70437ef`](https://github.com/bkuberek/coding-study/commit/70437ef10d7ad887389e543bb7a9ee2185ec34ba))
+
+- **guides**: Show the terminal guide's examples in bash
+  ([`8568673`](https://github.com/bkuberek/coding-study/commit/8568673512fd19eb347c4ab13cab1c87eb9d0034))
+
+- **learn**: Name path levels and filter the list by search, level and status
+  ([`17be493`](https://github.com/bkuberek/coding-study/commit/17be493139920dd189b5764ef3b839fe000a0ae0))
+
+- **learn**: Order paths from introductory to advanced
+  ([`0af90b8`](https://github.com/bkuberek/coding-study/commit/0af90b8fed9b397f9c7d6d1a4bf0f2576fe5e5d8))
+
+- **learn**: Print each example in one language and pick it with --lang
+  ([`c34ec4f`](https://github.com/bkuberek/coding-study/commit/c34ec4f600fea7ed88d46e0e99d5c50e88a081ee))
+
+- **web**: Search and filter the Guides page
+  ([`eee74e5`](https://github.com/bkuberek/coding-study/commit/eee74e5ad21b9d1af71bd8718958e3a40a5427f0))
+
+- **web**: Show a guide's examples in several languages as tabs
+  ([`011b2ab`](https://github.com/bkuberek/coding-study/commit/011b2abf1b372d36fe428e611cb9d258a49ca9ef))
+
+- **web-ui**: Add a Docs view with search and deep links to headings
+  ([`be0e547`](https://github.com/bkuberek/coding-study/commit/be0e5471f125fa3f852307a172103eecbf43bdcf))
+
+### Testing
+
+- Check the stop grace a stack's containers carry, not the wall clock
+  ([`4d70d2f`](https://github.com/bkuberek/coding-study/commit/4d70d2fcd36e1735a440f06f6e20012867e9a82a))
+
+- End the Rust signal case with SIGTERM, which dumps no core
+  ([`a6ad886`](https://github.com/bkuberek/coding-study/commit/a6ad8860297abf63a61327a8e250754391ed2a86))
+
+- Give verify of a service-project fixture the time it takes on a busy machine
+  ([`8c9510a`](https://github.com/bkuberek/coding-study/commit/8c9510a91e9baeb2a7355664e29df043bf475cc4))
+
+- Name the containers a service-project test finds left running
+  ([`6c674da`](https://github.com/bkuberek/coding-study/commit/6c674da7e256711aeb4f72d650cba17613fb272c))
+
+- Resume a JVM under JDWP only after its VM_START event
+  ([`d83381d`](https://github.com/bkuberek/coding-study/commit/d83381d7c5732ae11cfc120147cb8d1e6439f9c7))
+
+- Wait for the stand-in's output before its limit runs out
+  ([`e95c517`](https://github.com/bkuberek/coding-study/commit/e95c5170eea4eb5284493b6bc1e90a86deb23807))
+
+- **docs**: Count cstudy docs among the registered commands
+  ([`51d45d0`](https://github.com/bkuberek/coding-study/commit/51d45d0ace6e1ff2a211f2f439f0ef79ce613cf0))
+
+- **web-ui**: Count the Docs view among the numbered views
+  ([`a394874`](https://github.com/bkuberek/coding-study/commit/a3948741bb20aa531fbb05a61e5cafdc5d5cb4de))
+
+- **web-ui**: Read a docs heading's text, not its uppercase rendering
+  ([`ccfa417`](https://github.com/bkuberek/coding-study/commit/ccfa4175d5f2e5a4fc5e5bbdc902993b7424855c))
+
+
 ## v0.49.0 (2026-11-14)
 
 ### Bug Fixes
