@@ -42,7 +42,7 @@ OTHER_TERMS = License(
 )
 JDK_FIX = (
     "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
-    "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
+    "https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk"
 )
 
 

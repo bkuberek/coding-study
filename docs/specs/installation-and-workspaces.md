@@ -12,7 +12,7 @@ pipx install git+https://github.com/bkuberek/coding-study
 
 Homebrew installs a release: its wheel from the GitHub release, into a virtual environment on Homebrew's Python 3.13, with the runtime dependencies pinned in `uv.lock` ([ADR 0013](../decisions/0013-homebrew-distribution.md), [Homebrew tap](versioning.md#homebrew-tap)). Installing by full name (`bkuberek/tap/cstudy`) works on a fresh machine; Homebrew 7 refuses other commands on the tap, such as `brew info cstudy`, until `brew trust bkuberek/tap` has been run once. The formula installs the same way with Homebrew on Linux, where `python@3.13` also brings Homebrew's own glibc and GCC, and the runtime dependencies come as `manylinux` wheels. uv and pipx build the project at the repository root of the default branch. A content author works from a checkout instead: `uv run cstudy ...` in the checkout, or `uv tool install --editable .` to put that checkout's `cstudy` on `PATH`.
 
-When several installs exist, the first `cstudy` on `PATH` runs; Homebrew's caveat says so, and `cstudy doctor` WARNs when it finds more than one ([the `installs` row](cli.md#the-installs-row)). No install method brings the language toolchains: [install the language toolchains](../guides/toolchains.md), then run `cstudy doctor`.
+When several installs exist, the first `cstudy` on `PATH` runs; Homebrew's caveat says so, and `cstudy doctor` WARNs when it finds more than one ([the `installs` row](cli.md#the-installs-row)). No install method brings the language toolchains: [install the language toolchains](../../user-docs/toolchains.md), then run `cstudy doctor`.
 
 | Item | Rule |
 |------|------|
@@ -252,7 +252,7 @@ Go and Rust need no tasks or run configurations of their own: every action is la
 
 | Setting | Why |
 |---------|-----|
-| `go.toolsEnvVars` `GOTOOLCHAIN=local` | The Go extension's tools (gopls) run as `cstudy` does and never download the toolchain `go/go.mod` asks for ([toolchains](../guides/toolchains.md#go)). gopls finds `go/` through the `go.work` at the workspace root; no setting is needed for that |
+| `go.toolsEnvVars` `GOTOOLCHAIN=local` | The Go extension's tools (gopls) run as `cstudy` does and never download the toolchain `go/go.mod` asks for ([toolchains](../../user-docs/toolchains.md#go)). gopls finds `go/` through the `go.work` at the workspace root; no setting is needed for that |
 | `rust-analyzer.linkedProjects` `rust/Cargo.toml` | The Cargo project is in `rust/`, not at the workspace root |
 | `rust-analyzer.linkedProjects` `projects/<slug>/Cargo.toml` | Each Rust project folder is a crate of its own, outside `rust/`; a folder is a Rust project when it holds a `Cargo.toml`. `cstudy start` refreshes VS Code's files when it writes a new Rust folder, once `cstudy` has written them; a folder started otherwise, or while a `settings.json` you edited is kept, is missing until `cstudy ide` runs again, and `cstudy doctor` says so |
 | `rust-analyzer.check.allTargets` | Each problem is an `[[example]]` built as a library crate ([ADR 0012](../decisions/0012-go-and-rust.md)); checking every target covers them. rust-analyzer passes `--keep-going` to `cargo check` itself, so the errors of every problem show when one is broken; the setting `rust-analyzer.check.extraArgs` `["--keep-going"]`, which earlier `cstudy` versions wrote, makes cargo reject the duplicate and VS Code show no Rust diagnostics, so `cstudy ide` drops it while `settings.json` is as `cstudy` wrote it, and an edited one needs the key removed by hand or `cstudy ide --force` |

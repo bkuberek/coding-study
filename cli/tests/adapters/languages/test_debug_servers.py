@@ -131,13 +131,13 @@ def test_an_installed_server_is_its_path(tmp_path):
             DebugServer("dlv", "run `go install x@v1`"),
             Language.GO,
             "cannot debug go: dlv was not found; run `go install x@v1` "
-            "(https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#go)",
+            "(https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#go)",
         ),
         (
             DebugServer("debugserver", "run `xcode-select --install`"),
             Language.RUST,
             "cannot debug rust: debugserver was not found; run `xcode-select --install` "
-            "(https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#rust)",
+            "(https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#rust)",
         ),
     ],
 )

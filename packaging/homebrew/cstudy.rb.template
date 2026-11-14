@@ -52,7 +52,7 @@ class Cstudy < Formula
       prints a fix for anything missing. Go 1.25 and Rust 1.80 are optional: it only warns
       when they are missing. For Java and Kotlin, install openjdk@25: the openjdk formula
       installs JDK 27, which cstudy does not support yet. Install guide:
-        https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md
+        https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md
 
       A cstudy installed with uv or pipx runs instead of this one when its directory
       comes first on PATH; `which -a cstudy` lists every copy, and `cstudy doctor` reports

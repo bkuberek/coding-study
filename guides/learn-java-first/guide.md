@@ -56,7 +56,7 @@ To fill it in you would loop over the indexes of `nums`, compare values and retu
 
 ## Check your toolchain
 
-cstudy builds and runs Java with the JDK your shell selects, and supports JDK 21 to 26; JDK 25 is the recommended one. Install it as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk) shows, then run:
+cstudy builds and runs Java with the JDK your shell selects, and supports JDK 21 to 26; JDK 25 is the recommended one. Install it as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk) shows, then run:
 
 ```console
 $ cstudy doctor
@@ -113,4 +113,4 @@ Start with [your first problem](../your-first-problem/guide.md), which walks thr
 - [Java Language Specification, chapter 15](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html): `==` on references and `equals` for strings (§15.21.3).
 - [`ArrayList`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html), [`HashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html), [`Arrays`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Arrays.html) and [`Object.toString()`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#toString()): the costs and behaviour above, in Java 21's API documentation.
 - [`java.util`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/package-summary.html) and [`UnsupportedOperationException`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/UnsupportedOperationException.html): the package the stub imports, and the exception it throws.
-- [Install the language toolchains: JDK](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk): cstudy's install steps.
+- [Install the language toolchains: JDK](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk): cstudy's install steps.
