@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Resource graphs and dependency order
+summary: Turn references between resources into a dependency graph, create in topological order and delete in reverse, find what can change side by side, and follow values nobody knows until a resource exists.
+level: core
+prerequisites: [plan-and-apply]
+related: [topological-order, pipeline-orchestration, graph-representations]
+problems: [iac-plan-engine]

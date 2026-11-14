@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: State, drift and reconciliation
+summary: Keep a record of what the tool manages, tell a change you made from one made outside the tool by comparing three versions, adopt resources the tool never created, and decide which way the truth flows.
+level: advanced
+prerequisites: [plan-and-apply]
+related: [resource-dependency-graphs, declarative-desired-state]
+problems: [drift-detection]

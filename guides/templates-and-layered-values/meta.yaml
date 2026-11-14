@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Layered values, templates and policy checks
+summary: Keep what differs between environments as layers of values, fill templates from them without the traps of shallow merges, missing values and implicit types, then check the result against a schema and policy rules.
+level: advanced
+prerequisites: [declarative-desired-state]
+related: [plan-and-apply, output-encoding, data-quality-and-contracts]
+problems: [values-templating, manifest-policy]

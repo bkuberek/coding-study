@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Plan, diff and apply
+summary: Compare the desired state with what exists, show the difference as a plan that a person reviews, apply exactly that plan, and plan again to find nothing left; actions, replacement, stale plans and partial failure.
+level: core
+prerequisites: [declarative-desired-state]
+related: [resource-dependency-graphs, state-and-drift]
+problems: [iac-plan-engine]
