@@ -31,7 +31,7 @@ from coding_study.domain.sandbox import (
 RUN = "/work/.cs/runs/cstudy-t-41-abc"
 IDENTITY = StackIdentity("cstudy-t-41-abc", StackKind.TEST, "d1g3st", "rooms", 41)
 POSTGRES = "postgres:17.11-alpine@sha256:3540"
-REDIS = "redis:7.4.12-alpine@sha256:c5d3"
+REDIS = "valkey/valkey:9.1.3-alpine@sha256:bf09"
 DB: dict[str, Any] = {
     "image": POSTGRES,
     "user": "postgres",
@@ -50,7 +50,7 @@ COMPOSE: dict[str, Any] = {
             "depends_on": ["db"],
             "mem_limit": "64m",
             "pids_limit": 32,
-            "healthcheck": {"test": ["CMD", "redis-cli", "ping"]},
+            "healthcheck": {"test": ["CMD", "valkey-cli", "ping"]},
         },
     },
     "volumes": {"pgdata": None},
