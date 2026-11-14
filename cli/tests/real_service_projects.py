@@ -26,6 +26,10 @@ GO = "5905-fixture-rooms-go"
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
 COMMAND_WAIT_S = 3 * GENEROUS_WAIT_S
 """A command brings a stack up more than once, and may install."""
+VERIFY_WAIT_S = 3 * COMMAND_WAIT_S
+"""`verify --require-ready` installs twice and brings up stack after stack, one at a time: at a
+load average of 18 to 20 on 8 cores, the Java fixture's takes 679 s and the members fixture's
+830 s."""
 _LEFT_OUT = shutil.ignore_patterns(".ruff_cache", "__pycache__")
 """Caches a local lint leaves are no part of a starter."""
 LABEL_WORKSPACE = "cstudy.workspace"
@@ -115,6 +119,14 @@ class FixtureProject:
             case _:
                 arguments = ("volume", "ls", "-q", *filters)
         return docker(*arguments).stdout.split()
+
+    def described(self, containers: list[str]) -> str:
+        """Each container's name, state and status, so that a test that finds one left says
+        which it was and how it ended."""
+        if not containers:
+            return ""
+        filters = (word for container in containers for word in ("--filter", f"id={container}"))
+        return docker("ps", "-a", "--format", "{{.Names}} {{.State}} {{.Status}}", *filters).stdout
 
     def remove_all_it_left(self) -> None:
         """The install cache stays by design, so a test takes it away itself."""

@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.docker_sandbox import (
+    ONE_OFF_GRACE_S,
     STOP_TIMEOUT_S,
     DockerSandbox,
     _remove_run_folder,
@@ -940,6 +941,17 @@ def test_a_one_off_runs_with_no_dependencies_and_no_pull(tmp_path, paths):
     )
 
 
+def test_a_one_off_has_its_limit_and_time_for_its_container_on_top(tmp_path, paths):
+    """Creating, starting and removing the container is the engine's work, which a busy machine
+    slows: a reset that takes 1 s must not run out of its 30 s while Docker gets to it."""
+    docker = ScriptedDocker()
+
+    sandbox(docker, tmp_path).run_one_off(plan_of(paths), ContainerCommand(("reset",), {}, 30))
+
+    call = docker.ran("run")[0]
+    assert docker.timeouts[docker.commands.index(call)] == 30 + ONE_OFF_GRACE_S
+
+
 def install_plan_of(paths: SandboxPaths) -> InstallPlan:
     return InstallPlan(
         identity=StackIdentity("cstudy-i-rooms-d", StackKind.INSTALL, "d", "rooms", 41),
@@ -959,7 +971,7 @@ def test_install_runs_its_one_off_with_its_limit(tmp_path, paths):
 
     call = docker.ran("run")[0]
     assert call[call.index("run") :] == ("run", "--rm", "-T", "--pull", "never", "install")
-    assert docker.timeouts[docker.commands.index(call)] == 600
+    assert docker.timeouts[docker.commands.index(call)] == 600 + ONE_OFF_GRACE_S
     assert outcome.exit_code == 0
 
 
@@ -1342,7 +1354,20 @@ def test_a_started_service_is_waited_for_until_it_is_healthy(tmp_path, paths):
 
     sandbox(docker, tmp_path).change_service(plan_of(paths), change, BUDGET)
 
-    assert docker.ran("start", "--wait", "--wait-timeout", "300", "store")
+    call = docker.ran("up")[0]
+    assert call[call.index("up") :] == (
+        *("up", "--detach", "--no-deps", "--no-recreate", "--no-build", "--pull", "never"),
+        *("--wait", "--wait-timeout", "300", "store"),
+    )
+
+
+def test_a_service_is_started_without_compose_start_whose_wait_compose_v2_lacks(tmp_path, paths):
+    docker = ScriptedDocker()
+    change = ServiceChange("store", ServiceAction.START)
+
+    sandbox(docker, tmp_path).change_service(plan_of(paths), change, BUDGET)
+
+    assert not docker.ran("start")
 
 
 def test_a_service_change_that_fails_is_a_startup_failure_not_your_code(tmp_path, paths):

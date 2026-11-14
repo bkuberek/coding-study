@@ -1210,8 +1210,8 @@ class StartupBudget:
 
 
 class ServiceAction(StrEnum):
-    """What a case may do to a backing service mid-case, each the `docker compose` command of that
-    name (docs/specs/service-projects.md#steps-that-send-nothing)."""
+    """What a case may do to a backing service mid-case
+    (docs/specs/service-projects.md#steps-that-send-nothing)."""
 
     PAUSE = "pause"
     """Freezes its processes: a client's connection is accepted, then waits for an answer."""

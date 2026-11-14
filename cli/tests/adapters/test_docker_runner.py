@@ -2,7 +2,9 @@
 environment reduced, output streamed, and a command past its limit killed."""
 
 import socket
+import subprocess
 import threading
+import time
 from contextlib import suppress
 from pathlib import Path
 
@@ -16,8 +18,9 @@ from coding_study.adapters.docker_sandbox import (
     SubprocessDockerRunner,
     http_health,
 )
+from coding_study.application.ports import ProbeResult
 from tests.adapters.http_grader.raw_server import RawServer, raw_server
-from tests.waits import GENEROUS_WAIT_S
+from tests.waits import GENEROUS_WAIT_S, POLL_S
 
 SHORT_LIMIT_S = 0.5
 """The limit the runner is asked to enforce: the test is about that limit."""
@@ -154,13 +157,32 @@ def test_the_exit_code_comes_back(tmp_path):
 
 
 def test_a_command_past_its_limit_is_killed(tmp_path):
-    command = script(tmp_path, "echo started; exec sleep 600")
+    command = script(tmp_path, "exec sleep 600")
 
     result = SubprocessDockerRunner().run((command,), SHORT_LIMIT_S)
 
-    assert result is not None
-    assert result.exit_code == TIMED_OUT_EXIT_CODE
-    assert result.output == "started\n"
+    assert result == ProbeResult(TIMED_OUT_EXIT_CODE, "")
+
+
+def test_what_a_command_printed_before_its_limit_is_kept(tmp_path):
+    """Started here and waited for until it has printed, so that its limit, which starts only
+    then, cannot run out before it prints on a busy machine."""
+    printed = tmp_path / "printed"
+    command = script(tmp_path, f"echo started; touch '{printed}'; exec sleep 600")
+    process = subprocess.Popen(
+        [command],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    deadline = time.monotonic() + GENEROUS_WAIT_S
+    while not printed.exists() and time.monotonic() < deadline:
+        time.sleep(POLL_S)
+
+    result = docker_sandbox._finished(process, SHORT_LIMIT_S, None)
+
+    assert result == ProbeResult(TIMED_OUT_EXIT_CODE, "started\n")
 
 
 def test_a_token_in_the_shell_does_not_reach_docker(tmp_path, monkeypatch):

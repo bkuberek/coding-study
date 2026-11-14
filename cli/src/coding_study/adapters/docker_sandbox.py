@@ -106,6 +106,10 @@ INVENTORY_TIMEOUT_S = 60.0
 PULL_TIMEOUT_S = 1800.0
 UP_GRACE_S = 30
 """Past compose's own `--wait-timeout`, so its message arrives before the process is killed."""
+ONE_OFF_GRACE_S = 30
+"""Past a one-off's own limit, for its container's creation, start and removal, which are the
+engine's work and not the command's: a one-off that runs only `true` takes up to 12.6 s at a load
+average of 17 on 8 cores, which would leave `commands.reset` 17 s of its 30."""
 SIDECAR_UP_S = 120.0
 """A container that only sleeps came up in 0.3 s; a loaded machine took seconds for a stack."""
 HEALTH_POLL_S = 0.1
@@ -167,6 +171,11 @@ _START_THE_APP_ALONE = (
 )
 """`docker compose start app` runs the one-shots it depends on again, `bootstrap` among them, on
 data a case has already changed."""
+_START_AND_WAIT = (
+    *("up", "--detach", "--no-deps", "--no-recreate", "--no-build", *_PULL_NEVER),
+    *("--wait", "--wait-timeout"),
+)
+"""Followed by the budget and a backing service whose container a case stopped."""
 
 type HealthProbe = Callable[[int, str], bool]
 
@@ -671,9 +680,10 @@ class DockerSandbox:
         timeout_s: float,
         on_output: Callable[[str], None] | None = None,
     ) -> CommandOutcome:
-        """`docker compose run`. Past its limit the client is killed and the container runs on
-        without it, on the data of whatever comes next, so it goes at once."""
-        outcome = _outcome(self._compose(plan, arguments, timeout_s, on_output))
+        """`docker compose run`, with `ONE_OFF_GRACE_S` for its container. Past that the client is
+        killed and the container runs on without it, on the data of whatever comes next, so it
+        goes at once."""
+        outcome = _outcome(self._compose(plan, arguments, timeout_s + ONE_OFF_GRACE_S, on_output))
         if outcome.timed_out:
             self._remove_one_offs(plan.identity.name)
         return outcome
@@ -700,11 +710,14 @@ class DockerSandbox:
         self._wait_for_health(plan, ready.app_port, budget)
 
     def change_service(self, plan: StackPlan, change: ServiceChange, budget: StartupBudget) -> None:
-        """A started service is waited for until its healthcheck passes, as `up --wait` does."""
+        """A started service is waited for until its healthcheck passes, by `up --wait` on its
+        stopped container: `docker compose start` takes `--wait` only from Compose 5.0, and every
+        Compose v2 refuses it as an unknown flag."""
         action = change.action
-        waits = ("--wait", "--wait-timeout", str(budget.up_s))
-        flags = waits if action is ServiceAction.START else ()
-        arguments = (action.value, *flags, change.service)
+        if action is ServiceAction.START:
+            arguments = (*_START_AND_WAIT, str(budget.up_s), change.service)
+        else:
+            arguments = (action.value, change.service)
         changed = self._compose(plan, arguments, budget.up_s + UP_GRACE_S)
         if changed is None or changed.exit_code != 0:
             output = changed.output.strip() if changed is not None else "docker is not installed"

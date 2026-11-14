@@ -1,6 +1,7 @@
 """A Rust project's suite, one process per test (docs/specs/runners.md#rust-projects), with the
 test binaries' processes scripted."""
 
+import signal
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -356,10 +357,13 @@ def test_a_process_reports_its_exit_code_and_its_output_together(script, tmp_pat
 
 
 def test_a_process_ended_by_a_signal_exits_with_128_plus_the_signal(script, tmp_path):
-    binary = script("kill -ABRT $$")
+    """SIGTERM, which dumps no core: a process that aborts ends only once the system's core
+    handler (systemd-coredump on Linux, whatever `ulimit -c` says) has stored its core, which on a
+    busy machine takes longer than the limit. The end-to-end suite runs a real abort."""
+    binary = script("kill -TERM $$")
     finished = SubprocessTests().run((str(binary),), tmp_path, LIMIT_MS)
     assert finished is not None
-    assert finished.exit_code == 134
+    assert finished.exit_code == 128 + signal.SIGTERM
 
 
 def test_a_process_past_its_limit_is_killed_with_its_group(script, tmp_path):
