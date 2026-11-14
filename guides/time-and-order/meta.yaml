@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Time and order: happened-before, Lamport clocks and vector clocks"
+summary: Order events across machines without trusting their clocks; the happened-before relation, Lamport clocks that respect it, vector clocks that decide it exactly, and what each costs.
+level: core
+prerequisites: [why-distribution-is-hard]
+related: [crdts, consistency-models, consensus-with-raft]
+problems: [logical-clocks]

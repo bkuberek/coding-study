@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Why distributed systems are hard
+summary: What changes when a program runs on several machines that talk only by messages; partial failure, a network that loses, delays, duplicates and reorders, timeouts that cannot tell slow from dead, and no clock that every machine shares.
+level: intro
+related: [time-and-order, idempotency-and-exactly-once, consensus-with-raft]
+problems: [logical-clocks, idempotent-document-consumer-typescript]
