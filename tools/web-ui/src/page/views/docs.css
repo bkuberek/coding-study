@@ -91,13 +91,18 @@
   max-width: 78ch;
 }
 
-/* A page's tables hold long commands and paths: they break anywhere rather than widen the page
-   past a narrow window (WCAG 1.4.10). */
+/* A page's tables hold long commands and paths, and long column names: they break rather than
+   widen the page past a narrow window (WCAG 1.4.10). A column name wraps, unlike the one-word
+   headers of the page's other tables. */
 .doc-body th,
 .doc-body td,
 .doc-body p code,
 .doc-body li code {
   overflow-wrap: anywhere;
+}
+
+.doc-body thead th {
+  white-space: normal;
 }
 
 .doc-side {
