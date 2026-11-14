@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Overfitting, regularization and early stopping
+summary: Why a model that fits its training data better can predict new data worse, how bias and variance trade off, and three brakes on flexibility, a penalty on squared weights, one on absolute weights, and stopping early.
+level: core
+prerequisites: [gradient-descent]
+related: [cross-validation, data-splits-and-leakage]
+problems: [gradient-descent-models]

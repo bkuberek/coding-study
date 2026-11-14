@@ -43,4 +43,5 @@ comparator:
 approaches:
   - {id: batch-gradient-descent, name: Full-batch gradient steps shared by every model with folds and splits around them, role: optimal, time: "O(s n d) per training run", space: "O(n d)", time_class: "n", space_class: "n"}
 related: [classification-metrics, calibration-metrics, retrieval-metrics]
+guides: [data-splits-and-leakage, linear-and-logistic-regression, gradient-descent, overfitting-and-regularization, cross-validation, evaluation-pitfalls]
 estimate_minutes: 90
