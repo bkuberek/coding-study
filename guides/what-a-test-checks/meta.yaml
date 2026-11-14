@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: What a test checks
+summary: A test runs code on an input you chose and compares the result with what should happen; the arrange-act-assert shape, choosing cases at the edges, turning a bug report into a failing test, and what passing tests prove.
+level: intro
+related: [stubs-spies-mocks-and-fakes, property-based-testing, coverage-and-mutation-testing]
+problems: [debug-binary-search-bounds, debug-sort-comparator]

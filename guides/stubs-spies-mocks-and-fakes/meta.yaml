@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Test doubles: stubs, spies, mocks and fakes"
+summary: Replace a slow, unpredictable or dangerous dependency with a stand-in the test controls; dummies, stubs, spies, mocks and fakes, what each answers, unittest.mock, and how doubles make tests fragile.
+level: core
+prerequisites: [what-a-test-checks]
+related: [deterministic-tests, test-suite-design]
+problems: [test-doubles]
