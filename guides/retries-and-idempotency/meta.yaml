@@ -3,5 +3,5 @@ title: Timeouts, retries and idempotency
 summary: What a timeout tells you and what it does not; which requests are safe to repeat, idempotency keys, exponential backoff with jitter, Retry-After and rate limits, deadlines, and how retries multiply across layers.
 level: core
 prerequisites: [http-messages]
-related: [congestion-control, pipeline-orchestration, change-data-capture, consensus-with-raft, idempotency-and-exactly-once]
+related: [congestion-control, pipeline-orchestration, change-data-capture, consensus-with-raft, idempotency-and-exactly-once, transactions-and-isolation, declarative-desired-state]
 problems: [vendor-retry-client-typescript, agent-job-workers]

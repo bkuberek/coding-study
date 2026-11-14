@@ -3,5 +3,5 @@ title: Change data capture and log-based replication
 summary: Copy every insert, update and delete of a database to other systems by reading its write-ahead log; change events, log positions, snapshots, redelivery, and why the side that applies changes must be idempotent.
 level: core
 prerequisites: [batch-and-streaming]
-related: [pipeline-orchestration, table-formats-and-snapshots]
+related: [pipeline-orchestration, table-formats-and-snapshots, write-ahead-logging]
 problems: [cdc-apply]

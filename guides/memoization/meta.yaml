@@ -3,5 +3,5 @@ title: From recursion to memoization
 summary: When a recursion asks the same question many times, answer each question once and remember it. Overlapping subproblems, the cache key, and top-down dynamic programming.
 level: core
 prerequisites: [recursion]
-related: [backtracking, one-dimensional-tables]
+related: [backtracking, one-dimensional-tables, query-planning-and-joins]
 problems: [climbing-stairs, word-break]

@@ -2,4 +2,4 @@
 title: Trees and binary trees
 summary: What a tree is, the words for its parts (root, parent, child, leaf, depth, height), what makes a tree binary, and how a tree is stored, with links or in a plain array.
 level: intro
-related: [tree-traversals, heaps]
+related: [tree-traversals, heaps, taxonomies-and-skos]

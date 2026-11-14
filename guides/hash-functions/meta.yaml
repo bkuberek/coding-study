@@ -2,5 +2,5 @@
 title: What a hash function is
 summary: How a hash function turns a key into a bucket, why it must be deterministic and spread keys out, and why collisions can never be avoided.
 level: intro
-related: [hash-maps-and-sets, cryptographic-hashes]
+related: [hash-maps-and-sets, cryptographic-hashes, lsm-trees-and-compaction]
 problems: [consistent-hash-ring]

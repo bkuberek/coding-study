@@ -3,5 +3,5 @@ title: "MVCC and snapshot isolation: versions, snapshots and write skew"
 summary: "How keeping old versions lets readers and writers stop blocking each other: snapshots, first committer wins, write skew and phantoms, the read-only anomaly, serializable snapshot isolation and vacuum."
 level: advanced
 prerequisites: [transactions-and-isolation]
-related: [write-ahead-logging, table-formats-and-snapshots]
+related: [write-ahead-logging, table-formats-and-snapshots, consistency-models]
 problems: [mvcc-snapshot-isolation]

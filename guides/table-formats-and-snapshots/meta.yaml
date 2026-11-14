@@ -3,5 +3,5 @@ title: "Table formats: snapshots, time travel and optimistic commits"
 summary: How a table kept as immutable files gets atomic commits; snapshots that list the live files, time travel to an older snapshot, optimistic writers that retry or conflict, and the upkeep of expiring snapshots and compacting files.
 level: advanced
 prerequisites: [batch-and-streaming]
-related: [change-data-capture, data-quality-and-contracts, pipeline-orchestration]
+related: [change-data-capture, data-quality-and-contracts, pipeline-orchestration, lsm-trees-and-compaction, transactions-and-isolation, mvcc-and-snapshot-isolation]
 problems: [snapshot-table]

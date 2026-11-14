@@ -2,5 +2,5 @@
 title: Graphs and how to store them
 summary: What nodes and edges are, directed and undirected graphs, and how to store one as an edge list, an adjacency list or an adjacency matrix, or not at all, as with a grid.
 level: intro
-related: [breadth-first-search, depth-first-search]
+related: [breadth-first-search, depth-first-search, resource-dependency-graphs, taxonomies-and-skos, rdf-triples]
 problems: [employee-importance, time-to-inform-employees]

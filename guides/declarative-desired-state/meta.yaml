@@ -2,5 +2,5 @@
 title: Declarative desired state and convergence
 summary: Describe the state you want instead of the steps to reach it, compare it with what exists and change only what differs, so that running it again is safe; idempotence, convergence and where they break.
 level: intro
-related: [plan-and-apply, retries-and-idempotency]
+related: [plan-and-apply, retries-and-idempotency, state-and-drift]
 problems: [idempotent-converge]

@@ -3,5 +3,5 @@ title: "Transactions: ACID, isolation levels and locking"
 summary: "What a transaction promises; the anomalies of concurrent transactions, from dirty reads to lost updates and write skew; the SQL isolation levels and their critique; serializability; two-phase locking, row locks and deadlocks."
 level: core
 prerequisites: [write-ahead-logging]
-related: [mvcc-and-snapshot-isolation, retries-and-idempotency, table-formats-and-snapshots]
+related: [mvcc-and-snapshot-isolation, retries-and-idempotency, table-formats-and-snapshots, consistency-models, deadlock]
 problems: [supplier-records-locking-typescript, inventory-reservations-typescript, postgres-job-queue-typescript]

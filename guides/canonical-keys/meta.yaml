@@ -3,5 +3,5 @@ title: Canonical keys and grouping
 summary: Choose a key so that the things you call equal collide on purpose, and group, deduplicate or detect conflicts in one pass.
 level: core
 prerequisites: [hash-maps-and-sets]
-related: [counting-and-frequency, cryptographic-hashes]
+related: [counting-and-frequency, cryptographic-hashes, record-linkage]
 problems: [group-anagrams, valid-sudoku]

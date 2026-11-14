@@ -3,5 +3,5 @@ title: "Consistency models: from linearizable to eventual, and CAP"
 summary: What a replicated store promises about the values a read returns; linearizable, sequential, causal and eventual consistency, the CAP theorem as Gilbert and Lynch proved it, PACELC, and snapshot isolation.
 level: advanced
 prerequisites: [replication-and-quorums, time-and-order]
-related: [crdts, consensus-with-raft]
+related: [crdts, consensus-with-raft, transactions-and-isolation, mvcc-and-snapshot-isolation]
 problems: [mvcc-snapshot-isolation]

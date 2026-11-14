@@ -3,5 +3,5 @@ title: Orchestrating batch pipelines
 summary: Run a graph of tasks once per slice of time so that retries, reruns and backfills are safe; dependencies and run order, partitions, idempotent writes, staleness, and deadlines for when data must be ready.
 level: core
 prerequisites: [batch-and-streaming]
-related: [data-quality-and-contracts, data-lineage, change-data-capture]
+related: [data-quality-and-contracts, data-lineage, change-data-capture, resource-dependency-graphs]
 problems: [pipeline-scheduler, postgres-job-queue-typescript, csv-upload-ingestion-typescript]

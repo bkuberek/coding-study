@@ -3,5 +3,5 @@ title: Write-ahead logging and crash recovery
 summary: "How a database keeps committed changes and loses uncommitted ones across a crash: undo and redo, steal and force, the write-ahead rule, log sequence numbers, checkpoints, ARIES, torn pages and SQLite's journals."
 level: core
 prerequisites: [pages-and-records]
-related: [transactions-and-isolation, lsm-trees-and-compaction, change-data-capture]
+related: [transactions-and-isolation, lsm-trees-and-compaction, change-data-capture, mvcc-and-snapshot-isolation]
 problems: [transactional-kv-store]

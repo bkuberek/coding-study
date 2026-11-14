@@ -3,5 +3,5 @@ title: Topological order
 summary: Order the nodes of a directed graph so that every edge points forward, with Kahn's algorithm or the finish order of a depth-first search, and detect the cycle that makes it impossible.
 level: core
 prerequisites: [depth-first-search]
-related: [breadth-first-search]
+related: [breadth-first-search, resource-dependency-graphs]
 problems: [check-task-order, course-schedule, course-schedule-ii, parallel-courses, all-possible-recipes, alien-dictionary, longest-increasing-path-matrix]

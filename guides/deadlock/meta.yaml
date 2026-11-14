@@ -3,5 +3,5 @@ title: Deadlock
 summary: When tasks wait for each other forever; the four conditions of Coffman, Elphick and Shoshani, resource graphs, prevention by a global lock order, avoidance with Dijkstra's banker, and detection and recovery.
 level: advanced
 prerequisites: [locks-and-condition-variables]
-related: [cpu-scheduling, memory-allocation]
+related: [cpu-scheduling, memory-allocation, transactions-and-isolation]
 problems: [bank-transfers]
