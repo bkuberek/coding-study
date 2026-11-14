@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Reliable transport: sequence numbers, acknowledgements and retransmission"
+summary: How a protocol builds an ordered, complete byte stream on a network that loses, duplicates and reorders packets; sequence numbers, cumulative acknowledgements, adaptive retransmission timers, and flow control with a sliding window.
+level: core
+prerequisites: [network-layers]
+related: [congestion-control, http-messages, retries-and-idempotency]
+problems: [stream-reassembler, reliable-transport-sim]
