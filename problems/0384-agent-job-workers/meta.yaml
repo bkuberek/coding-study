@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0384"
+slug: agent-job-workers
+title: Agent Job Workers
+summary: "Build AgentJobWorkers, the layers that run agent work as background jobs: a queue with leases, progress kept in a shared store, a worker count set by the backlog, and a gateway that guards the tools."
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+patterns: [arrays-hashing]
+domains: [ai-llm, backend, systems]
+job_roles: [ai-engineer, backend, platform]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: A job queue with leases}
+  - {level: 2, title: Resuming from the shared store}
+  - {level: 3, title: Scaling by the backlog}
+  - {level: 4, title: A gateway for the tools}
+signature:
+  class:
+    name: AgentJobWorkers
+    constructor: {params: [{name: leaseSeconds, type: int}]}
+    methods:
+      - {name: submit, level: 1, params: [{name: jobId, type: string}], returns: {type: string}}
+      - {name: claim, level: 1, params: [{name: now, type: long}, {name: workerId, type: string}], returns: {type: string}}
+      - {name: heartbeat, level: 1, params: [{name: now, type: long}, {name: workerId, type: string}, {name: jobId, type: string}], returns: {type: string}}
+      - {name: complete, level: 1, params: [{name: now, type: long}, {name: workerId, type: string}, {name: jobId, type: string}], returns: {type: string}}
+      - {name: jobState, level: 1, params: [{name: now, type: long}, {name: jobId, type: string}], returns: {type: string}}
+      - {name: checkpoint, level: 2, params: [{name: now, type: long}, {name: workerId, type: string}, {name: jobId, type: string}, {name: step, type: int}, {name: output, type: string}], returns: {type: string}}
+      - {name: progress, level: 2, params: [{name: jobId, type: string}], returns: {type: "list<string>"}}
+      - {name: setScaling, level: 3, params: [{name: minWorkers, type: int}, {name: maxWorkers, type: int}, {name: jobsPerWorker, type: int}, {name: upCooldown, type: int}, {name: downCooldown, type: int}, {name: alertBacklog, type: int}], returns: {type: void}}
+      - {name: scale, level: 3, params: [{name: now, type: long}], returns: {type: "list<string>"}}
+      - {name: setToolLimit, level: 4, params: [{name: tool, type: string}, {name: capacity, type: int}, {name: refillPerSecond, type: int}], returns: {type: void}}
+      - {name: setTenantLimit, level: 4, params: [{name: tenant, type: string}, {name: capacity, type: int}, {name: refillPerSecond, type: int}], returns: {type: void}}
+      - {name: setRetry, level: 4, params: [{name: maxAttempts, type: int}, {name: baseDelay, type: int}, {name: maxDelay, type: int}], returns: {type: void}}
+      - {name: setBreaker, level: 4, params: [{name: tool, type: string}, {name: failureThreshold, type: int}, {name: openSeconds, type: int}], returns: {type: void}}
+      - {name: call, level: 4, params: [{name: now, type: long}, {name: tenant, type: string}, {name: tool, type: string}, {name: outcomes, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: breakerState, level: 4, params: [{name: now, type: long}, {name: tool, type: string}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: lazy-leases, name: "Lazy leases, a step log per job, a backlog rule, and buckets and breakers updated on demand", role: optimal, time: "O(j) per claim for j jobs, O(s) per progress for s saved steps, O(a) per call for a attempts, O(1) otherwise", space: "O(j + s) for j jobs and s saved steps", time_class: "n", space_class: "n"}
+related: [postgres-job-queue-typescript, vendor-retry-client-typescript, api-gateway, token-bucket-limiter, loop-controller, cache-and-router, job-scheduler, idempotent-document-consumer-typescript, llm-gateway-typescript, tool-calling-agent-loop-typescript]
+guides: [harness-engineering]
+estimate_minutes: 150
