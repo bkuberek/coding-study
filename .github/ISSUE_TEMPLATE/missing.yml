@@ -1,0 +1,44 @@
+name: Missing something?
+description: Ask for a problem, guide, path, language or feature that cstudy does not have.
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to ask for something that is missing. When you open it from cstudy, the app fills in the version, OS, page and content for you.
+
+        Do not paste API keys, tokens or personal data.
+  - type: input
+    id: kind
+    attributes:
+      label: Kind
+      description: A problem, guide, path, language or feature.
+      placeholder: guide
+  - type: textarea
+    id: description
+    attributes:
+      label: What are you missing?
+      description: What you looked for, and why it would help.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page or command
+      description: The page or command where you looked.
+  - type: input
+    id: content
+    attributes:
+      label: Content ID
+      description: A related content ID, if any.
+      placeholder: problem/two-sum
+  - type: input
+    id: version
+    attributes:
+      label: cstudy version
+      description: The output of `cstudy --version`.
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15 on Apple Silicon, Ubuntu 24.04

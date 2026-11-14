@@ -1,0 +1,42 @@
+name: Content error
+description: Something is wrong or unclear in a problem or guide.
+labels: [content, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to report a mistake or an unclear passage in a problem or guide. When you open it from cstudy, the app fills in the version and content ID for you.
+
+        Do not paste API keys, tokens or personal data.
+  - type: input
+    id: content
+    attributes:
+      label: Content ID
+      description: The ID of the problem or guide.
+      placeholder: guide/binary-search or problem/two-sum
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: The language you were using, if it matters.
+      placeholder: python
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or unclear?
+      description: Quote the text.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix
+  - type: input
+    id: version
+    attributes:
+      label: cstudy version
+      description: The output of `cstudy --version`.
+    validations:
+      required: true
