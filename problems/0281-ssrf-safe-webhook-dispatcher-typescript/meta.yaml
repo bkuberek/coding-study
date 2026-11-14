@@ -44,4 +44,5 @@ project:
 approaches:
   - {id: reference, name: "Resolve once, check every address, connect to what was checked", role: optimal, time: "per request", space: "per request"}
 related: [vendor-retry-client-typescript, coworking-availability-typescript, cors-policy-evaluator]
+guides: [threat-modeling]
 estimate_minutes: 180

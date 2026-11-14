@@ -22,4 +22,5 @@ comparator: {type: exact}
 approaches:
   - {id: encoder-per-context, name: One encoder per context chosen by name with a refusal for any other name, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
 related: [fix-the-flaws-typescript, cors-policy-evaluator, memory-write-sanitizer, cert-chain-validator]
+guides: [output-encoding]
 estimate_minutes: 25

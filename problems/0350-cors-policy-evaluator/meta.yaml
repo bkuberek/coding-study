@@ -39,4 +39,5 @@ comparator: {type: ops}
 approaches:
   - {id: serialize-then-match, name: Serialize origins once then decide by exact lookups and one pattern scan, role: optimal, time: "O(P L) per request", space: "O(C)", time_class: "n", space_class: "n"}
 related: [output-encoding-by-context, cert-chain-validator, ssrf-safe-webhook-dispatcher-typescript, multi-tenant-api-typescript, token-claim-validator]
+guides: [same-origin-and-cors]
 estimate_minutes: 90

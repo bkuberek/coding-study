@@ -51,4 +51,5 @@ project:
 approaches:
   - {id: reference, name: "Count the body as it arrives, trust only the bytes, and serve only what the scanner cleared", role: optimal, time: "per upload", space: "per upload"}
 related: [ssrf-safe-webhook-dispatcher-typescript, csv-upload-ingestion-typescript]
+guides: [threat-modeling]
 estimate_minutes: 240

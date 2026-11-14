@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: TLS, certificates and chain validation
+summary: What TLS 1.3 guarantees and how its handshake gets there, what a certificate proves, and how a client decides to trust one, through a chain to a trust anchor, dates, names, CA constraints and revocation.
+level: advanced
+prerequisites: [authentication-and-authorization]
+related: [cryptographic-hashes, same-origin-and-cors, secrets-and-redaction]
+problems: [cert-chain-validator]
