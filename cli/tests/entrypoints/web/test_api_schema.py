@@ -24,8 +24,8 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.notifications import Notifications, WorkspaceWatch
 from coding_study.entrypoints.web.runs import Children
-from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.doc_builders import write_docs
+from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.guide_builders import write_guide
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, SCHEMAS_DIRECTORY, copy_catalog_problems
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
