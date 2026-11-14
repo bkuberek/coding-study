@@ -179,7 +179,7 @@ A token of 32 random bytes is one of 2^256 possibilities, so storing only its SH
 - **Tokens in URLs.** They land in browser history and server logs, as RFC 6750 warns, and leave with every link that someone copies.
 - **Hashing low-entropy values and calling it anonymous**, as the four-digit code shows.
 - **Comparing secrets with `==`.** An ordinary comparison may stop at the first difference, so its timing can tell an attacker how much of a guess was right; `hmac.compare_digest` avoids that content-based short-circuiting.
-- **Detailed errors to clients.** Return a generic error and an ID, and keep the message and the stack trace in the log.
+- **Detailed errors to clients.** Return a generic error, and keep the message and the stack trace in the log.
 - **Redacting after collection.** Once a secret reaches a log store, it is in backups and copies too. The cheat sheet asks for a process that removes secrets from logs while keeping the logs' integrity, but the only reliable fix is never writing it, and revoking it when it was.
 - **Counting only precision.** A redactor that never masks anything wrongly but misses a tenth of the emails has leaked a tenth of the emails. Measure what it misses.
 

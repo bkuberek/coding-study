@@ -2,7 +2,7 @@
 
 ## The idea
 
-Between your program and the server it talks to sit networks you do not control: a café's wireless network, an internet provider, routers along the way. Anyone in that path can read the bytes that pass and change them. **TLS**, Transport Layer Security, builds a secure channel over such a network. RFC 8446, which defines TLS 1.3, names three properties: **authentication** (the server side of the channel is always authenticated, the client side optionally), **confidentiality** (data sent after the channel is set up is visible only to the two endpoints) and **integrity** (attackers cannot change that data without being detected).
+Between your program and the server it talks to sit networks you do not control: a café's wireless network, an internet provider, routers along the way. Anyone in that path can read the bytes that pass and change them. **TLS**, Transport Layer Security, builds a secure channel over such a network. RFC 9846, which defines TLS 1.3 and obsoletes RFC 8446, names three properties: **authentication** (the server side of the channel is always authenticated, the client side optionally), **confidentiality** (data sent after the channel is set up is visible only to the two endpoints) and **integrity** (attackers cannot change that data without being detected).
 
 Encryption alone would not be enough. If you encrypt carefully to the wrong party, an attacker in the middle reads everything. So the hard part is authentication: being sure that the key you are about to trust belongs to `shop.example` and not to whoever sits on the path. TLS gets there with **public-key signatures**. A key pair has a **private key**, which only its owner holds, and a **public key**, which anyone may have. NIST's glossary describes a digital signature as an operation in which the private key signs data and the public key verifies the signature, giving authenticity, integrity and non-repudiation, though not confidentiality or protection against replay.
 
@@ -28,7 +28,7 @@ and for each intermediate, before moving on, that the basic constraints extensio
 
 Then the leaf must be for the name you asked for. RFC 9525, the current rules for service identity in TLS, says the subject's Common Name must not be used to identify a service: only identities such as the DNS names in the subject alternative name count. DNS names compare without regard to ASCII case, and a **wildcard** is allowed only as the complete left-most label, as in `*.shop.example`, where it matches exactly one label: `api.shop.example`, but neither `shop.example` nor `a.b.shop.example`. A name with a wildcard anywhere else is invalid and must be ignored.
 
-TLS itself leaves all of this to the certificate profile: RFC 8446 says detailed certificate validation procedures are out of scope for TLS and points to RFC 5280. What TLS 1.3 adds is the proof that the server holds the private key of the certificate it sent, and keys that nobody on the path can compute.
+TLS itself leaves all of this to the certificate profile: RFC 9846 says detailed certificate validation procedures are out of scope for TLS and points to RFC 5280. What TLS 1.3 adds is the proof that the server holds the private key of the certificate it sent, and keys that nobody on the path can compute. In a key exchange, each side sends a public value, its key share, and both compute the same secret from them; someone who sees only the shares cannot.
 
 ## A worked example
 
@@ -166,7 +166,7 @@ sequenceDiagram
 └────────┘                            └────────┘
 ```
 
-The client offers a key share in its `ClientHello`, the server answers with its own in the `ServerHello`, and RFC 8446 encrypts every handshake message after the `ServerHello`. The server then sends its `Certificate` and a `CertificateVerify`, a signature over the entire handshake so far made with the private key of that certificate, which RFC 8446 describes as explicit proof that the server possesses the private key. The `Finished` messages provide key confirmation and bind the endpoint's identity to the keys exchanged. A recorded certificate is public and anyone can replay it; the `CertificateVerify` over this handshake cannot be replayed.
+The client offers a key share in its `ClientHello`, the server answers with its own in the `ServerHello`, and RFC 9846 encrypts every handshake message after the `ServerHello`. The server then sends its `Certificate` and a `CertificateVerify`, a signature over the entire handshake so far made with the private key of that certificate, which RFC 9846 describes as explicit proof that the server possesses the private key. The `Finished` messages provide key confirmation and bind the endpoint's identity to the keys exchanged. A recorded certificate is public and anyone can replay it; the `CertificateVerify` over this handshake cannot be replayed.
 
 Python's `ssl` module shows which of these checks a client performs:
 
@@ -246,8 +246,8 @@ Signature checks are the expensive computation, one per certificate in the path.
 - **The anchor is configuration.** Path validation takes the anchor's name and public key as inputs, and processes only the certificates below it: the anchor is trusted because it was configured.
 - **Revocation.** A certificate revocation list (CRL) is a time-stamped list of revoked certificates signed by a CA (RFC 5280). The Online Certificate Status Protocol (OCSP, RFC 6960) answers about one certificate at a time with `good`, `revoked` or `unknown`; `unknown` usually means the responder does not serve that certificate's issuer.
 - **Certificate Transparency** (RFC 9162) logs certificates publicly as they are issued, so that anyone can audit what CAs issue and notice suspect certificates.
-- **Forward secrecy.** In TLS 1.3, every public-key key exchange provides forward secrecy: the static RSA and Diffie-Hellman exchanges were removed. RFC 8446 defines the property: if long-term keying material is compromised after the handshake is complete, the session key stays secure. The exception is early data, 0-RTT, which RFC 8446 says is not forward secret and has no guarantee against replay between connections.
-- **Weak signatures.** RFC 8446 requires aborting the handshake with a `bad_certificate` alert when validation would need an MD5-based signature, and recommends the same for SHA-1, except for self-signed certificates and trust anchors.
+- **Forward secrecy.** In TLS 1.3, every public-key key exchange provides forward secrecy: the static RSA and Diffie-Hellman exchanges were removed. RFC 9846 defines the property: if long-term keying material is compromised after the handshake is complete, the session key stays secure. The exception is early data, 0-RTT, for which RFC 9846 gives no forward secrecy guarantee and no guarantee against replay between connections.
+- **Weak signatures.** RFC 9846 requires aborting the handshake with a `bad_certificate` alert when a certificate the client would need to validate is signed with an MD5-based algorithm, and recommends the same for SHA-1; neither rule applies to self-signed certificates or trust anchors, whose signatures the client does not need to validate.
 - **Hostname checks moved.** Since Python 3.7, the hostname is matched by the underlying TLS library during the handshake, which is aborted early on a mismatch, instead of by Python's own `match_hostname()`.
 - **Wildcards and their risk.** RFC 9525's security considerations note that a wildcard certificate vouches for every single-label name in its domain, though not for deeper levels, which risks vouching for rogue or buggy hosts.
 
@@ -257,7 +257,7 @@ Signature checks are the expensive computation, one per certificate in the path.
 
 ## Further reading
 
-- [RFC 8446, The Transport Layer Security (TLS) Protocol Version 1.3](https://www.rfc-editor.org/rfc/rfc8446): the properties, the handshake, `CertificateVerify` and `Finished`, forward secrecy and 0-RTT.
+- [RFC 9846, The Transport Layer Security (TLS) Protocol Version 1.3](https://www.rfc-editor.org/rfc/rfc9846), which obsoletes RFC 8446: the properties, the handshake, `CertificateVerify` and `Finished`, forward secrecy and 0-RTT.
 - [RFC 5280, Internet X.509 Public Key Infrastructure Certificate and CRL Profile](https://www.rfc-editor.org/rfc/rfc5280): certificate fields, validity, basic constraints, key usage, CRLs and path validation (section 6.1).
 - [RFC 9525, Service Identity in TLS](https://www.rfc-editor.org/rfc/rfc9525): no Common Name, DNS name and wildcard matching, and wildcard risks.
 - [RFC 4158, Certification Path Building](https://www.rfc-editor.org/rfc/rfc4158), [RFC 6960, OCSP](https://www.rfc-editor.org/rfc/rfc6960) and [RFC 9162, Certificate Transparency Version 2.0](https://www.rfc-editor.org/rfc/rfc9162).

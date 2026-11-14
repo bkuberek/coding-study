@@ -6,7 +6,7 @@ A web page is a program that the browser runs, and your server writes it as text
 
 The defense is **output encoding**: just before the text is written into the page, replace each character that has a special meaning *at that spot* with a form that the browser shows as the character itself. Between two tags, `<` becomes `&lt;`, which the browser displays as `<` and never reads as the start of a tag. The OWASP Cross Site Scripting Prevention Cheat Sheet asks for this encoding as close as possible to where the data is rendered.
 
-The words *at that spot* carry the whole difficulty. A page is read by more than one parser, and each one has its own special characters:
+The words *at that spot* carry the whole difficulty. A page is read by more than one parser, and each one has its own special characters. The browser's HTML tokenizer reads a page one character at a time, and what a character means depends on the state it is in: between tags, inside an attribute, and so on.
 
 | Spot, with `X` for the text | Who reads it | Characters with a meaning there |
 |-----------------------------|--------------|---------------------------------|
@@ -23,7 +23,7 @@ So each spot gets its own encoding:
 | Spot | Encoding |
 |------|----------|
 | HTML text and quoted attributes | Replace `&`, `<`, `>`, `"` and `'` with `&amp;`, `&lt;`, `&gt;`, `&quot;` and `&#x27;`, the five replacements the OWASP cheat sheet lists. Encoding all five covers text and attribute values in either kind of quote |
-| A value in a URL's query | Percent-encoding: the text as UTF-8 bytes, and each byte that is not an unreserved character written as `%` and two hexadecimal digits. RFC 3986 lists the unreserved characters as the ASCII letters and digits and `-`, `.`, `_` and `~` |
+| A value in a URL's query | Percent-encoding: the text as UTF-8 bytes, and each byte that is not an unreserved character written as `%` and two hexadecimal digits. RFC 3986, an RFC being a numbered internet standard, lists the unreserved characters as the ASCII letters and digits and `-`, `.`, `_` and `~` |
 | A string inside a script | Escapes of the JavaScript language, such as `\u0022` for `"`, chosen so that nothing can end the string or the element; or better, data handed to the script another way, as in the example below |
 | Anywhere unquoted | Nowhere: always quote attribute values, which the cheat sheet asks for in bold |
 
@@ -182,7 +182,7 @@ same data back:   True
 - **Encoding on the way in.** Store what the user typed, and encode on the way out, once, for the spot it goes. Text encoded for HTML at input time is wrong in a URL, a JSON response or an email, and gets encoded twice when it is finally shown. RFC 3986 says the same for URLs: a string must not be percent-encoded or decoded more than once.
 - **One encoder for every spot.** The example shows HTML encoding failing in a URL, and the same goes for scripts, where entities are not decoded at all.
 - **Unquoted attributes.** No HTML encoding survives them, since a plain space ends the value.
-- **Encoding a whole URL with the query rule.** Percent-encoding a value is for one value; applied to a whole URL it also encodes the `:` and `/` that make it a URL. The cheat sheet advises encoding parameter values, not the entire URL, and validating the scheme of a URL that a user supplied.
+- **Encoding a whole URL with the query rule.** Encode each parameter value, not the entire URL, as the cheat sheet advises.
 - **`json.dumps` alone in a script.** It leaves `</script` in place, as the example shows.
 - **Changing sanitized HTML.** Editing a sanitizer's output, or sanitizing and then decoding, can rebuild what it removed.
 - **Trusting a filter instead.** Removing `<script>` from input does not stop `<img onerror=...>`, an `href` with `javascript:`, or the many other ways to run script.
