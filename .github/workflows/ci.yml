@@ -19,9 +19,10 @@ name: CI
 # bottom of the range); it has no Go or Rust, which no browser test runs.
 #
 # CI publishes nothing: it can only read the repository and holds no secret. Versioning and
-# publishing belong to version.yml, which this workflow neither triggers nor waits for, and which
-# does not wait for it: no job here gates a release. Its release commit says [skip ci], and the tag
-# it pushes uses GITHUB_TOKEN, which starts no run.
+# publishing belong to version.yml, which runs when a run of this workflow for a push to main
+# completes and releases only when that run succeeded, so every job here gates a release. A job
+# that "Changes" skips does not fail the run. The release commit says [skip ci], and the commit and
+# the tag are pushed with GITHUB_TOKEN, which starts no run.
 
 on:
   push:
