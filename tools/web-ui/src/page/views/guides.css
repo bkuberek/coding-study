@@ -74,6 +74,14 @@
   font-weight: 700;
 }
 
+/* A title link is a target at least 24 pixels high (WCAG 2.5.8) wherever its card rests, such as
+   just above the status bar. */
+.path-card h3 a,
+.guide-title {
+  display: inline-block;
+  min-height: 24px;
+}
+
 .guide-level {
   font-size: var(--text-s);
   color: var(--ink-soft);
