@@ -120,6 +120,14 @@ class FixtureProject:
                 arguments = ("volume", "ls", "-q", *filters)
         return docker(*arguments).stdout.split()
 
+    def described(self, containers: list[str]) -> str:
+        """Each container's name, state and status, so that a test that finds one left says
+        which it was and how it ended."""
+        if not containers:
+            return ""
+        filters = (word for container in containers for word in ("--filter", f"id={container}"))
+        return docker("ps", "-a", "--format", "{{.Names}} {{.State}} {{.Status}}", *filters).stdout
+
     def remove_all_it_left(self) -> None:
         """The install cache stays by design, so a test takes it away itself."""
         for container in self.labelled("containers"):

@@ -96,7 +96,8 @@ def said(result) -> str:
 
 
 def nothing_running(project: FixtureProject) -> None:
-    assert project.labelled("containers") == []
+    containers = project.labelled("containers")
+    assert containers == [], project.described(containers)
     assert project.labelled("networks") == []
 
 
