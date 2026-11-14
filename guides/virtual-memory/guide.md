@@ -97,7 +97,7 @@ row by row           512 page changes in 262144 reads; the first 1000 reads touc
 column by column  262144 page changes in 262144 reads; the first 1000 reads touch 512 pages
 ```
 
-Row by row, 511 of every 512 reads stay on the page of the read before, so a TLB of any size hits almost every time. Column by column, every read lands on another page, and the first thousand reads already touch every page of the table: a TLB with fewer than 512 entries misses on every read, and if memory could not hold the whole table, every read could be a page fault. Same data, same result, very different cost.
+Row by row, 511 of every 512 reads stay on the page of the read before, so a TLB of any size hits almost every time. Column by column, every read lands on another page, and the first thousand reads already touch every page of the table: a TLB with fewer than 512 entries, evicting the least recently used, misses on every read, and if memory could not hold the whole table, every read could be a page fault. Same data, same result, very different cost.
 
 ## Page tables in levels
 
@@ -117,9 +117,9 @@ flowchart LR
 └───────┘    └───────┘    └───────┘    └──────────────┘    └────────────────┘
 ```
 
-Each table fills one page. With 4096-byte pages and 8-byte entries, a table holds 512 entries, so each level translates 9 bits; four levels translate 36 bits, and with the 12 bits of the offset they cover 48-bit addresses: 2^48 bytes, 256 TiB. That is the limit the Linux documentation gives for four-level paging on one 64-bit processor family, where a fifth level raises it to 128 PiB, 57 bits. Linux describes its page tables as a hierarchy of currently five levels, and an architecture that uses fewer **folds** the extra ones away.
+Each table fills one page, so each level translates a fixed number of bits of the page number, and the number of levels sets how large an address space the tree can cover. Linux describes its page tables as a hierarchy of currently five levels, and an architecture that uses fewer **folds** the extra ones away.
 
-The cost of the tree is on a TLB miss: one memory access per level. The kernel's documentation notes that processors keep page walk caches for the upper levels as well as the TLB, and huge pages (below) shorten the walk.
+The cost of the tree is on a TLB miss: one memory access per level. The kernel's documentation notes that the MMU may keep page walk caches as well as TLBs to speed this up, and huge pages (below) shorten the walk.
 
 ## Page replacement
 
@@ -219,7 +219,7 @@ Look at the FIFO column between 3 and 4 frames: **more memory, more faults**. Th
 
 ## The working set and thrashing
 
-How much memory does a process need? Denning's 1968 answer is its **working set**, W(t, τ): the pages it referenced during the last τ units of its own execution time, up to time t. The working set changes slowly as a program moves from one phase to the next, and it is a good guess of the pages the process will use soon.
+How much memory does a process need? Denning's 1968 answer is its **working set**, W(t, τ): the pages it referenced during the last τ units of its own execution time, up to time t. Denning argues that, over short spans of time, the working set is a good predictor of the pages the process will use next.
 
 When the processes running together have working sets larger than memory, they evict each other's pages, fault, wait for the disk, and evict more. Denning's paper on the subject defines **thrashing** as excessive overhead and severe performance degradation or collapse caused by too much paging. Its cure: there must be room in memory for every active process's working set, so a process is kept active only when its working set fits, and the others wait.
 
@@ -248,7 +248,7 @@ For a TLB of t entries, a page table of L levels, f frames and a reference strin
 |-----------|------|------------|
 | Translation, TLB hit | No memory access beyond the one asked for | The textbook's TLB is searched by the hardware, all entries in parallel |
 | Translation, TLB miss | L extra memory accesses | Fewer with page walk caches or huge pages |
-| Page fault served from disk | A disk read | Denning traces thrashing to the very large speed difference between main memory and the disk |
+| Page fault served from disk | A disk read | Denning traces thrashing to the very large speed difference between main memory and auxiliary storage, a drum or a disk |
 | Page table memory, flat | One entry per page of the whole address space | Whether used or not |
 | Page table memory, multi-level | One table per region in use, plus the upper levels | Small for a sparse address space |
 | FIFO, per fault | O(1) | A queue of loaded pages |
@@ -259,7 +259,7 @@ For a TLB of t entries, a page table of L levels, f frames and a reference strin
 ## Expert notes
 
 - **Optimal is a stack algorithm too.** Mattson and colleagues list OPT among the stack algorithms, prove that it is optimal, and show how to compute its success function for every memory size in two passes of a trace. Denning's 1968 paper sums up Belady's study as finding that a good algorithm needs much of the simplicity of random or FIFO selection and some, though not much, record of past references.
-- **Denning's LRU used use bits.** In the 1968 paper, LRU is implemented with a use bit in each page table entry, set on every reference, with all entries searched at intervals to update usage records: an approximation, as the clock is.
+- **The LRU that Denning's paper describes used use bits.** In the 1968 paper, LRU is implemented with a use bit in each page table entry, set on every reference, with all entries searched at intervals to update usage records: an approximation, as the clock is.
 - **Address space identifiers.** The textbook describes TLBs that tag each entry with an address space identifier, a few bits that name the process, so that a context switch does not have to throw away every translation.
 - **Copy-on-write and lazy allocation are page faults by design.** The kernel's documentation calls them common and expected causes of faults, distinct from swapping, which happens only under memory pressure and is undesirable.
 - **The page frame number.** Linux calls a frame's number its pfn: the physical address divided by the page size, so with 4 KiB pages pfn 1 is at physical address 0x1000.
@@ -271,7 +271,7 @@ For a TLB of t entries, a page table of L levels, f frames and a reference strin
 
 ## Further reading
 
-- [Linux kernel documentation, *Page Tables*](https://docs.kernel.org/mm/page_tables.html): the five-level hierarchy, page frame numbers, the MMU, TLBs, page walk caches and the causes of page faults; [*5-level paging*](https://docs.kernel.org/arch/x86/x86_64/5level-paging.html): the limits of four and five levels; [*Cache and TLB Flushing Under Linux*](https://docs.kernel.org/core-api/cachetlb.html): flushing after page table changes; [*Transparent Hugepage Support*](https://docs.kernel.org/admin-guide/mm/transhuge.html): huge pages and the TLB.
+- [Linux kernel documentation, *Page Tables*](https://docs.kernel.org/mm/page_tables.html): the five-level hierarchy, page frame numbers, the MMU, TLBs, page walk caches and the causes of page faults; [*Cache and TLB Flushing Under Linux*](https://docs.kernel.org/core-api/cachetlb.html): flushing after page table changes; [*Transparent Hugepage Support*](https://docs.kernel.org/admin-guide/mm/transhuge.html): huge pages and the TLB.
 - Linux manual pages: [`getpagesize(2)`](https://man7.org/linux/man-pages/man2/getpagesize.2.html), [`mmap(2)`](https://man7.org/linux/man-pages/man2/mmap.2.html) and [`getrusage(2)`](https://man7.org/linux/man-pages/man2/getrusage.2.html) (minor and major faults).
 - [Belady, *A study of replacement algorithms for a virtual-storage computer* (IBM Systems Journal, 1966)](https://doi.org/10.1147/sj.52.0078): the optimal algorithm, MIN.
 - [Belady, Nelson and Shedler, *An anomaly in space-time characteristics of certain programs running in a paging machine* (Communications of the ACM, 1969)](https://doi.org/10.1145/363011.363155): more memory, more faults, under FIFO.

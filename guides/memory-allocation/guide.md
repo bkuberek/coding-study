@@ -13,7 +13,7 @@ Two operations keep the heap usable:
 
 What makes allocation hard is waste, which the survey by Wilson, Johnstone, Neely and Boles (1995) splits in two:
 
-- **Internal fragmentation** is memory wasted inside a used block: the block is larger than the request, because of the header, alignment, or rounding to a standard size.
+- **Internal fragmentation** is memory wasted inside a used block: the block is larger than the request, because of the header, alignment (addresses that are multiples of 8 or 16, which processors require or prefer), or rounding to a standard size.
 - **External fragmentation** is free memory that cannot serve the requests a program actually makes, usually because it is scattered in blocks too small for them.
 
 ```mermaid
@@ -98,7 +98,7 @@ Read the trade-off.
 
 1. **A multiple of 16** wastes almost nothing, but needs 512 sizes up to 8192. Few blocks of each size are freed, so a freed block rarely fits the next request, and the free memory scatters: external fragmentation.
 2. **A power of two** needs only 10 sizes, but a request just above a power of two wastes almost half its block: 130 bytes take 256, 5000 take 8192. Almost half of all bytes are wasted here.
-3. **Four classes per doubling** sits between them: 37 sizes, and no block more than a quarter larger than its request needs. The survey describes an allocator with exactly such closely spaced classes, dividing each power of two into four ranges.
+3. **Four classes per doubling** sits between them: 37 sizes, and no block above 16 bytes is more than a quarter larger than its request. The survey describes an allocator with exactly such closely spaced classes, dividing each power of two into four ranges.
 
 ## Choosing a free block
 
@@ -108,7 +108,7 @@ When several free blocks are large enough, the allocator's **placement policy** 
 - **Next fit** keeps a **roving pointer** where the last search ended and starts the next search there, wrapping around; the survey credits it to Knuth. It spreads searches over the heap, which was meant to shorten them, but the survey reports that in several experiments, with real and synthetic traces, next fit caused more fragmentation.
 - **Best fit** takes the smallest free block that is large enough, which leaves the smallest leftover; it needs an index of free blocks by size to be fast.
 
-Coalescing needs to know whether the block just before a freed block is free, and blocks have different sizes, so it cannot be found by arithmetic. **Boundary tags**, which the survey credits to Knuth, store the size and the used flag at both ends of each block: in the header and in a **footer**. Freeing a block reads the footer just before it, to find and check its left neighbor, and the header just after it, for its right neighbor, and merges each one that is free, in constant time. The survey also describes the refinement, attributed to Standish, that only free blocks need a footer.
+Coalescing needs to know whether the block just before a freed block is free, and blocks have different sizes, so it cannot be found by arithmetic. **Boundary tags**, which the survey credits to Knuth, store the size and the used flag at both ends of each block: in the header and in a **footer**. Freeing a block reads the footer just before it, to find and check its left neighbor, and the header just after it, for its right neighbor, and merges each one that is free, in constant time. The survey also describes the refinement that only free blocks need a footer, which it notes is described in Standish's 1980 book.
 
 ## Buddies
 
@@ -142,7 +142,7 @@ flowchart TD
 └────────────────────────────────────────────┘
 ```
 
-The survey cites Knowlton's 1965 paper as the first on the binary buddy system, and notes its price: since every request is rounded up to a power of two, the expected internal fragmentation is, very roughly, 28%. It also reports that buddy systems generally fragment more than segregated fits and boundary-tag schemes, mostly in studies with synthetic traces. What they buy is speed and simplicity: finding a buddy is one bitwise operation, and merging needs no search and no footer.
+The survey cites Knowlton's 1965 paper as the first on the binary buddy system, and notes its price: since every request is rounded up to a power of two, the expected internal fragmentation is, very roughly, 28%. It also reports that buddy systems generally fragment more than segregated fits (allocators with a free list per size class) and boundary-tag schemes, mostly in studies with synthetic traces. What they buy is speed and simplicity: finding a buddy is one bitwise operation, and merging needs no search and no footer.
 
 ## When to use it
 
@@ -228,7 +228,7 @@ The free list is a stack: the slot given back last is taken first. The pool also
 - **Judging fragmentation by the total.** Free bytes in total say nothing about whether a request fits. What matters is the largest free block, and how the free memory is spread.
 - **Mixing lifetimes.** Short-lived and long-lived blocks allocated side by side leave holes when the short ones die. Allocating long-lived data together, or in an arena of its own, keeps the heap compact.
 - **Expecting freed memory to go back to the system.** Linux's manual for `mallopt` notes that the heap can be trimmed only when memory is freed at its top end, while blocks the allocator obtained with `mmap` can each be returned on their own.
-- **Splitting off slivers.** A leftover too small for any request, or for a header and a link, only lengthens the free list. The survey describes the common variation of a splitting threshold: a block is not split when the rest would be too small, and the whole block is handed out, accepting the internal waste.
+- **Splitting off slivers.** A leftover too small for any request, or for a header and a link, only lengthens the free list. The survey describes the common variation of a splitting threshold: a block is not split when the rest would be too small, and the whole block is handed out, accepting the internal waste; though the survey reports that splitting thresholds do not appear to help in practice, unless perhaps they are very small.
 
 ## Complexity
 

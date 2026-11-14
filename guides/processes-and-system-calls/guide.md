@@ -51,13 +51,13 @@ sequenceDiagram
 
 The drawing shows one call. From the program's side it looks like a function call; underneath, the processor changed mode twice.
 
-A **thread** is one flow of control inside a process: its own registers and its own **stack**, the memory that holds a function's local variables. A process starts with one thread and may start more. Linux's manual on POSIX threads puts the difference in one line: the threads of a process share the same global memory, its data and its heap, but each has its own stack. Two processes share nothing unless they arrange it; two threads of one process share almost everything.
+A **thread** is one flow of control inside a process: its own registers and its own **stack**, the memory that holds a function's local variables. A process starts with one thread and may start more. Linux's manual on POSIX threads puts the difference in one line: the threads of a process share the same global memory, its data and its heap (the memory for objects allocated while the program runs), but each has its own stack. Two processes share nothing unless they arrange it; two threads of one process share almost everything.
 
 A process is not always running. The textbook *Operating Systems: Three Easy Pieces* names three states: **running** on a processor, **ready** to run while the kernel runs something else, and **blocked**, waiting for something such as a disk read. The kernel regains control from a running process through a **timer interrupt**, a signal from a hardware timer every few milliseconds, and moves from one process to another with a **context switch**: it saves the registers of the process that was running and restores those of the next one. Which ready process runs next is the subject of the guide on CPU scheduling.
 
 ## A worked example
 
-The program below makes a second process. POSIX, the standard that Unix-like systems follow, defines the call `fork()`: it creates a new process, the **child**, that is an exact copy of the calling process, the parent, except for a few things such as its process id. Both processes then continue from the same point, just after the call, and the return value tells them apart: `fork()` returns 0 in the child and the child's process id in the parent.
+The program below makes a second process. POSIX, the standard that many operating systems follow, defines the call `fork()`: it creates a new process, the **child**, that is an exact copy of the calling process, the parent, except for a few things such as its process id. Both processes then continue from the same point, just after the call, and the return value tells them apart: `fork()` returns 0 in the child and the child's process id in the parent. The program calls `os.fork`, so it runs only on a POSIX system.
 
 ```python examples/fork_and_threads.py
 """A child process gets a copy of its parent's memory; the threads of one process share it.
@@ -168,13 +168,13 @@ The drawing shows why the last step matters. When a process ends, POSIX makes it
 - **Threads** when the parts of a program must share a lot of data quickly: they read and write the same objects without copying. The price is that every shared object can be changed by two threads at once, which the guide on locks covers.
 - **A system call** when you need the kernel: files, the network, time, other processes, more memory. Libraries make them for you, so the question is usually how many you make, not whether.
 
-In Python specifically, the documentation of `threading` notes that a global interpreter lock lets only one thread run Python bytecode at a time, which limits what threads gain for work that only computes; as of Python 3.13, experimental free-threaded builds can turn it off.
+In Python specifically, the documentation of `threading` notes that a global interpreter lock lets only one thread run Python bytecode at a time, which limits what threads gain for work that only computes; since Python 3.13, free-threaded builds, which are not the default, can turn it off.
 
 ## Common traps
 
 - **Output printed twice after a fork.** Python collects output in a buffer and writes it in blocks when the output is not a terminal. Python's documentation says the standard output is line-buffered when interactive and block-buffered otherwise. A fork copies the buffer with the rest of memory, so text printed before the fork but not yet written can come out once from each process. Flush before forking, as the example does.
 - **Zombies.** A parent that starts children and never waits for them fills the process table with zombies. Wait for every child, or arrange for the system to collect them.
-- **Forking a process that has threads.** The child gets only one thread, a copy of the one that called `fork`, but a copy of all the memory, including locks that other threads held at that instant and will never release in the child. POSIX allows the child only operations safe in a signal handler until it calls `exec`, and Python 3.12 and later warn when they detect a fork in a process with several threads.
+- **Forking a process that has threads.** The child gets only one thread, a copy of the one that called `fork`, but a copy of all the memory, including locks that other threads held at that instant and will never release in the child. POSIX allows the child only operations safe in a signal handler (a function the system runs when a signal, an asynchronous notice such as a request to stop, arrives) until it calls `exec`, and Python 3.12 and later warn when they detect a fork in a process with several threads.
 - **Assuming threads keep data apart.** Two threads that update the same counter can lose updates; nothing in the language stops them. That is the problem the next guides on locks solve.
 - **Sharing a file position by accident.** After a fork, each descriptor of the child refers to the same open file as the parent's, and Linux's manual notes that they share the file offset. A parent and a child that both read from one file take turns consuming it.
 - **Treating a system call as free.** A call into the kernel switches modes and does checks that a function call does not. Reading a file one byte per call, instead of in large blocks, multiplies that cost.
@@ -185,7 +185,7 @@ In Python specifically, the documentation of `threading` notes that a global int
 |-----------|------|------------|
 | A function call | A few instructions | Stays in user mode |
 | A system call | A mode switch into the kernel and back, plus the work | The fixed part is paid on every call, so many small calls cost more than a few large ones |
-| `fork` on Linux | Copying the parent's page tables and creating the child's record | Memory is copied lazily, page by page, only when one side writes ("copy-on-write"), so the cost grows with how much memory is mapped, not with what is later written |
+| `fork` on Linux | Copying the parent's page tables (the tables that map its memory, which the guide on virtual memory explains) and creating the child's record | Memory is copied lazily, page by page, only when one side writes ("copy-on-write"), so the cost grows with how much memory is mapped, not with what is later written |
 | A context switch | Saving one process's registers and restoring another's | Plus the cost of a cold start: a system that invalidates the TLB, the cache of address translations, on a switch must load the new process's translations again |
 | Creating a thread | Less than a process: no new address space | The thread still needs its own stack |
 
@@ -195,7 +195,7 @@ In Python specifically, the documentation of `threading` notes that a global int
 - **Copy-on-write makes `fork` cheap.** Linux's manual says `fork` is implemented with copy-on-write pages, so its only cost is the time and memory to duplicate the parent's page tables and create a record for the child. A page is copied only when parent or child writes to it, which is why `fork` followed by `exec` does not copy the parent's memory.
 - **Some system calls never enter the kernel.** The Linux kernel maps a small shared library, the vDSO, into the address space of every user-space program. Its manual explains why: some calls, such as asking for the time, are made so often that the cost of leaving user space and entering the kernel dominates; so the kernel places the information in memory the process can read, and the call becomes an ordinary function call and a few memory reads.
 - **Locks avoid the kernel when they can.** A Linux futex is an integer in ordinary memory: its manual says an operation happens entirely in user space when nobody else wants it, and the kernel is involved only to arbitrate when threads contend for it. The guide on locks builds on that.
-- **The lowest free descriptor.** Linux's manual for `open` says a new file descriptor is the lowest-numbered one not currently open. So closing descriptor 1, the standard output, and then opening a file makes that file descriptor 1.
+- **The lowest free descriptor.** Linux's manual for `open` says a new file descriptor is the lowest-numbered one not currently open. So closing descriptor 1, the standard output, and then opening a file makes that file descriptor 1 (with descriptor 0 still open).
 
 ## Practice
 

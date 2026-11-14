@@ -7,7 +7,7 @@ Threads share memory, which makes them fast to coordinate and easy to get wrong.
 The code that touches shared state is a **critical section**, and the cure is **mutual exclusion**: at most one thread inside a critical section at a time. Three primitives provide it and build on it.
 
 - A **lock**, or **mutex** (for mutual exclusion), has two operations. `acquire` takes the lock, waiting while another thread holds it; `release` gives it back. Code between them runs in one thread at a time.
-- A **condition variable** lets a thread wait, without spinning, until some condition about shared state becomes true, such as "the count reached zero", and lets another thread wake it when it changes that state.
+- A **condition variable** lets a thread wait, without spinning (busy waiting, checking in a loop), until some condition about shared state becomes true, such as "the count reached zero", and lets another thread wake it when it changes that state.
 - A **semaphore** is a counter that never goes below zero. Taking one unit waits while the counter is zero; giving one back may wake a waiting thread. With a counter of 1 it works as a lock; with a counter of n it lets n threads in.
 
 All three need one thing from the hardware: an **atomic** operation, one that no other processor can interleave with. The textbook *Operating Systems: Three Easy Pieces* describes the simplest, **test-and-set**: in one indivisible step, write a new value to a memory word and return the old one. A thread that writes "locked" and gets back "unlocked" owns the lock.
@@ -125,7 +125,7 @@ The drawing is the first run. B read `x` before A wrote it, so B's write of 1 ov
 
 A lock answers "only one at a time". Many problems also need "wait until": wait until a result is ready, until a queue has room, until every worker has finished. Checking in a loop with the lock released in between, **busy waiting**, burns a processor. A **condition variable** puts the thread to sleep instead.
 
-POSIX describes the contract. A condition variable is always used with a mutex and a **predicate**, a true-or-false condition on shared variables that says whether the thread may proceed. `wait` atomically releases the mutex and blocks the thread; atomically here means that no other thread can change the state and signal in between, so the wake-up cannot be missed. When the thread is woken, it owns the mutex again. `signal` (Python's `notify`) wakes at least one waiting thread, and `broadcast` (`notify_all`) wakes them all.
+POSIX describes the contract. A condition variable is always used with a mutex and a **predicate**, a true-or-false condition on shared variables that says whether the thread may proceed. `wait` atomically releases the mutex and blocks the thread; atomically here means that no other thread can change the state and signal in between, so the wake-up cannot be missed. When the thread is woken, it owns the mutex again. POSIX's `signal` wakes at least one waiting thread; Python's `notify` wakes one (its documentation says `notify(n)` wakes at most n, and warns that a future implementation may occasionally wake more); POSIX's `broadcast` and Python's `notify_all` wake them all.
 
 The rule that matters most: **check the predicate in a loop**. POSIX says spurious wake-ups, returns from `wait` with nobody having signalled, may occur, and that the predicate should be re-evaluated on every return. There is a second reason. Lampson and Redell's 1980 paper on monitors in the Mesa language contrasts two meanings of a signal. In Hoare's definition, the woken thread runs at once and can assume the condition holds. In Mesa, a notify is only a hint: the woken thread runs at some convenient later time, after reacquiring the lock, and another thread may have entered first and changed the state. The proper pattern is therefore `while not <OK to proceed>: wait`. POSIX and Python both describe waiting this way.
 
@@ -281,10 +281,10 @@ The counter of who is inside has its own lock, since several workers can be insi
 
 ## When to use it
 
-- **A lock** when shared data has an **invariant**, a rule that must hold whenever no thread is in the middle of changing it, such as "the total equals the sum of the parts" or "the map and the list hold the same keys". Every piece of state that one invariant ties together must be guarded by the same lock, and every access must hold it, reads included.
+- **A lock** when shared data has an **invariant**, a rule that must hold whenever no thread is in the middle of changing it, such as "a range's start is never after its end". Every piece of state that one invariant ties together must be guarded by the same lock, and every access must hold it, reads included.
 - **A condition variable** when a thread must wait for the state to reach a condition that another thread will establish. It always comes with the lock that guards that state.
 - **A semaphore** when the question is "how many": at most n users of a resource at once, or a count of items available.
-- **A read-write lock** when data is read far more often than it is written. Courtois, Heymans and Parnas posed this problem in 1971: readers may share the data, writers need it alone. They gave two solutions, one that keeps readers waiting as little as possible, and one that lets writers write as early as possible; a lock has to choose, since preferring one side can make the other wait without limit.
+- **A read-write lock** when data is read far more often than it is written. Courtois, Heymans and Parnas posed this problem in 1971: readers may share the data, writers need it alone. They gave two solutions, one that keeps readers waiting as little as possible, and one that lets writers write as early as possible; a lock must pick a policy, and one that prefers either side outright can make the other wait without limit.
 - **Something higher-level** when it exists: a thread-safe queue, a pool or a future (a placeholder for a result that another thread will produce) already contains the locks and the waiting, written once and tested.
 
 ## Common traps
@@ -305,7 +305,7 @@ The counter of who is inside has its own lock, since several workers can be insi
 | Acquiring a free lock | One atomic instruction, no system call | Linux's futexes handle an uncontended lock entirely in user space |
 | Acquiring a held lock | The thread sleeps in the kernel and is woken later | Plus a context switch away and one back; the textbook's two-phase lock spins for a while first, which pays off when the holder is about to release |
 | Throughput of a shared lock | At most one critical section at a time | The longer the critical section, the more threads queue; keep it short |
-| `notify` and `notify_all` | `notify` wakes at least one waiter; `notify_all` wakes every one, and all but one may go back to sleep | Use `notify_all` when waiters wait for different conditions |
+| `notify` and `notify_all` | `notify` wakes one waiter; `notify_all` wakes every one, and all but one may go back to sleep | Use `notify_all` when waiters wait for different conditions |
 | A semaphore's P or V | Like a lock: atomic when it need not wait | |
 
 ## Expert notes
@@ -325,7 +325,7 @@ The counter of who is inside has its own lock, since several workers can be insi
 
 ## Further reading
 
-- [Dijkstra, *Cooperating Sequential Processes* (EWD 123), published in *Programming Languages*, Academic Press, 1968](https://www.cs.utexas.edu/~EWD/transcriptions/EWD01xx/EWD123.html): the lost update, mutual exclusion, Dekker's solution, and the P and V operations on semaphores.
+- [Dijkstra, *Cooperating Sequential Processes* (EWD 123), published in *Programming Languages*, 1968](https://www.cs.utexas.edu/~EWD/transcriptions/EWD01xx/EWD123.html): the lost update, mutual exclusion, Dekker's solution, and the P and V operations on semaphores.
 - [POSIX, `pthread_mutex_lock`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_mutex_lock.html), [`pthread_cond_wait`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_cond_wait.html), [`pthread_cond_signal`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_cond_signal.html), [`sem_wait`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sem_wait.html) and [`sem_post`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sem_post.html): mutex types, waiting atomically, spurious wake-ups, and which thread a signal or a post wakes.
 - [Lampson and Redell, *Experience with Processes and Monitors in Mesa* (Communications of the ACM, 1980)](https://doi.org/10.1145/358818.358824): notify as a hint, and why waiting is a `while` loop.
 - [Hoare, *Monitors* (Communications of the ACM, 1974)](https://doi.org/10.1145/355620.361161) and [Courtois, Heymans and Parnas, *Concurrent control with "readers" and "writers"* (Communications of the ACM, 1971)](https://doi.org/10.1145/362759.362813).

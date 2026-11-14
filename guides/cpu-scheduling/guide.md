@@ -177,7 +177,7 @@ flowchart TD
 
 The left chain is what makes the queue learn: short jobs finish near the top, long jobs sink. The right chain is the cure for the danger the left one creates. Without it, a steady stream of short jobs keeps the upper levels busy and the jobs at the bottom starve; the textbook adds the **priority boost**, which periodically moves every job back to the top. Its version of the rules also counts the allotment over all of a job's turns at a level.
 
-The idea is old. The 1962 paper by Corbató, Merwin-Daggett and Daley, which describes an experimental time-sharing system, presents a "multi-level scheduling algorithm": a program enters a queue at level ℓ, runs for up to 2^ℓ quanta, and if it has not finished goes to the end of the queue at level ℓ + 1, where turns are twice as long. The supervisor always serves the lowest-numbered occupied level, and when a lower level becomes occupied it interrupts the running program. The paper's own summary of the design is that long runs must, in effect, prove they are long.
+The idea is old. The 1962 paper by Corbató, Merwin-Daggett and Daley, which describes an experimental time-sharing system, presents a "multi-level scheduling algorithm": a program enters a queue at level ℓ, runs for up to 2^ℓ quanta, and if it has not finished goes to the end of the queue at level ℓ + 1, where turns are twice as long. The supervisor always serves the lowest-numbered occupied level, and when a lower level becomes occupied it interrupts the running program. The paper calls it an important feature that long runs must, in effect, prove they are long, so that programs that fail early are caught quickly.
 
 ## When to use it
 
@@ -185,7 +185,7 @@ You rarely write a kernel's scheduler, but scheduling choices are everywhere:
 
 - **Interactive work** wants low response times: a preemptive policy with short turns, or high priority for jobs that block often, as a feedback queue gives.
 - **Throughput work**, such as batch jobs and builds, wants low turnaround and few switches: long turns, or running jobs to the end.
-- **Jobs with deadlines** want a policy that looks at the deadline, not the arrival. Linux's `SCHED_DEADLINE` uses global earliest deadline first together with a constant bandwidth server, and runs an admission test that refuses a thread when the set of deadline threads could no longer be served.
+- **Jobs with deadlines** want a policy that looks at the deadline, not the arrival. Each thread under Linux's `SCHED_DEADLINE` declares a runtime, a deadline and a period. The processor goes to the ready job whose deadline comes soonest (**earliest deadline first**); a **constant bandwidth server** throttles a thread that tries to run longer than its declared runtime, so that threads cannot interfere with each other; and an admission test refuses a thread when the set of deadline threads could no longer be served.
 - **Application-level schedulers**, such as a pool of worker threads, a job queue or an event loop, face the same trade: first come, first served is simple, a priority queue serves urgent work first, and anything that can starve needs aging or a boost.
 
 On Linux, `sched(7)` lists the policies a thread can choose. The normal policy, `SCHED_OTHER`, is time-sharing among all ordinary threads, influenced by the **nice value**, from −20 (favored) to +19; `SCHED_BATCH` and `SCHED_IDLE` are for background work. The real-time policies `SCHED_FIFO` and `SCHED_RR` use static priorities from 1 to 99, always above the normal threads: `SCHED_FIFO` runs a thread until it blocks, yields or is preempted by a higher priority, and `SCHED_RR` is the same with a maximum time quantum per turn. POSIX requires at least 32 distinct real-time priority levels.
@@ -206,7 +206,7 @@ For `n` ready jobs and `k` levels:
 | Policy | Choosing the next job | Notes |
 |--------|-----------------------|-------|
 | First come, first served | O(1): the front of a first-in, first-out queue | |
-| Shortest job first | O(log n) with a heap keyed by burst, O(n) by scanning | Plus knowing the bursts |
+| Shortest job first | O(log n) with a heap (the data structure) keyed by burst, O(n) by scanning | Plus knowing the bursts |
 | Round robin | O(1): front of the queue, and a preempted job to the back | One decision per quantum, not per job |
 | Priorities | O(log n) with a heap; O(1) to find the highest non-empty list when priorities are a small fixed set | `sched(7)` describes Linux's real-time policies as one list per priority |
 | Feedback queue | O(k) to find the highest non-empty level, O(1) per queue operation | Plus the periodic boost, O(n) |
