@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Triples and RDF graphs
+summary: State facts as subject, predicate and object; name things with IRIs, values with typed literals and unnamed things with blank nodes; a graph is a set of triples, written as N-Triples or Turtle and grouped into datasets.
+level: intro
+related: [taxonomies-and-skos, graph-patterns-and-sparql, graph-representations]
+problems: [triple-store]

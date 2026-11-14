@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Taxonomies and SKOS
+summary: Arrange concepts from general to specific with broader and narrower links, allow several parents, give each concept the labels people search by, and link concepts across schemes, as the W3C's SKOS does.
+level: intro
+related: [rdf-triples, trees, graph-representations]
+problems: [taxonomy]
