@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Idempotency and exactly-once effects
+summary: Messages arrive at most once or at least once, never certainly exactly once; how idempotent operations, ids recorded in the same commit as the effect, and messages committed with their change give one effect each.
+level: core
+prerequisites: [why-distribution-is-hard]
+related: [replication-and-quorums, change-data-capture, consensus-with-raft]
+problems: [idempotent-document-consumer-typescript, transactional-outbox-typescript]

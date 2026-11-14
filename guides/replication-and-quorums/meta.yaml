@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Replication: leaders, logs and quorums"
+summary: Keep copies of the same data on several machines; a leader that orders changes in a log, synchronous and asynchronous copying, read and write quorums that overlap, and what each leaves unsolved.
+level: core
+prerequisites: [why-distribution-is-hard]
+related: [partitioning-and-consistent-hashing, consistency-models, consensus-with-raft, change-data-capture]
+problems: [cdc-apply]
