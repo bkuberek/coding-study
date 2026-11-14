@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Deterministic tests: time, randomness, concurrency and flaky tests"
+summary: A test must give the same verdict every time the code is the same; pass clocks and random sources in, record seeds, try every interleaving of a race, wait on conditions instead of sleeping, and fix flaky tests at their cause.
+level: core
+prerequisites: [stubs-spies-mocks-and-fakes]
+related: [property-based-testing, test-suite-design]
+problems: [test-doubles, vendor-retry-client-typescript, token-bucket-limiter]
