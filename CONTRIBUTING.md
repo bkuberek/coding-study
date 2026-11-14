@@ -92,6 +92,16 @@ Examples: `feat(cli): add cstudy stats --since`, `fix(runners): report a missing
 
 Keep tests and docs in the same commit as the behavior they cover. Specs in `docs/specs/` are normative: when the code and a spec disagree, fix one of them in the same change.
 
+## Issue forms
+
+Issues open through the forms in `.github/ISSUE_TEMPLATE/`; blank issues are off. The app links and `cstudy feedback` open a form prefilled through URL query parameters: `template=<file>.yml`, `title=`, and one parameter per field `id`. Labels come from each form, not the URL. The field ids are a contract with those links, so do not rename them.
+
+| Form | Labels | Field ids |
+|------|--------|-----------|
+| `bug.yml` | `bug`, `triage` | `what-happened`, `steps`, `expected`, `page`, `content`, `version`, `os`, `logs` |
+| `missing.yml` | `enhancement`, `triage` | `kind`, `description`, `page`, `content`, `version`, `os` |
+| `content-error.yml` | `content`, `triage` | `content`, `language`, `problem`, `suggestion`, `version` |
+
 ## Where to read next
 
 | Read | For |

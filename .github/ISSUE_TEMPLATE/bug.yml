@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in cstudy does not work as it should.
+title: "bug: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to report something that is broken or behaves unexpectedly. When you open it from cstudy, the app fills in the version, OS, page and content for you.
+
+        Do not paste API keys, tokens or personal data.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The commands or clicks that lead to the problem, in order.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: input
+    id: page
+    attributes:
+      label: Page or command
+      description: The page or command where it happened.
+      placeholder: "#/problems/two-sum or cstudy test"
+  - type: input
+    id: content
+    attributes:
+      label: Content ID
+      description: The content ID, if the problem is tied to one.
+      placeholder: problem/two-sum
+  - type: input
+    id: version
+    attributes:
+      label: cstudy version
+      description: The output of `cstudy --version`.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15 on Apple Silicon, Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error output
+      description: Optional. Remove keys and personal data first.
+      render: text
