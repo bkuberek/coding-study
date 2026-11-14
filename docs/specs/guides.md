@@ -87,7 +87,7 @@ print(hash(7) % 4)
 | Languages | `.py` (Python 3.13+), `.js` and `.mjs` (Node.js 24+), `.go` (one `package main` file), `.java` (one file, run as a single-file source program). Python always; a second language where it shows something Python can't |
 | Determinism | The output never depends on hash seeds, map iteration order, time or the machine. An example about a randomized order shows it through something stable, such as a sorted list or a comparison |
 | Self-contained | The standard library only; no files, network or arguments |
-| Test | `cli/tests/content/test_guide_examples.py` runs every example from its folder and compares its standard output with its `output` block, exit 0 required. Python and JavaScript run in the fast suite, Go and Java are `slow` (Java also `jvm`); a language whose toolchain is missing is skipped |
+| Test | `cli/tests/content/test_guide_examples.py` runs every example from its folder and compares its standard output with its `output` block, exit 0 required. Python and JavaScript run in the fast suite, Go and Java are `slow` (Java also `jvm`); a language whose toolchain is missing is skipped, and so is a Python example that calls `os.fork` where the platform has none |
 
 Only these fences are examples: a plain ```` ```python ```` block without a path is an illustration, and is not run.
 
