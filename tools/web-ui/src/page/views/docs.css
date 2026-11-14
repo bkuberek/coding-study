@@ -91,6 +91,15 @@
   max-width: 78ch;
 }
 
+/* A page's tables hold long commands and paths: they break anywhere rather than widen the page
+   past a narrow window (WCAG 1.4.10). */
+.doc-body th,
+.doc-body td,
+.doc-body p code,
+.doc-body li code {
+  overflow-wrap: anywhere;
+}
+
 .doc-side {
   display: grid;
   gap: 18px;
