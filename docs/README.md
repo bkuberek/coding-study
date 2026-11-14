@@ -27,6 +27,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [web-ui](specs/web-ui.md) | `cstudy serve`: the local page, its API v1, runs and jobs as server-sent events, the security model, file API rules, code intelligence sessions with language servers, page behaviour, mocks, solutions, preferences and assets | Building or changing the web UI |
 | [guides](specs/guides.md) | Concept guides and learning paths: the `guides/` folder, `meta.yaml`, `guide.md`'s sections, tested examples, Mermaid diagrams with their text drawings, paths, the static checks, reading progress and `cstudy learn` | Writing a guide or a path, or building on them |
 | [user-docs](specs/user-docs.md) | The user docs: the `user-docs/` folder, a page's front matter and body, the topics, `cstudy docs`, the Docs view, the static checks with the command accuracy check, and what the website reads | Writing or changing a user page, or building on them |
+| [compatibility](specs/compatibility.md) | What 1.x promises: public, internal and preview surfaces, breaking changes, deprecation and support; the snapshots and schemas that hold them; canonical IDs `<type>/<slug>`, problem folders by slug, rubric-checked problems, Checked by; backups before migrations | Changing a command, flag, exit code, config key, environment variable, `--json` document, the workspace layout or `progress.db`, or how content is named |
 | [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, project folders, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
 
 ## User docs
@@ -63,6 +64,7 @@ How to use `cstudy` lives in [`user-docs/`](../user-docs/), shipped with it and 
 | [0024](decisions/0024-level-passes.md) | A pass through level N of M is a pass, graded from the rating with no level cap; a mock keeps the old rules; the best level per language is the problem's mastery, and the next attempt shows the level to try |
 | [0025](decisions/0025-concept-guides-and-learning-paths.md) | Concept guides and learning paths are content in `guides/`, checked by `cstudy verify` and read with `cstudy learn`; diagrams are Mermaid with text drawings made when a guide is written, examples are run by a test, and reading is marked in `progress.db` |
 | [0026](decisions/0026-user-docs.md) | User docs are Markdown pages with front matter in `user-docs/`, shipped as content, read with `cstudy docs` and the web UI's Docs view, checked by `cstudy verify` against the command line, and copied by the website |
+| [0027](decisions/0027-compatibility-contract.md) | A compatibility contract held by snapshots and JSON Schemas, with deprecation warnings on stderr only; content named `<type>/<slug>`, problem folders named by slug with no number, the items as rubric-checked problems, and a backup before every migration |
 
 ## Conventions
 

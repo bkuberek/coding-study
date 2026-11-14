@@ -7,6 +7,7 @@
 | Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. [catalog](../specs/catalog.md#practical-137-problems) lists the first wave, and [S13](../specs/authoring.md#static) holds the language rule of phase 2 |
 | Amends | [PRD](../prd.md) (FR-3, its description and persona), [ADR 0012](0012-go-and-rust.md) (every language on every problem, by the [language rule](#rule-changes)) |
 | Builds on | [ADR 0001](0001-data-driven-tests.md), [ADR 0004](0004-original-problem-wording.md), [ADR 0014](0014-project-problems.md), [ADR 0019](0019-service-projects.md). Reviewed items are [ADR 0021](0021-ai-reviewed-problems.md) |
+| Amended by | [ADR 0027](0027-compatibility-contract.md): the labels are on problems, and the items are rubric-checked problems of the kinds `system-design` and `code-review` |
 
 ## Context
 

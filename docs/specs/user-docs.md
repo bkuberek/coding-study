@@ -163,4 +163,4 @@ The website copies these pages; nothing in this repository writes to it.
 | An index | `cstudy docs --json`, or `uv run cstudy docs --json` in a checkout of the tag: every page with its headings and their ids, in order |
 | Links | `<slug>.md#<id>` becomes the website's URL of that page and id; ids are GitHub's, so a website that makes them the same way needs no table |
 
-A page's slug, its headings' ids and its front matter's keys are its interface: renaming one is a change the website must follow, and the release notes say so.
+A page's slug is part of its canonical ID, `doc/<slug>`, and never changes once released ([compatibility](compatibility.md#canonical-content-ids)). Its headings' ids and its front matter's keys are internal: a release may change them, and its release notes say so.

@@ -7,6 +7,7 @@
 | Spec | None yet. Today's behavior stays in [content](../specs/content.md#non-autograded-item-format) and [web-ui](../specs/web-ui.md#settings-view), which carry forward pointers |
 | Amends | [PRD](../prd.md): NFR-6, renamed from "Offline" now; once built, the non-goal "no AI grading", section 3 and NFR-12's wording. [ADR 0019](0019-service-projects.md)'s O1 follows this |
 | Builds on | [ADR 0015](0015-local-web-ui.md), [ADR 0018](0018-editor-code-intelligence.md) (the budget of an optional chunk), [ADR 0019](0019-service-projects.md) (the requirements list, the environment allowlist), [ADR 0020](0020-catalog-labels.md) (what stays out of graded problems) |
+| Amended by | [ADR 0027](0027-compatibility-contract.md): R11's items are rubric-checked problems of the kinds `system-design` and `code-review` |
 
 ## Context
 
