@@ -152,7 +152,7 @@ The first plan has every kind of action.
 
 After the apply, the second plan is all no-ops: the real world now matches the description, and the state it was based on has a new fingerprint.
 
-The third plan asks for an `xlarge` server, but the server was resized by hand to `medium` after the plan was made. The plan was reviewed against `large`; applying it now would act on a state nobody looked at. The plan carries a **fingerprint** of the state it was computed from, a SHA-256 hash of that state written as JSON with sorted keys, and the apply compares it with the current state and refuses. The fix is to plan again and review the new plan.
+The third plan asks for an `xlarge` server, but the server was resized by hand to `medium` after the plan was made. The plan was reviewed against `large`; applying it now would act on a state nobody looked at. The plan carries a **fingerprint** of the state it was computed from, a SHA-256 hash of that state written as JSON with sorted keys (a short fixed-size digest that a change anywhere in the state would alter, as the [guide on cryptographic hashes](../cryptographic-hashes/guide.md) explains), and the apply compares it with the current state and refuses. The fix is to plan again and review the new plan.
 
 ## When to use it
 
@@ -166,7 +166,7 @@ The third plan asks for an `xlarge` server, but the server was resized by hand t
 - **Applying something other than what was reviewed.** A tool that plans again at apply time can do something different from the plan people read, if the description or the world changed in between. Keep the plan with what it was based on, and refuse it when that has changed.
 - **A replace that looks like an update.** Renaming a resource or changing an attribute that cannot change in place deletes the old object. If the resource holds data, that data is lost. Read every replace line, and mark resources that must never be deleted so that a plan that would delete them fails.
 - **Partial failure.** An apply that fails halfway has done some steps and not others. Undoing the finished steps by hand is risky. A tool that records each change as soon as it succeeds can simply plan again: the new plan holds exactly what is left, and applying it finishes the job.
-- **Values nobody knows yet.** A provider chooses some values only when it creates a resource: its identifier, its address. A plan cannot show them, and anything that uses them cannot be known either. The guide on [resource graphs](../resource-dependency-graphs/guide.md) follows these values through the dependencies.
+- **Values nobody knows yet.** A **provider**, the cloud or other system that creates the resources and runs them, chooses some values only when it creates a resource: its identifier, its address. A plan cannot show them, and anything that uses them cannot be known either. The guide on [resource graphs](../resource-dependency-graphs/guide.md) follows these values through the dependencies.
 - **A diff that never goes away.** If the provider stores a value in a different form than the description writes it (lower case, a default filled in, a list sorted), a naive comparison sees a change on every plan, and applying it changes nothing. Compare values in the form the provider keeps them, or normalize both sides first.
 - **A plan whose order is unstable.** If the same inputs can produce the steps in another order, two plans of the same change cannot be compared line by line. Sort what has no meaningful order, as the example sorts addresses and keys.
 

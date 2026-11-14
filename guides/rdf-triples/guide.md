@@ -170,7 +170,7 @@ A store answers questions such as "everything about this subject" or "everyone w
 - **Named graphs.** A graph name is unique within a dataset, blank nodes can be shared between the graphs of one dataset, and RDF does not require the name to denote the graph: it is only paired with it. Some implementations do not keep empty named graphs, so applications should not depend on them.
 - **Generalized triples.** A non-normative section of RDF 1.1 allows a generalized triple, in which each position can be an IRI, a blank node or a literal, for example to show more easily that the RDF Schema entailment rules are complete.
 - **N-Triples and Turtle.** N-Triples is a line-based, plain text format and a subset of Turtle: a sequence of subject, predicate and object, separated by white space and ended by a `.` and a new line. In Turtle, the token `a` in the predicate position stands for `rdf:type`.
-- **RDF 1.2.** A revision, RDF 1.2, lets a triple appear as a term in the object position of another triple and adds a base direction to language-tagged strings. On 13 November 2026 it was a Candidate Recommendation Draft, not yet a Recommendation; this guide follows RDF 1.1.
+- **RDF 1.2.** A revision, RDF 1.2, lets a triple appear as a term in the object position of another triple, adds a base direction to language-tagged strings, and gives data a way to announce which version of RDF it uses. On 13 November 2026 it was a Candidate Recommendation Draft, not yet a Recommendation; this guide follows RDF 1.1.
 
 ## Practice
 
@@ -181,4 +181,4 @@ A store answers questions such as "everything about this subject" or "everyone w
 - [W3C, *RDF 1.1 Concepts and Abstract Syntax*, Recommendation, 25 February 2014](https://www.w3.org/TR/rdf11-concepts/): triples, graphs, IRIs, literals, blank nodes and datasets.
 - [W3C, *RDF 1.1 N-Triples*, Recommendation, 25 February 2014](https://www.w3.org/TR/n-triples/): the line-based syntax of the example.
 - [W3C, *RDF 1.1 Turtle*, Recommendation, 25 February 2014](https://www.w3.org/TR/turtle/): prefixes, predicate and object lists, and `a`.
-- [W3C, *RDF 1.2 Concepts and Abstract Syntax*](https://www.w3.org/TR/rdf12-concepts/): the revision in progress, with triple terms.
+- [W3C, *RDF 1.2 Concepts and Abstract Data Model*](https://www.w3.org/TR/rdf12-concepts/): the revision in progress, with triple terms.

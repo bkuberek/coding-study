@@ -2,8 +2,9 @@
 
 A plain (unquoted) scalar is resolved by matching it against regular expressions; the first match
 picks its type, and no match leaves it a string. The patterns below are copied from the YAML
-1.2.2 core schema (section 10.3.2) and from the YAML 1.1 boolean type. Quoting the value as a
-JSON string keeps it a string, since a JSON string is also a YAML 1.2 string.
+1.2.2 core schema (section 10.3.2), except the infinity and not-a-number rows, and from the YAML
+1.1 boolean type. Quoting the value as a JSON string keeps it a string, since a JSON string is
+also a YAML 1.2 string.
 """
 
 import json

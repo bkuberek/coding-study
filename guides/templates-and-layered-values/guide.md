@@ -2,7 +2,7 @@
 
 ## The idea
 
-A service runs in three places: on a laptop, in a test environment and in production. Almost everything about it is the same everywhere: its image, its ports, its labels. A few things differ: production runs three copies instead of one, logs less, and uses a bigger database. Writing three full descriptions repeats almost everything, and sooner or later someone fixes one and forgets the other two.
+A service runs in three places: on a laptop, in a test environment and in production. Almost everything about it is the same everywhere: its image (the packaged program it runs), its ports, its labels. A few things differ: production runs three copies instead of one, logs less, and uses a bigger database. Writing three full descriptions repeats almost everything, and sooner or later someone fixes one and forgets the other two.
 
 So the settings that can differ are pulled out as **values**: a tree of named settings, such as `replicas: 3` or `image: {repo: shop/web, tag: "1.5"}`. And the values come in **layers**: a `defaults` layer that sets everything, a `production` layer that sets only what production changes, perhaps an `override` layer for one urgent fix. Merging the layers in order gives the final values; where two layers set the same thing, the later, more specific layer wins.
 
@@ -72,15 +72,16 @@ image: $repo:1.5 | replicas: 3 <- safe_substitute ships it
 - `image` is the trap. Production set only `tag` inside `image`, meaning "change the tag". But `ChainMap` is shallow: it finds `image` in the production layer and stops there, so the whole `image` object of the defaults, with its `repo`, is hidden. A deep merge would give `{repo: shop/web, tag: 1.5}`.
 - `substitute` refuses to fill the template, because `repo` is missing: an error at render time, which is the right outcome. `safe_substitute` fills what it can and leaves `$repo` in the output, a manifest that looks finished and will fail later, far from the cause.
 
-The second program shows what happens to a value pasted unquoted into YAML, the format in which most manifests are written. A YAML parser decides the type of an unquoted (plain) scalar by matching it against a list of regular expressions; the patterns in the program are copied from the YAML 1.2.2 core schema, and from the boolean type of YAML 1.1, which older parsers still follow:
+The second program shows what happens to a value pasted unquoted into YAML, the format in which most manifests are written. A YAML parser decides the type of an unquoted (plain) scalar by matching it against a list of regular expressions; the patterns in the program are copied from the YAML 1.2.2 core schema, except the infinity and not-a-number rows, and from the boolean type of YAML 1.1, which older parsers still follow:
 
 ```python examples/scalars.py
 """What a value pasted unquoted into YAML becomes, under the 1.2 core schema and the 1.1 booleans.
 
 A plain (unquoted) scalar is resolved by matching it against regular expressions; the first match
 picks its type, and no match leaves it a string. The patterns below are copied from the YAML
-1.2.2 core schema (section 10.3.2) and from the YAML 1.1 boolean type. Quoting the value as a
-JSON string keeps it a string, since a JSON string is also a YAML 1.2 string.
+1.2.2 core schema (section 10.3.2), except the infinity and not-a-number rows, and from the YAML
+1.1 boolean type. Quoting the value as a JSON string keeps it a string, since a JSON string is
+also a YAML 1.2 string.
 """
 
 import json
@@ -162,7 +163,7 @@ A rule with a wildcard, such as "every container", costs as many lookups as ther
 
 - **JSON Merge Patch.** RFC 7396 defines the merge as a short recursive function. If the patch is an object, a target that is not an object is first replaced by an empty one; then each member whose value is `null` removes that name from the target, and every other member is merged into the target's member of the same name. If the patch is not an object, it replaces the whole target. So an array can only be replaced whole. The RFC's own test cases show two consequences: `{"a":["b"]}` patched with `{"a":"c"}` becomes `{"a":"c"}`, and a patch cannot add a member whose value is `null`: patching `{"e":null}` with `{"a":1}` keeps `e` because it was already there, but a `null` member in a patch always means "remove".
 - **JSON Schema.** Draft 2020-12 splits into a core specification and a validation vocabulary. `type` names one of six primitive types, `null`, `boolean`, `object`, `array`, `number` and `string`, or `integer`, which matches any number with a zero fractional part. An object is valid against `required` if every name in the list is a property of it. `minimum` is an inclusive lower limit. `additionalProperties` applies only to the members whose names `properties` and `patternProperties` do not cover. `default` belongs to a vocabulary of annotations meant for documentation and user interfaces; the specification places no restriction on its value and recommends that it be valid against its schema.
-- **YAML's types.** The YAML 1.2 specification, published in 2009, set out to make YAML a strict superset of JSON and removed many of the problematic implicit typing recommendations; YAML 1.2.2 followed in October 2021. Its core schema, the recommended default, resolves plain scalars by the regular expressions the example copies, and leaves a string whatever none of them matches. The boolean type of YAML 1.1, a draft of 2005, also matched `y`, `yes`, `n`, `no`, `on` and `off` in their capitalized forms.
+- **YAML's types.** The YAML 1.2 specification, published in 2009, set out to make YAML a strict superset of JSON and removed many of the problematic implicit typing recommendations; YAML 1.2.2 followed in October 2021. Its core schema, the recommended default, resolves plain scalars by the regular expressions the example copies (all of them except the infinity and not-a-number rows), and leaves a string whatever none of them matches. The boolean type of YAML 1.1, a draft of 2005, also matched `yes`, `no`, `on` and `off` in lower-case, capitalized and upper-case forms, and the single letters `y`, `Y`, `n`, `N`.
 - **`ChainMap` and `Template`.** `collections.ChainMap`, added in Python 3.3, searches its mappings in order on lookup, while writes, updates and deletions change only the first mapping. `string.Template.substitute` raises `KeyError` for a missing placeholder; its documentation notes that `safe_substitute` "may be anything other than safe", since it silently ignores malformed templates.
 - **Pointers and patches in policies.** A rule needs to name a field inside a manifest, and JSON Pointer (RFC 6901) is the standard way: `/containers/0/image`. A fix that a policy suggests can be written as a JSON Patch operation (RFC 6902), so that a tool or a person can apply it.
 

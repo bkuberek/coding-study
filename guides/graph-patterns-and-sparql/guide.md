@@ -14,15 +14,15 @@ A **basic graph pattern** is a set of triple patterns that share variables:
 ?org     :basedIn  ?city .
 ```
 
-A solution of the whole pattern gives each variable one term, the same in every pattern where it appears, such that every pattern becomes a triple of the graph. Put differently, the three filled-in triples are a small piece of the graph, a subgraph, shaped like the pattern.
+SPARQL, the W3C's query language for RDF, defines a solution of the whole pattern this way: it gives each variable one term, the same in every pattern where it appears, such that every pattern becomes a triple of the graph. Put differently, the three filled-in triples are a small piece of the graph, a subgraph, shaped like the pattern.
 
-SPARQL, the W3C's query language for RDF, defines this in a way that also says how to compute it.
+SPARQL's algebra adds three terms, which give another way to compute the same answers.
 
 - A **solution mapping** is a partial function from variables to terms: a dictionary that binds some variables.
 - Two solution mappings are **compatible** if they give the same term to every variable they both bind.
-- The **join** of two collections of solutions is every merge of a compatible pair, one from each.
+- The **join** of two collections of solutions is every merge of a compatible pair, one from each: the algebra's `Join`.
 
-So a basic graph pattern can be answered pattern by pattern: the solutions of the first pattern, joined with the solutions of the second, joined with those of the third.
+Because a solution must satisfy every pattern at once, joining the per-pattern solutions with SPARQL's compatible-mapping `Join` gives the same answer: the solutions of the first pattern, joined with the solutions of the second, joined with those of the third.
 
 ```mermaid
 flowchart TD
@@ -67,7 +67,7 @@ Some questions follow a relation any number of times: "who is above Dana in the 
 
 ## A worked example
 
-The program answers the question above against a graph of ten triples, following the SPARQL definitions: the solutions of each pattern by scanning the graph, then joins. It runs the patterns in two orders and prints how many solutions there are after each join:
+The program answers the question above against a graph of ten triples, the way the algebra allows: the solutions of each pattern by scanning the graph, then `Join`. It runs the patterns in two orders and prints how many solutions there are after each join:
 
 ```python examples/bgp.py
 """Answer a basic graph pattern the way SPARQL defines it: solutions of each pattern, then joins.
@@ -162,7 +162,7 @@ knows themselves: [(':cy',)]
 ## Common traps
 
 - **Relying on the order of results.** Solutions come in no specific order unless the query says `ORDER BY`. A test that compares results in the order they happened to arrive will fail one day.
-- **Forgetting that solutions can repeat.** The results of a basic graph pattern form a multiset, and projecting away variables makes repeats likely. Add `DISTINCT` when you want a set.
+- **Forgetting that solutions can repeat.** The results of a basic graph pattern form a multiset, an unordered collection in which the same element may appear more than once, and projecting away variables makes repeats likely. Add `DISTINCT` when you want a set.
 - **Patterns that share no variable.** Two solutions with no variable in common are always compatible, so joining two such patterns pairs every solution of one with every solution of the other. One forgotten shared variable turns a query into a product of two large lists.
 - **A literal as a subject.** SPARQL's triple patterns allow one, but RDF graphs never contain one, so such a pattern matches nothing.
 - **Walking a path by hand into a cycle.** If `a next b`, `b next c` and `c next a`, a loop that follows arrows never stops. SPARQL defines `+` and `*` over distinct nodes, so a cycle cannot make the answer infinite; your own code needs a visited set to do the same, as in [breadth-first search](../breadth-first-search/guide.md).
@@ -184,7 +184,7 @@ The size of the answer itself can grow like `n^k` when patterns share few variab
 
 ## Expert notes
 
-- **The definitions.** In SPARQL 1.1, a triple pattern is a member of (RDF terms ∪ variables) × (IRIs ∪ variables) × (RDF terms ∪ variables), which includes literal subjects, and a basic graph pattern is a set of triple patterns. A solution mapping μ is a partial function from variables to RDF terms. Two mappings are compatible if, for every variable both define, they give the same term, and `Join(Ω₁, Ω₂)` is the set of merges of compatible pairs. The empty basic graph pattern has one solution, the empty mapping, which is why the example starts its joins from `[{}]`.
+- **The definitions.** In SPARQL 1.1, a triple pattern is a member of (RDF terms ∪ variables) × (IRIs ∪ variables) × (RDF terms ∪ variables), which includes literal subjects, and a basic graph pattern is a set of triple patterns. A solution mapping μ is a partial function from variables to RDF terms, and μ is a solution of a basic graph pattern when replacing the pattern's variables by their terms gives a subgraph of the graph (§18.3.1). In the algebra (§18.5), two mappings are compatible if, for every variable both define, they give the same term, and `Join(Ω₁, Ω₂)` is the set of merges of compatible pairs. The empty basic graph pattern has one solution, the empty mapping, which is why the example starts its joins from `[{}]`.
 - **Blank nodes in queries.** Blank nodes in a graph pattern act as variables, not as references to specific blank nodes in the data.
 - **Multisets and modifiers.** Matching yields an unordered collection of solutions, then treated as a sequence in no specific order. Modifiers turn it into the result: `ORDER BY` establishes an order, projection keeps chosen variables, and `DISTINCT` eliminates duplicate solutions, so that only one solution binding the same variables to the same terms is returned.
 - **Paths over cycles.** The specification says that `+` and `*` match on distinct nodes, that such connectivity matching does not introduce duplicates (it does not count the ways a connection can be made), and that it is defined so that cycles do not lead to undefined or infinite results. Its algorithm follows paths and stops extending a path at a node it has already visited; an implementation may use any method that gives the same results.

@@ -45,7 +45,7 @@ The drawing is the hierarchy of the example below, with each arrow going from a 
 - **Concept schemes**, `skos:ConceptScheme`: a whole vocabulary, such as one shop's catalogue.
 - **Mappings** between concepts of different schemes: `skos:exactMatch`, `skos:closeMatch`, `skos:broadMatch`, `skos:narrowMatch` and `skos:relatedMatch`.
 
-SKOS is careful to say what a hierarchy is not. It is not a formal knowledge representation language: a thesaurus or classification scheme "does not assert any axioms or facts", and its structures "do not have any formal semantics". `A skos:broader B` says that people organize A under B, not that every A is a B. The guide on [reasoning and validation](../reasoning-and-validation/guide.md) covers the vocabularies that do carry logic.
+SKOS is careful to say what a hierarchy is not. SKOS itself is not a formal knowledge representation language: a thesaurus or classification scheme "does not assert any axioms or facts", and its structures "do not have any formal semantics". `A skos:broader B` says that people organize A under B, not that every A is a B. The guide on [reasoning and validation](../reasoning-and-validation/guide.md) covers the vocabularies that do carry logic.
 
 ## A worked example
 
@@ -196,14 +196,14 @@ Each stated link looks right on its own: a zoo's crane is an encyclopedia's cran
 - **Search expansion**: a query or a filter on a broad concept also selects everything narrower, which is what `skos:narrowerTransitive` is for.
 - **Consistent tagging**: many systems tag their data with the same concept identifiers, so the data can be joined.
 - **Aligning vocabularies**: two catalogues map their concepts to each other instead of merging.
-- **Not when you need inference.** If "every car is a vehicle" must let a program conclude facts about individual cars, you need classes and rules, as in RDF Schema or OWL, not a SKOS hierarchy.
+- **Not when you need inference.** If "every car is a vehicle" must let a program conclude facts about individual cars, you need classes and rules, as in RDF Schema or the W3C's Web Ontology Language (OWL), not a SKOS hierarchy.
 
 ## Common traps
 
 - **Reading `skos:broader` backwards.** In `A skos:broader B`, the subject A is the narrower concept and B is the broader one: "A has broader B". The name reads naturally only once you know this.
 - **Storing every ancestor as a direct link.** Asserting `skos:broader` from a concept to its grandparent hides which links are direct, and the hierarchy can no longer be drawn. SKOS's convention is to state direct links and infer the transitive ones.
 - **Assuming one parent.** Code written for trees, such as "the path to the root", "the depth", "the one closest common ancestor", gives wrong or arbitrary answers on a polyhierarchy.
-- **Cycles.** SKOS itself does not forbid `A skos:broader B` with `B skos:broader A`, and it calls such a graph consistent. Most applications treat a cycle as an error, since walking up from a concept would never end. Check for one whenever a link is added.
+- **Cycles.** SKOS itself does not forbid `A skos:broader B` with `B skos:broader A`, and it calls such a graph consistent. Many applications treat a cycle as an error, since walking up from a concept would never end. Check for one whenever a link is added.
 - **Labels as identifiers.** Names change: a concept renamed from "Lorry" to "Truck" must keep its identifier, which other systems have stored. Keep the old name as an alternative label, so searches that used it still work.
 - **The same label on different concepts.** "Crane" is a bird and a lifting machine. A search by label can return several concepts, and only their schemes or their broader concepts tell them apart.
 - **Trusting transitive mappings.** As the second example shows, one wrong exact match joins whole groups of concepts. Follow mappings one step unless you trust every link.

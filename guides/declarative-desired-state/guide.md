@@ -30,7 +30,7 @@ The drawing is that loop for one resource. Its last step is what makes the appro
 Two properties follow from the loop, and they are the reason to work this way.
 
 - **Idempotence**: doing something a second time changes nothing more than doing it once. In mathematics, a function `f` is idempotent when `f(f(x)) = f(x)` for every `x`: rounding a number is, adding one is not. A task that says "the file contains this line" is idempotent; a step that says "append this line" is not.
-- **Convergence**: running the description again and again brings each resource to the desired state from wherever it started, and then keeps it there: once it has arrived, a run finds nothing to change. A tool can then run every hour, after every failure and on every new server, and the fleet drifts back to the description each time.
+- **Convergence**: running the description again and again brings each resource to the desired state from any starting state the description allows, and then keeps it there: once it has arrived, a run finds nothing to change. A tool can then run every hour, after every failure and on every new server, and the fleet drifts back to the description each time.
 
 ## A worked example
 
@@ -137,7 +137,7 @@ For `H` hosts and `T` tasks, one run makes `T · H` comparisons, and each compar
 
 A dry run that must show later tasks the effect of earlier ones (a service task after the task that installs its package) works on a copy of each host's state, which costs memory in proportion to the state copied.
 
-Running until quiet takes at most one pass more than the longest chain of steps in which each step's action depends on another's change: in the example, two passes change something and the third confirms.
+When no step undoes another's change, and each step settles once what it reads is final, running until quiet takes at most one pass more than the longest chain of steps in which each step's action depends on another's change: in the example, two passes change something and the third confirms.
 
 ## Expert notes
 

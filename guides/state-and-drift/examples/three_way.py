@@ -2,25 +2,27 @@
 
 The record and the scan are matched by the id the provider gave each resource, never by name.
 For each attribute, the three values tell apart a change you made in the description (pending),
-a change made outside the tool (drift), both at once (conflict), and a world that already
-agrees with what you want while the record lags behind (stale record).
+a change made outside the tool alone (drift), both at once (conflict), and a world that already
+agrees with what you want while the record lags behind (stale record). The findings are printed
+grouped by verdict.
 """
 
 desired = {
-    "server/web": {"size": "large", "zone": "eu-1", "monitoring": "on"},
-    "server/api": {"size": "small", "zone": "eu-2"},
-    "disk/data": {"size_gb": "100"},
+    "vm/build": {"cpus": "8", "memory_gb": "32", "image": "builder-7"},
+    "vm/docs": {"cpus": "2", "memory_gb": "4", "image": "web-3"},
+    "volume/cache": {"tier": "fast"},
 }
 recorded = {  # address -> (provider id, attributes when the tool last touched it)
-    "server/web": ("i-100", {"size": "medium", "zone": "eu-1", "monitoring": "off"}),
-    "server/api": ("i-200", {"size": "small", "zone": "eu-1"}),
-    "disk/data": ("vol-7", {"size_gb": "100"}),
+    "vm/build": ("vm-31", {"cpus": "4", "memory_gb": "16", "image": "builder-7"}),
+    "vm/docs": ("vm-32", {"cpus": "2", "memory_gb": "4", "image": "web-2"}),
+    "volume/cache": ("vol-b", {"tier": "fast"}),
 }
 scanned = {  # provider id -> (type, attributes now)
-    "i-100": ("server", {"size": "large", "zone": "eu-1", "monitoring": "debug"}),
-    "i-200": ("server", {"size": "xlarge", "zone": "eu-1"}),
-    "i-999": ("bucket", {"region": "eu"}),
+    "vm-31": ("vm", {"cpus": "8", "memory_gb": "24", "image": "builder-7"}),
+    "vm-32": ("vm", {"cpus": "4", "memory_gb": "4", "image": "web-2"}),
+    "b-12": ("bucket", {"region": "south"}),
 }
+ORDER = ["unmanaged", "deleted outside the tool", "conflict", "drift", "pending", "stale record"]
 
 
 def classify(want: str | None, record: str | None, world: str | None) -> str:
@@ -35,20 +37,22 @@ def classify(want: str | None, record: str | None, world: str | None) -> str:
     return "conflict"
 
 
-managed_ids = set()
+findings: dict[str, list[str]] = {verdict: [] for verdict in ORDER}
+managed_ids = {resource_id for resource_id, _ in recorded.values()}
+for resource_id in sorted(scanned.keys() - managed_ids):
+    findings["unmanaged"].append(f"{resource_id} ({scanned[resource_id][0]}): no record names it")
 for address in sorted(recorded):
     resource_id, record = recorded[address]
-    managed_ids.add(resource_id)
     if resource_id not in scanned:
-        print(f"{address} ({resource_id}): deleted outside the tool")
+        findings["deleted outside the tool"].append(f"{address} ({resource_id})")
         continue
-    world = scanned[resource_id][1]
-    want = desired.get(address, {})
+    world, want = scanned[resource_id][1], desired.get(address, {})
     for key in sorted(want.keys() | record.keys() | world.keys()):
         values = want.get(key), record.get(key), world.get(key)
         verdict = classify(*values)
         if verdict != "in sync":
-            print(f"{address}.{key}: want={values[0]} record={values[1]} world={values[2]}"
-                  f" -> {verdict}")
-for resource_id in sorted(scanned.keys() - managed_ids):
-    print(f"{resource_id} ({scanned[resource_id][0]}): unmanaged, no record names it")
+            findings[verdict].append(
+                f"{address}.{key}: want={values[0]} record={values[1]} world={values[2]}")
+for verdict in ORDER:
+    for line in findings[verdict]:
+        print(f"{verdict:24} {line}")

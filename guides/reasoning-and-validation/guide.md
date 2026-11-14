@@ -11,7 +11,7 @@ The two read a missing fact in opposite ways.
 - Under the **open-world assumption**, a fact that is not in the data is **unknown**: it may be true and simply not written down. A reasoner works this way. Given no title for Atlas, it concludes nothing about Atlas's title.
 - Under the **closed-world assumption**, a fact that is not in the data is **false**. A validator works this way, because a required field that is missing has to be reported, whatever the world looks like.
 
-RDF is built for the open world: anyone can add triples about anything, and no one graph holds the whole truth. A triple is **entailed** by a graph when it must be true whenever the graph is, and RDF entailment is **monotonic**: RDF 1.1 Semantics states that what a graph entails, any larger graph containing it entails too, so adding triples never takes a conclusion back.
+RDF is built for the open world: anyone can add triples about anything, and no one graph holds the whole truth. A triple is **entailed** by a graph when it must be true whenever the graph is, and RDF entailment is **monotonic**: RDF 1.1 Semantics states this for simple entailment, the most basic kind, where what a graph entails any larger graph containing it entails too, and requires every richer kind to extend it monotonically, so adding triples never takes a conclusion back.
 
 **RDF Schema** (RDFS) is the small vocabulary that gives classes and properties a meaning reasoners can use. `rdf:type` says a resource is an instance of a class. `rdfs:subClassOf` says all instances of one class are instances of another, and `rdfs:subPropertyOf` that all resources related by one property are also related by another. `rdfs:domain` and `rdfs:range` say that the subjects, or the objects, of a property are instances of a class. RDF 1.1 Semantics lists **entailment patterns** for them; six of them do most of the work:
 
@@ -24,7 +24,7 @@ RDF is built for the open world: anyone can add triples about anything, and no o
 | rdfs9 | `C rdfs:subClassOf D` and `x rdf:type C` | `x rdf:type D` |
 | rdfs11 | `C rdfs:subClassOf D` and `D rdfs:subClassOf E` | `C rdfs:subClassOf E` |
 
-A simple reasoner applies the rules again and again, adding what they produce, until a pass adds nothing new: the result is the **closure**. It must stop, because the rules only combine terms already in the graph, and there are finitely many triples to build from them.
+A simple reasoner applies the rules again and again, adding what they produce, until a pass adds nothing new: the result is the **closure**. It must stop, because these six rules combine the graph's terms with a fixed vocabulary, so there are finitely many triples they can build.
 
 **SHACL**, the Shapes Constraint Language, is the W3C's language for validating RDF graphs. A **shape** names its **targets**, for example every instance of a class with `sh:targetClass`; the targeted terms are the **focus nodes**. For each focus node, a property constraint takes the values of one property (its `sh:path`) and checks them: at least `sh:minCount` values, at most `sh:maxCount`, each an instance of `sh:class`. The result is a **validation report** that either conforms or lists the violations.
 
