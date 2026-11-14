@@ -42,13 +42,13 @@ from tests.helpers import SCHEMAS_DIRECTORY
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import received, session
 from tests.real_service_projects import (
-    COMMAND_WAIT_S,
     GO,
     JAVA,
     KOTLIN,
     MEMBERS,
     PYTHON,
     TYPESCRIPT,
+    VERIFY_WAIT_S,
     FixtureProject,
     catalog_project,
     docker,
@@ -229,7 +229,7 @@ def test_test_events_stream_the_stack_the_command_and_the_visible_cases(
 
 
 def test_verify_require_ready_passes_on_the_reference(project: FixtureProject):
-    result = project.cstudy("verify", project.slug, "--require-ready")
+    result = project.cstudy("verify", project.slug, "--require-ready", timeout_s=VERIFY_WAIT_S)
 
     assert result.returncode == EXIT_OK, said(result)
     nothing_running(project)
@@ -358,10 +358,6 @@ def assert_a_member_loaded_before_the_migration_catches_the_naive_one(
     assert "h3" in result.stdout
     nothing_running(project)
     no_data_of_a_run_left(project)
-
-
-VERIFY_WAIT_S = 2 * COMMAND_WAIT_S
-"""`verify` brings up ten stacks one at a time and installs twice: 863 s on a busy machine."""
 
 
 def test_verify_require_ready_passes_on_the_reference_with_backing_services(

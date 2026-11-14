@@ -26,6 +26,10 @@ GO = "5905-fixture-rooms-go"
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
 COMMAND_WAIT_S = 3 * GENEROUS_WAIT_S
 """A command brings a stack up more than once, and may install."""
+VERIFY_WAIT_S = 3 * COMMAND_WAIT_S
+"""`verify --require-ready` installs twice and brings up stack after stack, one at a time: at a
+load average of 18 to 20 on 8 cores, the Java fixture's takes 679 s and the members fixture's
+830 s."""
 _LEFT_OUT = shutil.ignore_patterns(".ruff_cache", "__pycache__")
 """Caches a local lint leaves are no part of a starter."""
 LABEL_WORKSPACE = "cstudy.workspace"
