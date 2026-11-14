@@ -34,6 +34,10 @@
       "type": "array",
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/slug" }
+    },
+    "shell": {
+      "description": "The guide's topic is the shell: its examples may have a bash variant, and aim for bash and the six languages (docs/specs/guides.md#shell-guides)",
+      "type": "boolean"
     }
   },
   "$defs": {

@@ -8,6 +8,7 @@ from coding_study.domain.guide_checks import (
     CatalogFacts,
     GuideContent,
     guide_static_checks,
+    guide_static_warnings,
     path_static_checks,
 )
 from coding_study.domain.guide_markdown import GuideMarkdown, svg_marker, text_marker
@@ -254,8 +255,127 @@ def test_g6_an_example_has_a_supported_extension():
     )
     assert messages(found) == [
         "guides/hash-maps/guide.md: line 21: examples/hello.rb: an example is .go, .java, .js, "
-        ".mjs or .py"
+        ".kt, .mjs, .py, .rs, .sh or .ts"
     ]
+
+
+HELLO = f"```python examples/hello.py\n{EXAMPLE}```\n\n```output examples/hello.py\nhi\n```\n"
+VARIANT_CODE = {
+    "examples/hello.sh": 'echo "hi"\n',
+    "examples/hello.py": EXAMPLE,
+    "examples/hello.ts": 'console.log("hi");\n',
+    "examples/hello.java": 'class Hello { static void main() { System.out.println("hi"); } }\n',
+    "examples/hello.kt": 'fun main() = println("hi")\n',
+    "examples/hello.go": 'package main\n\nfunc main() { println("hi") }\n',
+    "examples/hello.rs": 'fn main() { println!("hi"); }\n',
+    "examples/hello.js": 'console.log("hi");\n',
+    "examples/hello.mjs": 'console.log("hi");\n',
+}
+FENCES = {
+    ".sh": "bash",
+    ".py": "python",
+    ".ts": "typescript",
+    ".java": "java",
+    ".kt": "kotlin",
+    ".go": "go",
+    ".rs": "rust",
+    ".js": "javascript",
+    ".mjs": "javascript",
+}
+
+
+def with_variants(*names: str, meta: GuideMeta = META, between: str = "\n") -> GuideContent:
+    """The guide with its example in the variants `names`, in that order."""
+    blocks = between.join(
+        f"```{FENCES['.' + name.rsplit('.', 1)[1]]} {name}\n{VARIANT_CODE[name]}```\n\n"
+        f"```output {name}\nhi\n```\n"
+        for name in names
+    )
+    markdown = guide_markdown().replace(HELLO, blocks)
+    files = ("meta.yaml", "guide.md", *names)
+    return content(
+        markdown, files=files, examples={name: VARIANT_CODE[name] for name in names}, meta=meta
+    )
+
+
+SHELL = replace(META, shell=True)
+
+
+def test_g6_an_example_may_come_in_every_language():
+    names = [name for name in VARIANT_CODE if not name.endswith((".sh", ".mjs"))]
+    assert messages(guide_static_checks(with_variants(*names), CATALOG)) == []
+
+
+def test_g6_a_bash_example_belongs_to_a_shell_guide():
+    assert messages(guide_static_checks(with_variants("examples/hello.sh"), CATALOG)) == [
+        "guides/hash-maps/guide.md: line 21: examples/hello.sh: a bash example belongs to a "
+        "shell guide, one with shell: true in meta.yaml"
+    ]
+    names = ("examples/hello.sh", "examples/hello.py")
+    assert messages(guide_static_checks(with_variants(*names, meta=SHELL), CATALOG)) == []
+
+
+def test_g6_the_variants_of_one_example_are_in_different_languages():
+    found = guide_static_checks(with_variants("examples/hello.js", "examples/hello.mjs"), CATALOG)
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 29: examples/hello.mjs is a second javascript variant "
+        "of examples/hello"
+    ]
+
+
+def test_g6_the_variants_follow_the_tab_order():
+    found = guide_static_checks(with_variants("examples/hello.go", "examples/hello.py"), CATALOG)
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 31: examples/hello.py must come before "
+        "examples/hello.go: variants follow the order bash, python, typescript, java, kotlin, "
+        "go, rust, javascript"
+    ]
+
+
+def test_g6_blocks_apart_are_separate_examples_in_any_order():
+    found = guide_static_checks(
+        with_variants("examples/hello.go", "examples/hello.py", between="\nThen Python.\n\n"),
+        CATALOG,
+    )
+    assert messages(found) == []
+
+
+def test_g6_pseudocode_names_no_file():
+    pseudo = "```pseudocode\nfor each key: count it\n```\n\n"
+    markdown = guide_markdown().replace(HELLO, f"{pseudo}{HELLO}")
+    assert messages(guide_static_checks(content(markdown), CATALOG)) == []
+    named = HELLO.replace("```python examples/hello.py", "```pseudocode examples/hello.py")
+    found = guide_static_checks(content(guide_markdown().replace(HELLO, named)), CATALOG)
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 21: pseudocode names no file: drop examples/hello.py "
+        "from its fence, or embed the file in the fence of its language"
+    ]
+
+
+def test_g11_warns_of_the_languages_an_example_with_variants_lacks():
+    found = guide_static_warnings(with_variants("examples/hello.py", "examples/hello.ts"))
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 21: examples/hello has no java, kotlin, go or rust "
+        "variant yet; an example with variants aims for python, typescript, java, kotlin, go "
+        "and rust"
+    ]
+
+
+def test_g11_a_shell_guides_target_holds_bash():
+    found = guide_static_warnings(
+        with_variants("examples/hello.py", "examples/hello.ts", meta=SHELL)
+    )
+    assert messages(found) == [
+        "guides/hash-maps/guide.md: line 21: examples/hello has no bash, java, kotlin, go or "
+        "rust variant yet; an example with variants aims for bash, python, typescript, java, "
+        "kotlin, go and rust"
+    ]
+
+
+def test_g11_says_nothing_of_an_example_in_one_language_or_of_a_complete_one():
+    complete = [name for name in VARIANT_CODE if not name.endswith((".sh", ".js", ".mjs"))]
+    assert messages(guide_static_warnings(content())) == []
+    assert messages(guide_static_warnings(with_variants(*complete))) == []
 
 
 @pytest.mark.parametrize(

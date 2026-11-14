@@ -233,7 +233,10 @@ def _whole_catalog(request: VerifyRequest) -> bool:
 def _guide_row(guide: GuideVerification) -> "ProblemVerification":
     """Guides and paths run no code, so they have no meta, languages or coverage."""
     return ProblemVerification(
-        directory=guide.directory, meta=None, static_errors=guide.static_errors
+        directory=guide.directory,
+        meta=None,
+        static_errors=guide.static_errors,
+        warnings=guide.warnings,
     )
 
 

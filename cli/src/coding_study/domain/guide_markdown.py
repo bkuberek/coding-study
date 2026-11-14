@@ -8,7 +8,7 @@ many of the same character and nothing else.
 
 import hashlib
 import re
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 
 MERMAID = "mermaid"
@@ -178,15 +178,29 @@ class GuideMarkdown:
             if _MARKER.fullmatch(self.lines[index].strip()) and index not in owned
         )
 
-    def terminal_text(self) -> str:
+    def terminal_text(
+        self, hidden: Collection[int] = (), notes: Mapping[int, str] | None = None
+    ) -> str:
         """The guide as `cstudy learn` shows it: each diagram that has a text drawing leaves out
-        its `mermaid` block, the blank lines after it and its marker."""
-        hidden: set[int] = set()
+        its `mermaid` block, the blank lines after it and its marker. The lines of `hidden` are
+        left out too, and each note of `notes` follows its line as a paragraph of its own."""
+        left_out = set(hidden)
         for diagram in self.mermaid_fences():
             drawing = self.text_drawing(diagram)
             if drawing is not None:
-                hidden.update(range(diagram.start, drawing.marker_line + 1))
-        return "".join(f"{line}\n" for index, line in enumerate(self.lines) if index not in hidden)
+                left_out.update(range(diagram.start, drawing.marker_line + 1))
+        after = notes or {}
+        shown: list[str] = []
+        for index, line in enumerate(self.lines):
+            if index not in left_out:
+                shown.append(f"{line}\n")
+            if index in after:
+                shown.append(f"\n{after[index]}\n")
+        return "".join(shown)
+
+    def only_blank_between(self, first: int, last: int) -> bool:
+        """Whether every line after line `first` and before line `last` is blank."""
+        return all(not line.strip() for line in self.lines[first + 1 : last])
 
     def _next_non_blank(self, start: int) -> int | None:
         return next(
