@@ -40,4 +40,5 @@ project:
 approaches:
   - {id: reference, name: The outbox row in the state's transaction and a relay that holds back a failed rental, role: optimal, time: "O(t) per action; O(p + t l) per relay pass", space: "O(r + a + p)", time_class: "n", space_class: "n"}
 related: [idempotent-document-consumer-typescript, warehouse-work-orders-typescript, cdc-apply]
+guides: [idempotency-and-exactly-once]
 estimate_minutes: 100

@@ -36,5 +36,5 @@ comparator: {type: ops}
 approaches:
   - {id: versioned-rows, name: "Rows and versions in hash maps, with a buffer per transaction", role: optimal, time: "O(c) per change; O(k c) per commit of k changes; O(n c) per schema change; O(n log n + n c) per rows or compare", space: "O(n c) for the rows, plus a version per key ever changed and the staged changes", time_class: "n log n", space_class: "n"}
 related: [stream-windows, pipeline-scheduler, transactional-kv-store, effective-dated-history, idempotent-document-consumer-typescript, transactional-outbox-typescript]
-guides: [change-data-capture]
+guides: [change-data-capture, replication-and-quorums]
 estimate_minutes: 120

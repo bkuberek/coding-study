@@ -37,4 +37,5 @@ comparator: {type: ops}
 approaches:
   - {id: stamped-events, name: Clocks kept per process and stamped on every event, role: optimal, time: "O(n) per event or compare; O(w^2 n) per read or concurrentWrites; O(E log E) per order", space: "O(E n)", time_class: "n", space_class: "n"}
 related: [consistent-hash-ring, distributed-kv-store, crdt-replicas, raft-sim]
+guides: [time-and-order, why-distribution-is-hard, crdts]
 estimate_minutes: 90

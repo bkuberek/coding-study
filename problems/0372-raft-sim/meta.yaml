@@ -38,4 +38,5 @@ comparator: {type: ops}
 approaches:
   - {id: message-handlers, name: One handler per message kind that applies the rules of the Raft summary, role: optimal, time: "O(n L) per call", space: "O(n L + M)", time_class: "n", space_class: "n"}
 related: [logical-clocks, crdt-replicas, consistent-hash-ring]
+guides: [consensus-with-raft]
 estimate_minutes: 150
