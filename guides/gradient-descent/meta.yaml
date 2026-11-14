@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Gradient descent and learning rates
+summary: How a model learns by taking small steps downhill on its loss, why the learning rate decides between crawling, converging and diverging, why features need a common scale, and what stochastic and adaptive methods change.
+level: core
+prerequisites: [linear-and-logistic-regression]
+related: [overfitting-and-regularization]
+problems: [gradient-descent-models]

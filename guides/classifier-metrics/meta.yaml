@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Classifier metrics: from the confusion matrix to ROC and calibration"
+summary: How to measure a classifier, with the confusion matrix, precision, recall and F1 at one threshold, ROC and precision-recall curves over all of them, and calibration for scores that claim to be probabilities.
+level: core
+prerequisites: [linear-and-logistic-regression]
+related: [evaluation-pitfalls, evaluating-llm-applications]
+problems: [classification-metrics, calibration-metrics]
