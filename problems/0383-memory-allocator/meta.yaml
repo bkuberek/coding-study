@@ -33,4 +33,5 @@ comparator: {type: ops}
 approaches:
   - {id: block-list, name: "Address-ordered list of blocks with splitting, merging and buddies", role: optimal, time: "O(b) per allocate or free; O(t b) per compare", space: "O(b)", time_class: "n", space_class: "n"}
 related: [range-module, merge-intervals, insert-interval, lru-cache, virtual-memory-sim]
+guides: [memory-allocation]
 estimate_minutes: 120

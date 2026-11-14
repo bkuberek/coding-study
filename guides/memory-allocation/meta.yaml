@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Memory allocators: free lists, fragmentation and buddies"
+summary: How malloc and free hand out and take back pieces of a heap; headers, free lists, splitting and coalescing; internal and external fragmentation; first, next and best fit, size classes, buddies and object caches.
+level: core
+prerequisites: [processes-and-system-calls]
+related: [virtual-memory]
+problems: [memory-allocator]

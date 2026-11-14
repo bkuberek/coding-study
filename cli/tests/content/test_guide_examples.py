@@ -3,9 +3,11 @@
 
 Each example runs from a copy in a folder of its own, so it writes nothing into the checkout.
 Python and JavaScript run in the fast suite; Go and Java are slow (Java also `jvm`), and a language
-whose toolchain is missing is skipped.
+whose toolchain is missing is skipped, as is a Python example that calls `os.fork` where the
+platform has no `os.fork`.
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -61,6 +63,9 @@ def test_an_example_prints_what_its_guide_says(
     tool = TOOLS.get(example.suffix)
     if tool is not None and shutil.which(tool) is None:
         pytest.skip(f"{tool} is not installed")
+    needs_fork = example.suffix == ".py" and "os.fork(" in example.read_text(encoding="utf-8")
+    if needs_fork and not hasattr(os, "fork"):
+        pytest.skip("needs os.fork, a POSIX call")
     copy = tmp_path / example.name
     shutil.copyfile(example, copy)
     result = subprocess.run(

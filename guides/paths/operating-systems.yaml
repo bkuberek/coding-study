@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Operating systems: from processes and scheduling to virtual memory and deadlock"
+summary: From what a process is and how the kernel schedules it, through virtual memory, page replacement and memory allocators, to locks, condition variables, semaphores and deadlock, with the problems that practise each idea.
+steps:
+  - guide: processes-and-system-calls
+  - guide: cpu-scheduling
+  - problem: single-threaded-cpu
+  - problem: cpu-scheduler-sim
+  - guide: virtual-memory
+  - problem: lru-cache
+  - problem: virtual-memory-sim
+  - guide: memory-allocation
+  - problem: memory-allocator
+  - guide: locks-and-condition-variables
+  - problem: concurrency-limiter
+  - problem: bounded-blocking-queue
+  - problem: read-write-lock
+  - problem: thread-safe-lru-cache
+  - guide: deadlock
+  - problem: bank-transfers

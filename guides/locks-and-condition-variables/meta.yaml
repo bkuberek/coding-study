@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Locks, condition variables and semaphores
+summary: Why threads that share memory lose updates, and the primitives that stop them; mutual exclusion and locks, waiting for a condition with a condition variable, counting with Dijkstra's semaphores, and readers and writers.
+level: core
+prerequisites: [processes-and-system-calls]
+related: [deadlock, cpu-scheduling]
+problems: [concurrency-limiter, bounded-blocking-queue, read-write-lock, thread-safe-lru-cache]

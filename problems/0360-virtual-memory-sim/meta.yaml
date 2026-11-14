@@ -39,4 +39,5 @@ comparator: {type: ops}
 approaches:
   - {id: page-map, name: "A page map, a TLB in use order and a frame table", role: optimal, time: "O(t + f) per translation, t the TLB entries and f the frames; O(m) per tableBytes over m pages in the table; O(w log w) per workingSet over w references", space: "O(m + t + f + r) for r references", time_class: "n", space_class: "n"}
 related: [lru-cache, cpu-scheduler-sim, memory-allocator]
+guides: [virtual-memory]
 estimate_minutes: 120

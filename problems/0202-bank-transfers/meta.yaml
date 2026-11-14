@@ -41,4 +41,5 @@ approaches:
 references:
   leetcode: {number: 2043, url: "https://leetcode.com/problems/simple-bank-system/"}
 related: [thread-safe-lru-cache, token-bucket-limiter]
+guides: [deadlock]
 estimate_minutes: 35

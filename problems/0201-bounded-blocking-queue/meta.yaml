@@ -39,4 +39,5 @@ approaches:
 references:
   leetcode: {number: 1188, url: "https://leetcode.com/problems/design-bounded-blocking-queue/"}
 related: [concurrency-limiter, read-write-lock]
+guides: [locks-and-condition-variables]
 estimate_minutes: 30
