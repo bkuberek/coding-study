@@ -1443,7 +1443,7 @@ The [ready rules](authoring.md#ready-criteria) can be met with these changes:
 |---------|--------------|
 | `5901-fixture-rooms-typescript`, `5902-fixture-rooms-python` | A mock server, `bootstrap`, `reset` on a file in `CSTUDY_DATA_DIR`, levels, hidden cases with the 429 scenario, a reference and a naive solution that a hidden case catches |
 | `5904-fixture-rooms-java` | The same cases and mock server as `5902`, in Java on the Gradle image: Gradle's user home in the install cache (`app.install_cache`), Jackson as a real dependency in the lock, every build offline, and `bootstrap` and `reset` as JDK source files (`java scripts/Seed.java`), so neither needs Gradle. Its tests also check, from a dev stack's container, that `/cache` is mounted and that the image's `VOLUME` is a tmpfs |
-| `5903-fixture-members-python` | Postgres and Redis as [backing services](#backing-services), `pg8000` (pure Python, so `--no-build` holds), a migration runner of its own, `grade_setup` with a hidden member, `reset` from a template database, and a naive migration that recreates the table and loses that member. It installs 8.5 MB, about 11 once its tests have run, and its stacks used about 91 MiB at their peak |
+| `5903-fixture-members-python` | Postgres and Valkey as [backing services](#backing-services), `pg8000` (pure Python, so `--no-build` holds), a migration runner of its own, `grade_setup` with a hidden member, `reset` from a template database, and a naive migration that recreates the table and loses that member. It installs 8.5 MB, about 11 once its tests have run, and its stacks used about 91 MiB at their peak |
 
 ## On Linux
 

@@ -35,7 +35,7 @@ project:
   services: services/compose.yaml
   requires:
     lock: uv.lock
-    services: [postgres, redis]
-    sizes: {install_mb: 10, images_mb: {app: 62, postgres: 117, redis: 17}, memory_mb: 150}
+    services: [postgres, valkey]
+    sizes: {install_mb: 10, images_mb: {app: 62, postgres: 117, valkey: 19}, memory_mb: 150}
 approaches:
   - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}
