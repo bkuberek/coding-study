@@ -219,6 +219,10 @@ def _no_environment(_launch: Launch) -> dict[str, str]:
     return {}
 
 
+def _no_data_options(_data_directory: str) -> dict[str, JsonValue]:
+    return {}
+
+
 @dataclass(frozen=True, slots=True)
 class LanguageServer:
     language: Language
@@ -261,6 +265,9 @@ class LanguageServer:
     data_files: Mapping[str, str] = field(default_factory=dict[str, str])
     """Files written into a session's data directory before the server starts, by their path in
     it."""
+    data_options: Callable[[str], dict[str, JsonValue]] = _no_data_options
+    """`initializationOptions` that name places in the session's data directory, given its
+    absolute path, on top of `initialization_options`."""
     versioner: Callable[["LanguageServer", str], tuple[str, ...]] = node_version_command
     """The command that prints the version, given the absolute `.cs/lsp/`; not run for an
     archive, whose `script` already pins the version."""
@@ -657,12 +664,12 @@ def _kotlin_lsp_linux_environment(launch: Launch) -> dict[str, str]:
 def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
     """Its configuration, logs and plugins in the session's data directory, no update check (which
     would reach JetBrains), and the Gradle import on the selected JDK, as every Gradle call of
-    cstudy runs. The launcher splits the variable as a shell does. The build keeps its index
-    databases under `$XDG_CACHE_HOME/JetBrains/IntelliJServer/workspaces/`, one per root whatever
-    the system path, and its license store in `$XDG_CONFIG_HOME/JetBrains/IntelliJServer`: in the
-    data directory too, each session of a root has an index of its own, which a second server
-    could not open beside the first, and nothing goes into `~/.cache` or `~/.config`. Only the
-    Linux build reads these two; on macOS and Windows it keeps them in the user's own folders."""
+    cstudy runs. The launcher splits the variable as a shell does. The build keeps its license
+    store in `$XDG_CONFIG_HOME/JetBrains/IntelliJServer`, and, without the `indexDir` that
+    `initialize` names (`_kotlin_lsp_data_options`), its index databases under
+    `$XDG_CACHE_HOME/JetBrains/IntelliJServer/workspaces/`: in the data directory too, nothing
+    goes into `~/.cache` or `~/.config`. Only the Linux build reads these two; on macOS and
+    Windows it keeps them in the user's own folders."""
     data = launch.data_directory
     options = [
         *KOTLIN_LSP_JVM_OPTIONS,
@@ -680,6 +687,14 @@ def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
     }
 
 
+def _kotlin_lsp_data_options(data_directory: str) -> dict[str, JsonValue]:
+    """The index databases in the session's data directory, named by `indexDir` as JetBrains'
+    `warmup.py` names their place, which every build reads. Without it they go under the caches
+    folder, one index per root: on macOS and Windows the user's own, where a second session of
+    the root cannot open the index beside the first, whose lock refuses it."""
+    return {"indexDir": f"{data_directory}/index"}
+
+
 KOTLIN_LSP = LanguageServer(
     language=Language.KOTLIN,
     name="kotlin-lsp",
@@ -695,6 +710,7 @@ KOTLIN_LSP = LanguageServer(
     environment=_kotlin_lsp_environment,
     jdks=SUPPORTED_JDKS,
     data="kotlin-lsp-data",
+    data_options=_kotlin_lsp_data_options,
     license=KOTLIN_LSP_LICENSE,
     warmup=Warmup(script=f"{KOTLIN_LSP_HOME}/bin/warmup.py", roots=(JVM_PROJECT,)),
     releases=KOTLIN_LSP_RELEASES,
