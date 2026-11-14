@@ -48,6 +48,7 @@ problems: [contains-duplicate, two-sum, valid-anagram]
 | `prerequisites` | list of guide slugs | no | Guides to read first. They form no cycle |
 | `related` | list of guide slugs | no | Guides worth reading next, in no order |
 | `problems` | list of problem slugs | no | The problems that practise the guide, in the order to try them; each is named in `## Practice` |
+| `shell` | boolean, default false | no | true for a guide whose topic is the shell, such as `using-the-terminal`: a [shell guide](#shell-guides), whose examples may have a bash variant |
 
 ## guide.md
 
@@ -84,12 +85,86 @@ print(hash(7) % 4)
 
 | Rule | Detail |
 |------|--------|
-| Languages | `.py` (Python 3.13+), `.js` and `.mjs` (Node.js 24+), `.go` (one `package main` file), `.java` (one file, run as a single-file source program). Python always; a second language where it shows something Python can't |
+| Languages | By the file's extension, in the table below |
 | Determinism | The output never depends on hash seeds, map iteration order, time or the machine. An example about a randomized order shows it through something stable, such as a sorted list or a comparison |
-| Self-contained | The standard library only; no files, network or arguments |
-| Test | `cli/tests/content/test_guide_examples.py` runs every example from its folder and compares its standard output with its `output` block, exit 0 required. Python and JavaScript run in the fast suite, Go and Java are `slow` (Java also `jvm`); a language whose toolchain is missing is skipped, and so is a Python example that calls `os.fork` where the platform has none |
+| Self-contained | The standard library only, and for bash the builtins and the utilities POSIX defines, with only the options it defines; no network or arguments, and no files but those it makes in a directory of its own (`mktemp -d`) and removes before it ends |
+| Test | `cli/tests/content/test_guide_examples.py` runs every example from a copy in a folder of its own and compares its standard output with its `output` block, exit 0 and an empty standard error required. Python, TypeScript, JavaScript and bash run in the fast suite; Go, Rust, Java and Kotlin are `slow`, Java and Kotlin also `jvm`. A language whose tool is missing is skipped, and so is a Python example that calls `os.fork` where the platform has none |
 
-Only these fences are examples: a plain ```` ```python ```` block without a path is an illustration, and is not run.
+| Extension | Fence | Language | Runs as |
+|-----------|-------|----------|---------|
+| `.sh` | `bash` | Bash 3.2 or later, the bash of macOS; only in a [shell guide](#shell-guides) | `bash <file>` |
+| `.py` | `python` | Python 3.13 or later | `python -I -B <file>` |
+| `.ts` | `typescript` | TypeScript that Node.js 24 runs by stripping its types: no `enum`, `namespace` or parameter properties | `node <file>` |
+| `.java` | `java` | One file, run as a single-file source program, so its name need not match its class | `java <file>` |
+| `.kt` | `kotlin` | One file with a top-level `main` | `kotlinc <file> -include-runtime -d <file>.jar`, then `java -jar <file>.jar` |
+| `.go` | `go` | One `package main` file | `go run <file>` |
+| `.rs` | `rust` | One file with a `main`, edition 2021 | `rustc --edition 2021 -o <program> <file>`, then the program |
+| `.js`, `.mjs` | `javascript` | Node.js 24 or later | `node <file>` |
+
+Only these fences are examples: a fenced block that names no file in `examples/` is an illustration, and is never run, as are [pseudocode](#pseudocode) and terminal sessions in ```` ```console ```` blocks.
+
+#### Variants
+
+One example can come in several languages, its **variants**. The [Guides page](#guides-page) shows them as tabs, one language at a time, and [`cstudy learn`](#in-the-terminal) prints one of them.
+
+The variants are files of `examples/` that share a base name, the file name without its extension: `examples/chaining.py`, `examples/chaining.ts`, `examples/chaining.java`. `guide.md` embeds them one after another, each as an example is, with its own `output` block right after it and nothing but blank lines between the blocks:
+
+````markdown
+```python examples/chaining.py
+print("get('zed') =", table.get("zed"))
+```
+
+```output examples/chaining.py
+get('zed') = None
+```
+
+```typescript examples/chaining.ts
+console.log("get('zed') =", table.get("zed"));
+```
+
+```output examples/chaining.ts
+get('zed') = null
+```
+````
+
+| Rule | Detail |
+|------|--------|
+| One example | Such a run of two or more blocks of one base name is one example with variants. A file of the same base name elsewhere in the guide is a separate example, in one language |
+| One per language | No two variants of one example are in the same language, such as a `.js` and a `.mjs` |
+| Order | The variants come in the tab order: Bash, Python, TypeScript, Java, Kotlin, Go, Rust, then JavaScript. It is fixed, so a language keeps its place from one example and one guide to the next |
+| Output | Each variant has its own `output` block, and its test compares what it prints with that block. The variants show the same thing and print the same lines, each in its own language's words: `None`, `null` or `nil`, a list as `[1, 2]` or `[1 2]`. The prose around the example is true of every variant; what one language does differently is a separate example with prose of its own |
+| One language | An example of one file is one block, as before. An example that shows a fact of one language, such as Python's `hash()` of a `str` or the order of a Go map, stays in that language and is never translated |
+| Target | Every runnable example of a guide aims for the six languages of cstudy: Python, TypeScript, Java, Kotlin, Go and Rust; an example of a shell guide aims for bash and the six. [G11](#guides) warns of the languages an example with variants lacks. An example in one language is not warned of, since it may show a fact of that language, and the guides gain their variants in waves |
+
+#### The language shown
+
+One rule picks the variant the Guides page shows first and the one `cstudy learn` prints. It takes the first of these that the example has:
+
+1. The language the reader chose: on the page, the last tab chosen since the page was opened; in the terminal, `--lang`.
+2. Bash: only a shell guide has bash variants, and the shell is its topic.
+3. `default_lang` of the [configuration](cli.md#configuration), the language the reader practises in.
+4. Python.
+5. The first variant in the tab order.
+
+On the page, choosing a tab chooses that language for every example: each example that has it switches to it, and every other one shows what the rule gives without it. The choice holds for every guide read until the page is reloaded or closed. It is not stored: `default_lang`, which the Settings view changes, stays the one lasting choice.
+
+#### Pseudocode
+
+Pseudocode is language-neutral: it is never run, never translated and never has tabs. It is a ```` ```pseudocode ```` block that names no file, shown as one block, as GitHub shows it as plain text. A `pseudocode` fence that names a file in `examples/` fails G6, so an example and pseudocode are never mistaken for each other. A guide may hold pseudocode and examples with variants side by side, and the checks never count pseudocode, or any other illustration, as an example missing a variant.
+
+#### Shell guides
+
+A guide with `shell: true` in `meta.yaml` teaches the shell; `using-the-terminal` is one. Only a shell guide's examples may have a bash variant, a `.sh` file in a `bash` fence, and an example that has one starts on it. Its terminal sessions stay ```` ```console ```` illustrations, a `$ ` before each command.
+
+#### In the terminal
+
+`cstudy learn <guide>` prints each example with variants in the [language shown](#the-language-shown), its own output after it, then one line that names the others and how to pick one:
+
+```text
+Also in bash: cstudy learn using-the-terminal --lang <language>
+```
+
+`--lang <language>` is one of `bash`, `python`, `typescript`, `java`, `kotlin`, `go`, `rust` and `javascript`, and is step 1 of the rule for every example. `--json` gives `markdown` as written, with every variant.
 
 ### Diagrams
 
@@ -180,7 +255,7 @@ The same problem may come twice with different levels, so a path can return to i
 
 ## Static checks
 
-`cstudy verify` runs these after the problems' and items' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure.
+`cstudy verify` runs these after the problems' and items' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure. A warning, G11's, shows under its guide's line and fails nothing.
 
 ### Guides
 
@@ -191,11 +266,12 @@ The same problem may come twice with different levels, so a path can return to i
 | G3 | `guide.md`: `# <title>` with the title of `meta.yaml`, the [sections](#sections) non-empty and in order, no `TODO` |
 | G4 | `prerequisites` and `related` name other guides that exist; `problems` name problems that exist, each named in `## Practice` |
 | G5 | Prerequisites form no cycle, across every guide |
-| G6 | Every example fence names a file in `examples/` with a supported extension, holds that file's text exactly and is followed by exactly one `output` block for it; every file in `examples/` is embedded exactly once |
+| G6 | Every example fence names a file in `examples/` with a supported extension, in the fence of its language, holds that file's text exactly and is followed by exactly one `output` block for it; every file in `examples/` is embedded exactly once. A `.sh` file is in a shell guide only. The [variants](#variants) of one example are in different languages and in the tab order. A `pseudocode` fence names no file |
 | G7 | Every `mermaid` block starts with a supported type and has `accTitle` and `accDescr` lines |
 | G8 | Every `mermaid` block is followed by a text drawing whose marker hash matches its source, no line of it wider than 100 characters; no marker stands without its block |
 | G9 | `## Further reading` holds at least one `https://` link |
 | G10 | The n-th `mermaid` block has `diagrams/<n>-light.svg` and `diagrams/<n>-dark.svg`, each starting with a marker whose hash matches its source; every file in `diagrams/` is one of them. A missing or stale drawing, and a file that belongs to no diagram, fail with the hint to run `pnpm render` in `tools/guides/`, which removes such a file |
+| G11 | A warning, which fails nothing: an example with variants that lacks a language of its [target](#variants), on one line, such as `examples/chaining has no rust variant yet; an example with variants aims for python, typescript, java, kotlin, go and rust` |
 
 ### Paths
 
@@ -231,13 +307,13 @@ The path's next step is its first step that is not done.
 
 1. Read the problems the guide will link, their `problem.md` and `solutions/explanation.md`, so the guide matches the catalog. Teach the idea with other examples: a guide never gives away a linked problem's solution.
 2. Write `meta.yaml` and `guide.md` in your own words ([ADR 0004](../decisions/0004-original-problem-wording.md)). State every complexity with its conditions, and check every fact about a language against its official documentation, citing it.
-3. Write the examples, run them, and paste each one's output into its `output` block.
+3. Write the examples, run them, and paste each one's output into its `output` block. Give a runnable example its [variants](#variants) in the languages of its target, in the tab order; keep an example that shows a fact of one language, and pseudocode, as one block.
 4. Draw the diagrams in Mermaid, then `pnpm install` and `pnpm render` in `tools/guides/`, which writes the text drawings and the SVG drawings; look at the SVGs, light and dark, in the Guides view of `cstudy serve`.
 5. `cstudy verify --static`, then `uv run pytest tests/content/test_guide_examples.py` in `cli/`.
 6. List every fact about a language, library or standard with its source in a review page, as [the hashing guides' review](../reviews/guides-hashing.md) does, so that an independent review can check it.
 
 ## Guides page
 
-The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
+The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, each example with [variants](#variants) as tabs that change language together, starting on the [language shown](#the-language-shown), links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
 
 `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` run `cstudy serve --open` landing on the guide or the path ([cli](cli.md#cstudy-learn)). The terminal still reads every guide in full.
