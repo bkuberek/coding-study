@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "B-tree indexes: balanced trees of pages"
+summary: "How an index finds rows without a full scan: B-trees and B+ trees as Bayer, McCreight and Comer describe them, why they stay shallow, keys of several columns, and the table reads an index scan still costs."
+level: core
+prerequisites: [pages-and-records]
+related: [binary-search-trees, lsm-trees-and-compaction, query-planning-and-joins]
+problems: [btree-index]
