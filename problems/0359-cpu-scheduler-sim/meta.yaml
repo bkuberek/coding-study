@@ -39,4 +39,5 @@ comparator: {type: ops}
 approaches:
   - {id: clock-loop, name: One clock loop with a ready queue per core, role: optimal, time: "O(n^2) for shortest job first; O(n log n + T (k + c^2)) for the clock loops, T the ticks simulated", space: "O(n + s) for s timeline segments", time_class: "n^2", space_class: "n"}
 related: [single-threaded-cpu, task-scheduler, virtual-memory-sim]
+guides: [cpu-scheduling]
 estimate_minutes: 120
