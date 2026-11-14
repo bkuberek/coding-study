@@ -19,8 +19,12 @@ PLACEHOLDER = "TODO"
 WEB_LINK = "https://"
 PROGRAM = "cstudy"
 END_OF_OPTIONS = "--"
-SHELL_FENCES = frozenset({"", "bash", "sh", "shell", "console", "zsh", "text"})
-"""The fences whose lines are read for commands: a shell's, a terminal's text, or no language."""
+SHELL_FENCES = frozenset({"bash", "sh", "shell", "zsh"})
+"""The fences whose every line is read for commands."""
+TERMINAL_FENCES = frozenset({"", "text", "console"})
+"""The fences of a terminal's text, whose lines are output but for a prompt's and a fix's."""
+PROMPT = "$ "
+FIX = "fix: "
 SEPARATORS = "|&;"
 """The characters a shell ends a command at: `|`, `||`, `&&`, `;`."""
 LINK_RULE = "link to a page (<slug>.md), a heading (#<id>) or an https:// address"
@@ -98,8 +102,8 @@ def order_issues(pages: Sequence[DocPage]) -> dict[str, list[ContentIssue]]:
 
 
 def command_mentions(markdown: str) -> Iterator[CommandMention]:
-    """The lines of shell blocks and the inline code spans that hold the word `cstudy`. In a
-    table, `\\|` in a span is `|`."""
+    """The lines of shell blocks, the prompt and fix lines of a terminal's text, and the inline
+    code spans that hold the word `cstudy`. In a table, `\\|` in a span is `|`."""
     fence: tuple[str, str] | None = None
     for index, line in enumerate(markdown.splitlines()):
         opening = _FENCE.fullmatch(line)
@@ -111,8 +115,10 @@ def command_mentions(markdown: str) -> Iterator[CommandMention]:
             marker, language = fence
             if opening is not None and _closes(opening, marker):
                 fence = None
-            elif language in SHELL_FENCES and _names_program(line):
-                yield CommandMention(index, line)
+            else:
+                command = _fenced_command(line, language)
+                if command is not None and _names_program(command):
+                    yield CommandMention(index, command)
             continue
         for span in _INLINE_CODE.finditer(line):
             code = span["code"].replace(_TABLE_PIPE, "|")
@@ -193,6 +199,19 @@ def _prose_lines(lines: Sequence[str]) -> Iterator[tuple[int, str]]:
                 marker = None
         else:
             yield index, _INLINE_CODE.sub("", line)
+
+
+def _fenced_command(line: str, language: str) -> str | None:
+    """The part of a fenced line that is a command: all of a shell's line; in a terminal's text,
+    a line after the prompt `$ `, or what follows `fix: `, as `cstudy doctor` prints a fix."""
+    if language in SHELL_FENCES:
+        return line
+    if language not in TERMINAL_FENCES:
+        return None
+    if line.lstrip().startswith(PROMPT):
+        return line
+    _before, fix, after = line.partition(FIX)
+    return after if fix else None
 
 
 def _closes(fence: re.Match[str], marker: str) -> bool:

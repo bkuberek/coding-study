@@ -169,7 +169,18 @@ def test_words_after_end_of_options_and_a_value_are_not_flags():
     assert commands_in("# D\n\n`cstudy start two-sum --lang --x -- --anything`\n") == []
 
 
+def test_a_terminals_text_is_read_at_its_prompts_and_fixes_only():
+    markdown = (
+        "# D\n\n```text\nWARN gopls 0.23.0 installed; cstudy needs 0.24.0\n"
+        "$ cstudy doctor --fixx\n      fix: cstudy doctor --json --nope\n```\n"
+    )
+    assert commands_in(markdown) == [
+        "user-docs/doctor.md: line 11: cstudy doctor has no flag --fixx",
+        "user-docs/doctor.md: line 12: cstudy doctor has no flag --nope",
+    ]
+
+
 def test_text_that_a_shell_cannot_split_is_split_at_spaces():
-    assert commands_in("# D\n\n```text\nWARN it's stale; cstudy doctor --fixx\n```\n") == [
+    assert commands_in("# D\n\n```text\nfix: it's stale; cstudy doctor --fixx\n```\n") == [
         "user-docs/doctor.md: line 10: cstudy doctor has no flag --fixx"
     ]

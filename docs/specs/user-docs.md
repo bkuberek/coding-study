@@ -136,7 +136,7 @@ The search matches each page's passages: its title with its summary and the text
 | D3 | The body starts with `# <title>` with the title of the front matter; no `TODO`, no HTML tag and no image outside code |
 | D4 | No two pages share an `order`, and each section's pages follow one another |
 | D5 | Every link is an `https://` address, a page's file name or `#` and an id; the page exists, and so does the heading the id names |
-| D6 | Every `cstudy` command in a shell block or in inline code is a command of `cstudy`, and each of its flags is one the command takes ([accuracy](#accuracy)) |
+| D6 | Every `cstudy` command in a shell block, a terminal's prompt or fix line, or inline code is a command of `cstudy`, and each of its flags is one the command takes ([accuracy](#accuracy)) |
 
 ### Accuracy
 
@@ -144,7 +144,8 @@ A page that names a command `cstudy` does not have, or a flag a command does not
 
 | Where | What is checked |
 |-------|-----------------|
-| Fenced blocks of `bash`, `sh`, `shell`, `console`, `zsh` and `text`, and blocks without a language | Every line |
+| Fenced blocks of `bash`, `sh`, `shell` and `zsh` | Every line |
+| Fenced blocks of `text` and `console`, and blocks without a language, which show a terminal's output | A line that starts with the prompt `$ `, and what follows `fix: ` on a line, as `cstudy doctor` prints a fix |
 | Inline code | Every span |
 
 In each, the text is split as a shell splits it, and at `&&`, `||`, `|` and `;`; a part that holds the word `cstudy` names the command after it. Global flags (`--workspace PATH`) may come first; the first word that is no flag is the command, and for `cstudy set` and `cstudy config` the next is the subcommand. Each word that starts with `-` is a flag, with any `=value` left out, until `--`; brackets around a word, as in `[--fix]`, are left out. A placeholder in angle brackets as the command (`cstudy <command> --help`) is not checked.
