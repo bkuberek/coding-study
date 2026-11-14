@@ -54,6 +54,10 @@ function show(context: PageContext, route: Route): Cleanup {
       return lazyView(context, () => import("./page/views/guides.ts").then((module) => (opened) => module.guideView(opened, route.slug)));
     case "path":
       return lazyView(context, () => import("./page/views/guides.ts").then((module) => (opened) => module.pathView(opened, route.slug)));
+    case "docs":
+      return lazyView(context, () => import("./page/views/docs.ts").then((module) => (opened) => module.docsView(opened, route.search)));
+    case "doc":
+      return lazyView(context, () => import("./page/views/docs.ts").then((module) => (opened) => module.docView(opened, route.slug, route.heading)));
     case "attempt":
       return attemptView(context, route.id);
     case "mock":

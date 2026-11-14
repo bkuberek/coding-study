@@ -16,6 +16,8 @@ export type Route =
   | { readonly view: "guides" }
   | { readonly view: "guide"; readonly slug: string }
   | { readonly view: "path"; readonly slug: string }
+  | { readonly view: "docs"; readonly search: string }
+  | { readonly view: "doc"; readonly slug: string; readonly heading: string | null }
   | { readonly view: "attempt"; readonly id: number }
   | { readonly view: "mock" }
   | { readonly view: "progress" }
@@ -44,6 +46,11 @@ export function parseRoute(fragment: string): Route {
   if (first === "sets" && second !== undefined && rest.length === 0) return { view: "set", name: decodeURIComponent(second) };
   if (first === "guides" && second !== undefined && rest.length === 0) return { view: "guide", slug: decodeURIComponent(second) };
   if (first === "paths" && second !== undefined && rest.length === 0) return { view: "path", slug: decodeURIComponent(second) };
+  if (first === "docs" && second === undefined) return { view: "docs", search: new URLSearchParams(query).get("search") ?? "" };
+  if (first === "docs" && second !== undefined && rest.length <= 1) {
+    const [heading] = rest;
+    return { view: "doc", slug: decodeURIComponent(second), heading: heading === undefined ? null : decodeURIComponent(heading) };
+  }
   if (first === "attempts" && second !== undefined && rest.length === 0 && /^[1-9]\d*$/.test(second)) {
     return { view: "attempt", id: Number(second) };
   }
@@ -73,6 +80,16 @@ export const setHash = (name: string): string => `${SETS_HASH}/${encodeURICompon
 export const GUIDES_HASH = "#/guides";
 export const guideHash = (slug: string): string => `${GUIDES_HASH}/${encodeURIComponent(slug)}`;
 export const pathHash = (slug: string): string => `#/paths/${encodeURIComponent(slug)}`;
+/** The Docs view, with its search in the query, and a page or one of its headings: where
+ * `cstudy docs --open` and `cstudy docs <topic> --open` land (docs/specs/user-docs.md#docs-view). */
+export const DOCS_HASH = "#/docs";
+export function docsHash(search: string): string {
+  return search ? `${DOCS_HASH}?${new URLSearchParams({ search }).toString()}` : DOCS_HASH;
+}
+export function docHash(slug: string, heading: string | null = null): string {
+  const page = `${DOCS_HASH}/${encodeURIComponent(slug)}`;
+  return heading === null || heading === "" ? page : `${page}/${encodeURIComponent(heading)}`;
+}
 
 function filtersOf(query: URLSearchParams): Filters {
   const filters: Filters = {};

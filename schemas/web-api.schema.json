@@ -429,6 +429,73 @@
         "html": { "type": "string" }
       }
     },
+    "docs": {
+      "description": "GET /api/v1/docs: cstudy docs --json, which cli.md describes, each page with passages added: its opening (id \"\", the page's title, and its summary with the text before its first ##), then each ## and ### section, as plain text the Docs view's search reads (docs/specs/user-docs.md#docs-view)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pages"],
+      "properties": {
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "title", "summary", "section", "order", "headings", "passages"],
+            "properties": {
+              "slug": { "type": "string" },
+              "title": { "type": "string" },
+              "summary": { "type": "string" },
+              "section": { "type": "string" },
+              "order": { "type": "integer", "minimum": 1 },
+              "headings": { "$ref": "#/$defs/doc_headings" },
+              "passages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "title", "text"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "text": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "doc": {
+      "description": "GET /api/v1/docs/{slug}: cstudy docs <topic> --json, which cli.md describes, with html, the page as the Docs view shows it: without its # title, each heading with the id doc-<its GitHub id>, a link to another page or heading as a route of the view (#/docs/<slug>/<id>), a web link opening elsewhere, any other link as its text",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "title", "summary", "section", "order", "headings", "markdown", "html"],
+      "properties": {
+        "slug": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "section": { "type": "string" },
+        "order": { "type": "integer", "minimum": 1 },
+        "headings": { "$ref": "#/$defs/doc_headings" },
+        "markdown": { "type": "string" },
+        "html": { "type": "string" }
+      }
+    },
+    "doc_headings": {
+      "description": "A user page's ## and ### headings in order: id is GitHub's id of the heading, title its text without Markdown's marks",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "level"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "level": { "enum": [2, 3] }
+        }
+      }
+    },
     "needs": {
       "description": "GET /api/v1/problems/{slug}/needs: what a service project depends on, as `cstudy show` lists it, each row with its state here; null for any other problem",
       "type": "object",

@@ -98,14 +98,14 @@ def print_page(output: Console, page: DocPage, as_json: bool) -> None:
 
 
 def listing_document(pages: tuple[DocPage, ...]) -> dict[str, JsonValue]:
-    return {"pages": [_page_fields(page) for page in pages]}
+    return {"pages": [page_fields(page) for page in pages]}
 
 
 def page_document(page: DocPage) -> dict[str, JsonValue]:
-    return {**_page_fields(page), "markdown": page.markdown}
+    return {**page_fields(page), "markdown": page.markdown}
 
 
-def _page_fields(page: DocPage) -> dict[str, JsonValue]:
+def page_fields(page: DocPage) -> dict[str, JsonValue]:
     return {
         "slug": page.slug,
         "title": page.title,

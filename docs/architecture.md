@@ -71,6 +71,7 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `PreferencesStore` | `FsPreferencesStore` (`adapters/preferences_fs.py`) | The web UI's `.cs/serve/preferences.json`; `cstudy doctor` reads `code_intelligence` from it |
 | `ProblemSetStore` | `YamlProblemSets` (`adapters/yaml_problem_sets.py`) | The workspace's `sets.yaml`: read and validated, and changed by the lines a change needs, keeping the user's comments ([ADR 0023](decisions/0023-problem-sets.md)) |
 | `GuideCatalog` | `FsGuideCatalog` (`adapters/fs_guide_catalog.py`) | The [concept guides and learning paths](specs/guides.md) in `guides/`: `meta.yaml` and path files validated with JSON Schema, `guide.md` and the example files ([ADR 0025](decisions/0025-concept-guides-and-learning-paths.md)) |
+| `UserDocs` | `FsUserDocs` (`adapters/fs_user_docs.py`) | The [user docs](specs/user-docs.md) in `user-docs/`: one Markdown page per topic, its front matter validated with JSON Schema ([ADR 0026](decisions/0026-user-docs.md)) |
 | `WorkspaceSetup` | `FsWorkspaceSetup` | The workspace template, the marker, the runner runtime (`RunnerRuntime`) and `git init`, for `cstudy init` and `cstudy doctor` |
 | `Clock`, `Random` | system implementations | Injected for deterministic tests |
 

@@ -18,6 +18,7 @@ from coding_study.entrypoints.web.api_code_intelligence import (
 )
 from coding_study.entrypoints.web.api_config import config_routes
 from coding_study.entrypoints.web.api_dev import dev_routes
+from coding_study.entrypoints.web.api_docs import doc_routes
 from coding_study.entrypoints.web.api_events import event_routes
 from coding_study.entrypoints.web.api_files import file_routes
 from coding_study.entrypoints.web.api_guides import guide_routes
@@ -61,6 +62,7 @@ def create_app(
         *browsing_routes(),
         *set_routes(),
         *guide_routes(),
+        *doc_routes(),
         *attempt_routes(),
         *file_routes(),
         *past_file_routes(),

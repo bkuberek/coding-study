@@ -112,6 +112,9 @@ VIEWS = (
     "guides",
     "guide with diagrams",
     "path",
+    "docs",
+    "docs search",
+    "doc page",
     "mock",
     "mock running",
     "progress",
@@ -478,6 +481,9 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "guides", lambda: _open(page, "#/guides", ".path-card")
     yield "guide with diagrams", lambda: _guide(page)
     yield "path", lambda: _open(page, "#/paths/hashing", ".path-steps li")
+    yield "docs", lambda: _open(page, "#/docs", ".doc-section")
+    yield "docs search", lambda: _open(page, "#/docs?search=docker", ".doc-result")
+    yield "doc page", lambda: _open(page, "#/docs/web-ui/keyboard", ".doc-body table")
     yield "mock", lambda: _open(page, "#/mock", ".mock-form")
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)

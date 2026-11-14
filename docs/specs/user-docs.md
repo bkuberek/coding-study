@@ -127,7 +127,7 @@ The search matches each page's passages: its title with its summary and the text
 
 ## Static checks
 
-`cstudy verify` runs these after the guides' checks, with or without `--static`, when it verifies the whole catalog, as it does the guides' ([guides](guides.md#static-checks)). Each page is one line of its report (`user-docs/doctor.md  static ok`), and a failure fails the run with exit 5.
+`cstudy verify` runs these after the guides' checks, with or without `--static`, when it verifies the whole catalog, as it does the guides' ([guides](guides.md#static-checks)). Each page is one line of its report (`doctor.md  static ok`), and a failure fails the run with exit 5.
 
 | Id | Check |
 |----|-------|
