@@ -27,6 +27,7 @@ from coding_study.domain.concept_guides import (
     unknown_slug_message,
 )
 from coding_study.domain.errors import UnknownGuideError
+from coding_study.domain.guide_examples import PYTHON, LanguageChoice, terminal_text
 from coding_study.domain.guide_markdown import GuideMarkdown, is_svg_file
 from coding_study.domain.problem import ProblemSummary
 from coding_study.domain.problem_sets import target_reached
@@ -96,11 +97,17 @@ class GuidePage:
     """None for a guide without examples."""
     diagrams: Mapping[str, str] = field(default_factory=dict[str, str])
     """The SVG drawings of its diagrams, by path relative to the guide (`diagrams/1-light.svg`)."""
+    language: str | None = None
+    """The language chosen for its examples (`--lang`); None: none chosen."""
+    default_language: str = PYTHON
+    """The config's `default_lang`."""
 
-    @property
-    def terminal_text(self) -> str:
-        """The guide with each diagram shown as its text drawing."""
-        return GuideMarkdown(self.markdown).terminal_text()
+    def terminal_text(self, others_hint: str = "") -> str:
+        """The guide with each diagram shown as its text drawing, and each example with variants
+        in the language shown (docs/specs/guides.md#the-language-shown), followed by its other
+        languages and `others_hint`, the command that picks one."""
+        choice = LanguageChoice(self.language, self.default_language, others_hint)
+        return terminal_text(GuideMarkdown(self.markdown), choice)
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,9 +172,9 @@ def _path_status(path: LearningPath, read: set[str]) -> GuideStatus | None:
     return GuideStatus.READ if all(slug in read for slug in guides) else GuideStatus.NOT_READ
 
 
-def guide_page(environment: Environment, slug: str) -> GuidePage:
-    """Raises UnknownGuideError for a guide that does not exist, ContentError for one that does not
-    load."""
+def guide_page(environment: Environment, slug: str, language: str | None = None) -> GuidePage:
+    """`language` is the one chosen for the examples. Raises UnknownGuideError for a guide that
+    does not exist, ContentError for one that does not load."""
     catalog = environment.guides
     _require(slug, catalog.slugs(), "guide")
     meta = catalog.load(slug)
@@ -179,6 +186,8 @@ def guide_page(environment: Environment, slug: str) -> GuidePage:
         examples=examples,
         examples_folder=folder if examples else None,
         diagrams=catalog.diagrams(slug),
+        language=language,
+        default_language=environment.config.default_lang.value,
     )
 
 

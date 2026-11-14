@@ -19,11 +19,12 @@ cstudy learn --path hashing            # a path's steps, what is done, and the n
 cstudy learn --search hash --level core   # the guides and paths that match
 cstudy learn hash-functions            # read a guide
 cstudy learn hash-functions --done     # mark it read
+cstudy learn hash-maps-and-sets --lang go   # the examples in Go, where they have it
 ```
 
 `--search` keeps the guides and paths whose title, summary or slug holds every word, `--level` those at one level (`intro`, `core` or `advanced`), and `--status read` or `--status not_read` those you have read or not; they combine.
 
-`cstudy learn <guide>` prints the guide, each diagram as a drawing in text. On a terminal it is formatted; piped to a file or another program, it is the guide's Markdown as written. Printing a guide does not mark it read: `--done` does, and it needs a workspace, since it records your progress. Reading needs none.
+`cstudy learn <guide>` prints the guide, each diagram as a drawing in text. On a terminal it is formatted; piped to a file or another program, it is the guide's Markdown as written. Some examples come in several languages. The terminal prints each in one: the one `--lang` names, else bash in a guide about the shell, else your `default_lang`, else Python, where the example has it, and names the others with the command that shows one. Printing a guide does not mark it read: `--done` does, and it needs a workspace, since it records your progress. Reading needs none.
 
 A path lists its steps with their state, and the command for the next one:
 

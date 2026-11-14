@@ -63,6 +63,7 @@ class FsGuideCatalog:
             prerequisites=tuple(document.get("prerequisites", ())),
             related=tuple(document.get("related", ())),
             problems=tuple(document.get("problems", ())),
+            shell=bool(document.get("shell", False)),
         )
 
     def read_guide(self, slug: str) -> str | None:

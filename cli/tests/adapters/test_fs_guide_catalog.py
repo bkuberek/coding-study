@@ -31,6 +31,18 @@ def test_a_guide_loads_its_meta_with_its_folder_as_slug(content_root: Path):
     )
 
 
+def test_a_shell_guide_says_so_in_its_meta(content_root: Path):
+    folder = write_guide(content_root, "using-the-terminal", "Using the terminal")
+    with (folder / "meta.yaml").open("a") as meta:
+        meta.write("shell: true\n")
+    catalog = FsGuideCatalog(content_root)
+    write_guide(content_root, "hash-maps", "Hash maps")
+    assert (catalog.load("using-the-terminal").shell, catalog.load("hash-maps").shell) == (
+        True,
+        False,
+    )
+
+
 def test_a_meta_that_fails_its_schema_is_a_content_error(content_root: Path):
     write_guide(content_root, "broken", "Broken", level="expert")
     with pytest.raises(ContentError) as error:

@@ -17,17 +17,33 @@ DIAGRAM = "flowchart LR\n  accTitle: Buckets\n  accDescr: A key lands in a bucke
 SVG = '<svg width="40" height="20" xmlns="http://www.w3.org/2000/svg"><text>{theme}</text></svg>'
 """A small SVG drawing; its text names its theme."""
 EXAMPLE = 'print("hi")\n'
+VARIANTS = {
+    "examples/hello.ts": ("typescript", 'console.log("hi");\n'),
+    "examples/hello.go": (
+        "go",
+        'package main\n\nimport "fmt"\n\nfunc main() { fmt.Println("hi") }\n',
+    ),
+}
+"""Variants of examples/hello.py, which print what it prints, by file."""
 LEDGER = "0311-tamper-evident-ledger"
 """A progressive catalog problem with four levels, for level targets."""
 
 
-def guide_markdown(title: str, problems: tuple[str, ...] = (), example: bool = True) -> str:
+def guide_markdown(
+    title: str, problems: tuple[str, ...] = (), example: bool = True, variants: bool = False
+) -> str:
+    """With `variants`, examples/hello.py comes in the languages of `VARIANTS` too."""
     practice = "\n".join(f"- `cstudy start {slug}`" for slug in problems) or "- Nothing yet."
     embedded = (
         f"```python examples/hello.py\n{EXAMPLE}```\n\n```output examples/hello.py\nhi\n```\n\n"
         if example
         else ""
     )
+    if example and variants:
+        embedded += "".join(
+            f"```{language} {name}\n{code}```\n\n```output {name}\nhi\n```\n\n"
+            for name, (language, code) in VARIANTS.items()
+        )
     return (
         f"# {title}\n\n## The idea\n\nA table.\n\n```mermaid\n{DIAGRAM}```\n\n"
         f"{text_marker(DIAGRAM)}\n```text\n[k] --> [b]\n```\n\n"
@@ -48,17 +64,20 @@ def write_guide(
     prerequisites: tuple[str, ...] = (),
     problems: tuple[str, ...] = (),
     markdown: str | None = None,
+    variants: bool = False,
 ) -> Path:
     folder = root / "guides" / slug
     (folder / "examples").mkdir(parents=True, exist_ok=True)
     (folder / "examples" / "hello.py").write_text(EXAMPLE)
+    for name, (_language, code) in VARIANTS.items() if variants else ():
+        (folder / name).write_text(code)
     lines = [f"title: {title}", "summary: A short summary.", f"level: {level}"]
     if prerequisites:
         lines.append(f"prerequisites: [{', '.join(prerequisites)}]")
     if problems:
         lines.append(f"problems: [{', '.join(problems)}]")
     (folder / "meta.yaml").write_text("\n".join(lines) + "\n")
-    text = guide_markdown(title, problems) if markdown is None else markdown
+    text = guide_markdown(title, problems, variants=variants) if markdown is None else markdown
     (folder / "guide.md").write_text(text)
     write_svg_drawings(folder, text)
     return folder

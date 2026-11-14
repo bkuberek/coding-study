@@ -28,6 +28,7 @@ from coding_study.application.learn import (
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.concept_guides import GuideLevel, GuideStatus, StepKind, StepProgress
 from coding_study.domain.errors import UsageError
+from coding_study.domain.guide_examples import TAB_ORDER
 from coding_study.entrypoints.commands.serve import run_server
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
@@ -58,6 +59,13 @@ FILTERS_NARROW_THE_LIST = (
     "--search, --level and --status narrow the list: cstudy learn --search <words>, "
     "without a guide or --path"
 )
+LANG_PRINTS = (
+    "--lang picks the language of a printed guide's examples: "
+    "cstudy learn <guide> --lang <language>"
+)
+UNKNOWN_LANGUAGE = 'unknown language "{language}"; one of {languages}'
+OTHER_LANGUAGES = "`cstudy learn {slug} --lang <language>`"
+"""What follows an example's other languages: the command that shows one."""
 GUIDE_VIEW = "/guides/{slug}"
 PATH_VIEW = "/paths/{slug}"
 """The Guides page's views of a guide and of a path (docs/specs/web-ui.md#guides-view)."""
@@ -99,6 +107,14 @@ def learn(
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the text.")
     ] = False,
+    language: Annotated[
+        str | None,
+        typer.Option(
+            "--lang",
+            help="The language of the guide's examples, where they have it: "
+            f"{', '.join(TAB_ORDER)}.",
+        ),
+    ] = None,
 ) -> None:
     """Read concept guides and follow learning paths."""
     if guide is not None and path is not None:
@@ -108,6 +124,8 @@ def learn(
     wanted = ListingFilter(search or "", level, status)
     if wanted.narrows and (guide is not None or path is not None):
         raise UsageError(FILTERS_NARROW_THE_LIST)
+    if language is not None:
+        _check_language(language, guide is None or done or open_page or as_json)
     if open_page:
         _open(context, guide, path, done or as_json)
         return
@@ -120,9 +138,18 @@ def learn(
     if path is not None:
         _print_path(output, path_view(environment, path), as_json)
     elif guide is not None:
-        _print_guide(output, guide_page(environment, guide), as_json)
+        _print_guide(output, guide_page(environment, guide, language), as_json)
     else:
         _print_listing(output, environment, learn_listing(environment), as_json, wanted)
+
+
+def _check_language(language: str, printing_no_guide: bool) -> None:
+    """`--lang` takes a guide that is printed, and one of the example languages."""
+    if printing_no_guide:
+        raise UsageError(LANG_PRINTS)
+    if language not in TAB_ORDER:
+        languages = ", ".join(TAB_ORDER)
+        raise UsageError(UNKNOWN_LANGUAGE.format(language=language, languages=languages))
 
 
 def _open(context: typer.Context, guide: str | None, path: str | None, printing: bool) -> None:
@@ -206,10 +233,11 @@ def _print_guide(output: Console, page: GuidePage, as_json: bool) -> None:
     if as_json:
         typer.echo(json.dumps(guide_document(page), indent=2))
         return
+    text = page.terminal_text(OTHER_LANGUAGES.format(slug=page.entry.meta.slug))
     if output.is_terminal:
-        output.print(Markdown(page.terminal_text), soft_wrap=False)
+        output.print(Markdown(text), soft_wrap=False)
     else:
-        output.print(Text(page.terminal_text), end="")
+        output.print(Text(text), end="")
     output.print(Text(""))
     if page.examples_folder is not None:
         output.print(_labelled("examples", str(page.examples_folder)))

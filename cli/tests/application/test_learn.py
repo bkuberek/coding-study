@@ -18,6 +18,7 @@ from coding_study.application.learn import (
 )
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.concept_guides import GuideLevel, GuideStatus
+from coding_study.domain.config import Config
 from coding_study.domain.errors import UnknownGuideError
 from coding_study.domain.problem import Language
 from tests.fakes import NOW, FakeClock, make_environment
@@ -152,7 +153,23 @@ def test_the_list_counts_each_paths_steps(environment: Environment):
 
 def test_a_guide_page_shows_the_diagrams_as_text(environment: Environment):
     page = guide_page(environment, "hash-maps")
-    assert ("```mermaid" in page.markdown, "```mermaid" in page.terminal_text) == (True, False)
+    assert ("```mermaid" in page.markdown, "```mermaid" in page.terminal_text()) == (True, False)
+
+
+def test_a_guide_page_shows_each_example_in_the_language_chosen_else_default_lang(
+    content_root: Path,
+):
+    write_guide(content_root, "hash-maps", "Hash maps", variants=True)
+    environment = make_environment(content_root, config=Config(default_lang=Language.GO))
+    shown = guide_page(environment, "hash-maps").terminal_text("hint")
+    chosen = guide_page(environment, "hash-maps", language="typescript").terminal_text("hint")
+    assert (
+        "```go examples/hello.go" in shown,
+        "```python examples/hello.py" in shown,
+        "Also in python, typescript: hint" in shown,
+        "```typescript examples/hello.ts" in chosen,
+        "Also in python, go: hint" in chosen,
+    ) == (True, False, True, True, True)
 
 
 def test_a_guide_page_names_its_examples(environment: Environment, content_root: Path):

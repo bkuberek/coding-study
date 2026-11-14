@@ -12,7 +12,7 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/page/intelligence-start.ts`, `src/page/intelligence.ts` | Code intelligence in the Attempt view. The start module is in the page; it fetches the link (`intelligence.ts`) as a chunk once `code_intelligence` is on. The link decides what each file gets (a session, or a reason in the status bar), reads the languages and loads the code-intelligence chunk only for a file of a language with an installed server. `intelligence-state.ts` and `intelligence-status.ts` hold the close codes, the reconnect delays and the status bar's text, which the tests cover |
 | `src/code-intelligence.ts`, `src/code-intelligence/` | The code-intelligence chunk: `@codemirror/lsp-client` and the sessions over it (the WebSocket transport, the client, the workspace, the session with its tries, Restart and idle close, and the manager that keeps one session per root). `marked-stand-in.ts` stands in for `marked`, which `scripts/build.ts` aliases to it |
-| `src/page/views/guides.ts`, `src/page/guides-model.ts` | The Guides view: the guides and paths, a guide, a path. A guide's diagrams come from the server as `<img>` pairs of SVG drawn when the guide was written, and `views/guides.css` shows the one of the page's theme. `guides-model.ts` holds what the tests cover: a step's link, command and level target, and a path's progress |
+| `src/page/views/guides.ts`, `src/page/guides-model.ts`, `src/page/example-tabs.ts`, `src/page/example-tabs-model.ts` | The Guides view: the guides and paths, a guide, a path. A guide's diagrams come from the server as `<img>` pairs of SVG drawn when the guide was written, and `views/guides.css` shows the one of the page's theme. An example in several languages comes as a group of panels, which `example-tabs.ts` makes into tabs that change language together. `guides-model.ts` and `example-tabs-model.ts` hold what the tests cover: a step's link, command and level target, a path's progress, the tab order, the language an example shows and the keys between tabs |
 | `src/page/views/docs.ts`, `src/page/docs-model.ts` | The Docs view: the user docs by section with a search, and a page with its headings, every other page and the previous and next. `docs-model.ts` holds what the tests cover: the sections, a page's neighbours, and the search with its snippets |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language, with its indent unit where it is not CodeMirror's two spaces, and one for Vim keybindings, each fetched on first use |
 | `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test`; `test/stylesheets.ts` makes an imported stylesheet an empty module for them |
@@ -59,17 +59,17 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 78.5 | 28.4 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 1037.6 | 377.3 |
-| The editor before any language: the page, the editor and the core | 485.8 | 165.0 |
-| A Python file | 556.2 | 191.9 |
-| A TypeScript or JavaScript file, the largest grammar | 594.7 | 205.5 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 78.9 | 28.5 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 1045.2 | 380.4 |
+| The editor before any language: the page, the editor and the core | 486.2 | 165.1 |
+| A Python file | 556.7 | 192.0 |
+| A TypeScript or JavaScript file, the largest grammar | 595.2 | 205.6 |
 | Vim keybindings, added on top | 120.5 | 38.4 |
 | The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 9.1 | 4.1 |
 | The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 35.4 | 12.9 |
-| The Problems view, the landing view, fetched when it first opens | 18.5 | 7.4 |
-| The Guides view, fetched when it first opens; a guide's diagrams are SVG images drawn when it was written, so no diagram code loads | 9.9 | 3.6 |
-| The Docs view, fetched when it first opens; the pages are rendered on the server, and the search reads the listing it fetched | 7.8 | 3.4 |
+| The Problems view, the landing view, fetched when it first opens | 18.9 | 7.9 |
+| The Guides view, fetched when it first opens, with its search and filters and the tabs of its examples in several languages; a guide's diagrams are SVG images drawn when it was written, so no diagram code loads | 19.9 | 7.3 |
+| The Docs view, fetched when it first opens; the pages are rendered on the server, and the search reads the listing it fetched | 7.9 | 3.5 |
 | The Problem view, fetched when it first opens | 6.8 | 3.3 |
 | The Sets view, fetched when it first opens (with the Problems view, for its pick, and the dialogs, for its questions and Start) | 53.0 | 20.6 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 40.1 | 16.3 |

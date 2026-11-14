@@ -26,5 +26,5 @@ print("success: exit status", success.returncode, "| output:", success.stdout.st
 
 failure = run("print(10 / 0)")
 print("failure: exit status", failure.returncode, "| output:", repr(failure.stdout))
-print("the error went to standard error; its last line is:")
+print("the error went to standard error; it ends with:")
 print(" ", failure.stderr.strip().splitlines()[-1])

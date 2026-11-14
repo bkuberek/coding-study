@@ -21,10 +21,14 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import NOW, make_environment
-from tests.guide_builders import write_hashing
+from tests.guide_builders import write_guide, write_hashing
 
 runner = CliRunner()
 HINT = "Read with rendered diagrams in the web UI: cstudy learn"
+LANG_PRINTS = (
+    "--lang picks the language of a printed guide's examples: "
+    "cstudy learn <guide> --lang <language>"
+)
 
 
 @pytest.fixture
@@ -136,6 +140,41 @@ def test_a_guide_prints_as_markdown_with_its_diagrams_as_text(environment: Envir
     )
 
 
+@pytest.fixture
+def variants(content_root: Path, environment: Environment) -> Environment:
+    """hash-maps with its example in Python, TypeScript and Go."""
+    write_guide(content_root, "hash-maps", "Hash maps", variants=True)
+    return environment
+
+
+def test_a_guide_shows_an_example_in_default_lang_and_names_its_other_languages(
+    variants: Environment,
+):
+    output = invoke("hash-maps").output
+    assert (
+        "```python examples/hello.py" in output,
+        "```typescript examples/hello.ts" in output,
+        "Also in typescript, go: `cstudy learn hash-maps --lang <language>`" in output,
+    ) == (True, False, True)
+
+
+def test_lang_shows_every_example_that_has_it_in_that_language(variants: Environment):
+    output = invoke("hash-maps", "--lang", "go").output
+    assert (
+        "```go examples/hello.go" in output,
+        "```python examples/hello.py" in output,
+        "Also in python, typescript: `cstudy learn hash-maps --lang <language>`" in output,
+    ) == (True, False, True)
+
+
+def test_a_language_no_example_has_shows_each_by_the_rule(variants: Environment):
+    output = invoke("hash-maps", "--lang", "rust").output
+    assert ("```python examples/hello.py" in output, "Also in typescript, go" in output) == (
+        True,
+        True,
+    )
+
+
 def test_a_guide_names_its_examples_folder(environment: Environment, content_root: Path):
     folder = content_root / "guides" / "hash-maps" / "examples"
     assert f"examples  {folder}" in invoke("hash-maps").output
@@ -209,6 +248,7 @@ def test_open_with_a_path_lands_on_the_path(served: list[str]):
         (("--path", "hashin", "--open"), 'unknown path "hashin"; did you mean hashing'),
         (("hash-maps", "--open", "--done"), "--open takes no --done or --json"),
         (("hash-maps", "--open", "--json"), "--open takes no --done or --json"),
+        (("hash-maps", "--open", "--lang", "go"), LANG_PRINTS),
     ],
 )
 def test_open_starts_no_server_for_a_usage_error(
@@ -276,6 +316,15 @@ def test_a_path_as_json(environment: Environment):
         (("--open",), "--open needs a guide or a path: cstudy learn <guide> --open"),
         (("hash-maps", "--level", "core"), "--search, --level and --status narrow the list"),
         (("--path", "hashing", "--search", "x"), "--search, --level and --status narrow the list"),
+        (("--lang", "go"), LANG_PRINTS),
+        (("--path", "hashing", "--lang", "go"), LANG_PRINTS),
+        (("hash-maps", "--done", "--lang", "go"), LANG_PRINTS),
+        (("hash-maps", "--json", "--lang", "go"), LANG_PRINTS),
+        (
+            ("hash-maps", "--lang", "ruby"),
+            'unknown language "ruby"; one of bash, python, typescript, java, kotlin, go, rust, '
+            "javascript",
+        ),
     ],
 )
 def test_usage_errors_exit_3(environment: Environment, arguments: tuple[str, ...], message: str):

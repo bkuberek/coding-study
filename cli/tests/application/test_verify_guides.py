@@ -3,7 +3,7 @@ from pathlib import Path
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.application.verify_guides import GuideVerification, verify_guides
 from tests.fakes import make_environment
-from tests.guide_builders import write_guide, write_hashing, write_path
+from tests.guide_builders import guide_markdown, write_guide, write_hashing, write_path
 
 PROBLEMS = ("two-sum", "lru-cache", "tamper-evident-ledger")
 
@@ -79,6 +79,30 @@ def test_a_broken_guide_fails_verify_as_a_static_failure(content_root: Path):
     report = verify_content(make_environment(content_root), VerifyRequest(static_only=True), print)
     guide = next(row for row in report.problems if row.directory == "guides/hash-maps")
     assert (guide.passed, report.only_static_failures) == (False, True)
+
+
+def test_an_example_missing_variants_is_a_warning_that_fails_nothing(content_root: Path):
+    hello = (
+        '```python examples/hello.py\nprint("hi")\n```\n\n```output examples/hello.py\nhi\n```\n'
+    )
+    typescript = (
+        '```typescript examples/hello.ts\nconsole.log("hi");\n```\n\n'
+        "```output examples/hello.ts\nhi\n```\n"
+    )
+    markdown = guide_markdown("Hash maps").replace(hello, f"{hello}\n{typescript}")
+    folder = write_guide(content_root, "hash-maps", "Hash maps", markdown=markdown)
+    (folder / "examples" / "hello.ts").write_text('console.log("hi");\n')
+    report = verify_content(make_environment(content_root), VerifyRequest(static_only=True), print)
+    guide = next(row for row in report.problems if row.directory == "guides/hash-maps")
+    assert (guide.passed, guide.static_errors, guide.warnings) == (
+        True,
+        (),
+        (
+            "guides/hash-maps/guide.md: line 21: examples/hello has no java, kotlin, go or rust "
+            "variant yet; an example with variants aims for python, typescript, java, kotlin, "
+            "go and rust",
+        ),
+    )
 
 
 def test_s25_a_problem_names_guides_that_exist(content_root: Path):

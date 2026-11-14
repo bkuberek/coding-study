@@ -1,5 +1,5 @@
 """`cstudy verify` on concept guides and learning paths (docs/specs/guides.md#static-checks):
-static checks only, G1 to G9 and P1 to P5, one result per guide and per path."""
+static checks only, G1 to G11 and P1 to P5, one result per guide and per path."""
 
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ from coding_study.domain.guide_checks import (
     CatalogFacts,
     GuideContent,
     guide_static_checks,
+    guide_static_warnings,
     path_static_checks,
 )
 
@@ -20,6 +21,8 @@ class GuideVerification:
     directory: str
     """A guide's folder or a path's file, repository-relative."""
     static_errors: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    """G11's, which fail nothing."""
 
 
 def verify_guides(
@@ -71,7 +74,8 @@ def _verify_guide(
         diagrams=catalog.diagrams(meta.slug),
     )
     issues = guide_static_checks(content, facts)
-    return GuideVerification(directory, tuple(str(issue) for issue in issues))
+    warnings = guide_static_warnings(content)
+    return GuideVerification(directory, tuple(map(str, issues)), warnings=tuple(map(str, warnings)))
 
 
 def _problem_levels(

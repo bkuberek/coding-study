@@ -74,7 +74,69 @@ $ type cd
 cd is a shell builtin
 ```
 
-Your `PATH` will be different; that is the point of checking it. This program models the search, on a pretend computer where three directories hold a `python3`:
+Your `PATH` will be different; that is the point of checking it. This program searches a pretend computer, where three directories hold a `python3`. In bash the search is the shell's own: the program makes the directories in a temporary folder, points `PATH` at them in a subshell, and asks `command -v`. In the other languages the program models the same search.
+
+```bash examples/command_search.sh
+# How a shell finds a command: a builtin first, then each directory of PATH in order.
+# The shell does its own search here, on a pretend computer in a temporary folder.
+
+root=$(mktemp -d)
+trap 'rm -rf "$root"' EXIT
+
+# A pretend computer: each program, as an empty script in its directory.
+for program in /opt/homebrew/bin/python3 /opt/homebrew/bin/uv /usr/local/bin/python3 \
+    /usr/bin/python3 /usr/bin/git /usr/bin/ls /bin/cat /bin/ls; do
+    mkdir -p "$root$(dirname "$program")"
+    printf '#!/bin/sh\n' > "$root$program"
+    chmod +x "$root$program"
+done
+
+find_command() {
+    local name=$1 path=$2 found directory count=0
+    if [ "$(type -t "$name")" = builtin ]; then
+        echo "  $name: a shell builtin, no search needed"
+        return
+    fi
+    # Ask the shell, in a subshell whose PATH lists the pretend directories.
+    found=$(PATH="$root${path//:/:$root}"; command -v "$name")
+    IFS=: read -r -a directories <<< "$path"
+    for directory in "${directories[@]}"; do
+        count=$((count + 1))
+        if [ "$found" = "$root$directory/$name" ]; then
+            echo "  $name: runs $directory/$name (directory $count of PATH)"
+            return
+        fi
+    done
+    echo "  $name: command not found (searched all $count directories)"
+}
+
+path=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
+echo "PATH = $path"
+for name in python3 git cat cd pyhton3; do
+    find_command "$name" "$path"
+done
+
+reordered=/usr/bin:/opt/homebrew/bin:/usr/local/bin:/bin
+echo "PATH = $reordered"
+find_command python3 "$reordered"
+
+short=/usr/bin:/bin
+echo "PATH = $short"
+find_command uv "$short"
+```
+
+```output examples/command_search.sh
+PATH = /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
+  python3: runs /opt/homebrew/bin/python3 (directory 1 of PATH)
+  git: runs /usr/bin/git (directory 3 of PATH)
+  cat: runs /bin/cat (directory 4 of PATH)
+  cd: a shell builtin, no search needed
+  pyhton3: command not found (searched all 4 directories)
+PATH = /usr/bin:/opt/homebrew/bin:/usr/local/bin:/bin
+  python3: runs /usr/bin/python3 (directory 1 of PATH)
+PATH = /usr/bin:/bin
+  uv: command not found (searched all 2 directories)
+```
 
 ```python examples/command_search.py
 """How a shell finds a command: a builtin first, then each directory of PATH in order."""
@@ -112,8 +174,6 @@ short = "/usr/bin:/bin"
 print("PATH =", short)
 print(" ", find("uv", short))
 ```
-
-It prints:
 
 ```output examples/command_search.py
 PATH = /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
@@ -207,6 +267,41 @@ Programs read settings from the environment. `cstudy start`, for example, opens 
 
 A program receives a **copy**. Whatever it changes stays in its own copy: a child can never change its parent's environment. This program shows that, and one more thing every program reports when it ends: its **exit status**.
 
+```bash examples/environment.sh
+# A program gets a copy of its parent's environment, and ends with an exit status.
+# Each child here is a second bash, run the way a shell runs any command.
+
+export GREETING=hello
+echo "the child sees GREETING = $(bash -c 'echo "$GREETING"')"
+
+echo "the child changed its copy to $(bash -c 'GREETING=changed; echo "$GREETING"')"
+echo "the parent still has GREETING = $GREETING"
+
+echo "a variable nobody set: $(bash -c 'echo "${NOT_SET_ANYWHERE:-(not set)}"')"
+
+output=$(bash -c 'echo "all good"')
+echo "success: exit status $? | output: $output"
+
+# The same failing child twice: once for its standard output, once for its standard error.
+failing='echo $((10 / 0))'
+output=$(bash -c "$failing" 2> /dev/null)
+echo "failure: exit status $? | output: '$output'"
+error=$(bash -c "$failing" 2>&1 > /dev/null)
+echo "the error went to standard error; it ends with:"
+echo "  ${error##*: }"
+```
+
+```output examples/environment.sh
+the child sees GREETING = hello
+the child changed its copy to changed
+the parent still has GREETING = hello
+a variable nobody set: (not set)
+success: exit status 0 | output: all good
+failure: exit status 1 | output: ''
+the error went to standard error; it ends with:
+  division by 0 (error token is "0")
+```
+
 ```python examples/environment.py
 """A program gets a copy of its parent's environment, and ends with an exit status."""
 
@@ -236,11 +331,9 @@ print("success: exit status", success.returncode, "| output:", success.stdout.st
 
 failure = run("print(10 / 0)")
 print("failure: exit status", failure.returncode, "| output:", repr(failure.stdout))
-print("the error went to standard error; its last line is:")
+print("the error went to standard error; it ends with:")
 print(" ", failure.stderr.strip().splitlines()[-1])
 ```
-
-It prints:
 
 ```output examples/environment.py
 the child sees GREETING = hello
@@ -249,7 +342,7 @@ the parent still has GREETING = hello
 a variable nobody set: (not set)
 success: exit status 0 | output: all good
 failure: exit status 1 | output: ''
-the error went to standard error; its last line is:
+the error went to standard error; it ends with:
   ZeroDivisionError: division by zero
 ```
 

@@ -1,5 +1,6 @@
-"""The static checks of concept guides (G2 to G10) and learning paths (P1 to P5), as
-docs/specs/guides.md#static-checks lists them. G1, the schema of `meta.yaml`, is the adapter's.
+"""The static checks of concept guides (G2 to G10, and G11's warnings) and learning paths (P1 to
+P5), as docs/specs/guides.md#static-checks lists them. G1, the schema of `meta.yaml`, is the
+adapter's.
 """
 
 import re
@@ -18,6 +19,19 @@ from coding_study.domain.concept_guides import (
     is_slug,
 )
 from coding_study.domain.errors import ContentIssue
+from coding_study.domain.guide_examples import (
+    BASH,
+    EXAMPLE_LANGUAGES,
+    PSEUDOCODE,
+    SHELL_TARGET,
+    TAB_ORDER,
+    TARGET_LANGUAGES,
+    ExampleGroup,
+    example_groups,
+    missing_languages,
+    suffix,
+    tab_rank,
+)
 from coding_study.domain.guide_markdown import (
     SVG_THEMES,
     Fence,
@@ -42,14 +56,6 @@ PRACTICE = "Practice"
 FURTHER_READING = "Further reading"
 PLACEHOLDER = "TODO"
 LINK = "https://"
-EXAMPLE_LANGUAGES = {
-    ".go": "go",
-    ".java": "java",
-    ".js": "javascript",
-    ".mjs": "javascript",
-    ".py": "python",
-}
-"""What an example may be written in, by extension, and the language its fence names."""
 DIAGRAM_TYPES = re.compile(
     r"(?:(?:flowchart|graph)[ \t]+(?:TD|TB|BT|LR|RL)"
     r"|sequenceDiagram|stateDiagram|stateDiagram-v2|classDiagram|erDiagram)[ \t]*"
@@ -94,6 +100,26 @@ def guide_static_checks(content: GuideContent, catalog: CatalogFacts) -> tuple[C
         issues.add(GUIDE_FILE, "missing")
     else:
         _GuideFile(issues, content, catalog).check(content.markdown)
+    return tuple(issues.found)
+
+
+def guide_static_warnings(content: GuideContent) -> tuple[ContentIssue, ...]:
+    """G11: the languages of its target that each example with variants lacks, which fail
+    nothing (docs/specs/guides.md#variants)."""
+    if content.markdown is None:
+        return ()
+    issues = _Issues(content.directory)
+    shell = content.meta.shell
+    target = _joined(SHELL_TARGET if shell else TARGET_LANGUAGES, "and")
+    for group in example_groups(GuideMarkdown(content.markdown)):
+        missing = missing_languages(group, shell=shell)
+        if missing:
+            issues.add(
+                GUIDE_FILE,
+                f"{group.stem} has no {_joined(missing, 'or')} variant yet; "
+                f"an example with variants aims for {target}",
+                f"line {group.start + 1}",
+            )
     return tuple(issues.found)
 
 
@@ -278,12 +304,37 @@ class _GuideFile:
             count = outputs.get(name, 0)
             if count != 1 and name in examples:
                 self.error(f"{name} needs one output block, not {count}")
+        for group in example_groups(markdown):
+            self._variants(group)
+
+    def _variants(self, group: ExampleGroup) -> None:
+        """G6: the variants of one example are in different languages and in the tab order."""
+        seen: set[str] = set()
+        for previous, variant in zip((None, *group.variants), group.variants, strict=False):
+            language = variant.language
+            if language in seen:
+                self.error(
+                    f"{variant.name} is a second {language} variant of {group.stem}",
+                    variant.fence.start,
+                )
+            elif previous is not None and tab_rank(language) < tab_rank(previous.language):
+                self.error(
+                    f"{variant.name} must come before {previous.name}: variants follow the order "
+                    f"{', '.join(TAB_ORDER)}",
+                    variant.fence.start,
+                )
+            seen.add(language)
 
     def _example(self, fence: Fence, name: str) -> None:
         text = self._content.examples.get(name)
-        suffix = _suffix(name)
-        language = EXAMPLE_LANGUAGES.get(suffix)
-        if language is None:
+        language = EXAMPLE_LANGUAGES.get(suffix(name))
+        if fence.language == PSEUDOCODE:
+            self.error(
+                f"pseudocode names no file: drop {name} from its fence, "
+                "or embed the file in the fence of its language",
+                fence.start,
+            )
+        elif language is None:
             supported = ", ".join(sorted(EXAMPLE_LANGUAGES))
             supported = " or ".join(supported.rsplit(", ", 1))
             self.error(f"{name}: an example is {supported}", fence.start)
@@ -293,6 +344,12 @@ class _GuideFile:
             self.error(f'{name} is embedded as "{fence.language}"; use "{language}"', fence.start)
         elif fence.content != text:
             self.error(f"the copy of {name} differs from the file", fence.start)
+        elif language == BASH and not self._content.meta.shell:
+            self.error(
+                f"{name}: a bash example belongs to a shell guide, one with shell: true in "
+                f"{GUIDE_META_FILE}",
+                fence.start,
+            )
 
     def _diagrams(self, markdown: GuideMarkdown) -> None:
         """G7, G8 and G10"""
@@ -356,6 +413,8 @@ def _names(text: str, slug: str) -> bool:
     return re.search(rf"(?<![\w-]){re.escape(slug)}(?![\w-])", text) is not None
 
 
-def _suffix(name: str) -> str:
-    base = name.rsplit("/", 1)[-1]
-    return f".{base.rsplit('.', 1)[1]}" if "." in base else ""
+def _joined(words: Sequence[str], last: str) -> str:
+    """`a, b or c`, with `last` as the last joining word."""
+    if len(words) == 1:
+        return words[0]
+    return f"{', '.join(words[:-1])} {last} {words[-1]}"
