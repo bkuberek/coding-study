@@ -219,11 +219,15 @@ export interface PathSummary {
   readonly slug: string;
   readonly title: string;
   readonly summary: string;
+  /** From its guides' levels (docs/specs/guides.md#path-order); null for a path without guides. */
+  readonly level: GuideLevel | null;
+  /** The slugs of its guide steps, in order. */
+  readonly guides: readonly string[];
   readonly done: number;
   readonly total: number;
 }
 
-/** `cstudy learn --json`. */
+/** `cstudy learn --json`: the guides by path order, the paths from introductory to advanced. */
 export interface GuideListing {
   readonly guides: readonly GuideEntry[];
   readonly paths: readonly PathSummary[];

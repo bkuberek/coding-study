@@ -9,15 +9,21 @@ from pathlib import Path
 from coding_study.application.environment import Environment
 from coding_study.domain.concept_guides import (
     DIAGRAMS_DIRECTORY,
+    GuideLevel,
     GuideMeta,
+    GuideStatus,
     LearningPath,
     PathStep,
     ProblemFacts,
     StepKind,
     StepProgress,
+    by_level,
     guide_step_progress,
     highest_level_passed,
+    matches_search,
+    path_level,
     problem_step_progress,
+    search_words,
     unknown_slug_message,
 )
 from coding_study.domain.errors import UnknownGuideError
@@ -41,6 +47,9 @@ class GuideEntry:
 class PathView:
     path: LearningPath
     steps: tuple[StepProgress, ...]
+    level: GuideLevel | None = None
+    """The level the path is for, from its guides' levels (docs/specs/guides.md#path-order);
+    None for a path without guides."""
 
     @property
     def done(self) -> int:
@@ -60,6 +69,20 @@ class LearnListing:
     guides: tuple[GuideEntry, ...]
     """In the order of the paths, then by slug."""
     paths: tuple[PathView, ...]
+    """From introductory to advanced (docs/specs/guides.md#path-order)."""
+
+
+@dataclass(frozen=True, slots=True)
+class ListingFilter:
+    """`cstudy learn --search --level --status` (docs/specs/cli.md#cstudy-learn)."""
+
+    search: str = ""
+    level: GuideLevel | None = None
+    status: GuideStatus | None = None
+
+    @property
+    def narrows(self) -> bool:
+        return bool(search_words(self.search)) or self.level is not None or self.status is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,15 +114,55 @@ class MarkedRead:
 def learn_listing(environment: Environment) -> LearnListing:
     catalog = environment.guides
     reads = environment.progress.guide_reads()
-    paths = tuple(_path_view(environment, catalog.load_path(slug)) for slug in catalog.path_slugs())
+    metas = {slug: catalog.load(slug) for slug in catalog.slugs()}
+    levels = {slug: meta.level for slug, meta in metas.items()}
+    loaded = [catalog.load_path(slug) for slug in catalog.path_slugs()]
+    progress = _Progress(environment)
+    paths = tuple(_path_view(progress, path, levels) for path in by_level(loaded, levels))
     in_paths = [
         step.step.slug for view in paths for step in view.steps if step.step.kind is StepKind.GUIDE
     ]
-    order = list(dict.fromkeys((*in_paths, *catalog.slugs())))
-    guides = tuple(
-        GuideEntry(catalog.load(slug), reads.get(slug)) for slug in order if slug in catalog.slugs()
-    )
+    order = list(dict.fromkeys((*in_paths, *metas)))
+    guides = tuple(GuideEntry(metas[slug], reads.get(slug)) for slug in order if slug in metas)
     return LearnListing(guides, paths)
+
+
+def narrow_listing(listing: LearnListing, wanted: ListingFilter) -> LearnListing:
+    """The guides and the paths that hold every word of the search in their title, summary or
+    slug, at the level and in the status asked, each list in its order; the Guides page's search
+    and filters keep the same (`tools/web-ui/src/page/guides-model.ts`)."""
+    words = search_words(wanted.search)
+    read = {entry.meta.slug for entry in listing.guides if entry.read_at is not None}
+
+    def guide_kept(entry: GuideEntry) -> bool:
+        meta = entry.meta
+        status = GuideStatus.READ if entry.read_at is not None else GuideStatus.NOT_READ
+        return (
+            matches_search(words, meta.title, meta.summary, meta.slug)
+            and wanted.level in (None, meta.level)
+            and wanted.status in (None, status)
+        )
+
+    def path_kept(view: PathView) -> bool:
+        path = view.path
+        return (
+            matches_search(words, path.title, path.summary, path.slug)
+            and wanted.level in (None, view.level)
+            and wanted.status in (None, _path_status(path, read))
+        )
+
+    return LearnListing(
+        tuple(entry for entry in listing.guides if guide_kept(entry)),
+        tuple(view for view in listing.paths if path_kept(view)),
+    )
+
+
+def _path_status(path: LearningPath, read: set[str]) -> GuideStatus | None:
+    """Read once every guide it has is read, not read while one is not; None without guides."""
+    guides = [step.slug for step in path.steps if step.kind is StepKind.GUIDE]
+    if not guides:
+        return None
+    return GuideStatus.READ if all(slug in read for slug in guides) else GuideStatus.NOT_READ
 
 
 def guide_page(environment: Environment, slug: str) -> GuidePage:
@@ -145,7 +208,11 @@ def path_view(environment: Environment, slug: str) -> PathView:
     load."""
     catalog = environment.guides
     _require(slug, catalog.path_slugs(), "path")
-    return _path_view(environment, catalog.load_path(slug))
+    path = catalog.load_path(slug)
+    known = catalog.slugs()
+    guides = {step.slug for step in path.steps if step.kind is StepKind.GUIDE}
+    levels = {guide: catalog.load(guide).level for guide in guides if guide in known}
+    return _path_view(_Progress(environment), path, levels)
 
 
 def guide_entries(environment: Environment, slugs: tuple[str, ...]) -> tuple[GuideEntry, ...]:
@@ -162,9 +229,10 @@ def _require(slug: str, known: tuple[str, ...], noun: str) -> None:
         raise UnknownGuideError(unknown_slug_message(noun, slug, known))
 
 
-def _path_view(environment: Environment, path: LearningPath) -> PathView:
-    progress = _Progress(environment)
-    return PathView(path, tuple(progress.of(step) for step in path.steps))
+def _path_view(
+    progress: "_Progress", path: LearningPath, levels: Mapping[str, GuideLevel]
+) -> PathView:
+    return PathView(path, tuple(progress.of(step) for step in path.steps), path_level(path, levels))
 
 
 class _Progress:

@@ -1,6 +1,7 @@
 /**
  * The page's views, addressed by the URL's fragment so the server serves only `/`
- * (docs/specs/web-ui.md#page). The Problems view keeps its filters in the fragment's query.
+ * (docs/specs/web-ui.md#page). The Problems and Guides views keep their filters in the fragment's
+ * query.
  */
 
 /** The filters of the Problems view, as `cstudy list` names them. */
@@ -8,12 +9,18 @@ export const FILTER_KEYS = ["set", "track", "kind", "lang", "difficulty", "statu
 export type FilterKey = (typeof FILTER_KEYS)[number];
 export type Filters = Partial<Record<FilterKey, string>>;
 
+/** The filters and the search of the Guides view (docs/specs/web-ui.md#guides-view), the search
+ * last as in `FILTER_KEYS`. */
+export const GUIDE_FILTER_KEYS = ["level", "path", "status", "search"] as const;
+export type GuideFilterKey = (typeof GUIDE_FILTER_KEYS)[number];
+export type GuideFilters = Partial<Record<GuideFilterKey, string>>;
+
 export type Route =
   | { readonly view: "problems"; readonly filters: Filters }
   | { readonly view: "problem"; readonly slug: string }
   | { readonly view: "sets" }
   | { readonly view: "set"; readonly name: string }
-  | { readonly view: "guides" }
+  | { readonly view: "guides"; readonly filters: GuideFilters }
   | { readonly view: "guide"; readonly slug: string }
   | { readonly view: "path"; readonly slug: string }
   | { readonly view: "docs"; readonly search: string }
@@ -27,7 +34,7 @@ export type Route =
   | { readonly view: "missing"; readonly fragment: string };
 
 /** The views addressed by one segment, such as `#/health`. */
-const SINGLE_VIEWS = ["sets", "guides", "mock", "progress", "health", "settings", "about"] as const;
+const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "settings", "about"] as const;
 type SingleView = (typeof SINGLE_VIEWS)[number];
 
 function isSingleView(segment: string): segment is SingleView {
@@ -39,7 +46,8 @@ export function parseRoute(fragment: string): Route {
   const [path = "", query = ""] = hash.split("?", 2);
   const segments = path.split("/").filter((segment) => segment !== "");
   const [first, second, ...rest] = segments;
-  if (first === undefined) return { view: "problems", filters: filtersOf(new URLSearchParams(query)) };
+  if (first === undefined) return { view: "problems", filters: filtersOf(new URLSearchParams(query), FILTER_KEYS) };
+  if (first === "guides" && second === undefined) return { view: "guides", filters: filtersOf(new URLSearchParams(query), GUIDE_FILTER_KEYS) };
   if (first === "problems" && second !== undefined && rest.length === 0) {
     return { view: "problem", slug: decodeURIComponent(second) };
   }
@@ -59,12 +67,7 @@ export function parseRoute(fragment: string): Route {
 }
 
 export function problemsHash(filters: Filters): string {
-  const query = new URLSearchParams();
-  for (const key of FILTER_KEYS) {
-    const value = filters[key];
-    if (value) query.set(key, value);
-  }
-  const text = query.toString();
+  const text = queryText(filters, FILTER_KEYS);
   return text ? `#/?${text}` : "#/";
 }
 
@@ -78,6 +81,11 @@ export const setHash = (name: string): string => `${SETS_HASH}/${encodeURICompon
 /** The Guides view, and a guide's and a path's: where `cstudy learn <guide> --open` and
  * `cstudy learn --path <path> --open` land. */
 export const GUIDES_HASH = "#/guides";
+/** The Guides view with its search and filters, each in the query while it holds a value. */
+export function guidesHash(filters: GuideFilters): string {
+  const text = queryText(filters, GUIDE_FILTER_KEYS);
+  return text ? `${GUIDES_HASH}?${text}` : GUIDES_HASH;
+}
 export const guideHash = (slug: string): string => `${GUIDES_HASH}/${encodeURIComponent(slug)}`;
 export const pathHash = (slug: string): string => `#/paths/${encodeURIComponent(slug)}`;
 /** The Docs view, with its search in the query, and a page or one of its headings: where
@@ -91,9 +99,18 @@ export function docHash(slug: string, heading: string | null = null): string {
   return heading === null || heading === "" ? page : `${page}/${encodeURIComponent(heading)}`;
 }
 
-function filtersOf(query: URLSearchParams): Filters {
-  const filters: Filters = {};
-  for (const key of FILTER_KEYS) {
+function queryText<Key extends string>(filters: Partial<Record<Key, string>>, keys: readonly Key[]): string {
+  const query = new URLSearchParams();
+  for (const key of keys) {
+    const value = filters[key];
+    if (value) query.set(key, value);
+  }
+  return query.toString();
+}
+
+function filtersOf<Key extends string>(query: URLSearchParams, keys: readonly Key[]): Partial<Record<Key, string>> {
+  const filters: Partial<Record<Key, string>> = {};
+  for (const key of keys) {
     const value = query.get(key);
     if (value) filters[key] = value;
   }

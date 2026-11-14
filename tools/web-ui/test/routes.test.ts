@@ -1,12 +1,26 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ABOUT_HASH, attemptHash, GUIDES_HASH, guideHash, parseRoute, pathHash, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
+import { ABOUT_HASH, attemptHash, GUIDES_HASH, guideHash, guidesHash, parseRoute, pathHash, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
 
 test("the guides view and a guide and a path have routes of their own", () => {
   assert.deepEqual(
     [parseRoute(GUIDES_HASH), parseRoute(guideHash("hash-functions")), parseRoute(pathHash("hashing"))],
-    [{ view: "guides" }, { view: "guide", slug: "hash-functions" }, { view: "path", slug: "hashing" }],
+    [{ view: "guides", filters: {} }, { view: "guide", slug: "hash-functions" }, { view: "path", slug: "hashing" }],
+  );
+});
+
+test("the guides view keeps its search and filters in the fragment's query", () => {
+  assert.deepEqual(parseRoute("#/guides?search=hash%20map&level=core&path=hashing&status=not_read&sort=title"), {
+    view: "guides",
+    filters: { search: "hash map", level: "core", path: "hashing", status: "not_read" },
+  });
+});
+
+test("the guides view's hash names only what holds a value, the search last as in the problems view's", () => {
+  assert.deepEqual(
+    [guidesHash({}), guidesHash({ status: "read", search: "", level: "intro" }), guidesHash({ search: "hash map", path: "hashing" })],
+    ["#/guides", "#/guides?level=intro&status=read", "#/guides?path=hashing&search=hash+map"],
   );
 });
 

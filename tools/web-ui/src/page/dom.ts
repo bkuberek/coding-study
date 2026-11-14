@@ -40,6 +40,12 @@ export function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName));
 }
 
+/** `/`, which focuses a view's search, unless it types into a field, a list or an editor, or a
+ * dialog is open. */
+export function isSearchShortcut(event: KeyboardEvent): boolean {
+  return event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !isTyping(event.target) && document.querySelector("dialog[open]") === null;
+}
+
 /** A `<code>` that a screen reader reads as a command. */
 export function command(text: string): HTMLElement {
   return h("code", { class: "cmd" }, text);

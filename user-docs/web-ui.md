@@ -135,7 +135,7 @@ An open set lists its rows in order with their status and a **Start…** or **Re
 
 ## Learn with guides
 
-Open **Guides** (`Alt+3`) to read the [guides and learning paths](guides.md): each path with its progress, then every guide with its level and whether you have read it. A guide shows its diagrams in the page's theme, its code highlighted, what to read first, the problems that practise it and what to read next, and **Mark as read** at its end. A path shows each step in order, with a check once it is done. The page is the best place to read guides, since it draws the diagrams.
+Open **Guides** (`Alt+3`) to read the [guides and learning paths](guides.md): each path with its level and progress, from the introductory ones to the advanced, then every guide with its level and whether you have read it. Type in the search (`/` jumps there) to find guides and paths by title, summary or slug, and narrow them by level, by path, which lists that path's guides in its order, and by what you have read; a reload or Back from a guide keeps them, and **clear** empties them. A guide shows its diagrams in the page's theme, its code highlighted, what to read first, the problems that practise it and what to read next, and **Mark as read** at its end. A path shows each step in order, with a check once it is done. The page is the best place to read guides, since it draws the diagrams.
 
 ## Read the docs
 
@@ -152,7 +152,7 @@ Every view works with the keyboard alone. On Linux, read `Ctrl` for `Cmd`.
 | Keys | Do |
 |------|----|
 | `Alt+1` to `Alt+8` | Problems, Sets, Guides, Mock, Progress, Health, Settings, Docs |
-| `/` | Focus the search of the Problems view or of the Docs view |
+| `/` | Focus the search of the Problems, Guides or Docs view |
 | `Cmd+S` | Save the active tab |
 | `Cmd+Enter` | Run the tests |
 | `Cmd+Shift+Enter` | Submit a project level |

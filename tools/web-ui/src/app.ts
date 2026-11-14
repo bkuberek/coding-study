@@ -49,7 +49,7 @@ function show(context: PageContext, route: Route): Cleanup {
     case "set":
       return lazyView(context, () => import("./page/views/sets.ts").then((module) => (opened) => module.setView(opened, route.name)));
     case "guides":
-      return lazyView(context, () => import("./page/views/guides.ts").then((module) => module.guidesView));
+      return lazyView(context, () => import("./page/views/guides.ts").then((module) => (opened) => module.guidesView(opened, route.filters)));
     case "guide":
       return lazyView(context, () => import("./page/views/guides.ts").then((module) => (opened) => module.guideView(opened, route.slug)));
     case "path":

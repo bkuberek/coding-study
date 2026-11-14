@@ -109,6 +109,7 @@ class FsGuideCatalog:
             title=document["title"],
             summary=document["summary"],
             steps=tuple(_step(step) for step in document["steps"]),
+            level=GuideLevel(document["level"]) if "level" in document else None,
         )
 
     def _validated(self, path: Path, schema_file: str) -> Any:

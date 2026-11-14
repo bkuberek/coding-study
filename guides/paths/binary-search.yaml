@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=../../schemas/path.schema.json
 title: "Binary search: from a sorted array to searching the answer"
 summary: From halving a sorted array to bound searches, the bugs that break them, searching the range of possible answers, and structures that are not sorted at all.
+level: core
 steps:
   - guide: searching-a-sorted-array
   - problem: binary-search

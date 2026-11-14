@@ -16,15 +16,17 @@ from coding_study.application.learn import (
     GuideEntry,
     GuidePage,
     LearnListing,
+    ListingFilter,
     MarkedRead,
     PathView,
     guide_page,
     learn_listing,
     mark_read,
+    narrow_listing,
     path_view,
 )
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.concept_guides import StepKind, StepProgress
+from coding_study.domain.concept_guides import GuideLevel, GuideStatus, StepKind, StepProgress
 from coding_study.domain.errors import UsageError
 from coding_study.entrypoints.commands.serve import run_server
 from coding_study.entrypoints.shared import add_command, command_environ, console
@@ -41,6 +43,8 @@ COLUMN_GAP = 2
 TARGET_WIDTH = 9
 STATUS_WIDTH = 16
 NOT_READ = "-"
+NO_LEVEL = "-"
+"""The level of a path without guides."""
 NO_TARGET = ""
 WEB_HINT = "Read with rendered diagrams in the web UI: cstudy learn {slug} --open"
 BOTH = "give a guide or --path, not both"
@@ -50,6 +54,10 @@ OPEN_NEEDS_GUIDE = (
     "or cstudy learn --path <path> --open"
 )
 OPEN_PRINTS_NOTHING = "--open takes no --done or --json: it serves the page and opens it"
+FILTERS_NARROW_THE_LIST = (
+    "--search, --level and --status narrow the list: cstudy learn --search <words>, "
+    "without a guide or --path"
+)
 GUIDE_VIEW = "/guides/{slug}"
 PATH_VIEW = "/paths/{slug}"
 """The Guides page's views of a guide and of a path (docs/specs/web-ui.md#guides-view)."""
@@ -69,6 +77,21 @@ def learn(
         str | None, typer.Option("--path", help="Show a path's steps and progress.")
     ] = None,
     done: Annotated[bool, typer.Option("--done", help="Mark the guide read.")] = False,
+    search: Annotated[
+        str | None,
+        typer.Option(
+            "--search", help="List the guides and paths with every word in title, summary or slug."
+        ),
+    ] = None,
+    level: Annotated[
+        GuideLevel | None, typer.Option("--level", help="List the guides and paths at this level.")
+    ] = None,
+    status: Annotated[
+        GuideStatus | None,
+        typer.Option(
+            "--status", help="List what is read, or not: a path once all its guides are read."
+        ),
+    ] = None,
     open_page: Annotated[
         bool,
         typer.Option("--open", help="Serve the web UI and open the guide or the path there."),
@@ -82,6 +105,9 @@ def learn(
         raise UsageError(BOTH)
     if guide is None and done:
         raise UsageError(DONE_NEEDS_GUIDE)
+    wanted = ListingFilter(search or "", level, status)
+    if wanted.narrows and (guide is not None or path is not None):
+        raise UsageError(FILTERS_NARROW_THE_LIST)
     if open_page:
         _open(context, guide, path, done or as_json)
         return
@@ -96,7 +122,7 @@ def learn(
     elif guide is not None:
         _print_guide(output, guide_page(environment, guide), as_json)
     else:
-        _print_listing(output, environment, learn_listing(environment), as_json)
+        _print_listing(output, environment, learn_listing(environment), as_json, wanted)
 
 
 def _open(context: typer.Context, guide: str | None, path: str | None, printing: bool) -> None:
@@ -115,20 +141,28 @@ def _open(context: typer.Context, guide: str | None, path: str | None, printing:
 
 
 def _print_listing(
-    output: Console, environment: Environment, listing: LearnListing, as_json: bool
+    output: Console,
+    environment: Environment,
+    whole: LearnListing,
+    as_json: bool,
+    wanted: ListingFilter = ListingFilter(),  # noqa: B008 - frozen, so one shared default is safe
 ) -> None:
+    listing = narrow_listing(whole, wanted)
     if as_json:
         typer.echo(json.dumps(listing_document(listing), indent=2))
         return
-    if not listing.guides and not listing.paths:
+    if not whole.guides and not whole.paths:
         output.print(Text(f"no guides in {environment.content_root}"))
         return
     slugs = [entry.meta.slug for entry in listing.guides]
     slugs += [view.path.slug for view in listing.paths]
-    slug_width = max(SLUG_WIDTH, *(len(slug) + COLUMN_GAP for slug in slugs))
+    slug_width = max([SLUG_WIDTH, *(len(slug) + COLUMN_GAP for slug in slugs)])
     output.print(Text("GUIDES", style="bold"))
-    header = f"{'SLUG'.ljust(slug_width)}{'LEVEL'.ljust(LEVEL_WIDTH)}{'READ'.ljust(READ_WIDTH)}"
-    output.print(Text(f"{header}TITLE", style="bold"))
+    if not listing.guides:
+        output.print(Text(_no_match("guides", wanted)))
+    else:
+        header = f"{'SLUG'.ljust(slug_width)}{'LEVEL'.ljust(LEVEL_WIDTH)}{'READ'.ljust(READ_WIDTH)}"
+        output.print(Text(f"{header}TITLE", style="bold"))
     for entry in listing.guides:
         read = "yes" if entry.read_at else NOT_READ
         output.print(
@@ -137,17 +171,35 @@ def _print_listing(
                 f"{read.ljust(READ_WIDTH)}{entry.meta.title}"
             )
         )
-    if listing.paths:
+    if whole.paths:
         output.print(Text(""))
         output.print(Text("PATHS", style="bold"))
+        if not listing.paths:
+            output.print(Text(_no_match("paths", wanted)))
         for view in listing.paths:
+            level = view.level or NO_LEVEL
             counts = f"{view.done} of {view.total} done"
-            output.print(Text(f"{view.path.slug.ljust(slug_width)}{counts:<16}{view.path.title}"))
+            output.print(
+                Text(
+                    f"{view.path.slug.ljust(slug_width)}{level.ljust(LEVEL_WIDTH)}"
+                    f"{counts:<16}{view.path.title}"
+                )
+            )
         unfinished = next((view for view in listing.paths if view.next_step is not None), None)
         if unfinished is not None:
             output.print(_labelled("next", f"cstudy learn --path {unfinished.path.slug}"))
     if listing.guides:
         output.print(Text(WEB_HINT.format(slug="<guide>"), style="dim"))
+
+
+def _no_match(noun: str, wanted: ListingFilter) -> str:
+    """`no guides match "zebra", level: advanced`, as the Guides page says it."""
+    asked = [f'"{wanted.search.strip()}"'] if wanted.search.strip() else []
+    if wanted.level is not None:
+        asked.append(f"level: {wanted.level}")
+    if wanted.status is not None:
+        asked.append(f"status: {wanted.status.replace('_', ' ')}")
+    return f"no {noun} match {', '.join(asked)}" if asked else f"no {noun}"
 
 
 def _print_guide(output: Console, page: GuidePage, as_json: bool) -> None:
@@ -227,6 +279,8 @@ def listing_document(listing: LearnListing) -> dict[str, JsonValue]:
                 "slug": view.path.slug,
                 "title": view.path.title,
                 "summary": view.path.summary,
+                "level": None if view.level is None else view.level.value,
+                "guides": [step.slug for step in view.path.steps if step.kind is StepKind.GUIDE],
                 "done": view.done,
                 "total": view.total,
             }

@@ -29,6 +29,23 @@ def test_a_guide_that_does_not_load_reports_its_schema_issues(content_root: Path
     assert found.static_errors[0].startswith("guides/broken/meta.yaml: level: ")
 
 
+def test_a_path_level_that_is_no_guide_level_fails_the_path(content_root: Path):
+    write_hashing(content_root)
+    write_path(content_root, "odd", ["guide: hash-maps"], level="expert")
+    found = verify_guides(make_environment(content_root), PROBLEMS)[-1]
+    assert (found.directory, found.static_errors[0][: len("guides/paths/odd.yaml: level: ")]) == (
+        "guides/paths/odd.yaml",
+        "guides/paths/odd.yaml: level: ",
+    )
+
+
+def test_a_path_that_names_its_level_passes(content_root: Path):
+    write_hashing(content_root)
+    write_path(content_root, "named", ["guide: hash-functions"], level="advanced")
+    found = verify_guides(make_environment(content_root), PROBLEMS)[-1]
+    assert found == GuideVerification("guides/paths/named.yaml")
+
+
 def test_a_level_target_reads_the_problems_levels(content_root: Path):
     write_hashing(content_root)
     write_path(content_root, "too-far", ["{problem: tamper-evident-ledger, level: 5}"])

@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=../../schemas/path.schema.json
 title: "Stacks, queues and tries: from matching pairs to prefix trees"
 summary: Last in first out, first in first out, the monotonic stack and the trie, each taught on its own example, then practised on the problems that need it, the hardest last.
+level: intro
 steps:
   - guide: stacks
   - problem: valid-parentheses

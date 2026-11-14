@@ -9,16 +9,19 @@ order: 80
 
 A **guide** is a short reading that teaches one idea before you practise it: the idea in plain words, a worked example traced step by step, when to use it, the common traps, its cost with the conditions that hold, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, so it prints what the guide says.
 
-A **path** puts guides and problems in order, from a topic's first idea to an expert's. "Getting started" goes from the terminal to your first problem; others cover hashing, AI engineering, data engineering, testing, networking, machine learning, operating systems, distributed systems, security, and the classic algorithm patterns.
+A **path** puts guides and problems in order, from a topic's first idea to an expert's. "Getting started" goes from the terminal to your first problem; others cover hashing, AI engineering, data engineering, testing, networking, machine learning, operating systems, distributed systems, database internals, infrastructure as code, knowledge representation, security, and the classic algorithm patterns. Each path has a level, introductory, core or advanced, and the list shows them in that order.
 
 ## In the terminal
 
 ```bash
 cstudy learn                           # the guides and the paths, with what you have read
 cstudy learn --path hashing            # a path's steps, what is done, and the next one
+cstudy learn --search hash --level core   # the guides and paths that match
 cstudy learn hash-functions            # read a guide
 cstudy learn hash-functions --done     # mark it read
 ```
+
+`--search` keeps the guides and paths whose title, summary or slug holds every word, `--level` those at one level (`intro`, `core` or `advanced`), and `--status read` or `--status not_read` those you have read or not; they combine.
 
 `cstudy learn <guide>` prints the guide, each diagram as a drawing in text. On a terminal it is formatted; piped to a file or another program, it is the guide's Markdown as written. Printing a guide does not mark it read: `--done` does, and it needs a workspace, since it records your progress. Reading needs none.
 

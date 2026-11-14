@@ -161,6 +161,7 @@ A path is `guides/paths/<slug>.yaml`, validated by `schemas/path.schema.json`:
 # yaml-language-server: $schema=../../schemas/path.schema.json
 title: "Hashing: from your first hash map to content-addressed storage"
 summary: From what a hash function is to Merkle proofs, through the problems that practise each idea.
+level: core
 steps:
   - guide: hash-functions
   - guide: hash-maps-and-sets
@@ -173,10 +174,25 @@ steps:
 |-----|------|----------|-------|
 | `title` | string, 1 to 100 characters | yes | |
 | `summary` | string, 1 to 240 characters | yes | |
+| `level` | `intro`, `core` or `advanced` | no | The level the path is for, which [orders](#path-order) it among the paths. Without it, the path takes one from its guides' levels. Every shipped path names it |
 | `steps` | list, at least 1 | yes | In order. Each step is `{guide: <slug>}` or `{problem: <slug>}`, a problem step optionally with `level: <n>` |
-| `level` | integer, at least 1 | no | Only on a progressive or project problem, at most its number of levels: the step is done once that level passes. Without it, the step is done when the problem passes, through every level it has |
+| A step's `level` | integer, at least 1 | no | Only on a progressive or project problem, at most its number of levels: the step is done once that level passes. Without it, the step is done when the problem passes, through every level it has |
 
 The same problem may come twice with different levels, so a path can return to it once it has taught what the later levels need.
+
+### Path order
+
+`cstudy learn` and the [Guides page](#guides-page) list the paths from introductory to advanced, so the gentlest comes first. A path's level is the `level` it names, which says what it teaches; a path that names none takes one from the levels of its guides:
+
+| Rule | Detail |
+|------|--------|
+| Rank | Each guide step counts its guide's level as a number: `intro` 1, `core` 2, `advanced` 3. Problem steps, and a step whose guide does not exist, do not count |
+| Level | The `level` the path names. Without it, the level nearest the mean of those numbers, the higher one when the mean is halfway between two: only `intro` guides make an `intro` path, an `intro` and a `core` guide a `core` path, mostly `advanced` guides an `advanced` path. A path that names none and has no guide steps has no level |
+| Order | By level: the `intro` paths, then the `core` ones, then the `advanced` ones. Within a level, by the mean, lowest first, so the path whose guides average lower comes first. Paths alike in both keep their order by file name; a path without guide steps comes after the others of its level, and one with no level at all comes last |
+
+The shipped paths name these levels, from what each teaches: `intro` for "Getting started" and the first data structures ("Arrays: two pointers and sliding windows", "Stacks, queues and tries"); `core` for what working engineers use every day ("Hashing", "Binary search", "Trees and heaps", "Greedy choices and intervals", "Testing", "Networking", "Security", "Machine learning fundamentals", "AI engineering", "Infrastructure as code"); and `advanced` for the specialised depth ("Graphs", "Recursion and dynamic programming", "Operating systems", "Data engineering", "Distributed systems", "Database internals", "Knowledge representation").
+
+"Getting started" comes first: it is `intro`, and its guides, all `intro`, average lowest. `tests/content/test_guide_paths.py` checks that it stays first and that every shipped path names its level. The guides of `cstudy learn` follow the paths in this order, so the guides of "Getting started" come first too.
 
 ## Static checks
 
@@ -238,6 +254,6 @@ The path's next step is its first step that is not done.
 
 ## Guides page
 
-The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
+The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. The list shows the paths in their [order](#path-order), from introductory to advanced, and narrows the guides and the paths by a search and by level, path and status (read or not), kept in the page's URL. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
 
 `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` run `cstudy serve --open` landing on the guide or the path ([cli](cli.md#cstudy-learn)). The terminal still reads every guide in full.

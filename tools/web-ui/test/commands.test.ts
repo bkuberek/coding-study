@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { listCommand, nextCommand, quoted, startCommand } from "../src/page/commands.ts";
+import { learnCommand, listCommand, nextCommand, quoted, startCommand } from "../src/page/commands.ts";
 
 test("the list command names each filter with its cstudy list flag", () => {
   assert.equal(
@@ -69,4 +69,11 @@ test("the list command names the search last, quoted when a shell needs it", () 
 
 test("the next command has no search", () => {
   assert.equal(nextCommand({ search: "two", track: "dsa" }), "cstudy next --track dsa");
+});
+
+test("the guides view's command is cstudy learn with its level, status and search; a path has no flag", () => {
+  assert.deepEqual(
+    [learnCommand({}), learnCommand({ path: "hashing", search: "hash map", status: "not_read", level: "core" })],
+    ["cstudy learn", "cstudy learn --level core --status not_read --search 'hash map'"],
+  );
 });

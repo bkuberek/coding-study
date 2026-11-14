@@ -90,6 +90,23 @@ def test_a_path_loads_its_steps_in_order(content_root: Path):
     )
 
 
+def test_a_path_loads_the_level_it_names(content_root: Path):
+    write_hashing(content_root)
+    write_path(content_root, "deep", ["guide: hash-maps"], level="advanced")
+    catalog = FsGuideCatalog(content_root)
+    assert (catalog.load_path("deep").level, catalog.load_path("hashing").level) == (
+        GuideLevel.ADVANCED,
+        None,
+    )
+
+
+def test_a_path_level_that_is_no_guide_level_fails_the_schema(content_root: Path):
+    write_path(content_root, "odd", ["guide: hash-maps"], level="expert")
+    with pytest.raises(ContentError) as error:
+        FsGuideCatalog(content_root).load_path("odd")
+    assert str(error.value).startswith("guides/paths/odd.yaml: level: ")
+
+
 def test_a_step_that_is_neither_a_guide_nor_a_problem_fails_the_schema(content_root: Path):
     write_path(content_root, "odd", ["{guide: hash-maps, level: 2}"])
     with pytest.raises(ContentError) as error:

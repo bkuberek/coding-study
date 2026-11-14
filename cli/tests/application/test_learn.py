@@ -7,8 +7,17 @@ from pathlib import Path
 import pytest
 
 from coding_study.application.environment import Environment
-from coding_study.application.learn import guide_page, learn_listing, mark_read, path_view
+from coding_study.application.learn import (
+    LearnListing,
+    ListingFilter,
+    guide_page,
+    learn_listing,
+    mark_read,
+    narrow_listing,
+    path_view,
+)
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.concept_guides import GuideLevel, GuideStatus
 from coding_study.domain.errors import UnknownGuideError
 from coding_study.domain.problem import Language
 from tests.fakes import NOW, FakeClock, make_environment
@@ -55,6 +64,84 @@ def test_the_list_puts_the_guides_of_paths_first_in_path_order(environment: Envi
         "hash-maps",
         "a-loose-guide",
     ]
+
+
+def test_the_list_orders_the_paths_from_introductory_to_advanced(
+    environment: Environment, content_root: Path
+):
+    write_guide(content_root, "merkle-trees", "Merkle trees", level="advanced")
+    write_guide(content_root, "consistent-hashing", "Consistent hashing", level="core")
+    write_path(
+        content_root,
+        "deep-hashing",
+        ["guide: consistent-hashing", "guide: merkle-trees"],
+        title="Deep hashing",
+    )
+    write_path(content_root, "problems-only", ["problem: two-sum"], title="Problems only")
+    listing = learn_listing(environment)
+    assert [(view.path.slug, view.level) for view in listing.paths] == [
+        ("hashing", GuideLevel.INTRO),
+        ("deep-hashing", GuideLevel.ADVANCED),
+        ("problems-only", None),
+    ]
+
+
+def test_the_guides_of_paths_follow_the_order_of_the_paths(
+    environment: Environment, content_root: Path
+):
+    write_guide(content_root, "merkle-trees", "Merkle trees", level="advanced")
+    write_path(content_root, "advanced-first", ["guide: merkle-trees"], title="Advanced")
+    listing = learn_listing(environment)
+    assert [entry.meta.slug for entry in listing.guides] == [
+        "hash-functions",
+        "hash-maps",
+        "merkle-trees",
+        "a-loose-guide",
+    ]
+
+
+def test_a_path_that_names_its_level_is_ordered_by_it(environment: Environment, content_root: Path):
+    write_guide(content_root, "merkle-trees", "Merkle trees", level="advanced")
+    write_path(content_root, "a-gentle-start", ["guide: merkle-trees"], level="intro")
+    write_path(content_root, "hashing", ["guide: hash-functions"], level="advanced")
+    assert [(view.path.slug, view.level) for view in learn_listing(environment).paths] == [
+        ("a-gentle-start", GuideLevel.INTRO),
+        ("hashing", GuideLevel.ADVANCED),
+    ]
+
+
+def shown(listing: LearnListing) -> tuple[list[str], list[str]]:
+    return [entry.meta.slug for entry in listing.guides], [view.path.slug for view in listing.paths]
+
+
+def test_the_list_narrows_to_a_search_a_level_or_a_status(
+    environment: Environment, content_root: Path
+):
+    write_guide(content_root, "merkle-trees", "Merkle trees", level="advanced")
+    write_path(content_root, "deep-hashing", ["guide: merkle-trees"], title="Deep hashing")
+    mark_read(environment, "hash-functions")
+    listing = learn_listing(environment)
+    assert [
+        shown(narrow_listing(listing, ListingFilter(search="HASH  maps"))),
+        shown(narrow_listing(listing, ListingFilter(level=GuideLevel.ADVANCED))),
+        shown(narrow_listing(listing, ListingFilter(status=GuideStatus.READ))),
+        shown(narrow_listing(listing, ListingFilter(status=GuideStatus.NOT_READ))),
+    ] == [
+        (["hash-maps"], []),
+        (["merkle-trees"], ["deep-hashing"]),
+        (["hash-functions"], []),
+        (["hash-maps", "merkle-trees", "a-loose-guide"], ["hashing", "deep-hashing"]),
+    ]
+
+
+def test_the_search_the_level_and_the_status_combine(environment: Environment):
+    mark_read(environment, "hash-functions")
+    wanted = ListingFilter(search="hash", level=GuideLevel.INTRO, status=GuideStatus.NOT_READ)
+    assert shown(narrow_listing(learn_listing(environment), wanted)) == (["hash-maps"], ["hashing"])
+
+
+def test_a_path_on_its_own_has_its_level(environment: Environment):
+    assert path_view(environment, "hashing").level is GuideLevel.INTRO
 
 
 def test_the_list_counts_each_paths_steps(environment: Environment):
