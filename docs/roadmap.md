@@ -57,7 +57,7 @@ Someone new to a topic installs cstudy on macOS or Linux, chooses the languages,
 | Your own problems | `new`, `verify --require-ready`, and the problem joins `next` |
 | AI preview | With your own key: the assistant in a drawer on every page, problem sessions on an attempt, AI review of rubric-checked problems |
 
-At 1.0 the catalog holds about 447 problems (the 16 former items among them), 208 guides and 31 paths.
+At 1.0 the catalog holds about 447 problems (the 16 former items among them), 207 guides and 31 paths.
 
 ### Compatibility promise
 
@@ -93,19 +93,19 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 
 | Area | Met | Partly met | Not met |
 |------|----:|-----------:|--------:|
-| Compatibility and release engineering | 1 | 2 | 6 |
+| Compatibility and release engineering | 2 | 2 | 6 |
 | Product | 0 | 1 | 12 |
 | AI preview | 0 | 0 | 9 |
 | Content | 1 | 2 | 6 |
 | Platforms and install | 0 | 3 | 4 |
-| Reliability | 1 | 0 | 3 |
-| Docs | 0 | 2 | 1 |
+| Reliability | 1 | 1 | 2 |
+| Docs | 1 | 1 | 1 |
 | Accessibility | 2 | 1 | 1 |
 | Performance | 1 | 1 | 2 |
 | Security and sandbox | 0 | 2 | 3 |
-| Licensing | 2 | 3 | 1 |
+| Licensing | 3 | 3 | 0 |
 | Privacy and offline | 2 | 2 | 1 |
-| **Total (78)** | **10** | **19** | **49** |
+| **Total (79)** | **13** | **19** | **47** |
 
 #### Compatibility and release engineering
 
@@ -120,6 +120,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | E7 | Rollback is documented and drilled once: install the previous version, then restore from the backup or an export | Not met | v0.64 |
 | E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Not met | v0.51 (draft), release candidates (final) |
 | E9 | 1.0.0 is cut deliberately with a major bump | Met: `semantic-release version --major` | v1.0.0 |
+| E10 | A release is cut only after CI passes on main: the Version workflow runs after CI, and a manual release checks CI first | Met | v0.50 |
 
 #### Product
 
@@ -185,11 +186,11 @@ The content must-haves:
 | Machine learning depth: trees and ensembles, clustering and nearest neighbours, neural network basics | 3 | 3 | v0.57 |
 | Security: password storage and sessions, encryption and signatures | 2 | 2 | v0.57 |
 | Browser-graded React problems: the search box, and a data table with sorting and pagination | 0 | 2 | v0.58 |
-| Operations and troubleshooting guides: three paths, on Linux servers and SSH; databases, caches and search; and messaging and cloud CLIs, opening on a shared troubleshooting method | 23 | 0 | v0.63 |
+| Operations and troubleshooting guides: three paths, on Linux servers and SSH; databases, caches and search; and messaging and cloud CLIs, opening on a shared troubleshooting method | 22 | 0 | v0.63 |
 | Break-and-fix problems on Linux servers and SSH: a full disk, a runaway process, memory and the OOM killer, a proxy's 502s, names and certificates, an SSH bastion and tunnels | 0 | 6 | v0.63 |
 | Break-and-fix problems on databases, caches and search: Postgres locks and connections, a MySQL metadata lock, MongoDB slow queries behind licence acceptance, a Valkey cache that evicts everything, and OpenSearch cluster health, mappings and heavy queries | 0 | 8 | v0.63 |
 | Break-and-fix problems on messaging and cloud CLIs: Kafka consumer lag, a stuck Valkey stream consumer, SQS, SNS and EventBridge through the real `aws` CLI on Moto, RabbitMQ, NATS JetStream, and a cloud incident with Google Pub/Sub read from recorded `gcloud` output | 0 | 6 | v0.63 |
-| **Total** | **76** | **47** | |
+| **Total** | **75** | **47** | |
 
 #### Platforms and install
 
@@ -207,7 +208,7 @@ The content must-haves:
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| R1 | The full local gate passes twice in a row on the release-candidate commit, with no reruns | Not met | v0.50 (hardening), release candidates |
+| R1 | The full local gate passes twice in a row on the release-candidate commit, with no reruns | Partly met: v0.50 hardened the load-sensitive tests (a one-off container gets 30 s beyond its command's limit, a stopped backing service starts with `up --wait`, and the timing and JDWP tests wait for what they check); two clean gates in a row on a release candidate remain | v0.50 (hardening), release candidates |
 | R2 | CI is green on main for the release candidate and throughout the soak | Not met | Release candidates |
 | R3 | No internal error (exit 70) during the soak | Not met | Release candidates |
 | R4 | The docs state what CI runs and what stays a local gate | Met | |
@@ -217,7 +218,7 @@ The content must-haves:
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
 | D1 | The normative docs match what shipped | Partly met: the PRD's scope and platforms match this plan; the docs index and the progress spec lag | v0.51, then each milestone |
-| D2 | In-app docs: `cstudy docs`, a Docs page, and a test that parses every command and flag the docs show against the real CLI | Partly met: in progress | v0.50 |
+| D2 | In-app docs: `cstudy docs`, a Docs page, and a test that parses every command and flag the docs show against the real CLI | Met: the 13 pages of `user-docs/`, read with `cstudy docs` and the Docs page, and `tests/content/test_user_docs.py` | v0.50 |
 | D3 | A guide to the AI preview: keys, providers, what is sent, costs and caps | Not met | v0.62 |
 
 #### Accessibility
@@ -257,7 +258,7 @@ The content must-haves:
 | L3 | Every image a problem pulls is pinned by digest and its licence recorded. Each is under an OSI-approved licence, unless the problem needs a specific image under another licence. Then the problem names that licence and links its text, nothing is pulled until you accept it (with `cstudy start --accept-license <key>` or a prompt at a terminal, never by `--yes`), and your acceptance is recorded in the workspace's marker as `[licenses.<key>]`, the same way as the Kotlin LSP's. The problem carries a licence marker in `cstudy list`, `cstudy show` and the page, and shows as unavailable, with the reason and the command, until you accept. No image needs an account, a token or the network after it is pulled | Partly met: digests are enforced | v0.59 (licence acceptance for images), v0.64 |
 | L4 | Code and content under MIT, in original wording, with sources recorded | Met | |
 | L5 | Terms that bind the user are disclosed | Met | |
-| L6 | The backing-services test fixture moves from `redis:7.4.12-alpine`, under RSALv2 or SSPLv1, which are not open source, to Valkey: `cli/tests/fixtures/service_projects/5903-fixture-members-python/services/compose.yaml`, with its test and the service-projects spec | Not met | v0.64 |
+| L6 | The backing-services test fixture moves from `redis:7.4.12-alpine`, under RSALv2 or SSPLv1, which are not open source, to Valkey: `cli/tests/fixtures/service_projects/5903-fixture-members-python/services/compose.yaml`, with its test and the service-projects spec | Met: the fixture uses Valkey | v0.50 |
 
 #### Privacy and offline
 
@@ -276,7 +277,7 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 | Milestone | Contents | Paced by |
 |-----------|----------|----------|
 | v0.49 | Guide paths on database internals, infrastructure as code and knowledge representation, with their review records (C3): 132 guides and 20 paths | Released |
-| v0.50 | Guides page search and filters; example tabs; in-app docs with `cstudy docs`, the Docs page and the parsed docs test (D2); hardening of load-sensitive tests (R1); A4 and PF4 for the new UI | Engineering (in progress) |
+| v0.50 | Guides page search and filters; example tabs; in-app docs with `cstudy docs`, the Docs page and the parsed docs test (D2); hardening of load-sensitive tests (R1); releases only after CI (E10); the Valkey fixture (L6); A4 and PF4 for the new UI | Released |
 | v0.51 Compatibility contract | The compatibility spec and ADR (E1); canonical IDs `<type>/<slug>`, `problems/<slug>`, the 16 items as `system-design` and `code-review` problems checked by a rubric, and the Checked by column (E3); contract tests (E2); a backup before every migration, the upgrade test matrix and export round trips (E4); a deprecation helper; the docs pass (D1); a draft `UPGRADING.md` (E8) | Engineering |
 | v0.52 Learner profile | Languages, job roles and domains as default filters on every page, widened per page, through one shared filter component (P1); `cstudy init --lang`, `cstudy lang add`, and `doctor` and the IDE files scoped to the workspace's languages (P2); `job_roles` and `domains` on guides with their `verify` check (C9); A4 for the profile and filters | Engineering |
 | v0.53 Platforms | The support matrix and the toolchain-floor policy (PL1, PL6); version-pinned install docs (PL5); the shared smoke script and the first recorded macOS and Linux gates (PL2, PL3); the WSL2 guide (PL4); the fresh-eyes onboarding run (PL7); the issue forms, the page's feedback entries and `cstudy feedback` (P8) | Engineering |
@@ -289,8 +290,8 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 | v0.60 AI foundation | An ADR that amends [ADR 0021](decisions/0021-ai-reviewed-problems.md); the model port and four provider adapters; keys, consent, caps and usage (AI1); fixed and auto routing (AI2); the AI settings section; AI review of rubric-checked problems (AI3); nothing sent with AI off (AI8) | Engineering |
 | v0.61 AI chat | Sessions in `progress.db`; replies as child `cstudy ai reply --events` processes relayed to the page; the drawer chunk and its budget; free sessions and `cstudy ai chat` (AI4); page context; web search (AI5); issue drafts from the assistant (AI9) | Engineering |
 | v0.62 AI problem sessions | Problem sessions, help modes and the mock rules (AI6); turn tags, the assistance record, its grade caps, and its place in history, stats, export and import (AI7); the AI preview guide (D3); the PRD's AI requirements | Engineering |
-| v0.63 Content batch 4 | Operations and troubleshooting: 23 guides in 3 paths, and 20 break-and-fix problems on the v0.59 engine (C7) | Content; the problems follow v0.59 |
-| v0.64 Hardening | The security review and threat model (S1); the dependency audit (S2); rootless Docker and SELinux (S3); the trust model (S4); `SECURITY.md` (S5); the network map, the telemetry guard and the offline test (O1 to O3); licensing (L1 to L3, L6); the screen-reader pass (A3); the release-notes template, release-candidate tags and the rollback drill (E5 to E7); the desktop app ADR (P7) | Engineering |
+| v0.63 Content batch 4 | Operations and troubleshooting: 22 guides in 3 paths, and 20 break-and-fix problems on the v0.59 engine (C7) | Content; the problems follow v0.59 |
+| v0.64 Hardening | The security review and threat model (S1); the dependency audit (S2); rootless Docker and SELinux (S3); the trust model (S4); `SECURITY.md` (S5); the network map, the telemetry guard and the offline test (O1 to O3); licensing (L1 to L3); the screen-reader pass (A3); the release-notes template, release-candidate tags and the rollback drill (E5 to E7); the desktop app ADR (P7) | Engineering |
 | v1.0.0-rc.1 to rc.n | Feature freeze; the macOS and Linux gates on every candidate (PL2, PL3); a 14-day soak with real use (P6), CI green (R2) and no exit 70 (R3); the journey checklist (P3); two clean full gates in a row (R1); final runs of C1, A1, PF1 and S2; curated notes and the final `UPGRADING.md` (E8) | The 14-day soak |
 | v1.0.0 | Every criterion met; the major bump (E9) | The last release |
 
@@ -312,10 +313,10 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 
 | Stretch | Paced by | Days |
 |---------|----------|-----:|
-| Content: the remaining must-haves, 76 guides and 47 problems (v0.55 to v0.57, v0.63) | Measured velocity, built alongside engineering and off the critical path | 2 to 5 |
-| Engineering: 11 milestones (v0.50 to v0.54, v0.58 to v0.62, v0.64) | The heavy gate and reviews, 1 to 3 days each | 11 to 33 |
+| Content: the remaining must-haves, 75 guides and 47 problems (v0.55 to v0.57, v0.63) | Measured velocity, built alongside engineering and off the critical path | 2 to 5 |
+| Engineering: 10 milestones (v0.51 to v0.54, v0.58 to v0.62, v0.64) | The heavy gate and reviews, 1 to 3 days each | 10 to 30 |
 | Release candidates | The 14-day soak, plus the macOS and Linux gates on each candidate | 15 to 17 |
-| **Critical path** | Engineering, then the release candidates | **26 to 50** |
+| **Critical path** | Engineering, then the release candidates | **25 to 47** |
 
 ## v1.1
 
