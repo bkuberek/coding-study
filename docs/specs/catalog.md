@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 210 DSA problems and 188 non-DSA items (172 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 210 DSA problems and 190 non-DSA items (174 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 210 (185 planned, 25 added) | `problems/` |
-| `practical` | 135 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added, 1 content-addressed storage problem added, 9 AI engineering problems added, 7 data engineering problems added, 1 architecture problem added, 5 infrastructure as code problems added, 3 security problems added, 2 machine learning problems added, 2 testing problems added, 3 networking problems added, 2 operating systems problems added, 1 sorting problem added, 3 language and editor problems added, 2 database internals problems added, 4 distributed systems problems added, 2 platform problems added, 3 internals problems added) | `problems/` |
+| `practical` | 137 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added, 1 content-addressed storage problem added, 9 AI engineering problems added, 7 data engineering problems added, 1 architecture problem added, 5 infrastructure as code problems added, 3 security problems added, 2 machine learning problems added, 2 testing problems added, 3 networking problems added, 2 operating systems problems added, 1 sorting problem added, 3 language and editor problems added, 2 database internals problems added, 4 distributed systems problems added, 2 platform problems added, 3 internals problems added, 2 AI engineering problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **398** (382 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **400** (384 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -311,7 +311,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (135, `problems/`)
+### practical (137, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -640,6 +640,13 @@ Three function-size, four-level progressive problems in all six languages on the
 | 0382 | `query-planner` | Query Planner | `dp-1d`, `bit-manipulation` | progressive | hard | all six | `backend` | `backend` | function |
 | 0383 | `memory-allocator` | Memory Allocator | `intervals`, `bit-manipulation` | progressive | hard | all six | `systems` | `platform`, `backend` | function |
 
+Two more function-size, four-level progressive problems on AI engineering, in Python and TypeScript under the [Languages rule](#rules): `0384` runs agent work as background jobs, from a queue with leases and each step's output kept in a shared store, so that the next worker resumes a job instead of starting over, to a worker count set by the backlog with cooldowns, then a gateway that limits, retries and cuts off the calls to the tools; `0385` is an agent memory whose claims cite receipts of the texts they came from, from claims with evidence and drift detection when a source changes to re-verification that refreshes or contradicts a claim and reaches the claims built on it, then recall under a trust policy. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0384 | `agent-job-workers` | Agent Job Workers | `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend`, `systems` | `ai-engineer`, `backend`, `platform` | function |
+| 0385 | `grounded-memory-store` | Grounded Memory Store | `arrays-hashing`, `graphs` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -693,7 +700,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-135-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-137-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|

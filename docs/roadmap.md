@@ -20,7 +20,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 
 ## Status
 
-Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 382 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
+Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 384 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
 
 | Item | Phase | Needs |
 |------|-------|-------|
@@ -246,6 +246,7 @@ The pilots are written with the next project problems.
 - [x] Platform, `0373` and `0374`, all six languages: a SemVer resolver, and alerts on an SLO's error budget burn rate. Both are built: the catalog then had 389 entries.
 - [x] More DSA on-ramps: `0375` to `0380`, six problems in all six languages, each a first step in its pattern: lamp patterns before subsets, counting words by prefix before a whole trie, village paths before counting connected components, a rebate from the next cheaper item before daily temperatures, the cheapest route across a grid as a first two-dimensional table, and checking a task order before course schedule. They are listed under [later DSA additions](specs/catalog.md#later-dsa-additions). The catalog then had 395 entries.
 - [x] Internals, `0381` to `0383`, all six languages: a regex engine by Thompson's construction, a query planner that estimates rows and orders joins by dynamic programming over subsets, and a memory allocator with boundary tags, placement policies and buddies. All three are built: the catalog then had 398 entries.
+- [x] AI engineering, `0384` and `0385`, in Python and TypeScript: agent job workers, with leases, progress resumed from a shared store, a worker count set by the backlog and a gateway in front of the tools; and a grounded memory store whose claims cite receipts of their sources, go stale when a source changes, and are re-verified or contradicted. Both are built: the catalog then had 400 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 
 ### Planned project problems
