@@ -9,8 +9,9 @@ library file that the caller accepts becomes a button the page opens it with.
 
 A concept guide (docs/specs/web-ui.md#guides-view) is rendered the same way too, except that its
 `# ` title is left out, since the view's header shows it, each `mermaid` block becomes a figure of
-its SVG drawings, made when the guide was written (docs/specs/guides.md#svg-drawings), and a link
-to another guide becomes a link to that guide's view.
+its SVG drawings, made when the guide was written (docs/specs/guides.md#svg-drawings), each
+example with variants becomes a group of one panel per language, which the page shows as tabs
+(docs/specs/guides.md#variants), and a link to another guide becomes a link to that guide's view.
 """
 
 import html
@@ -28,10 +29,12 @@ from pygments.lexers import find_lexer_class_by_name
 from pygments.util import ClassNotFound
 
 from coding_study.domain.concept_guides import DIAGRAMS_DIRECTORY
+from coding_study.domain.guide_examples import PRINTS, ExampleGroup, example_groups
 from coding_study.domain.guide_markdown import (
     MERMAID,
     SVG_THEMES,
     TEXT,
+    GuideMarkdown,
     diagram_text,
     is_text_marker,
     mermaid_digest,
@@ -74,6 +77,12 @@ IMAGE_HTML = (
     'width="{width}" height="{height}">\n'
 )
 TEXT_HTML = '<pre class="diagram-text"><code>{text}</code></pre>\n'
+EXAMPLE_GROUPS = "example_groups"
+"""The key of the render environment that holds a guide's examples with variants."""
+GROUP_HTML = '<div class="example-tabs" data-example="{stem}">\n'
+VARIANT_HTML = '<div class="example-variant" data-language="{language}">\n'
+PRINTS_HTML = f'<p class="example-prints">{PRINTS}</p>\n'
+CLOSING_HTML = "</div>\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,7 +119,8 @@ def render_documentation_markdown(text: str, opens_library: LibraryLinks = no_li
 def render_guide_markdown(text: str, images: DiagramImages = NO_IMAGES) -> str:
     """A concept guide's guide.md as the Guides view shows it, each diagram as the `images` of its
     SVG drawings when both are up to date."""
-    return _GUIDE.render(text, {DIAGRAM_IMAGES: images})
+    groups = example_groups(GuideMarkdown(text))
+    return _GUIDE.render(text, {DIAGRAM_IMAGES: images, EXAMPLE_GROUPS: groups})
 
 
 def render_code_block(code: str, language: str) -> str:
@@ -291,6 +301,39 @@ def _figure(diagram: Token, drawing: Token | None, images: list[tuple[str, str]]
     return figure
 
 
+def _example_tabs(state: StateCore) -> None:
+    """Each example with variants becomes a group of panels, one per variant, each holding the
+    variant's code, `It prints:` and its output; the page makes the group's tabs. A variant's
+    blocks are found by the lines they start on, as `example_groups` read them."""
+    groups = cast(Sequence[ExampleGroup], state.env.get(EXAMPLE_GROUPS, ()))
+    before: dict[int, str] = {}
+    after: dict[int, str] = {}
+    for group in groups:
+        for position, variant in enumerate(group.variants):
+            opening = VARIANT_HTML.format(language=html.escape(variant.language))
+            if position == 0:
+                opening = GROUP_HTML.format(stem=html.escape(group.stem)) + opening
+            before[variant.fence.start] = opening
+            before[variant.output.start] = PRINTS_HTML
+            closing = CLOSING_HTML * (2 if position == len(group.variants) - 1 else 1)
+            after[variant.output.start] = closing
+    kept: list[Token] = []
+    for token in state.tokens:
+        line = token.map[0] if token.type == "fence" and token.map else None
+        if line in before:
+            kept.append(_html_block(before[line]))
+        kept.append(token)
+        if line in after:
+            kept.append(_html_block(after[line]))
+    state.tokens = kept
+
+
+def _html_block(content: str) -> Token:
+    block = Token("html_block", "", 0, block=True)
+    block.content = content
+    return block
+
+
 def _alt_text(image: Token) -> Token:
     text = Token("text", "", 0)
     parts = image.children or []
@@ -318,4 +361,5 @@ _GUIDE = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).en
 _GUIDE.core.ruler.push("alignment_classes", _alignment_classes)
 _GUIDE.core.ruler.push("without_title", _without_title)
 _GUIDE.core.ruler.push("diagram_figures", _diagram_figures)
+_GUIDE.core.ruler.push("example_tabs", _example_tabs)
 _GUIDE.core.ruler.push("guide_links", _guide_links)

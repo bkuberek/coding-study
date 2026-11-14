@@ -159,6 +159,31 @@ def test_a_guide_highlights_its_code_and_links_to_other_guides(content_root, cli
     ) == (True, True, True, True)
 
 
+def test_an_example_with_variants_is_one_group_of_language_panels(content_root, client):
+    write_guide(content_root, "hash-maps", "Hash maps", variants=True)
+    html = client.get(f"{GUIDES}/hash-maps").json()["html"]
+    group = html[html.index('<div class="example-tabs"') : html.index("<h2>When to use it</h2>")]
+    assert group.startswith('<div class="example-tabs" data-example="examples/hello">\n')
+    assert [part.split('"', 1)[0] for part in group.split('data-language="')[1:]] == [
+        "python",
+        "typescript",
+        "go",
+    ]
+    panel = group.split('<div class="example-variant" data-language="typescript">\n')[1]
+    assert panel.startswith(
+        '<pre><code class="language-typescript"><span class="tok-nx">console</span>'
+    )
+    assert '<p class="example-prints">It prints:</p>\n<pre><code class="language-output">' in (
+        panel
+    )
+    assert group.endswith("</div>\n</div>\n")
+
+
+def test_an_example_in_one_language_is_no_group(client):
+    html = client.get(f"{GUIDES}/hash-maps").json()["html"]
+    assert ("example-tabs" in html, '<code class="language-python">' in html) == (False, True)
+
+
 def test_a_path_is_the_document_of_cstudy_learn_path(client, monkeypatch, environment):
     mark(client, "hash-functions")
     assert client.get(f"{PATHS}/hashing").json() == cli_document(

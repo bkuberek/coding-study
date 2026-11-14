@@ -186,6 +186,37 @@
   margin: 0;
 }
 
+/* An example in several languages (example-tabs.ts): a row of tabs, one per language, over the
+   panel of the language shown, which holds its code, "It prints:" and its output. The row
+   scrolls sideways on a narrow screen rather than wrapping. */
+.example-tabs {
+  margin: 0 0 16px;
+}
+
+.example-tablist {
+  display: flex;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--paper-sunken);
+}
+
+.example-tab {
+  font-size: var(--text-s);
+}
+
+.example-variant > pre:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.example-prints {
+  margin: 0 0 6px;
+  font-size: var(--text-s);
+  color: var(--ink-soft);
+}
+
 .path-next {
   margin-top: 12px;
 }

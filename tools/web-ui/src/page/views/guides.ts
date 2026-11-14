@@ -10,6 +10,7 @@ import "./guides.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { command, h, rendered } from "../dom.ts";
+import { exampleTabs } from "../example-tabs.ts";
 import { progressText, stepCommand, stepHref, stepTarget } from "../guides-model.ts";
 import { GUIDES_HASH, guideHash, pathHash, problemHash } from "../routes.ts";
 import { empty, loading, messageOf, showFailure } from "../states.ts";
@@ -155,7 +156,7 @@ function readControl(context: PageContext, guide: GuideDocument, readChanged: (r
 }
 
 /** A guide, its diagrams as the server's `<img>` pairs, of which the stylesheet shows the one of
- * the page's theme. */
+ * the page's theme, and its examples in several languages as tabs. */
 export function guideView(context: PageContext, slug: string): Cleanup {
   const { api, shell } = context;
   shell.setView("guides");
@@ -164,12 +165,14 @@ export function guideView(context: PageContext, slug: string): Cleanup {
   const page = h("article", { class: "guide", "aria-busy": "true" }, loading());
   shell.main.replaceChildren(page);
   let left = false;
+  let stopTabs = (): void => undefined;
   void Promise.all([api.get<GuideDocument>(`${GUIDES_API}/${encodeURIComponent(slug)}`), api.get<GuideListing>(GUIDES_API)])
     .then(([guide, found]) => {
       if (left) return;
       const titles = new Map(found.guides.map((entry) => [entry.slug, entry]));
       const mark = readMark(guide.read_at !== null);
       const body = rendered(guide.html, "prose guide-body");
+      stopTabs = exampleTabs(body, context.session.default_lang, (message) => shell.announce(message));
       page.removeAttribute("aria-busy");
       page.replaceChildren(
         h(
@@ -200,6 +203,7 @@ export function guideView(context: PageContext, slug: string): Cleanup {
     });
   return () => {
     left = true;
+    stopTabs();
   };
 }
 
