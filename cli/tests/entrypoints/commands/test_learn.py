@@ -49,7 +49,7 @@ def test_the_list_shows_the_guides_the_paths_and_what_comes_next(environment: En
         "hash-maps                   intro     -     Hash maps",
         "",
         "PATHS",
-        "hashing                     0 of 4 done     Hashing",
+        "hashing                     intro     0 of 4 done     Hashing",
         "next      cstudy learn --path hashing",
         f"{HINT} <guide> --open",
     ]
@@ -75,6 +75,8 @@ def test_the_list_as_json_has_no_hint(environment: Environment):
                 "slug": "hashing",
                 "title": "Hashing",
                 "summary": "From hash functions on.",
+                "level": "intro",
+                "guides": ["hash-functions", "hash-maps"],
                 "done": 1,
                 "total": 4,
             }
@@ -289,4 +291,5 @@ def test_the_list_with_long_slugs_keeps_its_columns_aligned(environment: Environ
     guide_rows = [line for line in lines if "Title" in line]
     path_rows = [line for line in lines if "Path title" in line]
     assert {row.index("core") for row in guide_rows} == {lines[1].index("LEVEL")}
-    assert {row.index("0 of 0") for row in path_rows} == {len(long_guide) + 2}
+    assert {row[lines[1].index("LEVEL")] for row in path_rows} == {learn.NO_LEVEL}
+    assert {row.index("0 of 0") for row in path_rows} == {len(long_guide) + 2 + learn.LEVEL_WIDTH}

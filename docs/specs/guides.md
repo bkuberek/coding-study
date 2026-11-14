@@ -178,6 +178,18 @@ steps:
 
 The same problem may come twice with different levels, so a path can return to it once it has taught what the later levels need.
 
+### Path order
+
+`cstudy learn` and the [Guides page](#guides-page) list the paths from introductory to advanced, so the gentlest comes first. A path names no level; it takes one from the levels of its guides:
+
+| Rule | Detail |
+|------|--------|
+| Rank | Each guide step counts its guide's level as a number: `intro` 1, `core` 2, `advanced` 3. Problem steps, and a step whose guide does not exist, do not count |
+| Level | The level nearest the mean of those numbers, the higher one when the mean is halfway between two: only `intro` guides make an `intro` path, an `intro` and a `core` guide a `core` path, mostly `advanced` guides an `advanced` path. A path without guide steps has no level |
+| Order | By that mean, lowest first, which also orders the paths by level: the `intro` paths, then the `core` ones, then the `advanced` ones, and within a level the path whose guides average lower first. Paths with the same mean keep their order by file name, and a path without guide steps comes last |
+
+"Getting started" comes first, since its guides are all `intro` and no other path's are. `tests/content/test_guide_paths.py` checks that it stays first, so a new path that ties it fails the test and its author decides. The guides of `cstudy learn` follow the paths in this order, so the guides of "Getting started" come first too.
+
 ## Static checks
 
 `cstudy verify` runs these after the problems' and items' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure.

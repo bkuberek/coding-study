@@ -9,14 +9,17 @@ from pathlib import Path
 from coding_study.application.environment import Environment
 from coding_study.domain.concept_guides import (
     DIAGRAMS_DIRECTORY,
+    GuideLevel,
     GuideMeta,
     LearningPath,
     PathStep,
     ProblemFacts,
     StepKind,
     StepProgress,
+    by_level,
     guide_step_progress,
     highest_level_passed,
+    path_level,
     problem_step_progress,
     unknown_slug_message,
 )
@@ -41,6 +44,9 @@ class GuideEntry:
 class PathView:
     path: LearningPath
     steps: tuple[StepProgress, ...]
+    level: GuideLevel | None = None
+    """The level the path is for, from its guides' levels (docs/specs/guides.md#path-order);
+    None for a path without guides."""
 
     @property
     def done(self) -> int:
@@ -60,6 +66,7 @@ class LearnListing:
     guides: tuple[GuideEntry, ...]
     """In the order of the paths, then by slug."""
     paths: tuple[PathView, ...]
+    """From introductory to advanced (docs/specs/guides.md#path-order)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,14 +98,16 @@ class MarkedRead:
 def learn_listing(environment: Environment) -> LearnListing:
     catalog = environment.guides
     reads = environment.progress.guide_reads()
-    paths = tuple(_path_view(environment, catalog.load_path(slug)) for slug in catalog.path_slugs())
+    metas = {slug: catalog.load(slug) for slug in catalog.slugs()}
+    levels = {slug: meta.level for slug, meta in metas.items()}
+    loaded = [catalog.load_path(slug) for slug in catalog.path_slugs()]
+    progress = _Progress(environment)
+    paths = tuple(_path_view(progress, path, levels) for path in by_level(loaded, levels))
     in_paths = [
         step.step.slug for view in paths for step in view.steps if step.step.kind is StepKind.GUIDE
     ]
-    order = list(dict.fromkeys((*in_paths, *catalog.slugs())))
-    guides = tuple(
-        GuideEntry(catalog.load(slug), reads.get(slug)) for slug in order if slug in catalog.slugs()
-    )
+    order = list(dict.fromkeys((*in_paths, *metas)))
+    guides = tuple(GuideEntry(metas[slug], reads.get(slug)) for slug in order if slug in metas)
     return LearnListing(guides, paths)
 
 
@@ -145,7 +154,11 @@ def path_view(environment: Environment, slug: str) -> PathView:
     load."""
     catalog = environment.guides
     _require(slug, catalog.path_slugs(), "path")
-    return _path_view(environment, catalog.load_path(slug))
+    path = catalog.load_path(slug)
+    known = catalog.slugs()
+    guides = {step.slug for step in path.steps if step.kind is StepKind.GUIDE}
+    levels = {guide: catalog.load(guide).level for guide in guides if guide in known}
+    return _path_view(_Progress(environment), path, levels)
 
 
 def guide_entries(environment: Environment, slugs: tuple[str, ...]) -> tuple[GuideEntry, ...]:
@@ -162,9 +175,10 @@ def _require(slug: str, known: tuple[str, ...], noun: str) -> None:
         raise UnknownGuideError(unknown_slug_message(noun, slug, known))
 
 
-def _path_view(environment: Environment, path: LearningPath) -> PathView:
-    progress = _Progress(environment)
-    return PathView(path, tuple(progress.of(step) for step in path.steps))
+def _path_view(
+    progress: "_Progress", path: LearningPath, levels: Mapping[str, GuideLevel]
+) -> PathView:
+    return PathView(path, tuple(progress.of(step) for step in path.steps), path_level(path, levels))
 
 
 class _Progress:

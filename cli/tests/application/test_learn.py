@@ -9,6 +9,7 @@ import pytest
 from coding_study.application.environment import Environment
 from coding_study.application.learn import guide_page, learn_listing, mark_read, path_view
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.concept_guides import GuideLevel
 from coding_study.domain.errors import UnknownGuideError
 from coding_study.domain.problem import Language
 from tests.fakes import NOW, FakeClock, make_environment
@@ -55,6 +56,44 @@ def test_the_list_puts_the_guides_of_paths_first_in_path_order(environment: Envi
         "hash-maps",
         "a-loose-guide",
     ]
+
+
+def test_the_list_orders_the_paths_from_introductory_to_advanced(
+    environment: Environment, content_root: Path
+):
+    write_guide(content_root, "merkle-trees", "Merkle trees", level="advanced")
+    write_guide(content_root, "consistent-hashing", "Consistent hashing", level="core")
+    write_path(
+        content_root,
+        "deep-hashing",
+        ["guide: consistent-hashing", "guide: merkle-trees"],
+        title="Deep hashing",
+    )
+    write_path(content_root, "problems-only", ["problem: two-sum"], title="Problems only")
+    listing = learn_listing(environment)
+    assert [(view.path.slug, view.level) for view in listing.paths] == [
+        ("hashing", GuideLevel.INTRO),
+        ("deep-hashing", GuideLevel.ADVANCED),
+        ("problems-only", None),
+    ]
+
+
+def test_the_guides_of_paths_follow_the_order_of_the_paths(
+    environment: Environment, content_root: Path
+):
+    write_guide(content_root, "merkle-trees", "Merkle trees", level="advanced")
+    write_path(content_root, "advanced-first", ["guide: merkle-trees"], title="Advanced")
+    listing = learn_listing(environment)
+    assert [entry.meta.slug for entry in listing.guides] == [
+        "hash-functions",
+        "hash-maps",
+        "merkle-trees",
+        "a-loose-guide",
+    ]
+
+
+def test_a_path_on_its_own_has_its_level(environment: Environment):
+    assert path_view(environment, "hashing").level is GuideLevel.INTRO
 
 
 def test_the_list_counts_each_paths_steps(environment: Environment):

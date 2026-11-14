@@ -41,6 +41,8 @@ COLUMN_GAP = 2
 TARGET_WIDTH = 9
 STATUS_WIDTH = 16
 NOT_READ = "-"
+NO_LEVEL = "-"
+"""The level of a path without guides."""
 NO_TARGET = ""
 WEB_HINT = "Read with rendered diagrams in the web UI: cstudy learn {slug} --open"
 BOTH = "give a guide or --path, not both"
@@ -141,8 +143,14 @@ def _print_listing(
         output.print(Text(""))
         output.print(Text("PATHS", style="bold"))
         for view in listing.paths:
+            level = view.level or NO_LEVEL
             counts = f"{view.done} of {view.total} done"
-            output.print(Text(f"{view.path.slug.ljust(slug_width)}{counts:<16}{view.path.title}"))
+            output.print(
+                Text(
+                    f"{view.path.slug.ljust(slug_width)}{level.ljust(LEVEL_WIDTH)}"
+                    f"{counts:<16}{view.path.title}"
+                )
+            )
         unfinished = next((view for view in listing.paths if view.next_step is not None), None)
         if unfinished is not None:
             output.print(_labelled("next", f"cstudy learn --path {unfinished.path.slug}"))
@@ -227,6 +235,8 @@ def listing_document(listing: LearnListing) -> dict[str, JsonValue]:
                 "slug": view.path.slug,
                 "title": view.path.title,
                 "summary": view.path.summary,
+                "level": None if view.level is None else view.level.value,
+                "guides": [step.slug for step in view.path.steps if step.kind is StepKind.GUIDE],
                 "done": view.done,
                 "total": view.total,
             }

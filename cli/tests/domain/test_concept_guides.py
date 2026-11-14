@@ -4,17 +4,41 @@ import pytest
 
 from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus
 from coding_study.domain.concept_guides import (
+    GuideLevel,
+    LearningPath,
     PathStep,
     ProblemFacts,
     StepKind,
+    by_level,
     guide_step_progress,
     highest_level_passed,
+    path_level,
     problem_step_progress,
     unknown_slug_message,
 )
 from coding_study.domain.scheduling import ProblemStatus
 
 STARTED = datetime(2026, 11, 11, 9, tzinfo=UTC)
+INTRO, CORE, ADVANCED = GuideLevel.INTRO, GuideLevel.CORE, GuideLevel.ADVANCED
+LEVELS = {
+    "i1": INTRO,
+    "i2": INTRO,
+    "c1": CORE,
+    "c2": CORE,
+    "c3": CORE,
+    "a1": ADVANCED,
+    "a2": ADVANCED,
+    "a3": ADVANCED,
+}
+"""Guides by slug: the letter is the level."""
+
+
+def a_path(slug: str, *guides: str) -> LearningPath:
+    return LearningPath(slug, slug, "Summary.", tuple(PathStep.guide(guide) for guide in guides))
+
+
+def slugs(paths: tuple[LearningPath, ...]) -> list[str]:
+    return [path.slug for path in paths]
 
 
 def attempt(
@@ -119,3 +143,62 @@ def test_an_unknown_slug_with_nothing_near_says_where_to_look():
     assert unknown_slug_message("path", "zzz", ["hashing"]) == (
         'unknown path "zzz"; cstudy learn lists the paths'
     )
+
+
+def test_a_path_of_intro_guides_is_an_intro_path():
+    assert path_level(a_path("p", "i1", "i2"), LEVELS) is INTRO
+
+
+@pytest.mark.parametrize(
+    ("guides", "expected"),
+    [
+        (("i1", "c1", "c2", "c3", "a1"), CORE),
+        (("i1", "a1", "a2"), CORE),
+        (("c1", "a1", "a2", "a3"), ADVANCED),
+        (("i1", "i2", "c1"), INTRO),
+    ],
+)
+def test_a_path_is_at_the_level_nearest_the_mean_of_its_guides(
+    guides: tuple[str, ...], expected: GuideLevel
+):
+    assert path_level(a_path("p", *guides), LEVELS) is expected
+
+
+def test_a_mean_halfway_between_two_levels_takes_the_higher():
+    halfway = (a_path("p", "i1", "c1"), a_path("q", "c1", "a1"))
+    assert [path_level(path, LEVELS) for path in halfway] == [CORE, ADVANCED]
+
+
+def test_problem_steps_and_guides_that_do_not_exist_do_not_count():
+    steps = (PathStep.problem("two-sum"), PathStep.guide("gone"), PathStep.guide("i1"))
+    assert path_level(LearningPath("p", "P", "Summary.", steps), LEVELS) is INTRO
+
+
+def test_a_path_without_guides_has_no_level():
+    path = LearningPath("p", "P", "Summary.", (PathStep.problem("two-sum"),))
+    assert path_level(path, LEVELS) is None
+
+
+def test_paths_go_from_introductory_to_advanced():
+    paths = (a_path("deep", "a1", "a2"), a_path("daily", "c1"), a_path("first", "i1"))
+    assert slugs(by_level(paths, LEVELS)) == ["first", "daily", "deep"]
+
+
+def test_within_a_level_the_path_whose_guides_average_lower_comes_first():
+    paths = (
+        a_path("steeper", "c1", "c2", "a1"),
+        a_path("even", "c1"),
+        a_path("gentler", "i1", "c1", "c2"),
+    )
+    assert slugs(by_level(paths, LEVELS)) == ["gentler", "even", "steeper"]
+
+
+def test_paths_with_the_same_mean_keep_their_order():
+    paths = (a_path("b", "i1", "a1"), a_path("a", "c1"), a_path("c", "c2", "c3"))
+    assert slugs(by_level(paths, LEVELS)) == ["b", "a", "c"]
+
+
+def test_a_path_without_guides_comes_last():
+    problems_only = LearningPath("problems", "P", "Summary.", (PathStep.problem("two-sum"),))
+    paths = (problems_only, a_path("deep", "a1"), a_path("first", "i1"))
+    assert slugs(by_level(paths, LEVELS)) == ["first", "deep", "problems"]

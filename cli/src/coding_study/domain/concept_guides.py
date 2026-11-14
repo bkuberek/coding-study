@@ -7,9 +7,10 @@ with the user's own study guides of `study_guides.root`.
 
 import difflib
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from fractions import Fraction
 
 from coding_study.domain.attempts import Attempt, AttemptStatus
 from coding_study.domain.scheduling import ProblemStatus
@@ -34,6 +35,15 @@ class GuideLevel(StrEnum):
     INTRO = "intro"
     CORE = "core"
     ADVANCED = "advanced"
+
+
+LEVEL_RANKS: Mapping[GuideLevel, int] = {
+    GuideLevel.INTRO: 1,
+    GuideLevel.CORE: 2,
+    GuideLevel.ADVANCED: 3,
+}
+"""A guide level as a number, from introductory to advanced, for a path's level and order."""
+_LEVELS_BY_RANK = {rank: level for level, rank in LEVEL_RANKS.items()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +110,40 @@ class StepProgress:
     status: str
     """As `cstudy learn --path` writes it: `read`, `passed`, `level 2 passed`, `in progress`."""
     level_passed: int | None = None
+
+
+def path_level(path: LearningPath, levels: Mapping[str, GuideLevel]) -> GuideLevel | None:
+    """The level a path is for (docs/specs/guides.md#path-order): the level nearest the mean of
+    its guide steps' levels, the higher one when the mean is halfway between two. `levels` holds
+    each guide's level by slug; problem steps, and guides it does not hold, do not count. None for
+    a path without such guides."""
+    ranks = _guide_ranks(path, levels)
+    if not ranks:
+        return None
+    # Rounds the mean half up: floor(sum / n + 1/2), in integers.
+    return _LEVELS_BY_RANK[(2 * sum(ranks) + len(ranks)) // (2 * len(ranks))]
+
+
+def by_level(
+    paths: Iterable[LearningPath], levels: Mapping[str, GuideLevel]
+) -> tuple[LearningPath, ...]:
+    """The paths from introductory to advanced (docs/specs/guides.md#path-order): by the mean of
+    their guides' levels, lowest first, which orders them by `path_level` too; paths with the same
+    mean keep their order, and a path without guides comes last."""
+
+    def mean_rank(path: LearningPath) -> tuple[bool, Fraction]:
+        ranks = _guide_ranks(path, levels)
+        return (not ranks, Fraction(sum(ranks), len(ranks)) if ranks else Fraction(0))
+
+    return tuple(sorted(paths, key=mean_rank))
+
+
+def _guide_ranks(path: LearningPath, levels: Mapping[str, GuideLevel]) -> list[int]:
+    return [
+        LEVEL_RANKS[levels[step.slug]]
+        for step in path.steps
+        if step.kind is StepKind.GUIDE and step.slug in levels
+    ]
 
 
 def is_slug(name: str) -> bool:
