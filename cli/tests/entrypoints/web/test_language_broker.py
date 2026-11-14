@@ -15,6 +15,7 @@ from coding_study.domain.code_intelligence import (
     BASEDPYRIGHT,
     GOPLS,
     JDTLS,
+    KOTLIN_LSP,
     RUST_ANALYZER,
     TYPESCRIPT_LANGUAGE_SERVER,
 )
@@ -124,6 +125,24 @@ def test_typescript_gets_its_initialization_options_for_the_workspace():
         },
         "file:///ws/typescript",
     )
+
+
+def test_the_kotlin_lsp_gets_an_index_directory_in_the_sessions_data_directory():
+    broker = broker_for(KOTLIN_LSP, "jvm")
+    broker.data_directory = "/ws/.cs/lsp/kotlin-lsp-data/jvm/2"
+    (sent,) = from_page(broker, request(0, "initialize", {})).to_server
+    assert sent["params"]["initializationOptions"] == {
+        "indexDir": "/ws/.cs/lsp/kotlin-lsp-data/jvm/2/index"
+    }
+
+
+def test_the_kotlin_lsp_the_broker_warms_up_gets_its_index_directory_too():
+    broker = broker_for(KOTLIN_LSP, "jvm")
+    broker.data_directory = "/ws/.cs/lsp/kotlin-lsp-data/jvm/1"
+    (sent,) = broker.warm_up().to_server
+    assert sent["params"]["initializationOptions"] == {
+        "indexDir": "/ws/.cs/lsp/kotlin-lsp-data/jvm/1/index"
+    }
 
 
 def test_a_project_folder_is_the_root_and_names_the_folder():

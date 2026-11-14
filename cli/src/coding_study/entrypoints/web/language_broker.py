@@ -135,6 +135,9 @@ class LanguageBroker:
         self._page_initialize: Id | None = None
         """The id of the page's `initialize` of a server the broker initialized: answered at once or
         once the broker's own `initialize` is. A second one is refused as for any session."""
+        self.data_directory: str | None = None
+        """The session's data directory, set once its server is launched with one: the catalog's
+        options that name places in it go into `initialize`."""
 
     def warm_up(self) -> Delivery:
         """The broker's own `initialize`, for a server started ahead of any page
@@ -327,10 +330,12 @@ class LanguageBroker:
         return Delivery(to_server=(_response(request_id, result),))
 
     def _initialization_options(self) -> dict[str, Any]:
-        """The catalog's, with the standard library the session linked for a server that reads
-        it from links."""
+        """The catalog's, with those that name places in the session's data directory, and the
+        standard library the session linked for a server that reads it from links."""
         server = self._target.server
         options = server.initialization_options(str(self._target.workspace))
+        if self.data_directory is not None:
+            options = {**options, **server.data_options(self.data_directory)}
         library, links = server.standard_library, self._linked_library()
         if library is None or links is None:
             return options

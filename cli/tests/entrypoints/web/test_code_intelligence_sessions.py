@@ -389,6 +389,28 @@ def test_a_kotlin_session_imports_with_the_selected_jdk(tmp_path):
     assert f"-Dcom.jetbrains.ls.imports.gradle.java.home={JDK_HOME}" in options
 
 
+def index_directories(lab: Rig) -> list[object]:
+    """The `indexDir` of each `initialize` the rig's servers read."""
+    sent = [message for message in lab.server.received() if message.get("method") == "initialize"]
+    return [message["params"]["initializationOptions"].get("indexDir") for message in sent]
+
+
+def test_two_kotlin_sessions_of_one_root_are_told_index_directories_of_their_own(tmp_path):
+    lab = rig(tmp_path, language=Language.KOTLIN)
+    lab.server.play()
+    with (
+        session_client(lab.app) as page,
+        session(page, lab.query) as first,
+        session(page, lab.query) as second,
+    ):
+        for websocket in (first, second):
+            websocket.send_json(request(0, "initialize", {}))
+        eventually(lambda: index_directories(lab), lambda found: len(found) == 2)
+    data = lab.root / ".cs" / "lsp" / "kotlin-lsp-data" / "jvm"
+    expected = [f"{data / str(slot)}/index" for slot in (1, 2)]
+    assert sorted(map(str, index_directories(lab))) == expected
+
+
 def test_a_python_session_gets_no_data_directory(lab, client):
     lab.server.play()
     with session(client, lab.query):

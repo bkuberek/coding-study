@@ -9,6 +9,7 @@ from coding_study.domain.code_intelligence import (
     CLIENT_CAPABILITIES,
     KOTLIN_LSP,
     KOTLIN_LSP_LICENSE,
+    KOTLIN_LSP_LINUX,
     LANGUAGE_SERVERS,
     LSP_DIRECTORY,
     Archive,
@@ -147,6 +148,14 @@ def test_it_keeps_its_index_and_license_store_in_the_sessions_data_directory():
         "XDG_CACHE_HOME": f"{DATA}/cache",
         "XDG_CONFIG_HOME": f"{DATA}/config",
     }
+
+
+@pytest.mark.parametrize("server", [KOTLIN_LSP, KOTLIN_LSP_LINUX], ids=["here", "sidecar"])
+def test_it_is_told_to_keep_its_index_in_the_sessions_data_directory(server):
+    """As `indexDir` in `initialize`, which the build reads on every platform, unlike the XDG
+    variables: on macOS and Windows a second session of the root would otherwise find the first
+    one's index in the user's cache, locked."""
+    assert server.data_options(DATA) == {"indexDir": f"{DATA}/index"}
 
 
 def test_its_heap_is_capped_through_the_launchers_options():

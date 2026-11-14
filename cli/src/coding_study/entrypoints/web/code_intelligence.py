@@ -319,6 +319,7 @@ class LanguageSessions:
             if self._refusal() is not None:
                 return False
             launch = self._launch(target)
+            broker.data_directory = launch.data_directory
             try:
                 process = await self._start_here(target, launch)
             except ServerStartError:
@@ -401,6 +402,7 @@ class LanguageSessions:
                 refusal = self._refusal()
             if refusal is None:
                 launch = self._launch(target)
+                broker.data_directory = launch.data_directory
                 try:
                     process, sidecar = await self._start(target, launch)
                 except ServerStartError as error:
