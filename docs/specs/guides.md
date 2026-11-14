@@ -158,7 +158,7 @@ A guide with `shell: true` in `meta.yaml` teaches the shell; `using-the-terminal
 
 #### In the terminal
 
-`cstudy learn <guide>` prints each example with variants in the [language shown](#the-language-shown), its own output after it, then one line that names the others and how to pick one:
+`cstudy learn <guide>` prints each example with variants in the [language shown](#the-language-shown), then `It prints:` and its output, since the prose around the example has no place between them, then one line that names the other languages and how to pick one:
 
 ```text
 Also in bash: cstudy learn using-the-terminal --lang <language>

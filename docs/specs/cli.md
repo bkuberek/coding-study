@@ -1149,6 +1149,7 @@ Prints the rendered statement (title, metadata, sections, examples generated fro
 
 ```text
 cstudy learn [--json]
+cstudy learn <guide> [--lang <language>]
 cstudy learn <guide> [--done] [--json]
 cstudy learn <guide> --open
 cstudy learn --path <path> [--json]
@@ -1160,7 +1161,8 @@ Reads the [concept guides and learning paths](guides.md) of the content root ([A
 | Form | Does | Says |
 |------|------|------|
 | `cstudy learn` | Lists the guides, by path order and then by slug, and the paths | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with steps done of total, `next    cstudy learn --path <path>` for the first path not finished, and the [web hint](#the-web-hint); with no `guides/`, `no guides in <content root>` |
-| `cstudy learn <guide>` | Shows the guide, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings). On a terminal it is Markdown rendered by Rich; otherwise, piped or redirected, the Markdown text as written | The guide, then `examples  <folder>` when it has examples, `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked, and the web hint |
+| `cstudy learn <guide>` | Shows the guide, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings), and each example with [variants](guides.md#variants) in one language, by [the rule](guides.md#the-language-shown): `default_lang`, else Python, where the example has it. On a terminal it is Markdown rendered by Rich; otherwise, piped or redirected, the Markdown text as written | The guide, each example with variants followed by `Also in typescript, go: cstudy learn <guide> --lang <language>`, then `examples  <folder>` when it has examples, `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked, and the web hint |
+| `cstudy learn <guide> --lang <language>` | The same, each example with variants in `<language>` where it has it: one of `bash`, `python`, `typescript`, `java`, `kotlin`, `go`, `rust` and `javascript`. Another value, or `--lang` with no guide, with `--path`, `--done`, `--json` or `--open`, is a usage error (exit 3) | The same |
 | `cstudy learn <guide> --done` | Marks the guide read; the first time is kept | `marked hash-functions read`, or `hash-functions was marked read on 2026-11-11`, which changes nothing and exits 0 |
 | `cstudy learn <guide> --open` | Finds the guide, then runs [`cstudy serve --open`](#cstudy-serve) on a free port, whose page opens on the guide in the web UI's [Guides view](web-ui.md#guides-view): the URL adds `&view=/guides/<guide>`. It needs a workspace, as `cstudy serve` does, and runs until Ctrl-C | What `cstudy serve --open` prints, the `open` URL naming the view |
 | `cstudy learn --path <path> --open` | The same for the path, `&view=/paths/<path>` | The same |

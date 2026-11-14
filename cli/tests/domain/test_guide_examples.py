@@ -167,16 +167,21 @@ def _extension(language: str) -> str:
 HINT = "`cstudy learn counting --lang <language>`"
 
 
+def prints(variant: str) -> str:
+    """The variant as the terminal shows it, with `It prints:` before its output."""
+    return variant.replace("```\n\n```output", "```\n\nIt prints:\n\n```output")
+
+
 def test_the_terminal_shows_one_variant_and_names_the_others():
     text = f"Intro.\n\n{PYTHON}\n{TYPESCRIPT}\n{GO}\nAfter.\n"
     shown = terminal_text(GuideMarkdown(text), LanguageChoice(None, "typescript", HINT))
-    assert shown == (f"Intro.\n\n{TYPESCRIPT}\nAlso in python, go: {HINT}\n\nAfter.\n")
+    assert shown == f"Intro.\n\n{prints(TYPESCRIPT)}\nAlso in python, go: {HINT}\n\nAfter.\n"
 
 
 def test_the_terminal_shows_the_chosen_language_where_an_example_has_it():
     text = f"Intro.\n\n{PYTHON}\n{TYPESCRIPT}\nAfter.\n"
     shown = terminal_text(GuideMarkdown(text), LanguageChoice("python", "typescript", HINT))
-    assert shown == f"Intro.\n\n{PYTHON}\nAlso in typescript: {HINT}\n\nAfter.\n"
+    assert shown == f"Intro.\n\n{prints(PYTHON)}\nAlso in typescript: {HINT}\n\nAfter.\n"
 
 
 def test_the_terminal_keeps_an_example_in_one_language_as_written():

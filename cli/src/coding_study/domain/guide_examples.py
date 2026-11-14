@@ -34,6 +34,8 @@ EXAMPLE_LANGUAGES: Mapping[str, str] = {
 }
 """What an example may be written in, by extension, and the language its fence names."""
 _MINIMUM_VARIANTS = 2
+PRINTS = "It prints:"
+"""What comes between a variant and its output, where the prose around it has no place."""
 
 
 def suffix(name: str) -> str:
@@ -143,7 +145,7 @@ def missing_languages(group: ExampleGroup, *, shell: bool) -> tuple[str, ...]:
 
 def terminal_text(markdown: GuideMarkdown, choice: LanguageChoice) -> str:
     """The guide as `cstudy learn` prints it: each example with variants in the language shown,
-    with its output, then a line that names its other languages."""
+    then `It prints:` and its output, then a line that names its other languages."""
     hidden: set[int] = set()
     notes: dict[int, str] = {}
     for group in example_groups(markdown):
@@ -152,6 +154,7 @@ def terminal_text(markdown: GuideMarkdown, choice: LanguageChoice) -> str:
         hidden.update(range(group.start, group.end + 1))
         hidden.difference_update(range(kept.fence.start, kept.output.end + 1))
         others = ", ".join(language for language in group.languages if language != shown)
+        notes[kept.fence.end] = PRINTS
         notes[group.end] = f"Also in {others}: {choice.others_hint}".rstrip()
     return markdown.terminal_text(hidden, notes)
 
