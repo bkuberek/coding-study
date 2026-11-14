@@ -2,7 +2,7 @@
 
 The seven guides of the path "Security: from trust boundaries to certificate chains and threat models" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts about OWASP cheat sheets and rankings, WHATWG standards, RFCs, NIST publications, a paper, an open standard for access control policies and Python's standard library. This page lists each one with where it was checked, so that the independent review starts from the sources.
 
-"Quote" means the exact text was read at that source: on the web page, or in the raw file fetched from the project's repository at the tag named. "Run" means an example of the guide, or a one-off program, printed it, on CPython 3.13.12. "Arithmetic" means the number was computed from the stated inputs. A fact that could not be checked was left out of the guides; the last sections list those, the citation choices, and where a guide comes close to a linked problem.
+"Quote" means the exact text was read at that source: on the web page, or in the raw file fetched from the project's repository at the tag named. "Run" means an example of the guide, or a one-off program, printed it, on CPython 3.13.12. "Arithmetic" means the number was computed from the stated inputs. The guides state only facts checked one of these ways; the last sections list the citation choices, what the guides do not state for lack of a source, and where a guide comes close to a linked problem.
 
 | Guide | Slug |
 |-------|------|
@@ -109,8 +109,8 @@ Used in `authentication-and-authorization`; A3 and A16 in `secrets-and-redaction
 | A1 | Authorization verifies that an action is approved for an entity and is distinct from authentication, which verifies identity; least privilege; deny by default; validate permissions on every request; prefer ABAC and ReBAC over RBAC, ABAC being more effective for least privilege; IDOR; never rely on client-side checks | Quote: [Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) |
 | A2 | `401` lacks valid authentication credentials; `403` understood but refused; a server that wishes to hide a forbidden resource may answer `404` | Quote: [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.txt), 15.5.2 and 15.5.4 |
 | A3 | SP 800-63B-4, final, July 2025, supersedes SP 800-63B; something you know, have, are; AAL2 and AAL3 require two distinct factors; single-factor passwords at least 15 characters, with MFA at least 8; no composition rules; no periodic changes, but a change on evidence of compromise; a blocklist of common, expected or compromised passwords | Quote: [CSRC page](https://csrc.nist.gov/pubs/sp/800/63/b/4/final); [SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html), sections 2, 3.1.1 and 3.1.1.2 |
-| A4 | Reauthentication: AAL1 no more than 30 days; AAL2 24 hours with an inactivity timeout of an hour; AAL3 12 hours with 15 minutes | Quote: SP 800-63B-4, sections 2.1 to 2.3 |
-| A5 | Argon2id with at least 19 MiB, 2 iterations, parallelism 1 | Quote: [Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) |
+| A4 | A definite overall reauthentication timeout is required at AAL1 and AAL2, recommended at no more than 30 days and 24 hours, with an inactivity timeout recommended at no more than an hour at AAL2; at AAL3 the overall timeout is required to be no more than 12 hours, and inactivity is recommended at no more than 15 minutes | Quote: SP 800-63B-4, sections 2.1.3, 2.2.3 and 2.3.3 |
+| A5 | Argon2id with one of several minimum configurations, among them 19 MiB of memory, two iterations and parallelism 1; the configurations give an equal level of defense and trade CPU for RAM | Quote: [Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), *Argon2id* |
 | A6 | The session ID is temporarily equivalent to the strongest authentication method used; at least 64 bits of entropy; meaningless; `Secure`, `HttpOnly`, `SameSite=Strict` or `Lax`; renewed after any privilege level change, against session fixation | Quote: [Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) |
 | A7 | JWT claims `iss`, `sub`, `aud`, `exp`, `nbf`, `iat`, `jti`; reject when `aud` is present and does not identify you; now before `exp`, at or after `nbf`; leeway usually no more than a few minutes; `jti` can prevent replay | Quote: [RFC 7519](https://www.rfc-editor.org/rfc/rfc7519), 4.1.1 to 4.1.7 |
 | A8 | An attacker can change the algorithm to `none`; `RS256` changed to `HS256` made some libraries validate with the RSA public key as the HMAC shared secret; libraries must let the caller specify the algorithms and use no other; validate issuer and audience; explicit typing with `typ` (3.11); mutually exclusive validation rules (3.12); cross-JWT confusion (2.8) | Quote: [RFC 8725](https://www.rfc-editor.org/rfc/rfc8725) |
@@ -120,7 +120,7 @@ Used in `authentication-and-authorization`; A3 and A16 in `secrets-and-redaction
 | A12 | PKCE mitigates authorization code interception; the code verifier is a high-entropy random string of 43 to 128 unreserved characters; `S256` is `BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))`; a client capable of `S256` must use it, `plain` only when it cannot | Quote: [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636), abstract, 4.1, 4.2, 4.6 |
 | A13 | ABAC determines authorization by evaluating attributes of the subject, object, operation and sometimes environment against policy | Quote: [NIST SP 800-162](https://csrc.nist.gov/pubs/sp/800/162/upd2/final), abstract |
 | A14 | XACML 3.0 (22 January 2013): PEP, PDP, PAP, PIP; deny-overrides, permit-overrides and first-applicable; decisions Permit, Deny, NotApplicable (no policy applies) and Indeterminate (unable to evaluate, for example missing attributes or network errors while retrieving policies) | Quote: [XACML 3.0](https://docs.oasis-open.org/xacml/3.0/xacml-3.0-core-spec-os-en.html), 1.1.1, 2.3, 5.53; run: `combining_rules.py` |
-| A15 | API1:2023: every endpoint that receives an object ID should perform object-level authorization checks; API3:2023 was previously Excessive Data Exposure and Mass Assignment; avoid functions that automatically bind client input; allow changes only to properties the client should update | Quote: [API1](https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization), [API3](https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization) |
+| A15 | API1:2023: every endpoint that receives an object ID should perform object-level authorization checks; API3:2023's two conditions were previously named Excessive Data Exposure and Mass Assignment, as in the 2019 edition; avoid functions that automatically bind client input; allow changes only to properties the client should update | Quote: [API1](https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization), [API3](https://api-security.owasp.org/editions/2023/en/0xa3-broken-object-property-level-authorization) |
 | A16 | Any party in possession of a bearer token can use it; do not pass bearer tokens in page URLs, which browsers and servers may not secure in history and logs | Quote: [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), abstract, 1.2, 5.3 |
 
 ## Secrets, logs and errors
@@ -148,12 +148,12 @@ Used in `tls-and-certificates`.
 
 | # | Claim | Source |
 |---|-------|--------|
-| L1 | Authentication (server always, client optionally), confidentiality and integrity | Quote: [RFC 8446](https://www.rfc-editor.org/rfc/rfc8446), 1 |
-| L2 | ClientHello with a key share, ServerHello; all handshake messages after the ServerHello are encrypted | Quote: RFC 8446, 1.2 and 2 |
-| L3 | CertificateVerify is a signature over the entire handshake with the certificate's private key, explicit proof of possession; Finished provides key confirmation and binds the endpoint's identity to the exchanged keys | Quote: RFC 8446, 2, 4.4.3, 4.4.4 |
-| L4 | Detailed certificate validation is out of scope for TLS, see RFC 5280 | Quote: RFC 8446, 4.4.2.4 |
-| L5 | All public-key key exchanges provide forward secrecy; static RSA and Diffie-Hellman removed; forward secrecy keeps the session key secure if long-term keys are compromised after the handshake; 0-RTT data is not forward secret and has no non-replay guarantee between connections | Quote: RFC 8446, 1.2, 2.3, E.1 |
-| L6 | MD5 signatures abort with `bad_certificate`; the same recommended for SHA-1, except self-signed certificates and trust anchors | Quote: RFC 8446, 4.4.2.4 |
+| L1 | Authentication (server always, client optionally), confidentiality and integrity; RFC 9846, July 2026, obsoletes RFC 8446 | Quote: [RFC 9846](https://www.rfc-editor.org/rfc/rfc9846), abstract and 1 |
+| L2 | The ClientHello carries a list of key exchange shares and the ServerHello the server's share; all handshake messages after the ServerHello are encrypted; the guide's sentence on key exchange (each side sends a public share, both compute the same secret) explains the shared secrets that section 2 says the handshake establishes | Quote: RFC 9846, 1.3 and 2 |
+| L3 | CertificateVerify is a signature over the entire handshake with the private key of the certificate, explicit proof of possession; Finished provides key confirmation and binds the endpoint's identity to the exchanged keys | Quote: RFC 9846, 2, 4.5.2 and 4.5.3 |
+| L4 | Detailed certificate validation is out of scope for TLS, see RFC 5280 | Quote: RFC 9846, 4.5.1.3 |
+| L5 | All public-key key exchanges provide forward secrecy; static RSA and Diffie-Hellman cipher suites are removed; forward secrecy keeps the session key secure if long-term keying material is compromised after the handshake; for 0-RTT data the protocol gives no forward secrecy guarantee and no guarantee of non-replay between connections | Quote: RFC 9846, 1.3, 2.3 and Appendix F.1 |
+| L6 | A certificate the endpoint would need to validate with an MD5-based signature algorithm aborts the handshake with `bad_certificate`; SHA-1 is deprecated and the same abort is recommended; endpoints can accept these algorithms for self-signed certificates and trust anchors | Quote: RFC 9846, 4.5.1.3 |
 | L7 | Certificates bind public keys to subjects; validity from `notBefore` through `notAfter`, inclusive; `cA` says whether the key may verify certificate signatures; `pathLenConstraint` is the maximum number of non-self-issued intermediates that may follow; `keyCertSign`; if `cA` is not asserted `keyCertSign` must not be; a CRL is a time-stamped, signed list of revoked certificates | Quote: [RFC 5280](https://www.rfc-editor.org/rfc/rfc5280), 3.1, 3.3, 4.1.2.5, 4.2.1.3, 4.2.1.9 |
 | L8 | The trust anchor is an input, its name and public key; per certificate: signature, validity, not revoked, issuer name; per intermediate: basic constraints with `cA` true, `max_path_length` above zero and decremented for non-self-issued certificates, lowered by `pathLenConstraint`, `keyCertSign` when key usage is present | Quote: RFC 5280, 6.1, 6.1.3 (a)(1) to (4), 6.1.4 (k) to (n) |
 | L9 | RFC 9525, November 2023, obsoletes RFC 6125; the Common Name must not identify a service; the wildcard is the complete left-most label, matches one label, and an identifier that breaks the rules must be ignored; case-insensitive ASCII comparison; wildcard certificates vouch for single-label names, not deeper levels, risking rogue hosts | Quote: [RFC 9525](https://www.rfc-editor.org/rfc/rfc9525), 2, 6.3, 7.1 |
@@ -186,7 +186,7 @@ The documentation at docs.python.org/3, for 3.13 and later. Each module is cited
 | # | Claim | Source |
 |---|-------|--------|
 | P1 | `sqlite3`: string operations to build queries are vulnerable to SQL injection; qmark and named placeholders; `execute` runs a single statement and raises `ProgrammingError` for more; `executescript` for several; `":memory:"` | Quote: [sqlite3](https://docs.python.org/3/library/sqlite3.html); run: `query_injection.py` |
-| P2 | `subprocess` never implicitly calls a shell; with `shell=True` quoting is the application's responsibility; a sequence of arguments is generally preferred; Windows batch files may run in a shell regardless | Quote: [subprocess](https://docs.python.org/3/library/subprocess.html), *Security Considerations*, *Frequently Used Arguments*; run: `argument_lists.py` |
+| P2 | `subprocess` never implicitly calls a shell; with `shell=True` quoting is the application's responsibility; a sequence of arguments is generally preferred; on one operating system, batch files may run in a shell regardless | Quote: [subprocess](https://docs.python.org/3/library/subprocess.html), *Security Considerations*, *Frequently Used Arguments*; run: `argument_lists.py` |
 | P3 | `shlex.quote` is only for Unix shells and can open command injection elsewhere, use argument lists; `punctuation_chars` (3.6) returns runs of `();<>|&` as tokens; `whitespace_split` | Quote: [shlex](https://docs.python.org/3/library/shlex.html); run: `argument_lists.py` |
 | P4 | `html.escape` converts `&`, `<`, `>`, and with `quote=True` also `"` and `'`; `html.unescape` follows HTML5 rules | Quote: [html](https://docs.python.org/3/library/html.html); run: `what_the_parser_sees.py` |
 | P5 | `urlencode` quotes with `quote_plus` by default: spaces as `+`, `/` as `%2F`; `parse_qs` parses form-encoded queries | Quote: [urllib.parse](https://docs.python.org/3/library/urllib.parse.html); run: `what_the_parser_sees.py` |
@@ -235,29 +235,29 @@ Choices at the edges:
 - STRIDE is named as a mnemonic, without its origin. The OWASP cheat sheet attributes the four responses to a named author; the guide does not name him.
 - The XSS cheat sheet recommends a specific HTML sanitizer by name; the guide says "a maintained HTML sanitizer".
 - Python's documentation names the TLS library that matches hostnames since 3.7; the guide says "the underlying TLS library".
+- Python's `subprocess` documentation names one operating system in its note on batch files; the guide says "on some operating systems".
 - The examples use reserved `.example` domains, and sample secrets without the prefixes of any real service.
 - The ASVS levels are cited from the OWASP repository's file at the `v5.0.0_release` tag; the project's site gives the version and its date.
 
-## Not verified, so left out or reworded
+## Not stated, for lack of a source
 
-- RFC 8446's fetched text does not say how many round trips the full handshake takes, so the guide gives no round-trip count.
-- The OWASP Threat Modeling Cheat Sheet pairs repudiation with "accounting", not "non-repudiation"; the guide uses its word.
-- Python's documentation of `create_default_context` does not itself say that it enables `check_hostname`; the guide relies on the *Best defaults* section and on the run.
-- The OWASP Logging Cheat Sheet does not list password changes among events to log, and the Forgot Password Cheat Sheet does not discuss logging; the guide cites authentication successes and failures.
-- The CSRF cheat sheet does not say that the same-origin policy or CORS prevents CSRF; the guide says it does not stop it.
-- RFC 6454 does not use the words "send but not read the response"; the guide quotes section 3.4.2.
-- The rules of `SameSite` beyond the CSRF cheat sheet's description (RFC 6265bis) were not read; the guide says only that the attribute is about cross-site requests.
-- XACML's deny-unless-permit and permit-unless-deny were not read, so they are not mentioned.
-- RFC 9525 does not say in words that `*.shop.example` does not match `shop.example`; the guide states it as following from "can only match one label".
-- The HTML image algorithm was read only at the step that fires `error`, so the guide does not say exactly when a broken image fires it.
-- RFC 3986 does not say that a fragment is not sent to the server; the guide says the RFC leaves it to the user agent alone.
-- The position of "deny by default" in A01's list of preventions was not checked; the guide says "among its preventions".
-- The venue of Saltzer and Schroeder's paper was not printed on the copies read; the guide cites title, authors and year.
-- NIST's glossary has no entry for "trust boundary" (HTTP 404); the guide defines it in its own words.
+- Sections 1 and 2 of RFC 9846 give no round-trip count for the full handshake, so the TLS guide gives none.
+- The OWASP Threat Modeling Cheat Sheet pairs repudiation with "accounting", not "non-repudiation"; the threat modeling guide uses its word.
+- Python's documentation of `create_default_context` does not itself say that it enables `check_hostname`; the TLS guide relies on the *Best defaults* section and on the run.
+- The OWASP Logging Cheat Sheet does not list password changes among the events to log, and the Forgot Password Cheat Sheet does not discuss logging; the threat modeling guide cites authentication successes and failures.
+- The CSRF cheat sheet does not say that the same-origin policy or CORS prevents CSRF; the CORS guide says that the policy does not stop it.
+- RFC 6454 does not say "send but not read the response"; the CORS guide quotes section 3.4.2 instead.
+- The rules of `SameSite` beyond the CSRF cheat sheet's description belong to RFC 6265bis, which is not among the sources; the CORS guide says only that the attribute is about cross-site requests.
+- XACML's deny-unless-permit and permit-unless-deny are not among the parts read, and the guide does not mention them.
+- RFC 9525 does not say in words that `*.shop.example` does not match `shop.example`; the TLS guide states it as following from "can only match one label".
+- The part of the HTML image algorithm read covers one step that fires `error`, so the encoding guide does not say exactly when a broken image fires it.
+- RFC 3986 does not say that a fragment is not sent to the server; the encoding guide says that the RFC leaves it to the user agent alone.
+- The position of "deny by default" in A01's list of preventions is not among the facts checked; the guide says "among its preventions".
+- The copies of Saltzer and Schroeder's paper print no venue; the guides cite its title, authors and year.
+- NIST's glossary has no entry for "trust boundary"; the first guide defines it in its own words.
 - The OWASP API Security Top 10 does not use the term IDOR; the guide takes the term from the Authorization Cheat Sheet.
-- No HTML Standard text read says that a `data:` URL has an opaque origin; the guide rests that on RFC 6454's unique identifier for a URI without a naming authority.
+- No HTML Standard text among the sources says that a `data:` URL has an opaque origin; the CORS guide rests that on RFC 6454's unique identifier for a URI without a naming authority.
 - The SQL cheat sheet does not use the term "second-order injection", so the guide describes stored data without naming it.
-- Claims about when a forced password rule or a revocation takes how long were opinions without a source, and were removed.
 
 ## Practice links
 
@@ -304,7 +304,29 @@ Each guide teaches its idea with examples of its own, after reading the linked p
 | `cert-chain-validator` | `tls-and-certificates` | RFC 5280's path checks and RFC 9525's name rules, which the statement also gives; signatures with toy RSA, which the problem gives as data | Chain search, the order of chains, the problem's reasons and their order, path-length bookkeeping in code, revocation and `verify`'s report |
 | `ssrf-safe-webhook-dispatcher-typescript` | `threat-modeling` | Its practice line, and that the Top 10:2025 maps SSRF into A01 | Address ranges, name resolution, redirects and limits |
 | `secure-file-upload-typescript` | `threat-modeling` | Its practice line only | Size limits, names, magic numbers, quarantine and links |
+| `output-encoding-by-context`, follow-up 1 | `output-encoding` | That a URL from a user needs its scheme checked against an allowlist (`http` and `https`) before it goes into an attribute, and that each parameter value is encoded, not the whole URL | How the problem's `url-query` rule would break a whole URL |
+| `cors-policy-evaluator`, follow-up 1 | `same-origin-and-cors` | That a browser sends a serialized origin, so a server compares it whole and never normalizes or parses it | What the server parses instead |
+| `fix-the-flaws-typescript`, follow-up 2 | `secrets-and-redaction` | Keeping only the SHA-256 of each random token, so that a copy of the database gives no usable token | The service's schema and its migration |
+| `refresh-token-rotation`, follow-up 4 | `secrets-and-redaction` | The same: a store that keeps only a hash of each token | What changes in the store's lookups and its grace retries |
+| `fix-the-flaws-typescript`, hints 3 to 6 | `trust-boundaries-and-injection`, `authentication-and-authorization`, `secrets-and-redaction` | Hint 3: decode a name before checking it (the first guide's trap); hint 4: allow changes only to the properties a client should update (the authorization guide's trap, in the words of OWASP's API3); hint 5: bound values (the first guide's example); hint 6: the `Authorization` header carries a token into the log (the secrets guide's example) | The code of every fix, path resolution and containment, and the account's fields |
 
-## Independent accuracy review
+## Independent accuracy review (2026-11-13)
 
-Pending: the owner runs it.
+The review checks every claim of the seven guides against the source this page gives for it, runs the twelve examples and compares what they print with the guides, and reads the guides against the linked problems' statements, hints, follow-ups and solutions. All twelve examples match, no example models an insecure practice without saying so, and the metadata is consistent. These are its fourteen findings and where each is applied.
+
+| # | Finding | Where it is applied |
+|---|---------|---------------------|
+| 1 | TLS 1.3 is defined by RFC 9846 (July 2026), which obsoletes RFC 8446 | `tls-and-certificates` cites RFC 9846 and says that it obsoletes RFC 8446; L1 to L6 give its sections |
+| 2 | ADR 0025's count of paths includes this one | It says "Eleven more paths" |
+| 3 | Only some of NIST's reauthentication limits are requirements | The overall timeout is required at every level; the limits at the two lower levels and the inactivity limits are recommended, and the 12-hour limit at the highest level is required (A4) |
+| 4 | The cheat sheet lists several equivalent minimum settings for Argon2id | 19 MiB, two iterations and one degree of parallelism are given as one of them, in the text and in the complexity table (A5) |
+| 5 | An error ID in the client's answer has no source and conflicts with `fix-the-flaws-typescript` level 4 | The secrets guide's trap says to return a generic error and keep the message and the stack trace in the log |
+| 6 | The 2019 edition of the API Security Top 10 names the problem in part as mass assignment | The authorization guide says so (A15) |
+| 7 | The guides name no product, operating systems included | The first guide says "on some operating systems", and the citations section records the choice |
+| 8 | This page describes what the guides do not state in the present tense | Its section is "Not stated, for lack of a source" |
+| 9 | Where a guide answers a linked problem's follow-up or hints, this page says so | The encoding guide's trap on whole URLs says only to encode each parameter value, not the entire URL; the table of places close to a problem lists the follow-ups and hints the guides answer |
+| 10 | Jargon is defined at first use | The first guide introduces OWASP and NIST, the encoding guide an RFC |
+| 11 | A key share needs a definition before the handshake | The TLS guide defines key exchange and key shares before the handshake |
+| 12 | The encoding guide's first table needs the tokenizer's states | A sentence on the tokenizer's states leads into it |
+| 13 | The exemptions from the weak-signature rules have a reason | Neither rule applies to self-signed certificates or trust anchors, whose signatures the client does not need to validate (L6) |
+| 14 | The toy token leaves out the time claims | The authorization guide says that a real check must apply `exp` and `nbf` |
