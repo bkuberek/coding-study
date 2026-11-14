@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Property-based testing: generators, properties and shrinking"
+summary: State a rule that every input must satisfy and let a program try hundreds of inputs; kinds of properties, generators and seeds, why filters skew the inputs, and shrinking a failure down to the smallest input that still breaks.
+level: core
+prerequisites: [what-a-test-checks]
+related: [stateful-and-model-based-testing, deterministic-tests, coverage-and-mutation-testing]
+problems: [property-test-runner]
