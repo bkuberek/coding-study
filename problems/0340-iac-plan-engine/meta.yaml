@@ -35,4 +35,5 @@ comparator: {type: ops}
 approaches:
   - {id: step-graph, name: "Resolve in dependency order, then place the smallest ready step", role: optimal, time: "O(R (R + E) + S log S) per plan or apply, for R resources, E references and S attribute rows", space: "O(R K + E) for K keys per resource", time_class: "n^2", space_class: "n"}
 related: [drift-detection, idempotent-converge, course-schedule-ii, parallel-courses, pipeline-scheduler, values-templating, manifest-policy]
+guides: [plan-and-apply, resource-dependency-graphs]
 estimate_minutes: 150

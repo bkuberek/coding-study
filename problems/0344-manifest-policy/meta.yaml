@@ -35,4 +35,5 @@ comparator: {type: ops}
 approaches:
   - {id: expand-and-match, name: "Expand each rule's pattern over each manifest, then layer exceptions, modes and fixes", role: optimal, time: "O(M log M + M R P + V M) per check, for M manifests, R rules, P pointers per rule and manifest, and V services; findings add O(F log F) for F findings", space: "O(N + E + F) for N rows in all manifests, E exceptions and F findings", time_class: "n^2", space_class: "n"}
 related: [values-templating, iac-plan-engine, drift-detection, idempotent-converge]
+guides: [templates-and-layered-values]
 estimate_minutes: 120
