@@ -2,6 +2,70 @@
 
 <!-- version list -->
 
+## v0.49.0 (2026-11-14)
+
+### Bug Fixes
+
+- **guides**: Apply the independent accuracy review of the database internals guides
+  ([`f32828f`](https://github.com/bkuberek/coding-study/commit/f32828f3a75b948141e8a8038c8597cc08c9fd56))
+
+- **guides**: Apply the independent accuracy review of the infrastructure as code and knowledge
+  representation guides
+  ([`fb1fe8d`](https://github.com/bkuberek/coding-study/commit/fb1fe8d9b1ead31dc72751877659f0654ec15b62))
+
+### Documentation
+
+- Guides at 132 with the database internals, infrastructure as code and knowledge representation
+  paths
+  ([`bbc65f2`](https://github.com/bkuberek/coding-study/commit/bbc65f2847c814d3835e9e6f4f7281c7e461e2de))
+
+- **reviews**: List the facts of the database internals guides with their sources
+  ([`52e47e3`](https://github.com/bkuberek/coding-study/commit/52e47e387bfb93add7199a92ff65ef9b54be92c0))
+
+- **reviews**: List the facts of the infrastructure as code guides with their sources
+  ([`5fde412`](https://github.com/bkuberek/coding-study/commit/5fde41216745ff3ae63cd454919944d2aba67d27))
+
+- **reviews**: List the facts of the knowledge representation guides with their sources
+  ([`667bead`](https://github.com/bkuberek/coding-study/commit/667bead7e16477f1983ef95597f0b271df3d5bd5))
+
+- **reviews**: Record the independent accuracy review of the database internals guides
+  ([`3a5f882`](https://github.com/bkuberek/coding-study/commit/3a5f8828a13e98ff3c9841719370d291028aee4b))
+
+- **reviews**: Record the independent accuracy reviews of the infrastructure as code and knowledge
+  representation guides
+  ([`de5315a`](https://github.com/bkuberek/coding-study/commit/de5315ac832ebad3615106e871c35f27cdf0d1b2))
+
+- **roadmap**: Define v1.0.0 scope and milestones
+  ([`ce4d34d`](https://github.com/bkuberek/coding-study/commit/ce4d34decf75706635765fbae6c260aeb63abeb3))
+
+### Features
+
+- **github**: Add issue forms for bugs, missing content and content errors
+  ([`cba3bc5`](https://github.com/bkuberek/coding-study/commit/cba3bc5577cba4e7ba80796c796364f368853975))
+
+- **guides**: Add five infrastructure as code guides, from desired state to policy checks
+  ([`0e39b5d`](https://github.com/bkuberek/coding-study/commit/0e39b5d452c00fa859739ee832a8724385dbc315))
+
+- **guides**: Add five knowledge representation guides, from taxonomies to entity resolution
+  ([`de07dfc`](https://github.com/bkuberek/coding-study/commit/de07dfcf99cccf5964d951c4e7f8a9ff8e16a10d))
+
+- **guides**: Add seven database internals guides, from pages to query planning
+  ([`183856a`](https://github.com/bkuberek/coding-study/commit/183856a9375c1933a47e198de40169edb049336c))
+
+- **guides**: Add the database internals path and link its problems to the guides
+  ([`483456a`](https://github.com/bkuberek/coding-study/commit/483456aaf0d93b8687276651cfcf4ebdaad2a91a))
+
+- **guides**: Add the infrastructure as code path and link its problems to the guides
+  ([`8315bbf`](https://github.com/bkuberek/coding-study/commit/8315bbf8ace017250f569d4d05bcdca255d28fa7))
+
+- **guides**: Add the knowledge representation path and link its problems to the guides
+  ([`bcee25b`](https://github.com/bkuberek/coding-study/commit/bcee25bad87650320471ccb8735000dfb0b13949))
+
+- **guides**: Link the database internals, infrastructure as code and knowledge representation
+  guides both ways
+  ([`0211bc8`](https://github.com/bkuberek/coding-study/commit/0211bc89823bf7fc298b6ddab55ca087f198c273))
+
+
 ## v0.48.0 (2026-11-14)
 
 
