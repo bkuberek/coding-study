@@ -44,6 +44,6 @@ project:
     sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
 approaches:
   - {id: reference, name: "One stream reader per provider, a gateway that commits to a provider at the first event, and a ledger per team", role: optimal, time: "per request", space: "per event and per team"}
-related: [token-cost-reconciler, vendor-retry-client-typescript, coworking-availability-typescript, loop-controller, cache-and-router, agent-trace-analyzer]
+related: [token-cost-reconciler, vendor-retry-client-typescript, coworking-availability-typescript, loop-controller, cache-and-router, agent-trace-analyzer, agent-job-workers]
 guides: [tokens-and-sampling, cost-caching-and-routing]
 estimate_minutes: 180

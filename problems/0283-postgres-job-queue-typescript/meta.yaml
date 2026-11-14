@@ -44,6 +44,6 @@ project:
     sizes: {install_mb: 37, images_mb: {app: 81, postgres: 117}, memory_mb: 150}
 approaches:
   - {id: reference, name: "Claim in one locking statement, and fence every finish with the attempt number", role: optimal, time: "per request", space: "per request"}
-related: [inventory-reservations-typescript, idempotent-document-consumer-typescript, transactional-outbox-typescript]
+related: [inventory-reservations-typescript, idempotent-document-consumer-typescript, transactional-outbox-typescript, agent-job-workers]
 guides: [pipeline-orchestration]
 estimate_minutes: 240

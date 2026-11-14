@@ -40,6 +40,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: entry-table-pipeline, name: "One table of entries, an exact key lookup, then a scan for the nearest embedding", role: optimal, time: "O(1) per exact lookup, O(n m) per semantic lookup", space: "O(n m)", time_class: "n", space_class: "n"}
-related: [token-cost-reconciler, cosine-top-k, context-packer, llm-gateway-typescript, price-cache-rate-limits-typescript, lru-cache, eval-release-gate, retrieval-metrics, graphrag-context]
+related: [token-cost-reconciler, cosine-top-k, context-packer, llm-gateway-typescript, price-cache-rate-limits-typescript, lru-cache, eval-release-gate, retrieval-metrics, graphrag-context, agent-job-workers]
 guides: [cost-caching-and-routing]
 estimate_minutes: 150

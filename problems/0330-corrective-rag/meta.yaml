@@ -38,6 +38,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: rank-grade-gate, name: Exact cosine ranking then verdicts decide what is trusted retried and cited, role: optimal, time: "O(r (n m + n log n + s)) per query", space: "O(n + v)", time_class: "n log n", space_class: "n"}
-related: [cosine-top-k, retrieval-metrics, context-packer, graphrag-context, rag-citations-typescript, chunking-with-overlap, bm25-hybrid-ranker]
+related: [cosine-top-k, retrieval-metrics, context-packer, graphrag-context, rag-citations-typescript, chunking-with-overlap, bm25-hybrid-ranker, grounded-memory-store]
 guides: [retrieval-augmented-generation]
 estimate_minutes: 120

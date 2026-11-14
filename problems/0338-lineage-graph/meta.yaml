@@ -36,6 +36,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: adjacency-walks, name: Forward and backward adjacency with breadth-first walks and cycle groups, role: optimal, time: "O(V + E + A log A) per validation or walk, V columns, E edges, A answers; O(S (V + E)) per exposure report of S labelled sources", space: "O(V + E)", time_class: "n log n", space_class: "n"}
-related: [course-schedule, course-schedule-ii, taxonomy, scd-type2-dimension, data-quality-gate, snapshot-table]
+related: [course-schedule, course-schedule-ii, taxonomy, scd-type2-dimension, data-quality-gate, snapshot-table, grounded-memory-store]
 guides: [data-lineage]
 estimate_minutes: 120

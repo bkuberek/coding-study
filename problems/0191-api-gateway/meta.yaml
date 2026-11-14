@@ -33,5 +33,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: route-trie, name: Route trie with per-client limiters and per-upstream breakers, role: optimal, time: "O(L) per route registration; O(2^L) worst case and O(L) typical per request; amortized O(1) per limit check", space: "O(R L + A)", time_class: "n", space_class: "n"}
-related: [job-scheduler]
+related: [job-scheduler, agent-job-workers]
 estimate_minutes: 90

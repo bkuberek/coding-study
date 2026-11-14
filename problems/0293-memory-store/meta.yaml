@@ -33,6 +33,6 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: ordered-user-maps, name: Per-user maps kept in order of use, role: optimal, time: "O(1) per read, update or rollback; O(m) per add or quota change; O(m q + m log m) per search", space: "O(t)", time_class: "n log n", space_class: "n"}
-related: [in-memory-database, chat-history-index, context-packer, context-compaction]
+related: [in-memory-database, chat-history-index, context-packer, context-compaction, grounded-memory-store]
 guides: [agent-memory]
 estimate_minutes: 90

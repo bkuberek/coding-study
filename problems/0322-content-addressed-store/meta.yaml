@@ -41,6 +41,6 @@ signature:
 comparator: {type: ops, per_method: {dedupRatio: float}}
 approaches:
   - {id: store-and-walk, name: Object map with tree walks and a mark-and-sweep collector, role: optimal, time: "O(b) per object put or read; diff opens only changed folders; O(n) per chunked file; O(live bytes + objects) per collection", space: "O(stored bytes)", time_class: "n", space_class: "n"}
-related: [tamper-evident-ledger, cloud-file-storage, in-memory-database, snapshot-array]
+related: [tamper-evident-ledger, cloud-file-storage, in-memory-database, snapshot-array, grounded-memory-store]
 guides: [cryptographic-hashes]
 estimate_minutes: 120
