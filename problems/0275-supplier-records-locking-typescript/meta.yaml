@@ -29,4 +29,5 @@ project:
 approaches:
   - {id: reference, name: Versions that never go back with field history and a replay layer in front of every write, role: optimal, time: "O(s log s) per list request; O(1) per other request", space: "O(s + c + q)", time_class: "n log n", space_class: "n"}
 related: [warehouse-work-orders-typescript, idempotent-document-consumer-typescript, mvcc-snapshot-isolation]
+guides: [transactions-and-isolation]
 estimate_minutes: 110
