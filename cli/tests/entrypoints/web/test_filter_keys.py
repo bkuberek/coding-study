@@ -43,6 +43,11 @@ def test_every_filter_the_next_card_passes_is_a_flag_of_cstudy_next(key):
     assert f"--{key}" in flags_of("next")
 
 
+@pytest.mark.parametrize("key", keys_declared("commands.ts", "LEARN_FILTERS"))
+def test_every_filter_the_guides_view_names_is_a_flag_of_cstudy_learn(key):
+    assert f"--{key}" in flags_of("learn")
+
+
 def test_the_page_offers_the_columns_the_preferences_accept():
     assert keys_declared("problems-model.ts", "PROBLEM_COLUMNS") == list(PROBLEM_COLUMNS)
 

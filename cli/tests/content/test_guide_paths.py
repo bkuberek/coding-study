@@ -15,6 +15,12 @@ def shipped_order() -> list[tuple[str, GuideLevel | None]]:
     return [(path.slug, path_level(path, levels)) for path in paths]
 
 
+def test_every_shipped_path_names_its_level():
+    catalog = FsGuideCatalog(REPOSITORY_ROOT)
+    unnamed = [slug for slug in catalog.path_slugs() if catalog.load_path(slug).level is None]
+    assert unnamed == []
+
+
 def test_getting_started_comes_first():
     assert shipped_order()[0] == (FIRST_PATH, GuideLevel.INTRO)
 

@@ -46,6 +46,13 @@ LEVEL_RANKS: Mapping[GuideLevel, int] = {
 _LEVELS_BY_RANK = {rank: level for level, rank in LEVEL_RANKS.items()}
 
 
+class GuideStatus(StrEnum):
+    """`cstudy learn --status`: a guide read once marked; a path read once all its guides are."""
+
+    READ = "read"
+    NOT_READ = "not_read"
+
+
 @dataclass(frozen=True, slots=True)
 class GuideMeta:
     slug: str
@@ -87,6 +94,8 @@ class LearningPath:
     title: str
     summary: str
     steps: tuple[PathStep, ...]
+    level: GuideLevel | None = None
+    """The level the path names; None takes it from its guides (docs/specs/guides.md#path-order)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,10 +122,12 @@ class StepProgress:
 
 
 def path_level(path: LearningPath, levels: Mapping[str, GuideLevel]) -> GuideLevel | None:
-    """The level a path is for (docs/specs/guides.md#path-order): the level nearest the mean of
-    its guide steps' levels, the higher one when the mean is halfway between two. `levels` holds
-    each guide's level by slug; problem steps, and guides it does not hold, do not count. None for
-    a path without such guides."""
+    """The level a path is for (docs/specs/guides.md#path-order): the one it names, or else the
+    level nearest the mean of its guide steps' levels, the higher one when the mean is halfway
+    between two. `levels` holds each guide's level by slug; problem steps, and guides it does not
+    hold, do not count. None for a path that names none and has no such guides."""
+    if path.level is not None:
+        return path.level
     ranks = _guide_ranks(path, levels)
     if not ranks:
         return None
@@ -127,15 +138,30 @@ def path_level(path: LearningPath, levels: Mapping[str, GuideLevel]) -> GuideLev
 def by_level(
     paths: Iterable[LearningPath], levels: Mapping[str, GuideLevel]
 ) -> tuple[LearningPath, ...]:
-    """The paths from introductory to advanced (docs/specs/guides.md#path-order): by the mean of
-    their guides' levels, lowest first, which orders them by `path_level` too; paths with the same
-    mean keep their order, and a path without guides comes last."""
+    """The paths from introductory to advanced (docs/specs/guides.md#path-order): by
+    `path_level`, then by the mean of their guides' levels, lowest first; paths alike in both keep
+    their order, a path without guides comes after the others of its level, and a path with no
+    level at all comes last."""
 
-    def mean_rank(path: LearningPath) -> tuple[bool, Fraction]:
+    def rank(path: LearningPath) -> tuple[bool, int, bool, Fraction]:
+        level = path_level(path, levels)
         ranks = _guide_ranks(path, levels)
-        return (not ranks, Fraction(sum(ranks), len(ranks)) if ranks else Fraction(0))
+        mean = Fraction(sum(ranks), len(ranks)) if ranks else Fraction(0)
+        return (level is None, 0 if level is None else LEVEL_RANKS[level], not ranks, mean)
 
-    return tuple(sorted(paths, key=mean_rank))
+    return tuple(sorted(paths, key=rank))
+
+
+def search_words(text: str) -> tuple[str, ...]:
+    """The words of a search, in lower case (docs/specs/cli.md#cstudy-learn)."""
+    return tuple(text.lower().split())
+
+
+def matches_search(words: Sequence[str], *fields: str) -> bool:
+    """Every word is in one of the fields, in any case: the rule of `cstudy learn --search` and of
+    the Guides page's search (`tools/web-ui/src/page/guides-model.ts`)."""
+    lowered = [field.lower() for field in fields]
+    return all(any(word in field for field in lowered) for word in words)
 
 
 def _guide_ranks(path: LearningPath, levels: Mapping[str, GuideLevel]) -> list[int]:

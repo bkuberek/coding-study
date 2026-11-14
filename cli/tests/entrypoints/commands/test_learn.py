@@ -84,6 +84,37 @@ def test_the_list_as_json_has_no_hint(environment: Environment):
     )
 
 
+def test_the_list_narrows_by_a_search_and_a_status(environment: Environment):
+    learn.mark_read(environment, "hash-functions")
+    assert invoke("--search", "maps", "--status", "not_read").output.splitlines() == [
+        "GUIDES",
+        "SLUG                        LEVEL     READ  TITLE",
+        "hash-maps                   intro     -     Hash maps",
+        "",
+        "PATHS",
+        'no paths match "maps", status: not read',
+        f"{HINT} <guide> --open",
+    ]
+
+
+def test_a_narrowed_list_as_json_holds_what_matches(environment: Environment):
+    document = json.loads(invoke("--level", "intro", "--search", "functions", "--json").output)
+    assert ([guide["slug"] for guide in document["guides"]], document["paths"][0]["slug"]) == (
+        ["hash-functions"],
+        "hashing",
+    )
+
+
+def test_a_list_that_nothing_matches_says_what_was_asked(environment: Environment):
+    assert invoke("--search", "zebra", "--level", "advanced").output.splitlines() == [
+        "GUIDES",
+        'no guides match "zebra", level: advanced',
+        "",
+        "PATHS",
+        'no paths match "zebra", level: advanced',
+    ]
+
+
 def test_no_guides_says_where_it_looked(content_root: Path, monkeypatch: pytest.MonkeyPatch):
     environment = make_environment(content_root)
     monkeypatch.setattr(learn, "load_catalog_environment", lambda *_: environment)
@@ -243,6 +274,8 @@ def test_a_path_as_json(environment: Environment):
         (("hash-maps", "--path", "hashing"), "give a guide or --path, not both"),
         (("--done",), "--done needs a guide"),
         (("--open",), "--open needs a guide or a path: cstudy learn <guide> --open"),
+        (("hash-maps", "--level", "core"), "--search, --level and --status narrow the list"),
+        (("--path", "hashing", "--search", "x"), "--search, --level and --status narrow the list"),
     ],
 )
 def test_usage_errors_exit_3(environment: Environment, arguments: tuple[str, ...], message: str):

@@ -108,6 +108,7 @@ Concept guides teach an idea before you practise it: the plain idea, a worked ex
 ```bash
 cstudy learn                       # the guides and the paths, with what you have read
 cstudy learn --path hashing        # a path's steps and the next one
+cstudy learn --search hash --level core   # the guides and paths that match
 cstudy learn hash-functions        # read a guide; add --done once you have
 ```
 

@@ -3,10 +3,14 @@
  * would run (docs/specs/web-ui.md#keyboard-and-accessibility: each control names its command).
  */
 
-import { FILTER_KEYS, type FilterKey, type Filters } from "./routes.ts";
+import { FILTER_KEYS, type FilterKey, type Filters, type GuideFilterKey, type GuideFilters } from "./routes.ts";
 
 /** The filters `cstudy next` takes from the list's: set, track, pattern, difficulty, language and the labels. */
 export const NEXT_FILTERS: readonly FilterKey[] = ["set", "track", "pattern", "difficulty", "lang", "domain", "role", "scope"];
+
+/** The Guides view's filters that `cstudy learn` takes; its path has no flag, since `--path` shows
+ * a path's steps. */
+export const LEARN_FILTERS: readonly GuideFilterKey[] = ["level", "status", "search"];
 
 export function listCommand(filters: Filters): string {
   return withFlags("cstudy list", filters, FILTER_KEYS);
@@ -16,13 +20,17 @@ export function nextCommand(filters: Filters): string {
   return withFlags("cstudy next", filters, NEXT_FILTERS);
 }
 
+export function learnCommand(filters: GuideFilters): string {
+  return withFlags("cstudy learn", filters, LEARN_FILTERS);
+}
+
 /** `cstudy start <slug>`, with `--lang` unless the problem has no choice of language. */
 export function startCommand(slug: string, language: string | null): string {
   return language === null ? `cstudy start ${slug}` : `cstudy start ${slug} --lang ${language}`;
 }
 
 /** Each filter is the flag of its key (`track`, `--track`), which a test holds to the real flags. */
-function withFlags(command: string, filters: Filters, keys: readonly FilterKey[]): string {
+function withFlags<Key extends string>(command: string, filters: Partial<Record<Key, string>>, keys: readonly Key[]): string {
   const flags = keys.flatMap((key) => {
     const value = filters[key];
     return value ? [`--${key} ${quoted(value)}`] : [];

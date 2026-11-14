@@ -10,6 +10,7 @@
 import "../filters.css";
 import "./guides.css";
 
+import { learnCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { command, h, isSearchShortcut, rendered } from "../dom.ts";
 import { statusWords } from "../format.ts";
@@ -169,7 +170,9 @@ function listing(context: PageContext, found: GuideListing, initial: GuideFilter
   const change = (changed: GuideFilters) => {
     filters = { ...filters, ...changed };
     for (const key of Object.keys(selects) as ChoiceKey[]) selects[key].classList.toggle("is-set", Boolean(filters[key]));
-    history.replaceState(null, "", guidesHash({ ...filters, search: (filters.search ?? "").trim() }));
+    const route = { ...filters, search: (filters.search ?? "").trim() };
+    history.replaceState(null, "", guidesHash(route));
+    shell.setCommand(learnCommand(route));
     draw();
   };
   search.addEventListener("input", () => change({ search: search.value }));
@@ -200,7 +203,7 @@ function listing(context: PageContext, found: GuideListing, initial: GuideFilter
 export function guidesView(context: PageContext, filters: GuideFilters): Cleanup {
   const { api, shell } = context;
   shell.setView("guides");
-  shell.setCommand("cstudy learn");
+  shell.setCommand(learnCommand(filters));
   shell.setStatus({ mode: "GUIDES", where: "guides and paths" });
   const body = h("div", { class: "guides-body" }, loading());
   shell.main.replaceChildren(

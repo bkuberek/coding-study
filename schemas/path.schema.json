@@ -8,6 +8,10 @@
   "properties": {
     "title": { "type": "string", "minLength": 1, "maxLength": 100 },
     "summary": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "level": {
+      "description": "The level the path is for, which orders it among the paths; without it, the level nearest the mean of its guides' levels (docs/specs/guides.md#path-order)",
+      "enum": ["intro", "core", "advanced"]
+    },
     "steps": {
       "description": "In order: each a guide or a problem",
       "type": "array",

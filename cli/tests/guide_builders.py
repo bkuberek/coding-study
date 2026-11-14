@@ -73,12 +73,15 @@ def write_svg_drawings(folder: Path, markdown: str) -> None:
             path.write_text(f"{svg_marker(diagram.content)}\n{SVG.format(theme=theme)}\n")
 
 
-def write_path(root: Path, slug: str, steps: list[str], title: str = "Hashing") -> Path:
+def write_path(
+    root: Path, slug: str, steps: list[str], title: str = "Hashing", level: str | None = None
+) -> Path:
     folder = root / "guides" / "paths"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{slug}.yaml"
     body = "\n".join(f"  - {step}" for step in steps)
-    path.write_text(f"title: {title}\nsummary: From hash functions on.\nsteps:\n{body}\n")
+    named = "" if level is None else f"level: {level}\n"
+    path.write_text(f"title: {title}\nsummary: From hash functions on.\n{named}steps:\n{body}\n")
     return path
 
 

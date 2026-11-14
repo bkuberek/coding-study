@@ -161,6 +161,7 @@ A path is `guides/paths/<slug>.yaml`, validated by `schemas/path.schema.json`:
 # yaml-language-server: $schema=../../schemas/path.schema.json
 title: "Hashing: from your first hash map to content-addressed storage"
 summary: From what a hash function is to Merkle proofs, through the problems that practise each idea.
+level: core
 steps:
   - guide: hash-functions
   - guide: hash-maps-and-sets
@@ -173,22 +174,25 @@ steps:
 |-----|------|----------|-------|
 | `title` | string, 1 to 100 characters | yes | |
 | `summary` | string, 1 to 240 characters | yes | |
+| `level` | `intro`, `core` or `advanced` | no | The level the path is for, which [orders](#path-order) it among the paths. Without it, the path takes one from its guides' levels. Every shipped path names it |
 | `steps` | list, at least 1 | yes | In order. Each step is `{guide: <slug>}` or `{problem: <slug>}`, a problem step optionally with `level: <n>` |
-| `level` | integer, at least 1 | no | Only on a progressive or project problem, at most its number of levels: the step is done once that level passes. Without it, the step is done when the problem passes, through every level it has |
+| A step's `level` | integer, at least 1 | no | Only on a progressive or project problem, at most its number of levels: the step is done once that level passes. Without it, the step is done when the problem passes, through every level it has |
 
 The same problem may come twice with different levels, so a path can return to it once it has taught what the later levels need.
 
 ### Path order
 
-`cstudy learn` and the [Guides page](#guides-page) list the paths from introductory to advanced, so the gentlest comes first. A path names no level; it takes one from the levels of its guides:
+`cstudy learn` and the [Guides page](#guides-page) list the paths from introductory to advanced, so the gentlest comes first. A path's level is the `level` it names, which says what it teaches; a path that names none takes one from the levels of its guides:
 
 | Rule | Detail |
 |------|--------|
 | Rank | Each guide step counts its guide's level as a number: `intro` 1, `core` 2, `advanced` 3. Problem steps, and a step whose guide does not exist, do not count |
-| Level | The level nearest the mean of those numbers, the higher one when the mean is halfway between two: only `intro` guides make an `intro` path, an `intro` and a `core` guide a `core` path, mostly `advanced` guides an `advanced` path. A path without guide steps has no level |
-| Order | By that mean, lowest first, which also orders the paths by level: the `intro` paths, then the `core` ones, then the `advanced` ones, and within a level the path whose guides average lower first. Paths with the same mean keep their order by file name, and a path without guide steps comes last |
+| Level | The `level` the path names. Without it, the level nearest the mean of those numbers, the higher one when the mean is halfway between two: only `intro` guides make an `intro` path, an `intro` and a `core` guide a `core` path, mostly `advanced` guides an `advanced` path. A path that names none and has no guide steps has no level |
+| Order | By level: the `intro` paths, then the `core` ones, then the `advanced` ones. Within a level, by the mean, lowest first, so the path whose guides average lower comes first. Paths alike in both keep their order by file name; a path without guide steps comes after the others of its level, and one with no level at all comes last |
 
-"Getting started" comes first, since its guides are all `intro` and no other path's are. `tests/content/test_guide_paths.py` checks that it stays first, so a new path that ties it fails the test and its author decides. The guides of `cstudy learn` follow the paths in this order, so the guides of "Getting started" come first too.
+The shipped paths name these levels, from what each teaches: `intro` for "Getting started" and the first data structures ("Arrays: two pointers and sliding windows", "Stacks, queues and tries"); `core` for what working engineers use every day ("Hashing", "Binary search", "Trees and heaps", "Greedy choices and intervals", "Testing", "Networking", "Security", "Machine learning fundamentals", "AI engineering"); and `advanced` for the specialised depth ("Graphs", "Recursion and dynamic programming", "Operating systems", "Data engineering", "Distributed systems").
+
+"Getting started" comes first: it is `intro`, and its guides, all `intro`, average lowest. `tests/content/test_guide_paths.py` checks that it stays first and that every shipped path names its level. The guides of `cstudy learn` follow the paths in this order, so the guides of "Getting started" come first too.
 
 ## Static checks
 

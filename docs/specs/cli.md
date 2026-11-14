@@ -1148,7 +1148,7 @@ Prints the rendered statement (title, metadata, sections, examples generated fro
 ## cstudy learn
 
 ```text
-cstudy learn [--json]
+cstudy learn [--search <words>] [--level <level>] [--status read|not_read] [--json]
 cstudy learn <guide> [--done] [--json]
 cstudy learn <guide> --open
 cstudy learn --path <path> [--json]
@@ -1159,7 +1159,7 @@ Reads the [concept guides and learning paths](guides.md) of the content root ([A
 
 | Form | Does | Says |
 |------|------|------|
-| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths, from introductory to advanced ([path order](guides.md#path-order)) | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with each path's level (`-` for a path without guides) and steps done of total, `next    cstudy learn --path <path>` for the first path not finished, and the [web hint](#the-web-hint); with no `guides/`, `no guides in <content root>` |
+| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths, from introductory to advanced ([path order](guides.md#path-order)). `--search` keeps the guides and paths whose title, summary or slug holds every word of it, each word in any of them, in any case; `--level` those at that level (`intro`, `core`, `advanced`: a guide's, or a path's [level](guides.md#path-order)); `--status read` the guides marked read and the paths whose guides all are, `--status not_read` the others (a path without guides is neither). They combine, in the text and in `--json`, by the rule of the web UI's [Guides view](web-ui.md#guides-view) | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with each path's level (`-` for a path without guides) and steps done of total, `next    cstudy learn --path <path>` for the first path not finished, and the [web hint](#the-web-hint); with no `guides/`, `no guides in <content root>`; a section the filters leave empty says what was asked: `no paths match "hash", level: advanced` |
 | `cstudy learn <guide>` | Shows the guide, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings). On a terminal it is Markdown rendered by Rich; otherwise, piped or redirected, the Markdown text as written | The guide, then `examples  <folder>` when it has examples, `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked, and the web hint |
 | `cstudy learn <guide> --done` | Marks the guide read; the first time is kept | `marked hash-functions read`, or `hash-functions was marked read on 2026-11-11`, which changes nothing and exits 0 |
 | `cstudy learn <guide> --open` | Finds the guide, then runs [`cstudy serve --open`](#cstudy-serve) on a free port, whose page opens on the guide in the web UI's [Guides view](web-ui.md#guides-view): the URL adds `&view=/guides/<guide>`. It needs a workspace, as `cstudy serve` does, and runs until Ctrl-C | What `cstudy serve --open` prints, the `open` URL naming the view |
@@ -1188,6 +1188,7 @@ A problem step's status is `passed` once done, or for a level target `level N pa
 | A path that does not exist | `unknown path "hashin"; did you mean hashing?`, or the same with `cstudy learn lists the paths`, exit 3 |
 | A guide and `--path` | `give a guide or --path, not both`, exit 3 |
 | `--done` without a guide | `--done needs a guide: cstudy learn <guide> --done`, exit 3 |
+| `--search`, `--level` or `--status` with a guide or `--path` | `--search, --level and --status narrow the list: cstudy learn --search <words>, without a guide or --path`, exit 3 |
 | `--open` without a guide or a path | `--open needs a guide or a path: cstudy learn <guide> --open, or cstudy learn --path <path> --open`, exit 3 |
 | `--open` with `--done` or `--json` | `--open takes no --done or --json: it serves the page and opens it`, exit 3, and no server starts |
 | `--open` with a guide or path that does not exist | The message of the line above for it, exit 3, and no server starts |

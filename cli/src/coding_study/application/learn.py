@@ -11,6 +11,7 @@ from coding_study.domain.concept_guides import (
     DIAGRAMS_DIRECTORY,
     GuideLevel,
     GuideMeta,
+    GuideStatus,
     LearningPath,
     PathStep,
     ProblemFacts,
@@ -19,8 +20,10 @@ from coding_study.domain.concept_guides import (
     by_level,
     guide_step_progress,
     highest_level_passed,
+    matches_search,
     path_level,
     problem_step_progress,
+    search_words,
     unknown_slug_message,
 )
 from coding_study.domain.errors import UnknownGuideError
@@ -70,6 +73,19 @@ class LearnListing:
 
 
 @dataclass(frozen=True, slots=True)
+class ListingFilter:
+    """`cstudy learn --search --level --status` (docs/specs/cli.md#cstudy-learn)."""
+
+    search: str = ""
+    level: GuideLevel | None = None
+    status: GuideStatus | None = None
+
+    @property
+    def narrows(self) -> bool:
+        return bool(search_words(self.search)) or self.level is not None or self.status is not None
+
+
+@dataclass(frozen=True, slots=True)
 class GuidePage:
     entry: GuideEntry
     markdown: str
@@ -109,6 +125,44 @@ def learn_listing(environment: Environment) -> LearnListing:
     order = list(dict.fromkeys((*in_paths, *metas)))
     guides = tuple(GuideEntry(metas[slug], reads.get(slug)) for slug in order if slug in metas)
     return LearnListing(guides, paths)
+
+
+def narrow_listing(listing: LearnListing, wanted: ListingFilter) -> LearnListing:
+    """The guides and the paths that hold every word of the search in their title, summary or
+    slug, at the level and in the status asked, each list in its order; the Guides page's search
+    and filters keep the same (`tools/web-ui/src/page/guides-model.ts`)."""
+    words = search_words(wanted.search)
+    read = {entry.meta.slug for entry in listing.guides if entry.read_at is not None}
+
+    def guide_kept(entry: GuideEntry) -> bool:
+        meta = entry.meta
+        status = GuideStatus.READ if entry.read_at is not None else GuideStatus.NOT_READ
+        return (
+            matches_search(words, meta.title, meta.summary, meta.slug)
+            and wanted.level in (None, meta.level)
+            and wanted.status in (None, status)
+        )
+
+    def path_kept(view: PathView) -> bool:
+        path = view.path
+        return (
+            matches_search(words, path.title, path.summary, path.slug)
+            and wanted.level in (None, view.level)
+            and wanted.status in (None, _path_status(path, read))
+        )
+
+    return LearnListing(
+        tuple(entry for entry in listing.guides if guide_kept(entry)),
+        tuple(view for view in listing.paths if path_kept(view)),
+    )
+
+
+def _path_status(path: LearningPath, read: set[str]) -> GuideStatus | None:
+    """Read once every guide it has is read, not read while one is not; None without guides."""
+    guides = [step.slug for step in path.steps if step.kind is StepKind.GUIDE]
+    if not guides:
+        return None
+    return GuideStatus.READ if all(slug in read for slug in guides) else GuideStatus.NOT_READ
 
 
 def guide_page(environment: Environment, slug: str) -> GuidePage:

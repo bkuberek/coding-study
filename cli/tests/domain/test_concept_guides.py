@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -12,8 +13,10 @@ from coding_study.domain.concept_guides import (
     by_level,
     guide_step_progress,
     highest_level_passed,
+    matches_search,
     path_level,
     problem_step_progress,
+    search_words,
     unknown_slug_message,
 )
 from coding_study.domain.scheduling import ProblemStatus
@@ -202,3 +205,33 @@ def test_a_path_without_guides_comes_last():
     problems_only = LearningPath("problems", "P", "Summary.", (PathStep.problem("two-sum"),))
     paths = (problems_only, a_path("deep", "a1"), a_path("first", "i1"))
     assert slugs(by_level(paths, LEVELS)) == ["first", "deep", "problems"]
+
+
+def test_a_level_the_path_names_wins_over_its_guides():
+    assert path_level(replace(a_path("p", "i1", "i2"), level=ADVANCED), LEVELS) is ADVANCED
+
+
+def test_a_named_level_orders_a_path_whatever_its_guides_average():
+    paths = (
+        replace(a_path("deep", "i1"), level=ADVANCED),
+        a_path("daily", "c1", "c2"),
+        replace(a_path("first", "c1"), level=INTRO),
+    )
+    assert slugs(by_level(paths, LEVELS)) == ["first", "daily", "deep"]
+
+
+def test_a_path_without_guides_that_names_a_level_is_ordered_by_it():
+    steps = (PathStep.problem("two-sum"),)
+    problems_only = LearningPath("problems", "P", "Summary.", steps, level=INTRO)
+    assert slugs(by_level((a_path("daily", "c1"), problems_only), LEVELS)) == ["problems", "daily"]
+
+
+def test_a_search_finds_every_word_in_any_field_in_any_case():
+    words = search_words("  HASH   maps ")
+    assert [
+        words,
+        matches_search(words, "Hash maps and sets", "A summary.", "hash-maps"),
+        matches_search(words, "Hash functions", "Buckets need maps.", "hash-functions"),
+        matches_search(words, "Hash functions", "A summary.", "hash-functions"),
+        matches_search((), "Anything"),
+    ] == [("hash", "maps"), True, True, False, True]
