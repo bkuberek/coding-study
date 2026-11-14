@@ -2,6 +2,78 @@
 
 <!-- version list -->
 
+## v0.47.0 (2026-11-14)
+
+### Bug Fixes
+
+- **code-intelligence**: Name the Kotlin LSP's index directory in initialize
+  ([`8946094`](https://github.com/bkuberek/coding-study/commit/89460946826f003abe42bc776cd2ba02e863d936))
+
+- **guides**: Apply the independent accuracy review of the networking guides
+  ([`172bf50`](https://github.com/bkuberek/coding-study/commit/172bf50195baa3ab3a124561d2272f193915db79))
+
+- **guides**: Apply the independent accuracy review of the security guides
+  ([`99326c1`](https://github.com/bkuberek/coding-study/commit/99326c1317265b1babe4e0de8333bcc61d32611e))
+
+- **guides**: Apply the independent accuracy review of the testing guides
+  ([`afd857b`](https://github.com/bkuberek/coding-study/commit/afd857b07198a78593fbe46f4250e6b9ea591649))
+
+- **web-ui**: Send Done once the attempt reads already out are answered
+  ([`06f345d`](https://github.com/bkuberek/coding-study/commit/06f345d0b693366acfc88a8c2a26b0df30b83049))
+
+### Documentation
+
+- Guides at 94 with the testing, networking and security paths
+  ([`bcde5ee`](https://github.com/bkuberek/coding-study/commit/bcde5eea4178658e7bfc6842ebdb85cc5159ae98))
+
+- **reviews**: List the facts of the networking guides with their sources
+  ([`c82c5eb`](https://github.com/bkuberek/coding-study/commit/c82c5eb78493aa83597f1ce89de42fccead1f579))
+
+- **reviews**: List the facts of the security guides with their sources
+  ([`101316b`](https://github.com/bkuberek/coding-study/commit/101316bdaaf16aae3c27f72a20e858bea5a4030b))
+
+- **reviews**: List the facts of the testing guides with their sources
+  ([`d99846f`](https://github.com/bkuberek/coding-study/commit/d99846f8fa6fdc543669ab35282ddcbef957273e))
+
+- **reviews**: Record the independent accuracy review of the networking guides
+  ([`28e78b4`](https://github.com/bkuberek/coding-study/commit/28e78b475fdfec3d4c6fe8265abeda79b374e89e))
+
+- **reviews**: Record the independent accuracy review of the security guides
+  ([`d52babe`](https://github.com/bkuberek/coding-study/commit/d52babedca7cb9cb9e5b5d577a489997cd9ad5b4))
+
+- **reviews**: Record the independent accuracy review of the testing guides
+  ([`2ceb318`](https://github.com/bkuberek/coding-study/commit/2ceb31834b94c47d23c30928bf641b6b95e057e8))
+
+### Features
+
+- **guides**: Add seven security guides, from injection to threat modeling
+  ([`604ba09`](https://github.com/bkuberek/coding-study/commit/604ba0963b089b1e474eabdb30d81e908778f471))
+
+- **guides**: Add the congestion control, HTTP messages and retries guides
+  ([`1f021fe`](https://github.com/bkuberek/coding-study/commit/1f021fec1597363f71b6ce0a7e3e4d8bf37c2af5))
+
+- **guides**: Add the coverage and mutation testing and test suite design guides
+  ([`d265600`](https://github.com/bkuberek/coding-study/commit/d26560085e3942c2e9988a114ac0ed408f446ed7))
+
+- **guides**: Add the layers, DNS and reliable transport guides
+  ([`a1f9fd5`](https://github.com/bkuberek/coding-study/commit/a1f9fd5457ca73c6d3fbb731f381c0de1edb3058))
+
+- **guides**: Add the networking path and link its problems to the guides
+  ([`7927d78`](https://github.com/bkuberek/coding-study/commit/7927d780a00662aa94dd16e1d611a7b91eae7368))
+
+- **guides**: Add the property-based and model-based testing guides
+  ([`1f06aa5`](https://github.com/bkuberek/coding-study/commit/1f06aa5e55b7fe5c843e0fc2aae748ac1e21880a))
+
+- **guides**: Add the security path
+  ([`06679fb`](https://github.com/bkuberek/coding-study/commit/06679fbbe5bfb054fef54e403ed85b0bad858b8b))
+
+- **guides**: Add the testing path and link its problems to the guides
+  ([`fc426aa`](https://github.com/bkuberek/coding-study/commit/fc426aab33fd052744c8b92f62567742df73f8c0))
+
+- **guides**: Add the what a test checks, test doubles and deterministic tests guides
+  ([`8212b5d`](https://github.com/bkuberek/coding-study/commit/8212b5d54eeff0f1f739a7bd0728049f327bdc50))
+
+
 ## v0.46.0 (2026-11-13)
 
 ### Bug Fixes
