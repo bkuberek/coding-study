@@ -39,4 +39,5 @@ perf:
   budget_ms: 20000
   expected_from: six-indexes
 related: [in-memory-database, time-based-kv-store, versioned-memory-store, taxonomy, reasoner-vs-validator, entity-resolution, graphrag-context, architecture-checker, query-planner]
+guides: [rdf-triples, graph-patterns-and-sparql]
 estimate_minutes: 120

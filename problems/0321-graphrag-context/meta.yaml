@@ -33,5 +33,5 @@ comparator: {type: ops}
 approaches:
   - {id: bfs-rank-fill, name: Breadth-first distances then one ranked list then a greedy fill, role: optimal, time: "O(V + E + F log F) per query", space: "O(V + E)", time_class: "n log n", space_class: "n"}
 related: [rag-citations-typescript, context-packer, triple-store, taxonomy, bm25-hybrid-ranker, reasoner-vs-validator, entity-resolution, context-compaction, cache-and-router, corrective-rag]
-guides: [retrieval-augmented-generation, agent-memory]
+guides: [retrieval-augmented-generation, agent-memory, graph-patterns-and-sparql]
 estimate_minutes: 120
