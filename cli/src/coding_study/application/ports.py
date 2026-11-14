@@ -54,6 +54,7 @@ from coding_study.domain.server_builds import Build
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport, SuiteTest
 from coding_study.domain.time_limits import Calibration
+from coding_study.domain.user_docs import DocPage
 
 
 class ProblemRepository(Protocol):
@@ -97,6 +98,25 @@ class ItemRepository(Protocol):
 
     def file_names(self, slug: str, directory: str = "") -> tuple[str, ...]:
         """Sorted names of the files (not directories) in an item subdirectory."""
+        ...
+
+
+class UserDocs(Protocol):
+    """The user docs in `user-docs/` (docs/specs/user-docs.md). Unknown slugs are the caller's to
+    refuse: it asks `slugs` first."""
+
+    def slugs(self) -> tuple[str, ...]:
+        """Every page's slug, sorted: the names of `user-docs/*.md`; none without `user-docs/`."""
+        ...
+
+    def entries(self) -> tuple[str, ...]:
+        """Every entry of `user-docs/`, sorted, a folder's name ending in `/`; hidden ones left
+        out (D2)."""
+        ...
+
+    def load(self, slug: str) -> DocPage:
+        """Raises ContentError for a page without front matter, or whose front matter does not
+        parse or fails its schema (D1)."""
         ...
 
 

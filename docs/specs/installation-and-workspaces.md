@@ -26,7 +26,7 @@ When several installs exist, the first `cstudy` on `PATH` runs; Homebrew's cavea
 
 ## Content root
 
-The content root holds `problems/`, `tracks/`, `guides/` ([concept guides and learning paths](guides.md), which a root may leave out), `runners/` and `schemas/`. `cstudy` reads it and never writes to it, except `cstudy new` in a checkout.
+The content root holds `problems/`, `tracks/`, `guides/` ([concept guides and learning paths](guides.md), which a root may leave out), `user-docs/` ([the user docs](user-docs.md), which a root may leave out too), `runners/` and `schemas/`. `cstudy` reads it and never writes to it, except `cstudy new` in a checkout.
 
 | Order | Source | Used for |
 |-------|--------|----------|

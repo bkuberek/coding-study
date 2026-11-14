@@ -25,6 +25,7 @@ from coding_study.application.ports import (
     SandboxEngine,
     StudyGuides,
     Toolchains,
+    UserDocs,
     Workspace,
 )
 from coding_study.domain.config import Config
@@ -69,6 +70,8 @@ class Environment:
     """Non-autograded items in tracks/."""
     guides: GuideCatalog
     """Concept guides and learning paths in guides/ (docs/specs/guides.md)."""
+    docs: UserDocs
+    """The user docs in user-docs/ (docs/specs/user-docs.md)."""
     machine: MachineProbe
     new_problems: ProblemDestination
     study_guides: StudyGuides

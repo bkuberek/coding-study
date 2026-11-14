@@ -23,6 +23,7 @@ from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
+from coding_study.adapters.fs_user_docs import FsUserDocs
 from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.jdk_locator import EnvJdkSelector, JdkHome
 from coding_study.adapters.language_servers.lsp_directory import LspDirectory
@@ -136,6 +137,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         watcher=WatchfilesWatcher(),
         items=FsItemRepository(content.path, index),
         guides=FsGuideCatalog(content.path),
+        docs=FsUserDocs(content.path),
         machine=SystemMachine(),
         new_problems=_new_problems(content, workspace),
         study_guides=FsStudyGuides.from_setting(config.study_guides.root, user.home),

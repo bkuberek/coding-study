@@ -22,6 +22,7 @@
 | [`cstudy set`](#cstudy-set) | Make named lists of problems to study from | 15 |
 | [`cstudy show`](#cstudy-show) | Print the rendered statement | 0 |
 | [`cstudy learn`](#cstudy-learn) | Read concept guides and follow learning paths | 16 |
+| [`cstudy docs`](#cstudy-docs) | Read the user docs: how to use `cstudy` | 17 |
 | [`cstudy done`](#cstudy-done) | Finish an attempt and schedule review | 1 |
 | [`cstudy abort`](#cstudy-abort) | Stop working on a problem: the attempt ends as abandoned | 9 |
 | [`cstudy next`](#cstudy-next) | Pick what to practice | 1 |
@@ -36,7 +37,7 @@
 | [`cstudy reset`](#cstudy-reset) | Delete progress and state, after a preview and a typed word | 9 |
 | [`cstudy about`](#cstudy-about) | Show the version, license, links and credits | 9 |
 
-`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list`, `cstudy show` and `cstudy learn` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set` and `cstudy learn --done` need one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
+`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list`, `cstudy show`, `cstudy learn` and `cstudy docs` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set`, `cstudy learn --done` and the `--open` of `cstudy learn` and `cstudy docs` need one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
 ## Solution file targets
 
@@ -1198,6 +1199,34 @@ A problem step's status is `passed` once done, or for a level target `level N pa
 The list and a guide end with one dim line, `Read with rendered diagrams in the web UI: cstudy learn <guide> --open` (the guide's slug after a guide, `<guide>` after the list). `--json` never prints it.
 
 `--json` of the list prints `{"guides": [...], "paths": [...]}`: each guide `{"slug", "title", "summary", "level", "prerequisites", "related", "problems", "read", "read_at"}` (`read_at` an ISO 8601 UTC time or null) and each path `{"slug", "title", "summary", "done", "total"}`. `--json` of a guide prints the guide's fields with `"markdown"`, `guide.md` as written, `diagrams` and all, and `"examples"`, the absolute paths of its examples. `--json` of `--done` prints `{"slug", "read_at", "already"}`, `already` true when it was marked before. `--json` of a path prints `{"slug", "title", "summary", "done", "total", "next", "steps": [...]}`: `next` the first step not done or null, and each step `{"position", "kind", "slug", "title", "level", "done", "status", "level_passed"}`, `kind` `guide` or `problem`, `level` the target or null, `status` as the table writes it, and `level_passed` the highest level an attempt has passed, or null for a guide or a problem without levels.
+
+## cstudy docs
+
+```text
+cstudy docs [--json]
+cstudy docs <topic> [--json]
+cstudy docs [<topic>] --open
+```
+
+Reads the [user docs](user-docs.md) of the content root: how to use `cstudy`, one page per topic ([ADR 0026](../decisions/0026-user-docs.md)). It needs no workspace; `--open` needs one, as `cstudy serve` does.
+
+| Form | Does | Says |
+|------|------|------|
+| `cstudy docs` | Lists the topics by `order`, grouped by section | Each section's name, then a line per page, its slug and title; then `read      cstudy docs <topic>` and the web hint. With no `user-docs/`, `no docs in <content root>` |
+| `cstudy docs <topic>` | Shows the page without its front matter. On a terminal it is Markdown rendered by Rich, which reads without colour too (`--no-color`, `NO_COLOR`); otherwise, piped or redirected, the Markdown text as written | The page, then the web hint |
+| `cstudy docs --open` | Runs [`cstudy serve --open`](#cstudy-serve) on a free port, whose page opens on the web UI's [Docs view](web-ui.md#docs-view): the URL adds `&view=/docs`. Runs until Ctrl-C | What `cstudy serve --open` prints |
+| `cstudy docs <topic> --open` | Finds the topic, then the same, landing on its page: `&view=/docs/<topic>` | The same |
+
+The web hint is one dim line, `Read in the web UI: cstudy docs <topic> --open`, with the topic's slug after a page and `<topic>` after the list; `--json` never prints it.
+
+`--json` of the list prints `{"pages": [...]}`, in order, each page `{"slug", "title", "summary", "section", "order", "headings"}`: `headings` is the page's `##` and `###` headings in order, each `{"id", "title", "level"}`, `id` its [GitHub id](user-docs.md#body), `title` its text without Markdown's marks, and `level` 2 or 3. `--json` of a topic prints its fields with `"markdown"`, the page as written after its front matter.
+
+| Case | Result |
+|------|--------|
+| A topic that does not exist | `unknown topic "doctr"; did you mean doctor?`, or `unknown topic "x"; cstudy docs lists the topics`, exit 3 |
+| `--open` with `--json` | `--open takes no --json: it serves the page and opens it`, exit 3, and no server starts |
+| `--open` with a topic that does not exist | The message above, exit 3, and no server starts |
+| A page that does not load | What is wrong and which file, exit 5; `cstudy verify --static` names every problem |
 
 ## cstudy new
 
