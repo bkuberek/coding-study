@@ -171,6 +171,11 @@ _START_THE_APP_ALONE = (
 )
 """`docker compose start app` runs the one-shots it depends on again, `bootstrap` among them, on
 data a case has already changed."""
+_START_AND_WAIT = (
+    *("up", "--detach", "--no-deps", "--no-recreate", "--no-build", *_PULL_NEVER),
+    *("--wait", "--wait-timeout"),
+)
+"""Followed by the budget and a backing service whose container a case stopped."""
 
 type HealthProbe = Callable[[int, str], bool]
 
@@ -705,11 +710,14 @@ class DockerSandbox:
         self._wait_for_health(plan, ready.app_port, budget)
 
     def change_service(self, plan: StackPlan, change: ServiceChange, budget: StartupBudget) -> None:
-        """A started service is waited for until its healthcheck passes, as `up --wait` does."""
+        """A started service is waited for until its healthcheck passes, by `up --wait` on its
+        stopped container: `docker compose start` takes `--wait` only from Compose 5.0, and every
+        Compose v2 refuses it as an unknown flag."""
         action = change.action
-        waits = ("--wait", "--wait-timeout", str(budget.up_s))
-        flags = waits if action is ServiceAction.START else ()
-        arguments = (action.value, *flags, change.service)
+        if action is ServiceAction.START:
+            arguments = (*_START_AND_WAIT, str(budget.up_s), change.service)
+        else:
+            arguments = (action.value, change.service)
         changed = self._compose(plan, arguments, budget.up_s + UP_GRACE_S)
         if changed is None or changed.exit_code != 0:
             output = changed.output.strip() if changed is not None else "docker is not installed"

@@ -1354,7 +1354,20 @@ def test_a_started_service_is_waited_for_until_it_is_healthy(tmp_path, paths):
 
     sandbox(docker, tmp_path).change_service(plan_of(paths), change, BUDGET)
 
-    assert docker.ran("start", "--wait", "--wait-timeout", "300", "store")
+    call = docker.ran("up")[0]
+    assert call[call.index("up") :] == (
+        *("up", "--detach", "--no-deps", "--no-recreate", "--no-build", "--pull", "never"),
+        *("--wait", "--wait-timeout", "300", "store"),
+    )
+
+
+def test_a_service_is_started_without_compose_start_whose_wait_compose_v2_lacks(tmp_path, paths):
+    docker = ScriptedDocker()
+    change = ServiceChange("store", ServiceAction.START)
+
+    sandbox(docker, tmp_path).change_service(plan_of(paths), change, BUDGET)
+
+    assert not docker.ran("start")
 
 
 def test_a_service_change_that_fails_is_a_startup_failure_not_your_code(tmp_path, paths):

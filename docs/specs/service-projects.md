@@ -912,7 +912,7 @@ The grader asks a stack for little, through `GradedStack` in `application/http_g
 | `endpoints` | `app_url` and `control_url` on `127.0.0.1`, `control_token`, and the names in `mocks`. `control_url` is `None` without mock servers |
 | `restart_app()` | Stops your app and starts it again, for a case that hung it, or before one with `restart: "app"` |
 | `restart_app_with_fresh_data()` | For `fresh`: stops your app, runs `commands.reset` with `CSTUDY_RESET_PHASE=apply` if declared, starts your app |
-| `change_service(change)` | `docker compose pause`, `unpause`, `stop` or `start` on one backing service, for a [step](#steps-that-send-nothing). `start` returns once the service is healthy |
+| `change_service(change)` | `docker compose pause`, `unpause` or `stop` on one backing service, or `up --wait --no-deps --no-recreate` to start it again, for a [step](#steps-that-send-nothing). A start returns once the service is healthy |
 | `app_exit(within_ms)` | Your app's exit code and stderr tail, or `None` if it still runs after waiting that long, since a container's exit shows a moment after its connections drop |
 | `app_output(since_s)` | What your app printed, standard output and error together, since a moment in seconds since the epoch, for an [output check](#output-check). One `docker compose logs --since` call, through `SandboxEngine.app_output_since`; a read that fails is a stack failure, not a verdict |
 
@@ -1058,7 +1058,7 @@ A case can also take a backing service away mid-case and bring it back, to grade
 
 | Rule | Detail |
 |------|--------|
-| `service` and `action` | `pause`, `unpause`, `stop` or `start`, run as `docker compose <action> <service>` on the case's own stack. `start` waits until the service's healthcheck passes again, as `up --wait` does. Its label reads `step 1 pause store` |
+| `service` and `action` | `pause`, `unpause`, `stop` or `start`, on the case's own stack: the first three run as `docker compose <action> <service>`, and `start` as `docker compose up --wait --no-deps --no-recreate <service>` on the stopped container, which waits until the service's healthcheck passes again, since `docker compose start` takes `--wait` only from Compose 5.0. Its label reads `step 1 pause store` |
 | S23 | `service` names a service of the problem's compose file: never the app, a mock server or the stack's own containers |
 | Clock | A change runs on the first clock, as a restart does, so it counts toward no limit |
 | Put back | After the case's steps, whatever happened, even a failure or a timeout, the grader unpauses each service the case left paused and starts each it left stopped, before the cleanup steps and before an app that hung restarts. A case that brings its service back itself is left as it is |
