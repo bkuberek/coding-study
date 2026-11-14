@@ -6,7 +6,7 @@ A local, IDE-first study system for engineers, with many problems categorized by
 |-------|-------|
 | Status | Implemented through Phase 7; open validation items in the [roadmap](roadmap.md#status) |
 | Users | One engineer per installation, practicing on their own machine |
-| Platform | macOS and Linux, local only |
+| Platform | macOS and Linux, local only; Windows through WSL2 with a setup guide, not yet verified ([roadmap](roadmap.md#v100)) |
 | Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)); a project problem is in one language ([ADR 0014](decisions/0014-project-problems.md)), and the first security and AI/LLM problems are in Python and TypeScript ([ADR 0020](decisions/0020-catalog-labels.md)) |
 | Related | [Architecture](architecture.md), [Roadmap](roadmap.md), [Specs](README.md#specs) |
 
@@ -61,14 +61,14 @@ cstudy next  ->  cstudy start <slug> --lang kotlin  ->  edit in editor  ->  cstu
 
 - No leaderboards.
 - No textual or AST comparison of user code with reference code.
-- No AI grading of code, designs or behavioral answers. Planned, not built: opt-in AI review of written answers, designs and simulated interviews with your own key amends this; code stays deterministic ([ADR 0021](decisions/0021-ai-reviewed-problems.md)).
+- No AI grading of code or behavioral answers. Planned for 1.0 as a preview, not built: opt-in AI review of rubric-checked problems with your own key, which never changes a grade; code stays graded deterministically ([ADR 0021](decisions/0021-ai-reviewed-problems.md), [roadmap](roadmap.md#v100)).
 - No copying of LeetCode statements or test data ([ADR 0004](decisions/0004-original-problem-wording.md)).
-- No languages beyond Python, TypeScript, Java and Kotlin in v1, except Go and Rust, which are added after v1 ([ADR 0012](decisions/0012-go-and-rust.md)).
-- No Windows support. macOS and Linux are supported: CI runs on Ubuntu, and the [toolchains guide](guides/toolchains.md) covers both.
+- No languages beyond Python, TypeScript, Java, Kotlin, Go and Rust in 1.0 ([ADR 0012](decisions/0012-go-and-rust.md)).
+- No native Windows support. macOS and Linux are supported and verified for every release candidate: CI runs on Ubuntu, and the [toolchains guide](guides/toolchains.md) covers both. Windows runs cstudy through WSL2: 1.0 ships a setup guide that warns it is not tested on Windows or WSL, and 1.1 adds WSL2 verification.
 
 ## 3. AI system requirements
 
-Not applicable. The product contains no AI features. Planned, not built: opt-in AI review ([ADR 0021](decisions/0021-ai-reviewed-problems.md)).
+Not applicable today: the product contains no AI features. Planned for 1.0 as a preview, not built: with your own key, an assistant in a drawer on every page, problem sessions bound to an attempt whose help is recorded on it, and AI review of rubric-checked problems ([ADR 0021](decisions/0021-ai-reviewed-problems.md), [roadmap](roadmap.md#v100)). With AI off, nothing leaves the machine.
 
 ## 4. Requirements
 
@@ -151,8 +151,8 @@ Each item has a recommended default that the specs already assume, or the decisi
 | Q1 | Final CLI name: keep `cs` (collides with Coursier's `cs`) or rename? | **Decided**: `cstudy`, renamed from `cs` to avoid the Coursier collision, which shadowed the command on JVM and Scala machines. The repository and package keep the name `coding-study` / `coding_study`; there is no `cs` alias, and the `.cs/` workspace state directory is unchanged. |
 | Q2 | Should `progress.db` be backed up in git? | Gitignored; `cstudy export` writes `progress-export.json`, which the user may commit, and `cstudy import` restores it into an empty database (Phase 7). |
 | Q3 | Should `cstudy done` auto-commit the workspace file? | No; the user commits. Config key `done.auto_commit` reserved, default `false`. Adopted in Phase 1: `cstudy` never runs git on practice files; practice files and `.archive/` stay tracked (not ignored), so the user commits attempts when they choose. Since W1 ([ADR 0008](decisions/0008-installable-tool-and-separate-workspaces.md)) they live in a workspace outside this repository, versioned in the user's own repository; `cstudy init --git` only runs `git init`. |
-| Q4 | Persistent JVM runner (compile server) to beat the Gradle path? | **Decided** ([ADR 0007](decisions/0007-no-persistent-jvm-runner.md)): no, not in v1. Phase 7 warm `cstudy test` p50 under background load: Java 1.36 to 2.23 s (target 3 s), Kotlin 1.44 to 1.85 s (target 5 s), Python 0.47 to 0.65 s and TypeScript 0.44 to 0.46 s (target 1.0 s). The Gradle step is most of the JVM time; revisit when a quiet-machine Java or Kotlin p50 exceeds two thirds of its target. |
-| Q5 | Kotlin coroutine variants in the concurrency track autograded? | **Decided** ([ADR 0006](decisions/0006-concurrency-stress-testing.md)): no, threads only in v1. Kotlin runs the `threads` model (platform and virtual threads) through the shared JVM runner; coroutine designs are a required paragraph of `### Language notes`. A `suspend fun` adds a `Continuation` parameter, which breaks the JVM erasure property the one runner relies on. [ADR 0017](decisions/0017-async-project-problems.md) changes this for project problems only: a Kotlin project may declare `suspend` methods, which a bridge in the runner calls with their `Continuation` on a coroutine test scheduler; single-file concurrent problems keep threads. |
+| Q4 | Persistent JVM runner (compile server) to beat the Gradle path? | **Decided** ([ADR 0007](decisions/0007-no-persistent-jvm-runner.md)): no. Phase 7 warm `cstudy test` p50 under background load: Java 1.36 to 2.23 s (target 3 s), Kotlin 1.44 to 1.85 s (target 5 s), Python 0.47 to 0.65 s and TypeScript 0.44 to 0.46 s (target 1.0 s). The Gradle step is most of the JVM time; revisit when a quiet-machine Java or Kotlin p50 exceeds two thirds of its target. |
+| Q5 | Kotlin coroutine variants in the concurrency track autograded? | **Decided** ([ADR 0006](decisions/0006-concurrency-stress-testing.md)): no, threads only. Kotlin runs the `threads` model (platform and virtual threads) through the shared JVM runner; coroutine designs are a required paragraph of `### Language notes`. A `suspend fun` adds a `Continuation` parameter, which breaks the JVM erasure property the one runner relies on. [ADR 0017](decisions/0017-async-project-problems.md) changes this for project problems only: a Kotlin project may declare `suspend` methods, which a bridge in the runner calls with their `Continuation` on a coroutine test scheduler; single-file concurrent problems keep threads. |
 | Q6 | Concurrency stress-scenario schema | **Decided** ([ADR 0006](decisions/0006-concurrency-stress-testing.md), [problem-format](specs/problem-format.md#concurrent-problems)): `stress` cases with a single-threaded setup, worker groups running templated op scripts behind a start gate, an optional quiescent final sequence, and invariants (multisets, distinctness, bounds, counts, sums, per-source order, probe sections, checker) evaluated by the CLI. A case passes only if all N runs pass; broken references must fail in at least 9 of 10 runs. |
 | Q7 | 64-bit integers beyond 2^53 in TypeScript | Forbidden in content (verify rejects); revisit with `bigint` only if a needed problem requires it. |
 | Q8 | Should suboptimal bench verdicts shorten the review interval? | Yes, config `schedule.penalize_suboptimal = true`, only with confidence medium or high. |
