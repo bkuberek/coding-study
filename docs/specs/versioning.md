@@ -17,11 +17,11 @@ When no commit since the last tag warrants a bump, the workflow does nothing and
 
 ## What the workflow does
 
-`.github/workflows/version.yml` cuts a release only after CI passes on the commit it releases. It runs each time a run of `.github/workflows/ci.yml` completes on `main`, and on manual dispatch. After CI, it goes on only when that CI run succeeded, was for a push, and its commit is still the tip of `main`; a failed, cancelled or pull request run versions nothing. When `main` has moved past the commit, the newer commit's own CI run releases both once it passes. Re-running a failed CI run that then passes releases its commit, while it is still the tip. Its three jobs run in order, each after the one before succeeds:
+`.github/workflows/version.yml` cuts a release only after CI passes on the commit it releases. It runs each time a run of `.github/workflows/ci.yml` completes on `main`, and on manual dispatch. After CI, it goes on only when that CI run succeeded, was for a push, and its commit is still the tip of `main`; a failed, cancelled or pull request run versions nothing. When `main` has moved past the commit, the newer commit's own CI run releases both once it passes. Re-running a failed CI run that then passes releases its commit, while it is still the tip. Re-run only the CI run of the tip of `main`: re-running an older one cancels the tip's CI run if it is still in progress, as any newer CI run of a branch does, and releases nothing, since its commit is not the tip. Its three jobs run in order, each after the one before succeeds:
 
 | Job | Runs | Does |
 |-----|------|------|
-| `version` | After CI passed on the tip of `main`, and on a manual run | Bumps the version, commits and tags, when a commit warrants it |
+| `version` | After CI passed on the tip of `main`, and on a manual run | Bumps the version, commits and tags, when a commit warrants it; on a manual run, only when CI passed on the run's commit |
 | `release` | When `version` tagged a release on `main`, or on a manual run on `main` | Attaches the release files to the GitHub release ([GitHub release](#github-release)) |
 | `homebrew` | After `release` | Points the tap's formula at those files ([Homebrew tap](#homebrew-tap)) |
 
@@ -88,7 +88,7 @@ A manual run on `main` publishes the newest tag reachable from `main`, skipping 
 gh workflow run version.yml --ref main
 ```
 
-Like a run after CI, the run first cuts a release when an unreleased commit warrants one, and then publishes that release. A manual run does not check CI, so start it only when CI passed on the tip of `main`. To replace the files of a published release, delete them from the GitHub release first; the next manual run builds and uploads them again and updates the formula. A manual run on another branch publishes nothing.
+When a CI run of a push of the run's commit to `main` passed, the run first cuts a release, as a run after CI does, when an unreleased commit warrants one, and then publishes that release. When CI did not pass on that commit, or never ran on it, as on a release commit, the run cuts nothing and publishes the newest tag. To replace the files of a published release, delete them from the GitHub release first; the next manual run builds and uploads them again and updates the formula. A manual run on another branch publishes nothing.
 
 The release tooling is tested apart from the CLI, from the repository root:
 

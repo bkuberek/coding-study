@@ -16,9 +16,10 @@ name: Version
 # not fail the run.
 #
 # Release and homebrew run for the tag this run created on main. A manual run on main publishes
-# the newest tag reachable from it instead, so it repairs a failed or missing publish; it does
-# not check CI. Both jobs skip what is already done: a release that has its files keeps them,
-# and an unchanged formula is not committed. Nothing goes to PyPI.
+# the newest tag reachable from it instead, so it repairs a failed or missing publish. It cuts a
+# release first only when CI passed on a push of the commit it runs on. Both jobs skip what is
+# already done: a release that has its files keeps them, and an unchanged formula is not
+# committed. Nothing goes to PyPI.
 #
 # The push uses GITHUB_TOKEN, never a personal access token. Events caused by GITHUB_TOKEN do
 # not start new workflow runs (workflow_dispatch and repository_dispatch excepted), so the bot
@@ -44,10 +45,19 @@ on:
 
 permissions: {}
 
-# Release runs queue instead of cancelling each other, so two runs never race on the tag. A
-# workflow_run run's github.ref is the default branch, so it queues with a manual run on main.
+# A run that can release waits for the one in progress instead of cancelling it, so two runs
+# never race on the tag. A workflow_run run's github.ref is the default branch, so it shares the
+# group with a manual run on main. GitHub keeps one pending run per group and cancels the pending
+# one when another arrives, so a run the version job's condition rules out (a failed CI run, a
+# pull request's) gets a group of its own and never displaces one that can release. The
+# condition here is the version job's.
 concurrency:
-  group: version-${{ github.ref }}
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch'
+    || (github.event.workflow_run.conclusion == 'success'
+    && github.event.workflow_run.event == 'push'))
+    && format('version-{0}', github.ref)
+    || format('version-skip-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
@@ -60,6 +70,7 @@ jobs:
       && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     outputs:
       tag: ${{ steps.publish.outputs.tag }}
@@ -74,13 +85,18 @@ jobs:
       # semantic-release releases the tip of the branch, so the commit CI passed on is versioned
       # only while it is that tip. When main has moved past it, this run versions nothing: the
       # newer commit's own CI run versions both once it passes. Before it pushes, semantic-release
-      # checks that main has not moved since, so nothing CI did not pass is tagged. A manual run
-      # versions the commit it was started on, whatever reached the branch while it was queued.
+      # checks that main has not moved since, so nothing CI did not pass is tagged.
+      # A manual run versions the commit it was started on, whatever reached the branch while it
+      # was queued, and bumps only when a CI run of a push of that commit to the branch passed.
+      # Otherwise it only publishes the newest tag, which repairs a publish; a release commit,
+      # which CI does not run on, is such a commit.
       - name: Pin the branch to the commit this run is for
         id: pin
         env:
           EVENT: ${{ github.event_name }}
           CI_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           if [ "$EVENT" = workflow_run ]; then
             tip=$(git rev-parse HEAD)
@@ -89,19 +105,29 @@ jobs:
               echo "current=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
+            bump=true
           else
             git reset --hard "$GITHUB_SHA"
+            passed='any(.[]; .conclusion == "success")'
+            if ci=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --branch "$GITHUB_REF_NAME" \
+                --event push --limit 100 --json conclusion --jq "$passed") && [ "$ci" = true ]; then
+              bump=true
+            else
+              echo "CI has not passed on $GITHUB_SHA: no new release, the newest tag is published"
+              bump=false
+            fi
           fi
           echo "current=true" >> "$GITHUB_OUTPUT"
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
 
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
-        if: steps.pin.outputs.current == 'true'
+        if: steps.pin.outputs.bump == 'true'
 
       # Only `main` is a release branch: on any other ref (a manual run from a feature branch)
       # semantic-release makes no release and exits 0, as it does when no commit since the last
       # tag warrants a bump.
       - name: Bump version, update the changelog, commit and tag
-        if: steps.pin.outputs.current == 'true'
+        if: steps.pin.outputs.bump == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: uv run --locked semantic-release version --no-vcs-release

@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import tomllib
 from collections.abc import Iterator
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -475,36 +476,53 @@ def test_a_push_that_changed_the_sandbox_runs_its_job_and_not_the_browsers(
 
 
 @pytest.fixture(scope="module")
-def version_job() -> Job:
-    return _load("version.yml")["jobs"]["version"]
+def version_workflow() -> dict[Any, Any]:
+    return _load("version.yml")
+
+
+@pytest.fixture(scope="module")
+def version_job(version_workflow: dict[Any, Any]) -> Job:
+    return version_workflow["jobs"]["version"]
 
 
 def _pin_step(version_job: Job) -> Job:
     return next(step for step in version_job["steps"] if step.get("id") == "pin")
 
 
-def _evaluate(condition: str, context: dict[str, str]) -> bool:
-    """A condition of `==`, `&&`, `||` and parentheses over context names and quoted strings, with
-    a name missing from `context` empty, as in GitHub."""
+def _evaluate(expression: str, context: dict[str, str]) -> object:
+    """An expression of `==`, `&&`, `||`, `format()`, parentheses, context names and quoted strings,
+    with or without `${{ }}`. A name missing from `context` is empty, and `&&` and `||` give one of
+    their operands, as in GitHub."""
+    body = expression.strip().removeprefix("${{").removesuffix("}}")
     python = re.sub(
-        r"\b[a-z_]+(?:\.[a-z_]+)+", lambda name: repr(context.get(name.group(), "")), condition
+        r"\b[a-z_]+(?:\.[a-z_]+)+", lambda name: repr(context.get(name.group(), "")), body
     )
-    tree = ast.parse(python.replace("&&", " and ").replace("||", " or "), mode="eval")
+    tree = ast.parse(python.replace("&&", " and ").replace("||", " or ").strip(), mode="eval")
 
     def value(node: ast.expr) -> object:
         if isinstance(node, ast.BoolOp):
-            values = [value(operand) for operand in node.values]
-            return all(values) if isinstance(node.op, ast.And) else any(values)
+            for operand in node.values[:-1]:
+                result = value(operand)
+                if bool(result) is not isinstance(node.op, ast.And):
+                    return result
+            return value(node.values[-1])
         if isinstance(node, ast.Compare) and [type(op) for op in node.ops] == [ast.Eq]:
             return value(node.left) == value(node.comparators[0])
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "format"
+        ):
+            template, *arguments = (value(argument) for argument in node.args)
+            return str(template).format(*arguments)
         if isinstance(node, ast.Constant):
             return node.value
-        raise AssertionError(f"not a condition this test reads: {ast.dump(node)}")
+        raise AssertionError(f"not an expression this test reads: {ast.dump(node)}")
 
-    return bool(value(tree.body))
+    return value(tree.body)
 
 
-def _ci_run(conclusion: str, event: str) -> dict[str, str]:
+def _ci_run(conclusion: str, event: str = "push") -> dict[str, str]:
     return {
         "github.event_name": "workflow_run",
         "github.event.workflow_run.conclusion": conclusion,
@@ -512,39 +530,85 @@ def _ci_run(conclusion: str, event: str) -> dict[str, str]:
     }
 
 
-@pytest.mark.parametrize(
-    ("context", "versions"),
+RUNS = pytest.mark.parametrize(
+    ("context", "releases"),
     [
-        (_ci_run("success", "push"), True),
+        (_ci_run("success"), True),
         ({"github.event_name": "workflow_dispatch"}, True),
-        (_ci_run("failure", "push"), False),
-        (_ci_run("cancelled", "push"), False),
-        (_ci_run("timed_out", "push"), False),
-        (_ci_run("success", "pull_request"), False),
+        (_ci_run("failure"), False),
+        (_ci_run("cancelled"), False),
+        (_ci_run("timed_out"), False),
+        (_ci_run("skipped"), False),
+        (_ci_run("action_required"), False),
+        (_ci_run("startup_failure"), False),
+        (_ci_run("success", event="pull_request"), False),
     ],
-    ids=["ci-passed", "manual", "ci-failed", "ci-cancelled", "ci-timed-out", "pull-request"],
+    ids=[
+        "ci-passed",
+        "manual",
+        "ci-failed",
+        "ci-cancelled",
+        "ci-timed-out",
+        "ci-skipped",
+        "ci-action-required",
+        "ci-startup-failure",
+        "pull-request",
+    ],
 )
+
+
+@RUNS
 def test_only_a_ci_run_that_passed_on_a_push_or_a_manual_run_starts_versioning(
-    version_job: Job, context: dict[str, str], versions: bool
+    version_job: Job, context: dict[str, str], releases: bool
 ):
-    assert _evaluate(version_job["if"], context) is versions
+    assert bool(_evaluate(version_job["if"], context)) is releases
 
 
-def test_release_runs_queue_instead_of_cancelling_each_other():
-    assert _load("version.yml")["concurrency"] == {
-        "group": "version-${{ github.ref }}",
-        "cancel-in-progress": False,
-    }
+@RUNS
+def test_runs_that_can_release_queue_together_and_the_others_apart(
+    version_workflow: dict[Any, Any], context: dict[str, str], releases: bool
+):
+    concurrency = version_workflow["concurrency"]
+    run = {**context, "github.ref": "refs/heads/main", "github.run_id": "42"}
+
+    group = _evaluate(concurrency["group"], run)
+
+    assert group == ("version-refs/heads/main" if releases else "version-skip-42")
+    assert concurrency["cancel-in-progress"] is False
 
 
-def test_the_release_workflow_grants_only_what_each_job_declares():
-    workflow = _load("version.yml")
-    assert workflow["permissions"] == {}
-    assert {name: job["permissions"] for name, job in workflow["jobs"].items()} == {
-        "version": {"contents": "write"},
+def test_the_release_workflow_grants_only_what_each_job_declares(
+    version_workflow: dict[Any, Any],
+):
+    assert version_workflow["permissions"] == {}
+    assert {name: job["permissions"] for name, job in version_workflow["jobs"].items()} == {
+        "version": {"actions": "read", "contents": "write"},
         "release": {"contents": "write"},
         "homebrew": {"contents": "read"},
     }
+
+
+def test_no_script_of_the_release_workflow_expands_an_expression(
+    version_workflow: dict[Any, Any],
+):
+    scripts = [_commands(job) for job in version_workflow["jobs"].values()]
+    assert scripts
+    assert not any("${{" in script for commands in scripts for script in commands)
+
+
+def test_release_and_homebrew_run_only_after_version_succeeded(version_workflow: dict[Any, Any]):
+    """Without a status function in its condition, a job runs only when every job it needs
+    succeeded, so a skipped version job skips both."""
+    jobs = version_workflow["jobs"]
+    status_functions = ("always(", "success(", "failure(", "cancelled(")
+
+    assert jobs["release"]["needs"] == "version"
+    assert jobs["homebrew"]["needs"] == ["version", "release"]
+    assert not any(
+        function in jobs[name].get("if", "")
+        for name in ("release", "homebrew")
+        for function in status_functions
+    )
 
 
 def test_the_release_commit_starts_no_ci_run():
@@ -563,26 +627,83 @@ def test_the_pin_compares_the_branch_with_the_commit_ci_passed_on(version_job: J
     assert _pin_step(version_job)["env"] == {
         "EVENT": "${{ github.event_name }}",
         "CI_SHA": "${{ github.event.workflow_run.head_sha }}",
+        "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+        "GH_REPO": "${{ github.repository }}",
     }
 
 
-def test_nothing_after_the_pin_runs_when_the_branch_is_past_the_commit(version_job: Job):
+def _steps_after_the_pin(version_job: Job) -> list[Job]:
     steps = version_job["steps"]
-    after = steps[steps.index(_pin_step(version_job)) + 1 :]
+    return steps[steps.index(_pin_step(version_job)) + 1 :]
+
+
+def _runs(step: Job, outputs: dict[str, str]) -> bool:
+    context = {f"steps.pin.outputs.{name}": value for name, value in outputs.items()}
+    return bool(_evaluate(step["if"], {**context, "github.ref": "refs/heads/main"}))
+
+
+def test_nothing_after_the_pin_runs_when_the_branch_is_past_the_commit(version_job: Job):
+    after = _steps_after_the_pin(version_job)
     assert after
-    assert all(step["if"].startswith("steps.pin.outputs.current == 'true'") for step in after)
+    assert not any(_runs(step, {"current": "false"}) for step in after)
 
 
-def _pin(version_job: Job, clone: Path, event: str, ci_sha: str = "", github_sha: str = ""):
-    """What the pin step writes for the run in `clone`, and the commit the branch is at after it."""
+def test_without_a_bump_only_the_newest_tag_is_chosen(version_job: Job):
+    running = [
+        step.get("id") or step.get("name") or step["uses"]
+        for step in _steps_after_the_pin(version_job)
+        if _runs(step, {"current": "true", "bump": "false"})
+    ]
+    assert running == ["publish"]
+
+
+def test_with_a_bump_every_step_runs(version_job: Job):
+    after = _steps_after_the_pin(version_job)
+    assert all(_runs(step, {"current": "true", "bump": "true"}) for step in after)
+
+
+def _fake_gh(directory: Path) -> Path:
+    """A `gh` that writes its arguments to $FAKE_GH_ARGUMENTS and answers $FAKE_GH_ANSWER, the
+    output of its `--jq`, or fails with $FAKE_GH_STATUS."""
+    bin_directory = directory / "bin"
+    bin_directory.mkdir(exist_ok=True)
+    gh = bin_directory / "gh"
+    gh.write_text(
+        "#!/bin/sh\n"
+        'printf "%s\\n" "$@" > "$FAKE_GH_ARGUMENTS"\n'
+        '[ "$FAKE_GH_STATUS" = 0 ] || exit "$FAKE_GH_STATUS"\n'
+        'echo "$FAKE_GH_ANSWER"\n',
+        encoding="utf-8",
+    )
+    gh.chmod(0o755)
+    return bin_directory
+
+
+def _pin(
+    version_job: Job,
+    clone: Path,
+    event: str,
+    ci_sha: str = "",
+    github_sha: str = "",
+    ci_answer: str = "true",
+    gh_status: int = 0,
+) -> tuple[dict[str, str], str]:
+    """What the pin step writes for the run in `clone`, and the commit the branch is at after it.
+    `gh` answers `ci_answer` to whether CI passed, or fails with `gh_status`."""
     output = clone.parent / f"{clone.name}.pin"
     environment = {
-        "PATH": os.environ["PATH"],
+        "PATH": f"{_fake_gh(clone.parent)}{os.pathsep}{os.environ['PATH']}",
         "HOME": str(clone.parent),
         "EVENT": event,
         "CI_SHA": ci_sha,
         "GITHUB_SHA": github_sha,
+        "GITHUB_REF_NAME": "main",
         "GITHUB_OUTPUT": str(output),
+        "GH_TOKEN": "token",
+        "GH_REPO": "owner/repository",
+        "FAKE_GH_ARGUMENTS": str(clone.parent / "gh-arguments"),
+        "FAKE_GH_ANSWER": ci_answer,
+        "FAKE_GH_STATUS": str(gh_status),
     }
     subprocess.run(
         ["bash", "-e", "-c", _pin_step(version_job)["run"]],
@@ -591,14 +712,22 @@ def _pin(version_job: Job, clone: Path, event: str, ci_sha: str = "", github_sha
         check=True,
         capture_output=True,
     )
-    return output.read_text(encoding="utf-8").strip(), _git(clone, "rev-parse", "HEAD")
+    outputs = dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())
+    return outputs, _git(clone, "rev-parse", "HEAD")
+
+
+def _gh_arguments(clone: Path) -> list[str]:
+    return (clone.parent / "gh-arguments").read_text(encoding="utf-8").splitlines()
 
 
 @needs_git_and_bash
 def test_a_ci_run_of_the_tip_of_main_is_versioned(version_job: Job, origin: Origin):
     tip = origin.commit("cli/src/coding_study/domain/runs.py")
     clone = origin.clone("main", depth=2)
-    assert _pin(version_job, clone, "workflow_run", ci_sha=tip) == ("current=true", tip)
+    assert _pin(version_job, clone, "workflow_run", ci_sha=tip) == (
+        {"current": "true", "bump": "true"},
+        tip,
+    )
 
 
 @needs_git_and_bash
@@ -608,15 +737,46 @@ def test_a_ci_run_of_a_commit_main_has_moved_past_versions_nothing(
     passed = origin.commit("cli/src/coding_study/domain/runs.py")
     tip = origin.commit("cli/src/coding_study/domain/catalog.py")
     clone = origin.clone("main", depth=2)
-    assert _pin(version_job, clone, "workflow_run", ci_sha=passed) == ("current=false", tip)
+    assert _pin(version_job, clone, "workflow_run", ci_sha=passed) == ({"current": "false"}, tip)
 
 
 @needs_git_and_bash
-def test_a_manual_run_versions_the_commit_it_was_started_on(version_job: Job, origin: Origin):
+def test_a_manual_run_versions_the_commit_it_was_started_on_when_ci_passed_on_it(
+    version_job: Job, origin: Origin
+):
     started_on = origin.commit("cli/src/coding_study/domain/runs.py")
     origin.commit("cli/src/coding_study/domain/catalog.py")
     clone = origin.clone("main", depth=2)
-    assert _pin(version_job, clone, "workflow_dispatch", github_sha=started_on) == (
-        "current=true",
-        started_on,
+
+    pinned = _pin(version_job, clone, "workflow_dispatch", github_sha=started_on)
+
+    assert pinned == ({"current": "true", "bump": "true"}, started_on)
+    arguments = _gh_arguments(clone)
+    asked = dict(pairwise(arguments))
+    assert arguments[:2] == ["run", "list"]
+    assert asked["--workflow"] == "ci.yml"
+    assert asked["--commit"] == started_on
+    assert (asked["--branch"], asked["--event"]) == ("main", "push")
+    assert asked["--jq"] == 'any(.[]; .conclusion == "success")'
+
+
+@needs_git_and_bash
+@pytest.mark.parametrize(
+    ("ci_answer", "gh_status"), [("false", 0), ("", 1)], ids=["ci-not-passed", "gh-failed"]
+)
+def test_a_manual_run_on_a_commit_ci_did_not_pass_only_publishes(
+    version_job: Job, origin: Origin, ci_answer: str, gh_status: int
+):
+    tip = origin.commit("cli/src/coding_study/domain/runs.py")
+    clone = origin.clone("main", depth=2)
+
+    pinned = _pin(
+        version_job,
+        clone,
+        "workflow_dispatch",
+        github_sha=tip,
+        ci_answer=ci_answer,
+        gh_status=gh_status,
     )
+
+    assert pinned == ({"current": "true", "bump": "false"}, tip)
