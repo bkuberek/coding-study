@@ -19,7 +19,7 @@ import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0335-scd-type2-dimension"
+PROBLEM = CATALOG_PROBLEMS / "scd-type2-dimension"
 CASES: Sequence[Mapping[str, Any]] = json.loads(
     (PROBLEM / "tests.json").read_text(encoding="utf-8")
 )["cases"]

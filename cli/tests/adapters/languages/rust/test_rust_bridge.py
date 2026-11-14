@@ -188,7 +188,7 @@ def test_output_from_passes_a_mutable_reference_and_encodes_the_argument():
 
 
 def test_ref_of_looks_the_node_up_after_the_argument_it_points_into():
-    bridge = text(fixture_signature("9011-conformance-ref-of-tree"))
+    bridge = text(fixture_signature("conformance-ref-of-tree"))
     root = bridge.index('let arg_root: Option<Rc<RefCell<TreeNode>>> = args.named("root")?;')
     node = bridge.index('args.node_in(1, "node", &arg_root, "root")?;')
     assert root < node
@@ -196,14 +196,14 @@ def test_ref_of_looks_the_node_up_after_the_argument_it_points_into():
 
 
 def test_no_alias_with_takes_the_addresses_first_and_retains_freed_memory():
-    bridge = text(fixture_signature("9013-conformance-no-alias"))
+    bridge = text(fixture_signature("conformance-no-alias"))
     assert "let nodes_of_head = cs_runner::Identity::of(&arg_head);" in bridge
     assert "cs_runner::retaining(|| user::copy_list(arg_head))" in bridge
     assert 'cs_runner::NoAlias::new(output, nodes_of_head, "head")' in bridge
 
 
 def test_identity_on_list_nodes_is_unsupported():
-    signature = fixture_signature("9010-conformance-ref-of-list")
+    signature = fixture_signature("conformance-ref-of-list")
     assert unsupported_reason(signature, ProblemKind.DESIGN) == LIST_IDENTITY
     assert 'error_type: "UnsupportedType"' in text(signature)
 

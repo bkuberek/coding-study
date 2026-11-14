@@ -13,7 +13,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0283-postgres-job-queue-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "postgres-job-queue-typescript"
 DEFAULT_VISIBILITY_S = 30
 DEFAULT_BACKOFF_S = 30
 MAX_BACKOFF_S = 3600

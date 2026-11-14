@@ -10,12 +10,12 @@ import pytest
 from tests.helpers import REPOSITORY_ROOT
 
 PROBLEMS = REPOSITORY_ROOT / "problems"
-TYPESCRIPT = PROBLEMS / "0277-coworking-availability-typescript"
+TYPESCRIPT = PROBLEMS / "coworking-availability-typescript"
 OTHER_VERSIONS = {
-    "python": PROBLEMS / "0278-coworking-availability-python",
-    "java": PROBLEMS / "0305-coworking-availability-java",
-    "kotlin": PROBLEMS / "0306-coworking-availability-kotlin",
-    "go": PROBLEMS / "0310-coworking-availability-go",
+    "python": PROBLEMS / "coworking-availability-python",
+    "java": PROBLEMS / "coworking-availability-java",
+    "kotlin": PROBLEMS / "coworking-availability-kotlin",
+    "go": PROBLEMS / "coworking-availability-go",
 }
 
 

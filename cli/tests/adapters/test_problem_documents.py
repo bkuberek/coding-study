@@ -45,19 +45,19 @@ from coding_study.domain.type_dsl import (
 from coding_study.domain.virtual_clock import ProjectClock
 from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, load_fixture_meta, load_fixture_tests
 
-META_SOURCE = "problems/0001-two-sum/meta.yaml"
-TESTS_SOURCE = "problems/0001-two-sum/tests.json"
+META_SOURCE = "problems/two-sum/meta.yaml"
+TESTS_SOURCE = "problems/two-sum/tests.json"
 INT = ScalarType(Scalar.INT)
 TREE = NodeType(NodeKind.TREE_NODE)
 UNORDERED = ComparatorSpec(ComparatorType.UNORDERED)
 
 
 def two_sum_meta():
-    return meta_from_document(load_fixture_meta("0001-two-sum"), META_SOURCE)
+    return meta_from_document(load_fixture_meta("two-sum"), META_SOURCE)
 
 
 def lru_cache_meta():
-    return meta_from_document(load_fixture_meta("0002-lru-cache"), META_SOURCE)
+    return meta_from_document(load_fixture_meta("lru-cache"), META_SOURCE)
 
 
 def project_document():
@@ -130,7 +130,7 @@ def test_an_async_method_needs_the_virtual_clock(graded_clock_runners):
 
 
 def test_an_async_method_is_refused_outside_project_problems():
-    document = load_fixture_meta("0002-lru-cache")
+    document = load_fixture_meta("lru-cache")
     document["signature"]["class"]["methods"][0]["async"] = True
     with pytest.raises(ContentError, match="only allowed in project problems"):
         meta_from_document(document, META_SOURCE)
@@ -172,7 +172,7 @@ def test_maps_identity_and_classification():
 
 def test_maps_the_labels():
     document = {
-        **load_fixture_meta("0001-two-sum"),
+        **load_fixture_meta("two-sum"),
         "domains": ["backend", "fintech"],
         "job_roles": ["backend", "platform"],
         "scope": "project",
@@ -185,7 +185,7 @@ def test_maps_the_labels():
 def test_a_problem_without_labels_has_none():
     document = {
         key: value
-        for key, value in load_fixture_meta("0001-two-sum").items()
+        for key, value in load_fixture_meta("two-sum").items()
         if key not in ("domains", "job_roles", "scope")
     }
     assert meta_from_document(document, META_SOURCE, workspace=True).labels == Labels()
@@ -222,7 +222,7 @@ def test_maps_references_and_related():
 
 
 def test_maps_the_summary_of_the_starter_header():
-    document = load_fixture_meta("0001-two-sum")
+    document = load_fixture_meta("two-sum")
     document["summary"] = "Pair up two numbers."
     assert meta_from_document(document, META_SOURCE).summary == "Pair up two numbers."
 
@@ -256,13 +256,13 @@ def test_a_problem_declares_no_jdk_range_unless_its_document_does():
     ids=["minimum only", "maximum only", "both"],
 )
 def test_maps_the_jdk_range(jdk, declared):
-    document = load_fixture_meta("0001-two-sum")
+    document = load_fixture_meta("two-sum")
     document["jdk"] = jdk
     assert meta_from_document(document, META_SOURCE).jdk == declared
 
 
 def test_listed_languages_keep_their_document_order():
-    document = load_fixture_meta("0001-two-sum")
+    document = load_fixture_meta("two-sum")
     document["languages"] = ["rust", "python", "typescript", "java", "kotlin", "go"]
     assert meta_from_document(document, META_SOURCE).languages == (
         Language.RUST,
@@ -275,7 +275,7 @@ def test_listed_languages_keep_their_document_order():
 
 
 def test_perf_defaults_apply_without_perf_block():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     del meta["perf"]
     perf = meta_from_document(meta, META_SOURCE).perf
     assert (perf.size_ladder, perf.budget_ms, perf.time_limit) == (
@@ -286,7 +286,7 @@ def test_perf_defaults_apply_without_perf_block():
 
 
 def test_maps_return_and_param_modifiers():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["signature"]["function"] = {
         "name": "lowestCommonAncestor",
         "params": [
@@ -305,7 +305,7 @@ def test_maps_return_and_param_modifiers():
 
 
 def test_modifiers_naming_unknown_params_are_content_errors():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["signature"]["function"] = {
         "name": "copyList",
         "params": [{"name": "head", "type": "ListNode"}],
@@ -323,7 +323,7 @@ def test_modifiers_naming_unknown_params_are_content_errors():
 
 
 def test_every_modifier_issue_is_reported():
-    meta = load_fixture_meta("0002-lru-cache")
+    meta = load_fixture_meta("lru-cache")
     meta["signature"]["class"]["methods"][0]["returns"]["output_from"] = "missing"
     meta["signature"]["class"]["constructor"]["params"][0]["ref_of"] = "missing"
     with pytest.raises(ContentError) as raised:
@@ -332,7 +332,7 @@ def test_every_modifier_issue_is_reported():
 
 
 def test_maps_float_tolerance_and_per_method_comparators():
-    meta = load_fixture_meta("0002-lru-cache")
+    meta = load_fixture_meta("lru-cache")
     meta["comparator"] = {"type": "ops", "tolerance": 1e-5, "per_method": {"get": "unordered"}}
     assert meta_from_document(meta, META_SOURCE).comparator == ComparatorSpec(
         ComparatorType.OPS, 1e-5, {"get": ComparatorType.UNORDERED}
@@ -340,7 +340,7 @@ def test_maps_float_tolerance_and_per_method_comparators():
 
 
 def test_invalid_type_is_reported_at_its_field():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["signature"]["function"]["params"][1]["type"] = "list<int"
     with pytest.raises(ContentError) as raised:
         meta_from_document(meta, META_SOURCE)
@@ -354,28 +354,28 @@ def test_invalid_type_is_reported_at_its_field():
 
 
 def test_void_param_is_rejected():
-    meta = load_fixture_meta("0002-lru-cache")
+    meta = load_fixture_meta("lru-cache")
     meta["signature"]["class"]["methods"][0]["params"][0]["type"] = "void"
     with pytest.raises(ContentError, match=r"signature\.class\.methods\[0\]\.params\[0\]\.type"):
         meta_from_document(meta, META_SOURCE)
 
 
 def test_invalid_return_type_is_reported_at_its_field():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["signature"]["function"]["returns"]["type"] = "ints"
     with pytest.raises(ContentError, match=r"signature\.function\.returns\.type"):
         meta_from_document(meta, META_SOURCE)
 
 
 def test_duplicate_approach_ids_are_rejected():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["approaches"][1]["id"] = "brute-force"
     with pytest.raises(ContentError, match='duplicate approach id "brute-force"'):
         meta_from_document(meta, META_SOURCE)
 
 
 def two_sum_cases():
-    return cases_from_document(load_fixture_tests("0001-two-sum"), UNORDERED, TESTS_SOURCE)
+    return cases_from_document(load_fixture_tests("two-sum"), UNORDERED, TESTS_SOURCE)
 
 
 def test_maps_function_case():
@@ -397,7 +397,7 @@ def test_maps_generated_case_without_expected():
 
 def test_maps_operation_sequence_and_null_expected_values():
     [case] = cases_from_document(
-        load_fixture_tests("0002-lru-cache"), ComparatorSpec(ComparatorType.OPS), TESTS_SOURCE
+        load_fixture_tests("lru-cache"), ComparatorSpec(ComparatorType.OPS), TESTS_SOURCE
     )
     assert (case.input, case.expected) == (
         OperationSequence(
@@ -409,21 +409,21 @@ def test_maps_operation_sequence_and_null_expected_values():
 
 
 def test_case_without_expected_is_rejected_for_non_checker_comparators():
-    tests = load_fixture_tests("0001-two-sum")
+    tests = load_fixture_tests("two-sum")
     del tests["cases"][1]["expected"]
     with pytest.raises(ContentError, match=r"cases\[1\]: missing expected"):
         cases_from_document(tests, UNORDERED, TESTS_SOURCE)
 
 
 def test_checker_problems_may_omit_expected():
-    tests = load_fixture_tests("0001-two-sum")
+    tests = load_fixture_tests("two-sum")
     del tests["cases"][1]["expected"]
     cases = cases_from_document(tests, ComparatorSpec(ComparatorType.CHECKER), TESTS_SOURCE)
     assert cases[1].expected is None
 
 
 def test_duplicate_case_ids_are_rejected():
-    tests = load_fixture_tests("0001-two-sum")
+    tests = load_fixture_tests("two-sum")
     tests["cases"][2]["id"] = "ex1"
     with pytest.raises(ContentError, match='duplicate case id "ex1"'):
         cases_from_document(tests, UNORDERED, TESTS_SOURCE)

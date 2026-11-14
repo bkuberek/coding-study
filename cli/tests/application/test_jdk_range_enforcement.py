@@ -79,7 +79,7 @@ def runner() -> FakeLanguageRunner:
 def environment_with(tmp_path: Path, runner: FakeLanguageRunner, declared: str | None = None):
     root = copy_repository(tmp_path, PRACTICE)
     if declared is not None:
-        declare_jdk(root, "0001-two-sum", declared)
+        declare_jdk(root, "two-sum", declared)
     languages = (Language.PYTHON, Language.JAVA, Language.KOTLIN)
     toolchains = FakeToolchains(
         dict.fromkeys(languages, runner),

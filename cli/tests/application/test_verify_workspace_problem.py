@@ -30,7 +30,7 @@ def catalog(tmp_path: Path) -> Path:
 def workspace(tmp_path: Path) -> Path:
     """The practice two-sum, renumbered into a workspace's own problems/."""
     root = repository_root(tmp_path / "workspace", PRACTICE)
-    (root / "problems" / "0001-two-sum").rename(root / OWN)
+    (root / "problems" / "two-sum").rename(root / OWN)
     meta = root / OWN / "meta.yaml"
     meta.write_text(meta.read_text().replace('id: "0001"', 'id: "5001"'))
     return root

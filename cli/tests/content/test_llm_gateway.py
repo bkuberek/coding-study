@@ -15,7 +15,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0290-llm-gateway-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "llm-gateway-typescript"
 PRIMARY, SECONDARY = "primary", "secondary"
 DEFAULT_MAX_TOKENS = 256
 DONE = "[DONE]"

@@ -51,7 +51,7 @@ def verify(environment, slug: str, **fields):
 def needs_24(tmp_path):
     """Two Sum, whose Java and Kotlin need JDK 24."""
     root = copy_repository(tmp_path, PRACTICE)
-    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    declare_jdk(root, "two-sum", "{min: 24}")
     return root
 
 
@@ -139,7 +139,7 @@ def test_the_references_of_a_project_build_at_the_supported_minimum(project):
 
 def test_the_references_of_a_project_build_at_its_declared_minimum(project):
     environment, runner = project
-    declare_jdk(environment.root, "0001-bank-project-java", "{min: 24}")
+    declare_jdk(environment.root, "bank-project-java", "{min: 24}")
     verify(replace(environment, jdk=jdk_of(24)), JAVA_PROJECT)
     assert {scope.release for scope in runner.scopes} == {24}
 

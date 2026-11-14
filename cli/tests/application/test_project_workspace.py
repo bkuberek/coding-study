@@ -31,7 +31,7 @@ VENV_LINK = f"{FOLDER}/.venv"
 VENV_TARGET = Path("../../python/.venv")
 GO_WORK = f"{FOLDER}/go.work"
 ARCHIVE = f".archive/{SLUG}/3-python"
-PILOT = "0249-bank-project-python"
+PILOT = "bank-project-python"
 
 
 @pytest.fixture(scope="module")

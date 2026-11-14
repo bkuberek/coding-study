@@ -288,7 +288,7 @@ def test_without_an_attempt_the_bench_is_a_usage_error(tmp_path, runner, process
 
 
 def test_a_problem_without_a_generator_is_a_content_error(environment):
-    (environment.root / "problems" / "0001-two-sum" / "generator.py").unlink()
+    (environment.root / "problems" / "two-sum" / "generator.py").unlink()
     with pytest.raises(ContentError, match=r"generator\.py"):
         bench(environment)
 

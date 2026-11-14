@@ -62,7 +62,7 @@ def test_a_problem_without_a_generator_takes_no_oracle_inputs(practice):
 
 
 def test_a_problem_without_an_oracle_approach_takes_no_oracle_inputs(practice):
-    meta = practice.root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta = practice.root / "problems" / "two-sum" / "meta.yaml"
     meta.write_text(meta.read_text().replace(", oracle: true", ""))
     assert not problem_details(practice, "two-sum").oracle
 

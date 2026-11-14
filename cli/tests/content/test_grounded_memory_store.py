@@ -20,7 +20,7 @@ import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0385-grounded-memory-store"
+PROBLEM = CATALOG_PROBLEMS / "grounded-memory-store"
 CASES: Sequence[Mapping[str, Any]] = json.loads(
     (PROBLEM / "tests.json").read_text(encoding="utf-8")
 )["cases"]

@@ -60,20 +60,20 @@ def test_the_configured_default_language_counts_as_the_language_to_start_in(tmp_
 
 def test_a_problem_whose_range_excludes_the_jdk_gives_way_to_the_next_one(tmp_path, problems):
     root = copy_repository(tmp_path, problems)
-    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    declare_jdk(root, "two-sum", "{min: 24}")
     environment = make_environment(root, jdk=jdk_of(23))
     assert picked(environment, JAVA) == "lru-cache"
 
 
 def test_a_problem_whose_range_holds_the_jdk_is_picked(tmp_path, problems):
     root = copy_repository(tmp_path, problems)
-    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    declare_jdk(root, "two-sum", "{min: 24}")
     assert picked(make_environment(root, jdk=jdk_of(24)), JAVA) == "two-sum"
 
 
 def test_a_problem_that_opts_in_to_the_jdk_is_the_only_pick_on_it(tmp_path, problems):
     root = copy_repository(tmp_path, problems)
-    declare_jdk(root, "0003-invert-binary-tree", "{max: 27}")
+    declare_jdk(root, "invert-binary-tree", "{max: 27}")
     assert picked(make_environment(root, jdk=jdk_of(27)), JAVA) == "invert-binary-tree"
 
 
@@ -135,7 +135,7 @@ def test_a_pick_is_a_recommendation(tmp_path, problems):
 def ready_java_project(tmp_path: Path, jdk: FakeJdk):
     """The Java project fixture, whose content is ready for `next`."""
     root = copy_repository(tmp_path, JVM_PROJECTS)
-    meta = root / "problems" / "0001-bank-project-java" / "meta.yaml"
+    meta = root / "problems" / "bank-project-java" / "meta.yaml"
     meta.write_text(meta.read_text().replace("status: draft", "status: ready"))
     return make_environment(root, jdk=jdk)
 

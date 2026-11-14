@@ -24,7 +24,7 @@ def invoke(tmp_path, monkeypatch, benches=None, machine=None):
 
 
 def problem_line(result) -> str:
-    return next(line for line in result.output.splitlines() if line.startswith("0001-two-sum"))
+    return next(line for line in result.output.splitlines() if line.startswith("two-sum"))
 
 
 def test_a_consistent_ladder_is_ok(tmp_path, monkeypatch):

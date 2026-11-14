@@ -178,7 +178,7 @@ def test_json_says_whether_the_solution_was_revealed(environment):
 
 
 def test_hints_name_the_level_the_next_hint_opens_with(environment):
-    problem_md = environment.root / "problems" / "0001-bank-project-python" / "problem.md"
+    problem_md = environment.root / "problems" / "bank-project-python" / "problem.md"
     hints = "\n## Hints\n\n### Hint 1\n\nA dictionary.\n\n### Hint 2\n\nBoth accounts.\n"
     problem_md.write_text(problem_md.read_text(encoding="utf-8") + hints, encoding="utf-8")
     attempt = environment.progress.active_attempt()

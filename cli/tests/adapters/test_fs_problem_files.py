@@ -8,13 +8,13 @@ from coding_study.domain.errors import UnknownProblemError
 
 @pytest.fixture
 def files(tmp_path: Path) -> FsProblemFiles:
-    problem = tmp_path / "problems" / "0001-two-sum"
+    problem = tmp_path / "problems" / "two-sum"
     (problem / "solutions").mkdir(parents=True)
     (problem / "problem.md").write_text("# Two Sum\n")
     (problem / "solutions" / "hash-map.py").write_text("x = 1\n")
     (problem / "solutions" / "brute-force.py").write_text("x = 2\n")
     (problem / "solutions" / "nested").mkdir()
-    (tmp_path / "problems" / "0002-lru-cache").mkdir()
+    (tmp_path / "problems" / "lru-cache").mkdir()
     (tmp_path / "problems" / "notes").mkdir()
     (tmp_path / "problems" / "README.md").write_text("")
     return FsProblemFiles(tmp_path)
@@ -25,7 +25,7 @@ def test_slugs_of_problem_directories_in_order(files):
 
 
 def test_directory_names_in_order(files):
-    assert files.directory_names() == ("0001-two-sum", "0002-lru-cache")
+    assert files.directory_names() == ("two-sum", "lru-cache")
 
 
 def test_duplicate_slugs_are_listed_once_per_directory(files, tmp_path):
@@ -35,7 +35,7 @@ def test_duplicate_slugs_are_listed_once_per_directory(files, tmp_path):
 
 def test_duplicate_slug_resolves_to_the_first_directory(files, tmp_path):
     (tmp_path / "problems" / "0003-two-sum").mkdir()
-    assert files.problem_directory("two-sum") == "problems/0001-two-sum"
+    assert files.problem_directory("two-sum") == "problems/two-sum"
 
 
 def test_no_slugs_without_a_problems_directory(tmp_path):
@@ -43,7 +43,7 @@ def test_no_slugs_without_a_problems_directory(tmp_path):
 
 
 def test_problem_directory_is_repository_relative(files):
-    assert files.problem_directory("two-sum") == "problems/0001-two-sum"
+    assert files.problem_directory("two-sum") == "problems/two-sum"
 
 
 def test_unknown_slug(files):
@@ -72,7 +72,7 @@ def test_file_names_of_a_missing_directory(files):
 
 
 def test_path_is_absolute(files, tmp_path):
-    assert files.path("two-sum", "problem.md") == tmp_path / "problems/0001-two-sum/problem.md"
+    assert files.path("two-sum", "problem.md") == tmp_path / "problems/two-sum/problem.md"
 
 
 def test_fingerprint_is_stable(files):
@@ -82,16 +82,16 @@ def test_fingerprint_is_stable(files):
 
 def test_fingerprint_changes_with_content(files, tmp_path):
     before = files.fingerprint("two-sum", ["problem.md"])
-    (tmp_path / "problems/0001-two-sum/problem.md").write_text("# Changed\n")
+    (tmp_path / "problems/two-sum/problem.md").write_text("# Changed\n")
     assert files.fingerprint("two-sum", ["problem.md"]) != before
 
 
 def test_fingerprint_tells_a_missing_file_from_an_empty_one(files, tmp_path):
     missing = files.fingerprint("two-sum", ["generator.py"])
-    (tmp_path / "problems/0001-two-sum/generator.py").write_text("")
+    (tmp_path / "problems/two-sum/generator.py").write_text("")
     assert files.fingerprint("two-sum", ["generator.py"]) != missing
 
 
 def test_other_problems_directory(tmp_path):
-    (tmp_path / "runners/conformance/9001-conformance-types").mkdir(parents=True)
+    (tmp_path / "runners/conformance/conformance-types").mkdir(parents=True)
     assert FsProblemFiles(tmp_path, "runners/conformance").slugs() == ("conformance-types",)

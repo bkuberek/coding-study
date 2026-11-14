@@ -21,7 +21,7 @@ from tests.helpers import (
     load_fixture_tests,
 )
 
-SOURCE = "problems/0001-two-sum/meta.yaml"
+SOURCE = "problems/two-sum/meta.yaml"
 
 type Mutation = Callable[[dict[str, Any]], None]
 
@@ -44,20 +44,20 @@ def test_schema_is_valid_draft_2020_12(schema_file):
     Draft202012Validator.check_schema(json.loads((SCHEMAS_DIRECTORY / schema_file).read_text()))
 
 
-@pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
+@pytest.mark.parametrize("directory_name", ["two-sum", "lru-cache"])
 def test_fixture_meta_is_valid(directory_name):
     assert validator_for_meta_file().violations(load_fixture_meta(directory_name), SOURCE) == []
 
 
 def test_a_problem_may_carry_a_summary_for_its_starter_header():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["summary"] = "Pair up two numbers that reach a target."
     assert validator_for_meta_file().violations(meta, SOURCE) == []
 
 
 @pytest.mark.parametrize("summary", ["", "x" * 241, 7], ids=["empty", "too long", "not text"])
 def test_a_summary_must_be_text_of_one_to_240_characters(summary):
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["summary"] = summary
     assert [issue.location for issue in validator_for_meta_file().violations(meta, SOURCE)] == [
         "summary"
@@ -70,7 +70,7 @@ def test_a_summary_must_be_text_of_one_to_240_characters(summary):
     ids=["one", "any order", "go and rust alone", "the core four"],
 )
 def test_a_problem_may_list_any_subset_of_the_languages(languages):
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["languages"] = languages
     assert validator_for_meta_file().violations(meta, SOURCE) == []
 
@@ -81,19 +81,19 @@ def test_a_problem_may_list_any_subset_of_the_languages(languages):
     ids=["minimum only", "maximum only", "both", "a maximum above the supported range"],
 )
 def test_a_problem_may_declare_the_jdk_range_it_runs_on(jdk):
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["jdk"] = jdk
     assert validator_for_meta_file().violations(meta, SOURCE) == []
 
 
 def test_a_problem_lists_at_least_one_language():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta["languages"] = []
     issues = validator_for_meta_file().violations(meta, SOURCE)
     assert [issue.location for issue in issues] == ["languages"]
 
 
-@pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
+@pytest.mark.parametrize("directory_name", ["two-sum", "lru-cache"])
 def test_fixture_tests_are_valid(directory_name):
     assert validator_for_tests_file().violations(load_fixture_tests(directory_name), SOURCE) == []
 
@@ -178,7 +178,7 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
 @pytest.mark.parametrize(("mutate", "location"), INVALID_META.values(), ids=list(INVALID_META))
 def test_invalid_meta_is_reported_at_its_location(mutate, location):
     assert location in locations_after(
-        validator_for_meta_file(), load_fixture_meta("0001-two-sum"), mutate
+        validator_for_meta_file(), load_fixture_meta("two-sum"), mutate
     )
 
 
@@ -217,7 +217,7 @@ def test_invalid_project_meta_is_reported_at_its_location(mutate, location):
     assert location in locations_after(validator_for_meta_file(), project_meta(), mutate)
 
 
-@pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
+@pytest.mark.parametrize("directory_name", ["two-sum", "lru-cache"])
 def test_only_a_project_problem_has_a_project_block(directory_name):
     def add_project(meta: dict[str, Any]) -> None:
         meta["project"] = {"entry": "bank.bank"}
@@ -261,7 +261,7 @@ def test_a_project_names_one_concurrency_model():
     ]
 
 
-@pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
+@pytest.mark.parametrize("directory_name", ["two-sum", "lru-cache"])
 def test_only_concurrent_and_project_problems_have_a_concurrency_block(directory_name):
     def add_concurrency(meta: dict[str, Any]) -> None:
         meta["concurrency"] = {"model": "threads"}
@@ -329,7 +329,7 @@ INVALID_TESTS: dict[str, tuple[Mutation, str]] = {
 @pytest.mark.parametrize(("mutate", "location"), INVALID_TESTS.values(), ids=list(INVALID_TESTS))
 def test_invalid_tests_are_reported_at_their_location(mutate, location):
     assert location in locations_after(
-        validator_for_tests_file(), load_fixture_tests("0001-two-sum"), mutate
+        validator_for_tests_file(), load_fixture_tests("two-sum"), mutate
     )
 
 
@@ -388,13 +388,13 @@ def test_a_stress_scenario_keeps_its_setup_to_methods():
 
 
 def test_reports_every_violation_not_just_the_first():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta.update(status="done", difficulty="trivial")
     assert len(validator_for_meta_file().violations(meta, SOURCE)) == 2
 
 
 def test_violation_names_the_file_and_the_problem():
-    meta = load_fixture_meta("0001-two-sum")
+    meta = load_fixture_meta("two-sum")
     meta.update(status="done")
     [issue] = validator_for_meta_file().violations(meta, SOURCE)
     assert str(issue) == f"{SOURCE}: status: 'done' is not one of ['draft', 'ready']"

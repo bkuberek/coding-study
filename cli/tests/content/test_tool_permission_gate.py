@@ -18,7 +18,7 @@ import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0324-tool-permission-gate"
+PROBLEM = CATALOG_PROBLEMS / "tool-permission-gate"
 CASES: Sequence[dict[str, Any]] = json.loads((PROBLEM / "tests.json").read_text(encoding="utf-8"))[
     "cases"
 ]

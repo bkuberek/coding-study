@@ -14,7 +14,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0279-payment-webhook-receiver-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "payment-webhook-receiver-typescript"
 TOLERANCE_S = 300
 TIMESTAMP = "Provider-Timestamp"
 SIGNATURE = "Provider-Signature"

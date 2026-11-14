@@ -14,7 +14,7 @@ from tests.project_fakes import (
 )
 
 runner = CliRunner()
-META = "problems/0001-bank-project-python/meta.yaml"
+META = "problems/bank-project-python/meta.yaml"
 
 
 @pytest.fixture

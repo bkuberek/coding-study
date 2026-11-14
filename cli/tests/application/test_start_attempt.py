@@ -210,7 +210,7 @@ def test_the_stub_generator_gets_the_summary_the_statement_opens_with(tmp_path):
 
 def test_the_summary_of_meta_yaml_reaches_the_stub_generator_in_place_of_the_statements(tmp_path):
     root = copy_repository(tmp_path, PRACTICE)
-    meta = root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta = root / "problems" / "two-sum" / "meta.yaml"
     meta.write_text(meta.read_text() + "summary: Pair up two numbers.\n")
     toolchains = FakeToolchains(stub_generators={Language.PYTHON: SummaryStubGenerator()})
     environment = make_environment(root, toolchains=toolchains, clock=FakeClock())

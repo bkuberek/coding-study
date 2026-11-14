@@ -670,7 +670,7 @@ class ProblemFiles(Protocol):
         ...
 
     def problem_directory(self, slug: str) -> str:
-        """Repository-relative, e.g. `problems/0001-two-sum`, the first directory with this
+        """Repository-relative, e.g. `problems/two-sum`, the first directory with this
         slug; raises UnknownProblemError."""
         ...
 

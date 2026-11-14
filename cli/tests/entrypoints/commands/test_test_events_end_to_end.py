@@ -27,11 +27,11 @@ pytestmark = pytest.mark.slow
 
 runner = CliRunner()
 PROBLEMS = (
-    "0001-two-sum",
-    "0002-lru-cache",
-    "0186-in-memory-database",
-    "0201-bounded-blocking-queue",
-    "0212-debug-recursion-base-case",
+    "two-sum",
+    "lru-cache",
+    "in-memory-database",
+    "bounded-blocking-queue",
+    "debug-recursion-base-case",
 )
 NO_GO = shutil.which("go") is None
 VALIDATOR = Draft202012Validator(
@@ -52,9 +52,9 @@ def two_sum(nums, target):
 BROKEN_GO = "package two_sum\n\nfunc twoSum(nums []int, target int) []int {\n\treturn missing\n}\n"
 GO_USER_FILE = "go/practice/two_sum/two_sum.go"
 SOLVED = (
-    ("design solved", "lru-cache", "0002-lru-cache", "hash-map-dll.py"),
-    ("progressive solved", "in-memory-database", "0186-in-memory-database", "versioned-fields.py"),
-    ("concurrent solved", "bounded-blocking-queue", "0201-bounded-blocking-queue", "monitor.py"),
+    ("design solved", "lru-cache", "lru-cache", "hash-map-dll.py"),
+    ("progressive solved", "in-memory-database", "in-memory-database", "versioned-fields.py"),
+    ("concurrent solved", "bounded-blocking-queue", "bounded-blocking-queue", "monitor.py"),
 )
 """Each step that plays a problem's Python reference: its slug, directory and reference file."""
 
@@ -130,7 +130,7 @@ def played(practice: Practice) -> dict[str, list[dict]]:
     steps: dict[str, list[dict]] = {}
     practice.start("two-sum")
     steps["function stub"] = events("two-sum")
-    practice.write("python/practice/two_sum.py", practice.reference("0001-two-sum", "hash-map.py"))
+    practice.write("python/practice/two_sum.py", practice.reference("two-sum", "hash-map.py"))
     steps["function solved"] = events("two-sum")
     for step, slug, problem, reference in SOLVED:
         practice.start(slug)
@@ -139,7 +139,7 @@ def played(practice: Practice) -> dict[str, list[dict]]:
         steps[step] = events(slug)
     practice.start("debug-recursion-base-case")
     steps["debugging buggy"] = events("debug-recursion-base-case")
-    reference = practice.reference("0212-debug-recursion-base-case", "leaf-base-case.py")
+    reference = practice.reference("debug-recursion-base-case", "leaf-base-case.py")
     practice.write("python/practice/debug_recursion_base_case.py", reference)
     steps["debugging fixed"] = events("debug-recursion-base-case")
     return steps
@@ -152,7 +152,7 @@ def go(practice: Practice) -> dict[str, list[dict]]:
     practice.start("two-sum", "go")
     practice.write(GO_USER_FILE, BROKEN_GO)
     steps = {"broken": events("two-sum", "--lang", "go")}
-    practice.write(GO_USER_FILE, practice.reference("0001-two-sum", "hash-map.go"))
+    practice.write(GO_USER_FILE, practice.reference("two-sum", "hash-map.go"))
     steps["solved"] = events("two-sum", "--lang", "go")
     return steps
 
@@ -160,7 +160,7 @@ def go(practice: Practice) -> dict[str, list[dict]]:
 @pytest.fixture(scope="module")
 def slow(practice: Practice, played: dict[str, list[dict]]) -> TimedLines:
     """After `played`, which needs the stub."""
-    solution = practice.reference("0001-two-sum", "hash-map.py") + SLOW_TWO_SUM
+    solution = practice.reference("two-sum", "hash-map.py") + SLOW_TWO_SUM
     practice.write("python/practice/two_sum.py", solution)
     return practice.timed("two-sum", "--lang", "python")
 

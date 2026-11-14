@@ -119,7 +119,7 @@ def test_the_catalog_environment_uses_a_workspace_when_there_is_one(environ, wor
 
 
 def test_conformance_environment_reads_the_conformance_fixtures(environ, content, tmp_path):
-    fixture = content / "runners" / "conformance" / "9001-conformance-types"
+    fixture = content / "runners" / "conformance" / "conformance-types"
     fixture.mkdir(parents=True)
     environment = conformance_environment(load_environment(tmp_path, environ, tmp_path))
     assert environment.files.slugs() == ("conformance-types",)

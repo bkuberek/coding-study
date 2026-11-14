@@ -21,7 +21,7 @@ import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0370-consistent-hash-ring"
+PROBLEM = CATALOG_PROBLEMS / "consistent-hash-ring"
 CASES: Sequence[Mapping[str, Any]] = json.loads(
     (PROBLEM / "tests.json").read_text(encoding="utf-8")
 )["cases"]

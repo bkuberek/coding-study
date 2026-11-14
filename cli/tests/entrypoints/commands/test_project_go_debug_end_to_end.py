@@ -26,7 +26,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.skipif(NO_DELVE, reason="go or dlv i
 runner = CliRunner()
 SLUG = "bank-project-go"
 PROBLEMS = Path(__file__).resolve().parents[2] / "fixtures" / "project_go" / "problems"
-REFERENCE = PROBLEMS / "0001-bank-project-go" / "solutions" / "reference"
+REFERENCE = PROBLEMS / "bank-project-go" / "solutions" / "reference"
 BREAKPOINT_LINE = 23
 """`return b.ledger.Open(accountId)` in the reference's bank.go."""
 PASSED_LINE = "all passed (debug run: not recorded; cstudy test records the run)"

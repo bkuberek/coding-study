@@ -48,9 +48,9 @@ def invoke(*arguments: str) -> Run:
 
 def test_static_report(environment):
     assert invoke("--static").report == [
-        "0001-two-sum      static ok",
-        "0002-lru-cache    static ok      draft (coverage 1/6)",
-        "  warning: problems/0002-lru-cache/solutions/explanation.md: "
+        "two-sum      static ok",
+        "lru-cache    static ok      draft (coverage 1/6)",
+        "  warning: problems/lru-cache/solutions/explanation.md: "
         'approach ordered-dict: no "### Language notes"',
         "",
         "coverage  python 2/2 · typescript 0/2 · java 0/2 · kotlin 0/2 · go 0/2 · rust 0/2",
@@ -64,7 +64,7 @@ def test_passing_static_check_exits_0(environment):
 
 def test_dynamic_report(environment):
     assert invoke("--lang", "python", "two-sum", "--oracle", "--oracle-cases", "10").report == [
-        "0001-two-sum      static ok · py 2/2 ok · oracle 10/10",
+        "two-sum      static ok · py 2/2 ok · oracle 10/10",
         "",
         "coverage  python 1/1",
         "result    0 failed · 1 passed",
@@ -73,7 +73,7 @@ def test_dynamic_report(environment):
 
 def test_oracle_without_a_generator_is_not_applicable(environment):
     assert invoke("--lang", "python", "lru-cache", "--oracle").report[0] == (
-        "0002-lru-cache    static ok · py 1/1 ok · oracle n/a      draft (coverage 1/6)"
+        "lru-cache    static ok · py 1/1 ok · oracle n/a      draft (coverage 1/6)"
     )
 
 
@@ -82,23 +82,23 @@ def test_oracle_without_a_generator_passes(environment):
 
 
 def test_static_failures_exit_5(environment):
-    problem_md = environment.root / "problems/0001-two-sum/problem.md"
+    problem_md = environment.root / "problems/two-sum/problem.md"
     problem_md.write_text(problem_md.read_text().replace("## Constraints", "## Limits"))
     result = invoke("--static", "two-sum")
     assert (result.exit_code, result.report[0]) == (
         ExitCode.CONTENT_ERROR,
-        '0001-two-sum      FAIL static: problems/0001-two-sum/problem.md: missing "## Constraints"',
+        'two-sum      FAIL static: problems/two-sum/problem.md: missing "## Constraints"',
     )
 
 
 def test_failing_reference_exits_1(environment):
-    solution = environment.root / "problems/0001-two-sum/solutions/brute-force.py"
+    solution = environment.root / "problems/two-sum/solutions/brute-force.py"
     solution.write_text(solution.read_text().replace("return [i, j]", "return [j, j]"))
     result = invoke("--lang", "python", "two-sum")
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.FAILURES,
         [
-            "0001-two-sum      static ok · py 1/2 FAIL",
+            "two-sum      static ok · py 1/2 FAIL",
             "  py brute-force: ex1 FAIL: expected [1, 2], got [2, 2]",
         ],
     )
@@ -107,7 +107,7 @@ def test_failing_reference_exits_1(environment):
 def test_require_ready_lists_what_is_missing(environment):
     lines = invoke("--static", "--require-ready", "two-sum").report
     assert lines[:2] == [
-        "0001-two-sum      static ok · not ready",
+        "two-sum      static ok · not ready",
         "  not ready: no optimal reference in typescript, java, kotlin, go, rust",
     ]
 
@@ -125,9 +125,9 @@ def changed_files(monkeypatch, *paths: str) -> None:
 
 
 def test_changed_verifies_only_the_changed_problems(environment, monkeypatch):
-    changed_files(monkeypatch, "problems/0002-lru-cache/tests.json", "README.md")
+    changed_files(monkeypatch, "problems/lru-cache/tests.json", "README.md")
     report = invoke("--changed", "--static").report
-    assert (report[0].split()[0], report[-1]) == ("0002-lru-cache", "result    0 failed · 1 passed")
+    assert (report[0].split()[0], report[-1]) == ("lru-cache", "result    0 failed · 1 passed")
 
 
 def test_changed_without_changed_problems_verifies_nothing(environment, monkeypatch):
@@ -149,7 +149,7 @@ def test_changed_with_conformance_is_a_usage_error(environment, monkeypatch):
 @pytest.fixture
 def conformance_root(tmp_path, monkeypatch):
     root = repository_root(tmp_path, PRACTICE)
-    fixture = root / "runners" / "conformance" / "9002-conformance-function"
+    fixture = root / "runners" / "conformance" / "conformance-function"
     shutil.copytree(CONFORMANCE / fixture.name, fixture)
     (fixture / "solutions").mkdir(exist_ok=True)
     (fixture / "solutions" / "identity.py").write_text(
@@ -169,7 +169,7 @@ def conformance_root(tmp_path, monkeypatch):
 
 def test_conformance_report(conformance_root):
     assert invoke("--conformance", "--lang", "python").report == [
-        "9002-conformance-function  py ok",
+        "conformance-function  py ok",
         "",
         "result    0 failed · 1 passed",
     ]
@@ -177,7 +177,7 @@ def test_conformance_report(conformance_root):
 
 def test_conformance_failures_exit_1(conformance_root):
     solution = (
-        conformance_root / "runners/conformance/9002-conformance-function/solutions/identity.py"
+        conformance_root / "runners/conformance/conformance-function/solutions/identity.py"
     )
     solution.write_text(
         "def echo_http_codes(first_value, second_value, third_flag):\n    return []\n"
@@ -186,13 +186,13 @@ def test_conformance_failures_exit_1(conformance_root):
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.FAILURES,
         [
-            "9002-conformance-function  py FAIL",
+            "conformance-function  py FAIL",
             "  py identity: values: expected pass, got FAIL",
         ],
     )
 
 
-PROJECT_DIRECTORY = "problems/0249-bank-project-python"
+PROJECT_DIRECTORY = "problems/bank-project-python"
 
 
 def project_report(

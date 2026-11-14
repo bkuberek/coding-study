@@ -60,7 +60,7 @@ from tests.project_fakes import (
 )
 
 CASES = json.loads(
-    (PROJECT_PROBLEMS / "0001-bank-project-python" / "tests.json").read_text(encoding="utf-8")
+    (PROJECT_PROBLEMS / "bank-project-python" / "tests.json").read_text(encoding="utf-8")
 )["cases"]
 EXPECTED = {case["id"]: case["expected"] for case in CASES}
 NOTICE = "warming the project runner"

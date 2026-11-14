@@ -72,4 +72,4 @@ def test_the_checkout_ignores_a_projects_folder_at_its_root(tmp_path):
 
 def test_the_checkout_tracks_a_project_starter(tmp_path):
     checkout = repository_with(tmp_path, REPOSITORY_ROOT / ".gitignore")
-    assert not ignored(checkout, "problems/0249-bank-project-python/starter/bank/bank.py")
+    assert not ignored(checkout, "problems/bank-project-python/starter/bank/bank.py")

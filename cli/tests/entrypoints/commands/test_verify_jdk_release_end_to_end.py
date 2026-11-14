@@ -52,7 +52,7 @@ def verify(tmp_path: Path, practice_workspace: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("CSTUDY_CONTENT", str(content))
     monkeypatch.setenv("CSTUDY_WORKSPACE", str(root))
     monkeypatch.setenv("CSTUDY_CONFIG", str(tmp_path / "absent-config.toml"))
-    meta = content / "problems" / "0001-pair-sums" / "meta.yaml"
+    meta = content / "problems" / "pair-sums" / "meta.yaml"
 
     def run(declaration: str | None = None):
         if declaration is not None:

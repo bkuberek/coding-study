@@ -21,11 +21,11 @@ from tests.helpers import FIXTURE_TRACKS, copy_catalog_problems
 
 runner = CliRunner()
 SLICE = (
-    "0001-two-sum",
-    "0002-lru-cache",
-    "0003-invert-binary-tree",
-    "0007-group-anagrams",
-    "0014-first-missing-positive",
+    "two-sum",
+    "lru-cache",
+    "invert-binary-tree",
+    "group-anagrams",
+    "first-missing-positive",
 )
 NOTHING = "no new medium or hard problems in scope"
 
@@ -88,14 +88,14 @@ def test_a_jdk_in_range_starts_the_java_mock_as_before(on_jdk):
 
 
 def test_a_problem_the_jdk_cannot_run_gives_way_to_another(on_jdk, root):
-    declare_jdk(root, "0007-group-anagrams", "{min: 24}")
+    declare_jdk(root, "group-anagrams", "{min: 24}")
     environment = on_jdk(jdk_of(23))
     invoke("--lang", "java")
     assert started(environment) == ["first-missing-positive", "lru-cache"]
 
 
 def test_the_same_problem_is_picked_on_a_jdk_of_its_range(on_jdk, root):
-    declare_jdk(root, "0007-group-anagrams", "{min: 24}")
+    declare_jdk(root, "group-anagrams", "{min: 24}")
     environment = on_jdk(jdk_of(24))
     invoke("--lang", "java")
     assert started(environment) == ["group-anagrams", "lru-cache"]

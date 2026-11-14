@@ -18,7 +18,7 @@ import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0368-mvcc-snapshot-isolation"
+PROBLEM = CATALOG_PROBLEMS / "mvcc-snapshot-isolation"
 CASES: Sequence[Mapping[str, Any]] = json.loads(
     (PROBLEM / "tests.json").read_text(encoding="utf-8")
 )["cases"]

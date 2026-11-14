@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: max-area-of-island
+title: Max Area of Island
+summary: "Given a grid of 0 (water) and 1 (land), return the area of the largest island, a group of land squares connected up, down, left or right, or 0 if there is no land."
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: maxAreaOfIsland
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: dfs, name: Measure each island with a stack-based flood fill, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: union-find, name: Union-find with island sizes, role: optimal, time: "O(m·n·α(m·n))", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [1000, 10000, 90000]
+  expected_from: dfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 695, url: "https://leetcode.com/problems/max-area-of-island/"}
+related: [number-of-islands, surrounded-regions, flood-fill]
+order: 4
+guides: [depth-first-search]
+estimate_minutes: 20

@@ -12,7 +12,7 @@ import pytest
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0315-safe-redaction-python"
+PROBLEM = REPOSITORY_ROOT / "problems" / "safe-redaction-python"
 STARTER = PROBLEM / "starter"
 TESTS: Mapping[str, Any] = json.loads((PROBLEM / "tests.json").read_text(encoding="utf-8"))
 STATEMENT = (PROBLEM / "problem.md").read_text(encoding="utf-8")

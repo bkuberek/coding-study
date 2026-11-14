@@ -27,11 +27,11 @@ def test_the_first_problem_gets_id_0001():
 
 
 def test_the_next_id_follows_the_highest():
-    assert next_problem_id(("0001-two-sum", "0009-word-break", "0003-invert-binary-tree")) == "0010"
+    assert next_problem_id(("two-sum", "0009-word-break", "invert-binary-tree")) == "0010"
 
 
 def test_directories_without_an_id_are_ignored():
-    assert next_problem_id(("notes", "0002-lru-cache")) == "0003"
+    assert next_problem_id(("notes", "lru-cache")) == "0003"
 
 
 def test_the_first_id_applies_to_an_empty_destination():

@@ -3,7 +3,7 @@ package, the generated test main and the runner in a `testing/synctest` bubble p
 (docs/specs/runners.md#go-project-jobs).
 
 Marked `slow`; skipped when `go` is not installed. The project is the conformance fixture
-9034-conformance-project-clock-go, whose cases that deadlock or hang run through
+conformance-project-clock-go, whose cases that deadlock or hang run through
 `cstudy verify --conformance`.
 """
 
@@ -43,7 +43,7 @@ pytestmark = [
 ]
 
 SLUG = "conformance-project-clock-go"
-FIXTURE = REPOSITORY_ROOT / "runners" / "conformance" / "9034-conformance-project-clock-go"
+FIXTURE = REPOSITORY_ROOT / "runners" / "conformance" / "conformance-project-clock-go"
 HANG_GUARD_MS = 10_000
 ADVANCE = RunCase(
     "advance",

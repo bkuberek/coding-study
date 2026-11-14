@@ -25,7 +25,7 @@ from tests.helpers import CONCURRENCY_PROBLEMS
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
-SOLUTIONS = PRACTICE / "0001-two-sum" / "solutions"
+SOLUTIONS = PRACTICE / "two-sum" / "solutions"
 STUB = "python/practice/two_sum.py"
 
 

@@ -87,7 +87,7 @@ def test_the_signature_is_named_after_the_slug(environment):
 
 
 def test_an_existing_slug_is_a_usage_error_naming_its_directory(environment):
-    with pytest.raises(UsageError, match="problems/0001-two-sum"):
+    with pytest.raises(UsageError, match="problems/two-sum"):
         create(environment, slug="two-sum")
 
 
@@ -123,7 +123,7 @@ def test_a_workspace_problem_joins_the_catalog(workspace_destination):
 
 def test_a_catalog_slug_is_taken_for_a_workspace_problem_too(workspace_destination):
     environment, _ = workspace_destination
-    with pytest.raises(UsageError, match="problems/0001-two-sum"):
+    with pytest.raises(UsageError, match="problems/two-sum"):
         create(environment, slug="two-sum")
 
 

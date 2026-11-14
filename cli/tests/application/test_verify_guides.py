@@ -71,7 +71,7 @@ def test_verify_of_chosen_problems_leaves_the_guides_out(content_root: Path):
     report = verify_content(
         make_environment(content_root), VerifyRequest(slugs=("two-sum",), static_only=True), print
     )
-    assert [problem.directory for problem in report.problems] == ["problems/0001-two-sum"]
+    assert [problem.directory for problem in report.problems] == ["problems/two-sum"]
 
 
 def test_a_broken_guide_fails_verify_as_a_static_failure(content_root: Path):
@@ -107,9 +107,9 @@ def test_an_example_missing_variants_is_a_warning_that_fails_nothing(content_roo
 
 def test_s25_a_problem_names_guides_that_exist(content_root: Path):
     write_hashing(content_root)
-    meta = content_root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta = content_root / "problems" / "two-sum" / "meta.yaml"
     meta.write_text(f"{meta.read_text()}guides: [hash-maps, hash-tables]\n")
-    errors = rows(content_root)["problems/0001-two-sum"]
+    errors = rows(content_root)["problems/two-sum"]
     assert [error for error in errors if "guides" in error] == [
-        'problems/0001-two-sum/meta.yaml: guides: "hash-tables" is not a guide'
+        'problems/two-sum/meta.yaml: guides: "hash-tables" is not a guide'
     ]

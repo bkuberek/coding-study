@@ -108,9 +108,9 @@ def test_unknown_related_slugs_are_warnings(environment):
 
 
 def test_problems_may_relate_to_items(environment):
-    meta = environment.root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta = environment.root / "problems" / "two-sum" / "meta.yaml"
     meta.write_text(meta.read_text() + "related: [url-shortener]\n")
-    assert verified(verify(environment), "problems/0001-two-sum").warnings == ()
+    assert verified(verify(environment), "problems/two-sum").warnings == ()
 
 
 def test_slug_shared_by_a_problem_and_an_item_fails_both(environment):
@@ -125,8 +125,8 @@ def test_slug_shared_by_a_problem_and_an_item_fails_both(environment):
     )
     report = verify(environment, slugs=("two-sum",))
     assert [problem.static_errors[0] for problem in report.problems] == [
-        'problems/0001-two-sum: slug "two-sum" is also used by tracks/system-design/two-sum',
-        'tracks/system-design/two-sum: slug "two-sum" is also used by problems/0001-two-sum',
+        'problems/two-sum: slug "two-sum" is also used by tracks/system-design/two-sum',
+        'tracks/system-design/two-sum: slug "two-sum" is also used by problems/two-sum',
     ]
 
 

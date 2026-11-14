@@ -37,8 +37,8 @@ def test_the_python_runner_meets_the_project_expectations(
     assert (result.exit_code, result.output.splitlines()[:3]) == (
         ExitCode.SUCCESS,
         [
-            "9022-conformance-project-python        py ok",
-            "9024-conformance-suite-pytest          py ok",
-            "9035-conformance-project-clock-python  py ok",
+            "conformance-project-python        py ok",
+            "conformance-suite-pytest          py ok",
+            "conformance-project-clock-python  py ok",
         ],
     )

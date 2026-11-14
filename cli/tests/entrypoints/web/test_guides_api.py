@@ -35,7 +35,7 @@ runner = CliRunner()
 @pytest.fixture
 def environment(content_root: Path) -> Environment:
     write_hashing(content_root)
-    meta = content_root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta = content_root / "problems" / "two-sum" / "meta.yaml"
     meta.write_text(f"{meta.read_text()}guides: [hash-maps, hash-functions]\n")
     return make_environment(content_root)
 

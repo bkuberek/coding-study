@@ -19,15 +19,15 @@ pytestmark = pytest.mark.slow
 
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
 SOLUTIONS = {
-    "9002-conformance-function": {
+    "conformance-function": {
         "identity.py": (
             "def echo_http_codes(first_value, second_value, third_flag):\n    return first_value\n"
         )
     },
-    "9003-conformance-exception": {
+    "conformance-exception": {
         "raises.py": "def fail_with(message):\n    raise RuntimeError(message)\n"
     },
-    "9004-conformance-op-error": {
+    "conformance-op-error": {
         "counts.py": (
             "class Counter:\n"
             "    def __init__(self):\n        self.count = 0\n\n"
@@ -35,13 +35,13 @@ SOLUTIONS = {
             "    def fail(self):\n        raise RuntimeError('counter failure')\n"
         )
     },
-    "9007-conformance-missing-symbol": {
+    "conformance-missing-symbol": {
         "misnamed.py": "def echo_number_typo(value):\n    return value\n"
     },
-    "9008-conformance-hang": {
+    "conformance-hang": {
         "spins.py": "def wait_for(value):\n    while value < 0:\n        pass\n    return value\n"
     },
-    "9009-conformance-stdout": {
+    "conformance-stdout": {
         "prints.py": "def shout(text):\n    print(text)\n    return text\n"
     },
 }
@@ -87,10 +87,10 @@ def test_fixtures_are_reported_in_directory_order(root):
 
 
 def test_wrong_error_message_is_a_failure(root):
-    solution = root / "runners/conformance/9003-conformance-exception/solutions/raises.py"
+    solution = root / "runners/conformance/conformance-exception/solutions/raises.py"
     solution.write_text("def fail_with(message):\n    raise RuntimeError('other')\n")
     result = by_directory(conformance(root, slugs=("conformance-exception",)))[
-        "9003-conformance-exception"
+        "conformance-exception"
     ]
     assert result.languages[0].approaches[0].failures == (
         'ascii: expected message "conformance failure", got "other"',
@@ -99,10 +99,10 @@ def test_wrong_error_message_is_a_failure(root):
 
 
 def test_expected_load_error_that_loads_is_a_failure(root):
-    solution = root / "runners/conformance/9007-conformance-missing-symbol/solutions/misnamed.py"
+    solution = root / "runners/conformance/conformance-missing-symbol/solutions/misnamed.py"
     solution.write_text("def echo_number(value):\n    return value\n")
     result = by_directory(conformance(root, slugs=("conformance-missing-symbol",)))[
-        "9007-conformance-missing-symbol"
+        "conformance-missing-symbol"
     ]
     assert result.languages[0].approaches[0].failures == (
         "expected load_error, but the target loaded",
@@ -110,19 +110,19 @@ def test_expected_load_error_that_loads_is_a_failure(root):
 
 
 def test_missing_reference_file(root):
-    (root / "runners/conformance/9009-conformance-stdout/solutions/prints.py").unlink()
+    (root / "runners/conformance/conformance-stdout/solutions/prints.py").unlink()
     result = by_directory(conformance(root, slugs=("conformance-stdout",)))[
-        "9009-conformance-stdout"
+        "conformance-stdout"
     ]
     assert result.languages[0].problems == ("no python reference for prints",)
 
 
 def test_selected_fixtures_only(root):
     results = conformance(root, slugs=("conformance-hang",))
-    assert [result.directory for result in results] == ["runners/conformance/9008-conformance-hang"]
+    assert [result.directory for result in results] == ["runners/conformance/conformance-hang"]
 
 
 def test_expectations_without_a_fixture_are_errors(root):
-    shutil.rmtree(root / "runners/conformance/9009-conformance-stdout")
+    shutil.rmtree(root / "runners/conformance/conformance-stdout")
     errors = [error for result in conformance(root) for error in result.errors]
     assert errors == ['expectations.json names "conformance-stdout", which has no fixture']

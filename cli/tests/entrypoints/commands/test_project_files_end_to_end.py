@@ -27,7 +27,7 @@ from tests.helpers import CATALOG_PROBLEMS
 pytestmark = pytest.mark.slow
 
 SLUG = "bank-project-python"
-PILOT = CATALOG_PROBLEMS / "0249-bank-project-python"
+PILOT = CATALOG_PROBLEMS / "bank-project-python"
 FOLDER = Path("projects") / SLUG
 ENTRY = "bank/bank.py"
 MODELS = "bank/models.py"

@@ -24,7 +24,7 @@ def loader(tmp_path: Path) -> ContentCodeLoader:
 
 
 def write(tmp_path: Path, name: str, text: str) -> Path:
-    path = tmp_path / "problems" / "0001-two-sum" / name
+    path = tmp_path / "problems" / "two-sum" / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
     return path
@@ -67,7 +67,7 @@ def test_validate_is_optional(loader, tmp_path):
 
 
 def test_generator_that_does_not_import_is_a_content_error(loader, tmp_path):
-    with pytest.raises(ContentError, match=r"problems/0001-two-sum/generator\.py"):
+    with pytest.raises(ContentError, match=r"problems/two-sum/generator\.py"):
         loader.generator(write(tmp_path, "generator.py", "import nonexistent_module\n"))
 
 

@@ -104,7 +104,7 @@ class ProblemContent:
     """Everything the static checks read, gathered from one problem directory."""
 
     directory: str
-    """Repository-relative, e.g. `problems/0001-two-sum`."""
+    """Repository-relative, e.g. `problems/two-sum`."""
     problem: Problem
     problem_markdown: str | None
     explanation: str | None

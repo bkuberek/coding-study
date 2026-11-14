@@ -65,7 +65,7 @@ def test_a_path_outside_the_layout_exits_3(environment):
 
 
 def test_a_declared_jdk_range_is_named_in_the_metadata_line(environment):
-    declare_jdk(environment.root, "0001-level-store", "{min: 24}")
+    declare_jdk(environment.root, "level-store", "{min: 24}")
     assert invoke("level-store").output.splitlines()[2] == (
         "medium · practical · Java and Kotlin: JDK 24 or newer · level 1 of 3"
     )
@@ -77,7 +77,7 @@ def test_the_default_range_is_not_named(environment):
 
 def test_a_java_project_names_its_one_language(tmp_path, monkeypatch):
     root = repository_root(tmp_path, JVM_PROJECTS)
-    declare_jdk(root, "0001-bank-project-java", "{max: 25}")
+    declare_jdk(root, "bank-project-java", "{max: 25}")
     environment = make_environment(root)
     monkeypatch.setattr(show, "load_catalog_environment", lambda *_: environment)
     assert (

@@ -15,7 +15,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0292-tool-calling-agent-loop-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "tool-calling-agent-loop-typescript"
 PLANTED_LABEL = "TEST FIXTURE, planted instruction: "
 PLANTED_MARK = "planted instruction"
 PROMPT_LINE = re.compile(r'^\s+"(?P<line>.+)",$', re.MULTILINE)

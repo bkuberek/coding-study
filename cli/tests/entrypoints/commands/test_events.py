@@ -54,7 +54,7 @@ from tests.project_fakes import (
 runner = CliRunner()
 EVENTS_SCHEMA = json.loads((SCHEMAS_DIRECTORY / "events.schema.json").read_text(encoding="utf-8"))
 CASES = json.loads(
-    (PROJECT_PROBLEMS / "0001-bank-project-python" / "tests.json").read_text(encoding="utf-8")
+    (PROJECT_PROBLEMS / "bank-project-python" / "tests.json").read_text(encoding="utf-8")
 )["cases"]
 EXPECTED = {case["id"]: case["expected"] for case in CASES}
 BROKEN = UserError(

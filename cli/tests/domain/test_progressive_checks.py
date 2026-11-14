@@ -13,9 +13,9 @@ from coding_study.domain.static_checks import ProblemContent, static_checks
 from tests.fakes import repository_root
 
 PHASE4 = Path(__file__).resolve().parents[1] / "fixtures" / "phase4" / "problems"
-LEVEL_STORE = PHASE4 / "0001-level-store"
-PROBLEM = "problems/0001-level-store/problem.md"
-TESTS = "problems/0001-level-store/tests.json"
+LEVEL_STORE = PHASE4 / "level-store"
+PROBLEM = "problems/level-store/problem.md"
+TESTS = "problems/level-store/tests.json"
 
 
 @pytest.fixture(scope="module")
@@ -27,7 +27,7 @@ def level_store(tmp_path_factory):
 def content(problem, **changes) -> ProblemContent:
     solutions = LEVEL_STORE / "solutions"
     base = ProblemContent(
-        directory="problems/0001-level-store",
+        directory="problems/level-store",
         problem=problem,
         problem_markdown=(LEVEL_STORE / "problem.md").read_text(),
         explanation=(solutions / "explanation.md").read_text(),

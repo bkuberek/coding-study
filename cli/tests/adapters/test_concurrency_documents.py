@@ -29,7 +29,7 @@ from coding_study.domain.stress import (
 from tests.fakes import repository_root
 from tests.helpers import CONCURRENCY_PROBLEMS
 
-DIRECTORY = "problems/0001-bounded-blocking-queue"
+DIRECTORY = "problems/bounded-blocking-queue"
 
 
 @pytest.fixture

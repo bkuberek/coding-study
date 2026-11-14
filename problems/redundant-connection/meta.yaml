@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: redundant-connection
+title: Redundant Connection
+summary: "Given the edges of a tree plus one extra edge, return an edge whose removal gives a tree again; if several qualify, the one that appears last."
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [union-find, graphs]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: findRedundantConnection
+    params:
+      - {name: edges, type: "int[][]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: path-search, name: "Before adding each edge, search the edges so far for a path between its ends", role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: quick-union, name: Naive union-find that links roots without balancing or compression, role: intermediate, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n"}
+  - {id: union-find, name: Union by size with path compression, role: optimal, time: "O(n * α(n))", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n = edges.length
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: union-find
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 684, url: "https://leetcode.com/problems/redundant-connection/"}
+related: [count-connected-components, course-schedule, path-exists-in-graph, village-paths]
+order: 2
+guides: [union-find]
+estimate_minutes: 20

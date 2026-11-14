@@ -13,7 +13,7 @@ from tests.e2e import e2e_environment
 from tests.fakes import repository_root
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
-PROBLEM = "problems/0001-two-sum"
+PROBLEM = "problems/two-sum"
 DEBUGGING = Path(__file__).resolve().parents[1] / "fixtures" / "debugging" / "problems"
 HELPER = 'def digest(data: bytes) -> str:\n    """Hexadecimal."""\n    return data.hex()\n'
 
@@ -70,7 +70,7 @@ def test_two_helpers_for_one_language_are_a_static_error(environment):
 
 def test_a_buggy_stub_takes_no_helper(tmp_path):
     environment = e2e_environment(repository_root(tmp_path, DEBUGGING))
-    problem = "problems/0001-running-max"
+    problem = "problems/running-max"
     add_helper(environment, "digest.py", problem=problem)
     assert verify(environment, "running-max", static_only=True).static_errors == (
         f"{problem}/helpers: present but stub is buggy",

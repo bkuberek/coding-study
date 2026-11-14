@@ -33,8 +33,8 @@ def workspace(tmp_path) -> Path:
 @pytest.fixture
 def content(tmp_path) -> Path:
     root = tmp_path / "content"
-    (root / "problems" / "0001-two-sum").mkdir(parents=True)
-    (root / "problems" / "0001-two-sum" / "reference.py").write_text(REFERENCE)
+    (root / "problems" / "two-sum").mkdir(parents=True)
+    (root / "problems" / "two-sum" / "reference.py").write_text(REFERENCE)
     return root
 
 
@@ -182,7 +182,7 @@ def test_the_build_area_itself_is_refused(workspace, content):
 
 
 def test_a_file_of_the_content_root_is_refused(workspace, content):
-    reference = content / "problems" / "0001-two-sum" / "reference.py"
+    reference = content / "problems" / "two-sum" / "reference.py"
     assert refusal(reference, workspace, content)[0] is Reason.BUILD_AREA
 
 
@@ -210,7 +210,7 @@ def test_a_link_to_a_file_of_the_build_area_is_refused(workspace, content):
 
 def test_a_link_to_the_content_root_is_refused(workspace, content):
     (workspace / "lib").symlink_to(content, target_is_directory=True)
-    reference = workspace / "lib" / "problems" / "0001-two-sum" / "reference.py"
+    reference = workspace / "lib" / "problems" / "two-sum" / "reference.py"
     assert refusal(reference, workspace, content)[0] is Reason.BUILD_AREA
 
 
@@ -341,7 +341,7 @@ def test_a_file_in_a_hidden_directory_is_hidden(workspace, content, directory):
 
 
 def test_a_file_in_the_content_root_is_hidden(workspace, content):
-    reference = content / "problems" / "0001-two-sum" / "reference.py"
+    reference = content / "problems" / "two-sum" / "reference.py"
     assert is_hidden(reference.as_uri(), hidden_by(workspace, content)) is True
 
 

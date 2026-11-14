@@ -25,7 +25,7 @@ from tests.fakes import (
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
-SLICE = (*FIRST_CATALOG, "0007-group-anagrams", "0014-first-missing-positive")
+SLICE = (*FIRST_CATALOG, "group-anagrams", "first-missing-positive")
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
 MOCK = "/api/v1/mock"
 ENDS_AT = (NOW + timedelta(minutes=45)).isoformat()

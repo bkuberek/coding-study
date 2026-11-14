@@ -83,7 +83,7 @@ def test_reference_job_targets_the_materialized_copy(root):
 def test_references_point_at_the_solution_files(root):
     scope = language_run(root).references(["hash-map"])
     assert scope.sources == (
-        ReferenceSource("hash-map", root / "problems/0001-two-sum/solutions/hash-map.py"),
+        ReferenceSource("hash-map", root / "problems/two-sum/solutions/hash-map.py"),
     )
 
 

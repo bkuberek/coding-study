@@ -15,7 +15,7 @@ from tests.fakes import repository_root
 
 runner = CliRunner()
 PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
-REFERENCE = PHASE4 / "0001-level-store" / "solutions" / "hash-map.py"
+REFERENCE = PHASE4 / "level-store" / "solutions" / "hash-map.py"
 STUB = "python/practice/level_store.py"
 STATEMENT = ".statements/level-store.md"
 TIMING = re.compile(r"\d+(\.\d+)?(ms|s)")

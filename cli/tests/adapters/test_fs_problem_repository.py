@@ -9,7 +9,7 @@ from coding_study.domain.problem import Language, ProblemKind, ProblemSummary
 from tests.fakes import repository_root
 from tests.helpers import PROJECT_PROBLEMS
 
-TWO_SUM = Path("problems/0001-two-sum")
+TWO_SUM = Path("problems/two-sum")
 
 
 def issues_for(content_root: Path, slug: str = "two-sum") -> list[str]:
@@ -81,7 +81,7 @@ def test_directory_name_must_match_id_and_slug(content_root):
     (content_root / TWO_SUM).rename(content_root / "problems" / "0007-two-sum")
     assert issues_for(content_root) == [
         "problems/0007-two-sum/meta.yaml: id: directory name 0007-two-sum does not match "
-        "id and slug (expected 0001-two-sum)"
+        "id and slug (expected two-sum)"
     ]
 
 
@@ -104,7 +104,7 @@ def test_lists_problems_in_id_order(content_root):
 
 def test_summary_names_the_problem_directory(content_root):
     [two_sum, _] = FsProblemRepository(content_root).list_summaries()
-    assert two_sum.directory == "problems/0001-two-sum"
+    assert two_sum.directory == "problems/two-sum"
 
 
 def test_reference_languages_come_from_files_of_declared_approaches(content_root):
@@ -138,7 +138,7 @@ def test_listing_without_problems_directory_is_empty(content_root):
 
 
 def test_listing_reports_every_invalid_meta(content_root):
-    for directory in ("0001-two-sum", "0002-lru-cache"):
+    for directory in ("two-sum", "lru-cache"):
         meta = content_root / "problems" / directory / "meta.yaml"
         meta.write_text(meta.read_text().replace("status: ready", "status: done"))
     with pytest.raises(ContentError) as raised:
@@ -150,7 +150,7 @@ def test_problems_can_live_in_another_directory(content_root):
     (content_root / "runners").mkdir()
     (content_root / "problems").rename(content_root / "runners" / "conformance")
     repository = FsProblemRepository(content_root, "runners/conformance")
-    assert repository.load("two-sum").meta.directory_name == "0001-two-sum"
+    assert repository.load("two-sum").meta.directory_name == "two-sum"
 
 
 def test_a_project_problem_loads_its_starter_and_reference(tmp_path):
@@ -162,7 +162,7 @@ def test_a_project_problem_loads_its_starter_and_reference(tmp_path):
 
 def test_a_project_problem_with_a_link_in_its_starter_does_not_load(tmp_path):
     root = repository_root(tmp_path, PROJECT_PROBLEMS)
-    starter = root / "problems" / "0001-bank-project-python" / "starter"
+    starter = root / "problems" / "bank-project-python" / "starter"
     (starter / "link.md").symlink_to("README.md")
     with pytest.raises(ContentError, match=r"starter/link\.md: is a symbolic link"):
         FsProblemRepository(root).load("bank-project-python")
@@ -180,7 +180,7 @@ def test_a_project_reference_is_its_overlay_in_the_problems_language(tmp_path):
 
 def test_a_project_without_files_in_its_overlay_has_no_reference_languages(tmp_path):
     root = repository_root(tmp_path, PROJECT_PROBLEMS)
-    overlay = root / "problems" / "0001-bank-project-python" / "solutions" / "reference"
+    overlay = root / "problems" / "bank-project-python" / "solutions" / "reference"
     shutil.rmtree(overlay)
     overlay.mkdir()
     [bank] = FsProblemRepository(root).list_summaries()

@@ -14,7 +14,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0280-oauth-pkce-client-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "oauth-pkce-client-typescript"
 REALM: Mapping[str, Any] = json.loads(
     (PROBLEM / "services" / "realm" / "campus-realm.json").read_text(encoding="utf-8")
 )

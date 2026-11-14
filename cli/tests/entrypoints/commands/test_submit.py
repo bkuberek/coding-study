@@ -17,7 +17,7 @@ from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_en
 
 runner = CliRunner()
 CASES = json.loads(
-    (PROJECT_PROBLEMS / "0001-bank-project-python" / "tests.json").read_text(encoding="utf-8")
+    (PROJECT_PROBLEMS / "bank-project-python" / "tests.json").read_text(encoding="utf-8")
 )["cases"]
 EXPECTED = {case["id"]: case["expected"] for case in CASES}
 HEADER = f"{PROJECT_SLUG} · python · submit level 1 of 2"

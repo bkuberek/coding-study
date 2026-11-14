@@ -48,7 +48,7 @@ pytestmark = [
 GENERATOR = TypeScriptTestGenerator()
 TYPESCRIPT_PROJECTS = Path(__file__).resolve().parents[3] / "fixtures" / "project_typescript"
 FIXTURE_PROBLEMS = TYPESCRIPT_PROJECTS / "problems"
-FIXTURE = "0001-bank-project-typescript"
+FIXTURE = "bank-project-typescript"
 PRETTIER = os.environ.get("PRETTIER") or shutil.which("prettier")
 PRETTIER_MAJOR_VERSION = "3."
 NODE_SCRIPTS = (".cjs", ".js", ".mjs")
@@ -321,7 +321,7 @@ def test_every_generated_file_is_prettier_formatted(generated_files):
 
 def test_the_fixture_and_the_clock_fixture_are_among_the_projects_checked():
     checked = {directory.name for directory in PROJECTS}
-    assert {FIXTURE, "9036-conformance-project-clock-typescript"} <= checked
+    assert {FIXTURE, "conformance-project-clock-typescript"} <= checked
 
 
 @pytest.fixture(params=PROJECTS, ids=[directory.name for directory in PROJECTS])
@@ -362,7 +362,7 @@ def level_1_on_the_starter(directory: Path, tmp_path: Path) -> str:
 def test_the_starters_are_told_apart_by_what_they_hold():
     bare = {directory.name for directory in BARE_STARTERS}
     working = {directory.name for directory in WORKING_STARTERS}
-    assert (FIXTURE in bare, "0262-loan-pipeline-service-typescript" in working) == (True, True)
+    assert (FIXTURE in bare, "loan-pipeline-service-typescript" in working) == (True, True)
 
 
 @pytest.mark.parametrize("directory", BARE_STARTERS, ids=lambda directory: directory.name)

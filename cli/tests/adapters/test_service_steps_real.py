@@ -47,7 +47,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.docker]
 
 FIXTURE_COMPOSE = (
     REPOSITORY_ROOT
-    / "cli/tests/fixtures/service_projects/5903-fixture-members-python/services/compose.yaml"
+    / "cli/tests/fixtures/service_projects/fixture-members-python/services/compose.yaml"
 )
 REDIS: dict[str, Any] = yaml.safe_load(FIXTURE_COMPOSE.read_text())["services"]["cache"]
 COMPOSE: dict[str, object] = {"services": {"store": REDIS}, "volumes": {"cachedata": None}}

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: payroll-report-validation
+title: Payroll Report Validation
+summary: "Validate a payroll report of rows of text, listing every error at once as row:field:reason instead of stopping at the first."
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [fintech]
+job_roles: [backend]
+scope: function
+signature:
+  function:
+    name: validateRows
+    params:
+      - {name: rows, type: "string[][]"}
+    returns: {type: "list<string>"}
+comparator: {type: exact}
+approaches:
+  - {id: single-pass-checks, name: Check every field of every row in one pass and remember keys for duplicates, role: optimal, time: "O(L)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [duplicate-contractor-records]
+estimate_minutes: 35

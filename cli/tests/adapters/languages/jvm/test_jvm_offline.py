@@ -116,7 +116,7 @@ def test_a_single_file_problem_builds_offline_after_the_warm_up(
     assert built.returncode == 0, built.stdout + built.stderr
 
 
-@pytest.mark.parametrize("problem", ["0001-bank-project-java", "0002-bank-project-kotlin"])
+@pytest.mark.parametrize("problem", ["bank-project-java", "bank-project-kotlin"])
 def test_a_project_folder_builds_offline_after_the_warm_up(warmed_up: OfflineWorkspace, problem):
     """Its main and test classes, against JUnit and kotlin-test, with no network."""
     folder = warmed_up.root / "projects" / problem

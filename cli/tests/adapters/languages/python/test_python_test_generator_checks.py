@@ -330,7 +330,7 @@ def build(root: Path, problem: Problem, overlay: str | None) -> Path:
 
 def test_the_pilot_and_the_clock_fixture_are_among_the_projects_checked():
     checked = {directory.name for directory in PROJECTS}
-    assert {"0249-bank-project-python", "9035-conformance-project-clock-python"} <= checked
+    assert {"bank-project-python", "conformance-project-clock-python"} <= checked
 
 
 def test_every_level_file_passes_on_the_reference(project, tmp_path):

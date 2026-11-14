@@ -24,7 +24,7 @@ from coding_study.domain.stress import (
 from tests.fakes import repository_root
 from tests.helpers import CONCURRENCY_PROBLEMS
 
-FIXTURE = CONCURRENCY_PROBLEMS / "0001-bounded-blocking-queue"
+FIXTURE = CONCURRENCY_PROBLEMS / "bounded-blocking-queue"
 BROKEN_FILES = (
     "if-not-while.java",
     "if-not-while.kt",
@@ -44,7 +44,7 @@ def problem(tmp_path_factory) -> Problem:
 
 def content(problem: Problem, **changes: object) -> ConcurrencyContent:
     base = ConcurrencyContent(
-        directory="problems/0001-bounded-blocking-queue",
+        directory="problems/bounded-blocking-queue",
         meta=problem.meta,
         cases=problem.cases,
         problem_markdown=(FIXTURE / "problem.md").read_text(),
@@ -156,7 +156,7 @@ def test_broken_ids_differ_from_approach_ids(problem):
 def test_every_declared_broken_file_exists(problem):
     found = errors(content(problem, broken_files=BROKEN_FILES[1:]))
     assert found == [
-        "problems/0001-bounded-blocking-queue/solutions/broken/if-not-while.java: "
+        "problems/bounded-blocking-queue/solutions/broken/if-not-while.java: "
         "missing (declared in concurrency.broken)"
     ]
 

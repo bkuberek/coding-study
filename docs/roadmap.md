@@ -258,7 +258,7 @@ The content must-haves:
 | L3 | Every image a problem pulls is pinned by digest and its licence recorded. Each is under an OSI-approved licence, unless the problem needs a specific image under another licence. Then the problem names that licence and links its text, nothing is pulled until you accept it (with `cstudy start --accept-license <key>` or a prompt at a terminal, never by `--yes`), and your acceptance is recorded in the workspace's marker as `[licenses.<key>]`, the same way as the Kotlin LSP's. The problem carries a licence marker in `cstudy list`, `cstudy show` and the page, and shows as unavailable, with the reason and the command, until you accept. No image needs an account, a token or the network after it is pulled | Partly met: digests are enforced | v0.59 (licence acceptance for images), v0.64 |
 | L4 | Code and content under MIT, in original wording, with sources recorded | Met | |
 | L5 | Terms that bind the user are disclosed | Met | |
-| L6 | The backing-services test fixture moves from `redis:7.4.12-alpine`, under RSALv2 or SSPLv1, which are not open source, to Valkey: `cli/tests/fixtures/service_projects/5903-fixture-members-python/services/compose.yaml`, with its test and the service-projects spec | Met: the fixture uses Valkey | v0.50 |
+| L6 | The backing-services test fixture moves from `redis:7.4.12-alpine`, under RSALv2 or SSPLv1, which are not open source, to Valkey: `cli/tests/fixtures/service_projects/fixture-members-python/services/compose.yaml`, with its test and the service-projects spec | Met: the fixture uses Valkey | v0.50 |
 
 #### Privacy and offline
 
@@ -436,7 +436,7 @@ Two additions, each additive to the 1.0 promise.
 
 ## Phase 8: Project problems
 
-**Scope.** [ADR 0014](decisions/0014-project-problems.md) and its spec amendments, then the project kind ([problem-format](specs/problem-format.md#project-problems)): project folders, generated native tests, the `suite` and project grading jobs ([runners](specs/runners.md#project-jobs)), `cstudy submit` and `cstudy status`, verify checks S14 to S16 and D9. 8a is the Python pilot `0249-bank-project-python`, playable from `start` to `done`; 8b the TypeScript pilot `0250-bank-project-typescript` and `node:test` through the same suite protocol. Later, each behind its own spike: web interface groundwork in the CLI (an event stream, a starter manifest with `cstudy start --restore`, a lock per project), Java and Kotlin projects (K4: 8c `0251-bank-project-java`, 8d `0252-bank-project-kotlin`), and Go and Rust projects (K5, K6: 8e `0253-bank-project-go`, 8f `0254-bank-project-rust`).
+**Scope.** [ADR 0014](decisions/0014-project-problems.md) and its spec amendments, then the project kind ([problem-format](specs/problem-format.md#project-problems)): project folders, generated native tests, the `suite` and project grading jobs ([runners](specs/runners.md#project-jobs)), `cstudy submit` and `cstudy status`, verify checks S14 to S16 and D9. 8a is the Python pilot `bank-project-python`, playable from `start` to `done`; 8b the TypeScript pilot `bank-project-typescript` and `node:test` through the same suite protocol. Later, each behind its own spike: web interface groundwork in the CLI (an event stream, a starter manifest with `cstudy start --restore`, a lock per project), Java and Kotlin projects (K4: 8c `bank-project-java`, 8d `bank-project-kotlin`), and Go and Rust projects (K5, K6: 8e `bank-project-go`, 8f `bank-project-rust`).
 
 **Exit criteria.** Each pilot passes three checks in its language: `cstudy verify --conformance` passes with the language's project and suite fixtures, and `cstudy verify <slug> --require-ready` exits 0; a manual run through all four levels, from `cstudy start` to `cstudy done`; and the warm p50 of `cstudy test` and of `cstudy submit` is within the language's NFR-1 target.
 
@@ -468,7 +468,7 @@ Two additions, each additive to the 1.0 promise.
 **Exit criteria.** A step ends when its runner passes `cstudy verify --conformance` with its fixtures, `cstudy verify <slug> --require-ready` exits 0 for its pilot, and a manual run through all its levels, from `cstudy start` to `cstudy done`, works.
 
 - [x] The ADR is accepted and the specs amended before any runner work starts.
-- [x] Step 1, Go, tooling: fixture 9034 (`9034-conformance-project-clock-go`) passes, with its `advance` and `spawn-join` cases also run as generated `synctest` tests; a project scaffolded by `cstudy new --virtual-clock` passes `cstudy verify <slug> --static` once its `TODO` text is replaced and `cstudy verify <slug>` (D1, D3, D9, D10) on Go 1.27.3 (the oldest release of the Go 1.25 minimum is not yet observed).
+- [x] Step 1, Go, tooling: fixture 9034 (`conformance-project-clock-go`) passes, with its `advance` and `spawn-join` cases also run as generated `synctest` tests; a project scaffolded by `cstudy new --virtual-clock` passes `cstudy verify <slug> --static` once its `TODO` text is replaced and `cstudy verify <slug>` (D1, D3, D9, D10) on Go 1.27.3 (the oldest release of the Go 1.25 minimum is not yet observed).
 - [ ] Step 1, Go, pilot: the build-graph runner on goroutines.
 - [x] Step 2, Python and TypeScript, tooling: fixtures 9035 and 9036 pass, and a project scaffolded by `cstudy new --virtual-clock` passes `cstudy verify <slug>` with `clock 10/10`.
 - [ ] Step 2, Python and TypeScript, pilot: the event pipeline.
@@ -506,14 +506,14 @@ The pilots are written with the next project problems.
 - [x] P1: the spike, passed with changes on macOS; the sandbox is [measured on Linux](specs/service-projects.md#on-linux), with SELinux and rootless Docker unproven.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
 - [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. P9 added `cstudy test --events` and `cstudy dev --events`, and the leftovers added `--no-run`, `--debug`, `--reset-data` and `--exec`.
-- [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
-- [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
+- [x] P7: the first problem in TypeScript, `coworking-availability-typescript`.
+- [x] P8: the first problem in Python, `coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
 - [x] P9: code intelligence and Web UI. Built: TypeScript and Python [language servers](specs/service-projects.md#language-servers) in a sidecar, a calm state while Docker cannot run them, and on the page Run tests, Submit and Cancel, a dev stack panel with its scenario picker, the dependency list and Docker's states ([Web UI](specs/service-projects.md#web-ui)). The leftovers are built too: your own IDE's generated files (R29), a `devcontainer.json` that `cstudy dev` writes, and the dev flags of P3 to P6.
 - [x] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. [Parallel cases](specs/service-projects.md#parallel-cases) are built too. Still planned: D7 for them, and contract tables (R9). The data-driven problems are PP5 to PP10 below, and all six are built.
 - [x] P11: mock server extensions, multi-step cases, project-size security and AI problems. Built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. R33 is done: SSE streaming with drops and stalls, matching on request bodies, log assertions on JSON bodies, run-time values and an example mock LLM provider, with a [first-byte check](specs/service-projects.md#hidden-http-case), `first_byte_ms_max`, added so that a case can tell a stream from an answer held back until it is whole. PP3 is built as `0280`, and the AI and security problems as PP11, PP12, PP13 and PP15 below; PP14 is built as `0307`, below.
 - [x] Engine gaps closed after PP7: a binary request body (`body_base64`), a sleep step, pausing, stopping and starting one backing service mid-case, and `restart: "app"`, which keeps the app's data between cases. `0284` now restarts with it. The other [known limits](specs/service-projects.md#known-limits) still hold.
-- [x] P12: Kotlin and Java. Built: one Gradle image with JDK 25 for both, Gradle's user home in the project's install cache with every build after `install` offline, Gradle's verification file as the lock, the `project-java-service` and `project-kotlin-service` templates, a Java fixture on a real engine, and `0305-coworking-availability-java` and `0306-coworking-availability-kotlin`, graded by the same cases and mock servers as `0277` ([spec](specs/service-projects.md#templates-per-language)).
-- [x] P13: Go. Built: `golang:1.27.3`, the Go cstudy's Go runner selects, Go's module cache and build cache in the project's install cache with every build after `install` at `GOPROXY=off` and `-mod=readonly`, so the modules are cached rather than vendored, `go.sum` as the lock, the `project-go-service` template, a Go fixture on a real engine, and `0310-coworking-availability-go`, graded by the same cases and mock servers as `0277` ([spec](specs/service-projects.md#templates-per-language)).
+- [x] P12: Kotlin and Java. Built: one Gradle image with JDK 25 for both, Gradle's user home in the project's install cache with every build after `install` offline, Gradle's verification file as the lock, the `project-java-service` and `project-kotlin-service` templates, a Java fixture on a real engine, and `coworking-availability-java` and `coworking-availability-kotlin`, graded by the same cases and mock servers as `0277` ([spec](specs/service-projects.md#templates-per-language)).
+- [x] P13: Go. Built: `golang:1.27.3`, the Go cstudy's Go runner selects, Go's module cache and build cache in the project's install cache with every build after `install` at `GOPROXY=off` and `-mod=readonly`, so the modules are cached rather than vendored, `go.sum` as the lock, the `project-go-service` template, a Go fixture on a real engine, and `coworking-availability-go`, graded by the same cases and mock servers as `0277` ([spec](specs/service-projects.md#templates-per-language)).
 - [ ] P14: Rust (maybe), the next Phase 12 step.
 
 ## Phase 13: Catalog labels and new catalogs
@@ -599,21 +599,21 @@ PP3 waited for P10's backing services and grader reach and for P11's multi-step 
 
 Suggested order: PP1 to PP15 are built. P9, code intelligence and the Web UI, is built. P12 brought the service problems to the JVM, Kotlin and Java, and P13 to Go. Next is P14, Rust (maybe), then Phase 16, the frontend problems. D7 and contract tables (R9) come in when a problem needs them.
 
-- [x] PP1: `0278-coworking-availability-python` (P8).
-- [x] PP2: `0279-payment-webhook-receiver-typescript`.
-- [x] PP4: `0281-ssrf-safe-webhook-dispatcher-typescript`. The catalog now has 296 entries.
-- [x] PP3: `0280-oauth-pkce-client-typescript`, with Keycloak as the identity provider.
-- [x] PP5: `0282-inventory-reservations-typescript`, on Postgres with node-pg-migrate. The catalog now has 298 entries.
-- [x] PP6: `0283-postgres-job-queue-typescript`, on Postgres.
-- [x] PP7: `0284-csv-upload-ingestion-typescript`, on Postgres and Moto. It is the first problem on Moto, with S3 and SQS.
-- [x] PP8: `0286-multi-tenant-api-typescript`, on Postgres with row-level security.
-- [x] PP9: `0285-price-cache-rate-limits-typescript`, on Valkey (BSD-licensed and Redis-compatible), not Redis, behind a mock pricing vendor.
-- [x] PP10: `0287-event-sourced-ledger-typescript`, on Postgres. The catalog now has 303 entries.
-- [x] PP15: `0289-secure-file-upload-typescript`, behind a mock malware scanner.
-- [x] PP11: `0290-llm-gateway-typescript`, on two mock LLM providers, with a hidden case that times the first byte of a slow stream.
-- [x] PP12: `0291-rag-citations-typescript`, on pgvector with mock embeddings and chat APIs.
-- [x] PP13: `0292-tool-calling-agent-loop-typescript`, on a mock model and mock tool APIs. The catalog now has 307 entries.
-- [x] PP14: `0307-fix-the-flaws-typescript`, in four levels: notes that belong to someone else, names and fields taken from the request, text that becomes a query, and logs and errors. The learner receives a working service with the flaws described as review findings and closes them, graded by attack cases that must fail and normal cases that must keep passing.
+- [x] PP1: `coworking-availability-python` (P8).
+- [x] PP2: `payment-webhook-receiver-typescript`.
+- [x] PP4: `ssrf-safe-webhook-dispatcher-typescript`. The catalog now has 296 entries.
+- [x] PP3: `oauth-pkce-client-typescript`, with Keycloak as the identity provider.
+- [x] PP5: `inventory-reservations-typescript`, on Postgres with node-pg-migrate. The catalog now has 298 entries.
+- [x] PP6: `postgres-job-queue-typescript`, on Postgres.
+- [x] PP7: `csv-upload-ingestion-typescript`, on Postgres and Moto. It is the first problem on Moto, with S3 and SQS.
+- [x] PP8: `multi-tenant-api-typescript`, on Postgres with row-level security.
+- [x] PP9: `price-cache-rate-limits-typescript`, on Valkey (BSD-licensed and Redis-compatible), not Redis, behind a mock pricing vendor.
+- [x] PP10: `event-sourced-ledger-typescript`, on Postgres. The catalog now has 303 entries.
+- [x] PP15: `secure-file-upload-typescript`, behind a mock malware scanner.
+- [x] PP11: `llm-gateway-typescript`, on two mock LLM providers, with a hidden case that times the first byte of a slow stream.
+- [x] PP12: `rag-citations-typescript`, on pgvector with mock embeddings and chat APIs.
+- [x] PP13: `tool-calling-agent-loop-typescript`, on a mock model and mock tool APIs. The catalog now has 307 entries.
+- [x] PP14: `fix-the-flaws-typescript`, in four levels: notes that belong to someone else, names and fields taken from the request, text that becomes a query, and logs and errors. The learner receives a working service with the flaws described as review findings and closes them, graded by attack cases that must fail and normal cases that must keep passing.
 
 ## Phase 14: AI-reviewed problems
 

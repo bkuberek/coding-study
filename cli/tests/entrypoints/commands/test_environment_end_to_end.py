@@ -145,7 +145,7 @@ def practice(
 ) -> Iterator[Practice]:
     content = tmp_path_factory.mktemp("environment-content")
     shutil.copytree(SCHEMAS_DIRECTORY, content / "schemas")
-    shutil.copytree(CATALOG_PROBLEMS / "0001-two-sum", content / "problems" / "0001-two-sum")
+    shutil.copytree(CATALOG_PROBLEMS / "two-sum", content / "problems" / "two-sum")
     (content / "runners").symlink_to(REPOSITORY_ROOT / "runners", target_is_directory=True)
     root = workspace_like(practice_workspace, tmp_path_factory.mktemp("environment") / "ws")
     with pytest.MonkeyPatch.context() as patch:

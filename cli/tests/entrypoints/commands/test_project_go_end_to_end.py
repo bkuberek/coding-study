@@ -37,7 +37,7 @@ pytestmark = [
 
 SLUG = "bank-project-go"
 PROBLEMS = Path(__file__).resolve().parents[2] / "fixtures" / "project_go" / "problems"
-FIXTURE = PROBLEMS / "0001-bank-project-go"
+FIXTURE = PROBLEMS / "bank-project-go"
 FOLDER = Path("projects") / SLUG
 COMMANDS = (start, test_command, submit, status)
 HANG_GUARD_MS = 1000

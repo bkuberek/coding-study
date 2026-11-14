@@ -23,7 +23,7 @@ from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 pytestmark = pytest.mark.slow
 
 DEBUGGING = Path(__file__).resolve().parents[1] / "fixtures" / "debugging" / "problems"
-PROBLEM = "problems/0001-running-max"
+PROBLEM = "problems/running-max"
 EXTENSIONS = ("py", "ts", "java", "kt")
 
 

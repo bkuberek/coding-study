@@ -35,9 +35,9 @@ GOLDEN_ROOT = Path(__file__).resolve().parent / "golden" / "stubs"
 SIGNATURES_DIRECTORY = GOLDEN_ROOT / "signatures"
 CONFORMANCE_DIRECTORY = REPOSITORY_ROOT / "runners" / "conformance"
 CONFORMANCE_TYPE_FIXTURES = {
-    "conformance-types": CONFORMANCE_DIRECTORY / "9001-conformance-types" / "meta.yaml",
+    "conformance-types": CONFORMANCE_DIRECTORY / "conformance-types" / "meta.yaml",
     "conformance-decimal-date-types": (
-        CONFORMANCE_DIRECTORY / "9021-conformance-decimal-date-types" / "meta.yaml"
+        CONFORMANCE_DIRECTORY / "conformance-decimal-date-types" / "meta.yaml"
     ),
 }
 UPDATE_VARIABLE = "CSTUDY_UPDATE_GOLDENS"

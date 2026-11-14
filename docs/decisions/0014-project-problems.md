@@ -95,7 +95,7 @@ Spike K6 (scratch code, not merged) built a bank crate and a probe crate whose t
 - The JVM warm-up of `cstudy doctor --fix` resolves the runtime classpath (`csClasspath`) and builds the warm-up projects. K4 found that the warm-up before it compiled classes only, so a fresh Gradle home never cached the runner's own `gson` and no Java or Kotlin problem, single-file ones included, built offline.
 - A starter's `pyproject.toml` holds tool tables only. A `[project]` table, `requires-python` or `[tool.uv]` in it could make `uv run` delete the shared venv, so check S15 rejects them.
 - A Go project folder is a module of its own whose `go.work`, like a Python folder's `.venv` link, is untracked: `cstudy start` writes it when it is missing and `cstudy doctor --fix` restores it. `cstudy doctor` also warns about a vendored `replace` that does not resolve and about two folders with one module path. A generated Go level file that calls a method not written yet stops its whole package from compiling, as any Go test would; `cstudy test --level` leaves it out.
-- The pilots are `0249-bank-project-python`, then `0250-bank-project-typescript`, with the behavior of `0248-scheduled-transfers-bank`. 0187 and 0248 stay progressive, since converting them would remove their six-language versions.
+- The pilots are `bank-project-python`, then `bank-project-typescript`, with the behavior of `scheduled-transfers-bank`. 0187 and 0248 stay progressive, since converting them would remove their six-language versions.
 - The web interface is still a PRD non-goal; the project folder, `cstudy submit --json` and `cstudy status --json` are the boundary it would build on. [ADR 0015](0015-local-web-ui.md) later made it a goal.
 
 ## Revisit

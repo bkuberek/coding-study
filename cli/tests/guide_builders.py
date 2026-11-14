@@ -25,7 +25,7 @@ VARIANTS = {
     ),
 }
 """Variants of examples/hello.py, which print what it prints, by file."""
-LEDGER = "0311-tamper-evident-ledger"
+LEDGER = "tamper-evident-ledger"
 """A progressive catalog problem with four levels, for level targets."""
 
 

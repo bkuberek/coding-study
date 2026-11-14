@@ -302,7 +302,7 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 {
   "version": 2,
   "entries": {
-    "/home/me/coding-study/problems/0001-two-sum/meta.yaml": {"stamp": [1761350000123456789, 1520, 1761340000000000000, 9480], "document": {"id": "0001", "slug": "two-sum"}}
+    "/home/me/coding-study/problems/two-sum/meta.yaml": {"stamp": [1761350000123456789, 1520, 1761340000000000000, 9480], "document": {"id": "0001", "slug": "two-sum"}}
   }
 }
 ```

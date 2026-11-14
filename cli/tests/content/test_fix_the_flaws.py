@@ -15,7 +15,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0307-fix-the-flaws-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "fix-the-flaws-typescript"
 ENV: Mapping[str, str] = yaml.safe_load((PROBLEM / "meta.yaml").read_text(encoding="utf-8"))[
     "project"
 ]["env"]

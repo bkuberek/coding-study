@@ -31,14 +31,14 @@ FIXTURES = {
 }
 RESULTS = {
     "java": [
-        "9026-conformance-project-java      java ok",
-        "9028-conformance-suite-junit-java  java ok",
+        "conformance-project-java      java ok",
+        "conformance-suite-junit-java  java ok",
     ],
     "kotlin": [
-        "9027-conformance-project-kotlin               kt ok",
-        "9029-conformance-suite-junit-kotlin           kt ok",
-        "9043-conformance-project-clock-kotlin         kt ok",
-        "9044-conformance-project-stress-clock-kotlin  kt ok",
+        "conformance-project-kotlin               kt ok",
+        "conformance-suite-junit-kotlin           kt ok",
+        "conformance-project-clock-kotlin         kt ok",
+        "conformance-project-stress-clock-kotlin  kt ok",
     ],
 }
 

@@ -8,7 +8,7 @@ from coding_study.domain.statement import render_statement
 from tests.fakes import repository_root
 from tests.helpers import CONCURRENCY_PROBLEMS, PROJECT_STRESS_PROBLEMS, TALLY_PROJECT
 
-FIXTURE = CONCURRENCY_PROBLEMS / "0001-bounded-blocking-queue"
+FIXTURE = CONCURRENCY_PROBLEMS / "bounded-blocking-queue"
 TIMES = "\N{MULTIPLICATION SIGN}"
 TABLE = [
     "| Stress case | Note | Workers | Checks |",

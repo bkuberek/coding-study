@@ -33,7 +33,7 @@ def root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def solutions(tmp_path: Path) -> Path:
-    directory = tmp_path / "problems" / "0001-two-sum" / "solutions"
+    directory = tmp_path / "problems" / "two-sum" / "solutions"
     directory.mkdir(parents=True)
     return directory
 

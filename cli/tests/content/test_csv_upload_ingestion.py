@@ -16,7 +16,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0284-csv-upload-ingestion-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "csv-upload-ingestion-typescript"
 BULK: Mapping[str, Any] = json.loads(
     (PROBLEM / "grading" / "bulk.json").read_text(encoding="utf-8")
 )

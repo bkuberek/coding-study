@@ -20,7 +20,7 @@ from tests.e2e import e2e_environment
 from tests.fakes import QUIET_MACHINE, FakeMachine, repository_root
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
-TWO_SUM = "problems/0001-two-sum"
+TWO_SUM = "problems/two-sum"
 BUSY_MACHINE = MachineState("Test CPU", PowerSource.AC, 6.0, 8)
 
 

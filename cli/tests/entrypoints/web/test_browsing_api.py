@@ -219,7 +219,7 @@ def test_the_statement_comes_rendered_as_html(client):
 
 def test_the_statement_names_the_jdk_range_the_problem_declares(tmp_path):
     root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
-    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    declare_jdk(root, "two-sum", "{min: 24}")
     environment = make_environment(root, toolchains=TOOLCHAINS)
     with session_client(web_app(tmp_path, environment)) as client:
         document = client.get("/api/v1/problems/two-sum/statement").json()
@@ -228,7 +228,7 @@ def test_the_statement_names_the_jdk_range_the_problem_declares(tmp_path):
 
 def test_the_problem_document_carries_the_range_the_problem_declares(tmp_path):
     root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
-    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    declare_jdk(root, "two-sum", "{min: 24}")
     environment = make_environment(root, toolchains=TOOLCHAINS)
     with session_client(web_app(tmp_path, environment)) as client:
         document = client.get("/api/v1/problems/two-sum").json()

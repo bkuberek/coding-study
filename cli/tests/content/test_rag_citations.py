@@ -20,7 +20,7 @@ import yaml
 from coding_study.adapters.mock_server.json_values import contains
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0291-rag-citations-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "rag-citations-typescript"
 TESTS: Mapping[str, Any] = json.loads((PROBLEM / "tests.json").read_text(encoding="utf-8"))
 EMBEDDINGS: Mapping[str, Any] = yaml.safe_load(
     (PROBLEM / "mocks" / "embeddings.yaml").read_text(encoding="utf-8")

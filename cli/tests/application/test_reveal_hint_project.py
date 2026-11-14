@@ -25,7 +25,7 @@ Check both accounts before moving money.
 @pytest.fixture
 def environment(tmp_path) -> Environment:
     environment = project_environment(tmp_path, ScriptedProjectProcess())
-    problem_md = tmp_path / "problems" / "0001-bank-project-python" / "problem.md"
+    problem_md = tmp_path / "problems" / "bank-project-python" / "problem.md"
     problem_md.write_text(problem_md.read_text(encoding="utf-8") + HINTS, encoding="utf-8")
     start_attempt(environment, StartRequest(PROJECT_SLUG))
     return environment

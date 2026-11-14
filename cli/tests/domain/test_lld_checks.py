@@ -11,9 +11,9 @@ from coding_study.domain.static_checks import ProblemContent, static_checks
 from tests.fakes import repository_root
 
 PHASE4 = Path(__file__).resolve().parents[1] / "fixtures" / "phase4" / "problems"
-PARKING_LOT = PHASE4 / "0002-parking-lot"
+PARKING_LOT = PHASE4 / "parking-lot"
 RUBRIC_TEXT = (PARKING_LOT / "rubric.md").read_text()
-RUBRIC = "problems/0002-parking-lot/rubric.md"
+RUBRIC = "problems/parking-lot/rubric.md"
 
 
 @pytest.fixture(scope="module")
@@ -25,7 +25,7 @@ def parking_lot(tmp_path_factory):
 def content(problem, **changes) -> ProblemContent:
     solutions = PARKING_LOT / "solutions"
     base = ProblemContent(
-        directory="problems/0002-parking-lot",
+        directory="problems/parking-lot",
         problem=problem,
         problem_markdown=(PARKING_LOT / "problem.md").read_text(),
         explanation=(solutions / "explanation.md").read_text(),

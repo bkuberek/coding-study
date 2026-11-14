@@ -10,7 +10,7 @@ from tests.e2e import e2e_environment
 from tests.fakes import repository_root
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
-TWO_SUM = "problems/0001-two-sum"
+TWO_SUM = "problems/two-sum"
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def test_every_problem_is_verified(environment):
     report = verify(environment, static_only=True)
     assert [problem.directory for problem in report.problems] == [
         TWO_SUM,
-        "problems/0002-lru-cache",
+        "problems/lru-cache",
     ]
 
 
@@ -50,7 +50,7 @@ def test_static_failures_are_reported(environment):
     edit(environment, "problem.md", "## Constraints", "## Limits")
     report = verify(environment, static_only=True, slugs=("two-sum",))
     assert two_sum(report).static_errors == (
-        'problems/0001-two-sum/problem.md: missing "## Constraints"',
+        'problems/two-sum/problem.md: missing "## Constraints"',
     )
 
 
@@ -84,11 +84,11 @@ def test_duplicate_ids_fail(environment):
     copy.mkdir()
     report = verify(environment, static_only=True, slugs=("two-sum",))
     assert two_sum(report).static_errors == (
-        'problems/0001-two-sum: id "0001" is also used by problems/0001-lru-cache-copy',
+        'problems/two-sum: id "0001" is also used by problems/0001-lru-cache-copy',
     )
 
 
-LRU_CACHE = "problems/0002-lru-cache"
+LRU_CACHE = "problems/lru-cache"
 
 
 def add_leetcode_reference(environment, directory: str, number: int) -> None:
@@ -160,7 +160,7 @@ def test_unknown_related_slugs_are_warnings(environment):
     meta.write_text(meta.read_text() + "related: [three-sum]\n")
     report = verify(environment, static_only=True, slugs=("two-sum",))
     assert two_sum(report).warnings == (
-        'problems/0001-two-sum/meta.yaml: related: "three-sum" is not a problem (yet)',
+        'problems/two-sum/meta.yaml: related: "three-sum" is not a problem (yet)',
     )
 
 

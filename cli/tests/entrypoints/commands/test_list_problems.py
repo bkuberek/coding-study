@@ -92,9 +92,9 @@ def test_attempted_is_written_in_full(environment):
 
 
 def test_long_slugs_and_patterns_are_truncated(environment):
-    meta = environment.root / "problems/0002-lru-cache/meta.yaml"
+    meta = environment.root / "problems/lru-cache/meta.yaml"
     meta.write_text(meta.read_text().replace("[linked-list]", "[segment-tree-fenwick]"))
-    directory = environment.root / "problems/0002-lru-cache"
+    directory = environment.root / "problems/lru-cache"
     renamed = directory.with_name("0002-least-recently-used-cache")
     directory.rename(renamed)
     (renamed / "meta.yaml").write_text(
@@ -117,5 +117,5 @@ def test_no_match_says_so(environment):
 
 
 def test_invalid_meta_is_a_content_error(environment):
-    (environment.root / "problems/0001-two-sum/meta.yaml").write_text("id: 1\n")
+    (environment.root / "problems/two-sum/meta.yaml").write_text("id: 1\n")
     assert invoke().exit_code == ExitCode.CONTENT_ERROR

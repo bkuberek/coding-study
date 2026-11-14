@@ -13,7 +13,7 @@ HINTS = "\n## Hints\n\n### Hint 1\n\nUse a dictionary.\n\n### Hint 2\n\nCheck bo
 
 def test_the_hint_of_a_locked_level_says_when_it_opens(tmp_path, monkeypatch):
     environment = project_environment(tmp_path, ScriptedProjectProcess())
-    problem_md = tmp_path / "problems" / "0001-bank-project-python" / "problem.md"
+    problem_md = tmp_path / "problems" / "bank-project-python" / "problem.md"
     problem_md.write_text(problem_md.read_text(encoding="utf-8") + HINTS, encoding="utf-8")
     start_attempt(environment, StartRequest(PROJECT_SLUG))
     monkeypatch.setattr(hint_command, "load_environment", lambda *_: environment)

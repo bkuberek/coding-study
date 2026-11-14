@@ -11,7 +11,7 @@ import pytest
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0312-feed-ingest-python"
+PROBLEM = REPOSITORY_ROOT / "problems" / "feed-ingest-python"
 STATEMENT = (PROBLEM / "problem.md").read_text(encoding="utf-8")
 POINTS_SOURCE = (PROBLEM / "solutions" / "reference" / "src" / "points.py").read_text(
     encoding="utf-8"

@@ -16,14 +16,14 @@ def test_compares_with_main(content_root):
 
 
 def test_a_changed_file_selects_its_problem(content_root):
-    assert slugs(content_root, "problems/0002-lru-cache/tests.json") == ("lru-cache",)
+    assert slugs(content_root, "problems/lru-cache/tests.json") == ("lru-cache",)
 
 
 def test_problems_come_in_directory_order_once_each(content_root):
     changed = (
-        "problems/0002-lru-cache/meta.yaml",
-        "problems/0001-two-sum/meta.yaml",
-        "problems/0002-lru-cache/tests.json",
+        "problems/lru-cache/meta.yaml",
+        "problems/two-sum/meta.yaml",
+        "problems/lru-cache/tests.json",
     )
     assert slugs(content_root, *changed) == ("two-sum", "lru-cache")
 

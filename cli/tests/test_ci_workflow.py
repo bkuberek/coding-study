@@ -188,7 +188,7 @@ def test_what_can_affect_the_sandbox_runs_the_job(changes: Job, path: str):
     "path",
     [
         "docs/specs/service-projects.md",
-        "problems/0001-two-sum/problem.md",
+        "problems/two-sum/problem.md",
         "tools/web-ui/src/main.ts",
         "cli/src/coding_study/adapters/languages/python/runner.py",
     ],
@@ -284,7 +284,7 @@ def test_the_files_of_the_page_run_the_job(changes: Job, path: str):
 @pytest.mark.parametrize(
     "path",
     [
-        "problems/0001-two-sum/problem.md",
+        "problems/two-sum/problem.md",
         "docs/specs/web-ui.md",
         "cli/src/coding_study/domain/runs.py",
         "cli/tests/entrypoints/web/test_runs_api.py",

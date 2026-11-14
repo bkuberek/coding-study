@@ -26,7 +26,7 @@ pytestmark = pytest.mark.slow
 
 runner = CliRunner()
 PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
-SOLUTIONS = PHASE4 / "0001-level-store" / "solutions"
+SOLUTIONS = PHASE4 / "level-store" / "solutions"
 STATEMENT = ".statements/level-store.md"
 USER_FILES = {
     Language.PYTHON: ("python/practice/level_store.py", ""),

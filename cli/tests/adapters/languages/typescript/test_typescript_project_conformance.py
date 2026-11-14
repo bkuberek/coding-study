@@ -40,9 +40,9 @@ pytestmark = [
 
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
 FIXTURES = (
-    "9023-conformance-project-typescript",
-    "9025-conformance-suite-node-test",
-    "9036-conformance-project-clock-typescript",
+    "conformance-project-typescript",
+    "conformance-suite-node-test",
+    "conformance-project-clock-typescript",
 )
 GRADING, SUITE = "conformance-project-typescript", "conformance-suite-node-test"
 CLOCK = "conformance-project-clock-typescript"
@@ -138,8 +138,8 @@ def test_the_typescript_runner_meets_the_project_expectations(
     assert (result.exit_code, result.output.splitlines()[:3]) == (
         ExitCode.SUCCESS,
         [
-            "9023-conformance-project-typescript        ts ok",
-            "9025-conformance-suite-node-test           ts ok",
-            "9036-conformance-project-clock-typescript  ts ok",
+            "conformance-project-typescript        ts ok",
+            "conformance-suite-node-test           ts ok",
+            "conformance-project-clock-typescript  ts ok",
         ],
     )

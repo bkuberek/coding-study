@@ -20,7 +20,7 @@ from coding_study.domain.problem import ProblemKind
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS_DIRECTORY = REPOSITORY_ROOT / "schemas"
 CATALOG_PROBLEMS = REPOSITORY_ROOT / "problems"
-FIRST_CATALOG = ("0001-two-sum", "0002-lru-cache", "0003-invert-binary-tree")
+FIRST_CATALOG = ("two-sum", "lru-cache", "invert-binary-tree")
 """A fixed slice of the real catalog, for tests that pick among problems: content added later
 must not change their picks."""
 FIXTURE_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "problems"
@@ -34,21 +34,21 @@ CONCURRENCY_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "concurren
 """A concurrent fixture problem with correct and broken references in every language."""
 PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project" / "problems"
 """A Python project fixture problem: a starter tree and a reference overlay."""
-BANK_PROJECT = "0001-bank-project-python"
+BANK_PROJECT = "bank-project-python"
 PROJECT_STRESS_PROBLEMS = (
     Path(__file__).resolve().parent / "fixtures" / "project_stress" / "problems"
 )
 """A Python project fixture problem with stress cases at level 2 and a broken overlay."""
-TALLY_PROJECT = "0001-tally-project-python"
+TALLY_PROJECT = "tally-project-python"
 TYPESCRIPT_PROJECT_PROBLEMS = (
     Path(__file__).resolve().parent / "fixtures" / "typescript-project" / "problems"
 )
 """A TypeScript project fixture problem: a starter whose entry imports a sibling file, and a
 reference overlay that adds one."""
-TYPESCRIPT_BANK_PROJECT = "0002-bank-project-typescript"
+TYPESCRIPT_BANK_PROJECT = "bank-project-typescript"
 RUST_PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project_rust" / "problems"
 """A Rust project fixture problem: a crate's starter and a reference overlay over two modules."""
-RUST_BANK_PROJECT = "0001-bank-project-rust"
+RUST_BANK_PROJECT = "bank-project-rust"
 FAKE_RUNNER_PROGRAM = (
     f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).resolve().parent}'
     '/fixtures/fake_runner.py" "$@"\n'

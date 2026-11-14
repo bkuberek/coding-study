@@ -33,7 +33,7 @@ from tests.project_fakes import (
 )
 
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
-FIXTURES = ("9022-conformance-project-python", "9024-conformance-suite-pytest")
+FIXTURES = ("conformance-project-python", "conformance-suite-pytest")
 GRADING, SUITE = "conformance-project-python", "conformance-suite-pytest"
 STATUSES = "tests/test_statuses.py"
 FAILURE = "assert 'pong' == 'ping'"

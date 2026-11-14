@@ -13,15 +13,15 @@ from tests.waits import GENEROUS_WAIT_S
 
 FIXTURES = Path(__file__).parent / "fixtures" / "service_projects"
 NAIVE = FIXTURES / "naive"
-TYPESCRIPT = "5901-fixture-rooms-typescript"
-PYTHON = "5902-fixture-rooms-python"
-MEMBERS = "5903-fixture-members-python"
+TYPESCRIPT = "fixture-rooms-typescript"
+PYTHON = "fixture-rooms-python"
+MEMBERS = "fixture-members-python"
 """Postgres and Redis as backing services, with `grade_setup` and `reset`."""
-JAVA = "5904-fixture-rooms-java"
+JAVA = "fixture-rooms-java"
 """Gradle in the image, its user home in the install cache, and every build offline."""
-KOTLIN = "0306-coworking-availability-kotlin"
+KOTLIN = "coworking-availability-kotlin"
 """The catalog's Kotlin service project, which a workspace's content root holds already."""
-GO = "5905-fixture-rooms-go"
+GO = "fixture-rooms-go"
 """A module the install downloads into the install cache, and every build with `GOPROXY=off`."""
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
 COMMAND_WAIT_S = 3 * GENEROUS_WAIT_S

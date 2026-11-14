@@ -15,7 +15,7 @@ from coding_study.domain.errors import ContentError
 from coding_study.domain.problem import ALL_LANGUAGES, CORE_LANGUAGES
 from tests.helpers import FIXTURE_PROBLEMS
 
-TWO_SUM = FIXTURE_PROBLEMS / "0001-two-sum"
+TWO_SUM = FIXTURE_PROBLEMS / "two-sum"
 
 
 def own_problem(workspace: Path, directory_name: str, title: str) -> Path:
@@ -62,17 +62,17 @@ def test_a_workspace_problem_loads_from_the_workspace(problems):
 
 
 def test_a_workspace_problem_hides_the_catalog_problem_with_its_slug(problems, workspace):
-    own_problem(workspace, "0001-two-sum", "My Two Sum")
+    own_problem(workspace, "two-sum", "My Two Sum")
     assert problems.load("two-sum").meta.title == "My Two Sum"
 
 
 def test_a_hidden_catalog_problem_is_listed_once(problems, workspace):
-    own_problem(workspace, "0001-two-sum", "My Two Sum")
+    own_problem(workspace, "two-sum", "My Two Sum")
     assert slugs_listed(problems) == ["two-sum", "lru-cache", "pair-sum"]
 
 
 def test_the_listing_shows_the_workspace_version_of_a_hidden_problem(problems, workspace):
-    own_problem(workspace, "0001-two-sum", "My Two Sum")
+    own_problem(workspace, "two-sum", "My Two Sum")
     assert problems.list_summaries()[0].meta.title == "My Two Sum"
 
 
@@ -100,7 +100,7 @@ def test_problem_files_list_both_layers_in_directory_order(files):
 
 
 def test_problem_files_names_follow_the_slugs(files):
-    assert files.directory_names() == ("0001-two-sum", "0002-lru-cache", "5001-pair-sum")
+    assert files.directory_names() == ("two-sum", "lru-cache", "5001-pair-sum")
 
 
 def test_problem_files_resolve_a_workspace_problem_in_the_workspace(files, workspace):
@@ -109,12 +109,12 @@ def test_problem_files_resolve_a_workspace_problem_in_the_workspace(files, works
 
 
 def test_problem_files_hide_the_catalog_directory_of_a_shadowed_slug(files, workspace):
-    own_problem(workspace, "0001-two-sum", "My Two Sum")
+    own_problem(workspace, "two-sum", "My Two Sum")
     assert files.read_text("two-sum", "problem.md") == "# My Two Sum\n"
 
 
 def test_a_shadowed_slug_is_listed_once(files, workspace):
-    own_problem(workspace, "0001-two-sum", "My Two Sum")
+    own_problem(workspace, "two-sum", "My Two Sum")
     assert files.slugs() == ("two-sum", "lru-cache", "pair-sum")
 
 

@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: parallel-courses
+title: Parallel Courses
+summary: "Given courses and prerequisite pairs, with any number of courses allowed per semester, return the fewest semesters needed to finish them all, or -1 if it is impossible."
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [topological-sort, graphs]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: minimumSemesters
+    params:
+      - {name: n, type: int}
+      - {name: relations, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: semester-scan, name: Each semester scan every course and take all that are free, role: brute, time: "O(V * (V + E))", space: "O(V + E)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: kahn-levels, name: Run the topological sort one level per semester, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+  - {id: longest-chain-dfs, name: Memoized depth-first search for the longest prerequisite chain, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+perf:
+  size_param: V = n courses, with about 2V relations
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: kahn-levels
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1136, url: "https://leetcode.com/problems/parallel-courses/"}
+related: [course-schedule, all-possible-recipes, plan-and-execute, agent-trace-analyzer, pipeline-scheduler, iac-plan-engine]
+order: 2
+guides: [topological-order]
+estimate_minutes: 25

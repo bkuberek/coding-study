@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: calibration-metrics
+title: Calibration Metrics
+summary: "Write calibrationReport: measure how well a classifier's predicted probabilities are calibrated, overall and per slice."
+status: ready
+difficulty: easy
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [ai-llm]
+job_roles: [ml-engineer, ai-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: calibrationReport
+    params:
+      - {name: probabilities, type: "double[]"}
+      - {name: outcomes, type: "bool[]"}
+      - {name: sliceNames, type: "string[]"}
+      - {name: reportSlices, type: "string[]"}
+      - {name: binCount, type: int}
+    returns: {type: "double[][]"}
+comparator: {type: float, tolerance: 1.0e-9}
+approaches:
+  - {id: per-bin-sums, name: Keep two running sums per bin for each group, role: optimal, time: "O(q (n + b))", space: "O(n + b)", time_class: "n", space_class: "n"}
+related: [eval-release-gate, classification-metrics, gradient-descent-models]
+guides: [classifier-metrics, evaluation-pitfalls]
+estimate_minutes: 25

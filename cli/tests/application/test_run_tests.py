@@ -153,7 +153,7 @@ def test_language_without_an_attempt_is_a_usage_error(environment):
 
 def test_checker_problems_judge_with_checker_py(tmp_path, runner):
     environment = environment_with(tmp_path, runner, ScriptedRunnerProcess(wrong))
-    directory = environment.root / "problems" / "0001-two-sum"
+    directory = environment.root / "problems" / "two-sum"
     meta = directory / "meta.yaml"
     meta.write_text(meta.read_text().replace("{type: unordered}", "{type: checker}"))
     (directory / "checker.py").write_text(

@@ -20,7 +20,7 @@ from tests.fakes import repository_root
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
 PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
-SOLUTIONS = PRACTICE / "0001-two-sum" / "solutions"
+SOLUTIONS = PRACTICE / "two-sum" / "solutions"
 STUB = "python/practice/two_sum.py"
 TIMING = re.compile(r"\d+(\.\d+)?(ms|s)")
 SMALL_INPUTS_WRONG = (

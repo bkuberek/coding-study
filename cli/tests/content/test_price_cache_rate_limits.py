@@ -13,7 +13,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0285-price-cache-rate-limits-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "price-cache-rate-limits-typescript"
 ENGINE: Mapping[str, Any] = yaml.safe_load(
     (PROBLEM / "mocks" / "pricing.yaml").read_text(encoding="utf-8")
 )

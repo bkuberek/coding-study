@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: rate-change-impact
+title: Rate Change Impact
+summary: "Compare an old and a new class-rate table and report each class code whose rate changed, with the percent change, each code that is new and each that was dropped."
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [fintech]
+job_roles: [backend]
+scope: function
+signature:
+  function:
+    name: rateChangeImpact
+    params:
+      - {name: oldCodes, type: "string[]"}
+      - {name: oldRates, type: "decimal[]"}
+      - {name: newCodes, type: "string[]"}
+      - {name: newRates, type: "decimal[]"}
+    returns: {type: "string[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: index-and-diff, name: Index both tables by code then diff and sort, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [versioned-rate-table, premium-rating-breakdown]
+estimate_minutes: 30

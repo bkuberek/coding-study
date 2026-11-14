@@ -185,14 +185,14 @@ def two_sum(tmp_path_factory):
 
 
 def ready_content(problem, **changes) -> ProblemContent:
-    directory = PRACTICE / "0001-two-sum"
+    directory = PRACTICE / "two-sum"
     references = tuple(
         reference_file_name(approach.id, language)
         for approach in problem.meta.approaches
         for language in problem.meta.languages
     )
     base = ProblemContent(
-        directory="problems/0001-two-sum",
+        directory="problems/two-sum",
         problem=problem,
         problem_markdown=None,
         explanation=None,

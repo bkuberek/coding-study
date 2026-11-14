@@ -24,7 +24,7 @@ from tests.workspaces import workspace_like
 pytestmark = pytest.mark.slow
 
 PROJECT = "bank-project-python"
-REFERENCE = CATALOG_PROBLEMS / "0249-bank-project-python" / "solutions" / "reference"
+REFERENCE = CATALOG_PROBLEMS / "bank-project-python" / "solutions" / "reference"
 SLOW_TEST_ID = "tests/test_slow.py::test_slow"
 SLOW_TEST = """import os
 import time

@@ -30,7 +30,7 @@ from tests.helpers import CATALOG_PROBLEMS, REPOSITORY_ROOT
 pytestmark = pytest.mark.slow
 
 SLUG = "bank-project-python"
-PILOT = CATALOG_PROBLEMS / "0249-bank-project-python"
+PILOT = CATALOG_PROBLEMS / "bank-project-python"
 RUNNER_SOURCES = REPOSITORY_ROOT / "runners" / "python" / "src"
 PYTEST_MARKER = Path("python/.venv/lib/python3.13/site-packages/pytest/__init__.py")
 FOLDER = Path("projects") / SLUG

@@ -15,7 +15,7 @@ Reference solutions are never diffed, parsed or otherwise compared with user cod
 ## Directory layout
 
 ```text
-problems/0001-two-sum/
+problems/two-sum/
   problem.md          # full description (required sections: authoring.md)
   meta.yaml           # metadata, signature, comparator, approaches, perf
   tests.json          # cases
@@ -60,7 +60,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `domains` | list of domain ids | yes in the catalog | What the problem is about; one or more of `algorithms`, `backend`, `security`, `identity`, `ai-llm`, `fintech`, `data`, `infrastructure`, `systems`, `software-design`, `frontend` ([content](content.md#labels)). Check S24 requires it on catalog content only, so a problem of your own may leave it out |
 | `job_roles` | list of role ids | yes in the catalog | Who it is for; one or more of `general`, `backend`, `platform`, `security-engineer`, `ai-engineer`, `ml-engineer`, `data-engineer`, `frontend`. Not the `role` of an approach, which is `brute`, `intermediate` or `optimal` |
 | `scope` | `function`, `project` or `system` | yes in the catalog | How big the thing you work on is. S24 ties it to `kind`: `project` or `system` for `kind: project`, `function` for any other kind |
-| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default all six, which every problem lists, except a language that cannot express the problem: Rust where an `Option<Box<ListNode>>` cannot ([S13](authoring.md#static)), so `0055-linked-list-cycle` lists the other five. `concurrency` and `debugging` problems are the exception: they may list any subset of the six languages, so a Go- or Rust-native bug lists just `go` or `rust`, and the original debugging problems list the languages their bugs exist in ([ADR 0012](../decisions/0012-go-and-rust.md)). So may a problem with `security`, `identity` or `ai-llm` among its `domains`, and any one of them is enough: the first wave lists Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). A `project` problem lists exactly one language, `python` or `typescript` ([Project problems](#project-problems), [ADR 0014](../decisions/0014-project-problems.md)). A problem you write in your own workspace is the exception to the catalog's rule: it lists any non-empty subset, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), what every problem listed before Go and Rust, so a problem written with an older `cstudy` keeps working. `cstudy new` writes the line explicitly. List `languages` in the catalog only where it differs from the default |
+| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default all six, which every problem lists, except a language that cannot express the problem: Rust where an `Option<Box<ListNode>>` cannot ([S13](authoring.md#static)), so `linked-list-cycle` lists the other five. `concurrency` and `debugging` problems are the exception: they may list any subset of the six languages, so a Go- or Rust-native bug lists just `go` or `rust`, and the original debugging problems list the languages their bugs exist in ([ADR 0012](../decisions/0012-go-and-rust.md)). So may a problem with `security`, `identity` or `ai-llm` among its `domains`, and any one of them is enough: the first wave lists Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). A `project` problem lists exactly one language, `python` or `typescript` ([Project problems](#project-problems), [ADR 0014](../decisions/0014-project-problems.md)). A problem you write in your own workspace is the exception to the catalog's rule: it lists any non-empty subset, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), what every problem listed before Go and Rust, so a problem written with an older `cstudy` keeps working. `cstudy new` writes the line explicitly. List `languages` in the catalog only where it differs from the default |
 | `jdk` | object | no | `min`, `max` or both: the JDK feature releases (integers) that the problem's Java and Kotlin code runs on. Only for a problem that lists `java` or `kotlin`; a missing field or bound is the bound of the supported range, JDK 21 to 26 ([JDK range](#jdk-range), [ADR 0016](../decisions/0016-jdk-range.md)) |
 | `signature` | object | yes | See [Signatures](#signatures) |
 | `comparator` | object | yes | See [Comparators](#comparators) |
@@ -106,7 +106,7 @@ Run: cstudy test two-sum
 
 ### Starter helpers
 
-A problem may need a tool that one language's standard library lacks, such as SHA-256 in Rust, without asking the user to write it. A file in `helpers/` holds that code, and the generated starter of its language ends with it: `cstudy start` appends it after the stub, one blank line apart (two in Python, as ruff writes top-level definitions), and `cstudy verify` builds the stub with it, so D1 also proves that the helper compiles or imports ([authoring](authoring.md#dynamic)). `0322-content-addressed-store` ships `helpers/sha256.rs`: `sha256` and `sha256_hex`, written from FIPS 180-4, with `#[cfg(test)]` tests against NIST's two SHA-256 examples in SHA256.pdf (`abc` and the 448-bit message), the first SHA-256 example of SHA2_Additional.pdf (the byte `0xbd`), and the well-known digest of the empty message.
+A problem may need a tool that one language's standard library lacks, such as SHA-256 in Rust, without asking the user to write it. A file in `helpers/` holds that code, and the generated starter of its language ends with it: `cstudy start` appends it after the stub, one blank line apart (two in Python, as ruff writes top-level definitions), and `cstudy verify` builds the stub with it, so D1 also proves that the helper compiles or imports ([authoring](authoring.md#dynamic)). `content-addressed-store` ships `helpers/sha256.rs`: `sha256` and `sha256_hex`, written from FIPS 180-4, with `#[cfg(test)]` tests against NIST's two SHA-256 examples in SHA256.pdf (`abc` and the 448-bit message), the first SHA-256 example of SHA2_Additional.pdf (the byte `0xbd`), and the well-known digest of the empty message.
 
 | Rule | Detail |
 |------|--------|
@@ -513,7 +513,7 @@ A project can also run as a service in a Docker sandbox, with its own dependenci
 ### Content tree
 
 ```text
-problems/0249-bank-project-python/
+problems/bank-project-python/
   meta.yaml             # kind: project, languages: [python], levels, the graded API, the project block
   problem.md            # ## Project, then one "## Level <n>: <title>" section per level
   tests.json            # every case with its level
@@ -761,7 +761,7 @@ Java and Kotlin write a test class per level in the package of `project.tests`:
 | Layout | 4-space indent; imports as Google Java style orders them: the static `Assertions` methods in one block, then the rest, each in ASCII order, with a blank line between; a blank line between tests. A statement over 100 columns puts its call's arguments on one continuation line 8 columns deeper, or failing that one argument per line, each laid out the same way | ktlint's official style: 4-space indent; one block of imports in ASCII order with `java`, `javax` and `kotlin` imports last. A statement over 140 columns puts each argument of its call on its own line 4 columns deeper, with a trailing comma, and the closing parenthesis on a line of its own |
 | Agreement | As for Python and TypeScript, with no exception for `true` and `1`; `0.0` and `-0.0` differ under `exact`, as `assertEquals` compares doubles bit for bit | The same |
 
-Generated level 1 tests from case `ex1` of `0248-scheduled-transfers-bank`:
+Generated level 1 tests from case `ex1` of `scheduled-transfers-bank`:
 
 ```python
 """Level 1 examples of bank-project-python, written by `cstudy start`.
@@ -973,7 +973,7 @@ Generated test files:
 | Values | Rust literals as rustfmt formats them, within 100 columns; a `String` argument as `"ivy".to_string()` and an expected one as `"ivy"`, a `double` with a decimal point (`2.0`), a `char` as `'a'`, lists as `vec![...]`, a `decimal` as `Decimal::from_str_exact("2500.50").unwrap()` and a `date` as `NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()` |
 | Agreement | A generated test passes exactly when the core comparator would pass the case |
 
-The file is laid out as rustfmt lays it out with its defaults, and it is clippy-clean for Rust 1.80. Generated level 1 tests from case `ex1` of `0248-scheduled-transfers-bank`:
+The file is laid out as rustfmt lays it out with its defaults, and it is clippy-clean for Rust 1.80. Generated level 1 tests from case `ex1` of `scheduled-transfers-bank`:
 
 ```rust
 //! Level 1 examples of bank-project-rust, written by `cstudy start`.
@@ -1661,7 +1661,7 @@ approaches:
 
 Complexity classes, ordered: `1`, `log n`, `sqrt n`, `n`, `n log n`, `n^2`, `n^2 log n`, `n^3`, `2^n`, `n!`. At least one approach has `role: optimal`; several may (for example heap and quickselect).
 
-Every approach has a reference in every language the problem lists. A `concurrency` or `debugging` problem may name fewer for one approach, with `languages` (a subset of the problem's), where a language has no equivalent of the technique: `0201-bounded-blocking-queue`'s `semaphores` lists `languages: [java, kotlin, python, go]`, since neither TypeScript nor Rust's standard library has a semaphore. The explanation says why in the approach's language notes. A reference file in a language the approach does not name is a static error (S7), and a missing one in a language it names fails the [ready criteria](authoring.md#ready-criteria).
+Every approach has a reference in every language the problem lists. A `concurrency` or `debugging` problem may name fewer for one approach, with `languages` (a subset of the problem's), where a language has no equivalent of the technique: `bounded-blocking-queue`'s `semaphores` lists `languages: [java, kotlin, python, go]`, since neither TypeScript nor Rust's standard library has a semaphore. The explanation says why in the approach's language notes. A reference file in a language the approach does not name is a static error (S7), and a missing one in a language it names fails the [ready criteria](authoring.md#ready-criteria).
 
 ## Performance block
 
@@ -1685,7 +1685,7 @@ perf:
 
 ## Worked example: two-sum
 
-`problems/0001-two-sum/meta.yaml`:
+`problems/two-sum/meta.yaml`:
 
 ```yaml
 # yaml-language-server: $schema=../../schemas/meta.schema.json

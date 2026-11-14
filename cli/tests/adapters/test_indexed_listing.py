@@ -16,7 +16,7 @@ from coding_study.domain.errors import ContentError
 from coding_study.domain.problem import ContentStatus
 from tests.helpers import FIXTURE_TRACKS
 
-TWO_SUM_META = Path("problems/0001-two-sum/meta.yaml")
+TWO_SUM_META = Path("problems/two-sum/meta.yaml")
 URL_SHORTENER_ITEM = Path("tracks/system-design/url-shortener/item.yaml")
 FUTURE_NS = 4_000_000_000_000_000_000
 
@@ -98,7 +98,7 @@ def test_a_changed_size_is_read_again(root):
 
 def test_an_added_problem_is_listed(root):
     problems(root).list_summaries()
-    shutil.copytree(root / "problems" / "0001-two-sum", root / "problems" / "0003-three-sum")
+    shutil.copytree(root / "problems" / "two-sum", root / "problems" / "0003-three-sum")
     rewrite(root / "problems" / "0003-three-sum" / "meta.yaml", "two-sum", "three-sum")
     rewrite(root / "problems" / "0003-three-sum" / "meta.yaml", 'id: "0001"', 'id: "0003"')
     slugs = [summary.meta.slug for summary in problems(root).list_summaries()]
@@ -107,13 +107,13 @@ def test_an_added_problem_is_listed(root):
 
 def test_a_removed_problem_is_dropped(root):
     problems(root).list_summaries()
-    shutil.rmtree(root / "problems" / "0002-lru-cache")
+    shutil.rmtree(root / "problems" / "lru-cache")
     assert [s.meta.slug for s in problems(root).list_summaries()] == ["two-sum"]
 
 
 def test_a_new_reference_file_is_listed(root):
     problems(root).list_summaries()
-    solutions = root / "problems" / "0001-two-sum" / "solutions"
+    solutions = root / "problems" / "two-sum" / "solutions"
     solutions.mkdir()
     (solutions / "hash-map.py").write_text("")
     [two_sum, _] = problems(root).list_summaries()

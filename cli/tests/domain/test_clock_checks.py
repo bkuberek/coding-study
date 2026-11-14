@@ -14,7 +14,7 @@ from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import repository_root
 from tests.helpers import FIXTURE_PROBLEMS, PROJECT_PROBLEMS
 
-DIRECTORY = "problems/0001-bank-project-python"
+DIRECTORY = "problems/bank-project-python"
 META = f"{DIRECTORY}/meta.yaml"
 TESTS = f"{DIRECTORY}/tests.json"
 

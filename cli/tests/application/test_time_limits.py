@@ -140,7 +140,7 @@ def test_config_value_wins_over_the_built_in_factor(tmp_path):
 
 def test_meta_suggestion_is_used_when_flag_and_config_give_no_value(tmp_path):
     environment = environment_for(tmp_path, user_ns=6 * MS)
-    meta = environment.root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta = environment.root / "problems" / "two-sum" / "meta.yaml"
     meta.write_text(
         meta.read_text().replace(
             "  expected_from: hash-map\n", "  expected_from: hash-map\n  time_limit: {factor: 10}\n"
@@ -185,7 +185,7 @@ def test_cached_calibration_is_not_announced(tmp_path):
 def test_changed_reference_is_calibrated_again(tmp_path):
     environment = environment_for(tmp_path, user_ns=MS)
     run(environment)
-    reference = environment.root / "problems" / "0001-two-sum" / "solutions" / "hash-map.py"
+    reference = environment.root / "problems" / "two-sum" / "solutions" / "hash-map.py"
     reference.write_text(reference.read_text() + "\n# changed\n")
     run(environment)
     assert calibration_runs(environment) == 6

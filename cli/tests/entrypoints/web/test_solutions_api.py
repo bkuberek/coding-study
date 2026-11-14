@@ -151,7 +151,7 @@ def test_broken_on_a_problem_without_broken_references_gets_422(tmp_path, practi
 
 
 def test_code_holding_a_fence_gets_a_longer_fence(tmp_path, practice):
-    reference = practice.root / "problems" / "0001-two-sum" / "solutions" / "hash-map.py"
+    reference = practice.root / "problems" / "two-sum" / "solutions" / "hash-map.py"
     reference.write_text(reference.read_text() + '\nFENCE = """```"""\n')
     assert "````python" in post(tmp_path, practice, {}).json()["markdown"]
 

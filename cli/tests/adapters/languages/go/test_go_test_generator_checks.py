@@ -135,7 +135,7 @@ def corpus(tmp_path_factory: pytest.TempPathFactory) -> Path:
     problem = corpus_problem()
     stub = GoStubGenerator().generate(problem.meta)
     stub = re.sub(r"^package \w+", "package bank", stub, count=1, flags=re.MULTILINE)
-    module = (FIXTURE_PROBLEMS / "0001-bank-project-go" / "starter" / "go.mod").read_text()
+    module = (FIXTURE_PROBLEMS / "bank-project-go" / "starter" / "go.mod").read_text()
     folder = project_folder(tmp_path_factory.mktemp("corpus"))
     folder.mkdir(parents=True)
     (folder / "go.mod").write_text(module)

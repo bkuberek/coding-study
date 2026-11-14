@@ -36,9 +36,9 @@ FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 PRACTICE = FIXTURES / "practice" / "problems"
 PHASE4 = FIXTURES / "phase4" / "problems"
 STUB = "python/practice/two_sum.py"
-SOLVED = (PRACTICE / "0001-two-sum" / "solutions" / "hash-map.py").read_text()
+SOLVED = (PRACTICE / "two-sum" / "solutions" / "hash-map.py").read_text()
 LEVEL_STORE_STUB = "python/practice/level_store.py"
-LEVEL_STORE = (PHASE4 / "0001-level-store" / "solutions" / "hash-map.py").read_text()
+LEVEL_STORE = (PHASE4 / "level-store" / "solutions" / "hash-map.py").read_text()
 SLOW_SOLUTION = (
     "import time\n\ndef two_sum(nums, target):\n    time.sleep(0.15)\n    return [1, 2]\n"
 )

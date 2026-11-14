@@ -17,7 +17,7 @@ import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0323-loop-controller"
+PROBLEM = CATALOG_PROBLEMS / "loop-controller"
 CASES: Sequence[dict[str, Any]] = json.loads((PROBLEM / "tests.json").read_text(encoding="utf-8"))[
     "cases"
 ]

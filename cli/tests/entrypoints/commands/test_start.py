@@ -116,7 +116,7 @@ def test_language_not_set_up_is_an_environment_error(environment):
 
 @pytest.mark.parametrize("language", ["go", "rust"])
 def test_a_problem_that_does_not_list_a_language_is_a_usage_error(environment, language):
-    meta = environment.root / "problems/0001-two-sum/meta.yaml"
+    meta = environment.root / "problems/two-sum/meta.yaml"
     text = meta.read_text().replace("track: dsa", "track: debugging")
     meta.write_text(text + "languages: [python, typescript, java, kotlin]\n")
     result = invoke("two-sum", "--lang", language)

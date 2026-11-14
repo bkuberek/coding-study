@@ -10,7 +10,7 @@ from tests.e2e import e2e_environment
 from tests.fakes import repository_root
 
 PHASE4 = Path(__file__).resolve().parents[1] / "fixtures" / "phase4" / "problems"
-LEVEL_STORE = "problems/0001-level-store"
+LEVEL_STORE = "problems/level-store"
 
 
 @pytest.fixture

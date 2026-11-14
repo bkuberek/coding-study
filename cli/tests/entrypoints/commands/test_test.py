@@ -15,7 +15,7 @@ from tests.fakes import ScriptedWatcher, repository_root
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
-SOLUTIONS = PRACTICE / "0001-two-sum" / "solutions"
+SOLUTIONS = PRACTICE / "two-sum" / "solutions"
 STUB = "python/practice/two_sum.py"
 LRU_STUB = "python/practice/lru_cache.py"
 TIMING = re.compile(r"\d+(\.\d+)?(ms|s)")
@@ -154,7 +154,7 @@ def test_timer_is_shown_in_the_header(environment):
 
 def test_design_problem_reports_the_failing_operation(environment):
     start_attempt(environment, StartRequest("lru-cache", Language.PYTHON))
-    source = (PRACTICE / "0002-lru-cache/solutions/ordered-dict.py").read_text()
+    source = (PRACTICE / "lru-cache/solutions/ordered-dict.py").read_text()
     environment.workspace.write_text(LRU_STUB, source.replace("return -1", "return 0"))
     assert lines(invoke("lru-cache", "--case", "h1"))[2:7] == [
         "FAIL     h1    hidden",
@@ -194,9 +194,9 @@ def test_watch_watches_the_user_file(environment, monkeypatch):
 def test_watch_keeps_going_after_an_error(environment, monkeypatch):
     watching = replace(environment, watcher=ScriptedWatcher(bursts=1))
     monkeypatch.setattr(test_command, "load_environment", lambda *_: watching)
-    (environment.root / "problems/0001-two-sum/generator.py").write_text("import nope\n")
+    (environment.root / "problems/two-sum/generator.py").write_text("import nope\n")
     result = invoke("--watch")
-    assert result.stderr.count("error: problems/0001-two-sum/generator.py") == 2
+    assert result.stderr.count("error: problems/two-sum/generator.py") == 2
 
 
 def test_interrupting_watch_exits_130(environment, monkeypatch):

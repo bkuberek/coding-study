@@ -15,7 +15,7 @@ import yaml
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0286-multi-tenant-api-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "multi-tenant-api-typescript"
 PROJECT: Mapping[str, Any] = yaml.safe_load((PROBLEM / "meta.yaml").read_text(encoding="utf-8"))[
     "project"
 ]

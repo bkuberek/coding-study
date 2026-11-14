@@ -42,10 +42,10 @@ pytestmark = pytest.mark.slow
 runner = CliRunner()
 LAUNCH = "from coding_study.entrypoints.launcher import main; main()"
 CONTENT_PROBLEMS = (
-    "0001-two-sum",
-    "0251-bank-project-java",
-    "0253-bank-project-go",
-    "0254-bank-project-rust",
+    "two-sum",
+    "bank-project-java",
+    "bank-project-go",
+    "bank-project-rust",
 )
 HANG_TIMEOUT_SECONDS = 300
 """A cold Rust or Gradle build of a fresh workspace copy comes first, on a busy machine."""

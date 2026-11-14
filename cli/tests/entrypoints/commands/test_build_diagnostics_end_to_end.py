@@ -23,7 +23,7 @@ from tests.workspaces import workspace_like
 pytestmark = pytest.mark.slow
 
 runner = CliRunner()
-PROBLEM = "0001-two-sum"
+PROBLEM = "two-sum"
 
 
 @dataclass(frozen=True, slots=True)

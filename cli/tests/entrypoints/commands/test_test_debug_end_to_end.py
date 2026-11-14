@@ -45,7 +45,7 @@ pytestmark = pytest.mark.slow
 
 runner = CliRunner()
 PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
-SOLUTIONS = PHASE4 / "0001-level-store" / "solutions"
+SOLUTIONS = PHASE4 / "level-store" / "solutions"
 USER_FILES = {
     Language.PYTHON: ("python/practice/level_store.py", ""),
     Language.TYPESCRIPT: ("typescript/practice/level-store.ts", ""),
@@ -60,7 +60,7 @@ USER_FILES = {
 }
 BREAKPOINT_LINES = {Language.PYTHON: 6, Language.TYPESCRIPT: 5}
 """The statement in `put`, in the reference solutions."""
-TWO_SUM = REPOSITORY_ROOT / "problems" / "0001-two-sum"
+TWO_SUM = REPOSITORY_ROOT / "problems" / "two-sum"
 TWO_SUM_FILES = {
     Language.GO: "go/practice/two_sum/two_sum.go",
     Language.RUST: "rust/practice/two_sum.rs",

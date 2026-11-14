@@ -130,7 +130,7 @@ def test_an_unknown_pattern_is_a_usage_error(environment):
 def with_a_practical_problem(tmp_path, editor, monkeypatch, tmp_path_factory):
     """The first catalog problems and the banking system, a `practical` problem."""
     problems = copy_catalog_problems(
-        tmp_path_factory.mktemp("catalog"), (*FIRST_CATALOG, "0187-banking-system")
+        tmp_path_factory.mktemp("catalog"), (*FIRST_CATALOG, "banking-system")
     )
     environment = e2e_environment(repository_root(tmp_path, problems), editor=editor)
     monkeypatch.setattr(next_problem, "load_environment", lambda *_: environment)

@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: contractor-exposure-rollup
+title: Contractor Exposure Rollup
+summary: "Given who hired whom on a construction project, return the total exposure of a contractor and everyone working under it, counting each contractor once."
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [graphs]
+domains: [fintech]
+job_roles: [backend]
+scope: function
+signature:
+  function:
+    name: totalExposure
+    params:
+      - {name: edges, type: "string[][]"}
+      - {name: contractors, type: "string[]"}
+      - {name: exposures, type: "decimal[]"}
+      - {name: root, type: string}
+    returns: {type: decimal}
+comparator: {type: exact}
+approaches:
+  - {id: iterative-dfs, name: Iterative depth-first search with on-path and finished sets, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+related: [course-schedule]
+guides: [depth-first-search]
+estimate_minutes: 25

@@ -107,5 +107,5 @@ def test_no_attempt_needs_no_confirmation(environment):
 
 
 def test_problem_without_explanation(environment):
-    (environment.root / "problems/0001-two-sum/solutions/explanation.md").unlink()
+    (environment.root / "problems/two-sum/solutions/explanation.md").unlink()
     assert show(environment).approaches[0].explanation is None

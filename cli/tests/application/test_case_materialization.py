@@ -21,7 +21,7 @@ from tests.fakes import (
 )
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
-TWO_SUM_DIRECTORY = "problems/0001-two-sum"
+TWO_SUM_DIRECTORY = "problems/two-sum"
 
 
 @pytest.fixture

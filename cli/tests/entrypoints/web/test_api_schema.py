@@ -105,7 +105,7 @@ NOTICES = {
     "job_ended": "job_notice",
 }
 """The definition of each notification's data."""
-MOCK_CATALOG = (*FIRST_CATALOG, "0007-group-anagrams", "0014-first-missing-positive")
+MOCK_CATALOG = (*FIRST_CATALOG, "group-anagrams", "first-missing-positive")
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
 FILE = "bank/bank.py"
 PREFERENCES = "/api/v1/preferences"

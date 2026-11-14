@@ -26,7 +26,7 @@ from tests.project_locks import PROJECT_LOCK, LockProbe, passing_environment
 
 ENTRY = "bank/bank.py"
 LEVEL_1_TESTS = "tests/test_level_1.py"
-STARTER_ENTRY = (PROJECT_PROBLEMS / "0001-bank-project-python" / "starter" / ENTRY).read_text(
+STARTER_ENTRY = (PROJECT_PROBLEMS / "bank-project-python" / "starter" / ENTRY).read_text(
     encoding="utf-8"
 )
 
@@ -174,7 +174,7 @@ def test_restore_refuses_a_missing_folder(environment):
 
 
 def test_restore_refuses_a_file_the_starter_no_longer_has(environment):
-    environment.workspace.absolute(f"problems/0001-bank-project-python/starter/{ENTRY}").unlink()
+    environment.workspace.absolute(f"problems/bank-project-python/starter/{ENTRY}").unlink()
     with pytest.raises(UsageError, match="the starter of bank-project-python no longer has it"):
         restore(environment, ENTRY)
 

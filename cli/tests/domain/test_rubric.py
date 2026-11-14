@@ -18,7 +18,7 @@ PARKING_LOT_RUBRIC = (
     / "fixtures"
     / "phase4"
     / "problems"
-    / "0002-parking-lot"
+    / "parking-lot"
     / "rubric.md"
 )
 RUBRIC = PARKING_LOT_RUBRIC.read_text()

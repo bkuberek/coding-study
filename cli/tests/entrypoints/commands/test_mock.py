@@ -27,7 +27,7 @@ from tests.fakes import (
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
 
 runner = CliRunner()
-SLICE = (*FIRST_CATALOG, "0007-group-anagrams", "0014-first-missing-positive")
+SLICE = (*FIRST_CATALOG, "group-anagrams", "first-missing-positive")
 FORTY_FIVE_MINUTES = 45 * 60
 
 

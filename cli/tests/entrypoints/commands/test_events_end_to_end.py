@@ -36,8 +36,8 @@ pytestmark = pytest.mark.slow
 
 SLUG = "bank-project-python"
 PROJECTS = {
-    "fixture": PROJECT_PROBLEMS / "0001-bank-project-python",
-    "pilot": CATALOG_PROBLEMS / "0249-bank-project-python",
+    "fixture": PROJECT_PROBLEMS / "bank-project-python",
+    "pilot": CATALOG_PROBLEMS / "bank-project-python",
 }
 RUNNER_SOURCES = REPOSITORY_ROOT / "runners" / "python" / "src"
 PYTEST_MARKER = Path("python/.venv/lib/python3.13/site-packages/pytest/__init__.py")

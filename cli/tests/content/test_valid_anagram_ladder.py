@@ -10,7 +10,7 @@ import yaml
 
 from tests.helpers import CATALOG_PROBLEMS
 
-PROBLEM = CATALOG_PROBLEMS / "0005-valid-anagram"
+PROBLEM = CATALOG_PROBLEMS / "valid-anagram"
 SEEDS = range(1, 21)
 FULL_ALPHABET = 26
 

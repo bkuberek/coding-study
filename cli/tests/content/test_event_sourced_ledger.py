@@ -15,7 +15,7 @@ import pytest
 
 from tests.helpers import REPOSITORY_ROOT
 
-PROBLEM = REPOSITORY_ROOT / "problems" / "0287-event-sourced-ledger-typescript"
+PROBLEM = REPOSITORY_ROOT / "problems" / "event-sourced-ledger-typescript"
 STARTER_BASELINE = PROBLEM / "starter" / "migrations" / "0001_baseline.sql"
 GRADING_BASELINE = PROBLEM / "grading" / "baseline" / "0001_baseline.sql"
 SEED_ROW_START = "    ("

@@ -23,12 +23,12 @@ from coding_study.domain.type_dsl import VoidType, parse_return_type, parse_valu
 from tests.fakes import repository_root
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
-TWO_SUM = PRACTICE / "0001-two-sum"
-LRU = PRACTICE / "0002-lru-cache"
-META = "problems/0001-two-sum/meta.yaml"
-LRU_META = "problems/0002-lru-cache/meta.yaml"
-EXPLANATION = "problems/0001-two-sum/solutions/explanation.md"
-LRU_EXPLANATION = "problems/0002-lru-cache/solutions/explanation.md"
+TWO_SUM = PRACTICE / "two-sum"
+LRU = PRACTICE / "lru-cache"
+META = "problems/two-sum/meta.yaml"
+LRU_META = "problems/lru-cache/meta.yaml"
+EXPLANATION = "problems/two-sum/solutions/explanation.md"
+LRU_EXPLANATION = "problems/lru-cache/solutions/explanation.md"
 
 
 @pytest.fixture(scope="module")
@@ -159,7 +159,7 @@ def test_case_values_are_checked_against_the_signature(problems):
     bad = Case("h9", FunctionInput({"nums": [1, "2"], "target": 3}), Expected([0, 1]))
     problem = replace(problem, cases=(*problem.cases, bad))
     assert errors(content(problems, problem=problem)) == [
-        'problems/0001-two-sum/tests.json: cases[4] h9: input.nums[1]: expected int, got "2"'
+        'problems/two-sum/tests.json: cases[4] h9: input.nums[1]: expected int, got "2"'
     ]
 
 
@@ -173,19 +173,19 @@ def problem_md_errors(problems, old: str, new: str) -> list[str]:
 
 def test_missing_problem_md(problems):
     assert errors(content(problems, problem_markdown=None)) == [
-        "problems/0001-two-sum/problem.md: missing"
+        "problems/two-sum/problem.md: missing"
     ]
 
 
 def test_title_must_equal_meta(problems):
     assert problem_md_errors(problems, "# Two Sum\n", "# 2Sum\n") == [
-        'problems/0001-two-sum/problem.md: title "2Sum" must equal meta.yaml title "Two Sum"'
+        'problems/two-sum/problem.md: title "2Sum" must equal meta.yaml title "Two Sum"'
     ]
 
 
 def test_required_section_missing(problems):
     assert problem_md_errors(problems, "## Constraints\n", "## Limits\n") == [
-        'problems/0001-two-sum/problem.md: missing "## Constraints"'
+        'problems/two-sum/problem.md: missing "## Constraints"'
     ]
 
 
@@ -196,7 +196,7 @@ def test_required_section_empty(problems):
         "",
     )
     assert errors(content(problems, problem_markdown=markdown)) == [
-        'problems/0001-two-sum/problem.md: "## Input" is empty'
+        'problems/two-sum/problem.md: "## Input" is empty'
     ]
 
 
@@ -207,53 +207,53 @@ def test_sections_in_order(problems):
         "## Constraints", statement + "## Constraints"
     )
     assert errors(content(problems, problem_markdown=reordered)) == [
-        'problems/0001-two-sum/problem.md: "## Statement" must come before "## Input"'
+        'problems/two-sum/problem.md: "## Statement" must come before "## Input"'
     ]
 
 
 def test_example_without_marker(problems):
     assert problem_md_errors(problems, "<!-- case: ex2 -->\n", "") == [
-        "problems/0001-two-sum/problem.md: Example 2 needs exactly one <!-- case: <id> --> marker",
-        'problems/0001-two-sum/problem.md: visible case "ex2" has no example',
+        "problems/two-sum/problem.md: Example 2 needs exactly one <!-- case: <id> --> marker",
+        'problems/two-sum/problem.md: visible case "ex2" has no example',
     ]
 
 
 def test_example_with_unknown_case(problems):
     assert problem_md_errors(problems, "<!-- case: ex2 -->", "<!-- case: ex9 -->") == [
-        'problems/0001-two-sum/problem.md: Example 2: no case "ex9" in tests.json',
-        'problems/0001-two-sum/problem.md: visible case "ex2" has no example',
+        'problems/two-sum/problem.md: Example 2: no case "ex9" in tests.json',
+        'problems/two-sum/problem.md: visible case "ex2" has no example',
     ]
 
 
 def test_example_with_hidden_case(problems):
     assert problem_md_errors(problems, "<!-- case: ex2 -->", "<!-- case: h1 -->") == [
-        'problems/0001-two-sum/problem.md: Example 2: case "h1" is not visible',
-        'problems/0001-two-sum/problem.md: visible case "ex2" has no example',
+        'problems/two-sum/problem.md: Example 2: case "h1" is not visible',
+        'problems/two-sum/problem.md: visible case "ex2" has no example',
     ]
 
 
 def test_example_needs_an_explanation(problems):
     assert problem_md_errors(
         problems, "Equal values at different positions form a valid pair.\n", ""
-    ) == ["problems/0001-two-sum/problem.md: Example 2 needs at least one line of explanation"]
+    ) == ["problems/two-sum/problem.md: Example 2 needs at least one line of explanation"]
 
 
 def test_case_referenced_twice(problems):
     assert problem_md_errors(problems, "<!-- case: ex2 -->", "<!-- case: ex1 -->") == [
-        'problems/0001-two-sum/problem.md: visible case "ex1" is referenced 2 times',
-        'problems/0001-two-sum/problem.md: visible case "ex2" has no example',
+        'problems/two-sum/problem.md: visible case "ex1" is referenced 2 times',
+        'problems/two-sum/problem.md: visible case "ex2" has no example',
     ]
 
 
 def test_hints_are_numbered_from_one(problems):
     assert problem_md_errors(problems, "### Hint 2", "### Hint 3") == [
-        'problems/0001-two-sum/problem.md: hint 2 is titled "Hint 3"'
+        'problems/two-sum/problem.md: hint 2 is titled "Hint 3"'
     ]
 
 
 def test_todo_placeholder(problems):
     assert problem_md_errors(problems, "Exactly one valid pair exists.", "TODO") == [
-        'problems/0001-two-sum/problem.md: "## Constraints" contains TODO'
+        'problems/two-sum/problem.md: "## Constraints" contains TODO'
     ]
 
 
@@ -321,7 +321,7 @@ def test_overview_needs_every_approach(problems):
 def test_solution_file_for_an_unknown_approach(problems):
     files = (*content(problems).solution_files, "greedy.py")
     assert errors(content(problems, solution_files=files)) == [
-        "problems/0001-two-sum/solutions/greedy.py: maps to no declared approach"
+        "problems/two-sum/solutions/greedy.py: maps to no declared approach"
     ]
 
 
@@ -368,7 +368,7 @@ def test_a_reference_outside_its_approachs_languages_is_an_error(problems):
     approaches = (meta.approaches[0], hash_map)
     problem = with_meta(problems, track=Track.DEBUGGING, approaches=approaches)
     assert errors(content(problems, problem=problem)) == [
-        "problems/0001-two-sum/solutions/hash-map.py: "
+        "problems/two-sum/solutions/hash-map.py: "
         "its language is not in the approach's languages"
     ]
 
@@ -379,14 +379,14 @@ def test_a_reference_outside_its_approachs_languages_is_an_error(problems):
 def test_checker_comparator_needs_checker_py(problems):
     problem = with_meta(problems, comparator=ComparatorSpec(ComparatorType.CHECKER))
     assert errors(content(problems, problem=problem)) == [
-        "problems/0001-two-sum/checker.py: missing (comparator: checker)"
+        "problems/two-sum/checker.py: missing (comparator: checker)"
     ]
 
 
 def test_checker_py_needs_the_checker_comparator(problems):
     files = (*content(problems).files, "checker.py")
     assert errors(content(problems, files=files)) == [
-        "problems/0001-two-sum/checker.py: present but the comparator is unordered"
+        "problems/two-sum/checker.py: present but the comparator is unordered"
     ]
 
 
@@ -398,7 +398,7 @@ def test_buggy_stub_needs_a_file_per_language(problems):
 def test_a_helper_for_a_language_the_problem_does_not_list_is_an_error(problems):
     problem = with_meta(problems, languages=WITHOUT_RUST)
     found = errors(content(problems, problem=problem, helper_files=("sha256.rs", "tools.py")))
-    assert "problems/0001-two-sum/helpers/sha256.rs: maps to no language in languages" in found
+    assert "problems/two-sum/helpers/sha256.rs: maps to no language in languages" in found
     assert [issue for issue in found if "tools.py" in issue] == []
 
 
@@ -496,7 +496,7 @@ def test_per_method_float_on_a_double_method_is_fine(problems):
 def test_lld_problems_need_a_rubric(problems):
     problem = with_meta(problems, track=Track.LLD)
     assert errors(content(problems, problem=problem)) == [
-        "problems/0001-two-sum/rubric.md: missing (track: lld)"
+        "problems/two-sum/rubric.md: missing (track: lld)"
     ]
 
 
@@ -552,20 +552,20 @@ def progressive(problems, case_level: int | None, levels=(1, 2)) -> ProblemConte
 def test_progressive_cases_use_only_unlocked_methods(problems):
     found = errors(progressive(problems, case_level=1))
     assert [message for message in found if "introduced" in message] == [
-        "problems/0002-lru-cache/tests.json: cases[0] ex1: put is introduced at level 2",
-        "problems/0002-lru-cache/tests.json: cases[1] h1: put is introduced at level 2",
+        "problems/lru-cache/tests.json: cases[0] ex1: put is introduced at level 2",
+        "problems/lru-cache/tests.json: cases[1] h1: put is introduced at level 2",
     ]
 
 
 def test_progressive_cases_need_a_level(problems):
-    assert "problems/0002-lru-cache/tests.json: cases[0] ex1: level must be from 1 to 2" in errors(
+    assert "problems/lru-cache/tests.json: cases[0] ex1: level must be from 1 to 2" in errors(
         progressive(problems, case_level=None)
     )
 
 
 def test_progressive_levels_are_contiguous(problems):
     assert (
-        "problems/0002-lru-cache/meta.yaml: levels: levels must be numbered 1, 2, ... without gaps"
+        "problems/lru-cache/meta.yaml: levels: levels must be numbered 1, 2, ... without gaps"
         in errors(progressive(problems, case_level=2, levels=(1, 3)))
     )
 

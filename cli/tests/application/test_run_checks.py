@@ -121,10 +121,10 @@ def test_a_level_on_a_problem_without_levels_is_refused(practice):
 def overlay(tmp_path) -> Environment:
     """A catalog holding lru-cache, and a workspace whose own problem is two-sum."""
     catalog = repository_root(tmp_path / "catalog", PRACTICE)
-    shutil.rmtree(catalog / "problems" / "0001-two-sum")
+    shutil.rmtree(catalog / "problems" / "two-sum")
     workspace = repository_root(tmp_path / "workspace", PRACTICE)
-    shutil.rmtree(workspace / "problems" / "0002-lru-cache")
-    (workspace / "problems" / "0001-two-sum").rename(workspace / OWN_PROBLEM)
+    shutil.rmtree(workspace / "problems" / "lru-cache")
+    (workspace / "problems" / "two-sum").rename(workspace / OWN_PROBLEM)
     meta = workspace / OWN_PROBLEM / "meta.yaml"
     meta.write_text(meta.read_text().replace('id: "0001"', 'id: "5001"'))
     return make_environment(

@@ -27,8 +27,8 @@ def repository(tmp_path: Path) -> Path:
     """A repository whose main branch holds two problems, checked out on a feature branch."""
     git(tmp_path, "init", "-q", "-b", "main")
     write(tmp_path, ".gitignore", "*.log\n")
-    write(tmp_path, "problems/0001-two-sum/meta.yaml")
-    write(tmp_path, "problems/0002-lru-cache/meta.yaml")
+    write(tmp_path, "problems/two-sum/meta.yaml")
+    write(tmp_path, "problems/lru-cache/meta.yaml")
     git(tmp_path, "add", ".")
     git(tmp_path, "commit", "-q", "-m", "main")
     git(tmp_path, "switch", "-q", "-c", "feature")
@@ -51,12 +51,12 @@ def test_commits_on_the_branch_count(repository):
 
 
 def test_unstaged_and_staged_edits_count(repository):
-    write(repository, "problems/0001-two-sum/meta.yaml", "edited\n")
-    write(repository, "problems/0002-lru-cache/meta.yaml", "staged\n")
-    git(repository, "add", "problems/0002-lru-cache/meta.yaml")
+    write(repository, "problems/two-sum/meta.yaml", "edited\n")
+    write(repository, "problems/lru-cache/meta.yaml", "staged\n")
+    git(repository, "add", "problems/lru-cache/meta.yaml")
     assert changed(repository) == {
-        "problems/0001-two-sum/meta.yaml",
-        "problems/0002-lru-cache/meta.yaml",
+        "problems/two-sum/meta.yaml",
+        "problems/lru-cache/meta.yaml",
     }
 
 
@@ -68,7 +68,7 @@ def test_untracked_files_count_but_ignored_ones_do_not(repository):
 
 def test_commits_on_main_after_the_branch_point_do_not_count(repository):
     git(repository, "switch", "-q", "main")
-    write(repository, "problems/0002-lru-cache/meta.yaml", "on main\n")
+    write(repository, "problems/lru-cache/meta.yaml", "on main\n")
     git(repository, "commit", "-q", "-am", "main moves on")
     git(repository, "switch", "-q", "feature")
     assert changed(repository) == set()
@@ -81,8 +81,8 @@ def test_paths_are_relative_to_a_root_below_the_repository(repository):
 
 
 def test_paths_with_spaces(repository):
-    write(repository, "problems/0001-two-sum/my notes.md")
-    assert changed(repository) == {"problems/0001-two-sum/my notes.md"}
+    write(repository, "problems/two-sum/my notes.md")
+    assert changed(repository) == {"problems/two-sum/my notes.md"}
 
 
 def test_a_missing_base_branch_is_an_error(repository):

@@ -118,7 +118,7 @@ Check both accounts before moving money.
 
 
 def use_hints(environment: Environment, used: int) -> None:
-    problem_md = environment.root / "problems" / "0001-bank-project-python" / "problem.md"
+    problem_md = environment.root / "problems" / "bank-project-python" / "problem.md"
     problem_md.write_text(problem_md.read_text(encoding="utf-8") + HINTS, encoding="utf-8")
     found = environment.progress.active_attempt()
     assert found is not None

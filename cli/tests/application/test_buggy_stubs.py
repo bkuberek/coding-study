@@ -12,8 +12,8 @@ from tests.e2e import e2e_environment
 from tests.fakes import repository_root
 
 DEBUGGING = Path(__file__).resolve().parents[1] / "fixtures" / "debugging" / "problems"
-PROBLEM = "problems/0001-running-max"
-BUGGY_PYTHON = DEBUGGING / "0001-running-max" / "buggy" / "solution.py"
+PROBLEM = "problems/running-max"
+BUGGY_PYTHON = DEBUGGING / "running-max" / "buggy" / "solution.py"
 JVM_STUBS = {
     Language.JAVA: "jvm/java/src/main/java/practice/running_max/Solution.java",
     Language.KOTLIN: "jvm/kotlin/src/main/kotlin/practice/running_max/Solution.kt",
