@@ -138,7 +138,7 @@ def _open_a_result(page: Any, found: Seen) -> None:
     page.click(f".doc-result a[href='#/docs/doctor/{FOUND_HEADING}']")
     page.wait_for_function(FOCUSED_ON, arg=f"doc-{FOUND_HEADING}")
     found.result_hash = page.evaluate("location.hash")
-    found.result_heading = page.inner_text(f"#doc-{FOUND_HEADING}")
+    found.result_heading = page.text_content(f"#doc-{FOUND_HEADING}") or ""
     found.result_focused = page.evaluate(FOCUSED)
     found.result_clear = page.evaluate(CLEAR_OF_THE_BAR, f"doc-{FOUND_HEADING}")
 
