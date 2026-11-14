@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: CPU scheduling
+summary: How an operating system decides which ready process runs next; turnaround, waiting and response time; first come first served, shortest job first, round robin, priorities and the multi-level feedback queue.
+level: core
+prerequisites: [processes-and-system-calls]
+related: [locks-and-condition-variables, virtual-memory]
+problems: [single-threaded-cpu, cpu-scheduler-sim]

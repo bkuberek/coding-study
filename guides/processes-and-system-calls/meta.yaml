@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: Processes, threads and system calls
+summary: What a running program is to the operating system; the kernel boundary and the system calls that cross it; creating processes with fork, exec and wait; and threads, which share one process's memory.
+level: intro
+related: [cpu-scheduling, virtual-memory, locks-and-condition-variables]
