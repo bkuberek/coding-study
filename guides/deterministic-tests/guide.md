@@ -232,7 +232,7 @@ Four of the six orders lose a deposit: each one reads the balance before the oth
 
 - **Pass a clock in** for any code that compares times, measures durations, waits, retries or expires anything.
 - **Pass a seeded generator in** for any code that draws random numbers: shuffling, sampling, jitter (a random spread added to delays so that clients do not retry in step), generated ids in tests.
-- **Explore interleavings** when the correctness of the code depends on the order in which threads or tasks run. For small step counts, try every order; for real threads, use stress tests, which run many threads against the code at once, check invariants after each run, and treat a pass as evidence, not proof.
+- **Explore interleavings** when the correctness of the code depends on the order in which threads or tasks run. For small step counts, try every order; for real threads, use stress tests, which run many threads against the code at once, check a rule that must always hold, such as the total balance, after each run, and treat a pass as evidence, not proof.
 - **Wait on a condition, with a timeout**, whenever a test must wait for other threads or processes: `threading.Event.wait(timeout)` returns `True` as soon as the event is set and `False` if the time runs out, so the test is as fast as the work and still bounded.
 - **Investigate a flaky test** the day it flakes. Rerunning it until it passes hides the problem; find which hidden input changed.
 
@@ -241,7 +241,7 @@ Four of the six orders lose a deposit: each one reads the balance before the oth
 - **Sleeping to wait.** `time.sleep(2)` before checking a result is too long on a fast machine and too short on a loaded one. Wait for the condition itself.
 - **Seeding the shared generator.** `random.seed(1)` in one test changes the numbers every later test draws from the module functions, so tests start to depend on their order. Give each test its own `random.Random`.
 - **Retrying until green.** A test retried up to three times reports a failure only when all three runs fail. A real bug that fails one run in five then shows up as a failure in 0.2³, under 1%, of suite runs.
-- **Disabling the flaky test for good.** The test may be flaky because the code is: a race in a test is often a race in production. Fix the cause or the test, and track the ones set aside.
+- **Disabling the flaky test for good.** The test may be flaky because the code is: a race (a result that depends on which thread gets there first) in a test is often a race in production. Fix the cause or the test, and track the ones set aside.
 - **Naive times.** A `datetime` without a time zone cannot place itself on the timeline, and `datetime.now()` with no argument returns the local time of whatever machine runs the test. Use aware times, with an explicit zone, and pass them in.
 - **Relying on set order.** The hashes of strings and bytes change between Python processes, and with them the iteration order of sets that hold them. Sort before comparing, or compare sets as sets.
 - **Exact timing assertions.** "Finishes in under 50 ms" fails on a busy machine. Test what the code does with time through an injected clock, and measure speed in a benchmark, not in a correctness test.

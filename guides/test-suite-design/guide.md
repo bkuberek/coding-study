@@ -125,8 +125,8 @@ import re
 GOLDEN = """\
 Invoice summary  generated <TIME>  run <RUN>
 customer   items   total
-acme           3   42.50
-globex         1    9.99
+cust-a         3   42.50
+cust-b         1    9.99
 total              52.49
 """
 
@@ -148,11 +148,11 @@ def check(output: str) -> list[str]:
                                      "golden", "actual", lineterm=""))
 
 
-rows = [("acme", 3, 42.5), ("globex", 1, 9.99)]
+rows = [("cust-a", 3, 42.5), ("cust-b", 1, 9.99)]
 today = render(rows, "2026-11-13T09:30:00Z", "3f9a0c1e")
 print("same output, new time and run id:", "pass" if not check(today) else "fail")
 
-rows_after_change = [("acme", 3, 42.5), ("globex", 1, 9.99), ("initech", 2, 0.0)]
+rows_after_change = [("cust-a", 3, 42.5), ("cust-b", 1, 9.99), ("cust-c", 2, 0.0)]
 diff = check(render(rows_after_change, "2026-11-14T08:00:00Z", "77b2e5d0"))
 print("after a change:", "pass" if not diff else "fail")
 print("\n".join(diff))
@@ -167,9 +167,9 @@ after a change: fail
 +++ actual
 @@ -2,4 +2,5 @@
  customer   items   total
- acme           3   42.50
- globex         1    9.99
-+initech        2    0.00
+ cust-a         3   42.50
+ cust-b         1    9.99
++cust-c         2    0.00
  total              52.49
 ```
 
@@ -186,7 +186,7 @@ The first comparison passes although the time and the run id differ, because the
 
 ## Common traps
 
-- **An upside-down suite.** Mostly end-to-end tests, few unit tests: the suite is slow, flaky, and its failures do not say where the bug is. The bliki entry on the pyramid calls this shape an ice-cream cone.
+- **An upside-down suite.** Mostly end-to-end tests, few unit tests: the suite is slow, flaky, and its failures do not say where the bug is. The essay *Test Pyramid* calls this shape an ice-cream cone.
 - **Unit tests that mock every seam.** Each piece passes against its doubles, and the system breaks where they meet. Keep integration tests for the seams, and contract tests for the doubles.
 - **Testing the same thing at every level.** A rule checked by a unit test, an integration test and an end-to-end test triples the maintenance and gives little more confidence. Test each behaviour where it is cheapest to test well.
 - **Contracts that ask for too much.** A consumer contract that checks fields the consumer never reads blocks the provider for no reason.
@@ -204,9 +204,9 @@ Contract tests cost one check per consumer expectation, run against the fake and
 
 ## Expert notes
 
-- **Where the pyramid comes from.** The bliki entry *Test Pyramid* (1 May 2012) states its point as having many more low-level unit tests than high-level tests through a graphical interface, which it calls brittle, expensive to write and time consuming to run, and more prone to nondeterminism. It credits the idea's popularity to a 2009 book, *Succeeding with Agile*, which called it the test automation pyramid. The entry also argues for an intermediate layer of tests through a service or API layer, and treats high-level tests as a second line of defence: a bug they find means a unit test is missing.
-- **Levels are not the only axis.** The same entry warns that end-to-end, user-interface and customer-facing tests are different properties that teams often conflate: a rich user interface can be unit tested, and business rules written in a customer-facing form can run against one module only.
-- **Contract tests in practice.** The bliki entry *Contract Test* (12 January 2011) describes running a separate set of contract tests that check that the calls made against your test doubles return the same results as calls to the external service. They follow the rhythm of changes to the external service rather than to your code, so running them once a day is often plenty, and a failure should start a conversation and an update rather than necessarily break the build. They check the format of the data, not the exact data.
+- **Where the pyramid comes from.** The essay *Test Pyramid* (1 May 2012) states its point as having many more low-level unit tests than high-level tests through a graphical interface, which it calls brittle, expensive to write and time consuming to run, and more prone to nondeterminism. It credits the idea's popularity to a 2009 book, *Succeeding with Agile*, which called it the test automation pyramid. The entry also argues for an intermediate layer of tests through a service or API layer, and treats high-level tests as a second line of defence: a bug they find means a unit test is missing.
+- **Levels are not the only axis.** The same essay warns that end-to-end, user-interface and customer-facing tests are different properties that teams often conflate: a rich user interface can be unit tested, and business rules written in a customer-facing form can run against one module only.
+- **Contract tests in practice.** The essay *Contract Test* (12 January 2011) describes running a separate set of contract tests that check that the calls made against your test doubles return the same results as calls to the external service. They follow the rhythm of changes to the external service rather than to your code, so running them once a day is often plenty, and a failure should start a conversation and an update rather than necessarily break the build. They check the format of the data, not the exact data.
 - **Three kinds of contract.** The article *Consumer-Driven Contracts: A Service Evolution Pattern* (12 June 2006) distinguishes the provider contract, which is complete, single and authoritative; consumer contracts, each open and incomplete, one per consumer, expressing only the part of the provider that consumer relies on; and the consumer-driven contract, the provider contract derived from the union of its consumers' expectations. At its simplest, the expectations are written in a document; going a little further, they become unit tests that assert each expectation with each build.
 - **Why mocks alone are not enough.** The `unittest.mock` documentation, explaining autospeccing, notes that tests using mocks can pass after a refactoring that breaks the code, and calls this another reason why you need integration tests as well as unit tests.
 - **Text comparison as a smell.** In the xUnit patterns, *sensitive equality*, converting objects to strings and comparing them with an expected string, is listed among the causes of fragile tests. A golden file accepts that risk on purpose, for outputs whose text *is* the product, and controls it with normalization and review.

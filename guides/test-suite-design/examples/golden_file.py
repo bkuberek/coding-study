@@ -11,8 +11,8 @@ import re
 GOLDEN = """\
 Invoice summary  generated <TIME>  run <RUN>
 customer   items   total
-acme           3   42.50
-globex         1    9.99
+cust-a         3   42.50
+cust-b         1    9.99
 total              52.49
 """
 
@@ -34,11 +34,11 @@ def check(output: str) -> list[str]:
                                      "golden", "actual", lineterm=""))
 
 
-rows = [("acme", 3, 42.5), ("globex", 1, 9.99)]
+rows = [("cust-a", 3, 42.5), ("cust-b", 1, 9.99)]
 today = render(rows, "2026-11-13T09:30:00Z", "3f9a0c1e")
 print("same output, new time and run id:", "pass" if not check(today) else "fail")
 
-rows_after_change = [("acme", 3, 42.5), ("globex", 1, 9.99), ("initech", 2, 0.0)]
+rows_after_change = [("cust-a", 3, 42.5), ("cust-b", 1, 9.99), ("cust-c", 2, 0.0)]
 diff = check(render(rows_after_change, "2026-11-14T08:00:00Z", "77b2e5d0"))
 print("after a change:", "pass" if not diff else "fail")
 print("\n".join(diff))
