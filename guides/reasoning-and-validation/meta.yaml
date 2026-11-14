@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Reasoning and validation: open and closed worlds"
+summary: Derive what must also be true with RDFS entailment rules applied until nothing new appears, never treating a missing fact as false; then check data against SHACL shapes, which treat a missing fact as an error.
+level: advanced
+prerequisites: [rdf-triples]
+related: [taxonomies-and-skos, graph-patterns-and-sparql, data-quality-and-contracts]
+problems: [reasoner-vs-validator]

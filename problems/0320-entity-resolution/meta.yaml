@@ -47,4 +47,5 @@ comparator:
 approaches:
   - {id: block-score-union, name: Blocking keys then pair scores then guarded union-find, role: optimal, time: "O(R + P w^2 + M k^2)", space: "O(R + P)", time_class: "n^2", space_class: "n"}
 related: [duplicate-contractor-records, accounts-merge, taxonomy, triple-store, reasoner-vs-validator, graphrag-context]
+guides: [record-linkage]
 estimate_minutes: 120

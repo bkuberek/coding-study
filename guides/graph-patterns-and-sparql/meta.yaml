@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Querying graphs: basic graph patterns and SPARQL"
+summary: Ask a graph questions with triple patterns that share variables; solutions, compatible mappings and joins, why join order changes the cost and not the answer, DISTINCT, and paths that follow a relation any number of times.
+level: core
+prerequisites: [rdf-triples]
+related: [breadth-first-search, retrieval-augmented-generation, taxonomies-and-skos]
+problems: [triple-store, graphrag-context]

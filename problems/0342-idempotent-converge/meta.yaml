@@ -37,4 +37,5 @@ comparator: {type: ops}
 approaches:
   - {id: state-copies, name: "Compare before changing, on deep copies for a check", role: optimal, time: "O(N (T + H + C) + S) per run or check, for N hosts, T tasks, H handlers, C conditions and S resources copied", space: "O(S + N H)", time_class: "n", space_class: "n"}
 related: [iac-plan-engine, drift-detection, pipeline-scheduler, values-templating, manifest-policy]
+guides: [declarative-desired-state]
 estimate_minutes: 100

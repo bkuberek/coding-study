@@ -50,4 +50,5 @@ perf:
   budget_ms: 20000
   expected_from: adjacency-walks
 related: [org-chart-outline, lowest-common-ancestor, course-schedule, referral-rewards, triple-store, reasoner-vs-validator, entity-resolution, graphrag-context, lineage-graph, architecture-checker, semver-resolver]
+guides: [taxonomies-and-skos]
 estimate_minutes: 120

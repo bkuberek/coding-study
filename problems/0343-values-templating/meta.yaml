@@ -31,4 +31,5 @@ comparator: {type: ops}
 approaches:
   - {id: merge-parse-render, name: "Merge into a tree, parse the template once, render with a stack of bindings", role: optimal, time: "O(R + V log V) per merged, provenance or validate, for R rows in all layers and V merged values; render adds O(T + P) for a template of T characters and P printed characters", space: "O(R + T + P)", time_class: "n log n", space_class: "n"}
 related: [manifest-policy, iac-plan-engine, drift-detection, idempotent-converge, decode-string, basic-calculator]
+guides: [templates-and-layered-values]
 estimate_minutes: 150

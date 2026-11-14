@@ -1,0 +1,178 @@
+# State, drift and reconciliation
+
+## The idea
+
+The [plan guide](../plan-and-apply/guide.md) compared the desired state with "what exists". Where does a tool learn what exists? It could ask the provider about everything on every plan, but that has three problems. It is slow: one call per resource. It cannot tell which of the thousands of resources in an account belong to this description: delete a line, and the tool must know which real server that line stood for in order to delete it. And the provider knows a virtual machine as `vm-31`, an identifier it chose, while the description calls it `vm/build`: something has to remember that the two are the same thing.
+
+So a tool keeps a **recorded state**, often called its state file: for each address it manages, the provider's **identifier** of the real resource, and the attributes the resource had when the tool last touched it. Now there are three versions of every resource, not two.
+
+| Version | Where it comes from | Who changes it |
+|---------|---------------------|----------------|
+| **Desired** | The description | You, by editing it |
+| **Recorded** | The tool's record | The tool, after each change it makes |
+| **Actual** | A **scan**: reading the real resource from the provider | Anyone with access: the tool, a person in a console, a script, the provider itself |
+
+**Drift** is a difference between the record and the actual state: something changed the resource without going through the tool. An engineer opened a firewall port by hand to debug a connection, a cleanup script removed a volume it believed unused, an operator started a virtual machine from a console. Drift is not the same as a pending change, a difference between the description and the record, which is simply what the next plan will do. Below, the word **drift** is used in a narrower sense still, for the case where only the world changed, while the description and the record still agree.
+
+```mermaid
+flowchart TD
+  accTitle: Three versions compared
+  accDescr: The desired state, the recorded state and a scan of the actual state all feed one comparison, which classifies each difference as pending, drift, conflict or stale record.
+  desired["desired: the description"] --> compare["compare each attribute"]
+  recorded["recorded: tool's record"] --> compare
+  scan["actual: a fresh scan"] --> compare
+  compare --> verdict["pending, drift, conflict, stale"]
+```
+
+<!-- text-of-mermaid sha256:718f155f6ab7c8078697e278ff7a71db2afc2be3e6280e0971545246ffbeb77c -->
+```text
+┌───────────────────────────────┐    ┌───────────────────────┐    ┌────────────────────┐
+│    desired: the description   │    │recorded: tool's record│    │actual: a fresh scan│
+└───────────────┬───────────────┘    └───────────┬───────────┘    └──────────┬─────────┘
+                ▼────────────────────────────────┴───────────────────────────┘
+┌───────────────────────────────┐
+│     compare each attribute    │
+└───────────────┬───────────────┘
+                ▼
+┌───────────────────────────────┐
+│pending, drift, conflict, stale│
+└───────────────────────────────┘
+```
+
+The drawing is the comparison of the example below. With three values per attribute, the comparison can say not only that something differs, but who changed it.
+
+- Description differs, record and world agree: a **pending** change, yours.
+- Record and description agree, world differs: **drift**, made outside the tool.
+- All three differ: a **conflict**, both changed the same attribute.
+- Description and world agree, record differs: the world already looks the way you want, and only the record lags behind, a **stale record**.
+
+Three more operations complete the picture. A **refresh** reads every managed resource and updates the record before planning. An **import** adopts a resource the tool never created: you give it an address, and the tool records the resource's identifier under that address, so that from then on the resource is managed. And a **reconciliation** decides what to do about drift: **revert** the resource to the description, **accept** the world's value into the description, or **alert** and leave the decision to a person.
+
+## A worked example
+
+Three resources are wanted and recorded; a scan finds two of them and one more. The record and the scan are matched by identifier, each attribute is classified from its three values, and the findings are printed grouped by verdict:
+
+```python examples/three_way.py
+"""Compare what you want, what the tool recorded, and what a scan of the real world found.
+
+The record and the scan are matched by the id the provider gave each resource, never by name.
+For each attribute, the three values tell apart a change you made in the description (pending),
+a change made outside the tool alone (drift), both at once (conflict), and a world that already
+agrees with what you want while the record lags behind (stale record). The findings are printed
+grouped by verdict.
+"""
+
+desired = {
+    "vm/build": {"cpus": "8", "memory_gb": "32", "image": "builder-7"},
+    "vm/docs": {"cpus": "2", "memory_gb": "4", "image": "web-3"},
+    "volume/cache": {"tier": "fast"},
+}
+recorded = {  # address -> (provider id, attributes when the tool last touched it)
+    "vm/build": ("vm-31", {"cpus": "4", "memory_gb": "16", "image": "builder-7"}),
+    "vm/docs": ("vm-32", {"cpus": "2", "memory_gb": "4", "image": "web-2"}),
+    "volume/cache": ("vol-b", {"tier": "fast"}),
+}
+scanned = {  # provider id -> (type, attributes now)
+    "vm-31": ("vm", {"cpus": "8", "memory_gb": "24", "image": "builder-7"}),
+    "vm-32": ("vm", {"cpus": "4", "memory_gb": "4", "image": "web-2"}),
+    "b-12": ("bucket", {"region": "south"}),
+}
+ORDER = ["unmanaged", "deleted outside the tool", "conflict", "drift", "pending", "stale record"]
+
+
+def classify(want: str | None, record: str | None, world: str | None) -> str:
+    if want == record == world:
+        return "in sync"
+    if world == record:
+        return "pending"
+    if want == record:
+        return "drift"
+    if want == world:
+        return "stale record"
+    return "conflict"
+
+
+findings: dict[str, list[str]] = {verdict: [] for verdict in ORDER}
+managed_ids = {resource_id for resource_id, _ in recorded.values()}
+for resource_id in sorted(scanned.keys() - managed_ids):
+    findings["unmanaged"].append(f"{resource_id} ({scanned[resource_id][0]}): no record names it")
+for address in sorted(recorded):
+    resource_id, record = recorded[address]
+    if resource_id not in scanned:
+        findings["deleted outside the tool"].append(f"{address} ({resource_id})")
+        continue
+    world, want = scanned[resource_id][1], desired.get(address, {})
+    for key in sorted(want.keys() | record.keys() | world.keys()):
+        values = want.get(key), record.get(key), world.get(key)
+        verdict = classify(*values)
+        if verdict != "in sync":
+            findings[verdict].append(
+                f"{address}.{key}: want={values[0]} record={values[1]} world={values[2]}")
+for verdict in ORDER:
+    for line in findings[verdict]:
+        print(f"{verdict:24} {line}")
+```
+
+It prints:
+
+```output examples/three_way.py
+unmanaged                b-12 (bucket): no record names it
+deleted outside the tool volume/cache (vol-b)
+conflict                 vm/build.memory_gb: want=32 record=16 world=24
+drift                    vm/docs.cpus: want=2 record=2 world=4
+pending                  vm/docs.image: want=web-3 record=web-2 world=web-2
+stale record             vm/build.cpus: want=8 record=4 world=8
+```
+
+- `b-12` exists, but no record names it: an **unmanaged** resource. It might be a forgotten experiment, or something that should be imported.
+- `volume/cache` is recorded with the identifier `vol-b`, which the scan did not find: it was **deleted outside the tool**. The next plan would create a new one; whether that is right depends on why it was deleted.
+- `vm/build.memory_gb` changed on both sides, to different values: 32 in the description, 24 in the world. A **conflict** that no rule can settle on its own.
+- `vm/docs.cpus` is `2` in the description and the record, `4` in the world: **drift**, perhaps someone gave the machine more processors to get through a busy day.
+- `vm/docs.image` is `web-3` in the description only: a **pending** change you made, which the next plan will carry out.
+- `vm/build.cpus` is `8` in the description and the world, but `4` in the record: someone made by hand the change you were about to make. Nothing needs to change in the world, only the record.
+
+## When to use it
+
+- **Before planning**, so that the plan starts from what is true rather than from what was true last time.
+- **On a schedule**, to notice hand-made changes soon after they happen, while the person who made them still remembers why.
+- **After an incident**, to list what was changed by hand, and decide for each change whether to keep it (put it into the description) or undo it.
+- **When adopting existing infrastructure**: import each resource under an address, describe it, and check that the plan is empty before trusting the tool with it.
+
+## Common traps
+
+- **Matching by name instead of identifier.** A server deleted and created again by hand can have the same name and be a different resource, with different data. Match the record to the world by the provider's identifier.
+- **False alarms.** Some attributes change on their own: a last-modified time, a counter the provider updates. Some look different while meaning the same: a list in another order, a value the provider fills in with a default. Reported as drift, they bury the real changes, and people stop reading. But every rule that hides a difference also hides the real drift on that attribute.
+- **Reverting a deliberate change.** An automatic revert undoes the hand-made fix that kept a service alive during an incident. For sensitive resources, alert first and let a person choose.
+- **Importing without describing.** An imported resource that the description does not mention is recorded and not desired, so the next plan deletes it. Describe it first, then check that the plan is empty.
+- **Two people applying from the same record.** Both plan from the same record, both apply, and the record ends up reflecting only the last apply, while the world holds both changes. Lock the record while planning and applying, and refuse a plan whose record has changed since, as the [plan guide](../plan-and-apply/guide.md) does with its fingerprint.
+- **A record that holds secrets.** The record keeps every attribute the tool saw, including passwords and keys the provider generated. Store it encrypted and give access to it as you would to the secrets themselves.
+
+## Complexity
+
+For `N` resources with up to `K` attributes each, with the record kept as a hash map from address to identifier and attributes, and the scan as a hash map from identifier to attributes:
+
+| Step | Time | Space |
+|------|------|-------|
+| Match each record to the scan | O(N) average | O(N) for the set of managed identifiers |
+| Compare three values per attribute | O(N · K) average | O(1) per attribute |
+| List the unmanaged resources | O(N) average, O(N log N) sorted | O(N) |
+| A scan | one provider call per resource, or per page of a listing | O(N · K) |
+
+The scan dominates, as it is made of provider calls. The comparison itself is linear in the size of the three versions.
+
+## Expert notes
+
+- **What only the record knows.** The world can be scanned again and the description read again, but two things exist only in the record: which real resources this description manages, and which address each of them stands for. Lose the record, and the tool can no longer tell its server from someone else's, nor delete what it created. Back it up and keep its history.
+- **Identity over time.** After a replacement, the same address stands for a new identifier. Keeping the old identifiers in the record's history is what lets you answer "which machine was `vm/build` last Tuesday?".
+- **A three-way merge.** The record plays the part that a common ancestor plays when merging two branches of code: without it, two versions can only say that they differ; with it, the comparison can say which side changed.
+- **Lists that are really sets.** RFC 8259 defines a JSON array as an ordered sequence of values. A provider may still treat a list, such as the ports a firewall opens, as a set and return it in any order. Nothing in the data says which kind of list it is, so the comparison has to be told, attribute by attribute.
+- **Naming an attribute inside a resource.** A rule that ignores one attribute, or a report of where drift is, needs to name a location inside a nested resource. JSON Pointer, RFC 6901, does this: `/tags/team` is the member `team` of the member `tags`, `/ports/0` the first item of a list, and a `~` or a `/` inside a name is written `~0` or `~1`.
+
+## Practice
+
+- `cstudy start drift-detection`: records compared with a scan by identifier, reporting changed, deleted and unmanaged resources; ignore rules and comparisons that see the same meaning in another form; importing resources and planning against the record; then policies that revert, accept or alert.
+
+## Further reading
+
+- [RFC 8259, *The JavaScript Object Notation (JSON) Data Interchange Format*](https://www.rfc-editor.org/rfc/rfc8259): objects and ordered arrays.
+- [RFC 6901, *JavaScript Object Notation (JSON) Pointer*](https://www.rfc-editor.org/rfc/rfc6901): naming a location inside a JSON document, and its two escapes.
