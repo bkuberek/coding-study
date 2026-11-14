@@ -35,5 +35,5 @@ comparator: {type: ops}
 approaches:
   - {id: timer-and-windows, name: "Segment list with una and nxt marks, one retransmission timer and two windows", role: optimal, time: "O(k) per receive of k bytes; O(s) per sender call over s segments", space: "O(b + s) for b held bytes and s segments", time_class: "n", space_class: "n"}
 related: [stream-reassembler, http-message-parser, dns-resolver-sim]
-guides: [reliable-transport, congestion-control]
+guides: [reliable-transport, congestion-control, idempotency-and-exactly-once]
 estimate_minutes: 120

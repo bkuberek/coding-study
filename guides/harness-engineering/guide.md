@@ -334,6 +334,7 @@ Compaction changes the growth: with the context held under a fraction of `W`, ea
 - `cstudy start loop-controller`: the budgets and stopping rules around an agent's loop.
 - `cstudy start tool-permission-gate`: allow, ask and deny decisions for proposed tool calls.
 - `cstudy start context-compaction`: keeping a growing context inside its window.
+- `cstudy start agent-job-workers`: agent runs as background jobs: leases so that a crashed worker's job is not lost, each step's output kept in a shared store so that the next worker resumes instead of starting over, a pool of workers sized by the backlog, and a gateway in front of the tools.
 
 ## Further reading
 

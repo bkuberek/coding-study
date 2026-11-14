@@ -305,6 +305,7 @@ Jitter costs nothing in total load: it moves attempts in time, which lowers the 
 ## Practice
 
 - `cstudy start vendor-retry-client-typescript`: grow a client for an unreliable service, level by level: exponential backoff, jitter you can test, retrying only what is safe to repeat, `Retry-After`, a deadline budget, and a circuit breaker.
+- `cstudy start agent-job-workers`: in level 4, a gateway between agent workers and the tools they call: rate limits per tenant and per tool, retries with exponential backoff up to a cap, and a circuit breaker shared by every call to a tool.
 
 ## Further reading
 

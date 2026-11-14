@@ -222,7 +222,7 @@ Papers are cited by their authors. The affiliations printed in the papers are no
 
 ## Practice links
 
-Every problem is on the main branch. Each guide's `problems:` names it in `## Practice`, and each problem's `meta.yaml` names its guides in `guides:`, after `related:`:
+Every problem is on the main branch, except `agent-job-workers`, which joins with these guides. Each guide's `problems:` names it in `## Practice`, and each problem's `meta.yaml` names its guides in `guides:`, after `related:`. The last four rows link `idempotency-and-exactly-once` to problems of other tracks, which are not steps of the path:
 
 | Problem | `guides:` | Path step |
 |---------|-----------|-----------|
@@ -234,6 +234,10 @@ Every problem is on the main branch. Each guide's `problems:` names it in `## Pr
 | 0368 `mvcc-snapshot-isolation` | `[consistency-models]` | After `consistency-models` |
 | 0371 `crdt-replicas` | `[crdts]` | After `crdts` |
 | 0372 `raft-sim` | `[consensus-with-raft]` | After `consensus-with-raft` |
+| 0274 `vendor-retry-client-typescript` | `[deterministic-tests, retries-and-idempotency, idempotency-and-exactly-once]` | None |
+| 0279 `payment-webhook-receiver-typescript` | `[authentication-and-authorization, idempotency-and-exactly-once]` | None |
+| 0358 `reliable-transport-sim` | `[reliable-transport, congestion-control, idempotency-and-exactly-once]` | None |
+| 0384 `agent-job-workers` | `[harness-engineering, idempotency-and-exactly-once, retries-and-idempotency]` | None |
 
 `hash-functions` keeps its link to `consistent-hash-ring`.
 
@@ -252,6 +256,10 @@ Each guide teaches its idea with examples of its own. These are the places where
 | `mvcc-snapshot-isolation` | `consistency-models` | Snapshot isolation, first-committer-wins and write skew, from Berenson et al., which the statement also explains | Version lists, the read rule, antidependencies, dangerous structures and their detection (level 3), the horizon and vacuum (level 4) |
 | `crdt-replicas` | `crdts` | The three laws, which the statement states; union and maximum as semilattices; that a removal must leave information behind; last-writer-wins with ties broken by replica id, which level 2's statement specifies | The per-replica counter design (hints 2 and 5), tags for adds (hint 3), the last-writer-wins code, delta sync and acknowledgements (level 4, hint 4); when removal information can be forgotten (follow-up 1); the paper's counter, U-Set and graph sections; that a vector clock is a CRDT |
 | `raft-sim` | `consensus-with-raft` | Roles, terms, elections, randomized timeouts (near follow-up 6), commit by majority, the consistency check and retry, the up-to-date rule and the Figure 8 rule, all in the statement; that a new leader first commits an entry of its own term before answering reads without the log, without the reason; a model of split votes that has no logs or messages | Handlers, the message table, the order of the vote checks, `nextIndex` and `matchIndex` bookkeeping (hint 4), the commit walk (hint 5), the blank entry, Pre-Vote, the conflict-term optimization, persistence and batching (follow-ups 1 to 5) |
+| `vendor-retry-client-typescript` | `idempotency-and-exactly-once` | RFC 9110's rule against retrying a request that is not idempotent without a way to detect a repeat, and an id sent on every retry of one change, the reasoning behind level 3's table, which the statement gives | The table as one function (hint 3), which answers retry or stop for a keyed and an unkeyed `POST`; resets, timeouts, backoff, jitter, `Retry-After`, deadlines and the breaker (levels 1, 2 and 4 to 6); a vendor API that tells an unknown outcome (follow-up 4) |
+| `payment-webhook-receiver-typescript` | `idempotency-and-exactly-once` | Deliveries repeated until acknowledged, an id chosen by whoever decides the change, the record of the id and the effect together, and a failure before the commit that leaves no trace, which levels 2 and 4 state; order decided by version numbers, not by deduplication, which level 3 states; ids kept as long as duplicates can arrive, near follow-up 2 in general, and the id stored with the effect, near follow-up 3 | A reused id with different content (hint 4), the replay window, holding and the sequence per order, the transitions, filling a gap whole or not at all (hint 5), the events API, signatures (level 1, hints 1 to 3) |
+| `reliable-transport-sim` | `idempotency-and-exactly-once` | At least once plus duplicates discarded, the recipe of levels 1 and 2, which the statement gives for bytes; the guide never mentions segments or TCP | The byte map (hint 1), overlaps, held bytes and the cumulative ACK; the sender's list with `una` and `nxt` (hint 2), the timer, the window and congestion control (levels 2 to 4); wrapping sequence numbers and zero-window probes (follow-ups 1 and 2) |
+| `agent-job-workers` | `idempotency-and-exactly-once` | An id chosen before the first attempt makes a repeated request harmless, as `submit` and a repeated `checkpoint` are in levels 1 and 2; a crashed consumer's message delivered again, as a crashed worker's job is claimed again | Leases, heartbeats and the order of `complete`'s checks (level 1, hints 1 to 3); the `gap` rule and the lease renewed by a checkpoint (hint 4); a number that grows with every claim, against late writes (follow-up 1); a job that crashes every worker (follow-up 2); scaling and the gateway (levels 3 and 4) |
 
 ## Independent accuracy review
 

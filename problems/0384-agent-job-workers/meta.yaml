@@ -41,5 +41,5 @@ comparator: {type: ops}
 approaches:
   - {id: lazy-leases, name: "Lazy leases, a step log per job, a backlog rule, and buckets and breakers updated on demand", role: optimal, time: "O(j) per claim for j jobs, O(s) per progress for s saved steps, O(a) per call for a attempts, O(1) otherwise", space: "O(j + s) for j jobs and s saved steps", time_class: "n", space_class: "n"}
 related: [postgres-job-queue-typescript, vendor-retry-client-typescript, api-gateway, token-bucket-limiter, loop-controller, cache-and-router, job-scheduler, idempotent-document-consumer-typescript, llm-gateway-typescript, tool-calling-agent-loop-typescript]
-guides: [harness-engineering]
+guides: [harness-engineering, idempotency-and-exactly-once, retries-and-idempotency]
 estimate_minutes: 150

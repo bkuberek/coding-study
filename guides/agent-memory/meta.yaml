@@ -4,4 +4,4 @@ summary: Working, episodic, semantic and procedural memory, and the forms they t
 level: core
 prerequisites: [embeddings-and-vector-search, agents-and-workflows]
 related: [retrieval-augmented-generation, tokens-and-sampling, harness-engineering]
-problems: [memory-store, chat-history-index, forgettable-inverted-index, versioned-memory-store, memory-facts-with-merge, graphrag-context]
+problems: [memory-store, chat-history-index, forgettable-inverted-index, versioned-memory-store, memory-facts-with-merge, graphrag-context, grounded-memory-store]

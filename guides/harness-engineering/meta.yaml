@@ -4,4 +4,4 @@ summary: The loop around an agent and the environment it works in, from permissi
 level: advanced
 prerequisites: [tools-and-mcp, agent-memory]
 related: [evaluating-llm-applications, agents-and-workflows, tracing-agent-runs]
-problems: [tool-calling-agent-loop-typescript, loop-controller, tool-permission-gate, context-compaction]
+problems: [tool-calling-agent-loop-typescript, loop-controller, tool-permission-gate, context-compaction, agent-job-workers]

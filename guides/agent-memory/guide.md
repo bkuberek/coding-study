@@ -266,6 +266,7 @@ Retrieval for one user is usually small enough for an exact scan; the cost that 
 - `cstudy start versioned-memory-store`: a shared memory whose writes name the version they read, so no writer erases an update unseen.
 - `cstudy start memory-facts-with-merge`: semantic memory as facts per user, with versions, reads as of a time, merges between two stores, and export and import.
 - `cstudy start graphrag-context`: graph memory turned into context: the facts around an entity, ranked, packed into a budget, each with its path.
+- `cstudy start grounded-memory-store`: memories that record where they came from: each cites a receipt of the text it rests on, goes stale when that text changes, is checked again or contradicted, and is recalled only while it holds.
 
 ## Further reading
 

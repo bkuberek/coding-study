@@ -239,15 +239,16 @@ The guides name no company, product or vendor. They name protocols and standards
 
 ## Practice links
 
-The guides and the path link five problems, all on main. Each problem's `meta.yaml` lists its guides after `related:`:
+The guides and the path link six problems, all on main except `agent-job-workers`, which `retries-and-idempotency` links outside the path. Each problem's `meta.yaml` lists its guides after `related:`:
 
 | Problem | `guides:` | Path step |
 |---------|-----------|-----------|
 | 0357 `dns-resolver-sim` | `[dns-resolution]` | after `dns-resolution` |
 | 0261 `stream-reassembler` | `[reliable-transport]` | after `reliable-transport` |
-| 0358 `reliable-transport-sim` | `[reliable-transport, congestion-control]` | level 3 after `reliable-transport`, all levels after `congestion-control` |
+| 0358 `reliable-transport-sim` | `[reliable-transport, congestion-control, idempotency-and-exactly-once]` | level 3 after `reliable-transport`, all levels after `congestion-control` |
 | 0356 `http-message-parser` | `[http-messages]` | after `http-messages` |
-| 0274 `vendor-retry-client-typescript` | `[retries-and-idempotency]` | after `retries-and-idempotency` |
+| 0274 `vendor-retry-client-typescript` | `[deterministic-tests, retries-and-idempotency, idempotency-and-exactly-once]` | after `retries-and-idempotency` |
+| 0384 `agent-job-workers` | `[harness-engineering, idempotency-and-exactly-once, retries-and-idempotency]` | none |
 
 `network-layers` links no problem; its practice section points to the later guides.
 
@@ -263,6 +264,7 @@ Each guide was read against the statement and the solution explanation of every 
 | `congestion-control` | `reliable-transport-sim` level 4, hint 5 | RFC 5681's rules as the RFC states them, which the statement also states, simplified; a round-by-round model in segments; the trap of halving cwnd instead of the flight size, which matches the explanation's pitfall for `h26`; RFC 5681's note that fast recovery handles several losses poorly, with SACK named as further reading (follow-up 4) | What SACK carries and how it repairs several losses; per-ACK byte counting in congestion avoidance and its count rule; the trace rows; holding ssthresh on a repeated timeout; resetting the duplicate count; any sender code |
 | `http-messages` | `http-message-parser` levels 2 to 4, hints 1 to 3 | RFC 9112's framing precedence, the chunked grammar, the strictness rules and smuggling; a chunked encoder (the sending side); a reader of complete responses framed only by Content-Length, without checks, close to level 2's body by length; traps on splitting on any whitespace, on taking the first Content-Length, and on a chunk size that wraps to 0; the HEAD trap, which answers follow-up 3 in general; RFC 9112's warning against parsing as Unicode, which the explanation's trade-offs also cite | A chunked decoder (hint 3); a staged parse that waits for more bytes (hint 4); searching for the head's end within the limit (hint 5); counting significant digits against overflow (hint 6); the problem's error codes and the order of its checks |
 | `retries-and-idempotency` | `vendor-retry-client-typescript` levels 1 to 6, follow-ups 1 and 3 | Safe and idempotent methods; backoff and jitter with schedules of its own (ceilings of 1 to 8 seconds, full and half jitter), not the problem's 100 ms base or floor; honoring Retry-After for every request to the server, as the statement's level 4 says; 502 and 504 as unknown outcomes for a non-idempotent request, the reasoning behind the level 3 table; deadlines and circuit breakers in a paragraph each, as levels 5 and 6 describe them; retries multiplying across layers, the 27 times of the drawing (the premise of follow-up 3), and a retry budget defined (follow-up 1) | Where retries should live (follow-up 3), and where a budget goes (follow-up 1); the verdict table as one function (hint 3); the client-wide hold as one number (hint 4); the timeout race (hint 5); the breaker's before and after calls (hint 6); the problem's wait formula and when a fraction is drawn |
+| `retries-and-idempotency` | `agent-job-workers` level 4, follow-ups 5 and 6 | Exponential backoff that doubles up to a cap, and a circuit breaker that stops calling a failing dependency for a cool-down and then lets one trial through, in a sentence each, as the statement defines them with its own formula; jitter and a seeded generator, which answer follow-up 5 in general; nothing on many calls during a trial (follow-up 6) | Token buckets, their refill and the order of the gateway's three checks; a refused attempt that takes no token; failures counted in a row across calls and tenants; the breaker's state computed from its opening time (hint 7); asking every bucket before taking from any (hint 6); the call's row and its end time |
 
 ## Independent accuracy review (2026-11-13)
 

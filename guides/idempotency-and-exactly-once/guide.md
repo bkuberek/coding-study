@@ -183,6 +183,10 @@ The stream processing paper adds a fast path: a Bloom filter, a compact set that
 
 - `cstudy start idempotent-document-consumer-typescript`: a consumer of a queue that delivers at least once: duplicates, retries by the producer, messages out of order, messages that can never succeed, and crashes before the acknowledgement.
 - `cstudy start transactional-outbox-typescript`: commit a change, its audit row and its event as one, then relay the events to a broker that fails and loses acknowledgements, in order per rental, to a consumer that applies each event once.
+- `cstudy start vendor-retry-client-typescript`: the client's side: a client that retries only what is safe to repeat, sends the same key on every attempt of a request that has one, and reports an unknown outcome when it cannot tell whether the work was done.
+- `cstudy start payment-webhook-receiver-typescript`: a receiver of signed payment events that the provider delivers at least once, late and out of order, and that must apply each event once and in its order.
+- `cstudy start reliable-transport-sim`: the same recipe one layer down: segments resent until acknowledged, and a receiver that uses their sequence numbers to deliver each byte once and in order, then a sliding window and congestion control.
+- `cstudy start agent-job-workers`: background jobs for agents: jobs submitted under ids that a client can send twice, leases that let another worker run a crashed worker's job again, and step outputs saved once each, so that a resumed job repeats no step.
 
 ## Further reading
 

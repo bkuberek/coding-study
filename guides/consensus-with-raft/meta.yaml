@@ -3,5 +3,5 @@ title: Consensus with Raft
 summary: How a group of servers agrees on one log of commands despite crashes, lost messages and partitions; majorities, terms, elections with randomized timeouts, log replication, and the rules that keep committed entries.
 level: advanced
 prerequisites: [replication-and-quorums]
-related: [time-and-order, consistency-models, idempotency-and-exactly-once]
+related: [time-and-order, consistency-models, idempotency-and-exactly-once, retries-and-idempotency]
 problems: [raft-sim]

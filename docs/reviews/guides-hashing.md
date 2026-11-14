@@ -78,6 +78,14 @@ The seven guides of the path "Hashing: from your first hash map to content-addre
 |---------|-------|--------------------------|-----------|
 | `consistent-hash-ring` | hash-functions | Its statement explains why plain modulo placement moves almost every key, and specifies FNV-1a. The guide teaches the hash-then-modulo step, spreading, and a count of how keys of the form `user0` to `user999` fill the buckets, which answers follow-up 5 in general | The ring, its sorted points and the search for the next point (hint 2), virtual nodes and their labels, arcs, moves, replicas and bounded loads; FNV is not mentioned |
 
+## Spoiler check of grounded-memory-store
+
+`grounded-memory-store` (0385) names cryptographic-hashes as a guide, and the guide lists it in its practice section; it is not a step of the path.
+
+| Problem | Guide | Overlap the guide states | Kept back |
+|---------|-------|--------------------------|-----------|
+| `grounded-memory-store` | cryptographic-hashes | Its statement defines the receipt as the first 12 hexadecimal characters of a SHA-256 digest and says how to compute it. The guide teaches that a digest proves data unchanged and that a one-letter change flips about half the bits; its birthday bound, about 2^(n/2) inputs for an `n`-bit digest, answers follow-up 1 in general, and its Merkle proofs are one answer to follow-up 2 | Truncation, citations and what makes one current, status computed from receipts (hint 2), versions and `behind` (hint 3), verification, derived claims and their order (hint 4), recall and the report (hint 5). The examples hash records, chains and files, never a source cited by a claim |
+
 ## Changes from the first accuracy review (2026-11-11)
 
 The review found no factual errors that needed rework; these are its findings and what changed.
