@@ -33,7 +33,7 @@ log loss = average of  -ln(p)      for an example labelled 1
                        -ln(1 - p)  for an example labelled 0
 ```
 
-`ln` is the natural logarithm. A confident right answer costs almost nothing; a confident wrong answer costs a lot, without limit as the probability of the right answer goes to 0. It is the negative log-likelihood of the labels, also called the **cross-entropy** between the data and the model, a name that covers any number of classes.
+`ln` is the natural logarithm. A confident right answer costs almost nothing; a confident wrong answer costs a lot, without limit as the probability of the right answer goes to 0. It is the negative log-likelihood of the labels (how unlikely the model found what really happened), also called the **cross-entropy** between the data and the model, a name that covers any number of classes.
 
 ```mermaid
 flowchart LR
@@ -173,7 +173,7 @@ The first table shows that the log odds undo the sigmoid, and that the sigmoid i
 - **Logistic regression** when the label is yes or no and you want a probability, not only an answer: to rank cases, to choose a threshold later, or to combine with costs.
 - **Both as a baseline**, before anything more complex. A more complex model has to beat them on the validation set to earn its cost.
 - **Not when the relationship bends** and the features cannot express the bend. A delivery that takes the same time up to 5 km and then grows needs a feature that captures it, such as the distance beyond 5 km, or a model that is not linear.
-- **Not squared error for probabilities.** Training a probability with the MSE works poorly with gradient methods, as the expert notes explain; use the log loss.
+- **Not squared error for probabilities.** Training a probability with the MSE works poorly when training by gradient descent, the next guide's method, as the expert notes explain; use the log loss.
 
 ## Common traps
 
@@ -199,7 +199,7 @@ For `n` examples with `d` features:
 
 ## Expert notes
 
-- **The normal equations.** In *The Elements of Statistical Learning* (§2.3.1), Hastie, Tibshirani and Friedman write the residual sum of squares as a quadratic function of the weights, whose minimum always exists but may not be unique. Setting its gradient to zero gives the **normal equations** `X^T (y - X b) = 0`, where `X` holds one row of features per example (with a 1 for the bias) and `y` the labels; when `X^T X` can be inverted, the unique solution is `(X^T X)^(-1) X^T y`. They also note that the intercept is what machine learning calls the bias.
+- **The normal equations.** In *The Elements of Statistical Learning* (§2.3.1), Hastie, Tibshirani and Friedman write the residual sum of squares as a quadratic function of the weights, whose minimum always exists but may not be unique. Setting its gradient to zero gives the **normal equations** `X^T (y - X w) = 0`, where `X` holds one row of features per example (with a 1 for the bias), `y` the labels, and `w` holds the bias and the weights; when `X^T X` can be inverted, the unique solution is `w = (X^T X)^(-1) X^T y`. They also note that the intercept is what machine learning calls the bias.
 - **Why squared error, and why log loss.** Goodfellow, Bengio and Courville (*Deep Learning*, §5.5.1) show that if the labels are the model's prediction plus Gaussian noise, maximizing the likelihood of the data gives the same weights as minimizing the MSE. Logistic regression (§5.7.1) is the same idea for a yes-or-no label: a sigmoid turns the linear function into the probability of class 1, there is no closed-form solution, and the weights are found by minimizing the negative log-likelihood, which is the log loss, with gradient descent.
 - **What a loss estimates.** With unlimited data, minimizing the squared error gives a function that predicts the mean of the label for each input, and minimizing the absolute error one that predicts the median (*Deep Learning*, §6.2.1.2). That is why the MSE is pulled hard by a few huge residuals and the absolute error is not.
 - **Saturation.** The sigmoid flattens out toward 0 and 1. With the squared error, the gradient flattens with it, and becomes too small to learn from whether the answer is right or wrong; the log loss cancels the flattening, so maximum likelihood is almost always the preferred way to train a sigmoid output (*Deep Learning*, §6.2.2.2).

@@ -165,7 +165,7 @@ For `n` test cases:
 | Check | Cost |
 |-------|------|
 | A metric with its confusion matrix | O(n) |
-| Paired bootstrap with `B` resamples | O(B n) time, O(B) to keep and sort the differences, plus O(B log B) to sort |
+| Paired bootstrap with `B` resamples | O(B n + B log B) time; O(B) space for the differences |
 | Metrics per group, for `g` groups | O(n) with a hash map from group to counts, O(g) space |
 | Recomputing precision at another base rate | O(1) from the recall and the false positive rate |
 | Nested cross-validation | Each outer fold repeats the whole inner choice; see [cross-validation](../cross-validation/guide.md) |

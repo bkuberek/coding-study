@@ -173,7 +173,7 @@ Here all the data is used to compute the mean and the spread, because nothing is
 
 ## When to use it
 
-- **When there is no formula**: logistic regression, neural networks, and most losses with a penalty that has no closed form.
+- **When there is no formula**: logistic regression, neural networks, and penalties with no closed form, such as L2 on a large model (an L1 penalty needs a variant, since `|w|` has no slope at 0).
 - **When the formula is too expensive**: least squares through the normal equations costs about `d³` for `d` features, and gradient steps can be cheaper when `d` is large.
 - **When the data is too large to read at every step**: stochastic and minibatch gradient descent, below, take each step from a small sample.
 - **Not when a closed form exists and is cheap**: linear regression on a few features is solved exactly, in one pass, by least squares.

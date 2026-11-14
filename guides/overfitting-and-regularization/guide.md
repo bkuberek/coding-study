@@ -12,7 +12,7 @@ How much freedom a model has is its **capacity**: roughly, how many different sh
 | **Good fit** | Low | Small | |
 | **Overfitting** | Low | Large | Less capacity, more data, or regularization |
 
-The trade-off has a name. Picture training the same kind of model many times, each time on a fresh sample of training data, and asking about one input. The model's average prediction misses the truth by its **bias**, which is large for a rigid model; its predictions scatter around that average by their **variance**, which is large for a flexible model that bends to each sample. The expected squared error is the noise plus the bias squared plus the variance, and as capacity grows the bias falls while the variance rises. The best model sits in between.
+The trade-off has a name, the **bias-variance trade-off**. Picture training the same kind of model many times, each time on a fresh sample of training data, and asking about one input. The model's average prediction misses the truth by its **bias** (not the bias `b` of a linear model: the same word, a different thing), which is large for a rigid model; its predictions scatter around that average by their **variance**, which is large for a flexible model that bends to each sample. The expected squared error is the noise plus the bias squared plus the variance, and as capacity grows the bias falls while the variance rises. The best model sits in between.
 
 **Regularization** is any change to training that lowers the variance at the price of a little bias. Three are classic:
 
@@ -100,7 +100,7 @@ With `k = 1` the training error is 0, since each training example is its own nea
 
 ### A penalty: two features that agree
 
-Two inspectors measure the size of the same flats, each with a small error, so the two features almost always agree, and the price depends on the true size. With ten training examples, least squares can fit the noise by setting a large positive weight on one measurement and a large negative one on the other, since their difference is tiny everywhere it was seen. Ridge regression adds the strength to the diagonal of the equations that least squares solves.
+Two inspectors measure the size of the same flats, each with a small error, so the two features almost always agree, and the price depends on the true size. With ten training examples, least squares can fit the noise by setting a large positive weight on one measurement and a large negative one on the other, since their difference is tiny everywhere it was seen. Ridge regression adds `strength * (w1^2 + w2^2)` to the mean squared error; in the equations that least squares solves, written with sums over the examples, that adds `n * strength` to the diagonal, `n` being the number of training examples.
 
 ```python examples/ridge_shrinkage.py
 """Least squares and ridge regression on two features that almost always agree.
@@ -108,7 +108,8 @@ Two inspectors measure the size of the same flats, each with a small error, so t
 Two inspectors measure the size of the same flats, each with small errors, and the label depends
 on the true size. With ten training examples, least squares can trade a huge weight on one
 measurement against a huge negative weight on the other. Ridge regression adds a penalty on the
-squared weights, which in the equations below adds the strength to the diagonal.
+squared weights to the mean squared error, which in the equations below, written with sums,
+adds n times the strength to the diagonal, n being the number of training examples.
 """
 
 import random
@@ -136,9 +137,10 @@ def centred(rows):
 
 def fit(strength: float) -> tuple[float, float]:
     rows = centred(train)
-    a = sum(x1 * x1 for x1, _, _ in rows) + strength
+    n = len(train)
+    a = sum(x1 * x1 for x1, _, _ in rows) + n * strength
     b = sum(x1 * x2 for x1, x2, _ in rows)
-    c = sum(x2 * x2 for _, x2, _ in rows) + strength
+    c = sum(x2 * x2 for _, x2, _ in rows) + n * strength
     p = sum(x1 * y for x1, _, y in rows)
     q = sum(x2 * y for _, x2, y in rows)
     det = a * c - b * b  # solve [[a, b], [b, c]] @ [w1, w2] = [p, q]
@@ -150,7 +152,7 @@ def mse(rows, w1: float, w2: float) -> float:
 
 
 print("strength      w1      w2   training MSE   test MSE")
-for strength in [0, 0.1, 1, 10]:
+for strength in [0, 0.01, 0.1, 1]:
     w1, w2 = fit(strength)
     errors = f"{mse(train, w1, w2):12.3f}   {mse(test, w1, w2):8.3f}"
     print(f"{strength:8} {w1:7.2f} {w2:7.2f}   {errors}")
@@ -161,12 +163,12 @@ It prints:
 ```output examples/ridge_shrinkage.py
 strength      w1      w2   training MSE   test MSE
        0   10.20   -8.25          0.108      0.478
-     0.1    1.33    0.67          0.166      0.351
-       1    1.02    0.95          0.174      0.354
-      10    0.85    0.84          0.431      0.570
+    0.01    1.33    0.67          0.166      0.351
+     0.1    1.02    0.95          0.174      0.354
+       1    0.85    0.84          0.431      0.570
 ```
 
-Without a penalty the weights are 10.20 and -8.25. They add up to about 2, the true effect of the size, so on the training flats the predictions are fine, but the difference between the two measurements, which is pure noise, now moves the price ten times as much as it should: the test error is more than four times the training error. A strength of 0.1 already brings the weights to 1.33 and 0.67, and a strength of 1 to about 1 each, sharing the effect; the training error rises a little and the test error falls by a quarter. At 10 the penalty dominates, both weights shrink toward zero, and both errors rise: too much bias. Somewhere between too little and too much is the strength to keep, and only validation data can say where.
+Without a penalty the weights are 10.20 and -8.25. They add up to about 2, the true effect of the size, so on the training flats the predictions are fine, but the difference between the two measurements, which is pure noise, now moves the price by about 9 for every unit the two measurements disagree, when it should not move it at all: the test error is more than four times the training error. A strength of 0.01 already brings the weights to 1.33 and 0.67, and a strength of 0.1 to about 1 each, sharing the effect; the training error rises a little and the test error falls by a quarter. At 1 the penalty dominates, both weights shrink toward zero, and both errors rise: too much bias. Somewhere between too little and too much is the strength to keep, and only validation data can say where.
 
 ## When to use it
 
@@ -191,7 +193,7 @@ Without a penalty the weights are 10.20 and -8.25. They add up to about 2, the t
 | Method | Extra cost |
 |--------|------------|
 | L2 penalty with gradient descent | O(d) per step to add `2 * strength * w` to each slope |
-| Ridge regression in closed form | The same O(n d² + d³) as least squares: the strength is added to the diagonal before solving |
+| Ridge regression in closed form | The same O(n d² + d³) as least squares: `n * strength` is added to the diagonal before solving |
 | L1 penalty | No closed form in general; iterative methods, each step O(n d) |
 | Early stopping | One validation error per step, O(v d) for `v` validation examples, plus O(d) to keep the best weights |
 | Choosing the strength among `s` values | `s` trainings, times the number of folds with cross-validation |

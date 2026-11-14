@@ -118,7 +118,7 @@ blocks after a shuffle   positives held out [4, 1, 1], left to learn from [2, 5,
 stratified               positives held out [2, 2, 2], left to learn from [4, 4, 4]
 ```
 
-Cut as stored, the first two folds hold out no positive at all, so their recall cannot even be measured, and the third fold's model trains on no positive: it can only ever say no. Shuffling first fixes the worst of it, but by chance one fold holds out four of the six positives and leaves its model only two to learn from. Stratified folds deal each class round the folds separately, so every fold holds out two and learns from four. With a rare class, that difference is the difference between three comparable measurements and three that measure different things.
+Cut as stored, the first two folds hold out no positive at all, so how many positives the model finds cannot even be measured, and the third fold's model trains on no positive: it can only ever say no. Shuffling first fixes the worst of it, but by chance one fold holds out four of the six positives and leaves its model only two to learn from. Stratified folds deal each class round the folds separately, so every fold holds out two and learns from four. With a rare class, that difference is the difference between three comparable measurements and three that measure different things.
 
 ### The best of many is too good
 
@@ -176,7 +176,7 @@ The median model scores about what it is worth, but the scores spread from 32.5%
 - **Reporting the winner's cross-validation score as its expected performance.** It is the best of several, as the example shows. Measure the final model on a test set, or nest the choice.
 - **Random folds on data sorted in time.** Each fold then trains on the future of the examples it validates.
 - **Comparing models on different folds.** The split itself moves the score; use the same folds for every candidate.
-- **Trusting a tiny difference.** The folds overlap in their training data, so their scores are not independent measurements, and a naive standard error from them is too small, as the expert notes explain.
+- **Trusting a tiny difference.** The folds overlap in their training data, so their scores are not independent measurements, and an error bar computed as if they were independent is too small, as the expert notes explain.
 
 ## Complexity
 

@@ -3,7 +3,8 @@
 Two inspectors measure the size of the same flats, each with small errors, and the label depends
 on the true size. With ten training examples, least squares can trade a huge weight on one
 measurement against a huge negative weight on the other. Ridge regression adds a penalty on the
-squared weights, which in the equations below adds the strength to the diagonal.
+squared weights to the mean squared error, which in the equations below, written with sums,
+adds n times the strength to the diagonal, n being the number of training examples.
 """
 
 import random
@@ -31,9 +32,10 @@ def centred(rows):
 
 def fit(strength: float) -> tuple[float, float]:
     rows = centred(train)
-    a = sum(x1 * x1 for x1, _, _ in rows) + strength
+    n = len(train)
+    a = sum(x1 * x1 for x1, _, _ in rows) + n * strength
     b = sum(x1 * x2 for x1, x2, _ in rows)
-    c = sum(x2 * x2 for _, x2, _ in rows) + strength
+    c = sum(x2 * x2 for _, x2, _ in rows) + n * strength
     p = sum(x1 * y for x1, _, y in rows)
     q = sum(x2 * y for _, x2, y in rows)
     det = a * c - b * b  # solve [[a, b], [b, c]] @ [w1, w2] = [p, q]
@@ -45,7 +47,7 @@ def mse(rows, w1: float, w2: float) -> float:
 
 
 print("strength      w1      w2   training MSE   test MSE")
-for strength in [0, 0.1, 1, 10]:
+for strength in [0, 0.01, 0.1, 1]:
     w1, w2 = fit(strength)
     errors = f"{mse(train, w1, w2):12.3f}   {mse(test, w1, w2):8.3f}"
     print(f"{strength:8} {w1:7.2f} {w2:7.2f}   {errors}")

@@ -146,7 +146,7 @@ Nothing in the code is wrong, and no number is computed badly. The leak is in th
 
 - **Measuring on the training set.** A model that memorized its examples scores perfectly on them. Training error says how well the model fits, not how well it generalizes.
 - **Preprocessing before splitting.** A scaler, an average used to fill in missing values, or new examples made up to balance the classes, computed on all the data, carry information from the test rows into training.
-- **Choosing features on all the data.** Picking the features that correlate best with the label, and only then splitting, lets the test labels vote on the features. The expert notes quote a case where this turns a coin flip into a 3% error rate.
+- **Choosing features on all the data.** Picking the features that move most closely with the label, and only then splitting, lets the test labels vote on the features. The expert notes describe a case where this turns a coin flip into a 3% error rate.
 - **Duplicates across the split.** The same example, or a near copy, in both sets turns the test into a memory check.
 - **Groups across the split.** Several rows of one customer, one patient or one machine on both sides, as in the example.
 - **The future in the training set.** A random split of data that changes over time trains on next week to predict yesterday, which the model will never be able to do in use.
