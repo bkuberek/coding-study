@@ -1,7 +1,8 @@
-"""The browser and sandbox jobs of the CI workflow (docs/specs/versioning.md): one runs the
-Playwright tests of the web UI on Chromium, the other the tests on a real Docker engine, each only
-when something that can affect it changed. They are light, nothing waits for them, and they are not
-allowed to fail."""
+"""The CI workflow and the release workflow that follows it (docs/specs/versioning.md). CI's browser
+and sandbox jobs run the Playwright tests of the web UI on Chromium and the tests on a real Docker
+engine, each only when something that can affect it changed: they are light, no other job waits for
+them, and they are not allowed to fail. The release workflow versions and publishes only after CI
+passed on a push to main, and only the commit CI passed on."""
 
 import ast
 import fnmatch
@@ -9,6 +10,7 @@ import os
 import re
 import shutil
 import subprocess
+import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -208,8 +210,15 @@ def test_ci_runs_on_pushes_and_pull_requests_only():
     assert sorted(_triggers(_load("ci.yml"))) == ["pull_request", "push"]
 
 
-def test_the_release_workflow_does_not_wait_for_ci():
-    assert "workflow_run" not in _triggers(_load("version.yml"))
+def test_the_release_workflow_runs_after_ci_completes_on_main_and_by_hand():
+    assert _triggers(_load("version.yml")) == {
+        "workflow_run": {
+            "workflows": [_load("ci.yml")["name"]],
+            "types": ["completed"],
+            "branches": ["main"],
+        },
+        "workflow_dispatch": None,
+    }
 
 
 def _paths(changes: Job) -> list[str]:
@@ -463,3 +472,151 @@ def test_a_push_that_changed_the_sandbox_runs_its_job_and_not_the_browsers(
     clone = origin.clone("main", depth=2)
     assert _decision(changes, clone, "push", before) == "web=false"
     assert (clone.parent / f"{clone.name}.output").read_text().splitlines()[1] == "sandbox=true"
+
+
+@pytest.fixture(scope="module")
+def version_job() -> Job:
+    return _load("version.yml")["jobs"]["version"]
+
+
+def _pin_step(version_job: Job) -> Job:
+    return next(step for step in version_job["steps"] if step.get("id") == "pin")
+
+
+def _evaluate(condition: str, context: dict[str, str]) -> bool:
+    """A condition of `==`, `&&`, `||` and parentheses over context names and quoted strings, with
+    a name missing from `context` empty, as in GitHub."""
+    python = re.sub(
+        r"\b[a-z_]+(?:\.[a-z_]+)+", lambda name: repr(context.get(name.group(), "")), condition
+    )
+    tree = ast.parse(python.replace("&&", " and ").replace("||", " or "), mode="eval")
+
+    def value(node: ast.expr) -> object:
+        if isinstance(node, ast.BoolOp):
+            values = [value(operand) for operand in node.values]
+            return all(values) if isinstance(node.op, ast.And) else any(values)
+        if isinstance(node, ast.Compare) and [type(op) for op in node.ops] == [ast.Eq]:
+            return value(node.left) == value(node.comparators[0])
+        if isinstance(node, ast.Constant):
+            return node.value
+        raise AssertionError(f"not a condition this test reads: {ast.dump(node)}")
+
+    return bool(value(tree.body))
+
+
+def _ci_run(conclusion: str, event: str) -> dict[str, str]:
+    return {
+        "github.event_name": "workflow_run",
+        "github.event.workflow_run.conclusion": conclusion,
+        "github.event.workflow_run.event": event,
+    }
+
+
+@pytest.mark.parametrize(
+    ("context", "versions"),
+    [
+        (_ci_run("success", "push"), True),
+        ({"github.event_name": "workflow_dispatch"}, True),
+        (_ci_run("failure", "push"), False),
+        (_ci_run("cancelled", "push"), False),
+        (_ci_run("timed_out", "push"), False),
+        (_ci_run("success", "pull_request"), False),
+    ],
+    ids=["ci-passed", "manual", "ci-failed", "ci-cancelled", "ci-timed-out", "pull-request"],
+)
+def test_only_a_ci_run_that_passed_on_a_push_or_a_manual_run_starts_versioning(
+    version_job: Job, context: dict[str, str], versions: bool
+):
+    assert _evaluate(version_job["if"], context) is versions
+
+
+def test_release_runs_queue_instead_of_cancelling_each_other():
+    assert _load("version.yml")["concurrency"] == {
+        "group": "version-${{ github.ref }}",
+        "cancel-in-progress": False,
+    }
+
+
+def test_the_release_workflow_grants_only_what_each_job_declares():
+    workflow = _load("version.yml")
+    assert workflow["permissions"] == {}
+    assert {name: job["permissions"] for name, job in workflow["jobs"].items()} == {
+        "version": {"contents": "write"},
+        "release": {"contents": "write"},
+        "homebrew": {"contents": "read"},
+    }
+
+
+def test_the_release_commit_starts_no_ci_run():
+    configuration = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    subject = configuration["tool"]["semantic_release"]["commit_message"].splitlines()[0]
+    assert "[skip ci]" in subject
+
+
+def test_the_version_job_checks_out_the_branch_with_its_history(version_job: Job):
+    checkout = version_job["steps"][0]
+    assert "actions/checkout@" in checkout["uses"]
+    assert checkout["with"] == {"fetch-depth": 0, "ref": "${{ github.ref_name }}"}
+
+
+def test_the_pin_compares_the_branch_with_the_commit_ci_passed_on(version_job: Job):
+    assert _pin_step(version_job)["env"] == {
+        "EVENT": "${{ github.event_name }}",
+        "CI_SHA": "${{ github.event.workflow_run.head_sha }}",
+    }
+
+
+def test_nothing_after_the_pin_runs_when_the_branch_is_past_the_commit(version_job: Job):
+    steps = version_job["steps"]
+    after = steps[steps.index(_pin_step(version_job)) + 1 :]
+    assert after
+    assert all(step["if"].startswith("steps.pin.outputs.current == 'true'") for step in after)
+
+
+def _pin(version_job: Job, clone: Path, event: str, ci_sha: str = "", github_sha: str = ""):
+    """What the pin step writes for the run in `clone`, and the commit the branch is at after it."""
+    output = clone.parent / f"{clone.name}.pin"
+    environment = {
+        "PATH": os.environ["PATH"],
+        "HOME": str(clone.parent),
+        "EVENT": event,
+        "CI_SHA": ci_sha,
+        "GITHUB_SHA": github_sha,
+        "GITHUB_OUTPUT": str(output),
+    }
+    subprocess.run(
+        ["bash", "-e", "-c", _pin_step(version_job)["run"]],
+        cwd=clone,
+        env=environment,
+        check=True,
+        capture_output=True,
+    )
+    return output.read_text(encoding="utf-8").strip(), _git(clone, "rev-parse", "HEAD")
+
+
+@needs_git_and_bash
+def test_a_ci_run_of_the_tip_of_main_is_versioned(version_job: Job, origin: Origin):
+    tip = origin.commit("cli/src/coding_study/domain/runs.py")
+    clone = origin.clone("main", depth=2)
+    assert _pin(version_job, clone, "workflow_run", ci_sha=tip) == ("current=true", tip)
+
+
+@needs_git_and_bash
+def test_a_ci_run_of_a_commit_main_has_moved_past_versions_nothing(
+    version_job: Job, origin: Origin
+):
+    passed = origin.commit("cli/src/coding_study/domain/runs.py")
+    tip = origin.commit("cli/src/coding_study/domain/catalog.py")
+    clone = origin.clone("main", depth=2)
+    assert _pin(version_job, clone, "workflow_run", ci_sha=passed) == ("current=false", tip)
+
+
+@needs_git_and_bash
+def test_a_manual_run_versions_the_commit_it_was_started_on(version_job: Job, origin: Origin):
+    started_on = origin.commit("cli/src/coding_study/domain/runs.py")
+    origin.commit("cli/src/coding_study/domain/catalog.py")
+    clone = origin.clone("main", depth=2)
+    assert _pin(version_job, clone, "workflow_dispatch", github_sha=started_on) == (
+        "current=true",
+        started_on,
+    )

@@ -10,55 +10,98 @@ name: Version
 #    the GitHub release vX.Y.Z, whose notes are the tag's CHANGELOG.md section.
 # 3. homebrew: points Formula/cstudy.rb in bkuberek/homebrew-tap at those two files.
 #
+# A release is cut only after CI passes on the commit it releases. The workflow runs when a run
+# of ci.yml completes on main, and the version job goes on only when that run succeeded, was for
+# a push, and its commit is still the tip of main. A job that ci.yml's "changes" job skips does
+# not fail the run.
+#
 # Release and homebrew run for the tag this run created on main. A manual run on main publishes
-# the newest tag reachable from it instead, so it repairs a failed or missing publish. Both jobs
-# skip what is already done: a release that has its files keeps them, and an unchanged formula
-# is not committed. Nothing goes to PyPI.
+# the newest tag reachable from it instead, so it repairs a failed or missing publish; it does
+# not check CI. Both jobs skip what is already done: a release that has its files keeps them,
+# and an unchanged formula is not committed. Nothing goes to PyPI.
 #
 # The push uses GITHUB_TOKEN, never a personal access token. Events caused by GITHUB_TOKEN do
 # not start new workflow runs (workflow_dispatch and repository_dispatch excepted), so the bot
-# commit and the tag do not retrigger this workflow, and no loop is possible:
+# commit and the tag start no CI run, hence no run of this workflow, and no loop is possible:
 # https://docs.github.com/en/actions/concepts/security/github_token
 # For the same reason a workflow triggered by the tag or the release would never run, so
 # publishing is part of this workflow. Only the homebrew job holds HOMEBREW_TAP_GITHUB_TOKEN,
 # which can push to the tap.
+#
+# A workflow_run run uses this file as it is on the default branch and gets the write
+# permissions below whatever started it, so it must never check out or run code from a fork or
+# a pull request. `branches: [main]` keeps out CI runs of other branches, and the version job's
+# `event == 'push'` keeps out those of pull requests, a fork's branch named main included: a push
+# to main is the only CI run that leads here, and it is of this repository's main.
+# https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
 permissions: {}
 
-# Release runs queue instead of cancelling each other, so two pushes never race on the tag.
+# Release runs queue instead of cancelling each other, so two runs never race on the tag. A
+# workflow_run run's github.ref is the default branch, so it queues with a manual run on main.
 concurrency:
   group: version-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   version:
+    # A CI run that passed on a push to main, or a manual run. A failed, cancelled or pull
+    # request CI run versions nothing.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
       tag: ${{ steps.publish.outputs.tag }}
     steps:
+      # The branch, not a detached commit: semantic-release releases only from a branch. In a
+      # workflow_run run, github.ref_name is the default branch.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.ref_name }}
 
-      # The branch may have moved while this run waited in the queue; version exactly the
-      # commit that triggered it, so no unevaluated change is released.
-      - name: Pin the branch to the triggering commit
-        run: git reset --hard "$GITHUB_SHA"
+      # semantic-release releases the tip of the branch, so the commit CI passed on is versioned
+      # only while it is that tip. When main has moved past it, this run versions nothing: the
+      # newer commit's own CI run versions both once it passes. Before it pushes, semantic-release
+      # checks that main has not moved since, so nothing CI did not pass is tagged. A manual run
+      # versions the commit it was started on, whatever reached the branch while it was queued.
+      - name: Pin the branch to the commit this run is for
+        id: pin
+        env:
+          EVENT: ${{ github.event_name }}
+          CI_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$EVENT" = workflow_run ]; then
+            tip=$(git rev-parse HEAD)
+            if [ "$tip" != "$CI_SHA" ]; then
+              echo "CI passed on $CI_SHA, but the branch is at $tip now: its CI run versions it"
+              echo "current=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            git reset --hard "$GITHUB_SHA"
+          fi
+          echo "current=true" >> "$GITHUB_OUTPUT"
 
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        if: steps.pin.outputs.current == 'true'
 
       # Only `main` is a release branch: on any other ref (a manual run from a feature branch)
       # semantic-release makes no release and exits 0, as it does when no commit since the last
       # tag warrants a bump.
       - name: Bump version, update the changelog, commit and tag
+        if: steps.pin.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: uv run --locked semantic-release version --no-vcs-release
@@ -67,7 +110,7 @@ jobs:
       # nothing.
       - name: Choose the tag to publish
         id: publish
-        if: github.ref == 'refs/heads/main'
+        if: steps.pin.outputs.current == 'true' && github.ref == 'refs/heads/main'
         env:
           EVENT: ${{ github.event_name }}
         run: |

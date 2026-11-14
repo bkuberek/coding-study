@@ -17,11 +17,11 @@ When no commit since the last tag warrants a bump, the workflow does nothing and
 
 ## What the workflow does
 
-`.github/workflows/version.yml` runs on every push to `main` (and on manual dispatch). Its three jobs run in order, each after the one before succeeds:
+`.github/workflows/version.yml` cuts a release only after CI passes on the commit it releases. It runs each time a run of `.github/workflows/ci.yml` completes on `main`, and on manual dispatch. After CI, it goes on only when that CI run succeeded, was for a push, and its commit is still the tip of `main`; a failed, cancelled or pull request run versions nothing. When `main` has moved past the commit, the newer commit's own CI run releases both once it passes. Re-running a failed CI run that then passes releases its commit, while it is still the tip. Its three jobs run in order, each after the one before succeeds:
 
 | Job | Runs | Does |
 |-----|------|------|
-| `version` | Always | Bumps the version, commits and tags, when a commit warrants it |
+| `version` | After CI passed on the tip of `main`, and on a manual run | Bumps the version, commits and tags, when a commit warrants it |
 | `release` | When `version` tagged a release on `main`, or on a manual run on `main` | Attaches the release files to the GitHub release ([GitHub release](#github-release)) |
 | `homebrew` | After `release` | Points the tap's formula at those files ([Homebrew tap](#homebrew-tap)) |
 
@@ -32,11 +32,11 @@ When a commit warrants a bump, `version`:
 3. Commits as `github-actions[bot]` with the message `chore(release): vX.Y.Z [skip ci]`.
 4. Tags the commit `vX.Y.Z` and pushes the commit and the tag.
 
-It uses `GITHUB_TOKEN`; the bot commit and tag do not start further workflow runs, which is why publishing is a job of this workflow and not a workflow triggered by the tag. Expect one bot commit on `main` after a merge that contains a `feat:` or `fix:`.
+It uses `GITHUB_TOKEN`; the bot commit and tag start no further workflow runs, so no CI run and no run of this workflow, which is why publishing is a job of this workflow and not a workflow triggered by the tag. The tag is on the bot commit, which adds only the version, the `uv.lock` entry and the changelog to the commit CI passed on. Expect one bot commit on `main` once CI passes after a merge that contains a `feat:` or `fix:`.
 
 `cstudy --version` prints the installed version, read from package metadata. The first run on a repository without tags tags the current version, `v0.1.0`, without changing it.
 
-`.github/workflows/ci.yml` is separate: on every push to a branch and every pull request, it runs on `ubuntu-latest`. The fast [checks](../../CONTRIBUTING.md#checks) job runs lint, format, types, layer contracts, `pytest -m "not slow"`, and `cstudy verify --static` against a workspace it creates. The JVM job runs on JDK 21 and on JDK 26, the two ends of the [supported range](../decisions/0016-jdk-range.md#the-supported-range) (Temurin builds, one run per JDK): `pytest -m jvm`, which is the slow tests that drive Gradle, javac, kotlinc or a JVM runner, and then `cstudy verify --conformance --lang java` and `--lang kotlin` in a workspace it creates and sets up with `cstudy doctor --fix`. Two more jobs run only when a job named `changes` finds that the run's diff can affect them, so a change of problems or docs alone runs neither: the browser job, on Chromium, for the web UI's page, and the `sandbox` job, `pytest -m "docker and not docker_jvm and not docker_go"` on a real Docker engine (the real-engine JVM and Go tests, marked `docker_jvm` and `docker_go`, stay a local gate to keep the job within its limit), for the code a [service project's](service-projects.md#resources-and-ci) stack runs on, within 15 minutes, with no matrix and no schedule. `cstudy verify` of a catalog service project over real stacks stays a local gate, and so do the other slow tests (Node, Go, Cargo, the debuggers). Every job only reads the repository, holds no secret and publishes nothing. The workflow does not gate `version.yml`, and the release commit's `[skip ci]` skips it.
+`.github/workflows/ci.yml` runs on every push to a branch and every pull request, on `ubuntu-latest`. The fast [checks](../../CONTRIBUTING.md#checks) job runs lint, format, types, layer contracts, `pytest -m "not slow"`, and `cstudy verify --static` against a workspace it creates. The JVM job runs on JDK 21 and on JDK 26, the two ends of the [supported range](../decisions/0016-jdk-range.md#the-supported-range) (Temurin builds, one run per JDK): `pytest -m jvm`, which is the slow tests that drive Gradle, javac, kotlinc or a JVM runner, and then `cstudy verify --conformance --lang java` and `--lang kotlin` in a workspace it creates and sets up with `cstudy doctor --fix`. Two more jobs run only when a job named `changes` finds that the run's diff can affect them, so a change of problems or docs alone runs neither: the browser job, on Chromium, for the web UI's page, and the `sandbox` job, `pytest -m "docker and not docker_jvm and not docker_go"` on a real Docker engine (the real-engine JVM and Go tests, marked `docker_jvm` and `docker_go`, stay a local gate to keep the job within its limit), for the code a [service project's](service-projects.md#resources-and-ci) stack runs on, within 15 minutes, with no matrix and no schedule. `cstudy verify` of a catalog service project over real stacks stays a local gate, and so do the other slow tests (Node, Go, Cargo, the debuggers). Every job only reads the repository, holds no secret and publishes nothing. Every job gates `version.yml`: a release is cut only after the whole run passes, and a job that `changes` skips does not fail it. The release commit's `[skip ci]` skips the workflow.
 
 ## GitHub release
 
@@ -88,7 +88,7 @@ A manual run on `main` publishes the newest tag reachable from `main`, skipping 
 gh workflow run version.yml --ref main
 ```
 
-Like a push, the run first cuts a release when an unreleased commit warrants one, and then publishes that release. To replace the files of a published release, delete them from the GitHub release first; the next manual run builds and uploads them again and updates the formula. A manual run on another branch publishes nothing.
+Like a run after CI, the run first cuts a release when an unreleased commit warrants one, and then publishes that release. A manual run does not check CI, so start it only when CI passed on the tip of `main`. To replace the files of a published release, delete them from the GitHub release first; the next manual run builds and uploads them again and updates the formula. A manual run on another branch publishes nothing.
 
 The release tooling is tested apart from the CLI, from the repository root:
 

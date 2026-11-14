@@ -88,7 +88,7 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 | `feat:`, and breaking changes (`feat!:`, `BREAKING CHANGE:`) | Minor |
 | `docs:`, `chore:`, `ci:`, `build:`, `refactor:`, `style:`, `test:` | None |
 
-Examples: `feat(cli): add cstudy stats --since`, `fix(runners): report a missing symbol as a load error`, `docs: clarify the workspace layout`. On every push to `main`, a GitHub workflow bumps `pyproject.toml`, updates `CHANGELOG.md`, and tags the release; never edit the version by hand.
+Examples: `feat(cli): add cstudy stats --since`, `fix(runners): report a missing symbol as a load error`, `docs: clarify the workspace layout`. Once CI passes on a push to `main`, a GitHub workflow bumps `pyproject.toml`, updates `CHANGELOG.md`, and tags the release; a commit that fails CI is never released. Never edit the version by hand.
 
 Keep tests and docs in the same commit as the behavior they cover. Specs in `docs/specs/` are normative: when the code and a spec disagree, fix one of them in the same change.
 
