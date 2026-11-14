@@ -203,7 +203,7 @@ uv python install 3.13
 
 ## When to use it
 
-- **For the toolchains**, use your system package manager, or the installer a toolchain recommends. cstudy's [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md) gives the recommended way for each language, and it is not always the system package: it recommends rustup over Homebrew's Rust, the archive from go.dev over a Linux distribution's often older Go, and a JDK from 21 to 26, while Homebrew's plain `openjdk` is JDK 27, which cstudy does not support yet.
+- **For the toolchains**, use your system package manager, or the installer a toolchain recommends. cstudy's [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md) gives the recommended way for each language, and it is not always the system package: it recommends rustup over Homebrew's Rust, the archive from go.dev over a Linux distribution's often older Go, and a JDK from 21 to 26, while Homebrew's plain `openjdk` is JDK 27, which cstudy does not support yet.
 - **For a project's libraries**, use the language's package manager in that project. In a cstudy workspace, `cstudy doctor --fix` does this for you.
 - **For several versions of one toolchain**, use a version manager, which installs versions side by side and switches between them: the toolchains guide uses fnm for Node.js, SDKMAN! for the JDK and rustup for Rust.
 - **For an app with a window**, Homebrew installs those too, as **casks**: pre-built applications, fonts and plugins.
@@ -241,7 +241,7 @@ When no set of versions meets every requirement, there is nothing to install: uv
 
 ## Practice
 
-This guide has no cstudy problem of its own. Install the toolchain of the language you want to practise, following the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md), then read the guide for that language. Each says what to learn before your first problem, where to learn it for free, and which `cstudy doctor` rows to check:
+This guide has no cstudy problem of its own. Install the toolchain of the language you want to practise, following the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md), then read the guide for that language. Each says what to learn before your first problem, where to learn it for free, and which `cstudy doctor` rows to check:
 
 - [Learn Python first](../learn-python-first/guide.md)
 - [Learn TypeScript first](../learn-typescript-first/guide.md)
@@ -264,4 +264,4 @@ Then go on to [your first problem](../your-first-problem/guide.md).
 - [Fedora change: switch to DNF5](https://fedoraproject.org/wiki/Changes/SwitchToDnf5): DNF5 as `dnf` from Fedora 41.
 - [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install): requirements, `wsl --install`, and the first start.
 - [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io/motivation), [Cargo](https://doc.rust-lang.org/cargo/), [Go modules](https://go.dev/ref/mod) and [the Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html): the language package managers of the workspace.
-- [Install the language toolchains](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md): cstudy's guide to each toolchain, for macOS and Linux.
+- [Install the language toolchains](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md): cstudy's guide to each toolchain, for macOS and Linux.

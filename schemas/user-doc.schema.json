@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study user doc front matter",
+  "description": "The YAML front matter of one user page, user-docs/<slug>.md; the file's name is the slug. Spec: docs/specs/user-docs.md#front-matter. coding_study.adapters.fs_user_docs reads the same shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "summary", "section", "order"],
+  "properties": {
+    "title": {
+      "description": "The page's # heading repeats it (check D3)",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "summary": {
+      "description": "One sentence, shown in lists and search",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "section": {
+      "description": "The group the page belongs to in lists; a section's pages follow one another in order (check D4)",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "order": {
+      "description": "The page's place among all pages; no two pages share one (check D4)",
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

@@ -55,12 +55,12 @@ To fill it in you would loop over the indexes of `nums`, compare values and retu
 
 ## Check your toolchain
 
-cstudy needs `rustc` 1.80 or newer and `cargo`, installed through rustup, for Rust problems. Rust is optional: without it, every other language still works. Install it as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#rust) shows, then run `cstudy doctor` and look for the `rustc` and `cargo` rows.
+cstudy needs `rustc` 1.80 or newer and `cargo`, installed through rustup, for Rust problems. Rust is optional: without it, every other language still works. Install it as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#rust) shows, then run `cstudy doctor` and look for the `rustc` and `cargo` rows.
 
 ```console
 $ cstudy doctor
-WARN  rustc not found on PATH    fix: needed for --lang rust, install Rust 1.80 or newer with rustup: https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#rust
-WARN  cargo not found on PATH    fix: needed for --lang rust, install Rust 1.80 or newer with rustup: https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#rust
+WARN  rustc not found on PATH    fix: needed for --lang rust, install Rust 1.80 or newer with rustup: https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#rust
+WARN  cargo not found on PATH    fix: needed for --lang rust, install Rust 1.80 or newer with rustup: https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#rust
 ```
 
 Those are the rows before Rust is installed: `WARN`, not `FAIL`, because Rust is optional. Once rustup has put them on your `PATH`, open a new terminal, and they read `ok` with their versions; a `rustc` older than 1.80 keeps the `WARN`. The `lldb-server` row on Linux, or `debugserver` on macOS, is about the debugger that only `cstudy test --debug` needs.
@@ -117,4 +117,4 @@ After that, one problem is built on a Rust trap from this page:
 - [Strings](https://doc.rust-lang.org/book/ch08-02-strings.html): why strings cannot be indexed, and `chars` and `bytes`.
 - [Rust By Example: casting](https://doc.rust-lang.org/rust-by-example/types/cast.html): converting between number types with `as`.
 - [Compiler Error Index](https://doc.rust-lang.org/error-index.html): an explanation of each error code.
-- [Install the language toolchains: Rust](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#rust): cstudy's install steps, editor setup and build settings.
+- [Install the language toolchains: Rust](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#rust): cstudy's install steps, editor setup and build settings.

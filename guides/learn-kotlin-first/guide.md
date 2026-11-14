@@ -47,7 +47,7 @@ To fill it in you would loop over the indexes of `nums`, compare values and retu
 
 ## Check your toolchain
 
-cstudy builds and runs Kotlin with the same JDK as Java, and supports JDK 21 to 26; JDK 25 is the recommended one. You do not install the Kotlin compiler yourself: Gradle downloads it with the workspace's build. Install the JDK as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk) shows, then run:
+cstudy builds and runs Kotlin with the same JDK as Java, and supports JDK 21 to 26; JDK 25 is the recommended one. You do not install the Kotlin compiler yourself: Gradle downloads it with the workspace's build. Install the JDK as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk) shows, then run:
 
 ```console
 $ cstudy doctor
@@ -107,4 +107,4 @@ Start with [your first problem](../your-first-problem/guide.md), which walks thr
 - [Collections overview](https://kotlinlang.org/docs/collections-overview.html): read-only and mutable collections.
 - [`ArrayList`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-array-list/), [`HashMap`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-hash-map/) and [`IntArray`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int-array/): what they are on the JVM.
 - [Java's `ArrayList`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html) and [`HashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html): their documented costs.
-- [Install the language toolchains: JDK](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk): cstudy's install steps, and why Kotlin needs nothing more.
+- [Install the language toolchains: JDK](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk): cstudy's install steps, and why Kotlin needs nothing more.

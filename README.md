@@ -19,128 +19,50 @@ The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_
 
 ## Install
 
-Install `cstudy` once; the problems, tracks and runners ship with it. With Homebrew:
-
 ```bash
 brew install bkuberek/tap/cstudy
 cstudy --version
 ```
 
-Homebrew also installs the Python that `cstudy` runs on. Upgrade with `brew upgrade cstudy`. Homebrew 7 asks you to trust a third-party tap before commands such as `brew info cstudy` read it: run `brew trust bkuberek/tap` once. Each release reaches the tap automatically ([versioning](docs/specs/versioning.md#homebrew-tap)).
-
-Or with uv or pipx, from the repository:
-
-```bash
-uv tool install git+https://github.com/bkuberek/coding-study
-# or: pipx install git+https://github.com/bkuberek/coding-study
-```
-
-Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Keep one of these installs: when several exist, the `cstudy` whose directory comes first on `PATH` runs (`which -a cstudy` lists them, and `cstudy doctor` reports duplicates with the command that removes each).
-
-## Install the language toolchains
-
-`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js, the JDK, Go and Rust are needed only for the languages that use them. Problems have reference solutions in all six languages, except where a language cannot express one, a bug exists in some languages only, or a security or AI/LLM problem starts in Python and TypeScript ([catalog](docs/specs/catalog.md)), so you can practice in any of them. The recommended install on macOS:
-
-| Tool | Version | Needed for | Install on macOS |
-|------|---------|------------|------------------|
-| [uv](https://docs.astral.sh/uv/) | 0.10 or newer | Required: manages Python and the Python practice project | `brew install uv` |
-| Python | 3.13 | Required | `uv python install 3.13` |
-| [Node.js](https://nodejs.org/) | 24 or newer | Optional: TypeScript | `brew install fnm`, then `fnm install 24` |
-| [pnpm](https://pnpm.io/) | 9 or newer | Optional: TypeScript | `corepack enable pnpm` |
-| JDK | 21 to 26 (25 recommended) | Optional: Java and Kotlin (the workspace's Gradle wrapper downloads Gradle and the Kotlin compiler) | [SDKMAN!](https://sdkman.io): `sdk install java` with a Temurin 25 identifier from `sdk list java`, or `brew install openjdk@25` (`brew install openjdk` installs JDK 27, which `cstudy` does not support yet) |
-| [Go](https://go.dev/) | 1.25 or newer | Optional: Go (`--lang go`) | `brew install go` |
-| [Rust](https://www.rust-lang.org/) | 1.80 or newer | Optional: Rust (`--lang rust`) | `brew install rustup`, then `rustup-init` |
-| git | any | Optional: versioning your workspace | `xcode-select --install` |
-
-[Install the language toolchains](docs/guides/toolchains.md) has the full steps, Linux, and the check for each. Then run `cstudy doctor`: it checks each tool and prints a fix for anything missing. In a workspace, `cstudy doctor --fix` also sets up the practice projects.
+Or `uv tool install git+https://github.com/bkuberek/coding-study` (or the same with `pipx install`). `cstudy` runs your code with each language's own toolchain, which you install yourself: uv and Python 3.13 are required, the others only for the languages you use ([install the language toolchains](user-docs/toolchains.md)).
 
 ## Quickstart
 
-You practice in a **workspace**: a directory of your own for your solutions, notes and progress, separate from this repository.
-
-1. Create the workspace and set up its toolchains:
-
-   ```bash
-   cstudy init ~/cstudy-workspace --git   # --git runs git init; cstudy never commits
-   cd ~/cstudy-workspace
-   cstudy doctor --fix                # uv sync, pnpm install, Gradle warm-up, runner checks
-   ```
-
-2. Pick a problem and start it. `cstudy start` writes a stub and the statement, then opens both in `$VISUAL` or `$EDITOR`:
-
-   ```bash
-   cstudy next                        # suggests a problem and prints the command to start it
-   cstudy start two-sum               # add --lang typescript, java, or kotlin; default: python
-   ```
-
-3. Solve it in your IDE. Open the language's project in the workspace as the editor root (`python/`, `typescript/`, or `jvm/`) for diagnostics without extra configuration.
-4. Test on every save, then finish the attempt with how it went:
-
-   ```bash
-   cstudy test --watch
-   cstudy done --rating ok            # easy, ok, or hard; --gave-up if it never passed
-   ```
-
-`cstudy done` schedules the next review, and `cstudy next` brings the problem back when it is due. A missing Node.js, pnpm or JDK shows as `FAIL` in `cstudy doctor` and a missing Go or Rust as `WARN`; the other languages still work.
-
-## Practise in the browser
-
-`cstudy serve` opens a page on your own computer with the whole loop: the problem list, the statement, an editor over your files, test runs and submissions whose results arrive as they run, hints, solutions, mock interviews, your progress and the `cstudy doctor` checks. It works on the same workspace and progress as the terminal and your IDE, so you can switch between them at any point.
-
 ```bash
-cstudy serve --open                # Ctrl-C stops it
+cstudy init ~/cstudy-workspace --git   # your workspace: solutions, notes and progress
+cd ~/cstudy-workspace
+cstudy doctor --fix                    # checks the toolchains and sets up the projects
+cstudy next                            # suggests a problem
+cstudy start two-sum                   # writes the stub and the statement, opens your editor
+cstudy test --watch                    # runs the tests on every save
+cstudy done --rating ok                # finishes the attempt and schedules the review
 ```
+
+Or practise in your browser, on the same workspace: `cstudy serve --open`.
 
 ![The attempt view of cstudy serve: the file tree, the editor, a run's results and the statement](docs/images/web-ui-attempt-light.png)
 
-The editor can also show errors as you type, documentation on hover, go to definition and, behind a second setting, completion and signature help, for Python, TypeScript, Java, Kotlin, Go and Rust; Kotlin's server, from JetBrains, comes under a license you accept first. Both settings are off by default, and with autocomplete off the editor offers no completion at all, so you can practise recall; `cstudy doctor --fix` installs the language servers once (about 46 MB), and practice needs no internet after that.
+## Documentation
 
-![Code intelligence in the editor: an undefined name is underlined and fixed, hovering shows documentation, and a Cmd-click opens a read-only library tab](docs/images/code-intelligence-demo.gif)
+The user docs ship with `cstudy`: `cstudy docs` lists them in the terminal, `cstudy docs <topic>` prints one, and the web UI's Docs view shows them with a search. They are the Markdown pages of [`user-docs/`](user-docs/):
 
-![Autocomplete: the completion list with the documentation of the selected item](docs/images/autocomplete-list-light.png)
+| Page | Covers |
+|------|--------|
+| [Getting started](user-docs/getting-started.md) | Install, your first workspace and problem, the main commands |
+| [Install the language toolchains](user-docs/toolchains.md) | uv and Python, Node.js and pnpm, a JDK, Go, Rust and Docker on macOS and Linux |
+| [Check your setup with cstudy doctor](user-docs/doctor.md) | Every check, and how `--fix` sets up a workspace |
+| [Your workspace](user-docs/workspace.md) | What the folder holds, version control, your IDE and your own problems |
+| [Work on a problem](user-docs/practice.md) | Start, test, hints, solutions, benchmarks and grades |
+| [Progressive levels and projects](user-docs/levels.md) | Problems that grow over levels, and `cstudy submit` |
+| [Service projects and the dev stack](user-docs/service-projects.md) | Apps in a Docker sandbox with mock servers, and `cstudy dev` |
+| [Guides and learning paths](user-docs/guides.md) | Reading guides and following paths with `cstudy learn` |
+| [Plan your practice](user-docs/planning.md) | `cstudy next`, problem sets, mock interviews and statistics |
+| [Practise in your browser](user-docs/web-ui.md) | `cstudy serve`: the views and the keyboard |
+| [The editor and code intelligence](user-docs/editor.md) | Live errors, hover documentation, go to definition and autocomplete |
+| [Settings and preferences](user-docs/settings.md) | `config.toml`, the preferences, backups and reset |
+| [Troubleshooting](user-docs/troubleshooting.md) | What to do when something fails |
 
-[Practise in your browser](docs/guides/web-ui.md) covers the views, editing and runs, [code intelligence and autocomplete](docs/guides/web-ui.md#code-intelligence-and-autocomplete), the keyboard, and what keeps the page private to you.
-
-## Learn before you practise
-
-Concept guides teach an idea before you practise it: the plain idea, a worked example traced step by step, when to use it, the common traps, the complexity with its conditions, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, and the diagrams are Mermaid. Learning paths order guides and problems into a track. "Getting started" goes from the terminal to your first problem, "Hashing" from your first hash map to content-addressed storage, "AI engineering" from your first model call to agent harnesses, "Data engineering" from batch and streams to table formats and lineage, "Testing" from your first assertion to mutation and contract tests, "Networking" from packets to DNS, reliable transport, HTTP and retries, "Machine learning fundamentals" from your first model to honest evaluation, "Operating systems" from processes and scheduling to virtual memory and deadlock, "Distributed systems" from partial failure to consensus, "Database internals" from pages and B-trees to transactions and query plans, "Infrastructure as code" from desired state to plans, drift and policy checks, "Knowledge representation" from taxonomies to triples, reasoning and entity resolution, and "Security" from trust boundaries to certificate chains and threat models. Seven more follow the classic algorithm patterns: two pointers and sliding windows, binary search, graphs, trees and heaps, stacks, queues and tries, recursion and dynamic programming, and greedy choices and intervals ([guides](docs/specs/guides.md)).
-
-```bash
-cstudy learn                       # the guides and the paths, with what you have read
-cstudy learn --path hashing        # a path's steps and the next one
-cstudy learn hash-functions        # read a guide; add --done once you have
-```
-
-The web UI is the recommended way to read guides: its Guides page (`cstudy serve`, or `cstudy learn <guide> --open`) draws the diagrams, marks guides as read and shows a path's progress beside its steps. The terminal is fully supported too: `cstudy learn` renders a guide's Markdown, shows each diagram as a text drawing, and has `--json` for scripts.
-
-## Your workspace is your repository
-
-The workspace holds your practice files, notes, previous attempts (`.archive/`), your own problems and your problem sets (`sets.yaml`). Version it in a git repository of your own, separately from this one: its `.gitignore` already excludes per-machine state such as `progress.db` and build output. Back up progress with `cstudy export`, which writes a JSON file you can commit. On another machine, clone your workspace and run `cstudy doctor --fix`.
-
-Run `cstudy` anywhere inside the workspace, or point at it with `cstudy --workspace PATH` or `CSTUDY_WORKSPACE=PATH`. Details: [installation and workspaces](docs/specs/installation-and-workspaces.md).
-
-## Main commands
-
-| Command | Does |
-|---------|------|
-| `cstudy init [PATH]` | Creates a workspace |
-| `cstudy doctor [--fix]` | Checks the toolchains and the workspace; `--fix` installs the project dependencies |
-| `cstudy next [--track T]` | Picks a due review, or a new problem from your weakest pattern |
-| `cstudy start <slug> [--lang L]` | Writes the stub, renders the statement, opens your editor, begins an attempt |
-| `cstudy test [--watch]` | Runs your code against the cases |
-| `cstudy hint` | Reveals the next hint |
-| `cstudy solution [<slug>]` | Shows the reference solutions with their explanation |
-| `cstudy done --rating easy\|ok\|hard` | Finishes the attempt and schedules the review |
-| `cstudy bench` | Measures how your solution scales and compares it with the reference approaches |
-| `cstudy list`, `cstudy show <slug>` | Browses the catalog; prints a statement |
-| `cstudy learn [<guide>] [--path P]` | Reads the concept guides and follows a learning path ([guides](docs/specs/guides.md)) |
-| `cstudy set create <name>`, `cstudy set add <name> <slug>...` | Makes your own named lists of problems, a problem may be in several; `cstudy next --set <name>` then picks from one in its order ([sets](docs/guides/web-ui.md#problem-sets)) |
-| `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
-| `cstudy serve [--open]` | Serves the practice page on your computer, at `127.0.0.1` ([guide](docs/guides/web-ui.md)) |
-| `cstudy new <slug>`, `cstudy verify <slug>` | Scaffolds a problem of your own; checks it |
-| `cstudy about` | Shows the version, license, links and credits |
-
-Every command and flag: [CLI reference](docs/specs/cli.md). Configuration, such as the default language, lives in `~/.config/coding-study/config.toml` ([configuration](docs/specs/cli.md#configuration)).
+To change `cstudy` itself: [the developer docs](docs/README.md) (the PRD, architecture, specs and decision records), the [CLI reference](docs/specs/cli.md), the [authoring guide](docs/specs/authoring.md) for problems of your own, [contributing](CONTRIBUTING.md), and the [changelog](CHANGELOG.md).
 
 ## Content catalog
 
@@ -158,27 +80,6 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 | `behavioral` | none | Not tracked | Guidance for your own story bank |
 
 Track details: [content](docs/specs/content.md). Every problem: [catalog](docs/specs/catalog.md).
-
-## Write your own problems
-
-`cstudy new my-problem` in your workspace scaffolds a problem in the workspace's `problems/` directory, numbered from 5001, and it joins the catalog for every command. Start from a template (`--from-template array|tree|design|progressive|concurrent`), write the statement, tests, and reference solutions, then check it:
-
-```bash
-cstudy verify my-problem --oracle --require-ready
-```
-
-The [authoring guide](docs/specs/authoring.md) covers the workflow and the ready criteria, and the [problem format](docs/specs/problem-format.md) defines every file.
-
-## Documentation
-
-| Read | For |
-|------|-----|
-| [coding-study.com](https://coding-study.com/docs?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=docs-table) | Install and usage guides on the website |
-| [Documentation index](docs/README.md) | The PRD, architecture, specs, and decision records |
-| [CLI reference](docs/specs/cli.md) | Every command, flag, output, and exit code |
-| [Practise in your browser](docs/guides/web-ui.md) | `cstudy serve`: the views, editing and runs, code intelligence and autocomplete, the keyboard, troubleshooting |
-| [Contributing](CONTRIBUTING.md) | Development setup, checks, authoring content, and commit conventions |
-| [Versioning](docs/specs/versioning.md) and [changelog](CHANGELOG.md) | How releases are numbered from Conventional Commits |
 
 ## License
 

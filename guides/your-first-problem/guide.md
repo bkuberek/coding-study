@@ -263,5 +263,5 @@ After `contains-duplicate` and `two-sum`, the hashing path continues with the gu
 
 - [cstudy's command reference](https://github.com/bkuberek/coding-study/blob/main/docs/specs/cli.md): every command and option used here, with its output.
 - [Scheduling and grades](https://github.com/bkuberek/coding-study/blob/main/docs/specs/progress-and-scheduling.md): how a grade and the review intervals are computed.
-- [Practise in your browser](https://github.com/bkuberek/coding-study/blob/main/docs/guides/web-ui.md): the same loop in `cstudy serve`.
-- [Install the language toolchains](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md): what `cstudy doctor` checks, and how to fix each row.
+- [Practise in your browser](https://github.com/bkuberek/coding-study/blob/main/user-docs/web-ui.md): the same loop in `cstudy serve`.
+- [Install the language toolchains](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md): what `cstudy doctor` checks, and how to fix each row.

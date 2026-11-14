@@ -50,7 +50,7 @@ To fill it in you would loop over the positions of `nums`, compare values and re
 
 ## Check your toolchain
 
-cstudy needs Python 3.13 and uv, which manages Python and the workspace's Python project. Install them as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#python-and-uv) shows, then run:
+cstudy needs Python 3.13 and uv, which manages Python and the workspace's Python project. Install them as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#python-and-uv) shows, then run:
 
 ```console
 $ cstudy doctor
@@ -116,4 +116,4 @@ After that, one problem is built on a Python trap from this page:
 - [`typing`](https://docs.python.org/3/library/typing.html): type hints, which the runtime does not enforce.
 - [Design and history FAQ](https://docs.python.org/3/faq/design.html): how lists and dictionaries are implemented in CPython.
 - [Built-in types](https://docs.python.org/3/library/stdtypes.html): integers have unlimited precision.
-- [Install the language toolchains: Python and uv](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#python-and-uv): cstudy's install steps.
+- [Install the language toolchains: Python and uv](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#python-and-uv): cstudy's install steps.

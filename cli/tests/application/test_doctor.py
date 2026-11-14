@@ -101,7 +101,7 @@ RUNNING_VERSION = "0.1.0"
 IMPORT_PYTEST_IN_PYTHON = ((".venv/bin/python", "-c", "import pytest"), Path("/ws/python"))
 ADD_PYTEST_OFFLINE = ("uv", "add", "--dev", "--offline", PYTEST_REQUIREMENT)
 ADD_PYTEST = ("uv", "add", "--dev", PYTEST_REQUIREMENT)
-TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
+TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md"
 SELECT_A_JDK = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {TOOLCHAINS_GUIDE}#jdk"
 """The fix of docs/specs/cli.md#cstudy-doctor, for any JDK that cannot run Java and Kotlin."""
 JDK_25 = SelectedJdk("25.0.5", 25, JdkSource.JAVA_HOME)

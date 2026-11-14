@@ -16,7 +16,7 @@ const CONNECTION_TEXTS: Readonly<Partial<Record<StreamState, readonly [string, s
 };
 
 /** The view the top bar marks, or the About view, which the status bar's version marks; null for none. */
-export type ViewName = "problems" | "guides" | "sets" | "mock" | "progress" | "health" | "settings" | "about" | null;
+export type ViewName = "problems" | "guides" | "sets" | "mock" | "progress" | "health" | "settings" | "docs" | "about" | null;
 
 export interface StatusLine {
   /** The leftmost segment: the attempt's mode, or the view. */
@@ -56,6 +56,7 @@ export const VIEWS: readonly { readonly name: Exclude<ViewName, null>; readonly 
   { name: "progress", hash: "#/progress", key: "5" },
   { name: "health", hash: "#/health", key: "6" },
   { name: "settings", hash: "#/settings", key: "7" },
+  { name: "docs", hash: "#/docs", key: "8" },
 ];
 
 export const THEMES: readonly Theme[] = ["system", "light", "dark"];

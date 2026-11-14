@@ -54,11 +54,11 @@ To fill it in you would loop over the indexes of `nums`, compare values and retu
 
 ## Check your toolchain
 
-cstudy needs Go 1.25 or newer for Go problems. Go is optional: without it, every other language still works. Install it as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#go) shows, then run `cstudy doctor` and look for the `go` row.
+cstudy needs Go 1.25 or newer for Go problems. Go is optional: without it, every other language still works. Install it as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#go) shows, then run `cstudy doctor` and look for the `go` row.
 
 ```console
 $ cstudy doctor
-WARN  go not found on PATH    fix: needed for --lang go, install Go 1.25 or newer: https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#go
+WARN  go not found on PATH    fix: needed for --lang go, install Go 1.25 or newer: https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#go
 ```
 
 That is the row before Go is installed: a `WARN`, not a `FAIL`, because Go is optional. Once Go is on your `PATH`, the row reads `ok` with its version; an older Go keeps the `WARN`. The `dlv` row is about Delve, the debugger that only `cstudy test --debug` needs.
@@ -118,4 +118,4 @@ After that, two problems are built on Go traps from this page:
 - [Go FAQ](https://go.dev/doc/faq): why unused variables and imports do not compile.
 - [Go maps in action](https://go.dev/blog/maps): maps as hash tables, missing keys, and iteration order.
 - [Go Slices: usage and internals](https://go.dev/blog/slices-intro): slices, length and capacity.
-- [Install the language toolchains: Go](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#go): cstudy's install steps and build settings.
+- [Install the language toolchains: Go](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#go): cstudy's install steps and build settings.

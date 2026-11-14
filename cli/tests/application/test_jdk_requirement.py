@@ -16,7 +16,7 @@ from tests.stub_contract import STUB_CASES
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
 FIX = (
     "fix: select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: "
-    "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
+    "https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk"
 )
 
 

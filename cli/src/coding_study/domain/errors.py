@@ -107,6 +107,11 @@ class UnknownSetError(LookupError):
         self.name = name
 
 
+class UnknownTopicError(LookupError):
+    """No user page has the slug `cstudy docs` or the web UI asked for (exit code 3); the message
+    names the nearest ones (docs/specs/user-docs.md#cstudy-docs)."""
+
+
 class UnknownGuideError(LookupError):
     """No concept guide or learning path has the slug a command or the web UI asked for (exit
     code 3); the message names the nearest ones."""

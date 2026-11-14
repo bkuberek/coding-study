@@ -47,7 +47,7 @@ To fill it in you would loop over the positions of `nums`, compare values and re
 
 ## Check your toolchain
 
-cstudy runs TypeScript with Node.js 24 or newer, and installs the workspace's TypeScript project with pnpm. Install both as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#nodejs-and-pnpm) shows, then run:
+cstudy runs TypeScript with Node.js 24 or newer, and installs the workspace's TypeScript project with pnpm. Install both as the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#nodejs-and-pnpm) shows, then run:
 
 ```console
 $ cstudy doctor
@@ -111,4 +111,4 @@ After that, one problem is built on a JavaScript trap from this page:
 - [TSConfig: `noEmit`](https://www.typescriptlang.org/tsconfig/#noEmit): type-checking without writing JavaScript.
 - [MDN: `export`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export): exporting a function from a module.
 - [Node.js: modules, TypeScript](https://nodejs.org/api/typescript.html): type stripping, and which syntax it supports.
-- [Install the language toolchains: Node.js and pnpm](https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#nodejs-and-pnpm): cstudy's install steps.
+- [Install the language toolchains: Node.js and pnpm](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#nodejs-and-pnpm): cstudy's install steps.

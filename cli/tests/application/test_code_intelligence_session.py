@@ -127,7 +127,7 @@ def test_a_java_attempt_on_a_jdk_jdtls_cannot_run_on_is_refused_with_the_jdk_fix
     assert str(refused.value).splitlines() == [
         "jdtls needs JDK 25 or 26, not 21.0.1",
         "fix: select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
-        "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk",
+        "https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk",
     ]
 
 

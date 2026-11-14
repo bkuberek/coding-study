@@ -24,6 +24,7 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.notifications import Notifications, WorkspaceWatch
 from coding_study.entrypoints.web.runs import Children
+from tests.doc_builders import write_docs
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.guide_builders import write_guide
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, SCHEMAS_DIRECTORY, copy_catalog_problems
@@ -64,6 +65,8 @@ DOCUMENTS = (
     "problem",
     "statement",
     "guide",
+    "docs",
+    "doc",
     "needs",
     "hint",
     "abort",
@@ -149,6 +152,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _abort(tmp_path_factory.mktemp("abort"), record)
     _needs(tmp_path_factory.mktemp("needs"), record)
     _guides(tmp_path_factory.mktemp("guides"), record)
+    _docs(tmp_path_factory.mktemp("docs"), record)
     return record.documents
 
 
@@ -341,6 +345,17 @@ def _guides(root: Path, record: Recorder) -> None:
         assert read.status_code == 200
         record("problem", client.get("/api/v1/problems/two-sum"))
         record("error", client.get("/api/v1/guides/no-such-guide"))
+
+
+def _docs(root: Path, record: Recorder) -> None:
+    """The user docs, a page of them, and a topic that does not exist."""
+    problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    write_docs(workspace)
+    with session_client(web_app(workspace, make_environment(workspace))) as client:
+        record("docs", client.get("/api/v1/docs"))
+        record("doc", client.get("/api/v1/docs/doctor"))
+        record("error", client.get("/api/v1/docs/no-such-topic"))
 
 
 def _abort(root: Path, record: Recorder) -> None:

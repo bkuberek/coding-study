@@ -32,6 +32,7 @@ WORKSPACE_COMMANDS = ("init", "ide")
 PHASE_8_COMMANDS = ("submit", "status")
 PHASE_9_COMMANDS = ("history", "serve", "reset", "abort", "about")
 GUIDE_COMMANDS = ("learn",)
+USER_DOCS_COMMANDS = ("docs",)
 
 
 def registered_commands() -> set[str | None]:
@@ -53,6 +54,7 @@ def test_every_command_so_far_is_registered():
         *WORKSPACE_COMMANDS,
         *SERVICE_PROJECT_COMMANDS,
         *GUIDE_COMMANDS,
+        *USER_DOCS_COMMANDS,
     }
 
 

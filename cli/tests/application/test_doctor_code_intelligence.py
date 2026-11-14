@@ -38,7 +38,7 @@ RUSTUP_FIX = "rustup component add rust-analyzer"
 GO_INSTALL_STEP = "go install golang.org/x/tools/gopls@v0.24.0 (in .cs/lsp/bin)"
 JDK_25_TO_26 = (
     "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
-    "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
+    "https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk"
 )
 DOWNLOAD_STEP = (
     "download https://download.eclipse.org/jdtls/milestones/1.63.0/"

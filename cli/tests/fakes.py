@@ -14,6 +14,7 @@ from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
+from coding_study.adapters.fs_user_docs import FsUserDocs
 from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
@@ -316,6 +317,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "watcher": ScriptedWatcher(),
         "items": FsItemRepository(root),
         "guides": FsGuideCatalog(root),
+        "docs": FsUserDocs(root),
         "machine": FakeMachine(),
         "new_problems": ProblemDestination(FsProblemFiles(root), WorkspaceFs(root)),
         "study_guides": FsStudyGuides(None),

@@ -34,6 +34,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import DEFAULT_ORACLE_CASES
 from coding_study.domain.problem import ContentStatus, Language, Track
 from coding_study.domain.value_text import truncate
+from coding_study.entrypoints.command_table import command_spec
 from coding_study.entrypoints.commands.list_problems import REFERENCE_LABELS
 from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
 
@@ -125,6 +126,7 @@ def verify(
         jobs=jobs,
         ladder=ladder,
         stress_runs=stress,
+        commands=command_spec(context.find_root().command),
     )
     report = verify_content(environment, request, _notice(output))
     for line in _content_lines(report):

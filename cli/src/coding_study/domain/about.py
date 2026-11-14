@@ -33,7 +33,7 @@ SPONSOR_LINKS = (
 
 TOOLCHAINS = ("uv", "Node.js", "pnpm", "JDK", "Gradle", "Go", "Rust", "git")
 """What cstudy runs from the user's machine to build and run a solution
-(docs/guides/toolchains.md); none of it ships with cstudy."""
+(user-docs/toolchains.md); none of it ships with cstudy."""
 
 
 @dataclass(frozen=True, slots=True)

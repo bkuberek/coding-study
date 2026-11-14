@@ -1,0 +1,159 @@
+/* The Docs view (docs.ts): the pages by section with a search, and a page to read. */
+
+.docs-intro {
+  max-width: 68ch;
+  margin: 0 0 16px;
+  color: var(--ink-soft);
+}
+
+.docs-search input {
+  width: min(100%, 480px);
+}
+
+.docs-count {
+  min-height: 1.5em;
+  margin: 6px 0 12px;
+}
+
+.doc-section {
+  margin-bottom: 28px;
+}
+
+.doc-section h2 {
+  margin: 0 0 6px;
+  font: 600 var(--text-l) / 1.2 var(--font-prose);
+}
+
+.doc-list,
+.doc-results {
+  max-width: 920px;
+  border-top: 1px solid var(--rule);
+}
+
+.doc-list li,
+.doc-result {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.doc-list p,
+.doc-result p {
+  margin: 4px 0 0;
+}
+
+.doc-title {
+  font-weight: 700;
+}
+
+.doc-result-heading {
+  font-weight: 400;
+}
+
+.doc-snippet mark {
+  padding: 0 2px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 2px;
+}
+
+.doc-head {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.doc-head h1 {
+  font: 600 38px / 1.1 var(--font-prose);
+  letter-spacing: -0.01em;
+}
+
+.doc-head p {
+  margin: 6px 0 0;
+}
+
+.doc-summary {
+  max-width: 68ch;
+  color: var(--ink-soft);
+}
+
+.doc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 40px;
+  align-items: start;
+}
+
+.doc-main {
+  min-width: 0;
+}
+
+.doc-body {
+  max-width: 78ch;
+}
+
+/* A page's tables hold long commands and paths, and long column names: they break rather than
+   widen the page past a narrow window (WCAG 1.4.10). A column name wraps, unlike the one-word
+   headers of the page's other tables. */
+.doc-body th,
+.doc-body td,
+.doc-body p code,
+.doc-body li code {
+  overflow-wrap: anywhere;
+}
+
+.doc-body thead th {
+  white-space: normal;
+}
+
+.doc-side {
+  display: grid;
+  gap: 18px;
+}
+
+.doc-group + .doc-group {
+  margin-top: 10px;
+}
+
+.doc-group-name {
+  margin: 0 0 4px;
+  font-size: var(--text-s);
+  color: var(--ink-soft);
+}
+
+.doc-all a[aria-current="page"] {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.doc-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  max-width: 78ch;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.doc-pager a {
+  display: grid;
+  gap: 2px;
+}
+
+.doc-next {
+  margin-left: auto;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .doc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .doc-head h1 {
+    font-size: 30px;
+  }
+}

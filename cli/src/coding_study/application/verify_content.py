@@ -33,6 +33,7 @@ from coding_study.application.reference_runs import (
 )
 from coding_study.application.sandbox import ensure_engine
 from coding_study.application.stress_judging import without_stress
+from coding_study.application.user_docs import DocVerification, verify_user_docs
 from coding_study.application.verify_concurrency import ConcurrentVerifier
 from coding_study.application.verify_guides import GuideVerification, verify_guides
 from coding_study.application.verify_items import (
@@ -48,6 +49,7 @@ from coding_study.application.verify_service import verify_service_project
 from coding_study.domain.cases import Expected, GeneratedInput, JsonValue
 from coding_study.domain.clock_determinism import DeterminismVerdict
 from coding_study.domain.comparators import Comparator
+from coding_study.domain.doc_checks import CommandSpec
 from coding_study.domain.errors import (
     ContentError,
     ContentIssue,
@@ -115,6 +117,9 @@ class VerifyRequest:
     """`--ladder`: bench the references and check their bands against `time_class`."""
     stress_runs: int | None = None
     """`--stress N`: runs per stress case and variant for D6 and D7; None: 10."""
+    commands: CommandSpec | None = None
+    """`cstudy`'s command line, against which the user docs' commands are checked (D6 of
+    docs/specs/user-docs.md#static-checks); None leaves them unchecked."""
 
 
 class SkippedCheck(StrEnum):
@@ -218,15 +223,23 @@ def verify_content(
     )
     problems = tuple(problem for problem in checked if problem is not None)
     items = verify_items(environment, _item_selection(request), all_slugs)
-    guides = verify_guides(environment, known) if _whole_catalog(request) else ()
+    whole = _whole_catalog(request)
+    guides = verify_guides(environment, known) if whole else ()
+    docs = verify_user_docs(environment, request.commands) if whole else ()
     return VerifyReport(
-        (*problems, *map(_as_verification, items), *map(_guide_row, guides)),
+        (
+            *problems,
+            *map(_as_verification, items),
+            *map(_guide_row, guides),
+            *map(_doc_row, docs),
+        ),
         _coverage(problems, request.language),
     )
 
 
 def _whole_catalog(request: VerifyRequest) -> bool:
-    """Guides and paths are checked only with the whole catalog: no slugs and no `--track`."""
+    """Guides, paths and user pages are checked only with the whole catalog: no slugs and no
+    `--track`."""
     return not request.slugs and request.track is None
 
 
@@ -235,6 +248,11 @@ def _guide_row(guide: GuideVerification) -> "ProblemVerification":
     return ProblemVerification(
         directory=guide.directory, meta=None, static_errors=guide.static_errors
     )
+
+
+def _doc_row(doc: DocVerification) -> "ProblemVerification":
+    """User pages run no code either."""
+    return ProblemVerification(directory=doc.file, meta=None, static_errors=doc.static_errors)
 
 
 def _item_selection(request: VerifyRequest) -> ItemSelection:

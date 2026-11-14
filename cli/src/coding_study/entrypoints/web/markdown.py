@@ -11,6 +11,10 @@ A concept guide (docs/specs/web-ui.md#guides-view) is rendered the same way too,
 `# ` title is left out, since the view's header shows it, each `mermaid` block becomes a figure of
 its SVG drawings, made when the guide was written (docs/specs/guides.md#svg-drawings), and a link
 to another guide becomes a link to that guide's view.
+
+A user page (docs/specs/user-docs.md#docs-view) is rendered the same way, except that its `# `
+title is left out, each heading gets the id `doc-<id>` of its GitHub id, and a link to another
+page or to a heading becomes a route of the Docs view.
 """
 
 import html
@@ -28,6 +32,7 @@ from pygments.lexers import find_lexer_class_by_name
 from pygments.util import ClassNotFound
 
 from coding_study.domain.concept_guides import DIAGRAMS_DIRECTORY
+from coding_study.domain.doc_checks import WEB_LINK
 from coding_study.domain.guide_markdown import (
     MERMAID,
     SVG_THEMES,
@@ -39,6 +44,7 @@ from coding_study.domain.guide_markdown import (
     svg_file,
     svg_size,
 )
+from coding_study.domain.user_docs import heading_id
 
 TOKEN_CLASS_PREFIX = "tok-"
 """`<span class="tok-k">`: the stylesheet colours each Pygments token class under this prefix."""
@@ -68,6 +74,14 @@ DRAWING_SHAPE = ("paragraph_open", "inline", "paragraph_close", "fence")
 DRAWING_TOKENS = len(DRAWING_SHAPE)
 DIAGRAM_IMAGES = "diagram_images"
 """The key of the render environment that holds the `DiagramImages` of a guide."""
+DOC_SLUG = "doc_slug"
+"""The key of the render environment that holds the slug of the user page being rendered."""
+DOC_ROUTE = "#/docs/{slug}"
+DOC_HEADING_ROUTE = "#/docs/{slug}/{heading}"
+"""The Docs view's routes of a page and of one of its headings."""
+DOC_HEADING_ID = "doc-{heading}"
+"""The id a user page's heading carries in the page, clear of the page's own ids."""
+_DOC_LINK = re.compile(r"(?P<slug>[a-z][a-z0-9-]*)\.md(?:#(?P<heading>.+))?")
 FIGURE_HTML = '<figure class="diagram">\n{body}<figcaption>{caption}</figcaption>\n</figure>\n'
 IMAGE_HTML = (
     '<img class="diagram-image diagram-{theme}" src="{src}" alt="{alt}" '
@@ -111,6 +125,11 @@ def render_guide_markdown(text: str, images: DiagramImages = NO_IMAGES) -> str:
     """A concept guide's guide.md as the Guides view shows it, each diagram as the `images` of its
     SVG drawings when both are up to date."""
     return _GUIDE.render(text, {DIAGRAM_IMAGES: images})
+
+
+def render_doc_markdown(text: str, slug: str) -> str:
+    """A user page as the Docs view shows it; `slug` is the page's, for its own headings' links."""
+    return _DOC.render(text, {DOC_SLUG: slug})
 
 
 def render_code_block(code: str, language: str) -> str:
@@ -291,6 +310,51 @@ def _figure(diagram: Token, drawing: Token | None, images: list[tuple[str, str]]
     return figure
 
 
+def _doc_headings(state: StateCore) -> None:
+    """Each heading gets the id `doc-<id>` of its GitHub id, a repeated one numbered as GitHub
+    numbers it; then the `# ` title, which the view's header shows, is left out."""
+    seen: dict[str, int] = {}
+    for position, token in enumerate(state.tokens):
+        if token.type != "heading_open":
+            continue
+        base = heading_id(state.tokens[position + 1].content)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        token.attrSet(
+            "id", DOC_HEADING_ID.format(heading=base if count == 0 else f"{base}-{count}")
+        )
+    _without_title(state)
+
+
+def _doc_link(link: Token, slug: str) -> str | None:
+    """A link to a page or a heading goes to its route, a web link opens elsewhere, and any other
+    link becomes its text."""
+    href = link.attrGet("href")
+    if not isinstance(href, str):
+        return None
+    if href.startswith(WEB_LINK):
+        link.attrs.update(OPENS_ELSEWHERE)
+        return link.tag
+    if href.startswith("#") and len(href) > 1:
+        route = DOC_HEADING_ROUTE.format(slug=slug, heading=href[1:])
+    elif (page := _DOC_LINK.fullmatch(href)) is not None:
+        heading = page["heading"]
+        route = (
+            DOC_ROUTE.format(slug=page["slug"])
+            if heading is None
+            else DOC_HEADING_ROUTE.format(slug=page["slug"], heading=heading)
+        )
+    else:
+        return None
+    link.attrs = {"href": route}
+    return link.tag
+
+
+def _doc_links(state: StateCore) -> None:
+    slug = cast(str, state.env.get(DOC_SLUG, ""))
+    _rewrite_links(state, lambda link: _doc_link(link, slug))
+
+
 def _alt_text(image: Token) -> Token:
     text = Token("text", "", 0)
     parts = image.children or []
@@ -319,3 +383,9 @@ _GUIDE.core.ruler.push("alignment_classes", _alignment_classes)
 _GUIDE.core.ruler.push("without_title", _without_title)
 _GUIDE.core.ruler.push("diagram_figures", _diagram_figures)
 _GUIDE.core.ruler.push("guide_links", _guide_links)
+_DOC = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
+    ["table", "strikethrough"]
+)
+_DOC.core.ruler.push("alignment_classes", _alignment_classes)
+_DOC.core.ruler.push("doc_headings", _doc_headings)
+_DOC.core.ruler.push("doc_links", _doc_links)
