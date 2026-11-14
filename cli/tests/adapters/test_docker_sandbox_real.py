@@ -595,8 +595,9 @@ def test_a_killed_owner_leaves_nothing_behind(tmp_path):
 
 
 HANGS = ("python", "-I", "-c", "import time;print('hung',flush=True);time.sleep(600)")
-ONE_OFF_LIMIT_S = 20
-"""The limit under test, long enough for the one-off to be running when it ends."""
+ONE_OFF_LIMIT_S = 1
+"""The command's limit under test: the client gets `ONE_OFF_GRACE_S` more, which is long enough for
+the one-off to be running when it ends."""
 ONE_OFF_OWNER = textwrap.dedent(
     """\
     import os, signal, sys

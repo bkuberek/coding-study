@@ -106,6 +106,10 @@ INVENTORY_TIMEOUT_S = 60.0
 PULL_TIMEOUT_S = 1800.0
 UP_GRACE_S = 30
 """Past compose's own `--wait-timeout`, so its message arrives before the process is killed."""
+ONE_OFF_GRACE_S = 30
+"""Past a one-off's own limit, for its container's creation, start and removal, which are the
+engine's work and not the command's: a one-off that runs only `true` takes up to 12.6 s at a load
+average of 17 on 8 cores, which would leave `commands.reset` 17 s of its 30."""
 SIDECAR_UP_S = 120.0
 """A container that only sleeps came up in 0.3 s; a loaded machine took seconds for a stack."""
 HEALTH_POLL_S = 0.1
@@ -671,9 +675,10 @@ class DockerSandbox:
         timeout_s: float,
         on_output: Callable[[str], None] | None = None,
     ) -> CommandOutcome:
-        """`docker compose run`. Past its limit the client is killed and the container runs on
-        without it, on the data of whatever comes next, so it goes at once."""
-        outcome = _outcome(self._compose(plan, arguments, timeout_s, on_output))
+        """`docker compose run`, with `ONE_OFF_GRACE_S` for its container. Past that the client is
+        killed and the container runs on without it, on the data of whatever comes next, so it
+        goes at once."""
+        outcome = _outcome(self._compose(plan, arguments, timeout_s + ONE_OFF_GRACE_S, on_output))
         if outcome.timed_out:
             self._remove_one_offs(plan.identity.name)
         return outcome
