@@ -1,6 +1,6 @@
 # Review: the facts of the distributed systems guides
 
-The eight guides of the path "Distributed systems: from partial failure to consensus" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts taken from papers, an RFC and a standard library module. This page lists each one with where it was checked, so that the independent review starts from the sources.
+The eight guides of the path "Distributed systems: from partial failure to consensus" ([guides](../specs/guides.md), [ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)) state facts taken from papers, an RFC and a standard library module. This page lists each one with where it was checked, and the changes of the independent accuracy review.
 
 "Quote" means the exact text was read at that source, in the text extracted from the PDF with `pdftotext`, or in the RFC's text edition. "Run" means an example of the guide printed it, on CPython 3.13.12. "Arithmetic" means the number was computed from the stated inputs. "Reasoning" marks an explanation in the guide's own words that rests on no source and is shown by an example or by the arithmetic. A fact that could not be checked was left out of the guides; the last sections list those, the citation choices, and where a guide comes close to a linked problem.
 
@@ -34,17 +34,18 @@ Lamport, *Time, Clocks, and the Ordering of Events in a Distributed System*, Com
 | M1 | No process has a consistent view of the global state, and a common time base does not exist; this is the cause of most typical problems of distributed systems | Quote: Mattern, abstract |
 | M2 | A process ticks by incrementing its own component, `Ci[i] := Ci[i] + 1`; each message carries the sender's vector; the receiver sets `Ci := sup(Ci, t)`, the componentwise maximum | Quote: Mattern, §7 |
 | M3 | Ticking is considered to occur before any other action of an event; at any instant `Ci[i] ≥ Cj[i]`, since only `Pi` advances the `i`-th component (Theorem 5) | Quote: Mattern, §7 |
-| M4 | `u ≤ v`, `u < v` and `u ‖ v` defined entry by entry (Definition 4); `e < e′` exactly when `C(e) < C(e′)`, and `e ‖ e′` exactly when `C(e) ‖ C(e′)` (Theorem 10) | Quote: Mattern, §8 |
+| M4 | `u ≤ v`, `u < v` and `u ‖ v` defined entry by entry (Definition 4, §7); `e < e′` exactly when `C(e) < C(e′)`, and `e ‖ e′` exactly when `C(e) ‖ C(e′)` (Theorem 10, §8) | Quote: Mattern, §7 and §8 |
 | M5 | With Lamport's clocks, `C(e) < C(e′)` does not decide whether `e < e′` or `e ‖ e′` | Quote: Mattern, §6 |
 | M6 | `(N^n, ≤)` is a lattice whose least upper bound is the componentwise maximum (Theorem 7) | Quote: Mattern, §8 |
 | M7 | A consistent cut is a set of events closed under causal predecessors (Definition 3); its cut events can occur simultaneously in an equivalent diagram (Theorem 4) | Quote: Mattern, §3 and §4 |
-| M8 | Independently of Mattern, the use of vectors of logical clocks was suggested by Fidge; the reference is Fidge, *Timestamps in Message-Passing Systems that Preserve Partial Ordering*, Proceedings of the 11th Australian Computer Science Conference, pages 56 to 66, February 1988 | Quote: Mattern, §10 and references |
+| M8 | Independently of Mattern, the use of vectors of logical clocks for distributed debugging was suggested and discussed by Fidge, in references [5] and [4]: *Timestamps in Message-Passing Systems that Preserve Partial Ordering*, Proceedings of the 11th Australian Computer Science Conference, pages 56 to 66, February 1988; and *Partial orders for parallel debugging*, Proceedings of the ACM SIGPLAN and SIGOPS Workshop on Parallel and Distributed Debugging, pages 183 to 194, May 1988 | Quote: Mattern, §10 and references |
 | W1 | Local failures are either total or detectable by a central resource allocator such as the operating system; in a distributed system one component can fail while the others continue, no common agent can determine what failed and tell the others, and the failure of a network link is indistinguishable from the failure of the processor on the other side | Quote: Waldo et al., *Partial failure and concurrency* |
 | W2 | Hiding the difference between local and remote objects is a mistake; distributed programming must deal with latency, memory access, concurrency and partial failure | Quote: Waldo et al., abstract |
 | W3 | An application that retried every queue operation after time-outs until it succeeded found requests processed two, three, four or more times; the culprit was the way the queue was used | Quote: Waldo et al., the queue example |
-| F1 | No completely asynchronous consensus protocol can tolerate even a single unannounced process death; the message system is assumed reliable, delivering every message correctly and exactly once; the problem has no robust solution without further assumptions | Quote: FLP, §1 |
+| F1 | No completely asynchronous consensus protocol can tolerate even a single unannounced process death; the message system is assumed reliable, delivering every message correctly and exactly once; "the stopping of a single process at an inopportune time can cause any distributed commit protocol to fail to reach agreement. Thus, this important problem has no robust solution without further assumptions about the computing environment or still greater restrictions on the kind of failures to be tolerated!" | Quote: FLP, §1 |
 | F2 | Asynchronous: no assumptions about the relative speeds of processes or message delays, no synchronized clocks, so time-outs cannot be used; it is impossible to tell whether a process has died or is running very slowly | Quote: FLP, §1 |
 | F3 | Byzantine failures are those in which faulty processes may go completely haywire, even sending messages according to some malevolent plan (the guide's gloss of "non-Byzantine") | Quote: FLP, §1 |
+| F4 | Each process acts deterministically according to a transition function; the conclusion calls for more refined models of timing and less stringent requirements, for example termination required only with probability 1 | Quote: FLP, §2 and §5 |
 
 ## Partitioning
 
@@ -54,11 +55,11 @@ Karger, Lehman, Leighton, Panigrahy, Levine and Lewin, *Consistent Hashing and R
 |---|-------|--------|
 | K1 | With a classical hash function such as `ax + b mod p`, a change of the range sends almost every item to a new location, and all cached data becomes useless | Quote: §4 |
 | K2 | A consistent hash function changes minimally as its range changes; the protocols do not require users to have a current or even consistent view of the network; consistent hashing may be useful for distributed name servers and quorum systems | Quote: abstract |
-| K3 | Views; smoothness (the expected fraction of objects moved is the minimum needed for a balanced load), spread and load; balance and monotonicity (items move from old buckets only to new ones) | Quote: §4, §4.1 |
+| K3 | Views; smoothness (the expected fraction of objects moved is the minimum needed for a balanced load), spread and load; balance; monotonicity, defined for buckets being added: items move from old buckets only to new ones; the paper does not commit to a precise definition of consistency, and states these properties instead | Quote: §4, §4.1 |
 | K4 | Buckets and items are mapped to the unit interval and an item goes to the closest bucket; each bucket gets about `κ log C` points | Quote: §4.2 |
 | K5 | A balanced search tree gives O(log C) per lookup and O(log² C) per bucket added or removed; dividing the interval into about `C log C` equal segments, each with its own tree, gives O(1) expected per lookup | Quote: §4.3 |
 | K6 | Hot spots occur when a large number of clients want data from one server at once; random cache trees use a different tree for each page, assigned to caches by a hash function, so that no server is swamped | Quote: §1, §1.2 |
-| K7 | The clockwise form moves keys only to a joining node or away from a leaving one | Run: `moves.py`, every moved key goes to `E`; reasoning |
+| K7 | The leaving half, a key moving only away from a leaving node, follows from the same clockwise rule | Run: `moves.py` shows the joining half, every moved key going to `E`; reasoning for the leaving half |
 
 ## Replication
 
@@ -69,13 +70,13 @@ Gifford, *Weighted Voting for Replicated Data*, Proceedings of the 7th ACM Sympo
 | V1 | Replication puts information close to its point of use, lets many nodes serve requests in parallel, and increases availability by masking partial failures | Quote: Gifford, §1 |
 | V2 | Every copy gets votes; reads collect `r` votes and writes `w` votes, with `r + w` greater than the total, so every read quorum and write quorum intersect; version numbers determine which copies are current | Quote: Gifford, abstract and §1 |
 | V3 | The first write of a transaction increments the version numbers of its write quorum | Quote: Gifford, §3.3 |
-| V4 | Example 2: the local server has two votes and two remote servers one each, so writes need the local server and one remote one; Example 3: users read from any server and updates go to all copies | Quote: Gifford, §3 |
-| V5 | Weak representatives have no votes and serve as local copies; since a write quorum of other representatives is always current, one found in error can be invalidated | Quote: Gifford, §3 and §4.1 |
-| V6 | The algorithm runs in a transactional file system with locking and two-phase commit, and the appendix shows that it maintains serial consistency | Quote: Gifford, §1 and §3.1 |
+| V4 | Example 2: the local server has two votes and two remote servers one each, so writes need the local server and one remote one; Example 3, on three servers: users read from any server and updates go to all copies | Quote: Gifford, §3 |
+| V5 | Weak representatives have no votes and serve as local copies; the paper notes that a write quorum of other representatives is always current, so one found in error can be invalidated | Quote: Gifford, §3 and §4.1 |
+| V6 | The algorithm runs in a transactional file system with locking and two-phase commit, and the appendix shows that it maintains serial consistency; the guide glosses serially consistent as the outcome of the transactions run one at a time, Herlihy and Wing's serializability (H4) | Quote: Gifford, §1 and §3.1 |
 | A1 | There are only three ways to send updates to replicas: to all at the same time, to an agreed-upon master node first, or to an arbitrary node first; each has a consistency/latency tradeoff; sending to all at once diverges unless a preprocessing layer or agreement protocol orders updates; the second routes every update to that node; with the third, two updates of the same item can start at different locations at once | Quote: Abadi, *Data replication* |
 | A2 | Synchronous replication waits for the replicas and is limited by the slowest; asynchronous replication treats an update as complete before it is replicated; reads from any node can be inconsistent; update sequence numbers can bound this, for example to read-your-writes | Quote: Abadi, *Data replication* |
 | A3 | Reads that reach a synchronously updated node, as when `R + W > N`, preserve consistency; simply using a quorum protocol is not sufficient to guarantee consistency as Gilbert and Lynch define it | Quote: Abadi, *Data replication* |
-| A4 | CAP's tradeoff comes from a partition actually happening, not from partition tolerance alone; CAP imposes no restriction when there is no partition, allowing full ACID guarantees with high availability; the consistency/latency tradeoff is present at all times | Quote: Abadi, *CAP is for failures*, conclusion |
+| A4 | CAP's tradeoff comes from a partition actually happening, not from partition tolerance alone; CAP imposes no restriction when there is no partition, allowing the complete set of ACID guarantees (atomicity, consistency, isolation and durability) with high availability; the consistency/latency tradeoff is present at all times | Quote: Abadi, *CAP is for failures*, conclusion |
 | A5 | PACELC: if there is a partition (P), how does the system trade off availability and consistency (A and C); else (E), how does it trade off latency (L) and consistency (C) | Quote: Abadi, *PACELC* |
 
 ## Consensus
@@ -95,14 +96,14 @@ Ongaro and Ousterhout, *In Search of an Understandable Consensus Algorithm (Exte
 | R9 | Log Matching: equal index and term mean equal command and identical preceding entries; the consistency check on the preceding entry's index and term is the induction step; after a rejection the leader decrements `nextIndex` and retries; conflicting follower entries are overwritten | Quote: §5.3 |
 | R10 | A leader never overwrites or deletes entries in its own log | Quote: §5.3, Figure 3 |
 | R11 | A voter denies its vote to a candidate whose log is less up-to-date: a later last term is more up-to-date, and with equal last terms the longer log is; every committed entry is on at least one server of any majority | Quote: §5.4.1 |
-| R12 | A leader cannot conclude that an entry from a previous term is committed once it is on a majority (Figure 8); only entries of the current term are committed by counting replicas | Quote: §5.4.2 |
+| R12 | A leader cannot conclude that an entry from a previous term is committed once it is on a majority; in Figure 8 the term-2 entry is on S1, S2 and S3, and with S1 down, S5, whose last entry has term 3, is elected with the votes of S2, S3 and S4 and overwrites it; only entries of the current term are committed by counting replicas, which commits the entries before them | Quote: §5.4.2, Figure 8 |
 | R13 | The leader completeness argument goes through a voter that stored the committed entry and voted for the later leader | Quote: §5.4.3, Figure 9 |
 | R14 | Safety must not depend on timing; availability inevitably depends on timing; the timing requirement is broadcastTime ≪ electionTimeout ≪ MTBF | Quote: §5.6 (in `why-distribution-is-hard` too) |
 | R15 | Without randomness, elections consistently took longer than 10 seconds because of split votes; 5 ms of randomness gave a median downtime of 287 ms; timeouts below 12 to 24 ms break the timing requirement and cause unnecessary leader changes | Quote: §9.3 |
 | R16 | Switching configurations directly is unsafe, since the cluster can split into two independent majorities; joint consensus needs separate majorities of the old and new configurations | Quote: §6 |
 | R17 | Snapshotting writes the whole current state to stable storage and discards the log up to that point; the leader sends snapshots to followers that lag behind | Quote: §7 |
 | R18 | The goal is linearizable semantics, each operation taking effect instantaneously, exactly once, between invocation and response; a leader crash after committing and before responding makes the client retry and the command execute twice; clients assign unique serial numbers, and the state machine keeps the latest serial number per client with its response | Quote: §8 (in `idempotency-and-exactly-once` too) |
-| R19 | Before answering a read-only request without the log, a leader exchanges heartbeats with a majority to check that it has not been deposed | Quote: §8 (in `consistency-models` too) |
+| R19 | A leader must commit an entry from its term to know which entries are committed, and exchanges heartbeats with a majority to check that it has not been deposed before answering a read-only request without the log; the guide states both steps and leaves out the paper's reason for the first, which `raft-sim`'s follow-up 2 asks | Quote: §8 (in `consistency-models` too) |
 | R20 | Raft is similar to Viewstamped Replication; its novel features are a strong leader, randomized timers and joint consensus; in Viewstamped Replication a leader can be elected without all committed entries, with extra mechanisms to transfer them | Quote: §1, §5.4.1 |
 | R21 | A user study with 43 students at two universities: 33 answered questions about Raft better than about Paxos | Quote: §1 |
 
@@ -118,7 +119,7 @@ Herlihy and Wing, *Linearizability: A Correctness Condition for Concurrent Objec
 | H4 | Serializability and strict serializability defined; strict serializability is ensured by two-phase locking but not by multiversion timestamp schemes; linearizability is a special case of strict serializability with transactions of one operation on one object | Quote: Herlihy and Wing, §3.3 |
 | S1 | Sequential consistency: the result of any execution is the same as if the operations of all processors ran in some sequential order, each processor's operations in program order | Quote: Lamport 1979 |
 | C1 | Potential causality: execution thread, gets from, transitivity | Quote: Lloyd et al., §3 |
-| C2 | Causal consistency: it must appear that a write occurs after all operations that causally precede it; concurrent operations are not ordered; two concurrent puts to one key let one replica return one value forever and another the other | Quote: Lloyd et al., §2 and §3.1 |
+| C2 | Causal consistency: it must appear that a write occurs after all operations that causally precede it; concurrent operations are not ordered; two concurrent puts to one key let one replica return one value forever and another the other; causal+ consistency is causal consistency with convergent conflict handling, in which all replicas handle conflicting puts the same way, with an associative and commutative handler, so that the results converge | Quote: Lloyd et al., §2, §3 and §3.1 |
 | C3 | In decreasing strength: linearizability, sequential, causal, FIFO, per-key sequential, eventual | Quote: Lloyd et al., §3.2 |
 | C4 | Dependencies are kept in each version's metadata; a datacenter receiving a replicated write checks its dependencies before committing it | Quote: Lloyd et al., §3 |
 | G1 | Brewer made the conjecture at PODC 2000 | Quote: Gilbert and Lynch, §1 |
@@ -127,8 +128,8 @@ Herlihy and Wing, *Linearizability: A Correctness Condition for Concurrent Objec
 | G4 | Availability: every request received by a non-failing node must result in a response, with no bound on time | Quote: Gilbert and Lynch, §2.2 |
 | G5 | Partition tolerance: the network may lose arbitrarily many messages; in a partition all messages between the components are lost | Quote: Gilbert and Lynch, §2.3 |
 | G6 | Theorem 1 and its proof: two groups, all messages between them lost, a write completes in one, a later read in the other returns the initial value | Quote: Gilbert and Lynch, §3.1 |
-| G7 | In the asynchronous model an algorithm cannot tell a lost message from one arbitrarily delayed | Quote: Gilbert and Lynch, proof of Corollary 1.1 (in `why-distribution-is-hard`) |
-| G8 | Partially synchronous model: every node has a timer, and a message is delivered within a known time or lost; Theorem 2, the impossibility, still holds; atomic data can be returned whenever all messages are delivered, using time-outs | Quote: Gilbert and Lynch, §4 |
+| G7 | In the asynchronous model there is no clock and an algorithm cannot tell a lost message from one arbitrarily delayed; Corollary 1.1: no read/write object is available in all fair executions and atomic in the fair executions in which no messages are lost | Quote: Gilbert and Lynch, §3.1 (in `why-distribution-is-hard` too) |
+| G8 | Partially synchronous model: every node has a timer, and a message is delivered within a known time or lost; Theorem 2, the impossibility when messages are lost, still holds; the analogue of Corollary 1.1 does not: atomic data can be returned whenever all messages are delivered, using time-outs | Quote: Gilbert and Lynch, §4 |
 | B1 | Snapshot isolation: a transaction reads from a snapshot of committed data as of its start timestamp; it commits only if no transaction that committed in its interval wrote data it also wrote, first-committer-wins, which prevents lost updates | Quote: Berenson et al., §4.2 |
 | B2 | Snapshot isolation is not serializable because reads come at one instant and writes at another; write skew (A5B), with the constraint that `x + y` stays positive in history H5 | Quote: Berenson et al., §4.2 |
 
@@ -147,6 +148,7 @@ Shapiro, Preguiça, Baquero and Zawirski, *Conflict-free Replicated Data Types*,
 | D7 | Concurrent add and remove: add wins, remove wins, the replica with the highest IP address wins, or a reset; the add-wins scenario reaches a state no sequential execution reaches; strong eventual and sequential consistency are incomparable | Quote: §3.3 (in `consistency-models` too) |
 | D8 | The add-only set, ordered by inclusion with union as least upper bound | Quote: §4.2 |
 | D9 | The last-writer-wins register is credited to Johnson et al. and ensures a total order at the cost of losing concurrent updates; operational transformation, and Oster et al.'s finding that most decentralized transformation algorithms are incorrect; designing for commutativity is cleaner and simpler | Quote: §6 |
+| D10 | Keeping the write with the largest timestamp, ties broken by replica id, is a merge that obeys the three laws: it takes the maximum in a total order | Reasoning |
 
 ## Idempotency
 
@@ -164,7 +166,7 @@ RFC 9110, *HTTP Semantics*, June 2022, read from [the text edition](https://www.
 | I8 | Strong productions: produced records are checkpointed before delivery, in the same atomic write as the state change | Quote: Akidau et al., §6.1.2 |
 | I9 | Exactly-once and strong productions can be disabled for computations that are idempotent anyway, as they cost resources and latency; weak productions send before persisting state | Quote: Akidau et al., §6.1.3 |
 | I10 | When code contacts external systems, making those effects idempotent is up to the user | Quote: Akidau et al., §4.1 |
-| I11 | A sender that must not lose a message resends and may cause duplicates, one that never resends may lose it, and the last acknowledgement can always be the lost one | Reasoning; run: `crash_points.py` |
+| I11 | A sender that must not lose a message resends and may cause duplicates, one that never resends may lose it, and to the sender a lost acknowledgement looks exactly like a lost message | Reasoning; run: `crash_points.py` |
 
 ## Python
 
@@ -205,15 +207,16 @@ Papers are cited by their authors. The affiliations printed in the papers are no
 
 ## Not verified, so left out or reworded
 
-- **Fidge, 1988.** The full text could not be read: the UCI course copy returned HTTP 404, the Lund copy an error page, and the author's QUT address failed with a certificate mismatch. The guide credits Fidge only through Mattern's own statement that Fidge suggested vectors of logical clocks independently (M8).
-- **Ahamad, Neiger, Burns, Kohli and Hutto, *Causal memory*, 1995**, the usual source for causal consistency, could not be read: the Georgia Tech repository refused the request (HTTP 403) and the seminar copy found was not the paper. Causal consistency is defined from Lloyd et al. (C1 to C3), who cite it.
-- **INRIA research report RR-7506** (the longer CRDT report) was refused by its host; the guides cite only the SSS paper, which was read.
-- **Hybrid logical clocks, bounded loads, delta-state CRDTs**: not read for these guides and not stated. Each is a later level of a linked problem, whose statement teaches it.
-- **Raft's blank entry at the start of a term, Pre-Vote, the conflict-term optimization, which state must be persistent, batching of entries**: read in the paper (except Pre-Vote, which is in Ongaro's thesis), and left out as answers to `raft-sim`'s follow-ups.
-- **The SSS paper's counter construction (§4.1), its U-Set with unique elements (§4.2) and its graph with unique vertex identifiers (§5)**: read, and left out as answers to `crdt-replicas`.
-- **Gifford's paper** does not state that writes need `w > n/2`; the guide does not claim it.
-- **"Exactly once is impossible"**: no source for the two-party argument was read; the guide gives it as reasoning (I11), shown by `crash_points.py`.
-- **The name "outbox"**: no primary source was read for the term; the guide attributes it to the practice problem, and grounds the technique in strong productions (I8).
+- **Fidge, 1988.** Not read; credited only through Mattern (M8).
+- **Ahamad, Neiger, Burns, Kohli and Hutto, *Causal memory*, 1995.** Not read; causal consistency is defined from Lloyd et al. (C1 to C3), who cite it.
+- **INRIA research report RR-7506**, the longer CRDT report. Not read; the guides cite only the SSS paper.
+- **Hybrid logical clocks, bounded loads, delta-state CRDTs.** Not read and not stated; each is a later level of a linked problem, whose statement teaches it.
+- **Raft's reason for a new leader's first entry, Pre-Vote, the conflict-term optimization, which state must be persistent, batching of entries.** Left out as answers to `raft-sim`'s follow-ups; Pre-Vote is in Ongaro's thesis, not the paper.
+- **The SSS paper's counter construction (§4.1), its U-Set with unique elements (§4.2) and its graph with unique vertex identifiers (§5).** Left out as answers to `crdt-replicas`.
+- **When removal information can be forgotten.** Left out as the answer to `crdt-replicas`'s follow-up 1.
+- **Gifford and `w > n/2`.** The paper does not state it, and the guide does not claim it.
+- **"Exactly once is impossible".** No source for the two-party argument; the guide gives it as reasoning (I11), shown by `crash_points.py`.
+- **The name "outbox".** No primary source for the term; the guide attributes it to the practice problem and grounds the technique in strong productions (I8).
 - **The complexity of checking linearizability** in general is not stated; the guide says only that its brute-force checker tries `n!` orders.
 - **The strength order** follows Lloyd et al.'s list in decreasing strength (C3); their figure also places per-key sequential consistency on a separate branch, which the guide does not draw.
 
@@ -236,7 +239,7 @@ Every problem is on the main branch. Each guide's `problems:` names it in `## Pr
 
 ## Where a guide comes close to a linked problem
 
-Each guide teaches its idea with examples of its own. These are the places the review should weigh against the rule that a guide never gives away a linked problem's solution:
+Each guide teaches its idea with examples of its own. These are the places where a guide comes close to a linked problem, and what it keeps back so as not to give away the solution:
 
 | Problem | Guide | What the guide states | Kept back |
 |---------|-------|-----------------------|-----------|
@@ -244,12 +247,30 @@ Each guide teaches its idea with examples of its own. These are the places the r
 | `logical-clocks` | `why-distribution-is-hard`, `crdts` | Why clocks disagree; the practice line names the later levels | Everything above |
 | `consistent-hash-ring` | `partitioning-and-consistent-hashing` | The ring, arcs, monotonicity and virtual nodes, which the statement explains; owners found by a scan for the smallest clockwise distance over SHA-256 positions; Karger's balanced search tree in the complexity table, near hint 2's idea | FNV-1a, the point labels and their reason, `arcShare` (hint 4), the move report (hint 5), replica walks and bounded loads (level 4, hint 6) |
 | `cdc-apply` | `replication-and-quorums` | A follower applies a leader's log in order and is behind, not different; the trap of applying entries twice | Positions, snapshots, transactions and schema changes; the change data capture guide covers positions |
-| `idempotent-document-consumer-typescript` | `idempotency-and-exactly-once` | An id named by whoever decides the change, not the delivery (near hint 1); id and effect in one commit, then the ack, which level 5's statement requires; ids kept as long as duplicates can arrive, from the stream processing paper (near follow-up 2); effects outside the commit repeat (near follow-up 3) | The content-plus-version key (level 2, hint 3), "done" against "shown" (hint 2), late deliveries (level 3), poison messages and the delivery count (level 4, hint 4) |
+| `idempotent-document-consumer-typescript` | `idempotency-and-exactly-once` | An id named by whoever decides the change, not the delivery, with no example of a delivery id that changes (near hint 1); id and effect in one commit, then the ack, which level 5's statement requires; ids kept as long as duplicates can arrive, from the stream processing paper (near follow-up 2); effects outside the commit repeat (near follow-up 3) | The content-plus-version key (level 2, hint 3), "done" against "shown" (hint 2), late deliveries (level 3), poison messages and the delivery count (level 4, hint 4) |
 | `transactional-outbox-typescript` | `idempotency-and-exactly-once` | Commit the message with the change, send afterwards until acknowledged (strong productions), consumers deduplicate, which the statement's levels 2, 3 and 5 say; the at-least-once rule of the consumer example is the reasoning hint 4 asks for | The relay, reading only the outbox row (hint 3), order per rental and skipping (level 4, hint 5), id numbering and pruning (hint 2) |
 | `mvcc-snapshot-isolation` | `consistency-models` | Snapshot isolation, first-committer-wins and write skew, from Berenson et al., which the statement also explains | Version lists, the read rule, antidependencies, dangerous structures and their detection (level 3), the horizon and vacuum (level 4) |
-| `crdt-replicas` | `crdts` | The three laws, which the statement states; union and maximum as semilattices; that a removal must leave information behind | The per-replica counter design (hints 2 and 5), tags for adds (hint 3), the last-writer-wins code, delta sync and acknowledgements (level 4, hint 4); the paper's counter, U-Set and graph sections; that a vector clock is a CRDT |
-| `raft-sim` | `consensus-with-raft` | Roles, terms, elections, randomized timeouts (near follow-up 6), commit by majority, the consistency check and retry, the up-to-date rule and the Figure 8 rule, all in the statement; a model of split votes that has no logs or messages | Handlers, the message table, the order of the vote checks, `nextIndex` and `matchIndex` bookkeeping (hint 4), the commit walk (hint 5), the blank entry, Pre-Vote, the conflict-term optimization, persistence and batching (follow-ups 1 to 5) |
+| `crdt-replicas` | `crdts` | The three laws, which the statement states; union and maximum as semilattices; that a removal must leave information behind; last-writer-wins with ties broken by replica id, which level 2's statement specifies | The per-replica counter design (hints 2 and 5), tags for adds (hint 3), the last-writer-wins code, delta sync and acknowledgements (level 4, hint 4); when removal information can be forgotten (follow-up 1); the paper's counter, U-Set and graph sections; that a vector clock is a CRDT |
+| `raft-sim` | `consensus-with-raft` | Roles, terms, elections, randomized timeouts (near follow-up 6), commit by majority, the consistency check and retry, the up-to-date rule and the Figure 8 rule, all in the statement; that a new leader first commits an entry of its own term before answering reads without the log, without the reason; a model of split votes that has no logs or messages | Handlers, the message table, the order of the vote checks, `nextIndex` and `matchIndex` bookkeeping (hint 4), the commit walk (hint 5), the blank entry, Pre-Vote, the conflict-term optimization, persistence and batching (follow-ups 1 to 5) |
 
 ## Independent accuracy review
 
-Pending.
+The review checks every claim against the source this page gives for it, runs every example and compares what it prints with the guide, and reads the guides against the linked problems' statements and solutions. Every example matches its guide, no guide names a company or product, and the guides on Raft and CRDTs keep their problems' solutions back. These are its findings and the changes they make.
+
+| Finding | Change |
+|---------|--------|
+| `consistency-models` drew causal consistency as implying eventual consistency, which it does not alone: concurrent writes to one key may diverge forever | The text and the drawing's last arrow say that causal consistency implies eventual consistency only with convergent conflict handling, the paper's causal+ (C2) |
+| `consensus-with-raft` said that a voter holding a committed entry refuses any candidate without it, which holds only for entries committed by counting in their own leader's term | The voter refuses such a candidate provided the entry was committed by counting in its own leader's term, which is the second rule; Figure 8 shows the holders that are still up voting for a candidate with a later last term (R12, R13) |
+| `replication-and-quorums` said that quorums make the first way of sending updates safe, which no source says | The guide starts with a leader; quorums decide how many replicas a write and a read reach, and do not order concurrent writes on their own (A3, E7) |
+| The FLP notes in `why-distribution-is-hard` and `consensus-with-raft` said that consensus needs a timing assumption, leaving out the paper's other ways out | Titled "No deterministic consensus in a fully asynchronous system", with the paper's whole sentence, and the ways out: timing assumptions, which Raft uses for progress only, restricting the failures, or termination with probability 1 (F1, F4) |
+| `consensus-with-raft` and `consistency-models` described reads at a leader with one step of two | A new leader first commits an entry of its own term, and exchanges heartbeats with a majority before answering a read-only request without the log; the reason for the first step is not given, so that `raft-sim`'s follow-up 2 stays open (R19) |
+| `consistency-models` said that outside partitions there is no choice to make, without the condition | Outside partitions, once replicas can time out on lost messages, there is no choice; the expert notes set the asynchronous model, with Corollary 1.1, against the partially synchronous one (G7, G8) |
+| `partitioning-and-consistent-hashing` called both halves of the property monotonicity | The paper's monotonicity is the joining half; the leaving half follows from the same rule (K3, K7) |
+| The same guide said that the paper defines consistency through four properties | The paper states four properties as notions of consistency, without a precise definition (K3) |
+| `time-and-order` credited Fidge with vector clocks in general | Fidge independently suggested vectors of logical clocks for distributed debugging, in two papers of 1988, references [4] and [5] of Mattern's paper (M8) |
+| `idempotency-and-exactly-once` said the last acknowledgement can always be the lost one | To the sender, a lost acknowledgement looks exactly like a lost message (I11) |
+| `crdts` limited fast clocks to ties, and gave last-writer-wins without its tie-break | A fast clock wins every conflict; last-writer-wins breaks ties by replica id, a maximum in a total order (D10) |
+| Spoilers: `crdts` said when removal information can be forgotten, and `idempotency-and-exactly-once` described a delivery id that changes on a producer's retry | Both are cut; the table above keeps `crdt-replicas`'s follow-up 1 back, and `split_votes.py` and `stamps.py` stay with their rows |
+| This page carried discussion wording, put Definition 4 in Mattern's §8, and its count of claim rows was wrong | Outcomes only; Definition 4 is in §7; the claim tables hold 118 rows, with F4 and D10 |
+| Wording: "processes" in Lamport's definition, Gifford "requires" a current write quorum, Gifford's third example given five replicas | "Processors"; Gifford notes it; the third example uses the rule on three servers (S1, V4, V5) |
+| Jargon before its definition | Glosses for consensus algorithm, deterministic, transaction, serially consistent and ACID where each first appears (A4, V6) |
