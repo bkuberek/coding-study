@@ -215,7 +215,7 @@ The timer is the hard part. Too short, and the sender resends data that was only
 1. Before any measurement, the **retransmission timeout** (RTO) is 1 second. (The version before it used 3 seconds.)
 2. On the first round-trip sample `R`: `SRTT = R`, `RTTVAR = R/2`.
 3. On each later sample: first `RTTVAR = (1 - β) · RTTVAR + β · |SRTT - R|`, then `SRTT = (1 - α) · SRTT + α · R`, with `α = 1/8` and `β = 1/4`.
-4. After each: `RTO = SRTT + max(G, 4 · RTTVAR)`, where `G` is the clock's granularity, rounded up to 1 second if it is less. A maximum may be placed on RTO if it is at least 60 seconds.
+4. After each: `RTO = SRTT + max(G, 4 · RTTVAR)`, where `G` is the clock's granularity. An RTO below 1 second should be rounded up to 1 second. A maximum may be placed on RTO if it is at least 60 seconds.
 5. When the timer expires: retransmit the earliest unacknowledged segment and double RTO, which RFC 6298 calls backing off the timer.
 
 `SRTT`, the smoothed round-trip time, follows the typical round trip; `RTTVAR` follows how much it varies. A steady path gets a timeout close to its round trip, and a jittery one gets a margin.
@@ -325,7 +325,7 @@ The drawing is the sender's byte stream, from its oldest bytes at the top to byt
 This is **flow control**: it protects the receiver, whose buffer holds what has arrived but has not been read yet. With several segments in flight, two new things happen:
 
 - **Data can arrive early.** If one segment is lost and the next three arrive, the receiver has bytes beyond a gap. RFC 9293 says segments with higher sequence numbers than expected should be held for later processing, and RFC 5681 says the receiver should send an immediate duplicate ACK when an out-of-order segment arrives. That ACK repeats the number of the missing byte; the guide on congestion control shows how a sender reads a run of them.
-- **The window can close.** A receiver whose buffer is full advertises a window of zero. If the ACK that reopens it is lost, both sides would wait forever, so RFC 9293 makes the sender probe: it should send the first zero-window probe after a zero window has lasted one retransmission timeout, and lengthen the interval between probes exponentially.
+- **The window can close.** A receiver whose buffer is full advertises a window of zero. If the ACK that reopens it is lost, both sides would wait forever, so RFC 9293 says the sender must keep probing a zero window regularly.
 
 ## When to use it
 
@@ -363,7 +363,7 @@ A worked number: on a 100 ms round trip, a window of 64 KiB moves at most 64 KiB
 - **Retransmitting past the window.** RFC 9293 lets a sender retransmit old data beyond the right edge of the window, and strongly discourages a receiver from shrinking the window, moving its right edge to the left.
 - **Timer management.** RFC 6298 starts the timer when a segment is sent and the timer is not running, stops it when everything is acknowledged, restarts it on an ACK of new data, and requires at least one round-trip measurement per round trip.
 - **Default segment size.** Without an MSS option from the other side, RFC 9293 makes a sender assume 536 bytes of data per segment for IPv4 and 1,220 for IPv6.
-- **One loss per round trip.** With only cumulative ACKs, RFC 2018 notes, a sender can learn about only one lost packet per round trip. Its selective acknowledgement (SACK) option lets the receiver report which data arrived, so the sender can retransmit only what is missing.
+- **Selective acknowledgements.** RFC 2018 defines a TCP option, SACK, that extends the cumulative acknowledgements of this guide.
 
 ## Practice
 
@@ -377,4 +377,4 @@ A worked number: on a 100 ms round trip, a window of 64 KiB moves at most 64 KiB
 - [RFC 1122, Requirements for Internet Hosts](https://www.rfc-editor.org/rfc/rfc1122.html): what IP does not guarantee (section 1.1.3).
 - [RFC 5681, TCP Congestion Control](https://www.rfc-editor.org/rfc/rfc5681.html): immediate ACKs for out-of-order segments (section 3.2).
 - [RFC 7323, TCP Extensions for High Performance](https://www.rfc-editor.org/rfc/rfc7323.html): window scaling, timestamps and PAWS.
-- [RFC 2018, TCP Selective Acknowledgment Options](https://www.rfc-editor.org/rfc/rfc2018.html): reporting which data arrived.
+- [RFC 2018, TCP Selective Acknowledgment Options](https://www.rfc-editor.org/rfc/rfc2018.html): the selective acknowledgement option.

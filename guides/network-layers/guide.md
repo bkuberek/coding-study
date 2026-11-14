@@ -60,7 +60,7 @@ The drawing reads from top to bottom for the sender; the receiver climbs it from
 Two kinds of address get the data to the right place:
 
 - An **IP address** names a host's attachment to a network. It is 32 bits in IPv4, written as four numbers such as `192.0.2.10`, and 128 bits in IPv6 (RFC 8200).
-- A **port** names a program's endpoint inside a host: a 16-bit number in the TCP and UDP headers. RFC 9293 says TCP uses port numbers to identify application services and to multiplex distinct flows between hosts. By default a web server listens on port 80 for `http` and 443 for `https` (RFC 9110), and a DNS server on port 53 (RFC 1035). A TCP connection is defined by a pair of **sockets**, one at each end, each an address and a port.
+- A **port** names a program's endpoint inside a host: a 16-bit number in the TCP and UDP headers. RFC 9293 says TCP uses port numbers to identify application services and to multiplex distinct flows between hosts: to carry many separate conversations between the same two hosts and keep them apart. By default a web server listens on port 80 for `http` and 443 for `https` (RFC 9110), and a DNS server on port 53 (RFC 1035). A TCP connection is defined by a pair of **sockets**, one at each end, each an address and a port.
 
 The layers make very different promises, and the difference explains much of networking:
 
@@ -313,7 +313,7 @@ Encapsulation tells you what TLS cannot hide. It protects the bytes the applicat
 
 ## Complexity
 
-Every layer adds bytes and, for connections, waiting:
+Every layer adds bytes, and opening a connection adds waiting, counted in **round trips**: a round trip is the time for a message to reach the other end and for the reply to come back.
 
 | Cost | Size | Where it comes from |
 |------|------|---------------------|
@@ -334,7 +334,7 @@ Encapsulation itself is cheap: building or removing a header is constant work pe
 - **Network byte order.** RFC 791's appendix on transmission order sends the octets of a field in the order they are written and reads the leftmost bit as the most significant: big-endian. Python's `struct` module writes this order with the `!` prefix, which its documentation calls network byte order, always big-endian.
 - **The Protocol field.** Its values come from the public registry of assigned Internet protocol numbers: 6 is TCP and 17 is UDP.
 - **The word "message" again.** RFC 1122 uses it for transport units because it describes the lower layers; RFC 9110 uses it for HTTP requests and responses. Both are right in their own documents.
-- **QUIC moves the transport into the application's hands.** RFC 9114 describes QUIC as providing stream multiplexing, per-stream flow control and quicker connection setup, with reliability per stream and congestion control across the whole connection, and with TLS 1.3 built into the transport layer. Its packets travel in UDP datagrams (RFC 9000), so the network sees datagrams while the endpoints see streams.
+- **QUIC: streams over datagrams.** RFC 9114 describes QUIC as providing stream multiplexing, per-stream flow control and quicker connection setup, with reliability per stream and congestion control across the whole connection, and with TLS 1.3 built into the transport layer. Its packets travel in UDP datagrams (RFC 9000), so the network sees datagrams while the endpoints see streams.
 
 ## Practice
 

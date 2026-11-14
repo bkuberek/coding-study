@@ -13,7 +13,9 @@ RFC 9110 gives HTTP's vocabulary for this:
 
 The definition is about the effect on the server, not about the answer. Setting a price to 30 twice leaves it at 30; deleting an order twice leaves it deleted, even if the second answer differs from the first. Adding 30 to a price twice, or placing an order twice, does not.
 
-RFC 9110 draws the consequence. An idempotent request can be repeated automatically if a communication failure happens before the client can read the server's response. A client should not automatically retry a request with a non-idempotent method unless it knows that the request is idempotent anyway, or has some way to detect that the original request was never applied. A proxy must not automatically retry non-idempotent requests at all.
+RFC 9110 draws the consequence. An idempotent request can be repeated automatically if a communication failure happens before the client can read the server's response. A client should not automatically retry a request with a non-idempotent method unless it knows that the request is idempotent anyway, or has some way to detect that the original request was never applied. A **proxy**, a program the client chose to forward its requests, must not automatically retry non-idempotent requests at all. And a client should not automatically retry a failed automatic retry.
+
+The backoff schedules in the rest of this guide go beyond that advice. RFC 9110 speaks of automatic retries, the kind a client or proxy makes on its own after a connection fails; several attempts spaced out by growing waits are a deliberate retry policy, which a client chooses for requests it knows are safe to repeat.
 
 That second way out is the usual fix for operations that are not idempotent by nature. The client attaches an **idempotency key**, a unique value it generates once per operation and sends again with every retry of that operation. The server records the outcome under the key the first time, and when the key comes back it returns that outcome instead of doing the work again. The operation is not idempotent, but the request now is.
 
@@ -222,7 +224,7 @@ Two status codes carry it most often:
 
 RFC 6585 leaves it to each server how it identifies a user and counts requests. A client that receives a wait should honor it over its own backoff, and for every request it sends to that server, not only the one that was refused: the server asked the client to stay away, not one call.
 
-Other codes say different things about a retry. A 4xx says the request itself was at fault, so sending it again unchanged gets the same answer; 429 is the exception, being about timing. RFC 9110 defines `502 Bad Gateway` as a gateway or proxy receiving an invalid response from the server behind it, and `504 Gateway Timeout` as a gateway or proxy not receiving a timely response from it. A 502 or 504 says the server behind may or may not have done the work: for a request that is not idempotent, it is an unknown outcome like a timeout.
+Other codes say different things about a retry. Most 4xx codes say the request was at fault, so sending it again unchanged gets the same answer; 408 and 429 are exceptions, about timing. RFC 9110 defines `408 Request Timeout` as the server not receiving a complete request within the time it was prepared to wait, and says a client may repeat a request that was in transit. A **gateway** is a server that receives requests as if it were the origin and forwards them to another server behind it. RFC 9110 defines `502 Bad Gateway` as a gateway or proxy receiving an invalid response from the server behind it, and `504 Gateway Timeout` as a gateway or proxy not receiving a timely response from it. A 502 or 504 says the server behind may or may not have done the work: for a request that is not idempotent, it is an unknown outcome like a timeout.
 
 ## Deadlines, budgets and layers
 
@@ -258,7 +260,7 @@ flowchart TD
 └───────────────────────────────────┘
 ```
 
-The drawing follows one request down three layers. Under an outage, the database gets up to 27 times its normal load from the clients that are failing, exactly when it can least take it. The usual answers are to retry at one layer only, usually the one closest to the failure; to keep a **retry budget**, a cap on retries as a share of all requests; and to use a **circuit breaker**, which stops calling a dependency that keeps failing for a cool-down period, then lets one trial request through to see whether it has recovered.
+The drawing follows one request down three layers. Under an outage, the database gets up to 27 times its normal load from the clients that are failing, exactly when it can least take it. Two common limits are a **retry budget**, a cap on retries as a share of all requests, and a **circuit breaker**, which stops calling a dependency that keeps failing for a cool-down period, then lets one trial request through to see whether it has recovered.
 
 ## When to use it
 
@@ -273,7 +275,7 @@ The drawing follows one request down three layers. Under an outage, the database
 - **Treating a timeout as a failure.** It is an unknown. Report it as one, and never assume the work was not done.
 - **Retrying a `POST` without a key.** Each retry can repeat the effect: two orders, two charges, two emails.
 - **No jitter.** Clients that failed together retry together, and keep doing it.
-- **Retrying at every layer.** Load multiplies, as the drawing shows. Pick one layer.
+- **Counting only your own retries.** Every layer's retries multiply with the others', as the drawing shows.
 - **Ignoring `Retry-After`.** The server said when; retrying earlier is refused again and adds load.
 - **Timeouts longer than the caller's deadline.** An attempt that cannot finish in time cannot help.
 - **Reusing a key for different work.** A server that does not compare the request returns the wrong answer, as the example's last line shows.
@@ -296,7 +298,7 @@ Jitter costs nothing in total load: it moves attempts in time, which lowers the 
 
 - **Automatic retries in HTTP/1.1.** RFC 9112 notes that idempotent methods matter for pipelining because they can be retried automatically after a connection failure, and says a user agent should not pipeline requests after a non-idempotent method. RFC 9110 also warns that some clients retry a `POST` anyway when the connection closed during the request: a guess that can repeat its effect.
 - **TCP retries beneath you.** Within one connection, TCP resends lost segments by itself, with its own backoff. An application's retry is for when the connection, or the server behind it, failed.
-- **Early data can be replayed.** TLS 1.3 lets a client send data on its first flight, called early data, and RFC 9846 says there are no guarantees of non-replay between connections. The question this guide asks, what if this request happens twice, applies there too.
+- **Early data can be replayed.** When client and server already share a key, from an earlier connection or agreed in advance, TLS 1.3 lets the client send data on its first flight, called early data, and RFC 9846 says there are no guarantees of non-replay between connections. The question this guide asks, what if this request happens twice, applies there too.
 - **Seeded randomness.** The example draws its jitter from `random.Random(2026)`. Python's documentation guarantees that `random()` produces the same sequence for the same seed across versions, which keeps the example's output stable, and warns that this module's generators should not be used for security purposes.
 - **Rate limits are a policy, not a protocol.** RFC 6585 defines what `429` means and nothing about how a server counts. Clients learn a server's limits from its documentation and from its `Retry-After` values, not from the standard.
 
@@ -306,7 +308,7 @@ Jitter costs nothing in total load: it moves attempts in time, which lowers the 
 
 ## Further reading
 
-- [RFC 9110, HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html): safe and idempotent methods (section 9.2), `Retry-After` (section 10.2.3), and the status codes 502, 503 and 504 (section 15).
+- [RFC 9110, HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html): safe and idempotent methods and the failed automatic retry (section 9.2), `Retry-After` (section 10.2.3), and the status codes 408, 502, 503 and 504 (section 15).
 - [RFC 6585, Additional HTTP Status Codes](https://www.rfc-editor.org/rfc/rfc6585.html): `429 Too Many Requests` (section 4).
 - [RFC 9112, HTTP/1.1](https://www.rfc-editor.org/rfc/rfc9112.html): pipelining and automatic retries (section 9.3).
 - [RFC 6298, Computing TCP's Retransmission Timer](https://www.rfc-editor.org/rfc/rfc6298.html): doubling the timeout on each expiry (section 5).

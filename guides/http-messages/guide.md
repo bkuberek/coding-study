@@ -145,9 +145,10 @@ A reader must find the end of each message from its head alone, because on a per
 | Situation | Where the body ends |
 |-----------|---------------------|
 | A response to `HEAD`, or a status 1xx, 204 or 304 | No body: the message ends at the empty line, whatever its fields say |
-| A 2xx response to `CONNECT` | The connection becomes a tunnel after the head |
-| Both `Transfer-Encoding` and `Content-Length` | `Transfer-Encoding` overrides `Content-Length`; such a message might be an attempt at request smuggling, and a server may reject it |
+| A 2xx response to `CONNECT`, the method that asks the recipient to open a tunnel to another server | The connection becomes a tunnel after the head |
+| Both `Transfer-Encoding` and `Content-Length` | `Transfer-Encoding` overrides `Content-Length`; such a message might be an attempt at request smuggling; a server may reject it, and must close the connection after responding to it |
 | `Transfer-Encoding` with `chunked` last | Read and decode the chunks until the last chunk and the trailer section |
+| `Transfer-Encoding` without `chunked` last | A response: read until the server closes the connection. A request: the server must answer `400 Bad Request` and close the connection |
 | An invalid `Content-Length` | Unrecoverable framing error, except that a list of identical valid values counts as one |
 | A valid `Content-Length` | That many bytes |
 | A request with neither | No body: length zero |
@@ -271,7 +272,7 @@ The ordering rule has a cost. A slow first response holds up every response behi
 
 ## Why framing must be unambiguous
 
-A request often passes through several programs: a proxy, a load balancer, the server. Each finds the end of each message on its own. If two of them disagree, bytes that one takes for the end of a body, the next takes for the start of a new request, one that the first never inspected. RFC 9112 calls this **request smuggling**: a technique that exploits differences in protocol parsing among recipients to hide additional requests.
+A request often passes through several programs: a **proxy**, a program the client chose to forward its requests, a load balancer, the server. Each finds the end of each message on its own. If two of them disagree, bytes that one takes for the end of a body, the next takes for the start of a new request, one that the first never inspected. RFC 9112 calls this **request smuggling**: a technique that exploits differences in protocol parsing among recipients to hide additional requests.
 
 ```mermaid
 flowchart TD
@@ -299,7 +300,7 @@ flowchart TD
 The defense is that every recipient frames a message the same way, and refuses one it cannot frame without guessing. Several of RFC 9112's rules point the same way:
 
 - No whitespace is allowed between a field name and its colon, and a server must reject a request that has it with `400 Bad Request`. RFC 9112 notes that differences in handling such whitespace have led to security vulnerabilities in request routing and response handling.
-- A message with both `Transfer-Encoding` and `Content-Length` might be a smuggling attempt; `Transfer-Encoding` overrides, and a server may reject the request outright.
+- A message with both `Transfer-Encoding` and `Content-Length` might be a smuggling attempt; `Transfer-Encoding` overrides, a server may reject the request outright, and it must close the connection after responding to it.
 - An invalid `Content-Length` is an unrecoverable error, not something to repair.
 - A sender must not send a bare CR, one not followed by LF. A recipient may accept a lone LF as a line end; a server that receives a field continued onto the next line, the obsolete line folding, must reject it or replace the fold with spaces. Each such leniency is safe in one program and dangerous in a chain whose members choose differently.
 
@@ -313,7 +314,7 @@ The defense is that every recipient frames a message the same way, and refuses o
 ## Common traps
 
 - **Reading until the connection closes.** Only a response with no framing field ends that way; a request with neither field has no body. On a persistent connection, reading to the end waits forever.
-- **Splitting lines on any whitespace.** The request line uses single spaces, and the optional whitespace around a field value is spaces and tabs only: RFC 9112 writes a field line as `field-name ":" OWS field-value OWS`, with `OWS` defined in RFC 9110 as any number of spaces and horizontal tabs. A general trim or split accepts lines that the next program reads differently.
+- **Splitting lines on any whitespace.** The request line's grammar separates its parts with single spaces. RFC 9112 permits a recipient to split it on any whitespace instead, but warns that two lenient parsers can disagree, and that when a message has several recipients, each with its own leniency, the result can be request smuggling. Around a field value, the optional whitespace is spaces and tabs only: RFC 9112 writes a field line as `field-name ":" OWS field-value OWS`, with `OWS` defined in RFC 9110 as any number of spaces and horizontal tabs, so a general trim removes characters the next program keeps.
 - **Trusting the first `Content-Length`.** Two different values are an error, not a choice. Picking one is the disagreement smuggling needs.
 - **Reading a size into a fixed-size integer.** RFC 9110 and RFC 9112 warn that recipients must anticipate large numerals, decimal and hexadecimal, and prevent errors from integer overflow. A chunk size that wraps around to 0 ends a body early, and the rest becomes a new request.
 - **Forgetting `HEAD` and the codes without a body.** RFC 9110 says a server should send the same header fields in response to `HEAD` as it would for `GET`, which can include `Content-Length`, and must send no content. A reader that applies the length reads the next response as a body.
@@ -335,7 +336,7 @@ A parser needs memory for what it has received and not yet framed, which is why 
 
 ## Expert notes
 
-- **Lenient parsing, stated in the standard.** RFC 9112 asks a server to ignore at least one empty line received before a request line, lets a recipient recognize a single LF as a line end, and lets a server replace obsolete line folding with spaces. A strict server refuses all of these; what matters most is that the programs in a chain agree.
+- **Lenient parsing, stated in the standard.** RFC 9112 asks a server to ignore at least one empty line received before a request line, lets a recipient split the request line on any whitespace, lets it recognize a single LF as a line end, and lets a server replace obsolete line folding with spaces. A strict server refuses all of these; what matters most is that the programs in a chain agree.
 - **Repeated lengths.** RFC 9112's rule for an invalid `Content-Length` makes one exception: a comma-separated list of identical valid values counts as one length.
 - **Pipelining in practice.** RFC 9112 says a user agent should not pipeline requests after a non-idempotent method, and notes that idempotent methods matter for pipelining because they can be retried automatically after a connection failure. The guide on retries explains why.
 - **HTTP/2.** RFC 9113's abstract: field compression and multiple concurrent exchanges on one connection make for more efficient use of the network and lower latency. RFC 9113 says HTTP/2 uses binary message framing, with the frame as its basic unit, so none of the text framing of this guide applies to it.

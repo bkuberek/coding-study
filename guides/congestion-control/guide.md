@@ -4,7 +4,7 @@
 
 Flow control keeps a sender from overrunning its receiver. Nothing in it protects the network in between, and the network is shared. A router holds arriving packets in a **queue**, a buffer, until its outgoing link can send them. When packets arrive faster than the link drains them, the queue grows and every round trip through it gets longer. When the buffer is full, the router drops what arrives. That is **congestion**.
 
-Retransmission makes congestion worse. RFC 896, in 1984, described what happens in a heavily loaded datagram network with end-to-end retransmission: as routers become congested, round trips grow and so does the number of datagrams in transit; once a round trip exceeds a host's retransmission interval, the host starts putting more and more copies of the same datagrams into the network; eventually every buffer is full and packets must be dropped, and hosts send each packet several times until some copy gets through. RFC 896 named this **congestion collapse**, and noted that it is stable: the network stays in it. The links are busy, and almost nothing useful arrives.
+Retransmission makes congestion worse. RFC 896, in 1984, described what happens in a heavily loaded datagram network with end-to-end retransmission: as routers become congested, round trips grow and so does the number of datagrams in transit; once a round trip exceeds a host's maximum retransmission interval, the host starts putting more and more copies of the same datagrams into the network; eventually every buffer is full and packets must be dropped, and hosts send each packet several times until some copy gets through. RFC 896 named this **congestion collapse**, and noted that it is stable: the network stays in it. The links are busy, and almost nothing useful arrives.
 
 **Congestion control** is each sender's share of avoiding that. RFC 5681 defines TCP's version around one number the sender keeps for itself, the **congestion window** (`cwnd`): a limit on how much data it may have in flight. The receiver's advertised window, `rwnd`, still applies too. RFC 5681: at any given time, a TCP must not send data with a sequence number higher than the highest acknowledged sequence number plus the minimum of `cwnd` and `rwnd`.
 
@@ -88,7 +88,7 @@ Read the table in three parts:
 
 1. **Rounds 1 to 3, slow start.** 4, 8, 16: the window doubles each round trip, from the initial window of 4 segments.
 2. **Rounds 4 to 9, congestion avoidance.** At 32 the window reaches `ssthresh` and grows by one a round. At 37 the network has had enough: three duplicate ACKs report a loss. `ssthresh` becomes half the flight, 18, and so does the window, after fast recovery.
-3. **Round 15, a timeout.** No ACKs came back at all, a stronger sign of trouble. `ssthresh` halves to 11 and the window falls to one segment. Slow start rebuilds it, 1, 2, 4, 8, and at `ssthresh` the sender returns to careful growth.
+3. **Round 15, a timeout.** No ACKs came back at all, a stronger sign of trouble. `ssthresh` becomes half the flight, 23 / 2 = 11 rounded down, and the window falls to one segment. Slow start rebuilds it, 1, 2, 4, 8, and at `ssthresh` the sender returns to careful growth.
 
 The shape, slow rises and sharp falls, is called a **sawtooth**. The run's phases, and the events that moved the sender from one to the next:
 
@@ -129,7 +129,7 @@ Two more moves are possible: three duplicate ACKs during slow start also lead to
 
 ## Fast retransmit and fast recovery
 
-Waiting for the retransmission timer costs at least a second, by RFC 6298's minimum, and then restarts slow start from one segment. Duplicate ACKs often tell the sender much sooner. RFC 5681 says a receiver should send an immediate duplicate ACK when a segment arrives out of order, to tell the sender so. If segment 3 of 6 is lost, segments 4, 5 and 6 each produce an ACK that still asks for segment 3:
+Waiting for the retransmission timer costs about a second, the minimum RFC 6298 recommends, and then restarts slow start from one segment. Duplicate ACKs often tell the sender much sooner. RFC 5681 says a receiver should send an immediate duplicate ACK when a segment arrives out of order, to tell the sender so. If segment 3 of 6 is lost, segments 4, 5 and 6 each produce an ACK that still asks for segment 3:
 
 ```mermaid
 sequenceDiagram
@@ -237,7 +237,7 @@ With **additive increase, multiplicative decrease** (AIMD), growing by the same 
 ## When to use it
 
 - **Every sender on a shared network needs it.** TCP and QUIC have it built in; RFC 9114 notes that QUIC applies congestion control across the whole connection.
-- **A protocol of your own on UDP needs it too.** RFC 8085, the guidelines for applications on UDP, says even an application that exchanges only a few datagrams with a destination should send on average no more than one datagram per round trip, and one that cannot measure the round trip, because the destination sends nothing back, no more than one every 3 seconds. It allows a transmission interval that is backed off exponentially when packets are deemed lost.
+- **A protocol of your own on UDP needs it too.** RFC 8085, the guidelines for applications on UDP, says even an application that exchanges only a few datagrams with a destination should send on average no more than one datagram per round trip, and one that cannot measure the round trip, because the destination sends nothing back, no more than one every 3 seconds. Applications that cannot measure the round trip but can detect loss may back off a fixed interval exponentially, starting at 1 second.
 - **Understanding throughput.** A transfer that starts slowly, a rate that falls after losses, or a long, fast path that never seems to fill are congestion control at work, not bugs.
 - **It does not replace flow control.** The sender respects both windows at once: the smaller one wins.
 
@@ -266,7 +266,7 @@ Linear recovery is what makes long, fast paths hard. To fill a link of 1 gigabit
 ## Expert notes
 
 - **CUBIC.** RFC 9438, on the Standards Track since 2023, specifies CUBIC, which grows the window as a cubic function of the time since the last congestion event instead of linearly, to scale better on fast, long-distance paths. Its multiplicative decrease factor should be 0.7 rather than one half. RFC 9438 updates RFC 5681 to allow CUBIC's occasionally more aggressive sending.
-- **Several losses in one window.** RFC 5681 notes that fast retransmit and fast recovery generally do not recover efficiently from multiple losses in a single flight of packets: the first ACK of new data ends fast recovery while other holes remain. Selective acknowledgements (RFC 2018) let a receiver report what arrived, so the sender knows every hole at once.
+- **Several losses in one window.** RFC 5681 notes that fast retransmit and fast recovery generally do not recover efficiently from multiple losses in a single flight of packets: the first ACK of new data ends fast recovery while other holes remain. RFC 2018's selective acknowledgement option (SACK) is the place to read further.
 - **Initial window.** RFC 5681's initial window depends on the segment size: 4 segments of at most 1,095 bytes, 3 of at most 2,190, or 2 of more. It must not be more than that number of segments.
 - **ACK frequency.** RFC 5681 says a receiver should send an ACK for at least every second full-sized segment, and must send one within 500 ms of the first unacknowledged packet. Since slow start grows per ACK, the receiver's ACK policy affects how fast a sender's window grows.
 - **The timer is part of it.** RFC 6298's security considerations say the Internet relies on correct retransmission timers to preserve network stability and avoid congestion collapse. The backoff of the reliable transport guide and the windows of this one are two halves of the same defense.
@@ -278,8 +278,8 @@ Linear recovery is what makes long, fast paths hard. To fill a link of 1 gigabit
 ## Further reading
 
 - [RFC 5681, TCP Congestion Control](https://www.rfc-editor.org/rfc/rfc5681.html): definitions (section 2), slow start and congestion avoidance (section 3.1), fast retransmit and fast recovery (section 3.2), ACK generation and loss recovery (sections 4.2 and 4.3).
-- [RFC 896, Congestion Control in IP/TCP Internetworks](https://www.rfc-editor.org/rfc/rfc896.html): congestion collapse, as first described.
+- [RFC 896, Congestion Control in IP/TCP Internetworks](https://www.rfc-editor.org/rfc/rfc896.html) (now Historic, RFC 7805): congestion collapse, named and described.
 - [RFC 6298, Computing TCP's Retransmission Timer](https://www.rfc-editor.org/rfc/rfc6298.html): the timer that congestion control relies on (sections 2, 5 and 6).
 - [RFC 9438, CUBIC for Fast and Long-Distance Networks](https://www.rfc-editor.org/rfc/rfc9438.html): a cubic window growth function.
 - [RFC 8085, UDP Usage Guidelines](https://www.rfc-editor.org/rfc/rfc8085.html): congestion control for applications on UDP (section 3.1).
-- [RFC 2018, TCP Selective Acknowledgment Options](https://www.rfc-editor.org/rfc/rfc2018.html): recovering from several losses at once.
+- [RFC 2018, TCP Selective Acknowledgment Options](https://www.rfc-editor.org/rfc/rfc2018.html): the selective acknowledgement option.

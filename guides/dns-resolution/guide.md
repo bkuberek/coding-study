@@ -125,7 +125,7 @@ Step by step:
 
 1. The root server is not responsible for `www.example.org`, but it knows who is responsible for `org`: it returns their `NS` records and, as glue, their addresses.
 2. An `org` server does the same one level down: `example.org` is delegated, so it returns that zone's servers.
-3. An `example.org` server holds the zone and answers with the record, with the AA bit set to say it is an authority for the name. The address is from `2001:db8::/32`, which RFC 3849 reserves for documentation.
+3. An `example.org` server holds the zone and answers with the record, with the AA bit, the Authoritative Answer bit, set to say it is an authority for the name. The address is from `2001:db8::/32`, which RFC 3849 reserves for documentation.
 4. The resolver caches the answer for its TTL, and keeps the two referrals as well, each for the TTL of its records.
 
 A minute later, another program asks for `mail.example.org`. The resolver already knows `example.org`'s servers from the cached referral, so it asks one of them directly: one query instead of three. An hour later the answer has expired, and the next question for `www.example.org` asks again, starting from the lowest zone whose servers are still cached.
@@ -137,7 +137,7 @@ A minute later, another program asks for `mail.example.org`. The resolver alread
 | NXDOMAIN | Name Error (3) | The name does not exist at all |
 | NODATA | No error (0), with no answer records | The name exists, but has no records of the type asked |
 
-RFC 1035 says the Name Error code is meaningful only in responses from an authoritative server, and means that the name in the query does not exist. A name with records only below it, such as `example.org` when only `www.example.org` has an address, still exists: RFC 9499 calls such names **empty non-terminals**, and a question for them gets NODATA.
+RFC 1035 says the Name Error code is meaningful only in responses from an authoritative server, and means that the name in the query does not exist. A name with records only below it, such as `b.example.org` when only `a.b.example.org` has a record, still exists: RFC 9499 calls such names **empty non-terminals**, and a question for them gets NODATA.
 
 ## The message on the wire
 
@@ -235,7 +235,7 @@ The name travels as labels: `03 77 77 77` is a length of 3 and `www`, `07` and `
 
 ## Caching and TTLs
 
-Caching is what makes DNS fast enough to use for every connection. RFC 1034 makes resolvers responsible for discarding records whose TTL has expired, and the TTL is chosen by whoever runs the zone. The choice is a trade-off, shown here for a name whose address changes at second 610, asked for every 30 seconds through one caching resolver:
+Caching is what makes DNS fast enough to use for every connection. RFC 1034 makes resolvers responsible for discarding records whose TTL has expired. RFC 8767, which updates it, lets a resolver serve an expired record when it cannot reach the zone's servers, so during an outage an old answer can outlive its TTL. The TTL is chosen by whoever runs the zone. The choice is a trade-off, shown here for a name whose address changes at second 610, asked for every 30 seconds through one caching resolver:
 
 ```python examples/ttl_and_change.py
 """How a record's TTL trades queries against stale answers.
@@ -279,7 +279,7 @@ TTL (s)  queries to the server  last old answer (s)
    3600                      1                 3570
 ```
 
-With a TTL of 60 seconds, the authoritative server gets 60 queries an hour and the old address lingers for 20 seconds after the change. With 3,600, it gets one query, and every client keeps the old address until the hour is out. A change can take up to one TTL to reach everyone, which is why it pays to lower a record's TTL some time before a planned change, wait for the old TTL to run out, and raise it again afterwards.
+With a TTL of 60 seconds, the authoritative server gets 60 queries an hour and the last old answer is given 20 seconds after the change. With 3,600, it gets one query, and every client keeps the old address until the hour is out. A change can take up to one TTL to reach everyone, and longer from a resolver that cannot reach the zone's servers and serves its expired copy, as RFC 8767 allows. That is why it pays to lower a record's TTL some time before a planned change, wait for the old TTL to run out, and raise it again afterwards.
 
 **Negative caching.** Remembering that a name does not exist saves as many queries as remembering what does. RFC 2308 sets the rules:
 
@@ -288,14 +288,14 @@ With a TTL of 60 seconds, the authoritative server gets 60 queries an hour and t
 - A name error is cached for the name, whatever type is asked next; a NODATA answer only for the name and the type that had no data.
 - A negative answer without an `SOA` record should not be cached.
 
-**Not all data is equally trustworthy.** RFC 2181 ranks data by where it came from: the answer section of an authoritative reply above glue, and glue above the additional section of a reply. It says the lowest-ranked data, the additional section and the authority section of a non-authoritative answer, should not be cached in such a way that it would ever be returned as an answer. A referral's glue is good enough to find the next server, not to answer a question about that server's name. RFC 9499 sorts the servers of a delegation by where their names lie: **in-domain** (`ns.child.example.com` for `child.example.com`), **sibling domain** (`ns.another.example.com`, also inside the parent `example.com`) and **unrelated** (outside the parent's zone). Glue for an unrelated name is something the parent has no authority over at all.
+**Not all data is equally trustworthy.** RFC 2181 ranks data by where it came from: the answer section of an authoritative reply above glue the server loaded from its zone, and that glue above additional data. Glue that arrives in a referral is additional data, the lowest rank. RFC 2181 says the lowest-ranked data, the additional section and the authority section of a non-authoritative answer, should not be cached in such a way that it would ever be returned as an answer. A referral's glue is good enough to find the next server, not to answer a question about that server's name. RFC 9499 sorts the servers of a delegation by where their names lie: **in-domain** (`ns.child.example.com` for `child.example.com`), **sibling domain** (`ns.another.example.com`, also inside the parent `example.com`) and **unrelated** (outside the parent's zone). Glue for an unrelated name is something the parent has no authority over at all.
 
 ## When to use it
 
 - **Finding a service by name**: addresses (`A`, `AAAA`), mail servers (`MX`), aliases (`CNAME`). The name stays stable while the addresses behind it change.
 - **Letting each organization run its own names.** Delegation means the `org` zone never needs to know what `www.example.org` points to.
 - **Planned moves.** Lower the TTL ahead of time, change the record, then raise the TTL again.
-- **Instead**, for anything that must change within seconds or be consistent everywhere at once, such as moving traffic off a failed machine right now, DNS alone is the wrong tool: every cache may keep the old answer for a full TTL. And for large or private data it is a poor store: answers are meant to be small, and plain DNS sends them unencrypted.
+- **Instead**, for anything that must change within seconds or be consistent everywhere at once, such as moving traffic off a failed machine right now, DNS alone is the wrong tool: every cache may keep the old answer for a full TTL, and past it while the zone's servers cannot be reached. And for large or private data it is a poor store: answers are meant to be small, and plain DNS sends them unencrypted.
 
 ## Common traps
 
@@ -316,13 +316,13 @@ With a TTL of 60 seconds, the authoritative server gets 60 queries an hour and t
 | Cold cache, a name `d` labels deep | up to `d + 1`: the root, then one per zone on the way down |
 | A delegation without usable glue | more: the server's own name must be resolved first |
 
-Each query costs one round trip to a server, so a cold lookup of `www.example.org` costs about three round trips beyond the stub's, and a warm one costs none. The cache holds one entry per name and type it has seen, plus one per delegation, each until its TTL ends. As the example shows, the load on an authoritative server falls in proportion to the TTL, and the time a change takes to reach everyone grows with it.
+Each query costs one round trip to a server, so a cold lookup of `www.example.org` costs about three round trips beyond the stub's, and a warm one costs none. The cache holds one entry per name and type it has seen, plus one per delegation, each until its TTL ends. As the example shows, the load on an authoritative server is inversely proportional to the TTL, and the time a change takes to reach everyone grows with it.
 
 ## Expert notes
 
 - **Message compression.** A name can repeat many times in a response. RFC 1035 lets a message replace a name, or the end of one, with a two-byte **pointer** to an earlier copy: its first two bits are ones, and the remaining bits are an offset from the start of the message. A label's length byte can never be mistaken for one, since labels are limited to 63 octets and so start with two zero bits.
-- **Message size.** RFC 1035 limits a message over UDP to 512 bytes, not counting the IP and UDP headers; a longer one is truncated and the TC bit set. EDNS(0) (RFC 6891) lets an asker advertise the largest UDP payload it can take, and suggests 4,096 octets as a good starting point. RFC 7766 made TCP a required part of a full DNS implementation.
-- **TTL edges.** RFC 1035 says a TTL of zero means the record may be used for the transaction in progress and should not be cached. RFC 2181 makes the TTL an unsigned number from 0 to 2,147,483,647, and says a received value with the most significant bit set should be treated as zero.
+- **Message size.** RFC 1035 limits a message over UDP to 512 bytes, not counting the IP and UDP headers; a longer one is truncated and the TC bit set. EDNS(0) (RFC 6891) lets an asker advertise the largest UDP payload it can take, and suggests 4,096 octets as a good starting point. RFC 9715 now recommends at most 1,400, to avoid IP fragmentation. RFC 7766 made TCP a required part of a full DNS implementation.
+- **TTL edges.** RFC 1035 says a TTL of zero means the record may be used for the transaction in progress and should not be cached. RFC 2181 made the TTL unsigned, 0 to 2,147,483,647. RFC 8767 reads a value with the top bit set as positive and recommends capping TTLs at 604,800 seconds (7 days).
 - **Negative TTLs.** RFC 2308 reports that one to three hours has worked well as a cap on how long negative answers are kept, and that values above a day have caused problems.
 - **Words that changed.** RFC 9499 notes that "bailiwick", once used for glue inside or outside a zone, causes more confusion than meaning, and calls those terms historic; in-domain, sibling domain and unrelated replace them.
 - **Each message is a datagram.** The stub's question and the resolver's queries are independent UDP exchanges, with no connection. RFC 1035 recommends UDP for standard queries and, since a query over UDP may be lost, says a retransmission strategy is required. The guide on timeouts and retries covers what a client should do when an answer does not come.
@@ -339,4 +339,6 @@ Each query costs one round trip to a server, so a cold lookup of `www.example.or
 - [RFC 2181, Clarifications to the DNS Specification](https://www.rfc-editor.org/rfc/rfc2181.html): ranking data (section 5.4.1), TTL limits (section 8), CNAME records (section 10.1).
 - [RFC 3596, DNS Extensions to Support IP Version 6](https://www.rfc-editor.org/rfc/rfc3596.html): the `AAAA` record.
 - [RFC 6891, EDNS(0)](https://www.rfc-editor.org/rfc/rfc6891.html) and [RFC 7766, DNS over TCP](https://www.rfc-editor.org/rfc/rfc7766.html): larger answers over UDP, and TCP as a requirement.
+- [RFC 8767, Serving Stale Data to Improve DNS Resiliency](https://www.rfc-editor.org/rfc/rfc8767.html): serving expired records when the zone's servers cannot be reached, and the TTL's top bit and cap (section 4).
+- [RFC 9715, IP Fragmentation Avoidance in DNS over UDP](https://www.rfc-editor.org/rfc/rfc9715.html): the recommended largest UDP payload (section 3).
 - [RFC 9499, DNS Terminology](https://www.rfc-editor.org/rfc/rfc9499.html): authoritative servers, recursive and stub resolvers, referrals, glue, root hints and empty non-terminals.
