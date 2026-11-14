@@ -1,8 +1,9 @@
 """A case that pauses, stops and starts a backing service, on a real Docker engine, with resources
-this test labels and removes. Run with `uv run pytest -q -m docker`. The service is the Redis of the
-fixture `5903`, and the app a small server that pings it, so nothing is pulled. Each verdict shows
-what a client meets: a paused service accepts a connection and never answers, and a stopped one
-has a name that no longer resolves. The cases after one that left a service changed find it back."""
+this test labels and removes. Run with `uv run pytest -q -m docker`. The service is the Valkey of
+the fixture `5903`, and the app a small server that pings it, so nothing is pulled. Each verdict
+shows what a client meets: a paused service accepts a connection and never answers, and a stopped
+one has a name that no longer resolves. The cases after one that left a service changed find it
+back."""
 
 import os
 import textwrap

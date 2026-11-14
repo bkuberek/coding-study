@@ -28,14 +28,14 @@ services:
       start_period: 120s
       start_interval: 250ms
   cache:
-    image: redis:7.4.12-alpine@sha256:c5d34a98396a4775e223c74e929162c35c5a2182901ba26b50ade939941ce14b
-    user: redis
+    image: valkey/valkey:9.1.3-alpine@sha256:bf09d58e96d6b4524a15396b65b242bbe18beebbcc15a04d8ee75ddac62fae0b
+    user: valkey
     volumes:
       - cachedata:/data
     mem_limit: 64m
     pids_limit: 32
     healthcheck:
-      test: [CMD, redis-cli, ping]
+      test: [CMD, valkey-cli, ping]
       interval: 30s
       timeout: 5s
       retries: 3

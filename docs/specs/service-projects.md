@@ -744,7 +744,7 @@ What each image needs beyond the defaults above, as measured. A service that run
 | Image | Runs as | Exception | Measured |
 |-------|---------|-----------|----------|
 | `postgres:17.11-alpine` | `user: postgres` | Read-only root with tmpfs on `/var/run/postgresql` and `/tmp`; data on a named volume at `/var/lib/postgresql/data`, which the image's user owns | 117 MB download on amd64, 115 MB on arm64. 38 MiB in use under the fixture's cases, limit 256m, 128 pids |
-| `redis:7.4.12-alpine` | `user: redis` | None: data on a named volume at `/data` | 17 MB download. 9 MiB in use, limit 64m, 32 pids. Redis 7.4 and later are source-available (RSALv2 or SSPLv1), not open source, which allows this use; Valkey, the BSD-licensed fork, fits a problem that wants an open license |
+| `valkey/valkey:9.1.3-alpine` | `user: valkey` | None: data on a named volume at `/data` | Valkey, the BSD-licensed fork of Redis, speaks its protocol and replaces the source-available Redis 7.4 (RSALv2 or SSPLv1) the fixture first used; the digest is the one `0285` pins. Limit 64m, 32 pids |
 | `motoserver/moto:5.2.5` | `user: "65534:65534"` | Read-only root with tmpfs on `/tmp`; it runs as root by default and needs none of it | [AWS services](#aws-services-moto) |
 | `quay.io/keycloak/keycloak:26.8.2` | The image's own, 1000 | `read_only: false` without a build cache, since its first start writes into `lib/quarkus`; read-only with a build-cache volume mounted read-only | From its spike, not run by cstudy yet: [Keycloak](#keycloak) |
 
@@ -1065,7 +1065,7 @@ A case can also take a backing service away mid-case and bring it back, to grade
 | Failure | A change the engine cannot make, or cannot undo, is no verdict on your code: the case is `error` with the engine's output, and the remaining cases are `not_run` |
 | Where | In a case's `steps` only, as a sleep |
 
-What a client meets, measured on Docker 29.9.2 and Compose 5.6.1 with the Redis of the fixture `5903`: a new connection by a client with a 1.5 s timeout, as `tests/adapters/test_service_steps_real.py` grades it, and an open one by a probe that held its connection across the change:
+What a client meets, measured on Docker 29.9.2 and Compose 5.6.1 with the Valkey of the fixture `5903`: a new connection by a client with a 1.5 s timeout, as `tests/adapters/test_service_steps_real.py` grades it, and an open one by a probe that held its connection across the change:
 
 | Action | A new connection | An open connection |
 |--------|------------------|--------------------|
