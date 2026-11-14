@@ -151,15 +151,15 @@ The last line shows where state-based design gets hard. Replica 1 removes `milk`
 - **Replicas far apart, where waiting is expensive**: an update applies locally at once, and copies converge in the background, with no coordination on the write path.
 - **Data whose concurrent updates have an obvious combined meaning**: counts, sets of members, flags that only switch on, maxima. Choosing a CRDT is choosing that meaning in advance.
 - **Use consensus instead** when the application needs a single order or an invariant across replicas: a balance that must never go negative, a username that must be unique. Two replicas that each accept the last ticket on their own have both sold it, and no merge can take one of the sales back.
-- **Use last-writer-wins only knowingly.** Keeping the write with the largest timestamp is a merge that obeys the three laws, but it silently drops one of two concurrent writes, and depends on clocks that disagree.
+- **Use last-writer-wins only knowingly.** Keeping the write with the largest timestamp, ties broken by replica id, is a merge that obeys the three laws, but it silently drops one of two concurrent writes, and depends on clocks that disagree.
 
 ## Common traps
 
 - **A merge that is almost right.** "Take the newer value" without a total order on values, or "add the two numbers", fails one of the three laws, and the failure shows only when messages are reordered or duplicated, which tests on one machine rarely do.
 - **Losing information to a choice.** Two concurrent updates to one value cannot both survive in a single slot. A design either keeps both, for the application to combine, or picks one by a fixed rule and loses the other. Know which yours does.
 - **Removal by deletion.** Deleting an element from a merged state lets the next merge with an older copy bring it back, as the example shows.
-- **State that only grows.** Information about removals is kept so that merges stay correct, and a replica cannot safely forget it until it knows that every other replica has seen it.
-- **Timestamps from wall clocks.** A replica whose clock runs fast wins every last-writer-wins tie for as long as it is ahead, even against writes made later in real time.
+- **State that only grows.** Information about removals is kept so that merges stay correct.
+- **Timestamps from wall clocks.** A replica whose clock runs fast wins every conflict for as long as it is ahead, even against writes made later in real time.
 - **Expecting more than convergence.** A CRDT guarantees that replicas agree once they have seen the same updates. It does not keep an invariant that spans replicas, and the guide on consistency models shows that a CRDT may even reach states no sequential execution could.
 
 ## Complexity
