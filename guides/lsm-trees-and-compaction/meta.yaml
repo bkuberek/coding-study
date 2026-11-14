@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Log-structured storage: LSM trees and compaction"
+summary: "Writing out of place instead of updating pages: the LSM tree of O'Neil and others, memtables, immutable sorted runs, tombstones, Bloom filters, and what leveling and tiering compaction cost."
+level: advanced
+prerequisites: [b-tree-indexes]
+related: [write-ahead-logging, hash-functions, table-formats-and-snapshots]

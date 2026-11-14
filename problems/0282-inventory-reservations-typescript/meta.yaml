@@ -44,4 +44,5 @@ project:
 approaches:
   - {id: reference, name: "Settle every race where the database settles it: a key, a row lock, one conditional update", role: optimal, time: "per request", space: "per request"}
 related: [supplier-records-locking-typescript, coworking-availability-typescript]
+guides: [transactions-and-isolation]
 estimate_minutes: 240

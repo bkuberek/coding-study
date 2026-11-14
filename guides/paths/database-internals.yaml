@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../schemas/path.schema.json
+title: "Database internals: from pages and B-trees to transactions and query plans"
+summary: From how rows sit in pages to B-trees, LSM trees, write-ahead logging, isolation levels and locking, MVCC and snapshot isolation, and query planning, with the problems that practise each idea.
+steps:
+  - guide: pages-and-records
+  - guide: b-tree-indexes
+  - problem: btree-index
+  - guide: lsm-trees-and-compaction
+  - guide: write-ahead-logging
+  - problem: transactional-kv-store
+  - guide: transactions-and-isolation
+  - problem: supplier-records-locking-typescript
+  - problem: inventory-reservations-typescript
+  - problem: postgres-job-queue-typescript
+  - guide: mvcc-and-snapshot-isolation
+  - problem: mvcc-snapshot-isolation
+  - guide: query-planning-and-joins
+  - problem: query-planner
+  - problem: triple-store

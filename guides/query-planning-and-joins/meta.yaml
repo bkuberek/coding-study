@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../schemas/guide.schema.json
+title: "Query planning: estimates, join algorithms and join order"
+summary: "How a database turns a query into a plan: statistics and selectivity estimates in the style of System R, access paths, nested loop, hash and sort-merge joins, and choosing a join order over subsets of tables."
+level: advanced
+prerequisites: [b-tree-indexes]
+related: [hash-maps-and-sets, memoization]
+problems: [query-planner, triple-store]

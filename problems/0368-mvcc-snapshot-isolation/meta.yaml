@@ -37,5 +37,5 @@ comparator: {type: ops}
 approaches:
   - {id: version-chains, name: Version chains with read records and conflict edges, role: optimal, time: "O(log v) per plain read; O(w + e) per commit; O(v + t + e) per serializable read or write; O(V + K log K) per vacuum", space: "O(V + T + R + E)", time_class: "log n", space_class: "n"}
 related: [transactional-kv-store, in-memory-database, supplier-records-locking-typescript, btree-index, query-planner]
-guides: [consistency-models]
+guides: [consistency-models, mvcc-and-snapshot-isolation]
 estimate_minutes: 150
