@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0385"
+slug: grounded-memory-store
+title: Grounded Memory Store
+summary: "Build GroundedMemory, an agent memory whose claims cite receipts of the texts they came from: claims go stale when a source changes, get re-verified or contradicted, and answers use what holds."
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [arrays-hashing, graphs]
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend]
+scope: function
+languages: [python, typescript]
+levels:
+  - {level: 1, title: Claims with evidence}
+  - {level: 2, title: Drift detection}
+  - {level: 3, title: Re-verification}
+  - {level: 4, title: Answering with trust}
+signature:
+  class:
+    name: GroundedMemory
+    constructor: {params: []}
+    methods:
+      - {name: addSource, level: 1, params: [{name: sourceId, type: string}, {name: text, type: string}], returns: {type: string}}
+      - {name: addClaim, level: 1, params: [{name: claimId, type: string}, {name: text, type: string}, {name: citations, type: "list<list<string>>"}], returns: {type: bool}}
+      - {name: status, level: 1, params: [{name: claimId, type: string}], returns: {type: string}}
+      - {name: evidence, level: 1, params: [{name: claimId, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: citing, level: 1, params: [{name: sourceId, type: string}], returns: {type: "list<string>"}}
+      - {name: updateSource, level: 2, params: [{name: sourceId, type: string}, {name: text, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: history, level: 2, params: [{name: sourceId, type: string}], returns: {type: "list<string>"}}
+      - {name: drift, level: 2, params: [{name: claimId, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: staleClaims, level: 2, params: [], returns: {type: "list<string>"}}
+      - {name: addDerived, level: 3, params: [{name: claimId, type: string}, {name: text, type: string}, {name: premises, type: "list<string>"}], returns: {type: bool}}
+      - {name: verify, level: 3, params: [{name: claimId, type: string}, {name: sourceId, type: string}, {name: phrase, type: string}], returns: {type: "list<list<string>>"}}
+      - {name: dependents, level: 3, params: [{name: claimId, type: string}], returns: {type: "list<string>"}}
+      - {name: recall, level: 4, params: [{name: query, type: string}, {name: policy, type: string}, {name: k, type: int}], returns: {type: "list<list<string>>"}}
+      - {name: report, level: 4, params: [], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: receipts-and-propagation, name: Compare receipts instead of texts and recompute only the claims downstream of a change in order of addition, role: optimal, time: "O(n log n) per call", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [memory-store, memory-facts-with-merge, versioned-memory-store, memory-write-sanitizer, content-addressed-store, triple-store, lineage-graph, corrective-rag, graphrag-context]
+guides: [agent-memory, cryptographic-hashes]
+estimate_minutes: 90
