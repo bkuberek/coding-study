@@ -17,7 +17,7 @@ Aim to finish in 150 minutes. A good split: read the statement in the first 10 m
 
 ## Output
 
-Methods return status words, job ids and report rows, as each level describes. A status that turns a request down, such as `"duplicate"`, `"lost"`, `"already_done"` or `"gap"`, means that **nothing has changed**. Rows are lists of strings, in which numbers are written in decimal. Methods never throw, whatever order they are called in.
+Methods return status words, job ids and report rows, as each level describes. A status that turns a request down, such as `"duplicate"`, `"lost"`, `"already_done"` or `"gap"`, means that **nothing has changed**. Rows are lists of strings, in which numbers are written in decimal. Methods never throw, whatever order they are called in. A `call` that ends refused keeps the effects of the attempts it made before the refusal.
 
 ## Level 1: A job queue with leases
 
@@ -72,7 +72,7 @@ Leases last 10 seconds. Each checkpoint renews `w1`'s lease, so the second one, 
 
 ## Level 3: Scaling by the backlog
 
-How many workers should run? A worker that runs an agent spends most of its time waiting for a model or a tool to answer, so its processor stays almost idle even when hundreds of jobs wait. A rule that adds workers when the processors are busy would never add one. The signal that matters is the **backlog**: the number of jobs submitted and not yet done, waiting or being worked on. A **controller** turns the backlog into a worker count.
+How many workers should run? A worker that runs an agent spends most of its time waiting for a model or a tool to answer, so its processor stays almost idle even when hundreds of jobs wait. A rule that adds workers when the processors are busy would add one late, or not at all. The signal that matters is the **backlog**: the number of jobs submitted and not yet done, waiting or being worked on. A **controller** turns the backlog into a worker count.
 
 - `setScaling(minWorkers, maxWorkers, jobsPerWorker, upCooldown, downCooldown, alertBacklog)`: starts the controller with these settings. The worker count is `minWorkers`, and no change is on record yet. A later `setScaling` starts the controller again the same way.
 - `scale(now)`: evaluates the rule below and returns `[decision, workers, desired, alert]`; `[]` when `setScaling` was never called.
@@ -91,7 +91,7 @@ How many workers should run? A worker that runs an agent spends most of its time
 
 <!-- case: ex5 -->
 
-Two jobs per worker, between 1 and 5 workers. Five jobs need 3 workers, and the first change needs no wait: `up`. Four more jobs make 9, which need 5, but only 5 seconds have passed of the 10-second cooldown: `cooldown`, with the alert on, since the backlog reached 8. At second 10 the cooldown is over.
+Two jobs per worker, between 1 and 5 workers. Five jobs need 3 workers, and the first change needs no wait: `up`. Four more jobs make 9, which need 5, but only 5 seconds have passed of the 10-second cooldown: `cooldown`, with the alert on, since the backlog, 9, is at least 8. At second 10 the cooldown is over.
 
 ### Example 2
 
@@ -103,13 +103,13 @@ One job per worker and a minimum of 0. Both jobs are being worked on, and they s
 
 Every agent calls tools: a web search, a code runner, a paid data service, shared by all the workers and all the **tenants** (the customers whose jobs they run). More workers mean more calls, and a tool has limits of its own and fails from time to time. A **gateway** sits between the workers and the tools: it limits how fast each tenant and each tool is called, retries a call that fails, stops calling a tool that keeps failing, and says why it refused.
 
-- `setToolLimit(tool, capacity, refillPerSecond)` and `setTenantLimit(tenant, capacity, refillPerSecond)`: give the tool, or the tenant, a **token bucket**, replacing any earlier one. A tool or a tenant without one has no limit.
+- `setToolLimit(tool, capacity, refillPerSecond)` and `setTenantLimit(tenant, capacity, refillPerSecond)`: give the tool, or the tenant, a **token bucket**, replacing any earlier one. A tool or a tenant without one has no limit. A tool and a tenant with the same name have separate buckets.
 - `setRetry(maxAttempts, baseDelay, maxDelay)`: the retry policy of every call, replacing any earlier one. Before the first `setRetry`, `maxAttempts` is 1: no retry.
 - `setBreaker(tool, failureThreshold, openSeconds)`: gives the tool a **circuit breaker**, replacing any earlier one; it starts closed with no failures counted. A tool without one is never refused by a breaker.
 - `call(now, tenant, tool, outcomes)`: the tenant calls the tool, starting at `now`. The tool's answers are given as data: `outcomes[i]` is `"ok"` or `"error"`, what attempt `i + 1` gets if it is made. It returns `[result, attempts, end]`, described below.
 - `breakerState(now, tool)`: `"closed"`, `"open"` or `"half_open"` at `now`, by the rules below; `"none"` for a tool without a breaker.
 
-**Token buckets.** A bucket holds whole tokens, at most `capacity`, and starts full. It gains `refillPerSecond` tokens per second: each time the gateway looks at a bucket at time `t`, the bucket first gains `refillPerSecond * (t - last)` tokens, where `last` is the time it was last looked at, and is then cut back to `capacity` if it holds more. The first look at a new bucket finds it full. An attempt needs one token from the tenant's bucket and one from the tool's, when they have one.
+**Token buckets.** A bucket holds whole tokens, at most `capacity`, and starts full. It gains `refillPerSecond` tokens per second: each time the gateway looks at a bucket at time `t`, the bucket first gains `refillPerSecond * (t - last)` tokens, where `last` is the time it was last looked at, and is then cut back to `capacity` if it holds more. The first look at a new bucket finds it full. An attempt needs one token from the tenant's bucket, if the tenant has a bucket, and one from the tool's, if the tool has one.
 
 **Circuit breakers.** A tool that is down gets no better for being called, and every call that waits for it ties up a worker. A breaker counts the tool's **failures in a row**, across all calls and tenants: an attempt that gets `"error"` adds one, and one that gets `"ok"` sets the count back to 0.
 

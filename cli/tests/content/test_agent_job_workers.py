@@ -386,7 +386,8 @@ class LateCompletionIsLost(Model):
 
 
 class CompletionFromAnyWorker(Model):
-    """Lets a worker whose lease ran out complete the job another worker now holds."""
+    """Lets the last holder complete the job after its lease ran out, when nobody has claimed it
+    since."""
 
     def complete_steps(self, now, worker, job):
         if job in self.finished:
