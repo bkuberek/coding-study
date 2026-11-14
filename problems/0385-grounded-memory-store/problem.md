@@ -8,7 +8,7 @@ The API grows over four levels: every level adds methods to the same class, and 
 
 **Sources and claims.** A **source** is a document the agent can read, with an id and a text. A **claim** is a statement the agent remembers, with an id, a text and its **citations**: each citation names a source and the receipt of the text the agent read there when it formed the claim.
 
-**Receipts.** The **receipt** of a text is the first 12 characters of the SHA-256 digest of the text's UTF-8 bytes, written in lowercase hexadecimal (`0-9` and `a-f`). A hash function such as SHA-256 turns any text into a fixed-size fingerprint: the same text always gives the same receipt, whichever source holds it, and a change of a single character gives a completely different one. You do not need to know how SHA-256 works inside: in Python the receipt is `hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]`, and in TypeScript `createHash("sha256").update(text, "utf8").digest("hex").slice(0, 12)`, with `createHash` from `node:crypto`. The text is hashed exactly as given: no spaces are removed, no case is changed, and `é` is 2 bytes. The receipt of the empty text is `e3b0c44298fc`. Twelve characters keep the examples readable, and no two texts in the tests share a receipt.
+**Receipts.** The **receipt** of a text is the first 12 characters of the SHA-256 digest of the text's UTF-8 bytes, written in lowercase hexadecimal (`0-9` and `a-f`). A hash function such as SHA-256 turns any text into a fixed-size fingerprint: the same text always gives the same receipt, whichever source holds it, and a change of a single character almost certainly gives an unrelated one. You do not need to know how SHA-256 works inside: in Python the receipt is `hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]`, and in TypeScript `createHash("sha256").update(text, "utf8").digest("hex").slice(0, 12)`, with `createHash` from `node:crypto`. The text is hashed exactly as given: no spaces are removed, no case is changed, and `é` is 2 bytes. The receipt of the empty text is `e3b0c44298fc`. Twelve characters keep the examples readable, and no two texts in the tests share a receipt.
 
 Aim to finish in 90 minutes. A good split: read the statement in the first 10 minutes, then finish level 1 by about minute 25, level 2 by 45, level 3 by 70 and level 4 by 85, keeping the last minutes for a final run.
 
@@ -16,7 +16,7 @@ Aim to finish in 90 minutes. A good split: read the statement in the first 10 mi
 
 - `GroundedMemory()`: creates an empty memory.
 - Source ids and claim ids are 1 to 20 characters from `a` to `z`, `0` to `9`, `-` and `_`. Sources and claims have separate ids: a claim may have the id of a source.
-- A source's text is 0 to 1000 characters of any text. A claim's text is 1 to 200 printable ASCII characters (codes 32 to 126).
+- A source's text is 0 to 1000 characters of any text (well-formed Unicode: no lone surrogates). A claim's text is 1 to 200 printable ASCII characters (codes 32 to 126).
 - Each level's section describes the methods it adds and their parameters.
 
 ## Output
@@ -57,7 +57,7 @@ Documents get edited. This level lets a source change and tells which claims sti
 
 - `updateSource(sourceId, text)`: gives the source a new text. When `sourceId` is not a source, or `text` has the receipt of the source's current text, nothing changes and the answer is `[]`. Otherwise `text` becomes the source's current text, and its receipt starts a new **version** of the source. The answer lists the claims whose status changed, as rows `[claimId, before, after]` sorted by claim id, or `[]` when no status changed.
 - `history(sourceId)`: the receipts of the source's versions, oldest first: one for `addSource`, then one for each `updateSource` that started a version. A text that comes back gets its receipt again, so a source that went from text A to B and back to A has the history `[A, B, A]`, each written as its receipt.
-- `drift(claimId)`: the claim's outdated citations (below), as rows `[sourceId, citedReceipt, currentReceipt, behind]` sorted by source id, where `currentReceipt` is the receipt of the source's current text and `behind` is the number of versions the source has had since the cited receipt was last current: the number of entries of `history(sourceId)` after the last entry equal to `citedReceipt`.
+- `drift(claimId)`: the claim's outdated citations (below), as rows `[sourceId, citedReceipt, currentReceipt, behind]` sorted by source id, where `currentReceipt` is the receipt of the source's current text and `behind`, written as text, is the number of versions the source has had since the cited receipt was last current: the number of entries of `history(sourceId)` after the last entry equal to `citedReceipt`.
 - `staleClaims()`: the ids of the stale claims, sorted.
 
 **Status.** A citation that is not current is **outdated**. A claim is `trusted` when all its citations are current, and `stale` when at least one is outdated. Status depends only on receipts: no text is compared and no model is asked. A source that goes back to the text that a claim cites makes that citation current again. Stale claims are kept, with their evidence: nothing is deleted. `addClaim` accepts the receipt of any text the source has held, so a claim formed from an earlier version is accepted, and it is stale from the start.
@@ -139,7 +139,7 @@ Each `<...>` is replaced by its value. With 2 trusted claims out of 3, the share
 
 <!-- case: ex7 -->
 
-After `limits` changes, `rate` is verified and trusted with a fresh receipt, while `burst` stays stale. Under `strict` only `rate` is usable; `lenient` adds `burst` after it, with a warning on its outdated citation. The empty query matches every claim, and `k = 2` keeps the first two trusted claims by id. Two claims of three are trusted, 66% rounded down, and one source is cited with an outdated receipt.
+After `limits` changes, `rate` is verified and trusted with a fresh receipt, while `burst` stays stale. Under `strict` only `rate` is usable; `lenient` adds `burst` after it, with a warning on its outdated citation. The empty query matches every claim, and `k = 2` keeps the first two trusted claims by id. Two claims of three are trusted, 66% rounded down, and one source is cited with an outdated receipt. Then `spread` is derived from `burst`; it is stale from the start, since its premise is, and `lenient` returns it after `burst`, with its premise marked ` (stale)`.
 
 ### Example 2
 
@@ -151,7 +151,7 @@ An empty memory has no share to report. Once `rate` is contradicted, `value` is 
 
 - At most 300 calls per test.
 - At most 5 pairs in `citations` and at most 5 ids in `premises`; each pair holds exactly two strings, and each receipt in it is 1 to 64 letters and digits.
-- `phrase` is 1 to 100 characters. `query` is 0 to 100 printable ASCII characters, `policy` is `strict` or `lenient`, and `k` is from 1 to 50.
+- `phrase` is 1 to 100 characters of well-formed Unicode text. `query` is 0 to 100 printable ASCII characters, `policy` is `strict` or `lenient`, and `k` is from 1 to 50.
 
 ## Follow-ups
 

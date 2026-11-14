@@ -910,7 +910,7 @@ def outputs(model_type: type[Model], case: Mapping[str, Any]) -> list[Any]:
 def passes(model_type: type[Model], case: Mapping[str, Any]) -> bool:
     try:
         return outputs(model_type, case) == case["expected"]
-    except (IndexError, KeyError, ValueError, TypeError, StopIteration):
+    except Exception:
         return False
 
 
