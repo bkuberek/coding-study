@@ -32,4 +32,5 @@ comparator: {type: ops}
 approaches:
   - {id: walk-and-cache, name: Referral walk from the closest known zone with separate answer and referral caches, role: optimal, time: "O(r) per lookup of a server holding r records; per resolve, the queries sent times that", space: "O(r + c) for the records and the c cache entries", time_class: "n", space_class: "n"}
 related: [stream-reassembler, http-message-parser, reliable-transport-sim]
+guides: [dns-resolution]
 estimate_minutes: 120

@@ -27,4 +27,5 @@ comparator: {type: ops}
 approaches:
   - {id: release-contiguous, name: Release the contiguous prefix and hold everything above the first gap, role: optimal, time: "O(1 + r) per delta, O(g) per missing, O(s) per text", space: "O(s)", time_class: "n^2", space_class: "n"}
 related: [http-message-parser, dns-resolver-sim, reliable-transport-sim]
+guides: [reliable-transport]
 estimate_minutes: 30

@@ -30,4 +30,5 @@ comparator: {type: ops}
 approaches:
   - {id: framing-state-machine, name: Staged parse over a buffer that resumes when more bytes arrive, role: optimal, time: "O(n) per message of n bytes; O(k) per feed call, k the bytes kept", space: "O(k) for the bytes kept", time_class: "n", space_class: "n"}
 related: [stream-reassembler, dns-resolver-sim, reliable-transport-sim]
+guides: [http-messages]
 estimate_minutes: 120
