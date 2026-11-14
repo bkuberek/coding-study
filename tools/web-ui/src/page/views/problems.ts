@@ -4,11 +4,12 @@
  * and the table in the columns the preferences hold, items after problems.
  */
 
+import "../filters.css";
 import "./problems.css";
 
 import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
-import { badge, type Child, command, h, isTyping } from "../dom.ts";
+import { badge, type Child, command, h, isSearchShortcut } from "../dom.ts";
 import { problemBadge } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
 import { needMarkers } from "../needs-model.ts";
@@ -163,7 +164,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     });
   load();
   const focusSearch = (event: KeyboardEvent) => {
-    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target) || document.querySelector("dialog[open]")) return;
+    if (!isSearchShortcut(event)) return;
     event.preventDefault();
     form.querySelector<HTMLInputElement>("#filter-search")?.focus();
   };

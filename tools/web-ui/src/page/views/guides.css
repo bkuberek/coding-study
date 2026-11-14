@@ -79,6 +79,15 @@
   color: var(--ink-soft);
 }
 
+.path-card .guide-level {
+  margin: 6px 0 0;
+}
+
+/* What a section says when the search and the filters leave nothing in it. */
+.guide-none {
+  margin: 12px 0 0;
+}
+
 .read-mark {
   font-size: var(--text-s);
   color: var(--ink-soft);

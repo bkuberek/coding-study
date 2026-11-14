@@ -1,21 +1,40 @@
 /**
  * The Guides view (docs/specs/web-ui.md#guides-view), the recommended way to learn: the paths with
- * their progress and the guides with their read state (`cstudy learn`), a guide to read with its
+ * their progress and the guides with their read state (`cstudy learn`), narrowed by a search and
+ * filters kept in the fragment's query, a guide to read with its
  * diagrams, drawn ahead of time as SVG in the page's light and dark palettes, and a control that
  * marks it read (`cstudy learn <guide>`, `--done`), and a path's steps in order, each done or not,
  * with a link to read the guide or start the problem (`cstudy learn --path <path>`).
  */
 
+import "../filters.css";
 import "./guides.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
-import { command, h, rendered } from "../dom.ts";
-import { progressText, stepCommand, stepHref, stepTarget } from "../guides-model.ts";
-import { GUIDES_HASH, guideHash, pathHash, problemHash } from "../routes.ts";
+import { command, h, isSearchShortcut, rendered } from "../dom.ts";
+import { statusWords } from "../format.ts";
+import {
+  activeGuideFilters,
+  countWords,
+  isNarrowed,
+  LEVELS,
+  narrowListing,
+  noMatch,
+  pathTitles,
+  progressText,
+  STATUSES,
+  stepCommand,
+  stepHref,
+  stepTarget,
+} from "../guides-model.ts";
+import { type GuideFilterKey, type GuideFilters, GUIDES_HASH, guideHash, guidesHash, pathHash, problemHash } from "../routes.ts";
 import { empty, loading, messageOf, showFailure } from "../states.ts";
 import type { GuideDocument, GuideEntry, GuideListing, MarkedRead, PathDocument, PathStep, PathSummary } from "../types.ts";
 
 const GUIDES_API = "/api/v1/guides";
+/** The ids of the Problems view's search and filters, which never shows beside this one. */
+const SEARCH_FIELD = "filter-search";
+type ChoiceKey = Exclude<GuideFilterKey, "search">;
 const LEVEL_WORDS: Readonly<Record<GuideEntry["level"], string>> = {
   intro: "intro: a first idea",
   core: "core: used every day",
@@ -42,6 +61,7 @@ function pathCard(path: PathSummary): HTMLElement {
     { class: "path-card" },
     h("h3", {}, h("a", { href: pathHash(path.slug) }, path.title)),
     h("p", { class: "quiet" }, path.summary),
+    path.level ? h("p", { class: "guide-level" }, `level: ${path.level}`) : null,
     h("p", { class: "path-standing" }, progressBar(path.done, path.total), h("span", {}, progressText(path.done, path.total))),
   );
 }
@@ -56,28 +76,128 @@ function guideRow(guide: GuideEntry): HTMLElement {
   );
 }
 
-function listing(found: GuideListing): HTMLElement[] {
+/** A filter's list; the value the route names stays a choice, whatever the list holds. */
+function filterSelect(key: ChoiceKey, chosen: string | undefined, choices: readonly (readonly [string, string])[], blank: string): HTMLSelectElement {
+  const values = chosen && !choices.some(([value]) => value === chosen) ? [[chosen, chosen] as const, ...choices] : choices;
+  return h(
+    "select",
+    { id: `filter-${key}`, name: key, class: chosen ? "is-set" : null },
+    h("option", { value: "" }, blank),
+    ...values.map(([value, words]) => h("option", { value, selected: chosen === value }, words)),
+  );
+}
+
+/**
+ * The search, the filters and the lists they narrow, in place: the listing is read once, so typing
+ * and choosing ask the server nothing, and the route's query follows each change without adding to
+ * the history.
+ */
+function listing(context: PageContext, found: GuideListing, initial: GuideFilters): HTMLElement[] {
   if (found.guides.length === 0 && found.paths.length === 0) {
     return [empty("There are no guides in this content root yet.", h("p", { class: "quiet" }, command("cstudy learn")))];
   }
+  const { shell } = context;
+  let filters: GuideFilters = { ...initial };
+  const titles = pathTitles(found);
+  const pathCards = new Map(found.paths.map((path) => [path.slug, pathCard(path)]));
+  const guideRows = new Map(found.guides.map((guide) => [guide.slug, guideRow(guide)]));
+  const pathList = h("ul", { class: "plain path-cards" });
+  const guideList = h("ul", { class: "plain guide-list" });
+  const noPaths = h("p", { class: "quiet guide-none" });
+  const noGuides = h("p", { class: "quiet guide-none" });
+
+  const search = h("input", {
+    id: SEARCH_FIELD,
+    name: "search",
+    type: "search",
+    value: filters.search ?? "",
+    placeholder: "search guides and paths…",
+    spellcheck: "false",
+    autocomplete: "off",
+    "aria-keyshortcuts": "/",
+  });
+  const selects: Record<ChoiceKey, HTMLSelectElement> = {
+    level: filterSelect("level", filters.level, LEVELS.map((level) => [level, level] as const), "level"),
+    path: filterSelect("path", filters.path, found.paths.map((path) => [path.slug, path.title] as const), "path"),
+    status: filterSelect("status", filters.status, STATUSES.map((status) => [status, statusWords(status)] as const), "status"),
+  };
+  const form = h(
+    "form",
+    { class: "filters", role: "search", "aria-label": "Filter guides and paths" },
+    h(
+      "label",
+      { class: "filter-search", for: search.id },
+      h("span", { class: "sr-only" }, "Search guides and paths by title, summary or slug"),
+      h("span", { class: "filter-prompt", "aria-hidden": "true" }, ">"),
+      search,
+    ),
+    ...(Object.keys(selects) as ChoiceKey[]).map((key) => h("label", { class: "filter", for: `filter-${key}` }, h("span", { class: "sr-only" }, key), selects[key])),
+  );
+  form.addEventListener("submit", (event) => event.preventDefault());
+
+  const count = h("span", { class: "filter-count" });
+  const clear = h("a", { href: GUIDES_HASH, class: "clear" }, "clear");
+  const summary = h("div", { class: "filter-summary" });
+
+  const draw = () => {
+    const narrowed = narrowListing(found, filters);
+    pathList.replaceChildren(...narrowed.paths.flatMap((path) => pathCards.get(path.slug) ?? []));
+    guideList.replaceChildren(...narrowed.guides.flatMap((guide) => guideRows.get(guide.slug) ?? []));
+    pathList.hidden = narrowed.paths.length === 0;
+    guideList.hidden = narrowed.guides.length === 0;
+    noPaths.hidden = !pathList.hidden;
+    noGuides.hidden = !guideList.hidden;
+    noPaths.textContent = noMatch("paths", filters, titles);
+    noGuides.textContent = noMatch("guides", filters, titles);
+    count.textContent = countWords(narrowed, found);
+    const chips = activeGuideFilters(filters, titles).map(({ key, words }, index, active) => {
+      const chip = h("button", { type: "button", id: `chip-${key}`, class: "filter-chip", "aria-label": `Remove the filter ${words}` }, words, " ", h("span", { "aria-hidden": "true" }, "×"));
+      const neighbour = active[index + 1] ?? active[index - 1];
+      chip.addEventListener("click", () => {
+        selects[key].value = "";
+        change({ [key]: "" });
+        (neighbour === undefined ? search : (summary.querySelector<HTMLElement>(`#chip-${neighbour.key}`) ?? search)).focus();
+      });
+      return chip;
+    });
+    summary.replaceChildren(...chips, h("span", { class: "filter-tally" }, count, h("span", { class: "quiet" }, " · "), clear));
+    const narrowing = isNarrowed(filters);
+    summary.hidden = !narrowing;
+    shell.setStatus({ mode: "GUIDES", where: narrowing ? count.textContent : "guides and paths" });
+    if (narrowing) shell.announce(`showing ${count.textContent}`);
+  };
+  const change = (changed: GuideFilters) => {
+    filters = { ...filters, ...changed };
+    for (const key of Object.keys(selects) as ChoiceKey[]) selects[key].classList.toggle("is-set", Boolean(filters[key]));
+    history.replaceState(null, "", guidesHash({ ...filters, search: (filters.search ?? "").trim() }));
+    draw();
+  };
+  search.addEventListener("input", () => change({ search: search.value }));
+  for (const key of Object.keys(selects) as ChoiceKey[]) selects[key].addEventListener("change", () => change({ [key]: selects[key].value }));
+  clear.addEventListener("click", (event) => {
+    event.preventDefault();
+    search.value = "";
+    for (const select of Object.values(selects)) select.value = "";
+    change({ search: "", level: "", path: "", status: "" });
+    search.focus();
+  });
+  draw();
+
   return [
+    h("div", { class: "filter-bar" }, form),
+    summary,
     h(
       "section",
       { class: "guide-section", "aria-labelledby": "paths-heading" },
       h("h2", { id: "paths-heading" }, "paths"),
-      h("p", { class: "quiet" }, "A path puts guides and problems in order, from a topic's first idea to an expert's."),
-      found.paths.length ? h("ul", { class: "plain path-cards" }, ...found.paths.map(pathCard)) : empty("no paths yet"),
+      h("p", { class: "quiet" }, "A path puts guides and problems in order, from a topic's first idea to an expert's. The paths run from introductory to advanced."),
+      ...(found.paths.length ? [pathList, noPaths] : [empty("no paths yet")]),
     ),
-    h(
-      "section",
-      { class: "guide-section", "aria-labelledby": "all-guides-heading" },
-      h("h2", { id: "all-guides-heading" }, "all guides"),
-      h("ul", { class: "plain guide-list" }, ...found.guides.map(guideRow)),
-    ),
+    h("section", { class: "guide-section", "aria-labelledby": "all-guides-heading" }, h("h2", { id: "all-guides-heading" }, "all guides"), guideList, noGuides),
   ];
 }
 
-export function guidesView(context: PageContext): Cleanup {
+export function guidesView(context: PageContext, filters: GuideFilters): Cleanup {
   const { api, shell } = context;
   shell.setView("guides");
   shell.setCommand("cstudy learn");
@@ -96,13 +216,21 @@ export function guidesView(context: PageContext): Cleanup {
   void api
     .get<GuideListing>(GUIDES_API)
     .then((found) => {
-      if (!left) body.replaceChildren(...listing(found));
+      if (!left) body.replaceChildren(...listing(context, found, filters));
     })
     .catch((error: unknown) => {
       if (!left) showFailure(body, error);
     });
+  const focusSearch = (event: KeyboardEvent) => {
+    const field = body.querySelector<HTMLInputElement>(`#${SEARCH_FIELD}`);
+    if (field === null || !isSearchShortcut(event)) return;
+    event.preventDefault();
+    field.focus();
+  };
+  document.addEventListener("keydown", focusSearch);
   return () => {
     left = true;
+    document.removeEventListener("keydown", focusSearch);
   };
 }
 
