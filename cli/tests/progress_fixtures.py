@@ -5,11 +5,21 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
+import pytest
+
+from coding_study.adapters.sqlite import schema
 from coding_study.adapters.sqlite.schema import schema_version
 from coding_study.domain.progress_export import ColumnValue
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "progress"
 type Rows = dict[str, list[dict[str, ColumnValue]]]
+FAILING_SCRIPT = """\
+CREATE TABLE half_migrated (id INTEGER);
+BEGIN;
+INSERT INTO half_migrated VALUES (1);
+SELECT * FROM missing_table;
+"""
+FAILING_REASON = "no such table: missing_table"
 
 
 def database_at_schema(path: Path, number: int) -> Path:
@@ -48,3 +58,14 @@ def backups_in(workspace: Path) -> list[Path]:
     """The files in the workspace's `.cs/backups`."""
     directory = workspace / ".cs" / "backups"
     return sorted(directory.iterdir()) if directory.exists() else []
+
+
+def fail_migration_at(monkeypatch: pytest.MonkeyPatch, number: int) -> None:
+    """Makes migration `number` a script that changes the database, then fails with
+    `FAILING_REASON`, with a transaction still open."""
+    real = schema._migrations()
+    monkeypatch.setattr(
+        schema,
+        "_migrations",
+        lambda: [(n, FAILING_SCRIPT if n == number else script) for n, script in real],
+    )

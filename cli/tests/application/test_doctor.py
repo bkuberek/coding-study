@@ -48,6 +48,7 @@ from coding_study.domain.docker_engine import DockerGroup, EngineState, EngineSt
 from coding_study.domain.errors import (
     BackupError,
     ConfigError,
+    MigrationError,
     RunnerProtocolError,
     RunnerStartError,
     UsageError,
@@ -265,6 +266,7 @@ class FakeProgress:
     unreadable: str | None = None
     migration_error: str | None = None
     backup_error: str | None = None
+    script_error: str | None = None
     backup: str | None = ".cs/backups/progress-schema-4-20261114T101500Z.db"
     migrations: int = 0
 
@@ -278,6 +280,8 @@ class FakeProgress:
             raise BackupError(self.backup_error)
         if self.migration_error:
             raise UsageError(self.migration_error)
+        if self.script_error:
+            raise MigrationError(4, 5, self.script_error, ".cs/backups/progress-schema-4-x.db")
         self.migrations += 1
         migration = ProgressMigration(self.found or 0, self.latest, self.backup)
         self.found = self.latest
@@ -1031,6 +1035,18 @@ def test_repair_leaves_a_progress_database_that_is_current_absent_or_newer(found
     progress = FakeProgress(found=found)
     repair_workspace(workspace_with(progress=progress), lambda _line: None)
     assert progress.migrations == 0
+
+
+def test_repair_stops_with_the_message_of_a_migration_that_failed():
+    progress = FakeProgress(found=4, script_error="no such table: scores")
+    lines: list[str] = []
+    with pytest.raises(MigrationError) as caught:
+        repair_workspace(workspace_with(progress=progress), lines.append)
+    assert (str(caught.value), lines) == (
+        "migrating progress.db from schema 4 failed at schema 5: no such table: scores; "
+        "restored it from .cs/backups/progress-schema-4-x.db",
+        [],
+    )
 
 
 def test_repair_survives_an_unreadable_progress_database():

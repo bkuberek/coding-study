@@ -13,7 +13,13 @@ from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.shared import ExitCode
 from tests.helpers import mark_workspace
-from tests.progress_fixtures import backups_in, database_at_schema, stored_schema
+from tests.progress_fixtures import (
+    FAILING_REASON,
+    backups_in,
+    database_at_schema,
+    fail_migration_at,
+    stored_schema,
+)
 
 runner = CliRunner()
 LATEST = latest_schema_version()
@@ -108,3 +114,17 @@ def test_a_backup_that_fails_stops_the_command_with_exit_4_and_changes_nothing(
     )
     assert result.stderr.startswith("error: cannot back up progress.db before migrating it: ")
     assert result.stderr.endswith("; nothing changed\n")
+
+
+def test_a_script_that_fails_ends_the_command_with_exit_4_and_the_database_restored(
+    workspace, content_root, monkeypatch
+):
+    path = database_at_schema(workspace / "progress.db", 3)
+    fail_migration_at(monkeypatch, 5)
+    result = cs(workspace, content_root, "export")
+    (backup,) = backups_in(workspace)
+    assert (result.exit_code, stored_schema(path)) == (ExitCode.ENVIRONMENT_ERROR, 3)
+    assert result.stderr == (
+        f"error: migrating progress.db from schema 3 failed at schema 5: {FAILING_REASON}; "
+        f"restored it from .cs/backups/{backup.name}\n"
+    )

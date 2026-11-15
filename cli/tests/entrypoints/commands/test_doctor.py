@@ -36,6 +36,7 @@ from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode
 from coding_study.entrypoints.web import STATIC_DIRECTORY
 from tests.helpers import REPOSITORY_ROOT, mark_workspace, progress_database_at
+from tests.progress_fixtures import FAILING_REASON, fail_migration_at, stored_schema
 
 runner = CliRunner()
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
@@ -365,6 +366,22 @@ def test_fix_stops_with_exit_4_when_the_backup_cannot_be_made(monkeypatch, tmp_p
     )
     assert "error: cannot back up progress.db before migrating it: " in result.output
     assert result.output.rstrip().endswith("; nothing changed")
+
+
+def test_fix_stops_with_exit_4_and_restores_the_database_when_a_script_fails(monkeypatch, tmp_path):
+    workspace = mark_workspace(tmp_path)
+    progress_database_at(workspace / "progress.db", 4)
+    fail_migration_at(monkeypatch, 6)
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    stub_report(monkeypatch)
+    result = runner.invoke(cli.app, ["doctor", "--fix"])
+    (backup,) = (workspace / ".cs" / "backups").iterdir()
+    assert (result.exit_code, stored_schema(workspace / "progress.db")) == (4, 4)
+    assert result.output.strip().endswith(
+        f"error: migrating progress.db from schema 4 failed at schema 6: {FAILING_REASON}; "
+        f"restored it from .cs/backups/{backup.name}"
+    )
+    assert "stays as it is" not in result.output
 
 
 def test_fix_names_the_backups_folder_of_the_workspace_when_the_database_is_elsewhere(

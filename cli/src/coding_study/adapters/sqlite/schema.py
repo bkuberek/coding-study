@@ -2,8 +2,8 @@
 (docs/specs/progress-and-scheduling.md#schema).
 
 `migrations/0001_init.sql`, ... run in order; `meta.schema_version` records the last one applied.
-A database that has a schema is copied first, and one newer than the last migration is refused
-(docs/specs/compatibility.md#migrations).
+A database that has a schema is copied first, and restored from the copy when a script fails; one
+newer than the last migration is refused (docs/specs/compatibility.md#migrations).
 """
 
 import sqlite3
@@ -11,9 +11,10 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
+from typing import NoReturn
 
 from coding_study.adapters.sqlite.migration_lock import migration_lock
-from coding_study.domain.errors import BackupError, UsageError
+from coding_study.domain.errors import BackupError, MigrationError, UsageError
 from coding_study.domain.layout import BACKUPS_DIRECTORY
 from coding_study.domain.progress_migration import ProgressMigration
 
@@ -43,7 +44,8 @@ def migrate(
 
     A database that has a schema is copied into the workspace's `.cs/backups` before the first
     script runs. Raises UsageError for a newer database and BackupError when the copy fails; both
-    leave it unchanged.
+    leave it unchanged. A script that fails after the copy puts the copy back and raises
+    MigrationError, or, for an interrupt, raises the interrupt.
     """
     migrations = _migrations()
     latest = migrations[-1][0]
@@ -55,20 +57,62 @@ def migrate(
         )
     copy = _back_up(connection, workspace, database.stem, found) if 0 < found < latest else None
     connection.execute("PRAGMA journal_mode = WAL")
-    for number, script in migrations:
-        if number <= found:
-            continue
-        _apply(connection, script)
-        with connection:
-            connection.execute(
-                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                (SCHEMA_VERSION_KEY, str(number)),
-            )
+    number = found
+    try:
+        for number, script in migrations:
+            if number <= found:
+                continue
+            _apply(connection, script)
+            with connection:
+                connection.execute(
+                    "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+                    (SCHEMA_VERSION_KEY, str(number)),
+                )
+    except BaseException as error:
+        if copy is None:
+            raise
+        _restore_after(connection, copy, workspace, found, number, error)
     if found == latest:
         return None
     return ProgressMigration(
         found, latest, None if copy is None else copy.relative_to(workspace).as_posix()
     )
+
+
+def _restore_after(
+    connection: sqlite3.Connection,
+    copy: Path,
+    workspace: Path,
+    found: int,
+    failed_at: int,
+    error: BaseException,
+) -> NoReturn:
+    """Puts `copy` back over the database after `error` ended the migration at schema `failed_at`.
+    Raises MigrationError, or `error` itself when it is an interrupt and the copy went back."""
+    backup = copy.relative_to(workspace).as_posix()
+    reason = str(error) or type(error).__name__
+    try:
+        _restore(connection, copy, found)
+    except (OSError, sqlite3.Error) as failure:
+        raise MigrationError(found, failed_at, reason, backup, str(failure)) from error
+    if not isinstance(error, Exception):
+        raise error
+    raise MigrationError(found, failed_at, reason, backup) from error
+
+
+def _restore(connection: sqlite3.Connection, copy: Path, found: int) -> None:
+    """Writes `copy` over the database with SQLite's online backup, and checks that it reads schema
+    `found`."""
+    if connection.in_transaction:
+        connection.rollback()
+    source = sqlite3.connect(f"{copy.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        source.backup(connection)
+    finally:
+        source.close()
+    restored = schema_version(connection)
+    if restored != found:
+        raise sqlite3.DatabaseError(f"the restored database reads schema {restored}, not {found}")
 
 
 def _back_up(connection: sqlite3.Connection, workspace: Path, stem: str, found: int) -> Path:

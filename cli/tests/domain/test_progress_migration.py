@@ -1,7 +1,7 @@
 """The line that says what migrating progress.db did
 (docs/specs/compatibility.md#migrations)."""
 
-from coding_study.domain.errors import BackupError
+from coding_study.domain.errors import BackupError, MigrationError
 from coding_study.domain.progress_migration import ProgressMigration
 
 
@@ -20,4 +20,23 @@ def test_a_migration_of_a_new_database_has_no_backup_to_name():
 def test_a_failed_backup_says_nothing_changed():
     assert str(BackupError("permission denied")) == (
         "cannot back up progress.db before migrating it: permission denied; nothing changed"
+    )
+
+
+def test_a_failed_migration_names_the_backup_it_restored():
+    error = MigrationError(3, 5, "no such table: scores", ".cs/backups/progress-schema-3-x.db")
+    assert str(error) == (
+        "migrating progress.db from schema 3 failed at schema 5: no such table: scores; "
+        "restored it from .cs/backups/progress-schema-3-x.db"
+    )
+
+
+def test_a_failed_migration_with_a_failed_restore_names_the_copy_to_put_back():
+    error = MigrationError(
+        3, 5, "no such table: scores", ".cs/backups/progress-schema-3-x.db", "disk I/O error"
+    )
+    assert str(error) == (
+        "migrating progress.db from schema 3 failed at schema 5: no such table: scores, "
+        "and restoring it failed: disk I/O error; copy .cs/backups/progress-schema-3-x.db "
+        "over progress.db"
     )

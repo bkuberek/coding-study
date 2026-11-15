@@ -22,16 +22,18 @@ from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.progress_backup import export_progress, import_progress
 from coding_study.domain.attempts import AttemptMode, AttemptStatus
-from coding_study.domain.errors import BackupError, UsageError
+from coding_study.domain.errors import BackupError, MigrationError, UsageError
 from coding_study.domain.progress_export import ProgressSnapshot, export_text
 from coding_study.domain.progress_migration import ProgressMigration
 from tests.fakes import NOW, FakeClock, make_environment
 from tests.helpers import progress_database_at
 from tests.progress_fixtures import (
+    FAILING_REASON,
     FIXTURES,
     Rows,
     backups_in,
     database_at_schema,
+    fail_migration_at,
     read_rows,
     stored_schema,
 )
@@ -236,15 +238,21 @@ def test_a_backup_clash_adds_a_number(tmp_path, monkeypatch):
     ]
 
 
-def test_the_backup_is_made_under_the_lock_before_the_first_script(tmp_path, monkeypatch):
+def test_the_backup_is_made_under_the_lock_after_the_version_read_and_before_the_first_script(
+    tmp_path, monkeypatch
+):
     events: list[str] = []
-    copy, apply = schema._copy_to, schema._apply
+    copy, apply, version = schema._copy_to, schema._apply, schema.schema_version
 
     @contextmanager
     def lock(_database: Path) -> Iterator[None]:
         events.append("lock")
         yield
         events.append("unlock")
+
+    def version_recorded(connection: sqlite3.Connection) -> int:
+        events.append("version")
+        return version(connection)
 
     def copy_recorded(connection: sqlite3.Connection, file: Path) -> None:
         events.append("copy")
@@ -255,10 +263,34 @@ def test_the_backup_is_made_under_the_lock_before_the_first_script(tmp_path, mon
         apply(connection, script)
 
     monkeypatch.setattr(schema, "migration_lock", lock)
+    monkeypatch.setattr(schema, "schema_version", version_recorded)
     monkeypatch.setattr(schema, "_copy_to", copy_recorded)
     monkeypatch.setattr(schema, "_apply", apply_recorded)
     migrated_by_store(database_at_schema(tmp_path / "progress.db", LATEST - 2))
-    assert events == ["lock", "copy", "script", "script", "unlock"]
+    assert events == ["lock", "version", "copy", "version", "script", "script", "unlock"]
+
+
+def test_a_backup_holds_the_rows_that_are_only_in_the_write_ahead_log(tmp_path):
+    path = database_at_schema(tmp_path / "progress.db", 3)
+    log = path.with_name("progress.db-wal")
+    writer = sqlite3.connect(path)
+    try:
+        writer.execute("PRAGMA wal_autocheckpoint = 0")
+        with writer:
+            writer.execute(
+                "INSERT INTO attempts (id, slug, mode, status, started_at) "
+                "VALUES (99, 'only-in-the-log', 'new', 'passed', '2026-10-09T09:00:00+00:00')"
+            )
+        in_the_log = (
+            b"only-in-the-log" in log.read_bytes(),
+            b"only-in-the-log" in path.read_bytes(),
+        )
+        migrated_by_store(path)
+    finally:
+        writer.close()
+    (backup,) = backups_in(tmp_path)
+    held = [row["slug"] for row in read_rows(backup)["attempts"]]
+    assert (in_the_log, "only-in-the-log" in held) == ((True, False), True)
 
 
 def test_a_new_database_is_made_without_a_backup(tmp_path, capsys):
@@ -382,6 +414,104 @@ def test_a_database_that_failed_its_backup_migrates_once_it_can(tmp_path):
     blocker.unlink()
     migrated_by_store(path)
     assert (stored_schema(path), len(backups_in(tmp_path))) == (LATEST, 1)
+
+
+# A script that fails after the backup
+
+MIDDLE = 5
+
+
+def restored_database(path: Path, route: Callable[[Path], None]) -> tuple[MigrationError, Path]:
+    """Migrates `path`, expecting the migration to fail; returns the error and the one backup."""
+    with pytest.raises(MigrationError) as caught:
+        route(path)
+    (backup,) = backups_in(path.parent)
+    return caught.value, backup
+
+
+def test_a_script_that_fails_leaves_the_database_as_it_was_and_names_the_backup(
+    tmp_path, monkeypatch, route
+):
+    path = database_at_schema(tmp_path / "progress.db", 3)
+    pristine = database_at_schema(tmp_path / "pristine.db", 3)
+    before = read_rows(path)
+    fail_migration_at(monkeypatch, MIDDLE)
+    error, backup = restored_database(path, route)
+    assert (stored_schema(path), read_rows(path), structure(path)) == (
+        3,
+        before,
+        structure(pristine),
+    )
+    assert str(error) == (
+        f"migrating progress.db from schema 3 failed at schema {MIDDLE}: {FAILING_REASON}; "
+        f"restored it from .cs/backups/{backup.name}"
+    )
+
+
+def test_a_retry_after_a_failed_migration_backs_up_the_old_schema(tmp_path, monkeypatch):
+    path = database_at_schema(tmp_path / "progress.db", 3)
+    before = read_rows(path)
+    with monkeypatch.context() as failing:
+        fail_migration_at(failing, MIDDLE)
+        restored_database(path, migrated_by_store)
+    migrated_by_store(path)
+    assert [(stored_schema(backup), read_rows(backup)) for backup in backups_in(tmp_path)] == [
+        (3, before),
+        (3, before),
+    ]
+    assert stored_schema(path) == LATEST
+
+
+def test_an_interrupt_between_scripts_restores_the_database_and_ends_the_command(
+    tmp_path, monkeypatch
+):
+    path = database_at_schema(tmp_path / "progress.db", 3)
+    before = read_rows(path)
+    apply, applied = schema._apply, []
+
+    def interrupted(connection: sqlite3.Connection, script: str) -> None:
+        if applied:
+            raise KeyboardInterrupt
+        applied.append(script)
+        apply(connection, script)
+
+    monkeypatch.setattr(schema, "_apply", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        migrated_by_store(path)
+    assert (stored_schema(path), read_rows(path), len(backups_in(tmp_path))) == (3, before, 1)
+
+
+def test_a_restore_that_fails_names_the_copy_to_put_back(tmp_path, monkeypatch, route):
+    path = database_at_schema(tmp_path / "progress.db", 3)
+
+    def refused(_connection: sqlite3.Connection, _copy: Path, _found: int) -> None:
+        raise sqlite3.OperationalError("disk I/O error")
+
+    fail_migration_at(monkeypatch, MIDDLE)
+    monkeypatch.setattr(schema, "_restore", refused)
+    error, backup = restored_database(path, route)
+    assert str(error) == (
+        f"migrating progress.db from schema 3 failed at schema {MIDDLE}: {FAILING_REASON}, "
+        f"and restoring it failed: disk I/O error; copy .cs/backups/{backup.name} over progress.db"
+    )
+
+
+def test_a_restore_that_reads_another_schema_counts_as_failed(tmp_path, monkeypatch):
+    path = database_at_schema(tmp_path / "progress.db", 3)
+    fail_migration_at(monkeypatch, MIDDLE)
+    monkeypatch.setattr(schema, "_copy_schema", lambda _file: 3)
+    monkeypatch.setattr(
+        schema, "schema_version", lambda _connection: 3 if not backups_in(tmp_path) else 4
+    )
+    error, _backup = restored_database(path, migrated_by_store)
+    assert "and restoring it failed: the restored database reads schema 4, not 3" in str(error)
+
+
+def test_a_new_database_whose_script_fails_has_no_backup_to_restore(tmp_path, monkeypatch):
+    fail_migration_at(monkeypatch, 2)
+    with pytest.raises(sqlite3.OperationalError, match=FAILING_REASON):
+        migrated_by_store(tmp_path / "progress.db")
+    assert backups_in(tmp_path) == []
 
 
 # Export round trips

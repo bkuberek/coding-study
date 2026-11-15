@@ -83,6 +83,29 @@ class BackupError(Exception):
         )
 
 
+class MigrationError(Exception):
+    """A migration script of progress.db failed after the copy that precedes it was made (exit
+    code 4). The copy was restored, or, when the message says restoring failed, is the file to put
+    back."""
+
+    def __init__(
+        self,
+        found: int,
+        failed_at: int,
+        reason: str,
+        backup: str,
+        restore_failure: str | None = None,
+    ) -> None:
+        failed = f"migrating progress.db from schema {found} failed at schema {failed_at}: {reason}"
+        if restore_failure is None:
+            super().__init__(f"{failed}; restored it from {backup}")
+        else:
+            super().__init__(
+                f"{failed}, and restoring it failed: {restore_failure}; "
+                f"copy {backup} over progress.db"
+            )
+
+
 class RunnerProtocolError(Exception):
     """A runner that broke the protocol in docs/specs/runners.md (exit code 70)."""
 

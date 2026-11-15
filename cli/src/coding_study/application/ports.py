@@ -1105,7 +1105,8 @@ class ProgressDatabase(Protocol):
     def migrate(self) -> ProgressMigration | None:
         """Brings the file to the latest schema, as the first command to open it would, and
         returns what it did; None when the file was at the latest already. Raises UsageError when
-        it cannot, and BackupError when the copy it makes first fails, with the file unchanged."""
+        it cannot, BackupError when the copy it makes first fails, with the file unchanged, and
+        MigrationError when a script fails after the copy, which it then restores."""
         ...
 
 
