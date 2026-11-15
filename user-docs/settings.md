@@ -48,6 +48,23 @@ A change applies at the next command. The web UI reads the file for each request
 
 Changing `progress_db` moves nothing: your data stays in the old file, and `cstudy` uses the file at the new path, or starts an empty one there. Settings asks first and says whether a database exists at the new path, and `cstudy config edit` says so once you close your editor.
 
+### Point to your study guides
+
+Study guides are notes of your own; `cstudy` ships none. The rubric problems, those of the `system-design` and `code-review` tracks, can name sections of them in `references.study_guides`, as paths relative to one folder of yours. Set that folder as `root` in the `[study_guides]` table:
+
+```toml
+[study_guides]
+root = "~/study-guides"   # an absolute path, or one that starts with ~/
+```
+
+It is unset by default, and then no study guide is linked. With it set, `cstudy start` and `cstudy show` end a rubric problem's statement with a `## Study guides` section, a link to each referenced file that exists under the root, and `cstudy start` prints a `guide` line for each:
+
+```text
+guide      file:///home/me/study-guides/distributed-systems-study-guide.md#databases
+```
+
+A referenced file that is not under the root is left out, and nothing fails. The bundled rubric problems name sections of `distributed-systems-study-guide.md`, so a guide of yours saved at that path under the root is linked. In the Settings view the key is **Study guides folder**.
+
 ## Preferences
 
 Preferences are stored in `.cs/serve/preferences.json` in the workspace, so they follow the workspace, not the browser.

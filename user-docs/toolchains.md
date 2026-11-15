@@ -228,6 +228,30 @@ A service project needs no toolchain on your machine: the image is the toolchain
 
 [Your own IDE and debugger](service-projects.md#your-own-ide-and-debugger) has the details.
 
+### Which Docker
+
+Service projects need a Docker engine with Compose v2, the `docker compose` command. `cstudy` does not install Docker itself.
+
+| System | Install |
+|--------|---------|
+| macOS | Docker Desktop: [install Docker Desktop on Mac](https://docs.docker.com/desktop/setup/install/mac-install/) |
+| Linux | Docker Engine: [install Docker Engine](https://docs.docker.com/engine/install/), or Docker Desktop: [get Docker](https://docs.docker.com/get-started/get-docker/) |
+
+Docker Desktop's licence requires a paid plan at larger companies: read [its licence terms](https://docs.docker.com/subscription-billing/desktop-license/) before you use it at work.
+
+Check both parts:
+
+```bash
+docker version           # the client and the engine; the engine must answer
+docker compose version   # Compose v2: the docker-compose of v1 does not count
+```
+
+An engine without Compose v2 counts as no Docker: `cstudy doctor` shows the `docker` row as a `WARN`, `no compose v2`, with the install links.
+
+Access to Docker is effectively root: whoever can use the engine can act as root on the machine. On Linux that includes everyone in the `docker` group. `cstudy` cannot reduce that, and never mounts Docker's socket into a container.
+
+Rootless Docker and SELinux are not tested.
+
 ## git
 
 git is optional: `cstudy init --git` runs `git init` in the new workspace, and `cstudy` never commits. macOS provides git with the Xcode Command Line Tools (`xcode-select --install`) or `brew install git`; on Linux, install your distribution's `git` package.

@@ -33,6 +33,8 @@ Upgrade with `uv tool upgrade coding-study`, or `pipx upgrade coding-study`.
 
 Keep one of these installs. When there are several, the `cstudy` that comes first on your `PATH` runs: `which -a cstudy` lists them, and `cstudy doctor` warns and gives the command that removes each extra copy.
 
+After an upgrade, run `cstudy doctor --fix` in your workspace. [Upgrading cstudy](upgrading.md) says what it refreshes and what stays yours.
+
 ## Install the language toolchains
 
 `cstudy` runs your code with the real toolchain of each language, which you install yourself. uv and Python 3.13 are required. Node.js and pnpm (TypeScript), a JDK (Java and Kotlin), Go and Rust are needed only for the languages you practise. [Install the language toolchains](toolchains.md) has the steps for macOS and Linux.

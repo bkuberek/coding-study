@@ -20,6 +20,7 @@ TOPICS = (
     "toolchains",
     "doctor",
     "workspace",
+    "upgrading",
     "practice",
     "levels",
     "service-projects",

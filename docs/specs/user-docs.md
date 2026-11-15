@@ -68,6 +68,7 @@ Pages are listed by `order`. A section is listed where its first page is, and it
 | 20 | `toolchains` | Install the language toolchains | Start here |
 | 30 | `doctor` | Check your setup with cstudy doctor | Start here |
 | 40 | `workspace` | Your workspace | Start here |
+| 45 | `upgrading` | Upgrading cstudy | Start here |
 | 50 | `practice` | Work on a problem | Practise |
 | 60 | `levels` | Progressive levels and projects | Practise |
 | 70 | `service-projects` | Service projects and the dev stack | Practise |
