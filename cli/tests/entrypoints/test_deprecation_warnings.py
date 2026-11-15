@@ -2,6 +2,7 @@
 error (docs/specs/compatibility.md#deprecation); the registry of this release is empty."""
 
 import json
+import re
 from pathlib import Path
 from typing import Annotated
 
@@ -16,6 +17,9 @@ from coding_study.domain.deprecations import DEPRECATIONS, DeprecatedSurface, De
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.shared import deprecated_flag, merged
 from tests.helpers import SCHEMAS_DIRECTORY, mark_workspace
+
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+"""Rich styles the help, its option names included, when the environment forces a terminal."""
 
 runner = CliRunner()
 
@@ -98,8 +102,9 @@ def test_without_the_flag_nothing_warns() -> None:
 
 def test_the_deprecated_flag_is_hidden_from_help() -> None:
     result = runner.invoke(_app(), ["show", "--help"])
+    shown = ANSI_ESCAPE.sub("", result.stdout)
 
-    assert ("--new-name" in result.stdout, "--old-name" in result.stdout) == (True, False)
+    assert ("--new-name" in shown, "--old-name" in shown) == (True, False)
 
 
 def test_json_output_is_unchanged_and_the_warning_is_on_stderr() -> None:
