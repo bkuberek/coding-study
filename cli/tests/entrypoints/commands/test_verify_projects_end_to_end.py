@@ -95,7 +95,7 @@ def test_a_new_python_project_verifies_once_its_placeholders_are_replaced(verify
         cli.app, ["new", "kv-project-python", "--from-template", "project-python"]
     )
     assert created.exit_code == ExitCode.SUCCESS
-    [directory] = (content / "problems").glob("*-kv-project-python")
+    directory = content / "problems" / "kv-project-python"
     for path in directory.rglob("*"):
         if path.is_file():
             path.write_text(path.read_text().replace("TODO", "Written"))

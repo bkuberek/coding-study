@@ -176,7 +176,7 @@ def test_the_top_bar_and_alt_8_open_the_docs(seen: Seen):
 def test_the_list_shows_the_pages_by_section(seen: Seen):
     assert (seen.sections, seen.pages) == (
         ["Start here", "Practise", "The web UI", "Settings and help"],
-        13,
+        18,
     )
 
 

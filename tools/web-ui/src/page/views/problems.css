@@ -117,6 +117,8 @@ tr:hover > td > .problem-link {
   font-size: var(--text-xs);
   font-weight: 400;
   display: block;
+  width: 0;
+  min-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

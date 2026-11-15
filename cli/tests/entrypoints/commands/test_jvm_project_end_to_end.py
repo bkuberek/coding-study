@@ -85,7 +85,7 @@ def played(environment: Environment, language: Language, cstudy: None) -> dict[s
     """Every step of one play-through, in order."""
     slug = f"bank-project-{language}"
     steps = {"start": cs("start", slug, "--no-open"), "bare test": cs("test")}
-    reference = FIXTURES / f"000{1 if language is Language.JAVA else 2}-{slug}" / "solutions"
+    reference = FIXTURES / slug / "solutions"
     shutil.copytree(reference / "reference", folder(environment, language), dirs_exist_ok=True)
     steps["solved test"] = cs("test")
     steps["submit for level 2"] = cs("submit")
