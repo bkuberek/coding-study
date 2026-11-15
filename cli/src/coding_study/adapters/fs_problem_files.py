@@ -1,21 +1,18 @@
-"""Raw files of problem directories (`<id>-<slug>/`), for checks that go beyond meta.yaml."""
+"""Raw files of problem directories (`<slug>/`), for checks that go beyond meta.yaml."""
 
 import hashlib
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
-from coding_study.adapters.fs_problem_repository import PROBLEMS_DIRECTORY
-from coding_study.domain.errors import UnknownProblemError
-
-ID_DIGITS = 4
-
-
-def slug_of_directory(directory_name: str) -> str | None:
-    """The slug of an `<id>-<slug>` directory name, or None for any other name."""
-    prefix, separator, slug = directory_name.partition("-")
-    if separator and len(prefix) == ID_DIGITS and prefix.isdigit():
-        return slug
-    return None
+from coding_study.adapters.fs_problem_repository import (
+    META_FILE,
+    PROBLEMS_DIRECTORY,
+    parse_yaml,
+)
+from coding_study.domain.errors import ContentError, UnknownProblemError
+from coding_study.domain.problem import SLUG_PATTERN
+from coding_study.domain.problem_files import MisnamedDirectory, misnamed_directory
 
 
 class FsProblemFiles:
@@ -30,18 +27,20 @@ class FsProblemFiles:
         return self._directory
 
     def slugs(self) -> tuple[str, ...]:
-        """One slug per directory, so a duplicated slug appears twice."""
-        return tuple(slug for slug, _ in self._directories())
+        """The name of every directory named by a slug, in name order."""
+        return tuple(entry.name for entry in self._entries() if SLUG_PATTERN.fullmatch(entry.name))
 
-    def directory_names(self) -> tuple[str, ...]:
-        return tuple(name for _, name in self._directories())
+    def misnamed(self) -> tuple[MisnamedDirectory, ...]:
+        return tuple(
+            misnamed_directory(entry.name, _meta_slug(entry))
+            for entry in self._entries()
+            if not SLUG_PATTERN.fullmatch(entry.name)
+        )
 
     def problem_directory(self, slug: str) -> str:
-        """The first directory with this slug, like `FsProblemRepository.load`."""
-        name = next((name for found, name in self._directories() if found == slug), None)
-        if name is None:
+        if slug not in self.slugs():
             raise UnknownProblemError(slug)
-        return f"{self._directory}/{name}"
+        return f"{self._directory}/{slug}"
 
     def read_text(self, slug: str, name: str) -> str | None:
         path = self.path(slug, name)
@@ -64,13 +63,18 @@ class FsProblemFiles:
             digest.update(path.read_bytes() if path.is_file() else b"\0missing")
         return digest.hexdigest()
 
-    def _directories(self) -> list[tuple[str, str]]:
-        """(slug, directory name) pairs in directory name order."""
+    def _entries(self) -> list[Path]:
         folder = self._root / self._directory
         if not folder.is_dir():
             return []
-        return [
-            (slug, entry.name)
-            for entry in sorted(folder.iterdir())
-            if entry.is_dir() and (slug := slug_of_directory(entry.name)) is not None
-        ]
+        return [entry for entry in sorted(folder.iterdir()) if entry.is_dir()]
+
+
+def _meta_slug(directory: Path) -> object:
+    """The `slug` of the directory's meta.yaml; None when there is no readable one."""
+    source = f"{directory.name}/{META_FILE}"
+    try:
+        document = parse_yaml((directory / META_FILE).read_text(encoding="utf-8"), source)
+    except (OSError, UnicodeDecodeError, ContentError):
+        return None
+    return cast(dict[str, object], document).get("slug") if isinstance(document, dict) else None

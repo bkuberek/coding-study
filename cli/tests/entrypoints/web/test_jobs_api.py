@@ -31,7 +31,7 @@ from tests.web_server import WRITE_HEADERS, session_client, web_app
 
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
-OWN_PROBLEM = "problems/5001-two-sum"
+OWN_PROBLEM = "problems/two-sum"
 JOBS = "/api/v1/jobs"
 DOCTOR_FIX = {"command": "doctor_fix", "confirm": True}
 QUESTION = (
@@ -48,9 +48,6 @@ def workspace(tmp_path) -> Environment:
     shutil.rmtree(catalog / "problems" / "two-sum")
     root = repository_root(tmp_path / "workspace", PRACTICE)
     shutil.rmtree(root / "problems" / "lru-cache")
-    (root / "problems" / "two-sum").rename(root / OWN_PROBLEM)
-    meta = root / OWN_PROBLEM / "meta.yaml"
-    meta.write_text(meta.read_text().replace('id: "0001"', 'id: "5001"'))
     return make_environment(
         root,
         content_root=catalog,

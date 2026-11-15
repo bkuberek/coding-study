@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # A design class with an empty constructor, parameterless methods and void methods.
-id: "0106"
 slug: min-stack
 title: Min Stack
 status: draft

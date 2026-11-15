@@ -37,7 +37,6 @@ def make_content(tmp_path: Path) -> Path:
 
 def meta_document(**project: object) -> dict[str, object]:
     return {
-        "id": "0901",
         "slug": SLUG,
         "title": "Rooms",
         "status": "draft",
@@ -150,24 +149,24 @@ def write_go_problem(root: Path) -> None:
         "sizes": {"install_mb": 120, "images_mb": {"app": 316}, "memory_mb": 450},
     }
     write_problem(root, document)
-    (root / "problems" / f"0901-{SLUG}" / "starter" / "go.sum").write_text("")
+    (root / "problems" / f"{SLUG}" / "starter" / "go.sum").write_text("")
 
 
 def write_mock(root: Path, config: dict[str, object] | None = None) -> None:
     """The mock server `meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}])` names."""
-    path = root / "problems" / f"0901-{SLUG}" / CONFIG
+    path = root / "problems" / f"{SLUG}" / CONFIG
     path.parent.mkdir()
     path.write_text(yaml.safe_dump(config or VENDOR_CONFIG))
 
 
 def write_cases(root: Path, cases: list[dict[str, object]]) -> None:
-    (root / "problems" / f"0901-{SLUG}" / "tests.json").write_text(
+    (root / "problems" / f"{SLUG}" / "tests.json").write_text(
         json.dumps({"version": 1, "cases": cases})
     )
 
 
 def write_problem(root: Path, document: dict[str, object] | None = None) -> None:
-    directory = root / "problems" / f"0901-{SLUG}"
+    directory = root / "problems" / f"{SLUG}"
     (directory / "starter" / "src").mkdir(parents=True)
     (directory / "solutions" / "reference" / "src").mkdir(parents=True)
     (directory / "meta.yaml").write_text(yaml.safe_dump(document or meta_document()))

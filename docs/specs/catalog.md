@@ -1,6 +1,6 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 210 DSA problems and 190 non-DSA items (174 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 210 DSA problems and 190 non-DSA items (174 problems and 16 items in `tracks/`), each with its slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
@@ -19,9 +19,8 @@ Every row has three [labels](content.md#labels): `domains`, `job_roles` and `sco
 
 | Rule | Detail |
 |------|--------|
-| Binding | `id`, `slug`, `title`, primary pattern, `kind` and `batch` in this file are binding. A stream creates exactly the rows it owns, at `problems/<id>-<slug>/` (or `tracks/<track>/<slug>/`), and touches no other row |
+| Binding | `slug`, `title`, primary pattern, `kind` and `batch` in this file are binding. A stream creates exactly the rows it owns, at `problems/<slug>/` (or `tracks/<track>/<slug>/`), and touches no other row |
 | Slugs | Unique across `problems/` and `tracks/` and immutable once merged, because `progress.db` keys on the slug |
-| Ids | Fixed here, not by `cstudy new`. `cstudy new` assigns max + 1, which collides across parallel worktrees, so after scaffolding the author sets `meta.yaml` `id` to the catalog value and renames the directory to match |
 | `meta.yaml` | `patterns` is the primary pattern followed by the secondary patterns in the listed order; `difficulty` and `kind` match the row; `domains`, `job_roles` and `scope` are the section's labels, with its exceptions; `references.leetcode.number` is the `lc` column |
 | Changes | A stream that cannot build a row as listed stops and reports. The catalog is amended in the main checkout first, never inside a stream worktree |
 | Wording | Statements, examples, tests, hints and explanations are original ([ADR 0004](../decisions/0004-original-problem-wording.md)). Common titles are allowed; LeetCode appears only as a link in `references.leetcode` |
@@ -31,281 +30,277 @@ Every row has three [labels](content.md#labels): `domains`, `job_roles` and `sco
 ## How streams use this file
 
 1. Find the rows whose `stream` is yours (DSA) or whose section names you as owner (non-DSA).
-2. Build them batch by batch; within a pattern, ids run from easy to hard, which is also a sensible `order` for `meta.yaml`.
+2. Build them batch by batch; within a pattern, rows run from easy to hard, which is also a sensible `order` for `meta.yaml`.
 3. Rows marked `existing` are already in `problems/`. Their stream owns any revision, but they do not count toward its quota.
-
-## Id order
-
-Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, `0249`–`0254` the practical project problems, and `0255`–`0261` the first wave of security and AI/LLM problems. Items in `tracks/` have slugs and no ids.
 
 ## DSA catalog
 
 Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 210 rows, with no exceptions.
 
-210 problems: 185 planned in six batches, and 25 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
+210 problems: 185 planned in six batches, and 25 [added later](#later-dsa-additions). Columns: `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
 
 ### Batch 1 (34 problems: `arrays-hashing`, `two-pointers`, `sliding-window`, `stack`)
 
-| id | slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
-|----|------|-------|---------|-----------|------------|----|------|-------|--------|
-| 0001 | `two-sum` | Two Sum | `arrays-hashing` | - | easy | 1 | function | 1 | D1 (existing) |
-| 0004 | `contains-duplicate` | Contains Duplicate | `arrays-hashing` | - | easy | 217 | function | 1 | D1 |
-| 0005 | `valid-anagram` | Valid Anagram | `arrays-hashing` | - | easy | 242 | function | 1 | D1 |
-| 0006 | `majority-element` | Majority Element | `arrays-hashing` | - | easy | 169 | function | 1 | D1 |
-| 0007 | `group-anagrams` | Group Anagrams | `arrays-hashing` | - | medium | 49 | function | 1 | D1 |
-| 0008 | `longest-consecutive-sequence` | Longest Consecutive Run | `arrays-hashing` | - | medium | 128 | function | 1 | D1 |
-| 0009 | `product-except-self` | Product Except Self | `arrays-hashing` | `prefix-sum` | medium | 238 | function | 1 | D1 |
-| 0010 | `top-k-frequent-elements` | Top K Frequent Elements | `arrays-hashing` | `heap` | medium | 347 | function | 1 | D1 |
-| 0011 | `encode-decode-strings` | Encode and Decode Strings | `arrays-hashing` | - | medium | 271 | function | 1 | D1 |
-| 0012 | `valid-sudoku` | Valid Sudoku | `arrays-hashing` | - | medium | 36 | function | 1 | D1 |
-| 0013 | `randomized-set` | Randomized Set | `arrays-hashing` | - | medium | 380 | design | 1 | D1 |
-| 0014 | `first-missing-positive` | First Missing Positive | `arrays-hashing` | - | hard | 41 | function | 1 | D1 |
-| 0015 | `valid-palindrome` | Valid Palindrome | `two-pointers` | - | easy | 125 | function | 1 | D2 |
-| 0016 | `move-zeroes` | Move Zeroes | `two-pointers` | - | easy | 283 | function | 1 | D2 |
-| 0017 | `almost-palindrome` | Palindrome With One Deletion | `two-pointers` | `greedy` | easy | 680 | function | 1 | D2 |
-| 0018 | `three-sum` | Three Sum | `two-pointers` | `arrays-hashing` | medium | 15 | function | 1 | D2 |
-| 0019 | `container-with-most-water` | Container With Most Water | `two-pointers` | `greedy` | medium | 11 | function | 1 | D2 |
-| 0020 | `two-sum-sorted` | Two Sum on Sorted Input | `two-pointers` | `binary-search` | medium | 167 | function | 1 | D2 |
-| 0021 | `sort-colors` | Sort Colors | `two-pointers` | - | medium | 75 | function | 1 | D2 |
-| 0022 | `trapping-rain-water` | Trapping Rain Water | `two-pointers` | `monotonic-stack`, `dp-1d` | hard | 42 | function | 1 | D2 |
-| 0023 | `longest-substring-without-repeats` | Longest Substring Without Repeats | `sliding-window` | `arrays-hashing` | medium | 3 | function | 1 | D2 |
-| 0024 | `longest-repeating-replacement` | Longest Repeating Replacement | `sliding-window` | `arrays-hashing` | medium | 424 | function | 1 | D2 |
-| 0025 | `permutation-in-string` | Permutation in String | `sliding-window` | `arrays-hashing` | medium | 567 | function | 1 | D2 |
-| 0026 | `min-size-subarray-sum` | Minimum Size Subarray Sum | `sliding-window` | `prefix-sum`, `binary-search` | medium | 209 | function | 1 | D2 |
-| 0027 | `fruit-into-baskets` | Fruit Into Baskets | `sliding-window` | `arrays-hashing` | medium | 904 | function | 1 | D2 |
-| 0028 | `max-ones-with-flips` | Max Consecutive Ones With K Flips | `sliding-window` | - | medium | 1004 | function | 1 | D2 |
-| 0029 | `minimum-window-substring` | Minimum Window Substring | `sliding-window` | `arrays-hashing` | hard | 76 | function | 1 | D2 |
-| 0030 | `sliding-window-maximum` | Sliding Window Maximum | `sliding-window` | `monotonic-stack` | hard | 239 | function | 1 | D2 |
-| 0031 | `valid-parentheses` | Valid Parentheses | `stack` | - | easy | 20 | function | 1 | D1 |
-| 0032 | `min-stack` | Min Stack | `stack` | - | medium | 155 | design | 1 | D1 |
-| 0033 | `evaluate-rpn` | Evaluate Reverse Polish Notation | `stack` | - | medium | 150 | function | 1 | D1 |
-| 0034 | `basic-calculator` | Basic Calculator | `stack` | - | medium | 227 | function | 1 | D1 |
-| 0035 | `decode-string` | Decode String | `stack` | - | medium | 394 | function | 1 | D1 |
-| 0036 | `min-remove-to-balance` | Minimum Removals to Balance Parentheses | `stack` | - | medium | 1249 | function | 1 | D1 |
+| slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
+|------|-------|---------|-----------|------------|----|------|-------|--------|
+| `two-sum` | Two Sum | `arrays-hashing` | - | easy | 1 | function | 1 | D1 (existing) |
+| `contains-duplicate` | Contains Duplicate | `arrays-hashing` | - | easy | 217 | function | 1 | D1 |
+| `valid-anagram` | Valid Anagram | `arrays-hashing` | - | easy | 242 | function | 1 | D1 |
+| `majority-element` | Majority Element | `arrays-hashing` | - | easy | 169 | function | 1 | D1 |
+| `group-anagrams` | Group Anagrams | `arrays-hashing` | - | medium | 49 | function | 1 | D1 |
+| `longest-consecutive-sequence` | Longest Consecutive Run | `arrays-hashing` | - | medium | 128 | function | 1 | D1 |
+| `product-except-self` | Product Except Self | `arrays-hashing` | `prefix-sum` | medium | 238 | function | 1 | D1 |
+| `top-k-frequent-elements` | Top K Frequent Elements | `arrays-hashing` | `heap` | medium | 347 | function | 1 | D1 |
+| `encode-decode-strings` | Encode and Decode Strings | `arrays-hashing` | - | medium | 271 | function | 1 | D1 |
+| `valid-sudoku` | Valid Sudoku | `arrays-hashing` | - | medium | 36 | function | 1 | D1 |
+| `randomized-set` | Randomized Set | `arrays-hashing` | - | medium | 380 | design | 1 | D1 |
+| `first-missing-positive` | First Missing Positive | `arrays-hashing` | - | hard | 41 | function | 1 | D1 |
+| `valid-palindrome` | Valid Palindrome | `two-pointers` | - | easy | 125 | function | 1 | D2 |
+| `move-zeroes` | Move Zeroes | `two-pointers` | - | easy | 283 | function | 1 | D2 |
+| `almost-palindrome` | Palindrome With One Deletion | `two-pointers` | `greedy` | easy | 680 | function | 1 | D2 |
+| `three-sum` | Three Sum | `two-pointers` | `arrays-hashing` | medium | 15 | function | 1 | D2 |
+| `container-with-most-water` | Container With Most Water | `two-pointers` | `greedy` | medium | 11 | function | 1 | D2 |
+| `two-sum-sorted` | Two Sum on Sorted Input | `two-pointers` | `binary-search` | medium | 167 | function | 1 | D2 |
+| `sort-colors` | Sort Colors | `two-pointers` | - | medium | 75 | function | 1 | D2 |
+| `trapping-rain-water` | Trapping Rain Water | `two-pointers` | `monotonic-stack`, `dp-1d` | hard | 42 | function | 1 | D2 |
+| `longest-substring-without-repeats` | Longest Substring Without Repeats | `sliding-window` | `arrays-hashing` | medium | 3 | function | 1 | D2 |
+| `longest-repeating-replacement` | Longest Repeating Replacement | `sliding-window` | `arrays-hashing` | medium | 424 | function | 1 | D2 |
+| `permutation-in-string` | Permutation in String | `sliding-window` | `arrays-hashing` | medium | 567 | function | 1 | D2 |
+| `min-size-subarray-sum` | Minimum Size Subarray Sum | `sliding-window` | `prefix-sum`, `binary-search` | medium | 209 | function | 1 | D2 |
+| `fruit-into-baskets` | Fruit Into Baskets | `sliding-window` | `arrays-hashing` | medium | 904 | function | 1 | D2 |
+| `max-ones-with-flips` | Max Consecutive Ones With K Flips | `sliding-window` | - | medium | 1004 | function | 1 | D2 |
+| `minimum-window-substring` | Minimum Window Substring | `sliding-window` | `arrays-hashing` | hard | 76 | function | 1 | D2 |
+| `sliding-window-maximum` | Sliding Window Maximum | `sliding-window` | `monotonic-stack` | hard | 239 | function | 1 | D2 |
+| `valid-parentheses` | Valid Parentheses | `stack` | - | easy | 20 | function | 1 | D1 |
+| `min-stack` | Min Stack | `stack` | - | medium | 155 | design | 1 | D1 |
+| `evaluate-rpn` | Evaluate Reverse Polish Notation | `stack` | - | medium | 150 | function | 1 | D1 |
+| `basic-calculator` | Basic Calculator | `stack` | - | medium | 227 | function | 1 | D1 |
+| `decode-string` | Decode String | `stack` | - | medium | 394 | function | 1 | D1 |
+| `min-remove-to-balance` | Minimum Removals to Balance Parentheses | `stack` | - | medium | 1249 | function | 1 | D1 |
 
 ### Batch 2 (32 problems: `monotonic-stack`, `binary-search`, `linked-list`, `intervals`)
 
-| id | slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
-|----|------|-------|---------|-----------|------------|----|------|-------|--------|
-| 0037 | `daily-temperatures` | Daily Temperatures | `monotonic-stack` | - | medium | 739 | function | 2 | D9 |
-| 0038 | `car-fleet` | Car Fleet | `monotonic-stack` | - | medium | 853 | function | 2 | D9 |
-| 0039 | `stock-span` | Stock Span | `monotonic-stack` | - | medium | 901 | design | 2 | D9 |
-| 0040 | `sum-of-subarray-minimums` | Sum of Subarray Minimums | `monotonic-stack` | `dp-1d` | medium | 907 | function | 2 | D9 |
-| 0041 | `remove-k-digits` | Remove K Digits | `monotonic-stack` | `greedy` | medium | 402 | function | 2 | D9 |
-| 0042 | `largest-rectangle-histogram` | Largest Rectangle in Histogram | `monotonic-stack` | - | hard | 84 | function | 2 | D9 |
-| 0043 | `binary-search` | Binary Search | `binary-search` | - | easy | 704 | function | 2 | D3 |
-| 0044 | `search-rotated-array` | Search in Rotated Sorted Array | `binary-search` | - | medium | 33 | function | 2 | D3 |
-| 0045 | `min-in-rotated-array` | Minimum in Rotated Sorted Array | `binary-search` | - | medium | 153 | function | 2 | D3 |
-| 0046 | `koko-eating-bananas` | Koko Eating Bananas | `binary-search` | - | medium | 875 | function | 2 | D3 |
-| 0047 | `search-2d-matrix` | Search a Sorted Matrix | `binary-search` | - | medium | 74 | function | 2 | D3 |
-| 0048 | `time-based-kv-store` | Time-Based Key-Value Store | `binary-search` | `arrays-hashing` | medium | 981 | design | 2 | D3 |
-| 0049 | `first-last-position` | First and Last Position | `binary-search` | - | medium | 34 | function | 2 | D3 |
-| 0050 | `find-peak-element` | Find a Peak Element | `binary-search` | - | medium | 162 | function | 2 | D3 |
-| 0051 | `median-of-two-sorted-arrays` | Median of Two Sorted Arrays | `binary-search` | - | hard | 4 | function | 2 | D3 |
-| 0052 | `split-array-largest-sum` | Split Array Largest Sum | `binary-search` | `greedy` | hard | 410 | function | 2 | D3 |
-| 0053 | `reverse-linked-list` | Reverse Linked List | `linked-list` | - | easy | 206 | function | 2 | D4 |
-| 0054 | `merge-two-sorted-lists` | Merge Two Sorted Lists | `linked-list` | - | easy | 21 | function | 2 | D4 |
-| 0055 | `linked-list-cycle` | Linked List Cycle | `linked-list` | `two-pointers` | easy | 141 | function | 2 | D4 |
-| 0056 | `reorder-list` | Reorder List | `linked-list` | `two-pointers` | medium | 143 | function | 2 | D4 |
-| 0002 | `lru-cache` | LRU Cache | `linked-list` | `arrays-hashing` | medium | 146 | design | 2 | D4 (existing) |
-| 0057 | `remove-nth-from-end` | Remove Nth Node From End | `linked-list` | `two-pointers` | medium | 19 | function | 2 | D4 |
-| 0058 | `add-two-numbers` | Add Two Numbers | `linked-list` | `math-geometry` | medium | 2 | function | 2 | D4 |
-| 0059 | `sort-linked-list` | Sort a Linked List | `linked-list` | `two-pointers` | medium | 148 | function | 2 | D4 |
-| 0060 | `merge-k-sorted-lists` | Merge K Sorted Lists | `linked-list` | `heap` | hard | 23 | function | 2 | D4 |
-| 0061 | `reverse-nodes-in-k-group` | Reverse Nodes in K-Groups | `linked-list` | - | hard | 25 | function | 2 | D4 |
-| 0062 | `merge-intervals` | Merge Intervals | `intervals` | - | medium | 56 | function | 2 | D3 |
-| 0063 | `insert-interval` | Insert Interval | `intervals` | - | medium | 57 | function | 2 | D3 |
-| 0064 | `non-overlapping-intervals` | Non-Overlapping Intervals | `intervals` | `greedy` | medium | 435 | function | 2 | D3 |
-| 0065 | `min-meeting-rooms` | Minimum Meeting Rooms | `intervals` | `heap` | medium | 253 | function | 2 | D3 |
-| 0066 | `interval-list-intersections` | Interval List Intersections | `intervals` | `two-pointers` | medium | 986 | function | 2 | D3 |
-| 0067 | `min-interval-per-query` | Smallest Interval per Query | `intervals` | `heap` | hard | 1851 | function | 2 | D3 |
+| slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
+|------|-------|---------|-----------|------------|----|------|-------|--------|
+| `daily-temperatures` | Daily Temperatures | `monotonic-stack` | - | medium | 739 | function | 2 | D9 |
+| `car-fleet` | Car Fleet | `monotonic-stack` | - | medium | 853 | function | 2 | D9 |
+| `stock-span` | Stock Span | `monotonic-stack` | - | medium | 901 | design | 2 | D9 |
+| `sum-of-subarray-minimums` | Sum of Subarray Minimums | `monotonic-stack` | `dp-1d` | medium | 907 | function | 2 | D9 |
+| `remove-k-digits` | Remove K Digits | `monotonic-stack` | `greedy` | medium | 402 | function | 2 | D9 |
+| `largest-rectangle-histogram` | Largest Rectangle in Histogram | `monotonic-stack` | - | hard | 84 | function | 2 | D9 |
+| `binary-search` | Binary Search | `binary-search` | - | easy | 704 | function | 2 | D3 |
+| `search-rotated-array` | Search in Rotated Sorted Array | `binary-search` | - | medium | 33 | function | 2 | D3 |
+| `min-in-rotated-array` | Minimum in Rotated Sorted Array | `binary-search` | - | medium | 153 | function | 2 | D3 |
+| `koko-eating-bananas` | Koko Eating Bananas | `binary-search` | - | medium | 875 | function | 2 | D3 |
+| `search-2d-matrix` | Search a Sorted Matrix | `binary-search` | - | medium | 74 | function | 2 | D3 |
+| `time-based-kv-store` | Time-Based Key-Value Store | `binary-search` | `arrays-hashing` | medium | 981 | design | 2 | D3 |
+| `first-last-position` | First and Last Position | `binary-search` | - | medium | 34 | function | 2 | D3 |
+| `find-peak-element` | Find a Peak Element | `binary-search` | - | medium | 162 | function | 2 | D3 |
+| `median-of-two-sorted-arrays` | Median of Two Sorted Arrays | `binary-search` | - | hard | 4 | function | 2 | D3 |
+| `split-array-largest-sum` | Split Array Largest Sum | `binary-search` | `greedy` | hard | 410 | function | 2 | D3 |
+| `reverse-linked-list` | Reverse Linked List | `linked-list` | - | easy | 206 | function | 2 | D4 |
+| `merge-two-sorted-lists` | Merge Two Sorted Lists | `linked-list` | - | easy | 21 | function | 2 | D4 |
+| `linked-list-cycle` | Linked List Cycle | `linked-list` | `two-pointers` | easy | 141 | function | 2 | D4 |
+| `reorder-list` | Reorder List | `linked-list` | `two-pointers` | medium | 143 | function | 2 | D4 |
+| `lru-cache` | LRU Cache | `linked-list` | `arrays-hashing` | medium | 146 | design | 2 | D4 (existing) |
+| `remove-nth-from-end` | Remove Nth Node From End | `linked-list` | `two-pointers` | medium | 19 | function | 2 | D4 |
+| `add-two-numbers` | Add Two Numbers | `linked-list` | `math-geometry` | medium | 2 | function | 2 | D4 |
+| `sort-linked-list` | Sort a Linked List | `linked-list` | `two-pointers` | medium | 148 | function | 2 | D4 |
+| `merge-k-sorted-lists` | Merge K Sorted Lists | `linked-list` | `heap` | hard | 23 | function | 2 | D4 |
+| `reverse-nodes-in-k-group` | Reverse Nodes in K-Groups | `linked-list` | - | hard | 25 | function | 2 | D4 |
+| `merge-intervals` | Merge Intervals | `intervals` | - | medium | 56 | function | 2 | D3 |
+| `insert-interval` | Insert Interval | `intervals` | - | medium | 57 | function | 2 | D3 |
+| `non-overlapping-intervals` | Non-Overlapping Intervals | `intervals` | `greedy` | medium | 435 | function | 2 | D3 |
+| `min-meeting-rooms` | Minimum Meeting Rooms | `intervals` | `heap` | medium | 253 | function | 2 | D3 |
+| `interval-list-intersections` | Interval List Intersections | `intervals` | `two-pointers` | medium | 986 | function | 2 | D3 |
+| `min-interval-per-query` | Smallest Interval per Query | `intervals` | `heap` | hard | 1851 | function | 2 | D3 |
 
 ### Batch 3 (28 problems: `trees`, `tries`, `heap`)
 
-| id | slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
-|----|------|-------|---------|-----------|------------|----|------|-------|--------|
-| 0003 | `invert-binary-tree` | Invert Binary Tree | `trees` | - | easy | 226 | function | 3 | D5 (existing) |
-| 0068 | `max-depth-binary-tree` | Maximum Depth of a Binary Tree | `trees` | - | easy | 104 | function | 3 | D5 |
-| 0069 | `same-tree` | Same Tree | `trees` | - | easy | 100 | function | 3 | D5 |
-| 0070 | `subtree-of-another-tree` | Subtree of Another Tree | `trees` | - | easy | 572 | function | 3 | D5 |
-| 0071 | `diameter-binary-tree` | Diameter of a Binary Tree | `trees` | - | easy | 543 | function | 3 | D5 |
-| 0072 | `balanced-binary-tree` | Balanced Binary Tree | `trees` | - | easy | 110 | function | 3 | D5 |
-| 0073 | `level-order-traversal` | Level Order Traversal | `trees` | - | medium | 102 | function | 3 | D5 |
-| 0074 | `validate-bst` | Validate a Binary Search Tree | `trees` | - | medium | 98 | function | 3 | D5 |
-| 0075 | `lowest-common-ancestor` | Lowest Common Ancestor | `trees` | - | medium | 236 | function | 3 | D5 |
-| 0076 | `kth-smallest-in-bst` | Kth Smallest in a BST | `trees` | - | medium | 230 | function | 3 | D5 |
-| 0077 | `tree-from-preorder-inorder` | Tree From Preorder and Inorder | `trees` | `arrays-hashing` | medium | 105 | function | 3 | D5 |
-| 0078 | `right-side-view` | Right Side View | `trees` | - | medium | 199 | function | 3 | D5 |
-| 0079 | `bst-iterator` | BST Iterator | `trees` | `stack` | medium | 173 | design | 3 | D5 |
-| 0080 | `vertical-order-traversal` | Vertical Order Traversal | `trees` | `arrays-hashing` | medium | 314 | function | 3 | D5 |
-| 0081 | `max-path-sum` | Binary Tree Maximum Path Sum | `trees` | - | hard | 124 | function | 3 | D5 |
-| 0082 | `serialize-binary-tree` | Serialize and Deserialize a Binary Tree | `trees` | - | hard | 297 | function | 3 | D5 |
-| 0083 | `implement-trie` | Implement a Trie | `tries` | - | medium | 208 | design | 3 | D5 |
-| 0084 | `wildcard-word-dictionary` | Word Dictionary With Wildcards | `tries` | `backtracking` | medium | 211 | design | 3 | D5 |
-| 0085 | `search-suggestions` | Search Suggestions | `tries` | `binary-search` | medium | 1268 | function | 3 | D5 |
-| 0086 | `word-search-ii` | Word Search II | `tries` | `backtracking` | hard | 212 | function | 3 | D5 |
-| 0087 | `last-stone-weight` | Last Stone Weight | `heap` | - | easy | 1046 | function | 3 | D4 |
-| 0088 | `kth-largest-element` | Kth Largest Element | `heap` | - | medium | 215 | function | 3 | D4 |
-| 0089 | `task-scheduler` | Task Scheduler | `heap` | `greedy` | medium | 621 | function | 3 | D4 |
-| 0090 | `k-closest-points` | K Closest Points to Origin | `heap` | - | medium | 973 | function | 3 | D4 |
-| 0091 | `design-twitter` | Mini Twitter | `heap` | `arrays-hashing` | medium | 355 | design | 3 | D4 |
-| 0092 | `single-threaded-cpu` | Single-Threaded CPU | `heap` | - | medium | 1834 | function | 3 | D4 |
-| 0093 | `median-data-stream` | Median of a Data Stream | `heap` | - | hard | 295 | design | 3 | D4 |
-| 0094 | `maximize-capital` | Maximize Capital | `heap` | `greedy` | hard | 502 | function | 3 | D4 |
+| slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
+|------|-------|---------|-----------|------------|----|------|-------|--------|
+| `invert-binary-tree` | Invert Binary Tree | `trees` | - | easy | 226 | function | 3 | D5 (existing) |
+| `max-depth-binary-tree` | Maximum Depth of a Binary Tree | `trees` | - | easy | 104 | function | 3 | D5 |
+| `same-tree` | Same Tree | `trees` | - | easy | 100 | function | 3 | D5 |
+| `subtree-of-another-tree` | Subtree of Another Tree | `trees` | - | easy | 572 | function | 3 | D5 |
+| `diameter-binary-tree` | Diameter of a Binary Tree | `trees` | - | easy | 543 | function | 3 | D5 |
+| `balanced-binary-tree` | Balanced Binary Tree | `trees` | - | easy | 110 | function | 3 | D5 |
+| `level-order-traversal` | Level Order Traversal | `trees` | - | medium | 102 | function | 3 | D5 |
+| `validate-bst` | Validate a Binary Search Tree | `trees` | - | medium | 98 | function | 3 | D5 |
+| `lowest-common-ancestor` | Lowest Common Ancestor | `trees` | - | medium | 236 | function | 3 | D5 |
+| `kth-smallest-in-bst` | Kth Smallest in a BST | `trees` | - | medium | 230 | function | 3 | D5 |
+| `tree-from-preorder-inorder` | Tree From Preorder and Inorder | `trees` | `arrays-hashing` | medium | 105 | function | 3 | D5 |
+| `right-side-view` | Right Side View | `trees` | - | medium | 199 | function | 3 | D5 |
+| `bst-iterator` | BST Iterator | `trees` | `stack` | medium | 173 | design | 3 | D5 |
+| `vertical-order-traversal` | Vertical Order Traversal | `trees` | `arrays-hashing` | medium | 314 | function | 3 | D5 |
+| `max-path-sum` | Binary Tree Maximum Path Sum | `trees` | - | hard | 124 | function | 3 | D5 |
+| `serialize-binary-tree` | Serialize and Deserialize a Binary Tree | `trees` | - | hard | 297 | function | 3 | D5 |
+| `implement-trie` | Implement a Trie | `tries` | - | medium | 208 | design | 3 | D5 |
+| `wildcard-word-dictionary` | Word Dictionary With Wildcards | `tries` | `backtracking` | medium | 211 | design | 3 | D5 |
+| `search-suggestions` | Search Suggestions | `tries` | `binary-search` | medium | 1268 | function | 3 | D5 |
+| `word-search-ii` | Word Search II | `tries` | `backtracking` | hard | 212 | function | 3 | D5 |
+| `last-stone-weight` | Last Stone Weight | `heap` | - | easy | 1046 | function | 3 | D4 |
+| `kth-largest-element` | Kth Largest Element | `heap` | - | medium | 215 | function | 3 | D4 |
+| `task-scheduler` | Task Scheduler | `heap` | `greedy` | medium | 621 | function | 3 | D4 |
+| `k-closest-points` | K Closest Points to Origin | `heap` | - | medium | 973 | function | 3 | D4 |
+| `design-twitter` | Mini Twitter | `heap` | `arrays-hashing` | medium | 355 | design | 3 | D4 |
+| `single-threaded-cpu` | Single-Threaded CPU | `heap` | - | medium | 1834 | function | 3 | D4 |
+| `median-data-stream` | Median of a Data Stream | `heap` | - | hard | 295 | design | 3 | D4 |
+| `maximize-capital` | Maximize Capital | `heap` | `greedy` | hard | 502 | function | 3 | D4 |
 
 ### Batch 4 (31 problems: `backtracking`, `graphs`, `topological-sort`, `union-find`)
 
-| id | slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
-|----|------|-------|---------|-----------|------------|----|------|-------|--------|
-| 0095 | `subsets` | Subsets | `backtracking` | - | medium | 78 | function | 4 | D6 |
-| 0096 | `permutations` | Permutations | `backtracking` | - | medium | 46 | function | 4 | D6 |
-| 0097 | `combination-sum` | Combination Sum | `backtracking` | - | medium | 39 | function | 4 | D6 |
-| 0098 | `word-search` | Word Search | `backtracking` | - | medium | 79 | function | 4 | D6 |
-| 0099 | `subsets-with-duplicates` | Subsets With Duplicates | `backtracking` | - | medium | 90 | function | 4 | D6 |
-| 0100 | `combination-sum-no-reuse` | Combination Sum Without Reuse | `backtracking` | - | medium | 40 | function | 4 | D6 |
-| 0101 | `palindrome-partitioning` | Palindrome Partitioning | `backtracking` | - | medium | 131 | function | 4 | D6 |
-| 0102 | `phone-letter-combinations` | Phone Letter Combinations | `backtracking` | - | medium | 17 | function | 4 | D6 |
-| 0103 | `generate-parentheses` | Generate Parentheses | `backtracking` | `stack` | medium | 22 | function | 4 | D6 |
-| 0104 | `n-queens` | N-Queens | `backtracking` | - | hard | 51 | function | 4 | D6 |
-| 0105 | `number-of-islands` | Number of Islands | `graphs` | - | medium | 200 | function | 4 | D7 |
-| 0106 | `clone-graph` | Clone Graph | `graphs` | `arrays-hashing` | medium | 133 | function | 4 | D7 |
-| 0107 | `pacific-atlantic-water-flow` | Pacific Atlantic Water Flow | `graphs` | - | medium | 417 | function | 4 | D7 |
-| 0108 | `max-area-of-island` | Max Area of Island | `graphs` | - | medium | 695 | function | 4 | D7 |
-| 0109 | `rotting-oranges` | Rotting Oranges | `graphs` | - | medium | 994 | function | 4 | D7 |
-| 0110 | `surrounded-regions` | Surrounded Regions | `graphs` | - | medium | 130 | function | 4 | D7 |
-| 0111 | `bipartite-graph` | Is the Graph Bipartite | `graphs` | `union-find` | medium | 785 | function | 4 | D7 |
-| 0112 | `evaluate-division` | Evaluate Division | `graphs` | `union-find` | medium | 399 | function | 4 | D7 |
-| 0113 | `shortest-path-binary-matrix` | Shortest Path in a Binary Grid | `graphs` | - | medium | 1091 | function | 4 | D7 |
-| 0114 | `open-the-lock` | Open the Lock | `graphs` | - | medium | 752 | function | 4 | D7 |
-| 0115 | `word-ladder` | Word Ladder | `graphs` | - | hard | 127 | function | 4 | D7 |
-| 0116 | `shortest-path-with-removals` | Shortest Path With Obstacle Removals | `graphs` | - | hard | 1293 | function | 4 | D7 |
-| 0117 | `course-schedule` | Course Schedule | `topological-sort` | `graphs` | medium | 207 | function | 4 | D6 |
-| 0118 | `parallel-courses` | Parallel Courses | `topological-sort` | `graphs` | medium | 1136 | function | 4 | D6 |
-| 0119 | `all-possible-recipes` | All Possible Recipes | `topological-sort` | `graphs` | medium | 2115 | function | 4 | D6 |
-| 0120 | `alien-dictionary` | Alien Dictionary | `topological-sort` | `graphs` | hard | 269 | function | 4 | D6 |
-| 0121 | `count-connected-components` | Count Connected Components | `union-find` | `graphs` | medium | 323 | function | 4 | D6 |
-| 0122 | `redundant-connection` | Redundant Connection | `union-find` | `graphs` | medium | 684 | function | 4 | D6 |
-| 0123 | `accounts-merge` | Accounts Merge | `union-find` | `graphs` | medium | 721 | function | 4 | D6 |
-| 0124 | `smallest-string-with-swaps` | Smallest String With Swaps | `union-find` | `graphs` | medium | 1202 | function | 4 | D6 |
-| 0125 | `number-of-islands-ii` | Number of Islands II | `union-find` | `graphs` | hard | 305 | function | 4 | D6 |
+| slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
+|------|-------|---------|-----------|------------|----|------|-------|--------|
+| `subsets` | Subsets | `backtracking` | - | medium | 78 | function | 4 | D6 |
+| `permutations` | Permutations | `backtracking` | - | medium | 46 | function | 4 | D6 |
+| `combination-sum` | Combination Sum | `backtracking` | - | medium | 39 | function | 4 | D6 |
+| `word-search` | Word Search | `backtracking` | - | medium | 79 | function | 4 | D6 |
+| `subsets-with-duplicates` | Subsets With Duplicates | `backtracking` | - | medium | 90 | function | 4 | D6 |
+| `combination-sum-no-reuse` | Combination Sum Without Reuse | `backtracking` | - | medium | 40 | function | 4 | D6 |
+| `palindrome-partitioning` | Palindrome Partitioning | `backtracking` | - | medium | 131 | function | 4 | D6 |
+| `phone-letter-combinations` | Phone Letter Combinations | `backtracking` | - | medium | 17 | function | 4 | D6 |
+| `generate-parentheses` | Generate Parentheses | `backtracking` | `stack` | medium | 22 | function | 4 | D6 |
+| `n-queens` | N-Queens | `backtracking` | - | hard | 51 | function | 4 | D6 |
+| `number-of-islands` | Number of Islands | `graphs` | - | medium | 200 | function | 4 | D7 |
+| `clone-graph` | Clone Graph | `graphs` | `arrays-hashing` | medium | 133 | function | 4 | D7 |
+| `pacific-atlantic-water-flow` | Pacific Atlantic Water Flow | `graphs` | - | medium | 417 | function | 4 | D7 |
+| `max-area-of-island` | Max Area of Island | `graphs` | - | medium | 695 | function | 4 | D7 |
+| `rotting-oranges` | Rotting Oranges | `graphs` | - | medium | 994 | function | 4 | D7 |
+| `surrounded-regions` | Surrounded Regions | `graphs` | - | medium | 130 | function | 4 | D7 |
+| `bipartite-graph` | Is the Graph Bipartite | `graphs` | `union-find` | medium | 785 | function | 4 | D7 |
+| `evaluate-division` | Evaluate Division | `graphs` | `union-find` | medium | 399 | function | 4 | D7 |
+| `shortest-path-binary-matrix` | Shortest Path in a Binary Grid | `graphs` | - | medium | 1091 | function | 4 | D7 |
+| `open-the-lock` | Open the Lock | `graphs` | - | medium | 752 | function | 4 | D7 |
+| `word-ladder` | Word Ladder | `graphs` | - | hard | 127 | function | 4 | D7 |
+| `shortest-path-with-removals` | Shortest Path With Obstacle Removals | `graphs` | - | hard | 1293 | function | 4 | D7 |
+| `course-schedule` | Course Schedule | `topological-sort` | `graphs` | medium | 207 | function | 4 | D6 |
+| `parallel-courses` | Parallel Courses | `topological-sort` | `graphs` | medium | 1136 | function | 4 | D6 |
+| `all-possible-recipes` | All Possible Recipes | `topological-sort` | `graphs` | medium | 2115 | function | 4 | D6 |
+| `alien-dictionary` | Alien Dictionary | `topological-sort` | `graphs` | hard | 269 | function | 4 | D6 |
+| `count-connected-components` | Count Connected Components | `union-find` | `graphs` | medium | 323 | function | 4 | D6 |
+| `redundant-connection` | Redundant Connection | `union-find` | `graphs` | medium | 684 | function | 4 | D6 |
+| `accounts-merge` | Accounts Merge | `union-find` | `graphs` | medium | 721 | function | 4 | D6 |
+| `smallest-string-with-swaps` | Smallest String With Swaps | `union-find` | `graphs` | medium | 1202 | function | 4 | D6 |
+| `number-of-islands-ii` | Number of Islands II | `union-find` | `graphs` | hard | 305 | function | 4 | D6 |
 
 ### Batch 5 (32 problems: `dp-1d`, `dp-2d`, `greedy`)
 
-| id | slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
-|----|------|-------|---------|-----------|------------|----|------|-------|--------|
-| 0126 | `climbing-stairs` | Climbing Stairs | `dp-1d` | - | easy | 70 | function | 5 | D8 |
-| 0127 | `house-robber` | House Robber | `dp-1d` | - | medium | 198 | function | 5 | D8 |
-| 0128 | `coin-change` | Coin Change | `dp-1d` | - | medium | 322 | function | 5 | D8 |
-| 0129 | `longest-increasing-subsequence` | Longest Increasing Subsequence | `dp-1d` | `binary-search` | medium | 300 | function | 5 | D8 |
-| 0130 | `partition-equal-subset-sum` | Partition Equal Subset Sum | `dp-1d` | - | medium | 416 | function | 5 | D8 |
-| 0131 | `max-product-subarray` | Maximum Product Subarray | `dp-1d` | - | medium | 152 | function | 5 | D8 |
-| 0132 | `decode-ways` | Decode Ways | `dp-1d` | - | medium | 91 | function | 5 | D8 |
-| 0133 | `word-break` | Word Break | `dp-1d` | - | medium | 139 | function | 5 | D8 |
-| 0134 | `longest-palindromic-substring` | Longest Palindromic Substring | `dp-1d` | `two-pointers` | medium | 5 | function | 5 | D8 |
-| 0135 | `stock-with-cooldown` | Stock Trading With Cooldown | `dp-1d` | - | medium | 309 | function | 5 | D8 |
-| 0136 | `min-cost-tickets` | Minimum Cost for Tickets | `dp-1d` | - | medium | 983 | function | 5 | D8 |
-| 0137 | `job-scheduling-max-profit` | Job Scheduling for Maximum Profit | `dp-1d` | `binary-search` | hard | 1235 | function | 5 | D8 |
-| 0138 | `unique-paths` | Unique Paths | `dp-2d` | - | medium | 62 | function | 5 | D9 |
-| 0139 | `longest-common-subsequence` | Longest Common Subsequence | `dp-2d` | - | medium | 1143 | function | 5 | D9 |
-| 0140 | `edit-distance` | Edit Distance | `dp-2d` | - | medium | 72 | function | 5 | D9 |
-| 0141 | `coin-change-ways` | Coin Change Combinations | `dp-2d` | - | medium | 518 | function | 5 | D9 |
-| 0142 | `interleaving-string` | Interleaving String | `dp-2d` | - | medium | 97 | function | 5 | D9 |
-| 0143 | `maximal-square` | Maximal Square | `dp-2d` | - | medium | 221 | function | 5 | D9 |
-| 0144 | `target-sum` | Target Sum | `dp-2d` | `backtracking` | medium | 494 | function | 5 | D9 |
-| 0145 | `distinct-subsequences` | Distinct Subsequences | `dp-2d` | - | hard | 115 | function | 5 | D9 |
-| 0146 | `burst-balloons` | Burst Balloons | `dp-2d` | - | hard | 312 | function | 5 | D9 |
-| 0147 | `longest-increasing-path-matrix` | Longest Increasing Path in a Matrix | `dp-2d` | `graphs`, `topological-sort` | hard | 329 | function | 5 | D9 |
-| 0148 | `regex-matching` | Regular Expression Matching | `dp-2d` | - | hard | 10 | function | 5 | D9 |
-| 0149 | `maximal-rectangle` | Maximal Rectangle | `dp-2d` | `monotonic-stack` | hard | 85 | function | 5 | D9 |
-| 0150 | `best-time-to-buy-sell-stock` | Best Time to Buy and Sell Stock | `greedy` | `sliding-window` | easy | 121 | function | 5 | D8 |
-| 0151 | `jump-game` | Jump Game | `greedy` | - | medium | 55 | function | 5 | D8 |
-| 0152 | `gas-station` | Gas Station | `greedy` | - | medium | 134 | function | 5 | D8 |
-| 0153 | `partition-labels` | Partition Labels | `greedy` | `two-pointers` | medium | 763 | function | 5 | D8 |
-| 0154 | `hand-of-straights` | Hand of Straights | `greedy` | `arrays-hashing` | medium | 846 | function | 5 | D8 |
-| 0155 | `maximum-subarray` | Maximum Subarray | `greedy` | `dp-1d` | medium | 53 | function | 5 | D8 |
-| 0156 | `valid-parenthesis-string` | Parentheses With Wildcards | `greedy` | `stack` | medium | 678 | function | 5 | D8 |
-| 0157 | `candy-distribution` | Candy Distribution | `greedy` | - | hard | 135 | function | 5 | D8 |
+| slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
+|------|-------|---------|-----------|------------|----|------|-------|--------|
+| `climbing-stairs` | Climbing Stairs | `dp-1d` | - | easy | 70 | function | 5 | D8 |
+| `house-robber` | House Robber | `dp-1d` | - | medium | 198 | function | 5 | D8 |
+| `coin-change` | Coin Change | `dp-1d` | - | medium | 322 | function | 5 | D8 |
+| `longest-increasing-subsequence` | Longest Increasing Subsequence | `dp-1d` | `binary-search` | medium | 300 | function | 5 | D8 |
+| `partition-equal-subset-sum` | Partition Equal Subset Sum | `dp-1d` | - | medium | 416 | function | 5 | D8 |
+| `max-product-subarray` | Maximum Product Subarray | `dp-1d` | - | medium | 152 | function | 5 | D8 |
+| `decode-ways` | Decode Ways | `dp-1d` | - | medium | 91 | function | 5 | D8 |
+| `word-break` | Word Break | `dp-1d` | - | medium | 139 | function | 5 | D8 |
+| `longest-palindromic-substring` | Longest Palindromic Substring | `dp-1d` | `two-pointers` | medium | 5 | function | 5 | D8 |
+| `stock-with-cooldown` | Stock Trading With Cooldown | `dp-1d` | - | medium | 309 | function | 5 | D8 |
+| `min-cost-tickets` | Minimum Cost for Tickets | `dp-1d` | - | medium | 983 | function | 5 | D8 |
+| `job-scheduling-max-profit` | Job Scheduling for Maximum Profit | `dp-1d` | `binary-search` | hard | 1235 | function | 5 | D8 |
+| `unique-paths` | Unique Paths | `dp-2d` | - | medium | 62 | function | 5 | D9 |
+| `longest-common-subsequence` | Longest Common Subsequence | `dp-2d` | - | medium | 1143 | function | 5 | D9 |
+| `edit-distance` | Edit Distance | `dp-2d` | - | medium | 72 | function | 5 | D9 |
+| `coin-change-ways` | Coin Change Combinations | `dp-2d` | - | medium | 518 | function | 5 | D9 |
+| `interleaving-string` | Interleaving String | `dp-2d` | - | medium | 97 | function | 5 | D9 |
+| `maximal-square` | Maximal Square | `dp-2d` | - | medium | 221 | function | 5 | D9 |
+| `target-sum` | Target Sum | `dp-2d` | `backtracking` | medium | 494 | function | 5 | D9 |
+| `distinct-subsequences` | Distinct Subsequences | `dp-2d` | - | hard | 115 | function | 5 | D9 |
+| `burst-balloons` | Burst Balloons | `dp-2d` | - | hard | 312 | function | 5 | D9 |
+| `longest-increasing-path-matrix` | Longest Increasing Path in a Matrix | `dp-2d` | `graphs`, `topological-sort` | hard | 329 | function | 5 | D9 |
+| `regex-matching` | Regular Expression Matching | `dp-2d` | - | hard | 10 | function | 5 | D9 |
+| `maximal-rectangle` | Maximal Rectangle | `dp-2d` | `monotonic-stack` | hard | 85 | function | 5 | D9 |
+| `best-time-to-buy-sell-stock` | Best Time to Buy and Sell Stock | `greedy` | `sliding-window` | easy | 121 | function | 5 | D8 |
+| `jump-game` | Jump Game | `greedy` | - | medium | 55 | function | 5 | D8 |
+| `gas-station` | Gas Station | `greedy` | - | medium | 134 | function | 5 | D8 |
+| `partition-labels` | Partition Labels | `greedy` | `two-pointers` | medium | 763 | function | 5 | D8 |
+| `hand-of-straights` | Hand of Straights | `greedy` | `arrays-hashing` | medium | 846 | function | 5 | D8 |
+| `maximum-subarray` | Maximum Subarray | `greedy` | `dp-1d` | medium | 53 | function | 5 | D8 |
+| `valid-parenthesis-string` | Parentheses With Wildcards | `greedy` | `stack` | medium | 678 | function | 5 | D8 |
+| `candy-distribution` | Candy Distribution | `greedy` | - | hard | 135 | function | 5 | D8 |
 
 ### Batch 6 (28 problems: `advanced-graphs`, `prefix-sum`, `math-geometry`, `bit-manipulation`, `segment-tree-fenwick`)
 
-| id | slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
-|----|------|-------|---------|-----------|------------|----|------|-------|--------|
-| 0158 | `network-delay-time` | Network Delay Time | `advanced-graphs` | `heap` | medium | 743 | function | 6 | D7 |
-| 0159 | `min-cost-connect-points` | Minimum Cost to Connect Points | `advanced-graphs` | `union-find` | medium | 1584 | function | 6 | D7 |
-| 0160 | `cheapest-flights-k-stops` | Cheapest Flights Within K Stops | `advanced-graphs` | `dp-2d` | medium | 787 | function | 6 | D7 |
-| 0161 | `city-fewest-neighbors` | City With Fewest Reachable Neighbors | `advanced-graphs` | - | medium | 1334 | function | 6 | D7 |
-| 0162 | `swim-rising-water` | Swim in Rising Water | `advanced-graphs` | `heap`, `binary-search` | hard | 778 | function | 6 | D7 |
-| 0163 | `reconstruct-itinerary` | Reconstruct Itinerary | `advanced-graphs` | - | hard | 332 | function | 6 | D7 |
-| 0164 | `critical-connections` | Critical Connections | `advanced-graphs` | `graphs` | hard | 1192 | function | 6 | D7 |
-| 0165 | `min-obstacle-removal` | Minimum Obstacle Removal | `advanced-graphs` | `graphs` | hard | 2290 | function | 6 | D7 |
-| 0166 | `range-sum-immutable` | Range Sum Query | `prefix-sum` | - | easy | 303 | design | 6 | D10 |
-| 0167 | `range-sum-2d` | Range Sum Query 2D | `prefix-sum` | - | medium | 304 | design | 6 | D10 |
-| 0168 | `subarray-sum-equals-k` | Subarray Sum Equals K | `prefix-sum` | `arrays-hashing` | medium | 560 | function | 6 | D10 |
-| 0169 | `continuous-subarray-sum` | Continuous Subarray Sum | `prefix-sum` | `arrays-hashing` | medium | 523 | function | 6 | D10 |
-| 0170 | `car-pooling` | Car Pooling | `prefix-sum` | - | medium | 1094 | function | 6 | D10 |
-| 0171 | `tree-path-sum-count` | Count Downward Path Sums | `prefix-sum` | `trees` | medium | 437 | function | 6 | D10 |
-| 0172 | `rotate-image` | Rotate Image | `math-geometry` | - | medium | 48 | function | 6 | D10 |
-| 0173 | `spiral-matrix` | Spiral Matrix | `math-geometry` | - | medium | 54 | function | 6 | D10 |
-| 0174 | `set-matrix-zeroes` | Set Matrix Zeroes | `math-geometry` | - | medium | 73 | function | 6 | D10 |
-| 0175 | `fast-power` | Fast Power | `math-geometry` | - | medium | 50 | function | 6 | D10 |
-| 0176 | `multiply-strings` | Multiply Strings | `math-geometry` | - | medium | 43 | function | 6 | D10 |
-| 0177 | `max-points-on-line` | Max Points on a Line | `math-geometry` | `arrays-hashing` | hard | 149 | function | 6 | D10 |
-| 0178 | `single-number` | Single Number | `bit-manipulation` | - | easy | 136 | function | 6 | D10 |
-| 0179 | `count-set-bits` | Count Set Bits | `bit-manipulation` | - | easy | 191 | function | 6 | D10 |
-| 0180 | `counting-bits` | Counting Bits | `bit-manipulation` | `dp-1d` | easy | 338 | function | 6 | D10 |
-| 0181 | `missing-number` | Missing Number | `bit-manipulation` | `math-geometry` | easy | 268 | function | 6 | D10 |
-| 0182 | `sum-without-plus` | Sum Without Arithmetic Operators | `bit-manipulation` | - | medium | 371 | function | 6 | D10 |
-| 0183 | `range-sum-mutable` | Range Sum Query With Updates | `segment-tree-fenwick` | `prefix-sum` | medium | 307 | design | 6 | D10 |
-| 0184 | `count-smaller-after-self` | Count Smaller Numbers After Self | `segment-tree-fenwick` | `binary-search` | hard | 315 | function | 6 | D10 |
-| 0185 | `range-module` | Range Module | `segment-tree-fenwick` | `intervals` | hard | 715 | design | 6 | D10 |
+| slug | title | primary | secondary | difficulty | lc | kind | batch | stream |
+|------|-------|---------|-----------|------------|----|------|-------|--------|
+| `network-delay-time` | Network Delay Time | `advanced-graphs` | `heap` | medium | 743 | function | 6 | D7 |
+| `min-cost-connect-points` | Minimum Cost to Connect Points | `advanced-graphs` | `union-find` | medium | 1584 | function | 6 | D7 |
+| `cheapest-flights-k-stops` | Cheapest Flights Within K Stops | `advanced-graphs` | `dp-2d` | medium | 787 | function | 6 | D7 |
+| `city-fewest-neighbors` | City With Fewest Reachable Neighbors | `advanced-graphs` | - | medium | 1334 | function | 6 | D7 |
+| `swim-rising-water` | Swim in Rising Water | `advanced-graphs` | `heap`, `binary-search` | hard | 778 | function | 6 | D7 |
+| `reconstruct-itinerary` | Reconstruct Itinerary | `advanced-graphs` | - | hard | 332 | function | 6 | D7 |
+| `critical-connections` | Critical Connections | `advanced-graphs` | `graphs` | hard | 1192 | function | 6 | D7 |
+| `min-obstacle-removal` | Minimum Obstacle Removal | `advanced-graphs` | `graphs` | hard | 2290 | function | 6 | D7 |
+| `range-sum-immutable` | Range Sum Query | `prefix-sum` | - | easy | 303 | design | 6 | D10 |
+| `range-sum-2d` | Range Sum Query 2D | `prefix-sum` | - | medium | 304 | design | 6 | D10 |
+| `subarray-sum-equals-k` | Subarray Sum Equals K | `prefix-sum` | `arrays-hashing` | medium | 560 | function | 6 | D10 |
+| `continuous-subarray-sum` | Continuous Subarray Sum | `prefix-sum` | `arrays-hashing` | medium | 523 | function | 6 | D10 |
+| `car-pooling` | Car Pooling | `prefix-sum` | - | medium | 1094 | function | 6 | D10 |
+| `tree-path-sum-count` | Count Downward Path Sums | `prefix-sum` | `trees` | medium | 437 | function | 6 | D10 |
+| `rotate-image` | Rotate Image | `math-geometry` | - | medium | 48 | function | 6 | D10 |
+| `spiral-matrix` | Spiral Matrix | `math-geometry` | - | medium | 54 | function | 6 | D10 |
+| `set-matrix-zeroes` | Set Matrix Zeroes | `math-geometry` | - | medium | 73 | function | 6 | D10 |
+| `fast-power` | Fast Power | `math-geometry` | - | medium | 50 | function | 6 | D10 |
+| `multiply-strings` | Multiply Strings | `math-geometry` | - | medium | 43 | function | 6 | D10 |
+| `max-points-on-line` | Max Points on a Line | `math-geometry` | `arrays-hashing` | hard | 149 | function | 6 | D10 |
+| `single-number` | Single Number | `bit-manipulation` | - | easy | 136 | function | 6 | D10 |
+| `count-set-bits` | Count Set Bits | `bit-manipulation` | - | easy | 191 | function | 6 | D10 |
+| `counting-bits` | Counting Bits | `bit-manipulation` | `dp-1d` | easy | 338 | function | 6 | D10 |
+| `missing-number` | Missing Number | `bit-manipulation` | `math-geometry` | easy | 268 | function | 6 | D10 |
+| `sum-without-plus` | Sum Without Arithmetic Operators | `bit-manipulation` | - | medium | 371 | function | 6 | D10 |
+| `range-sum-mutable` | Range Sum Query With Updates | `segment-tree-fenwick` | `prefix-sum` | medium | 307 | design | 6 | D10 |
+| `count-smaller-after-self` | Count Smaller Numbers After Self | `segment-tree-fenwick` | `binary-search` | hard | 315 | function | 6 | D10 |
+| `range-module` | Range Module | `segment-tree-fenwick` | `intervals` | hard | 715 | design | 6 | D10 |
 
 ### Later DSA additions
 
-25 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210). Four, `0345` to `0348`, are easy on-ramps, each to a harder problem of its pattern that lists it in `related`: `flood-fill` to `number-of-islands`, `path-exists-in-graph` to `count-connected-components`, `max-average-fixed-window` to `min-size-subarray-sum`, and `kth-largest-in-stream` to `kth-largest-element`. Six more, `0375` to `0380`, are on-ramps in the same way, all easy but `minimum-path-sum`: `lamp-patterns` to `subsets`, `count-words-by-prefix` to `implement-trie`, `village-paths` to `count-connected-components`, `price-after-rebate` to `daily-temperatures`, `minimum-path-sum` to `unique-paths`, and `check-task-order` to `course-schedule`. `0362` and `0363` are fundamentals: substring search, and the first bad commit of a history whose tests cannot all run.
+25 problems added after the six batches, outside the stream plan. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210). Four, `flood-fill`, `path-exists-in-graph`, `max-average-fixed-window`, `kth-largest-in-stream`, are easy on-ramps, each to a harder problem of its pattern that lists it in `related`: `flood-fill` to `number-of-islands`, `path-exists-in-graph` to `count-connected-components`, `max-average-fixed-window` to `min-size-subarray-sum`, and `kth-largest-in-stream` to `kth-largest-element`. Six more, `lamp-patterns`, `count-words-by-prefix`, `village-paths`, `price-after-rebate`, `minimum-path-sum`, `check-task-order`, are on-ramps in the same way, all easy but `minimum-path-sum`: `lamp-patterns` to `subsets`, `count-words-by-prefix` to `implement-trie`, `village-paths` to `count-connected-components`, `price-after-rebate` to `daily-temperatures`, `minimum-path-sum` to `unique-paths`, and `check-task-order` to `course-schedule`. `substring-search` and `first-bad-commit` are fundamentals: substring search, and the first bad commit of a history whose tests cannot all run.
 
-| id | slug | title | primary | secondary | difficulty | lc | kind |
-|----|------|-------|---------|-----------|------------|----|------|
-| 0229 | `can-attend-meetings` | Can Attend All Meetings | `intervals` | - | easy | 252 | function |
-| 0230 | `employee-free-time` | Employee Free Time | `intervals` | `heap` | hard | 759 | function |
-| 0231 | `remove-covered-intervals` | Remove Covered Intervals | `intervals` | - | medium | 1288 | function |
-| 0232 | `snapshot-array` | Snapshot Array | `binary-search` | `arrays-hashing` | medium | 1146 | design |
-| 0233 | `employee-importance` | Employee Importance | `graphs` | `arrays-hashing` | medium | 690 | function |
-| 0234 | `course-schedule-ii` | Course Schedule II | `topological-sort` | `graphs` | medium | 210 | function |
-| 0235 | `time-to-inform-employees` | Time to Inform All Employees | `graphs` | `trees` | medium | 1376 | function |
-| 0236 | `search-insert-position` | Search Insert Position | `binary-search` | - | easy | 35 | function |
-| 0237 | `tax-brackets` | Tax Owed Under Brackets | `math-geometry` | - | easy | 2303 | function |
-| 0238 | `replace-words` | Replace Words with Roots | `tries` | `arrays-hashing` | medium | 648 | function |
-| 0239 | `sorted-insertion-cost` | Sorted Insertion Cost | `segment-tree-fenwick` | `binary-search` | hard | 1649 | function |
-| 0308 | `all-grid-paths` | All Grid Paths | `backtracking` | - | medium | - | function |
-| 0309 | `find-missing-and-duplicates` | Find All Missing and Duplicate Numbers | `arrays-hashing` | - | medium | - | function |
-| 0345 | `flood-fill` | Flood Fill | `graphs` | - | easy | 733 | function |
-| 0346 | `path-exists-in-graph` | Path Exists in a Graph | `graphs` | - | easy | 1971 | function |
-| 0347 | `max-average-fixed-window` | Maximum Average of a Fixed Window | `sliding-window` | - | easy | 643 | function |
-| 0348 | `kth-largest-in-stream` | Kth Largest in a Stream | `heap` | - | easy | 703 | design |
-| 0362 | `substring-search` | Substring Search | `string-matching` | - | medium | - | function |
-| 0363 | `first-bad-commit` | First Bad Commit | `binary-search` | - | easy | - | function |
-| 0375 | `lamp-patterns` | Lamp Patterns | `backtracking` | - | easy | 3211 | function |
-| 0376 | `count-words-by-prefix` | Count Words by Prefix | `tries` | - | easy | - | function |
-| 0377 | `village-paths` | Village Paths | `union-find` | - | easy | - | design |
-| 0378 | `price-after-rebate` | Price After Rebate | `monotonic-stack` | - | easy | 1475 | function |
-| 0379 | `minimum-path-sum` | Minimum Path Sum | `dp-2d` | - | medium | 64 | function |
-| 0380 | `check-task-order` | Check Task Order | `topological-sort` | `graphs` | easy | - | function |
+| slug | title | primary | secondary | difficulty | lc | kind |
+|------|-------|---------|-----------|------------|----|------|
+| `can-attend-meetings` | Can Attend All Meetings | `intervals` | - | easy | 252 | function |
+| `employee-free-time` | Employee Free Time | `intervals` | `heap` | hard | 759 | function |
+| `remove-covered-intervals` | Remove Covered Intervals | `intervals` | - | medium | 1288 | function |
+| `snapshot-array` | Snapshot Array | `binary-search` | `arrays-hashing` | medium | 1146 | design |
+| `employee-importance` | Employee Importance | `graphs` | `arrays-hashing` | medium | 690 | function |
+| `course-schedule-ii` | Course Schedule II | `topological-sort` | `graphs` | medium | 210 | function |
+| `time-to-inform-employees` | Time to Inform All Employees | `graphs` | `trees` | medium | 1376 | function |
+| `search-insert-position` | Search Insert Position | `binary-search` | - | easy | 35 | function |
+| `tax-brackets` | Tax Owed Under Brackets | `math-geometry` | - | easy | 2303 | function |
+| `replace-words` | Replace Words with Roots | `tries` | `arrays-hashing` | medium | 648 | function |
+| `sorted-insertion-cost` | Sorted Insertion Cost | `segment-tree-fenwick` | `binary-search` | hard | 1649 | function |
+| `all-grid-paths` | All Grid Paths | `backtracking` | - | medium | - | function |
+| `find-missing-and-duplicates` | Find All Missing and Duplicate Numbers | `arrays-hashing` | - | medium | - | function |
+| `flood-fill` | Flood Fill | `graphs` | - | easy | 733 | function |
+| `path-exists-in-graph` | Path Exists in a Graph | `graphs` | - | easy | 1971 | function |
+| `max-average-fixed-window` | Maximum Average of a Fixed Window | `sliding-window` | - | easy | 643 | function |
+| `kth-largest-in-stream` | Kth Largest in a Stream | `heap` | - | easy | 703 | design |
+| `substring-search` | Substring Search | `string-matching` | - | medium | - | function |
+| `first-bad-commit` | First Bad Commit | `binary-search` | - | easy | - | function |
+| `lamp-patterns` | Lamp Patterns | `backtracking` | - | easy | 3211 | function |
+| `count-words-by-prefix` | Count Words by Prefix | `tries` | - | easy | - | function |
+| `village-paths` | Village Paths | `union-find` | - | easy | - | design |
+| `price-after-rebate` | Price After Rebate | `monotonic-stack` | - | easy | 1475 | function |
+| `minimum-path-sum` | Minimum Path Sum | `dp-2d` | - | medium | 64 | function |
+| `check-task-order` | Check Task Order | `topological-sort` | `graphs` | easy | - | function |
 
 ## Stream assignment
 
-| stream | patterns | batches | new problems | ids (new only) |
-|--------|----------|---------|--------------|----------------|
-| D1 | `arrays-hashing`, `stack` | 1 | 17 | 0004–0014, 0031–0036 |
-| D2 | `two-pointers`, `sliding-window` | 1 | 16 | 0015–0030 |
-| D3 | `binary-search`, `intervals` | 2 | 16 | 0043–0052, 0062–0067 |
-| D4 | `linked-list`, `heap` | 2, 3 | 17 | 0053–0061, 0087–0094 |
-| D5 | `trees`, `tries` | 3 | 19 | 0068–0086 |
-| D6 | `backtracking`, `topological-sort`, `union-find` | 4 | 19 | 0095–0104, 0117–0125 |
-| D7 | `graphs`, `advanced-graphs` | 4, 6 | 20 | 0105–0116, 0158–0165 |
-| D8 | `dp-1d`, `greedy` | 5 | 20 | 0126–0137, 0150–0157 |
-| D9 | `dp-2d`, `monotonic-stack` | 2, 5 | 18 | 0037–0042, 0138–0149 |
-| D10 | `prefix-sum`, `math-geometry`, `bit-manipulation`, `segment-tree-fenwick` | 6 | 20 | 0166–0185 |
-| **Total** | 23 patterns | 1–6 | **182** | 0004–0185 |
+| stream | patterns | batches | new problems |
+|--------|----------|---------|--------------|
+| D1 | `arrays-hashing`, `stack` | 1 | 17 |
+| D2 | `two-pointers`, `sliding-window` | 1 | 16 |
+| D3 | `binary-search`, `intervals` | 2 | 16 |
+| D4 | `linked-list`, `heap` | 2, 3 | 17 |
+| D5 | `trees`, `tries` | 3 | 19 |
+| D6 | `backtracking`, `topological-sort`, `union-find` | 4 | 19 |
+| D7 | `graphs`, `advanced-graphs` | 4, 6 | 20 |
+| D8 | `dp-1d`, `greedy` | 5 | 20 |
+| D9 | `dp-2d`, `monotonic-stack` | 2, 5 | 18 |
+| D10 | `prefix-sum`, `math-geometry`, `bit-manipulation`, `segment-tree-fenwick` | 6 | 20 |
+| **Total** | 23 patterns | 1–6 | **182** |
 
 Each stream owns whole patterns, so one stream holds all problems of a pattern and its `related` links. Batch 1 (Phase 1) is never mixed with later batches. Batches 2 to 6 all belong to Phase 3, and none of them splits into whole-pattern streams of 16 to 20 on its own (for example batch 2 has 31 new problems, which gives 16 and 15 at best), so D4, D7 and D9 each pair patterns from two Phase 3 batches. A stream with two batches finishes the earlier batch's patterns first, so that batch can merge without waiting.
 
@@ -313,404 +308,404 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ### practical (137, `problems/`)
 
-Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
+Labels: `in-memory-database`, `banking-system`, `cloud-file-storage`, `job-scheduler`, `transactional-kv-store`, `api-gateway` and `scheduled-transfers-bank` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `premium-rating-breakdown`, `versioned-rate-table`, `pro-rata-unearned-premium`, `coverage-gaps`, `contractor-exposure-rollup`, `installment-schedule`, `tiered-bond-premium`, `earned-premium-as-of`, `endorsement-replay`, `certificate-expiry-alerts`, `loss-ratio-by-period`, `rate-change-impact`, `payroll-report-validation`, `duplicate-contractor-records`, `effective-dated-history` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `bank-project-python`, `bank-project-typescript`, `bank-project-java`, `bank-project-kotlin`, `bank-project-go`, `bank-project-rust` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `token-claim-validator`, `refresh-token-rotation`, `authorization-policy-engine`, `calibration-metrics`, `token-cost-reconciler`, `bm25-hybrid-ranker`, `stream-reassembler` carry their labels as columns.
 
 The six planned rows (owner P1) are `progressive`:
 
-| id | slug | title | covers | difficulty |
-|----|------|-------|-------|------------|
-| 0186 | `in-memory-database` | In-Memory Database | Records with fields; then prefix scans; then per-field TTL; then point-in-time reads over history | hard |
-| 0187 | `banking-system` | Banking System | Accounts, deposits and transfers; then top spenders; then scheduled payments with cashback; then account merges with historical balances | hard |
-| 0188 | `cloud-file-storage` | Cloud File Storage | Add, read and delete files; then size-ordered listing by prefix; then per-user quotas; then backup and restore | medium |
-| 0189 | `job-scheduler` | Rate-Limited Job Scheduler | Submit and run jobs by priority; then per-tenant rate limits; then retries with backoff; then dependencies and cancellation | hard |
-| 0190 | `transactional-kv-store` | Transactional Key-Value Store | Set, get and count by value; then begin and rollback; then nested transactions; then commit semantics with snapshots | medium |
-| 0191 | `api-gateway` | API Gateway | Route registration and matching; then per-client fixed-window limits; then sliding windows and quotas; then per-upstream circuit breakers | hard |
+| slug | title | covers | difficulty |
+|------|-------|-------|------------|
+| `in-memory-database` | In-Memory Database | Records with fields; then prefix scans; then per-field TTL; then point-in-time reads over history | hard |
+| `banking-system` | Banking System | Accounts, deposits and transfers; then top spenders; then scheduled payments with cashback; then account merges with historical balances | hard |
+| `cloud-file-storage` | Cloud File Storage | Add, read and delete files; then size-ordered listing by prefix; then per-user quotas; then backup and restore | medium |
+| `job-scheduler` | Rate-Limited Job Scheduler | Submit and run jobs by priority; then per-tenant rate limits; then retries with backoff; then dependencies and cancellation | hard |
+| `transactional-kv-store` | Transactional Key-Value Store | Set, get and count by value; then begin and rollback; then nested transactions; then commit semantics with snapshots | medium |
+| `api-gateway` | API Gateway | Route registration and matching; then per-client fixed-window limits; then sliding windows and quotas; then per-upstream circuit breakers | hard |
 
 15 added later are insurance tasks of every kind, many with `decimal` and `date` values:
 
-| id | slug | title | patterns | kind | difficulty |
-|----|------|-------|----------|------|------------|
-| 0214 | `premium-rating-breakdown` | Premium Rating Breakdown | `binary-search`, `arrays-hashing` | function | medium |
-| 0215 | `versioned-rate-table` | Versioned Rate Table | `binary-search` | design | medium |
-| 0216 | `pro-rata-unearned-premium` | Pro-Rata Unearned Premium | - | function | easy |
-| 0217 | `coverage-gaps` | Coverage Gaps | `intervals` | function | medium |
-| 0218 | `contractor-exposure-rollup` | Contractor Exposure Rollup | `graphs` | function | medium |
-| 0219 | `installment-schedule` | Installment Schedule | `math-geometry` | function | medium |
-| 0220 | `tiered-bond-premium` | Tiered Bond Premium | - | function | easy |
-| 0221 | `earned-premium-as-of` | Earned Premium As Of | - | function | easy |
-| 0222 | `endorsement-replay` | Endorsement Replay | `binary-search` | design | medium |
-| 0223 | `certificate-expiry-alerts` | Certificate Expiry Alerts | `arrays-hashing` | function | easy |
-| 0224 | `loss-ratio-by-period` | Loss Ratio by Period | `arrays-hashing` | function | medium |
-| 0225 | `rate-change-impact` | Rate Change Impact | `arrays-hashing` | function | medium |
-| 0226 | `payroll-report-validation` | Payroll Report Validation | `arrays-hashing` | function | medium |
-| 0227 | `duplicate-contractor-records` | Duplicate Contractor Records | `union-find`, `arrays-hashing` | function | medium |
-| 0228 | `effective-dated-history` | Effective-Dated History | `binary-search` | progressive | medium |
+| slug | title | patterns | kind | difficulty |
+|------|-------|----------|------|------------|
+| `premium-rating-breakdown` | Premium Rating Breakdown | `binary-search`, `arrays-hashing` | function | medium |
+| `versioned-rate-table` | Versioned Rate Table | `binary-search` | design | medium |
+| `pro-rata-unearned-premium` | Pro-Rata Unearned Premium | - | function | easy |
+| `coverage-gaps` | Coverage Gaps | `intervals` | function | medium |
+| `contractor-exposure-rollup` | Contractor Exposure Rollup | `graphs` | function | medium |
+| `installment-schedule` | Installment Schedule | `math-geometry` | function | medium |
+| `tiered-bond-premium` | Tiered Bond Premium | - | function | easy |
+| `earned-premium-as-of` | Earned Premium As Of | - | function | easy |
+| `endorsement-replay` | Endorsement Replay | `binary-search` | design | medium |
+| `certificate-expiry-alerts` | Certificate Expiry Alerts | `arrays-hashing` | function | easy |
+| `loss-ratio-by-period` | Loss Ratio by Period | `arrays-hashing` | function | medium |
+| `rate-change-impact` | Rate Change Impact | `arrays-hashing` | function | medium |
+| `payroll-report-validation` | Payroll Report Validation | `arrays-hashing` | function | medium |
+| `duplicate-contractor-records` | Duplicate Contractor Records | `union-find`, `arrays-hashing` | function | medium |
+| `effective-dated-history` | Effective-Dated History | `binary-search` | progressive | medium |
 
 One more added later is a sibling of `banking-system` whose level 3 replaces the fixed-delay cashback with transfers that each have their own delay and can be cancelled:
 
-| id | slug | title | patterns | kind | difficulty |
-|----|------|-------|----------|------|------------|
-| 0248 | `scheduled-transfers-bank` | Scheduled Transfers Bank | `heap` | progressive | hard |
+| slug | title | patterns | kind | difficulty |
+|------|-------|----------|------|------------|
+| `scheduled-transfers-bank` | Scheduled Transfers Bank | `heap` | progressive | hard |
 
-Six [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `0248`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `0248`'s cases pin down), reference and explanation; each lists the others and `scheduled-transfers-bank` in `related`. `0249` is the Python pilot (roadmap Phase 8a), `0250` the TypeScript one (Phase 8b), `0251` the Java one, `0252` the Kotlin one, `0253` the Go one and `0254` the Rust one; all six exist in `problems/`.
+Six [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `scheduled-transfers-bank`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `scheduled-transfers-bank`'s cases pin down), reference and explanation; each lists the others and `scheduled-transfers-bank` in `related`. `bank-project-python` is the Python pilot (roadmap Phase 8a), `bank-project-typescript` the TypeScript one (Phase 8b), `bank-project-java` the Java one, `bank-project-kotlin` the Kotlin one, `bank-project-go` the Go one and `bank-project-rust` the Rust one; all six exist in `problems/`.
 
-| id | slug | title | language | patterns | kind | difficulty |
-|----|------|-------|----------|----------|------|------------|
-| 0249 | `bank-project-python` | Bank Project (Python) | `python` | - | project | hard |
-| 0250 | `bank-project-typescript` | Bank Project (TypeScript) | `typescript` | - | project | hard |
-| 0251 | `bank-project-java` | Bank Project (Java) | `java` | - | project | hard |
-| 0252 | `bank-project-kotlin` | Bank Project (Kotlin) | `kotlin` | - | project | hard |
-| 0253 | `bank-project-go` | Bank Project (Go) | `go` | - | project | hard |
-| 0254 | `bank-project-rust` | Bank Project (Rust) | `rust` | - | project | hard |
+| slug | title | language | patterns | kind | difficulty |
+|------|-------|----------|----------|------|------------|
+| `bank-project-python` | Bank Project (Python) | `python` | - | project | hard |
+| `bank-project-typescript` | Bank Project (TypeScript) | `typescript` | - | project | hard |
+| `bank-project-java` | Bank Project (Java) | `java` | - | project | hard |
+| `bank-project-kotlin` | Bank Project (Kotlin) | `kotlin` | - | project | hard |
+| `bank-project-go` | Bank Project (Go) | `go` | - | project | hard |
+| `bank-project-rust` | Bank Project (Rust) | `rust` | - | project | hard |
 
 The first wave of security and AI/LLM problems ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)) is original, function-size and needs no service. Each lists Python and TypeScript, under the [Languages rule](#rules). The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0255 | `token-claim-validator` | Token Claim Validator | `arrays-hashing` | function | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
-| 0256 | `refresh-token-rotation` | Refresh Token Rotation | `arrays-hashing` | design | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
-| 0257 | `authorization-policy-engine` | Authorization Policy Engine | `graphs` | design | medium | `python`, `typescript` | `security` | `security-engineer`, `backend` | function |
-| 0258 | `calibration-metrics` | Calibration Metrics | `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ml-engineer`, `ai-engineer` | function |
-| 0259 | `token-cost-reconciler` | Token Cost Reconciler | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
-| 0260 | `bm25-hybrid-ranker` | BM25 Hybrid Ranker | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `ml-engineer` | function |
-| 0261 | `stream-reassembler` | Stream Reassembler | `arrays-hashing` | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `token-claim-validator` | Token Claim Validator | `arrays-hashing` | function | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
+| `refresh-token-rotation` | Refresh Token Rotation | `arrays-hashing` | design | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
+| `authorization-policy-engine` | Authorization Policy Engine | `graphs` | design | medium | `python`, `typescript` | `security` | `security-engineer`, `backend` | function |
+| `calibration-metrics` | Calibration Metrics | `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ml-engineer`, `ai-engineer` | function |
+| `token-cost-reconciler` | Token Cost Reconciler | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
+| `bm25-hybrid-ranker` | BM25 Hybrid Ranker | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `ml-engineer` | function |
+| `stream-reassembler` | Stream Reassembler | `arrays-hashing` | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
 
-Three more TypeScript project problems train work on code you did not write, on the engine as it is. `0262` and `0263` are small working services, laid out differently on purpose, by type and by feature, and each level changes one. There is no HTTP server, since a project has no dependencies: an entry class takes what a request would carry and answers `[status, json]`, with the keys of the JSON sorted in one place. `0267` is a debugging exercise in all but its track: `await` only finishes in a project on the virtual clock ([ADR 0017](../decisions/0017-async-project-problems.md)), so its starter holds the bug instead of a `buggy/` file.
+Three more TypeScript project problems train work on code you did not write, on the engine as it is. `loan-pipeline-service-typescript` and `warehouse-work-orders-typescript` are small working services, laid out differently on purpose, by type and by feature, and each level changes one. There is no HTTP server, since a project has no dependencies: an entry class takes what a request would carry and answers `[status, json]`, with the keys of the JSON sorted in one place. `debug-async-batch-typescript` is a debugging exercise in all but its track: `await` only finishes in a project on the virtual clock ([ADR 0017](../decisions/0017-async-project-problems.md)), so its starter holds the bug instead of a `buggy/` file.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0262 | `loan-pipeline-service-typescript` | Loan Pipeline Service (TypeScript) | project | hard | `typescript` | `backend`, `fintech` | `backend` | project |
-| 0263 | `warehouse-work-orders-typescript` | Warehouse Work Orders (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
-| 0267 | `debug-async-batch-typescript` | Debug: Async Batch (TypeScript) | project | medium | `typescript` | `backend` | `backend` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `loan-pipeline-service-typescript` | Loan Pipeline Service (TypeScript) | project | hard | `typescript` | `backend`, `fintech` | `backend` | project |
+| `warehouse-work-orders-typescript` | Warehouse Work Orders (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
+| `debug-async-batch-typescript` | Debug: Async Batch (TypeScript) | project | medium | `typescript` | `backend` | `backend` | project |
 
-Five more TypeScript projects go deep on backend reliability, on the engine as it is. Each is laid out differently, each level removes one assumption, and each explanation says what to say out loud and what to do next in production. Their wrong approaches are not stored as broken overlays, since these logic bugs fail sequential cases ([authoring](authoring.md#practical-and-low-level-design-problems)): each explanation names them under its pitfalls with the cases that catch them. `0274` runs on the virtual clock, and `0276` has no model in it: the model's output arrives as data.
+Five more TypeScript projects go deep on backend reliability, on the engine as it is. Each is laid out differently, each level removes one assumption, and each explanation says what to say out loud and what to do next in production. Their wrong approaches are not stored as broken overlays, since these logic bugs fail sequential cases ([authoring](authoring.md#practical-and-low-level-design-problems)): each explanation names them under its pitfalls with the cases that catch them. `vendor-retry-client-typescript` runs on the virtual clock, and `loan-extraction-review-typescript` has no model in it: the model's output arrives as data.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0272 | `idempotent-document-consumer-typescript` | Idempotent Document Consumer (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
-| 0273 | `transactional-outbox-typescript` | Transactional Outbox (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
-| 0274 | `vendor-retry-client-typescript` | Vendor Retry Client (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
-| 0275 | `supplier-records-locking-typescript` | Supplier Records with Optimistic Locking (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
-| 0276 | `loan-extraction-review-typescript` | Loan Extraction Review (TypeScript) | project | hard | `typescript` | `ai-llm`, `fintech` | `ai-engineer`, `backend` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `idempotent-document-consumer-typescript` | Idempotent Document Consumer (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| `transactional-outbox-typescript` | Transactional Outbox (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| `vendor-retry-client-typescript` | Vendor Retry Client (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| `supplier-records-locking-typescript` | Supplier Records with Optimistic Locking (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
+| `loan-extraction-review-typescript` | Loan Extraction Review (TypeScript) | project | hard | `typescript` | `ai-llm`, `fintech` | `ai-engineer`, `backend` | project |
 
 The first [service projects](service-projects.md#the-first-problem) run a real app in a Docker sandbox against mock vendors and are graded over HTTP. They are one problem in two languages: the same `tests.json`, mock servers and seeded desks grade both, each built from scratch in its language, and each lists the other in `related`.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0277 | `coworking-availability-typescript` | Coworking Availability (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
-| 0278 | `coworking-availability-python` | Coworking Availability (Python) | project | hard | `python` | `backend` | `backend`, `platform` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `coworking-availability-typescript` | Coworking Availability (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| `coworking-availability-python` | Coworking Availability (Python) | project | hard | `python` | `backend` | `backend`, `platform` | project |
 
-Four more service projects, in TypeScript. `0279` receives a payment provider's signed webhooks, and `0281` delivers a customer's webhooks without reaching your own network. `0280` signs users in with OpenID Connect against a real Keycloak, and `0282` takes many checkouts at once on Postgres. Each has its own `tests.json`; `0279` and `0281` use mock servers, `0280` mocks the identity provider with a pass-through to Keycloak, and `0282` has no mock.
+Four more service projects, in TypeScript. `payment-webhook-receiver-typescript` receives a payment provider's signed webhooks, and `ssrf-safe-webhook-dispatcher-typescript` delivers a customer's webhooks without reaching your own network. `oauth-pkce-client-typescript` signs users in with OpenID Connect against a real Keycloak, and `inventory-reservations-typescript` takes many checkouts at once on Postgres. Each has its own `tests.json`; `payment-webhook-receiver-typescript` and `ssrf-safe-webhook-dispatcher-typescript` use mock servers, `oauth-pkce-client-typescript` mocks the identity provider with a pass-through to Keycloak, and `inventory-reservations-typescript` has no mock.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0279 | `payment-webhook-receiver-typescript` | Payment Webhook Receiver (TypeScript) | project | medium | `typescript` | `fintech`, `security` | `backend`, `security-engineer` | project |
-| 0280 | `oauth-pkce-client-typescript` | OAuth Client with PKCE (TypeScript) | project | hard | `typescript` | `identity`, `security` | `backend`, `security-engineer` | project |
-| 0281 | `ssrf-safe-webhook-dispatcher-typescript` | SSRF-Safe Webhook Dispatcher (TypeScript) | project | hard | `typescript` | `security` | `security-engineer`, `backend` | project |
-| 0282 | `inventory-reservations-typescript` | Inventory Reservations (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `payment-webhook-receiver-typescript` | Payment Webhook Receiver (TypeScript) | project | medium | `typescript` | `fintech`, `security` | `backend`, `security-engineer` | project |
+| `oauth-pkce-client-typescript` | OAuth Client with PKCE (TypeScript) | project | hard | `typescript` | `identity`, `security` | `backend`, `security-engineer` | project |
+| `ssrf-safe-webhook-dispatcher-typescript` | SSRF-Safe Webhook Dispatcher (TypeScript) | project | hard | `typescript` | `security` | `security-engineer`, `backend` | project |
+| `inventory-reservations-typescript` | Inventory Reservations (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
 
-Five more service projects, in TypeScript, on the backing services. `0283` builds a job queue on Postgres, and `0284` loads CSV uploads from S3 and SQS on Moto into Postgres. `0285` caches prices and limits request rates on Valkey, the BSD-licensed fork of Redis, behind a mock pricing vendor. `0286` keeps tenants apart with row-level security, and `0287` keeps a ledger as append-only events with projections. Each has its own `tests.json`; only `0285` has a mock server.
+Five more service projects, in TypeScript, on the backing services. `postgres-job-queue-typescript` builds a job queue on Postgres, and `csv-upload-ingestion-typescript` loads CSV uploads from S3 and SQS on Moto into Postgres. `price-cache-rate-limits-typescript` caches prices and limits request rates on Valkey, the BSD-licensed fork of Redis, behind a mock pricing vendor. `multi-tenant-api-typescript` keeps tenants apart with row-level security, and `event-sourced-ledger-typescript` keeps a ledger as append-only events with projections. Each has its own `tests.json`; only `price-cache-rate-limits-typescript` has a mock server.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0283 | `postgres-job-queue-typescript` | Postgres Job Queue (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
-| 0284 | `csv-upload-ingestion-typescript` | CSV Upload Ingestion (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
-| 0285 | `price-cache-rate-limits-typescript` | Price Cache and Rate Limits (TypeScript) | project | medium | `typescript` | `backend` | `backend`, `platform` | project |
-| 0286 | `multi-tenant-api-typescript` | Multi-Tenant API (TypeScript) | project | hard | `typescript` | `backend`, `security` | `backend`, `security-engineer` | project |
-| 0287 | `event-sourced-ledger-typescript` | Event-Sourced Ledger (TypeScript) | project | hard | `typescript` | `fintech`, `backend` | `backend` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `postgres-job-queue-typescript` | Postgres Job Queue (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| `csv-upload-ingestion-typescript` | CSV Upload Ingestion (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| `price-cache-rate-limits-typescript` | Price Cache and Rate Limits (TypeScript) | project | medium | `typescript` | `backend` | `backend`, `platform` | project |
+| `multi-tenant-api-typescript` | Multi-Tenant API (TypeScript) | project | hard | `typescript` | `backend`, `security` | `backend`, `security-engineer` | project |
+| `event-sourced-ledger-typescript` | Event-Sourced Ledger (TypeScript) | project | hard | `typescript` | `fintech`, `backend` | `backend` | project |
 
-Four service projects in TypeScript on P11's mock server extensions, the first project-size AI/LLM problems among them. `0289` stores uploads behind a mock malware scanner that fails, and `0290` is an LLM gateway that streams answers from two mock providers, waits out rate limits, falls back and keeps budgets. `0291` answers from documents with citations, through mock embeddings and chat APIs and vector search on pgvector, and `0292` runs a tool-calling agent loop against a mock model and the shop's tool APIs. Each has its own `tests.json` and mock servers; only `0291` has a backing service.
+Four service projects in TypeScript on P11's mock server extensions, the first project-size AI/LLM problems among them. `secure-file-upload-typescript` stores uploads behind a mock malware scanner that fails, and `llm-gateway-typescript` is an LLM gateway that streams answers from two mock providers, waits out rate limits, falls back and keeps budgets. `rag-citations-typescript` answers from documents with citations, through mock embeddings and chat APIs and vector search on pgvector, and `tool-calling-agent-loop-typescript` runs a tool-calling agent loop against a mock model and the shop's tool APIs. Each has its own `tests.json` and mock servers; only `rag-citations-typescript` has a backing service.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0289 | `secure-file-upload-typescript` | Secure File Upload (TypeScript) | project | medium | `typescript` | `security`, `backend` | `backend`, `security-engineer` | project |
-| 0290 | `llm-gateway-typescript` | LLM Gateway (TypeScript) | project | hard | `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | project |
-| 0291 | `rag-citations-typescript` | RAG Service with Citations (TypeScript) | project | hard | `typescript` | `ai-llm` | `ai-engineer` | project |
-| 0292 | `tool-calling-agent-loop-typescript` | Tool-Calling Agent Loop (TypeScript) | project | hard | `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `secure-file-upload-typescript` | Secure File Upload (TypeScript) | project | medium | `typescript` | `security`, `backend` | `backend`, `security-engineer` | project |
+| `llm-gateway-typescript` | LLM Gateway (TypeScript) | project | hard | `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | project |
+| `rag-citations-typescript` | RAG Service with Citations (TypeScript) | project | hard | `typescript` | `ai-llm` | `ai-engineer` | project |
+| `tool-calling-agent-loop-typescript` | Tool-Calling Agent Loop (TypeScript) | project | hard | `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | project |
 
-Eleven function-size memory and retrieval problems, original and needing no service, each in Python and TypeScript under the [Languages rule](#rules). `0293` to `0296` are four-level progressive stores: memories per user, a chat history index, a context packer under a token budget, and versioned facts that two stores merge. `0297` keeps BM25 current over an index that forgets, and `0298` cleans text before it is stored as a memory. `0299` to `0303` are retrieval blocks: cosine top k with a bounded heap, chunking with overlap, recall, MRR and nDCG, a freshness reranker, and a memory store with compare-and-set writes. The labels are columns here and binding, as `kind` is:
+Eleven function-size memory and retrieval problems, original and needing no service, each in Python and TypeScript under the [Languages rule](#rules). `memory-store`, `chat-history-index`, `context-packer`, `memory-facts-with-merge` are four-level progressive stores: memories per user, a chat history index, a context packer under a token budget, and versioned facts that two stores merge. `forgettable-inverted-index` keeps BM25 current over an index that forgets, and `memory-write-sanitizer` cleans text before it is stored as a memory. `cosine-top-k`, `chunking-with-overlap`, `retrieval-metrics`, `freshness-reranker`, `versioned-memory-store` are retrieval blocks: cosine top k with a bounded heap, chunking with overlap, recall, MRR and nDCG, a freshness reranker, and a memory store with compare-and-set writes. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0293 | `memory-store` | Memory Store | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
-| 0294 | `chat-history-index` | Chat History Index | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
-| 0295 | `context-packer` | Context Packer | `greedy` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
-| 0296 | `memory-facts-with-merge` | Memory Facts with Merge | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
-| 0297 | `forgettable-inverted-index` | Forgettable Inverted Index | - | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
-| 0298 | `memory-write-sanitizer` | Memory Write Sanitizer | - | function | medium | `python`, `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | function |
-| 0299 | `cosine-top-k` | Cosine Top K | `heap` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
-| 0300 | `chunking-with-overlap` | Chunking With Overlap | `sliding-window` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
-| 0301 | `retrieval-metrics` | Retrieval Metrics | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
-| 0302 | `freshness-reranker` | Freshness Reranker | `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
-| 0303 | `versioned-memory-store` | Versioned Memory Store | `arrays-hashing` | design | easy | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `memory-store` | Memory Store | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| `chat-history-index` | Chat History Index | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| `context-packer` | Context Packer | `greedy` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| `memory-facts-with-merge` | Memory Facts with Merge | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| `forgettable-inverted-index` | Forgettable Inverted Index | - | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| `memory-write-sanitizer` | Memory Write Sanitizer | - | function | medium | `python`, `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | function |
+| `cosine-top-k` | Cosine Top K | `heap` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| `chunking-with-overlap` | Chunking With Overlap | `sliding-window` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| `retrieval-metrics` | Retrieval Metrics | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| `freshness-reranker` | Freshness Reranker | `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| `versioned-memory-store` | Versioned Memory Store | `arrays-hashing` | design | easy | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
 
-One function-size, four-level progressive problem in all six languages: `0304` is the logic behind a search input with a list under it. It handles key presses, name matching, typing with stale responses, and selection with Enter. It runs as a plain class, not in a browser. A version graded in a headless browser waits for Phase 16 ([roadmap](../roadmap.md)). The labels are columns here and binding, as `kind` is:
+One function-size, four-level progressive problem in all six languages: `search-box-navigation` is the logic behind a search input with a list under it. It handles key presses, name matching, typing with stale responses, and selection with Enter. It runs as a plain class, not in a browser. A version graded in a headless browser waits for Phase 16 ([roadmap](../roadmap.md)). The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0304 | `search-box-navigation` | Search Box with Keyboard Navigation | - | progressive | medium | all six | `backend` | `general` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `search-box-navigation` | Search Box with Keyboard Navigation | - | progressive | medium | all six | `backend` | `general` | function |
 
-Two service projects in Java and Kotlin, from P12 ([roadmap](../roadmap.md)): `0305` and `0306` are the Java and Kotlin versions of `0277`. They are graded by the same cases and mock servers as `0277`, each is built from scratch in its language on one Gradle image, and each lists the other versions in `related`.
+Two service projects in Java and Kotlin, from P12 ([roadmap](../roadmap.md)): `coworking-availability-java` and `coworking-availability-kotlin` are the Java and Kotlin versions of `coworking-availability-typescript`. They are graded by the same cases and mock servers as `coworking-availability-typescript`, each is built from scratch in its language on one Gradle image, and each lists the other versions in `related`.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0305 | `coworking-availability-java` | Coworking Availability (Java) | project | hard | `java` | `backend` | `backend`, `platform` | project |
-| 0306 | `coworking-availability-kotlin` | Coworking Availability (Kotlin) | project | hard | `kotlin` | `backend` | `backend`, `platform` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `coworking-availability-java` | Coworking Availability (Java) | project | hard | `java` | `backend` | `backend`, `platform` | project |
+| `coworking-availability-kotlin` | Coworking Availability (Kotlin) | project | hard | `kotlin` | `backend` | `backend`, `platform` | project |
 
-One service project in Go, from P13 ([roadmap](../roadmap.md)): `0310` is the Go version of `0277`, graded by the same cases and mock servers, built from scratch on Go's standard library, and lists the other versions in `related`.
+One service project in Go, from P13 ([roadmap](../roadmap.md)): `coworking-availability-go` is the Go version of `coworking-availability-typescript`, graded by the same cases and mock servers, built from scratch on Go's standard library, and lists the other versions in `related`.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0310 | `coworking-availability-go` | Coworking Availability (Go) | project | hard | `go` | `backend` | `backend`, `platform` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `coworking-availability-go` | Coworking Availability (Go) | project | hard | `go` | `backend` | `backend`, `platform` | project |
 
-One security service project in TypeScript, the built form of PP14 ([roadmap](../roadmap.md)): `0307` hands over a working service with four levels of flaw (notes that belong to someone else, names and fields taken from the request, text that becomes a query, and logs and errors), and grades the fix with attack cases that must fail and normal cases that must keep passing.
+One security service project in TypeScript, the built form of PP14 ([roadmap](../roadmap.md)): `fix-the-flaws-typescript` hands over a working service with four levels of flaw (notes that belong to someone else, names and fields taken from the request, text that becomes a query, and logs and errors), and grades the fix with attack cases that must fail and normal cases that must keep passing.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0307 | `fix-the-flaws-typescript` | Fix the Flaws (TypeScript) | project | hard | `typescript` | `security` | `security-engineer`, `backend` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `fix-the-flaws-typescript` | Fix the Flaws (TypeScript) | project | hard | `typescript` | `security` | `security-engineer`, `backend` | project |
 
-One function-size, four-level progressive problem on hash chaining: `0311` is an audit log that fingerprints batches of records with SHA-256 (with an exact byte encoding, so every language gets the same digests), chains the batches so that one digest stands for a whole history, finds where two histories part by bisecting the chain digests, and proves that a record is in a batch with Merkle inclusion proofs. It lists Python, TypeScript, Java, Kotlin and Go: the security domain lets a problem list a subset ([S13](authoring.md#static)), and Rust's vendored crates hold no SHA-256, so a Rust solution would have to write the hash function first. Its pattern is the nearest of the closed list, `arrays-hashing`, with `binary-search` for level 3.
+One function-size, four-level progressive problem on hash chaining: `tamper-evident-ledger` is an audit log that fingerprints batches of records with SHA-256 (with an exact byte encoding, so every language gets the same digests), chains the batches so that one digest stands for a whole history, finds where two histories part by bisecting the chain digests, and proves that a record is in a batch with Merkle inclusion proofs. It lists Python, TypeScript, Java, Kotlin and Go: the security domain lets a problem list a subset ([S13](authoring.md#static)), and Rust's vendored crates hold no SHA-256, so a Rust solution would have to write the hash function first. Its pattern is the nearest of the closed list, `arrays-hashing`, with `binary-search` for level 3.
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0311 | `tamper-evident-ledger` | Tamper-Evident Ledger | `arrays-hashing`, `binary-search` | progressive | medium | `python`, `typescript`, `java`, `kotlin`, `go` | `security`, `backend` | `security-engineer`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `tamper-evident-ledger` | Tamper-Evident Ledger | `arrays-hashing`, `binary-search` | progressive | medium | `python`, `typescript`, `java`, `kotlin`, `go` | `security`, `backend` | `security-engineer`, `backend` | function |
 
-One service project in Python on Postgres, from P13 ([roadmap](../roadmap.md)): `0312` is a loyalty program that gets a file of purchases from its shops each day. It loads the file into Postgres once however often it is sent, reports the rows it refuses, works out points in whole cents, and asks a flaky bonus partner (a mock server) for bonuses without failing. Its labels are columns here.
+One service project in Python on Postgres, from P13 ([roadmap](../roadmap.md)): `feed-ingest-python` is a loyalty program that gets a file of purchases from its shops each day. It loads the file into Postgres once however often it is sent, reports the rows it refuses, works out points in whole cents, and asks a flaky bonus partner (a mock server) for bonuses without failing. Its labels are columns here.
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0312 | `feed-ingest-python` | Feed Ingest (Python) | project | hard | `python` | `backend`, `fintech` | `backend`, `platform` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `feed-ingest-python` | Feed Ingest (Python) | project | hard | `python` | `backend`, `fintech` | `backend`, `platform` | project |
 
-Three function-size, four-level progressive problems in all six languages, on trees, graphs and a picture of terrain: `0313` builds an org chart from flat (id, parent, name) rows, in any order and with orphans and cycles, and prints an outline of 10^5 rows; `0314` pays a bonus once per referred person, counts direct and indirect referrals and ranks the top referrers, up to a million people; `0316` draws a height profile as text and pours water on it unit by unit, with exact rules for left, right, flat stretches and edges. `0313` and `0314` have a performance ladder. The labels are columns here and binding, as `kind` is:
+Three function-size, four-level progressive problems in all six languages, on trees, graphs and a picture of terrain: `org-chart-outline` builds an org chart from flat (id, parent, name) rows, in any order and with orphans and cycles, and prints an outline of 10^5 rows; `referral-rewards` pays a bonus once per referred person, counts direct and indirect referrals and ranks the top referrers, up to a million people; `water-on-terrain` draws a height profile as text and pours water on it unit by unit, with exact rules for left, right, flat stretches and edges. `org-chart-outline` and `referral-rewards` have a performance ladder. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0313 | `org-chart-outline` | Org Chart Outline | `trees`, `arrays-hashing` | progressive | medium | all six | `algorithms`, `backend` | `general`, `backend` | function |
-| 0314 | `referral-rewards` | Referral Rewards | `graphs`, `union-find` | progressive | hard | all six | `algorithms`, `backend` | `general`, `backend` | function |
-| 0316 | `water-on-terrain` | Water on Terrain | - | progressive | medium | all six | `algorithms` | `general` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `org-chart-outline` | Org Chart Outline | `trees`, `arrays-hashing` | progressive | medium | all six | `algorithms`, `backend` | `general`, `backend` | function |
+| `referral-rewards` | Referral Rewards | `graphs`, `union-find` | progressive | hard | all six | `algorithms`, `backend` | `general`, `backend` | function |
+| `water-on-terrain` | Water on Terrain | - | progressive | medium | all six | `algorithms` | `general` | function |
 
-One project in Python on AI/LLM and security: `0315` hides the emails, phone numbers and names that a model found in text, and the model is not always right. It checks the model's spans against the text, adds a regex safety net for what the model missed, and scores the result with a recall-weighted F2. It is a project in a plain Python package, not a service. It lists Python only, since the security and AI/LLM domains let a problem list a subset ([S13](authoring.md#static)).
+One project in Python on AI/LLM and security: `safe-redaction-python` hides the emails, phone numbers and names that a model found in text, and the model is not always right. It checks the model's spans against the text, adds a regex safety net for what the model missed, and scores the result with a recall-weighted F2. It is a project in a plain Python package, not a service. It lists Python only, since the security and AI/LLM domains let a problem list a subset ([S13](authoring.md#static)).
 
-| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|------|------------|-----------|---------|-----------|-------|
-| 0315 | `safe-redaction-python` | Safe Redaction (Python) | project | hard | `python` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | project |
+| slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|------|------------|-----------|---------|-----------|-------|
+| `safe-redaction-python` | Safe Redaction (Python) | project | hard | `python` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | project |
 
-Two function-size, four-level progressive problems in all six languages on knowledge representation: `0317` is a taxonomy whose concepts may have several parents, in the vocabulary of SKOS: ancestors and descendants nearest first, refused cycles, every lowest common ancestor, preferred and alternative labels with facet expansion, and ids that stay stable across renames and replacements, with exact matches between two schemes; `0319` is an in-memory store of (subject, predicate, object) facts, as in RDF: every pattern shape answered from an index, joined queries on variables, `+` property paths that survive cycles, and answers as of a past time with the sources behind each row. Both have a performance ladder. The labels are columns here and binding, as `kind` is:
+Two function-size, four-level progressive problems in all six languages on knowledge representation: `taxonomy` is a taxonomy whose concepts may have several parents, in the vocabulary of SKOS: ancestors and descendants nearest first, refused cycles, every lowest common ancestor, preferred and alternative labels with facet expansion, and ids that stay stable across renames and replacements, with exact matches between two schemes; `triple-store` is an in-memory store of (subject, predicate, object) facts, as in RDF: every pattern shape answered from an index, joined queries on variables, `+` property paths that survive cycles, and answers as of a past time with the sources behind each row. Both have a performance ladder. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0317 | `taxonomy` | Taxonomy | `graphs` | progressive | hard | all six | `algorithms`, `backend` | `general`, `backend` | function |
-| 0319 | `triple-store` | Triple Store | `arrays-hashing`, `graphs` | progressive | hard | all six | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `taxonomy` | Taxonomy | `graphs` | progressive | hard | all six | `algorithms`, `backend` | `general`, `backend` | function |
+| `triple-store` | Triple Store | `arrays-hashing`, `graphs` | progressive | hard | all six | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
 
-Three more four-level progressive problems on knowledge representation, in Python and TypeScript, each with its own reference solution: `0318` is a reasoner set against a closed-world validator, where one `KnowledgeBase` infers types, links and clashes under the open-world assumption, checks shapes under the closed-world one, and contrasts the two answers; `0320` is entity resolution, from normalized records, blocking and string similarity through clusters and a canonical record to pairwise and B-cubed scores; `0321` is a GraphRAG context builder that ranks the facts near an entity by weight, distance and recency, fills a token budget, and cites the path behind each fact. The labels are columns here and binding, as `kind` is:
+Three more four-level progressive problems on knowledge representation, in Python and TypeScript, each with its own reference solution: `reasoner-vs-validator` is a reasoner set against a closed-world validator, where one `KnowledgeBase` infers types, links and clashes under the open-world assumption, checks shapes under the closed-world one, and contrasts the two answers; `entity-resolution` is entity resolution, from normalized records, blocking and string similarity through clusters and a canonical record to pairwise and B-cubed scores; `graphrag-context` is a GraphRAG context builder that ranks the facts near an entity by weight, distance and recency, fills a token budget, and cites the path behind each fact. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0318 | `reasoner-vs-validator` | Reasoner vs Validator | `graphs` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
-| 0320 | `entity-resolution` | Entity Resolution | `union-find`, `arrays-hashing` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer`, `ml-engineer` | function |
-| 0321 | `graphrag-context` | GraphRAG Context | `graphs`, `greedy` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `reasoner-vs-validator` | Reasoner vs Validator | `graphs` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
+| `entity-resolution` | Entity Resolution | `union-find`, `arrays-hashing` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer`, `ml-engineer` | function |
+| `graphrag-context` | GraphRAG Context | `graphs`, `greedy` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
 
-One function-size, four-level progressive problem in all six languages on content-addressed storage, the last step of the [hashing path](guides.md#paths): `0322` files data under its SHA-256 address, stores the same data once and checks every read; snapshots folders as trees whose entries are named by digest, and diffs two snapshots; compares fixed-size chunks with content-defined chunks cut by a rolling hash; and keeps named refs, collecting what no ref reaches as garbage. Its Rust starter carries a small SHA-256 [helper](problem-format.md#starter-helpers), since Rust's vendored crates hold none. The labels are columns here and binding, as `kind` is:
+One function-size, four-level progressive problem in all six languages on content-addressed storage, the last step of the [hashing path](guides.md#paths): `content-addressed-store` files data under its SHA-256 address, stores the same data once and checks every read; snapshots folders as trees whose entries are named by digest, and diffs two snapshots; compares fixed-size chunks with content-defined chunks cut by a rolling hash; and keeps named refs, collecting what no ref reaches as garbage. Its Rust starter carries a small SHA-256 [helper](problem-format.md#starter-helpers), since Rust's vendored crates hold none. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0322 | `content-addressed-store` | Content-Addressed Store | `arrays-hashing`, `trees`, `sliding-window`, `graphs` | progressive | hard | all six | `backend`, `algorithms` | `backend`, `platform` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `content-addressed-store` | Content-Addressed Store | `arrays-hashing`, `trees`, `sliding-window`, `graphs` | progressive | hard | all six | `backend`, `algorithms` | `backend`, `platform` | function |
 
-Nine function-size, four-level progressive problems on AI engineering, in Python and TypeScript under the [Languages rule](#rules): `0323` is the brakes of an agent loop, with a step cap, repeated identical failures, token and time budgets and a checked claim of done; `0324` a permission gate that decides each tool call from rules, scopes on paths and hosts, and remembered answers, with a log that ignores injected text; `0325` compaction that keeps a long chat inside a token budget without splitting tool calls, with a stable prefix and pinned facts; `0326` an exact and a semantic cache with routing to a tier and a savings report; `0327` a release gate from output assertions, judge scores checked against human labels and golden-set regressions; `0328` a guard that lets model-written SQL run only as one read-only query on allowed tables and columns, with a row limit; `0329` a runner for a model's plan of subtasks, in parallel waves with retries, replanning and budgets; `0330` corrective retrieval that grades what it found, falls back or rewrites the question, then cites the evidence or refuses; `0331` an analyzer that rebuilds an agent's trace as a tree of spans and finds where the time and the cost went and what failed first. The labels are columns here and binding, as `kind` is:
+Nine function-size, four-level progressive problems on AI engineering, in Python and TypeScript under the [Languages rule](#rules): `loop-controller` is the brakes of an agent loop, with a step cap, repeated identical failures, token and time budgets and a checked claim of done; `tool-permission-gate` a permission gate that decides each tool call from rules, scopes on paths and hosts, and remembered answers, with a log that ignores injected text; `context-compaction` compaction that keeps a long chat inside a token budget without splitting tool calls, with a stable prefix and pinned facts; `cache-and-router` an exact and a semantic cache with routing to a tier and a savings report; `eval-release-gate` a release gate from output assertions, judge scores checked against human labels and golden-set regressions; `sql-guard` a guard that lets model-written SQL run only as one read-only query on allowed tables and columns, with a row limit; `plan-and-execute` a runner for a model's plan of subtasks, in parallel waves with retries, replanning and budgets; `corrective-rag` corrective retrieval that grades what it found, falls back or rewrites the question, then cites the evidence or refuses; `agent-trace-analyzer` an analyzer that rebuilds an agent's trace as a tree of spans and finds where the time and the cost went and what failed first. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0323 | `loop-controller` | Loop Controller | `arrays-hashing` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
-| 0324 | `tool-permission-gate` | Tool Permission Gate | `stack`, `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `security`, `backend` | `ai-engineer`, `security-engineer`, `backend` | function |
-| 0325 | `context-compaction` | Context Compaction | `sliding-window`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend`, `ml-engineer` | function |
-| 0326 | `cache-and-router` | Cache and Router | `arrays-hashing`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
-| 0327 | `eval-release-gate` | Eval Release Gate | `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `ml-engineer` | function |
-| 0328 | `sql-guard` | SQL Guard | - | progressive | hard | `python`, `typescript` | `security`, `ai-llm` | `ai-engineer`, `security-engineer`, `backend` | function |
-| 0329 | `plan-and-execute` | Plan and Execute | `topological-sort`, `graphs` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
-| 0330 | `corrective-rag` | Corrective RAG | `arrays-hashing`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
-| 0331 | `agent-trace-analyzer` | Agent Trace Analyzer | `trees`, `intervals` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `platform`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `loop-controller` | Loop Controller | `arrays-hashing` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| `tool-permission-gate` | Tool Permission Gate | `stack`, `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `security`, `backend` | `ai-engineer`, `security-engineer`, `backend` | function |
+| `context-compaction` | Context Compaction | `sliding-window`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend`, `ml-engineer` | function |
+| `cache-and-router` | Cache and Router | `arrays-hashing`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+| `eval-release-gate` | Eval Release Gate | `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `ml-engineer` | function |
+| `sql-guard` | SQL Guard | - | progressive | hard | `python`, `typescript` | `security`, `ai-llm` | `ai-engineer`, `security-engineer`, `backend` | function |
+| `plan-and-execute` | Plan and Execute | `topological-sort`, `graphs` | progressive | hard | `python`, `typescript` | `algorithms`, `backend`, `ai-llm` | `general`, `backend`, `ai-engineer` | function |
+| `corrective-rag` | Corrective RAG | `arrays-hashing`, `greedy` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+| `agent-trace-analyzer` | Agent Trace Analyzer | `trees`, `intervals` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `platform`, `backend` | function |
 
-Seven function-size, four-level progressive problems in all six languages on data engineering, in the `data` domain and for the `data-engineer` role ([ADR 0020](../decisions/0020-catalog-labels.md#amendment-2026-11-11-data-infrastructure-systems-software-design-and-frontend)): `0332` groups timed events into tumbling, hopping and session windows, then runs them as a stream where a watermark closes windows and late events are corrected or dropped; `0333` applies a change log to a copy of a table, with positions that make replays safe, atomic transactions and schema changes; `0334` runs a graph of tasks per daily partition, with retries, reruns and backfills; `0335` keeps a type 2 slowly changing dimension, with surrogate keys, point-in-time lookups and late changes; `0336` decides whether a batch may be published, from row and dataset checks, drift and freshness; `0337` is a table format of immutable files and snapshots, with time travel, optimistic commits, expiry and compaction; `0338` walks column-level lineage to find the impact of a change and where sensitive data ends up. The labels are columns here and binding, as `kind` is:
+Seven function-size, four-level progressive problems in all six languages on data engineering, in the `data` domain and for the `data-engineer` role ([ADR 0020](../decisions/0020-catalog-labels.md#amendment-2026-11-11-data-infrastructure-systems-software-design-and-frontend)): `stream-windows` groups timed events into tumbling, hopping and session windows, then runs them as a stream where a watermark closes windows and late events are corrected or dropped; `cdc-apply` applies a change log to a copy of a table, with positions that make replays safe, atomic transactions and schema changes; `pipeline-scheduler` runs a graph of tasks per daily partition, with retries, reruns and backfills; `scd-type2-dimension` keeps a type 2 slowly changing dimension, with surrogate keys, point-in-time lookups and late changes; `data-quality-gate` decides whether a batch may be published, from row and dataset checks, drift and freshness; `snapshot-table` is a table format of immutable files and snapshots, with time travel, optimistic commits, expiry and compaction; `lineage-graph` walks column-level lineage to find the impact of a change and where sensitive data ends up. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0332 | `stream-windows` | Stream Windows | `arrays-hashing`, `intervals` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
-| 0333 | `cdc-apply` | CDC Apply | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
-| 0334 | `pipeline-scheduler` | Pipeline Scheduler | `graphs`, `topological-sort`, `heap` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `platform` | function |
-| 0335 | `scd-type2-dimension` | SCD Type 2 Dimension | `arrays-hashing`, `intervals`, `binary-search` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
-| 0336 | `data-quality-gate` | Data Quality Gate | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
-| 0337 | `snapshot-table` | Snapshot Table | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
-| 0338 | `lineage-graph` | Lineage Graph | `graphs`, `advanced-graphs` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `stream-windows` | Stream Windows | `arrays-hashing`, `intervals` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| `cdc-apply` | CDC Apply | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| `pipeline-scheduler` | Pipeline Scheduler | `graphs`, `topological-sort`, `heap` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `platform` | function |
+| `scd-type2-dimension` | SCD Type 2 Dimension | `arrays-hashing`, `intervals`, `binary-search` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| `data-quality-gate` | Data Quality Gate | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| `snapshot-table` | Snapshot Table | `arrays-hashing` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
+| `lineage-graph` | Lineage Graph | `graphs`, `advanced-graphs` | progressive | hard | all six | `data`, `backend` | `data-engineer`, `backend` | function |
 
-One function-size, four-level progressive problem in all six languages on software design: `0339` reads modules and their imports as a graph, finds import cycles, checks layer and independence rules with the chain of imports behind each break, then allows exceptions and keeps a baseline of today's breaks that fails only on new ones. The labels are columns here and binding, as `kind` is:
+One function-size, four-level progressive problem in all six languages on software design: `architecture-checker` reads modules and their imports as a graph, finds import cycles, checks layer and independence rules with the chain of imports behind each break, then allows exceptions and keeps a baseline of today's breaks that fails only on new ones. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0339 | `architecture-checker` | Architecture Checker | `graphs`, `advanced-graphs` | progressive | hard | all six | `software-design` | `general`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `architecture-checker` | Architecture Checker | `graphs`, `advanced-graphs` | progressive | hard | all six | `software-design` | `general`, `backend` | function |
 
-Five function-size, four-level progressive problems in all six languages on infrastructure as code, as concepts on today's engine; problems on the real tools wait for [Phase 17](../roadmap.md#phase-17-infrastructure-tools-in-the-sandbox): `0340` diffs desired and actual infrastructure, orders the steps by dependency, replaces or updates, and applies through failures until a new plan converges; `0341` compares recorded infrastructure with a scan, reports drift, imports unmanaged resources and reconciles by policy; `0342` brings hosts to a desired state with tasks that change only what differs, a dry run with diffs, handlers, conditions on facts and batches; `0343` deep-merges layers of values into templates, validates the result against a schema and shows which layer set each value; `0344` checks deployment manifests against rules given as data, with selectors, exceptions that expire, severities and fixes. The labels are columns here and binding, as `kind` is:
+Five function-size, four-level progressive problems in all six languages on infrastructure as code, as concepts on today's engine; problems on the real tools wait for [Phase 17](../roadmap.md#phase-17-infrastructure-tools-in-the-sandbox): `iac-plan-engine` diffs desired and actual infrastructure, orders the steps by dependency, replaces or updates, and applies through failures until a new plan converges; `drift-detection` compares recorded infrastructure with a scan, reports drift, imports unmanaged resources and reconciles by policy; `idempotent-converge` brings hosts to a desired state with tasks that change only what differs, a dry run with diffs, handlers, conditions on facts and batches; `values-templating` deep-merges layers of values into templates, validates the result against a schema and shows which layer set each value; `manifest-policy` checks deployment manifests against rules given as data, with selectors, exceptions that expire, severities and fixes. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0340 | `iac-plan-engine` | Infrastructure Plan Engine | `topological-sort`, `heap`, `graphs` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
-| 0341 | `drift-detection` | Drift Detection | `arrays-hashing`, `string-matching` | progressive | medium | all six | `infrastructure` | `platform`, `backend` | function |
-| 0342 | `idempotent-converge` | Idempotent Converge | `arrays-hashing` | progressive | medium | all six | `infrastructure` | `platform` | function |
-| 0343 | `values-templating` | Layered Values and Templates | `recursion`, `trees`, `stack` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
-| 0344 | `manifest-policy` | Manifest Policy Checks | `arrays-hashing`, `trees`, `sorting` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `iac-plan-engine` | Infrastructure Plan Engine | `topological-sort`, `heap`, `graphs` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| `drift-detection` | Drift Detection | `arrays-hashing`, `string-matching` | progressive | medium | all six | `infrastructure` | `platform`, `backend` | function |
+| `idempotent-converge` | Idempotent Converge | `arrays-hashing` | progressive | medium | all six | `infrastructure` | `platform` | function |
+| `values-templating` | Layered Values and Templates | `recursion`, `trees`, `stack` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| `manifest-policy` | Manifest Policy Checks | `arrays-hashing`, `trees`, `sorting` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
 
-Three function-size problems on web security, in Python and TypeScript under the [Languages rule](#rules), each a first problem on its topic: `0349`, one function, encodes untrusted text for one of four places in a page, HTML text, a quoted attribute, a URL query value or a JavaScript string, and refuses any other; `0350`, in four levels, evaluates a server's cross-origin sharing policy: origins on an allow-list, preflight requests, credentials with the wildcard, then patterns, the null origin and a linter for risky settings; `0351`, in four levels, decides whether to trust a server's certificate: dates and hostnames, a chain to a trusted root, constraints on issuers, then revocation and a reason for every rejected path. The labels are columns here and binding, as `kind` is:
+Three function-size problems on web security, in Python and TypeScript under the [Languages rule](#rules), each a first problem on its topic: `output-encoding-by-context`, one function, encodes untrusted text for one of four places in a page, HTML text, a quoted attribute, a URL query value or a JavaScript string, and refuses any other; `cors-policy-evaluator`, in four levels, evaluates a server's cross-origin sharing policy: origins on an allow-list, preflight requests, credentials with the wildcard, then patterns, the null origin and a linter for risky settings; `cert-chain-validator`, in four levels, decides whether to trust a server's certificate: dates and hostnames, a chain to a trusted root, constraints on issuers, then revocation and a reason for every rejected path. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0349 | `output-encoding-by-context` | Output Encoding by Context | - | function | easy | `python`, `typescript` | `security`, `frontend` | `security-engineer`, `backend`, `frontend` | function |
-| 0350 | `cors-policy-evaluator` | CORS Policy Evaluator | `string-matching` | progressive | medium | `python`, `typescript` | `security`, `frontend` | `security-engineer`, `backend`, `frontend` | function |
-| 0351 | `cert-chain-validator` | Certificate Chain Validator | `graphs` | progressive | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `output-encoding-by-context` | Output Encoding by Context | - | function | easy | `python`, `typescript` | `security`, `frontend` | `security-engineer`, `backend`, `frontend` | function |
+| `cors-policy-evaluator` | CORS Policy Evaluator | `string-matching` | progressive | medium | `python`, `typescript` | `security`, `frontend` | `security-engineer`, `backend`, `frontend` | function |
+| `cert-chain-validator` | Certificate Chain Validator | `graphs` | progressive | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
 
-Two function-size problems on machine learning fundamentals, in Python and TypeScript under the [Languages rule](#rules): `0352`, one function, scores a classifier at a threshold with confusion counts, accuracy, precision, recall and F1 per class, their macro and micro averages, and ROC-AUC; `0353`, in four levels, trains linear and logistic regression by gradient descent, then picks a penalty by cross-validation and stops early on a validation split without leaking it. The labels are columns here and binding, as `kind` is:
+Two function-size problems on machine learning fundamentals, in Python and TypeScript under the [Languages rule](#rules): `classification-metrics`, one function, scores a classifier at a threshold with confusion counts, accuracy, precision, recall and F1 per class, their macro and micro averages, and ROC-AUC; `gradient-descent-models`, in four levels, trains linear and logistic regression by gradient descent, then picks a penalty by cross-validation and stops early on a validation split without leaking it. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0352 | `classification-metrics` | Classification Metrics | `sorting`, `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ml-engineer`, `ai-engineer` | function |
-| 0353 | `gradient-descent-models` | Gradient Descent Models | `math-geometry` | progressive | medium | `python`, `typescript` | `ai-llm` | `ml-engineer` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `classification-metrics` | Classification Metrics | `sorting`, `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ml-engineer`, `ai-engineer` | function |
+| `gradient-descent-models` | Gradient Descent Models | `math-geometry` | progressive | medium | `python`, `typescript` | `ai-llm` | `ml-engineer` | function |
 
-Two function-size, four-level progressive problems in all six languages on testing: `0354` is a library of test doubles, with stubs that give scripted answers, spies that record calls, strict and lenient mocks with a final check, and a fake clock whose timers fire in order; `0355` is a property-based testing engine, with seeded generators and runs that find a counterexample, greedy shrinking, composed and filtered generators, and stateful tests of a buggy queue. The labels are columns here and binding, as `kind` is:
+Two function-size, four-level progressive problems in all six languages on testing: `test-doubles` is a library of test doubles, with stubs that give scripted answers, spies that record calls, strict and lenient mocks with a final check, and a fake clock whose timers fire in order; `property-test-runner` is a property-based testing engine, with seeded generators and runs that find a counterexample, greedy shrinking, composed and filtered generators, and stateful tests of a buggy queue. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0354 | `test-doubles` | Test Doubles | `arrays-hashing`, `heap` | progressive | medium | all six | `software-design` | `general`, `backend` | function |
-| 0355 | `property-test-runner` | Property Test Runner | `greedy` | progressive | hard | all six | `software-design` | `general`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `test-doubles` | Test Doubles | `arrays-hashing`, `heap` | progressive | medium | all six | `software-design` | `general`, `backend` | function |
+| `property-test-runner` | Property Test Runner | `greedy` | progressive | hard | all six | `software-design` | `general`, `backend` | function |
 
-Three function-size, four-level progressive problems in all six languages on networking: `0356` reads HTTP/1.1 requests from raw bytes: the request line and fields, bodies sized by Content-Length or sent in chunks, requests split across reads, and refusing ambiguous framing; `0357` resolves names: answers from a zone, CNAME chains, a walk from the root through referrals with a TTL cache on a virtual clock, then negative answers cached and unrelated glue refused; `0358` delivers bytes reliably: segments reordered and deduplicated, retransmission on an RFC 6298 timer, a send window under flow control, then slow start, congestion avoidance and fast retransmit. The labels are columns here and binding, as `kind` is:
+Three function-size, four-level progressive problems in all six languages on networking: `http-message-parser` reads HTTP/1.1 requests from raw bytes: the request line and fields, bodies sized by Content-Length or sent in chunks, requests split across reads, and refusing ambiguous framing; `dns-resolver-sim` resolves names: answers from a zone, CNAME chains, a walk from the root through referrals with a TTL cache on a virtual clock, then negative answers cached and unrelated glue refused; `reliable-transport-sim` delivers bytes reliably: segments reordered and deduplicated, retransmission on an RFC 6298 timer, a send window under flow control, then slow start, congestion avoidance and fast retransmit. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0356 | `http-message-parser` | HTTP Message Parser | `string-matching` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
-| 0357 | `dns-resolver-sim` | DNS Resolver Sim | `graphs`, `arrays-hashing` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
-| 0358 | `reliable-transport-sim` | Reliable Transport Sim | `sliding-window`, `arrays-hashing` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `http-message-parser` | HTTP Message Parser | `string-matching` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+| `dns-resolver-sim` | DNS Resolver Sim | `graphs`, `arrays-hashing` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+| `reliable-transport-sim` | Reliable Transport Sim | `sliding-window`, `arrays-hashing` | progressive | hard | all six | `systems` | `backend`, `platform` | function |
 
-Two function-size, four-level progressive problems in all six languages on operating systems: `0359` simulates how an operating system shares a CPU, first come first served and shortest job first, round robin, a multi-level feedback queue, then several cores; `0360` translates addresses through a page table, with a TLB in front of it, demand paging with FIFO, LRU and clock replacement, then two-level tables and the working set. The labels are columns here and binding, as `kind` is:
+Two function-size, four-level progressive problems in all six languages on operating systems: `cpu-scheduler-sim` simulates how an operating system shares a CPU, first come first served and shortest job first, round robin, a multi-level feedback queue, then several cores; `virtual-memory-sim` translates addresses through a page table, with a TLB in front of it, demand paging with FIFO, LRU and clock replacement, then two-level tables and the working set. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0359 | `cpu-scheduler-sim` | CPU Scheduler Sim | - | progressive | hard | all six | `systems` | `general`, `platform`, `backend` | function |
-| 0360 | `virtual-memory-sim` | Virtual Memory Sim | - | progressive | hard | all six | `systems` | `general`, `platform` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `cpu-scheduler-sim` | CPU Scheduler Sim | - | progressive | hard | all six | `systems` | `general`, `platform`, `backend` | function |
+| `virtual-memory-sim` | Virtual Memory Sim | - | progressive | hard | all six | `systems` | `general`, `platform` | function |
 
-One function-size, four-level progressive problem in all six languages on sorting, beside the DSA problems `0362` and `0363` under [later DSA additions](#later-dsa-additions): `0361` writes four sorts that report their own work, insertion sort, a stable merge sort by a column, quicksort and quickselect with a three-way partition, and an external merge sort. The labels are columns here and binding, as `kind` is:
+One function-size, four-level progressive problem in all six languages on sorting, beside the DSA problems `substring-search` and `first-bad-commit` under [later DSA additions](#later-dsa-additions): `sorting-workbench` writes four sorts that report their own work, insertion sort, a stable merge sort by a column, quicksort and quickselect with a three-way partition, and an external merge sort. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0361 | `sorting-workbench` | Sorting Workbench | `sorting` | progressive | medium | all six | `algorithms` | `general` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `sorting-workbench` | Sorting Workbench | `sorting` | progressive | medium | all six | `algorithms` | `general` | function |
 
-Three function-size, four-level progressive problems in all six languages on the tools of programming: `0364` interprets a small expression language, from tokens with positions and a syntax tree with precedence to evaluation with closures and a depth limit, and bytecode for a stack machine; `0365` is the core of a diff tool, the lines two files share and a line diff, unified hunks, patches applied where lines moved, and a three-way merge; `0366` is a text buffer with undo and redo, typing grouped into one step, named checkpoints, and a history that keeps every branch. The labels are columns here and binding, as `kind` is:
+Three function-size, four-level progressive problems in all six languages on the tools of programming: `tiny-interpreter` interprets a small expression language, from tokens with positions and a syntax tree with precedence to evaluation with closures and a depth limit, and bytecode for a stack machine; `line-diff-and-merge` is the core of a diff tool, the lines two files share and a line diff, unified hunks, patches applied where lines moved, and a three-way merge; `undo-redo-editor` is a text buffer with undo and redo, typing grouped into one step, named checkpoints, and a history that keeps every branch. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0364 | `tiny-interpreter` | Tiny Interpreter | `recursion`, `stack` | progressive | hard | all six | `algorithms` | `general` | function |
-| 0365 | `line-diff-and-merge` | Line Diff and Merge | `dp-2d` | progressive | hard | all six | `algorithms` | `general` | function |
-| 0366 | `undo-redo-editor` | Undo and Redo Editor | `stack`, `trees` | progressive | easy | all six | `software-design` | `general`, `frontend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `tiny-interpreter` | Tiny Interpreter | `recursion`, `stack` | progressive | hard | all six | `algorithms` | `general` | function |
+| `line-diff-and-merge` | Line Diff and Merge | `dp-2d` | progressive | hard | all six | `algorithms` | `general` | function |
+| `undo-redo-editor` | Undo and Redo Editor | `stack`, `trees` | progressive | easy | all six | `software-design` | `general`, `frontend` | function |
 
-Two function-size, four-level progressive problems in all six languages on database internals: `0367` is the B+ tree under a database index, with search and insert by splits, range scans that count page reads, deletes that borrow or merge, then bulk loads and composite keys; `0368` is multiversion storage with snapshot reads, version chains, first committer wins, write skew caught as a dangerous structure of read-write antidependencies, and vacuum. The labels are columns here and binding, as `kind` is:
+Two function-size, four-level progressive problems in all six languages on database internals: `btree-index` is the B+ tree under a database index, with search and insert by splits, range scans that count page reads, deletes that borrow or merge, then bulk loads and composite keys; `mvcc-snapshot-isolation` is multiversion storage with snapshot reads, version chains, first committer wins, write skew caught as a dangerous structure of read-write antidependencies, and vacuum. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0367 | `btree-index` | B-Tree Index | `trees`, `binary-search` | progressive | hard | all six | `backend` | `backend`, `platform` | function |
-| 0368 | `mvcc-snapshot-isolation` | MVCC Snapshot Isolation | `arrays-hashing`, `graphs` | progressive | hard | all six | `backend` | `backend`, `platform` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `btree-index` | B-Tree Index | `trees`, `binary-search` | progressive | hard | all six | `backend` | `backend`, `platform` | function |
+| `mvcc-snapshot-isolation` | MVCC Snapshot Isolation | `arrays-hashing`, `graphs` | progressive | hard | all six | `backend` | `backend`, `platform` | function |
 
-Four function-size, four-level progressive problems in all six languages on distributed systems: `0369` timestamps a scripted message history with Lamport clocks, vector clocks, sibling versions of concurrent writes and hybrid logical clocks; `0370` places keys on nodes with a consistent hash ring, virtual nodes, a report of the keys that move, replicas and bounded loads; `0371` keeps replicas that accept updates offline and agree after merging, with counters, a last-writer-wins register, an add-wins set and delta sync; `0372` simulates Raft step by step on a scripted network: the voting rules, leader election, log replication with safe commits, and a partition that loses no committed entry. The labels are columns here and binding, as `kind` is:
+Four function-size, four-level progressive problems in all six languages on distributed systems: `logical-clocks` timestamps a scripted message history with Lamport clocks, vector clocks, sibling versions of concurrent writes and hybrid logical clocks; `consistent-hash-ring` places keys on nodes with a consistent hash ring, virtual nodes, a report of the keys that move, replicas and bounded loads; `crdt-replicas` keeps replicas that accept updates offline and agree after merging, with counters, a last-writer-wins register, an add-wins set and delta sync; `raft-sim` simulates Raft step by step on a scripted network: the voting rules, leader election, log replication with safe commits, and a partition that loses no committed entry. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0369 | `logical-clocks` | Logical Clocks | `arrays-hashing`, `sorting` | progressive | medium | all six | `systems` | `backend`, `platform` | function |
-| 0370 | `consistent-hash-ring` | Consistent Hash Ring | `binary-search`, `bit-manipulation` | progressive | medium | all six | `systems` | `backend`, `platform` | function |
-| 0371 | `crdt-replicas` | CRDT Replicas | - | progressive | medium | all six | `systems` | `backend`, `platform` | function |
-| 0372 | `raft-sim` | Raft Simulation | - | progressive | hard | all six | `systems` | `backend`, `platform` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `logical-clocks` | Logical Clocks | `arrays-hashing`, `sorting` | progressive | medium | all six | `systems` | `backend`, `platform` | function |
+| `consistent-hash-ring` | Consistent Hash Ring | `binary-search`, `bit-manipulation` | progressive | medium | all six | `systems` | `backend`, `platform` | function |
+| `crdt-replicas` | CRDT Replicas | - | progressive | medium | all six | `systems` | `backend`, `platform` | function |
+| `raft-sim` | Raft Simulation | - | progressive | hard | all six | `systems` | `backend`, `platform` | function |
 
-Two function-size, four-level progressive problems in all six languages on platform engineering: `0373` resolves package versions, from SemVer 2.0.0 precedence and caret, tilde and wildcard ranges to dependency resolution with backtracking, then explains conflicts and updates a lockfile; `0374` watches a service level objective, with rates from counters across restarts, latency quantiles from histograms, error budgets and burn rates, then multi-window alerts with their start and stop times. The labels are columns here and binding, as `kind` is:
+Two function-size, four-level progressive problems in all six languages on platform engineering: `semver-resolver` resolves package versions, from SemVer 2.0.0 precedence and caret, tilde and wildcard ranges to dependency resolution with backtracking, then explains conflicts and updates a lockfile; `slo-burn-rate` watches a service level objective, with rates from counters across restarts, latency quantiles from histograms, error budgets and burn rates, then multi-window alerts with their start and stop times. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0373 | `semver-resolver` | Semver Resolver | `backtracking`, `graphs` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
-| 0374 | `slo-burn-rate` | SLO Burn Rate | `sliding-window`, `binary-search` | progressive | hard | all six | `systems` | `platform`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `semver-resolver` | Semver Resolver | `backtracking`, `graphs` | progressive | hard | all six | `infrastructure` | `platform`, `backend` | function |
+| `slo-burn-rate` | SLO Burn Rate | `sliding-window`, `binary-search` | progressive | hard | all six | `systems` | `platform`, `backend` | function |
 
-Three function-size, four-level progressive problems in all six languages on the internals of everyday tools: `0381` is a regex engine, from a pattern parsed into a syntax tree and an automaton built by Thompson's construction to matching over sets of states without backtracking, then leftmost-longest search with character classes; `0382` is the query planner of a relational database, from a small SQL subset planned as written with predicate pushdown and row estimates from table statistics to the cheapest left-deep join order by dynamic programming over subsets, then access paths and join methods; `0383` is a memory allocator over a fixed heap, from first fit with headers and alignment and coalescing with boundary tags to first, next and best fit compared on one trace, then a buddy allocator.
+Three function-size, four-level progressive problems in all six languages on the internals of everyday tools: `regex-engine` is a regex engine, from a pattern parsed into a syntax tree and an automaton built by Thompson's construction to matching over sets of states without backtracking, then leftmost-longest search with character classes; `query-planner` is the query planner of a relational database, from a small SQL subset planned as written with predicate pushdown and row estimates from table statistics to the cheapest left-deep join order by dynamic programming over subsets, then access paths and join methods; `memory-allocator` is a memory allocator over a fixed heap, from first fit with headers and alignment and coalescing with boundary tags to first, next and best fit compared on one trace, then a buddy allocator.
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0381 | `regex-engine` | Regex Engine | `string-matching` | progressive | hard | all six | `algorithms` | `general` | function |
-| 0382 | `query-planner` | Query Planner | `dp-1d`, `bit-manipulation` | progressive | hard | all six | `backend` | `backend` | function |
-| 0383 | `memory-allocator` | Memory Allocator | `intervals`, `bit-manipulation` | progressive | hard | all six | `systems` | `platform`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `regex-engine` | Regex Engine | `string-matching` | progressive | hard | all six | `algorithms` | `general` | function |
+| `query-planner` | Query Planner | `dp-1d`, `bit-manipulation` | progressive | hard | all six | `backend` | `backend` | function |
+| `memory-allocator` | Memory Allocator | `intervals`, `bit-manipulation` | progressive | hard | all six | `systems` | `platform`, `backend` | function |
 
-Two more function-size, four-level progressive problems on AI engineering, in Python and TypeScript under the [Languages rule](#rules): `0384` runs agent work as background jobs, from a queue with leases and each step's output kept in a shared store, so that the next worker resumes a job instead of starting over, to a worker count set by the backlog with cooldowns, then a gateway that limits, retries and cuts off the calls to the tools; `0385` is an agent memory whose claims cite receipts of the texts they came from, from claims with evidence and drift detection when a source changes to re-verification that refreshes or contradicts a claim and reaches the claims built on it, then recall under a trust policy. The labels are columns here and binding, as `kind` is:
+Two more function-size, four-level progressive problems on AI engineering, in Python and TypeScript under the [Languages rule](#rules): `agent-job-workers` runs agent work as background jobs, from a queue with leases and each step's output kept in a shared store, so that the next worker resumes a job instead of starting over, to a worker count set by the backlog with cooldowns, then a gateway that limits, retries and cuts off the calls to the tools; `grounded-memory-store` is an agent memory whose claims cite receipts of the texts they came from, from claims with evidence and drift detection when a source changes to re-verification that refreshes or contradicts a claim and reaches the claims built on it, then recall under a trust policy. The labels are columns here and binding, as `kind` is:
 
-| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
-| 0384 | `agent-job-workers` | Agent Job Workers | `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend`, `systems` | `ai-engineer`, `backend`, `platform` | function |
-| 0385 | `grounded-memory-store` | Grounded Memory Store | `arrays-hashing`, `graphs` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+| slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| `agent-job-workers` | Agent Job Workers | `arrays-hashing` | progressive | hard | `python`, `typescript` | `ai-llm`, `backend`, `systems` | `ai-engineer`, `backend`, `platform` | function |
+| `grounded-memory-store` | Grounded Memory Store | `arrays-hashing`, `graphs` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
 
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
 
-| id | slug | title | covers | difficulty |
-|----|------|-------|-------|------------|
-| 0192 | `parking-lot` | Parking Lot | Levels, spot sizes, vehicle types, tickets and fees; pricing as an extension point | medium |
-| 0193 | `elevator-system` | Elevator System | Multiple cars, request dispatching, direction state machine; dispatch strategy as an extension point | hard |
-| 0194 | `cache-service` | Cache Service | LRU-backed cache with TTL, pluggable eviction policy, hit and miss statistics | medium |
-| 0195 | `event-bus` | Event Bus | Topic subscriptions, ordered delivery, wildcard topics, unsubscribe and dead-letter handling | medium |
-| 0196 | `vending-machine` | Vending Machine | Inventory, coin handling and change making, explicit state machine, refunds | medium |
-| 0197 | `library-management` | Library Management | Catalog, members, checkout, holds queue, due dates and fines with explicit timestamps | medium |
-| 0198 | `chess-move-validator` | Chess Move Validator | Board model, per-piece move rules, check detection, castling and en passant | hard |
-| 0199 | `notification-service` | Notification Service | Channels behind one interface, user preferences, templating, retry and rate limits per channel | medium |
+| slug | title | covers | difficulty |
+|------|-------|-------|------------|
+| `parking-lot` | Parking Lot | Levels, spot sizes, vehicle types, tickets and fees; pricing as an extension point | medium |
+| `elevator-system` | Elevator System | Multiple cars, request dispatching, direction state machine; dispatch strategy as an extension point | hard |
+| `cache-service` | Cache Service | LRU-backed cache with TTL, pluggable eviction policy, hit and miss statistics | medium |
+| `event-bus` | Event Bus | Topic subscriptions, ordered delivery, wildcard topics, unsubscribe and dead-letter handling | medium |
+| `vending-machine` | Vending Machine | Inventory, coin handling and change making, explicit state machine, refunds | medium |
+| `library-management` | Library Management | Catalog, members, checkout, holds queue, due dates and fines with explicit timestamps | medium |
+| `chess-move-validator` | Chess Move Validator | Board model, per-piece move rules, check detection, castling and en passant | hard |
+| `notification-service` | Notification Service | Channels behind one interface, user preferences, templating, retry and rate limits per channel | medium |
 
 ### concurrency (6, owner K1, kind `concurrent`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: function`. Exception: `bank-transfers` also has `fintech`.
 
-| id | slug | title | covers | difficulty | languages |
-|----|------|-------|-------|------------|-----------|
-| 0200 | `thread-safe-lru-cache` | Thread-Safe LRU Cache | Make a compound structure atomic under concurrent get and put; lock granularity trade-offs | hard | java, kotlin, python, go, rust |
-| 0201 | `bounded-blocking-queue` | Bounded Blocking Queue | Fixed-capacity queue with blocking put and take; condition waits with `while` re-checks, no lost wakeups | medium | all |
-| 0202 | `bank-transfers` | Bank Transfers | Concurrent transfers between accounts; deadlock avoidance by lock ordering, conservation invariant | medium | java, kotlin, python, go, rust |
-| 0203 | `token-bucket-limiter` | Token Bucket Limiter | Thread-safe token bucket with explicit timestamps; atomic check-then-act, exact grant counts | medium | java, kotlin, python, go, rust |
-| 0204 | `read-write-lock` | Read-Write Lock | Many readers or one writer; writer preference to avoid starvation | hard | all |
-| 0205 | `concurrency-limiter` | Concurrency Limiter | Counting semaphore with at most k holders and FIFO fairness | medium | all |
+| slug | title | covers | difficulty | languages |
+|------|-------|-------|------------|-----------|
+| `thread-safe-lru-cache` | Thread-Safe LRU Cache | Make a compound structure atomic under concurrent get and put; lock granularity trade-offs | hard | java, kotlin, python, go, rust |
+| `bounded-blocking-queue` | Bounded Blocking Queue | Fixed-capacity queue with blocking put and take; condition waits with `while` re-checks, no lost wakeups | medium | all |
+| `bank-transfers` | Bank Transfers | Concurrent transfers between accounts; deadlock avoidance by lock ordering, conservation invariant | medium | java, kotlin, python, go, rust |
+| `token-bucket-limiter` | Token Bucket Limiter | Thread-safe token bucket with explicit timestamps; atomic check-then-act, exact grant counts | medium | java, kotlin, python, go, rust |
+| `read-write-lock` | Read-Write Lock | Many readers or one writer; writer preference to avoid starvation | hard | all |
+| `concurrency-limiter` | Concurrency Limiter | Counting semaphore with at most k holders and FIFO fairness | medium | all |
 
 ### debugging (23, kind `function` or `design` with `stub: buggy`, `problems/`)
 
-Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on the first 16 rows, with no exceptions. `0264` to `0271` carry theirs in their own table.
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on the first 16 rows, with no exceptions. `debug-sorted-report-rows`, `debug-pagination-query-strings`, `debug-invoice-total-cents`, `debug-async-batch-typescript`, `debug-stale-closure-callbacks`, `debug-local-day-boundaries`, `debug-shared-default-config`, `debug-falsy-plan-update` carry theirs in their own table.
 
-The eight planned rows (owner B1) port one bug to the languages it exists in; 0240 to 0247 are bugs native to Go and Rust ([ADR 0012](../decisions/0012-go-and-rust.md)).
+The eight planned rows (owner B1) port one bug to the languages it exists in; `debug-append-aliasing`, `debug-nil-map-write`, `debug-shadowed-variable`, `debug-range-value-copy`, `debug-unsigned-underflow`, `debug-float-ordering`, `debug-char-boundary`, `debug-clone-mutation` are bugs native to Go and Rust ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
-| id | slug | title | covers | difficulty | languages |
-|----|------|-------|-------|------------|-----------|
-| 0206 | `debug-binary-search-bounds` | Debug: Binary Search Bounds | Off-by-one loop condition and midpoint update that skip the last element or loop forever | easy | python, typescript, java, kotlin |
-| 0207 | `debug-grid-aliasing` | Debug: Grid Aliasing | Rows that share one list and a shallow copy of BFS state, so one write changes many cells | medium | python, typescript, java, kotlin |
-| 0208 | `debug-running-total-overflow` | Debug: Running Total Overflow | 32-bit accumulator overflow in a sum of products; the fix is a wider type, not a cast at the end | medium | java, kotlin |
-| 0209 | `debug-sort-comparator` | Debug: Leaderboard Comparator | Subtraction comparator that overflows and a tie-break that breaks transitivity | medium | python, typescript, java, kotlin |
-| 0210 | `debug-mutable-default-argument` | Debug: Mutable Default Argument | Accumulator default argument that leaks state across calls | easy | python |
-| 0211 | `debug-boxed-equality` | Debug: Boxed Integer Equality | Reference comparison of boxed integers that passes small tests and fails above the cache range | medium | java, kotlin |
-| 0212 | `debug-recursion-base-case` | Debug: Recursion Base Case | Tree path-sum recursion whose base case treats a null child as a leaf | medium | python, typescript, java, kotlin |
-| 0213 | `debug-window-shrink` | Debug: Window Shrink | Sliding window that decrements counts without removing zero entries, so the distinct count is wrong | medium | python, typescript, java, kotlin |
-| 0240 | `debug-append-aliasing` | Debug: Append Aliasing | Combinations built with `append` share one backing array, so a later bundle overwrites one already stored | medium | go |
-| 0241 | `debug-nil-map-write` | Debug: Nil Map Write | A nested map whose inner map is never made, so the first write to it panics | easy | go |
-| 0242 | `debug-shadowed-variable` | Debug: Shadowed Variable | `:=` in an inner block declares a new variable, so the outer discount stays zero | easy | go |
-| 0243 | `debug-range-value-copy` | Debug: Range Value Copy | A `range` loop that caps a copy of each struct, so the slice never changes | easy | go |
-| 0244 | `debug-unsigned-underflow` | Debug: Unsigned Underflow | A binary search ported from Java whose `usize` bound goes below zero and panics | easy | rust |
-| 0245 | `debug-float-ordering` | Debug: Float Ordering | A never-shown creative's rate of `0 / 0` is NaN, and the `partial_cmp(...).unwrap()` sort panics on it | medium | rust |
-| 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
-| 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
+| slug | title | covers | difficulty | languages |
+|------|-------|-------|------------|-----------|
+| `debug-binary-search-bounds` | Debug: Binary Search Bounds | Off-by-one loop condition and midpoint update that skip the last element or loop forever | easy | python, typescript, java, kotlin |
+| `debug-grid-aliasing` | Debug: Grid Aliasing | Rows that share one list and a shallow copy of BFS state, so one write changes many cells | medium | python, typescript, java, kotlin |
+| `debug-running-total-overflow` | Debug: Running Total Overflow | 32-bit accumulator overflow in a sum of products; the fix is a wider type, not a cast at the end | medium | java, kotlin |
+| `debug-sort-comparator` | Debug: Leaderboard Comparator | Subtraction comparator that overflows and a tie-break that breaks transitivity | medium | python, typescript, java, kotlin |
+| `debug-mutable-default-argument` | Debug: Mutable Default Argument | Accumulator default argument that leaks state across calls | easy | python |
+| `debug-boxed-equality` | Debug: Boxed Integer Equality | Reference comparison of boxed integers that passes small tests and fails above the cache range | medium | java, kotlin |
+| `debug-recursion-base-case` | Debug: Recursion Base Case | Tree path-sum recursion whose base case treats a null child as a leaf | medium | python, typescript, java, kotlin |
+| `debug-window-shrink` | Debug: Window Shrink | Sliding window that decrements counts without removing zero entries, so the distinct count is wrong | medium | python, typescript, java, kotlin |
+| `debug-append-aliasing` | Debug: Append Aliasing | Combinations built with `append` share one backing array, so a later bundle overwrites one already stored | medium | go |
+| `debug-nil-map-write` | Debug: Nil Map Write | A nested map whose inner map is never made, so the first write to it panics | easy | go |
+| `debug-shadowed-variable` | Debug: Shadowed Variable | `:=` in an inner block declares a new variable, so the outer discount stays zero | easy | go |
+| `debug-range-value-copy` | Debug: Range Value Copy | A `range` loop that caps a copy of each struct, so the slice never changes | easy | go |
+| `debug-unsigned-underflow` | Debug: Unsigned Underflow | A binary search ported from Java whose `usize` bound goes below zero and panics | easy | rust |
+| `debug-float-ordering` | Debug: Float Ordering | A never-shown creative's rate of `0 / 0` is NaN, and the `partial_cmp(...).unwrap()` sort panics on it | medium | rust |
+| `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
+| `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-137-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`debug-sorted-report-rows`, `debug-pagination-query-strings`, `debug-invoice-total-cents`, `debug-async-batch-typescript`, `debug-stale-closure-callbacks`, `debug-local-day-boundaries`, `debug-shared-default-config`, `debug-falsy-plan-update`, without `debug-async-batch-typescript`, which is a project under [practical](#practical-137-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
-| id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
-|----|------|-------|-------|------------|-----------|---------|-----------|-------|
-| 0264 | `debug-sorted-report-rows` | Debug: Sorted Report Rows | `.sort()` compares as strings and sorts in place, and `indexOf` then pairs totals with the wrong regions | medium | typescript | `backend` | `backend` | function |
-| 0265 | `debug-pagination-query-strings` | Debug: Pagination Query Strings | Query values are strings, so `+` joins them and `>` compares them as text, while the numeric defaults hide it | medium | typescript | `backend` | `backend` | function |
-| 0266 | `debug-invoice-total-cents` | Debug: Invoice Total Cents | Binary floats for money: `19.99 * 100` is not 1999, and rounding the total misses exact half cents | medium | typescript | `backend`, `fintech` | `backend` | function |
-| 0268 | `debug-stale-closure-callbacks` | Debug: Stale Closure Callbacks | After-commit callbacks capture variables, not values: a `var` in a loop and `let`s outside it | medium | typescript | `backend` | `backend` | function |
-| 0269 | `debug-local-day-boundaries` | Debug: Local Day Boundaries | `new Date("2026-11-05")` is midnight UTC, so a shop's local day opens at the wrong instant | medium | typescript | `backend` | `backend` | function |
-| 0270 | `debug-shared-default-config` | Debug: Shared Default Config | A spread is a shallow copy, so one tenant's change reaches the module-level defaults | medium | typescript | `backend` | `backend` | function |
-| 0271 | `debug-falsy-plan-update` | Debug: Falsy Plan Update | `\|\|` and a bare `if` eat `0`, `""` and `false`; `??` and an explicit check do not | easy | typescript | `backend` | `backend` | function |
+| slug | title | covers | difficulty | languages | domains | job_roles | scope |
+|------|-------|-------|------------|-----------|---------|-----------|-------|
+| `debug-sorted-report-rows` | Debug: Sorted Report Rows | `.sort()` compares as strings and sorts in place, and `indexOf` then pairs totals with the wrong regions | medium | typescript | `backend` | `backend` | function |
+| `debug-pagination-query-strings` | Debug: Pagination Query Strings | Query values are strings, so `+` joins them and `>` compares them as text, while the numeric defaults hide it | medium | typescript | `backend` | `backend` | function |
+| `debug-invoice-total-cents` | Debug: Invoice Total Cents | Binary floats for money: `19.99 * 100` is not 1999, and rounding the total misses exact half cents | medium | typescript | `backend`, `fintech` | `backend` | function |
+| `debug-stale-closure-callbacks` | Debug: Stale Closure Callbacks | After-commit callbacks capture variables, not values: a `var` in a loop and `let`s outside it | medium | typescript | `backend` | `backend` | function |
+| `debug-local-day-boundaries` | Debug: Local Day Boundaries | `new Date("2026-11-05")` is midnight UTC, so a shop's local day opens at the wrong instant | medium | typescript | `backend` | `backend` | function |
+| `debug-shared-default-config` | Debug: Shared Default Config | A spread is a shallow copy, so one tenant's change reaches the module-level defaults | medium | typescript | `backend` | `backend` | function |
+| `debug-falsy-plan-update` | Debug: Falsy Plan Update | `\|\|` and a bare `if` eat `0`, `""` and `false`; `??` and an explicit check do not | easy | typescript | `backend` | `backend` | function |
 
 ### system-design (10, owner S1, `tracks/system-design/`)
 

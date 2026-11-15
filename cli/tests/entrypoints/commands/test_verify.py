@@ -48,10 +48,10 @@ def invoke(*arguments: str) -> Run:
 
 def test_static_report(environment):
     assert invoke("--static").report == [
-        "two-sum      static ok",
-        "lru-cache    static ok      draft (coverage 1/6)",
+        "lru-cache         static ok      draft (coverage 1/6)",
         "  warning: problems/lru-cache/solutions/explanation.md: "
         'approach ordered-dict: no "### Language notes"',
+        "two-sum           static ok",
         "",
         "coverage  python 2/2 · typescript 0/2 · java 0/2 · kotlin 0/2 · go 0/2 · rust 0/2",
         "result    0 failed · 2 passed",
@@ -64,7 +64,7 @@ def test_passing_static_check_exits_0(environment):
 
 def test_dynamic_report(environment):
     assert invoke("--lang", "python", "two-sum", "--oracle", "--oracle-cases", "10").report == [
-        "two-sum      static ok · py 2/2 ok · oracle 10/10",
+        "two-sum           static ok · py 2/2 ok · oracle 10/10",
         "",
         "coverage  python 1/1",
         "result    0 failed · 1 passed",
@@ -73,7 +73,7 @@ def test_dynamic_report(environment):
 
 def test_oracle_without_a_generator_is_not_applicable(environment):
     assert invoke("--lang", "python", "lru-cache", "--oracle").report[0] == (
-        "lru-cache    static ok · py 1/1 ok · oracle n/a      draft (coverage 1/6)"
+        "lru-cache         static ok · py 1/1 ok · oracle n/a      draft (coverage 1/6)"
     )
 
 
@@ -87,7 +87,7 @@ def test_static_failures_exit_5(environment):
     result = invoke("--static", "two-sum")
     assert (result.exit_code, result.report[0]) == (
         ExitCode.CONTENT_ERROR,
-        'two-sum      FAIL static: problems/two-sum/problem.md: missing "## Constraints"',
+        'two-sum           FAIL static: problems/two-sum/problem.md: missing "## Constraints"',
     )
 
 
@@ -98,7 +98,7 @@ def test_failing_reference_exits_1(environment):
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.FAILURES,
         [
-            "two-sum      static ok · py 1/2 FAIL",
+            "two-sum           static ok · py 1/2 FAIL",
             "  py brute-force: ex1 FAIL: expected [1, 2], got [2, 2]",
         ],
     )
@@ -107,7 +107,7 @@ def test_failing_reference_exits_1(environment):
 def test_require_ready_lists_what_is_missing(environment):
     lines = invoke("--static", "--require-ready", "two-sum").report
     assert lines[:2] == [
-        "two-sum      static ok · not ready",
+        "two-sum           static ok · not ready",
         "  not ready: no optimal reference in typescript, java, kotlin, go, rust",
     ]
 
@@ -176,9 +176,7 @@ def test_conformance_report(conformance_root):
 
 
 def test_conformance_failures_exit_1(conformance_root):
-    solution = (
-        conformance_root / "runners/conformance/conformance-function/solutions/identity.py"
-    )
+    solution = conformance_root / "runners/conformance/conformance-function/solutions/identity.py"
     solution.write_text(
         "def echo_http_codes(first_value, second_value, third_flag):\n    return []\n"
     )
@@ -229,7 +227,7 @@ def test_a_project_line_shows_its_language_and_its_suite(reported):
         project_report((LanguageResult(PY, (ApproachResult("reference"),)),), SuiteCheck(14, 14))
     )
     assert invoke("bank-project-python").report[0] == (
-        "0249-bank-pro...  static ok · py 1/1 ok · suite 14/14"
+        "bank-project-...  static ok · py 1/1 ok · suite 14/14"
     )
 
 
@@ -240,7 +238,7 @@ def test_a_failing_suite_lists_its_failures_and_exits_1(reported):
     result = invoke("bank-project-python")
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.FAILURES,
-        ["0249-bank-pro...  static ok · py 1/1 ok · suite 13/14", f"  suite: {failure}"],
+        ["bank-project-...  static ok · py 1/1 ok · suite 13/14", f"  suite: {failure}"],
     )
 
 
@@ -248,7 +246,7 @@ def test_a_virtual_clock_project_line_shows_its_agreeing_runs_and_its_slowest_sh
     passing = (LanguageResult(PY, (ApproachResult("reference"),)),)
     reported(project_report(passing, SuiteCheck(14, 14), DeterminismVerdict(10, 10, 0.0021)))
     assert invoke("bank-project-python").report[0] == (
-        "0249-bank-pro...  static ok · py 1/1 ok · suite 14/14 · clock 10/10 · slowest 0.2%"
+        "bank-project-...  static ok · py 1/1 ok · suite 14/14 · clock 10/10 · slowest 0.2%"
     )
 
 
@@ -268,7 +266,7 @@ def test_runs_that_differ_list_their_failures_and_exit_1(reported):
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.FAILURES,
         [
-            "0249-bank-pro...  static ok · py 1/1 ok · suite 14/14 · clock 9/10 · slowest 1.0%",
+            "bank-project-...  static ok · py 1/1 ok · suite 14/14 · clock 9/10 · slowest 1.0%",
             f"  clock: {failure}",
         ],
     )
@@ -279,7 +277,7 @@ def test_a_starter_that_does_not_load_is_a_language_problem(reported):
     languages = (LanguageResult(PY, (ApproachResult("reference"),), (problem,)),)
     reported(project_report(languages, SuiteCheck(14, 14)))
     assert invoke("bank-project-python").report[:2] == [
-        "0249-bank-pro...  static ok · py 1/1 FAIL · suite 14/14",
+        "bank-project-...  static ok · py 1/1 FAIL · suite 14/14",
         f"  py {problem}",
     ]
 
@@ -298,7 +296,7 @@ def test_skipped_languages_show_on_the_line_and_in_a_skipped_line(reported):
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.SUCCESS,
         [
-            "0249-bank-pro...  static ok · py 1/1 ok · java skipped · kt skipped · suite 14/14",
+            "bank-project-...  static ok · py 1/1 ok · java skipped · kt skipped · suite 14/14",
             f"  skipped  java, kotlin: {SKIP_REASON}",
         ],
     )
@@ -321,7 +319,7 @@ def test_the_ready_gate_lists_a_skip_as_not_ready(reported):
     assert (result.exit_code, result.report[:3]) == (
         ExitCode.FAILURES,
         [
-            "0249-bank-pro...  static ok · java skipped · kt skipped · not ready",
+            "bank-project-...  static ok · java skipped · kt skipped · not ready",
             f"  skipped  java, kotlin: {SKIP_REASON}",
             f"  not ready: java, kotlin skipped: {SKIP_REASON}",
         ],

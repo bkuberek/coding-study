@@ -8,6 +8,7 @@ from coding_study.domain.errors import LanguageNotSetUpError, UnknownProblemErro
 from coding_study.domain.problem import ALL_LANGUAGES, Language, Track
 from tests.e2e import e2e_environment
 from tests.fakes import repository_root
+from tests.helpers import numbered_directory
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 TWO_SUM = "problems/two-sum"
@@ -37,8 +38,8 @@ def edit(environment, name: str, old: str, new: str) -> None:
 def test_every_problem_is_verified(environment):
     report = verify(environment, static_only=True)
     assert [problem.directory for problem in report.problems] == [
-        TWO_SUM,
         "problems/lru-cache",
+        TWO_SUM,
     ]
 
 
@@ -65,9 +66,12 @@ def test_static_failures_skip_running_code(environment):
 
 
 def test_invalid_files_fail_statically_without_stopping_the_others(environment):
-    (environment.root / TWO_SUM / "meta.yaml").write_text("id: 1\n")
+    (environment.root / TWO_SUM / "meta.yaml").write_text("slug: 1\n")
     report = verify(environment, static_only=True)
-    assert [problem.passed for problem in report.problems] == [False, True]
+    assert [(problem.directory, problem.passed) for problem in report.problems] == [
+        ("problems/lru-cache", True),
+        (TWO_SUM, False),
+    ]
 
 
 def test_unknown_slug(environment):
@@ -79,13 +83,34 @@ def test_track_filter(environment):
     assert verify(environment, static_only=True, track=Track.LLD).problems == ()
 
 
-def test_duplicate_ids_fail(environment):
-    copy = environment.root / "problems" / "0001-lru-cache-copy"
-    copy.mkdir()
+def misnamed_errors(report) -> list[str]:
+    return [error for problem in report.problems for error in problem.static_errors]
+
+
+def test_a_numbered_directory_fails_with_the_rename_to_make(environment):
+    name = numbered_directory(3, "word-break")
+    numbered = environment.root / "problems" / name
+    numbered.mkdir()
+    (numbered / "meta.yaml").write_text("slug: word-break\n")
+    report = verify(environment, static_only=True)
+    assert report.failed == 1
+    assert misnamed_errors(report) == [
+        f"problems/{name}: the name is not a slug, so no problem loads from it; "
+        f"rename it with `mv problems/{name} problems/word-break` from the workspace root"
+    ]
+
+
+def test_a_directory_with_no_slug_to_take_fails_without_a_command(environment):
+    (environment.root / "problems" / "Word Break").mkdir()
+    assert misnamed_errors(verify(environment, static_only=True)) == [
+        "problems/Word Break: the name is not a slug, so no problem loads from it; give it a slug"
+    ]
+
+
+def test_a_misnamed_directory_is_left_out_when_slugs_are_named(environment):
+    (environment.root / "problems" / numbered_directory(3, "word-break")).mkdir()
     report = verify(environment, static_only=True, slugs=("two-sum",))
-    assert two_sum(report).static_errors == (
-        'problems/two-sum: id "0001" is also used by problems/0001-lru-cache-copy',
-    )
+    assert misnamed_errors(report) == []
 
 
 LRU_CACHE = "problems/lru-cache"
@@ -122,14 +147,10 @@ def test_a_reference_shared_by_two_problems_fails_both(environment):
 
 
 def test_a_group_of_three_names_the_other_two(environment):
-    third = "problems/0003-two-sum-copy"
+    third = "problems/two-sum-copy"
     shutil.copytree(environment.root / TWO_SUM, environment.root / third)
     meta = environment.root / third / "meta.yaml"
-    meta.write_text(
-        meta.read_text()
-        .replace('id: "0001"', 'id: "0003"')
-        .replace("slug: two-sum", "slug: two-sum-copy")
-    )
+    meta.write_text(meta.read_text().replace("slug: two-sum", "slug: two-sum-copy"))
     for directory in (TWO_SUM, LRU_CACHE, third):
         add_leetcode_reference(environment, directory, 1)
     report = verify(environment, static_only=True)

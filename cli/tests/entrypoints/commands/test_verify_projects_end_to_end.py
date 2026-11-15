@@ -20,7 +20,7 @@ pytestmark = pytest.mark.slow
 
 runner = CliRunner()
 SLUG = "bank-project-python"
-NAME = "0001-bank-pro...  "
+NAME = "bank-project-...  "
 
 
 @pytest.fixture

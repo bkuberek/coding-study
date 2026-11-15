@@ -104,8 +104,8 @@ def test_a_layout_path_without_a_problem_is_a_usage_error(environment):
         resolve(environment, "python/practice/missing_problem.py")
 
 
-@pytest.mark.parametrize("text", ["two-sum", "0001", None])
-def test_a_slug_an_id_or_nothing_is_left_as_it_is(environment, text):
+@pytest.mark.parametrize("text", ["two-sum", None])
+def test_a_slug_or_nothing_is_left_as_it_is(environment, text):
     assert resolve(environment, text, Language.JAVA) == Target(text, Language.JAVA)
 
 

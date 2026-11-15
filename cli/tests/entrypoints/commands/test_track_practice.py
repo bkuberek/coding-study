@@ -39,20 +39,20 @@ def invoke(*arguments: str):
 
 def test_list_track_shows_its_items(environment):
     assert invoke("list", "--track", "system-design").output.splitlines() == [
-        "ID    SLUG              DIFF    PATTERN          STATUS        DUE         REFS",
-        "-     url-shortener     medium  system-design    new           -           -",
-        "-     news-feed         hard    system-design    new           -           -",
+        "SLUG              DIFF    PATTERN          STATUS        DUE         REFS",
+        "url-shortener     medium  system-design    new           -           -",
+        "news-feed         hard    system-design    new           -           -",
     ]
 
 
 def test_list_shows_items_after_problems(environment):
-    slugs = [line.split()[1] for line in invoke("list").output.splitlines()[1:]]
+    slugs = [line.split()[0] for line in invoke("list").output.splitlines()[1:]]
     assert slugs == ["two-sum", "lru-cache", "url-shortener", "news-feed", "retry-wrapper"]
 
 
 def test_list_content_filter_applies_to_items(environment):
     output = invoke("list", "--track", "system-design", "--content", "draft").output
-    assert [line.split()[1] for line in output.splitlines()[1:]] == ["news-feed"]
+    assert [line.split()[0] for line in output.splitlines()[1:]] == ["news-feed"]
 
 
 def test_list_pattern_filter_leaves_items_out(environment):

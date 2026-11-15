@@ -33,7 +33,7 @@ def invoke(*arguments: str):
 
 
 def listed_slugs(*arguments: str) -> list[str]:
-    return [line.split()[1] for line in invoke(*arguments).output.splitlines()[1:]]
+    return [line.split()[0] for line in invoke(*arguments).output.splitlines()[1:]]
 
 
 def document(*arguments: str):
@@ -113,7 +113,6 @@ def test_json_lists_problems_then_items(environment):
 
 def test_json_describes_a_problem(environment):
     assert entry("two-sum") == {
-        "id": "0001",
         "slug": "two-sum",
         "title": "Two Sum",
         "track": "dsa",
@@ -137,7 +136,6 @@ def test_json_describes_a_problem(environment):
 
 def test_json_describes_an_item(environment):
     assert entry("url-shortener") == {
-        "id": None,
         "slug": "url-shortener",
         "title": "URL Shortener",
         "track": "system-design",

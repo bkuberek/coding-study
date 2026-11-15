@@ -44,10 +44,10 @@ def test_nothing_changed(repository):
 
 
 def test_commits_on_the_branch_count(repository):
-    write(repository, "problems/0003-word-break/meta.yaml")
+    write(repository, "problems/word-break/meta.yaml")
     git(repository, "add", ".")
     git(repository, "commit", "-q", "-m", "add word-break")
-    assert changed(repository) == {"problems/0003-word-break/meta.yaml"}
+    assert changed(repository) == {"problems/word-break/meta.yaml"}
 
 
 def test_unstaged_and_staged_edits_count(repository):
@@ -61,9 +61,9 @@ def test_unstaged_and_staged_edits_count(repository):
 
 
 def test_untracked_files_count_but_ignored_ones_do_not(repository):
-    write(repository, "problems/0003-word-break/problem.md")
-    write(repository, "problems/0003-word-break/run.log")
-    assert changed(repository) == {"problems/0003-word-break/problem.md"}
+    write(repository, "problems/word-break/problem.md")
+    write(repository, "problems/word-break/run.log")
+    assert changed(repository) == {"problems/word-break/problem.md"}
 
 
 def test_commits_on_main_after_the_branch_point_do_not_count(repository):
@@ -75,9 +75,9 @@ def test_commits_on_main_after_the_branch_point_do_not_count(repository):
 
 
 def test_paths_are_relative_to_a_root_below_the_repository(repository):
-    write(repository, "content/problems/0001-x/meta.yaml")
+    write(repository, "content/problems/x/meta.yaml")
     write(repository, "elsewhere.md")
-    assert changed(repository / "content") == {"problems/0001-x/meta.yaml"}
+    assert changed(repository / "content") == {"problems/x/meta.yaml"}
 
 
 def test_paths_with_spaces(repository):

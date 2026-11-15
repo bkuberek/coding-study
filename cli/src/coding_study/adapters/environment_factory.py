@@ -59,7 +59,6 @@ from coding_study.application.ports import Toolchains
 from coding_study.domain.config import Config
 from coding_study.domain.deprecations import DEPRECATIONS
 from coding_study.domain.layout import RUNS_DIRECTORY
-from coding_study.domain.scaffold import WORKSPACE_FIRST_ID
 
 RUNNERS_DIRECTORY = "runners"
 
@@ -157,6 +156,5 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
 
 
 def _new_problems(content: ContentRoot, workspace: Path) -> ProblemDestination:
-    if content.editable:
-        return ProblemDestination(FsProblemFiles(content.path), WorkspaceFs(content.path))
-    return ProblemDestination(FsProblemFiles(workspace), WorkspaceFs(workspace), WORKSPACE_FIRST_ID)
+    root = content.path if content.editable else workspace
+    return ProblemDestination(FsProblemFiles(root), WorkspaceFs(root))

@@ -1,5 +1,6 @@
 """Autograded problems as described by meta.yaml (docs/specs/problem-format.md#metayaml)."""
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -9,6 +10,7 @@ from coding_study.domain.cases import Case
 from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.labels import Labels
 from coding_study.domain.signature import Signature
+from coding_study.domain.taxonomy import pattern_rank
 from coding_study.domain.time_limits import TimeLimit
 
 if TYPE_CHECKING:
@@ -19,6 +21,8 @@ DEFAULT_FLOAT_TOLERANCE = 1e-6
 DEFAULT_SIZE_LADDER = (100, 1000, 10000, 100000)
 DEFAULT_BUDGET_MS = 2000
 DEFAULT_CURRICULUM_ORDER = 1000
+SLUG_PATTERN = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
+"""A problem's slug, and so the name of its folder."""
 
 
 class Language(StrEnum):
@@ -54,6 +58,8 @@ class Track(StrEnum):
     CODE_REVIEW = "code-review"
     BEHAVIORAL = "behavioral"
 
+
+_TRACK_ORDER = tuple(Track)
 
 LANGUAGE_SUBSET_TRACKS = frozenset({Track.CONCURRENCY, Track.DEBUGGING})
 """Tracks whose problems may list any subset of the languages, and whose approaches may have
@@ -175,7 +181,6 @@ class References:
 
 @dataclass(frozen=True, slots=True)
 class ProblemMeta:
-    id: str
     slug: str
     title: str
     status: ContentStatus
@@ -215,7 +220,14 @@ class ProblemMeta:
 
     @property
     def directory_name(self) -> str:
-        return f"{self.id}-{self.slug}"
+        return self.slug
+
+    def listing_key(self) -> tuple[bool, int, int, int, str]:
+        """The order of `cstudy list` (docs/specs/compatibility.md#order): the catalog before
+        your own problems, then the track, the taxonomy position of the primary pattern (none
+        first), `order` and the slug."""
+        primary = pattern_rank(self.patterns[0]) if self.patterns else -1
+        return (self.workspace, _TRACK_ORDER.index(self.track), primary, self.order, self.slug)
 
     @property
     def snake_slug(self) -> str:

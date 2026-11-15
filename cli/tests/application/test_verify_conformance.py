@@ -41,9 +41,7 @@ SOLUTIONS = {
     "conformance-hang": {
         "spins.py": "def wait_for(value):\n    while value < 0:\n        pass\n    return value\n"
     },
-    "conformance-stdout": {
-        "prints.py": "def shout(text):\n    print(text)\n    return text\n"
-    },
+    "conformance-stdout": {"prints.py": "def shout(text):\n    print(text)\n    return text\n"},
 }
 
 
@@ -59,7 +57,7 @@ def root(tmp_path: Path) -> Path:
         (target / "solutions").mkdir(exist_ok=True)
         for name, source in solutions.items():
             (target / "solutions" / name).write_text(source)
-        slugs.add(directory.partition("-")[2])
+        slugs.add(directory)
     expectations = json.loads((CONFORMANCE / "expectations.json").read_text())
     expectations["expectations"] = [
         entry for entry in expectations["expectations"] if entry["problem"] in slugs
@@ -83,7 +81,7 @@ def test_correct_runner_passes_every_fixture(root):
 
 
 def test_fixtures_are_reported_in_directory_order(root):
-    assert list(by_directory(conformance(root))) == list(SOLUTIONS)
+    assert list(by_directory(conformance(root))) == sorted(SOLUTIONS)
 
 
 def test_wrong_error_message_is_a_failure(root):
@@ -111,9 +109,7 @@ def test_expected_load_error_that_loads_is_a_failure(root):
 
 def test_missing_reference_file(root):
     (root / "runners/conformance/conformance-stdout/solutions/prints.py").unlink()
-    result = by_directory(conformance(root, slugs=("conformance-stdout",)))[
-        "conformance-stdout"
-    ]
+    result = by_directory(conformance(root, slugs=("conformance-stdout",)))["conformance-stdout"]
     assert result.languages[0].problems == ("no python reference for prints",)
 
 

@@ -38,7 +38,7 @@ KEPT_FILES = (
     "python/pyproject.toml",
     "python/practice/.gitkeep",
     "problems/.gitkeep",
-    "problems/0900-mine/meta.yaml",
+    "problems/mine/meta.yaml",
     "progress-export.json",
     ".cs/backups/progress-schema-4-20261106T100000Z.db",
     "go.work",

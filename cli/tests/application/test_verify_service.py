@@ -301,7 +301,7 @@ def test_a_sandbox_that_fails_raises_since_it_says_nothing_about_the_problem(env
 def fixture_problem(request, tmp_path, engine):
     root = make_content(tmp_path)
     copy_fixture(request.param, root / "problems" / request.param)
-    return make_environment(root, sandbox=engine), request.param.partition("-")[2]
+    return make_environment(root, sandbox=engine), request.param
 
 
 def report_of(environment, slug: str, **fields: Any):

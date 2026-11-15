@@ -2,8 +2,7 @@
 (docs/specs/installation-and-workspaces.md#your-own-problems).
 
 The overlay is keyed by slug: a workspace problem hides every catalog problem with its slug, as a
-whole directory. Everything else lists in directory name (id) order, so problems sharing an id
-with different slugs are all kept.
+whole directory. The summaries list in slug order.
 """
 
 from collections.abc import Sequence
@@ -13,6 +12,7 @@ from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.problem import Problem, ProblemSummary
+from coding_study.domain.problem_files import MisnamedDirectory
 
 
 class OverlayProblemRepository:
@@ -33,7 +33,7 @@ class OverlayProblemRepository:
         catalog = [s for s in _summaries(self._catalog, issues) if s.meta.slug not in own_slugs]
         if issues:
             raise ContentError(issues)
-        return tuple(sorted((*catalog, *own), key=lambda summary: summary.meta.directory_name))
+        return tuple(sorted((*catalog, *own), key=lambda summary: summary.meta.slug))
 
 
 class OverlayProblemFiles:
@@ -48,10 +48,14 @@ class OverlayProblemFiles:
         return self._catalog.directory
 
     def slugs(self) -> tuple[str, ...]:
-        return tuple(slug for slug, _ in self._entries())
+        """The catalog's problems, without the hidden ones, and your own, in name order."""
+        own = self._own.slugs()
+        return tuple(sorted((*(slug for slug in self._catalog.slugs() if slug not in own), *own)))
 
-    def directory_names(self) -> tuple[str, ...]:
-        return tuple(name for _, name in self._entries())
+    def misnamed(self) -> tuple[MisnamedDirectory, ...]:
+        return tuple(
+            sorted((*self._catalog.misnamed(), *self._own.misnamed()), key=lambda found: found.name)
+        )
 
     def problem_directory(self, slug: str) -> str:
         return self._owner(slug).problem_directory(slug)
@@ -70,14 +74,6 @@ class OverlayProblemFiles:
 
     def _owner(self, slug: str) -> FsProblemFiles:
         return self._own if slug in self._own.slugs() else self._catalog
-
-    def _entries(self) -> list[tuple[str, str]]:
-        """(slug, directory name) of both layers in name order, without hidden catalog ones."""
-        own = list(zip(self._own.slugs(), self._own.directory_names(), strict=True))
-        own_slugs = {slug for slug, _ in own}
-        catalog = zip(self._catalog.slugs(), self._catalog.directory_names(), strict=True)
-        visible = [(slug, name) for slug, name in catalog if slug not in own_slugs]
-        return sorted((*visible, *own), key=lambda entry: entry[1])
 
 
 def _summaries(

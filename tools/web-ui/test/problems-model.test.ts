@@ -50,11 +50,11 @@ test("without the whole list the count says only what shows", () => {
 });
 
 test("the columns show in the table's order, whatever order they were chosen in", () => {
-  assert.deepEqual(shownColumns(["status", "domain", "problem", "id"]), ["id", "problem", "domain", "status"]);
+  assert.deepEqual(shownColumns(["status", "domain", "problem", "difficulty"]), ["problem", "difficulty", "domain", "status"]);
 });
 
 test("problem and status always show", () => {
-  assert.deepEqual(shownColumns(["id"]), ["id", "problem", "status"]);
+  assert.deepEqual(shownColumns(["difficulty"]), ["problem", "difficulty", "status"]);
 });
 
 test("a column the page does not know is left out", () => {
@@ -62,15 +62,15 @@ test("a column the page does not know is left out", () => {
 });
 
 test("ticking a column adds it in the table's order", () => {
-  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["id", "problem", "difficulty", "pattern", "kind", "status", "due", "languages", "sets"]);
+  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["problem", "difficulty", "pattern", "kind", "status", "due", "languages", "sets"]);
 });
 
 test("unticking a column takes it out", () => {
-  assert.deepEqual(withColumn(["problem", "status", "id"], "id", false), ["problem", "status"]);
+  assert.deepEqual(withColumn(["problem", "status", "difficulty"], "difficulty", false), ["problem", "status"]);
 });
 
 test("problem and status cannot be hidden, and the others can", () => {
-  assert.deepEqual([canHide("problem"), canHide("status"), canHide("id"), canHide("sets")], [false, false, true, true]);
+  assert.deepEqual([canHide("problem"), canHide("status"), canHide("difficulty"), canHide("sets")], [false, false, true, true]);
 });
 
 test("a count of one has no plural", () => {

@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # A ListNode array parameter; mergeKLists -> merge_k_lists.
-id: "0104"
 slug: merge-k-sorted-lists
 title: Merge k Sorted Lists
 status: draft

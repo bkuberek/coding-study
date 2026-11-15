@@ -13,6 +13,7 @@ from rich.text import Text
 from coding_study.adapters.cstudy_installs import PathCstudyInstalls
 from coding_study.adapters.docker_sandbox import DockerSandbox
 from coding_study.adapters.environment_factory import RUNNERS_DIRECTORY
+from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.jdk_locator import EnvJdkSelector
 from coding_study.adapters.language_servers.lsp_directory import LspDirectory
 from coding_study.adapters.languages.context import LanguageContext
@@ -201,6 +202,7 @@ def _workspace(
     language_servers = LspDirectory(root, SubprocessToolProbe(), SubprocessCommandRunner())
     return PracticeWorkspace(
         files=FsRepositoryFiles(root),
+        problems=FsProblemFiles(root),
         created_with=read_marker(root).created_with,
         setup=FsWorkspaceSetup(content_root / RUNNERS_DIRECTORY, tool_version()),
         toolchains=RegistryToolchains(LANGUAGES, LanguageContext(root, root / RUNTIME_RUNNERS)),

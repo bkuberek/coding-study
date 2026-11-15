@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # Names that are Rust keywords, and no other language's: Rust spells them as raw identifiers.
-id: "0108"
 slug: keyword-names
 title: Keyword Names
 status: draft

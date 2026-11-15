@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # Progressive kind: every method emitted, each preceded by a Level <n> comment.
-id: "0102"
 slug: in-memory-db
 title: In-Memory Database
 status: draft

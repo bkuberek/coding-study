@@ -139,7 +139,6 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
     languages = tuple(Language(name) for name in document.get("languages", default))
     concurrency = document.get("concurrency")
     return ProblemMeta(
-        id=document["id"],
         slug=document["slug"],
         title=document["title"],
         status=ContentStatus(document["status"]),

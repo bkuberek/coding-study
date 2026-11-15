@@ -65,7 +65,6 @@ def meta(
     slug: str, kind: ProblemKind, signature: FunctionSignature | ClassSignature
 ) -> ProblemMeta:
     return ProblemMeta(
-        id="9999",
         slug=slug,
         title=slug,
         status=ContentStatus.DRAFT,

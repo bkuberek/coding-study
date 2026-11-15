@@ -30,7 +30,6 @@ INT = ScalarType(Scalar.INT)
 ROOT = "/repo"
 
 TWO_SUM = ProblemMeta(
-    id="0001",
     slug="two-sum",
     title="Two Sum",
     status=ContentStatus.READY,
@@ -53,7 +52,6 @@ TWO_SUM = ProblemMeta(
 )
 LRU_CACHE = replace(
     TWO_SUM,
-    id="0002",
     slug="lru-cache",
     kind=ProblemKind.DESIGN,
     signature=ClassSignature(

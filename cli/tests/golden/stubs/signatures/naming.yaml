@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # Naming rules: acronyms and digits in snake_case (getHTTPCode -> get_http_code).
-id: "0101"
 slug: naming-rules
 title: Naming Rules
 status: draft

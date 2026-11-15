@@ -16,8 +16,7 @@ REFERENCE_FIELD = "references.leetcode"
 
 
 def reference_conflicts(environment: Environment) -> dict[str, tuple[str, ...]]:
-    """The issues of every problem that shares its reference, keyed by slug. A duplicated slug is
-    judged once, by its first directory, which S2 already reports."""
+    """The issues of every problem that shares its reference, keyed by slug."""
     files = environment.files
     by_number: defaultdict[int, list[str]] = defaultdict(list)
     for slug in dict.fromkeys(files.slugs()):

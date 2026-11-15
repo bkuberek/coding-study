@@ -42,7 +42,6 @@ def approach(approach_id: str, role: ApproachRole, *, oracle: bool = False) -> A
 
 
 META = ProblemMeta(
-    id="0001",
     slug="two-sum",
     title="Two Sum",
     status=ContentStatus.READY,

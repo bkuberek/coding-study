@@ -24,13 +24,13 @@ PASSED = ProblemProgress(frozenset({AttemptStatus.PASSED}))
 def problem(slug: str, **fields: object) -> Candidate:
     defaults: dict[str, object] = {"difficulty": Difficulty.EASY, "patterns": ("arrays-hashing",)}
     defaults.update(fields)
-    return Candidate("0001", slug, Track(defaults.pop("track", Track.DSA)), **defaults)  # type: ignore[arg-type]
+    return Candidate(slug, Track(defaults.pop("track", Track.DSA)), **defaults)  # type: ignore[arg-type]
 
 
 def item(slug: str, **fields: object) -> Candidate:
     defaults: dict[str, object] = {"difficulty": Difficulty.MEDIUM, "languages": ()}
     defaults.update(fields)
-    return Candidate(None, slug, Track.SYSTEM_DESIGN, **defaults)  # type: ignore[arg-type]
+    return Candidate(slug, Track.SYSTEM_DESIGN, autograded=False, **defaults)  # type: ignore[arg-type]
 
 
 def mastered(due_in_days: int = 10) -> ProblemProgress:

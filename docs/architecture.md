@@ -232,7 +232,7 @@ coding-study/
   schemas/                  # meta, tests, item, conformance, events and web API JSON Schemas
   tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
   tools/web-ui/             # sources, lockfile and build of the web UI front end (its bundle ships in entrypoints/web/static/)
-  problems/<id>-<slug>/     # autograded content (format: specs/problem-format.md)
+  problems/<slug>/          # autograded content (format: specs/problem-format.md)
   tracks/                   # non-autograded content (system design, code review, behavioral)
 ```
 
@@ -302,7 +302,7 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 {
   "version": 2,
   "entries": {
-    "/home/me/coding-study/problems/two-sum/meta.yaml": {"stamp": [1761350000123456789, 1520, 1761340000000000000, 9480], "document": {"id": "0001", "slug": "two-sum"}}
+    "/home/me/coding-study/problems/two-sum/meta.yaml": {"stamp": [1761350000123456789, 1520, 1761340000000000000, 9480], "document": {"slug": "two-sum"}}
   }
 }
 ```

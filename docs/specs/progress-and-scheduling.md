@@ -275,13 +275,13 @@ Deterministic: the same database, content, date and flags give the same answer.
 
 **Step 0: resume** (skipped with `--new` or `--review`). The attempt in progress that was used most recently, among those whose problem is in scope: the later of its start and its last test run, a tie going to the later attempt. When one is open, nothing below runs, and the other attempts in progress in scope are listed after it, most recently used first, to pick another. The weakness score and steps 1 and 2 do not change: they still leave out the problems with an attempt in progress, and they decide the pick when none is open (after a `cstudy done` or a [`cstudy abort`](cli.md#cstudy-abort)).
 
-**Step 1: reviews** (skipped with `--new`). Candidates: `schedule.due_on <= today`. Priority `(today - due_on + 1) / interval_days + weakness(group)`. Highest wins; ties by smaller `interval_days`, then `id`.
+**Step 1: reviews** (skipped with `--new`). Candidates: `schedule.due_on <= today`. Priority `(today - due_on + 1) / interval_days + weakness(group)`. Highest wins; ties by smaller `interval_days`, then slug.
 
 **Step 2: new problems** (skipped with `--review`).
 
 1. Groups with at least one `new` problem in scope; choose the highest weakness; ties by taxonomy order ([content](content.md#pattern-taxonomy)), then track order.
 2. Difficulty gate within the group: `easy` always eligible; `medium` once a group `easy` is passed or the group has no `easy`; `hard` once a group `medium` is passed or the group has no `medium`. If the gate excludes everything, use the lowest available difficulty.
-3. Sort eligible problems by difficulty, `order`, `id`; take the first.
+3. Sort eligible problems by difficulty, `order`, slug; take the first.
 
 **Step 3.** Nothing found: print `nothing due and no new problems in scope` and exit 0.
 

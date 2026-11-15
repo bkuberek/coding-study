@@ -51,10 +51,12 @@ from coding_study.domain.errors import (
     MigrationError,
     RunnerProtocolError,
     RunnerStartError,
+    UnknownProblemError,
     UsageError,
 )
 from coding_study.domain.jdk import JDK_FIX, JdkSource, SelectedJdk
 from coding_study.domain.problem import Language
+from coding_study.domain.problem_files import MisnamedDirectory
 from coding_study.domain.progress_migration import ProgressMigration
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
 from coding_study.domain.sandbox import SandboxInventory, StackContainer, StackResource
@@ -69,6 +71,7 @@ from tests.fakes import (
     FakeToolchains,
     MemoryPreferences,
 )
+from tests.helpers import numbered_directory
 from tests.sandbox_fakes import FakeSandbox
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
@@ -163,6 +166,35 @@ class FakeFiles:
 
     def exists(self, relative_path: str) -> bool:
         return relative_path in self.paths
+
+
+@dataclass
+class FakeProblemFiles:
+    """The workspace's own `problems/`: no problem, and the directories misnamed in it."""
+
+    misnamed_directories: tuple[MisnamedDirectory, ...] = ()
+    directory: str = "problems"
+
+    def slugs(self) -> tuple[str, ...]:
+        return ()
+
+    def misnamed(self) -> tuple[MisnamedDirectory, ...]:
+        return self.misnamed_directories
+
+    def problem_directory(self, slug: str) -> str:
+        raise UnknownProblemError(slug)
+
+    def read_text(self, slug: str, name: str) -> str | None:
+        return None
+
+    def file_names(self, slug: str, directory: str = "") -> tuple[str, ...]:
+        return ()
+
+    def path(self, slug: str, name: str) -> Path:
+        return Path("/ws/problems") / slug / name
+
+    def fingerprint(self, slug: str, names: Sequence[str]) -> str:
+        return ""
 
 
 BUNDLED = ContentLocation(FakeFiles({"runners/typescript"}, Path("/tool/content")), False)
@@ -322,6 +354,7 @@ class FakeInstalls:
 
 def workspace_with(
     paths: set[str] | None = None,
+    problems: FakeProblemFiles | None = None,
     runners: dict[Language, LanguageRunner] | None = None,
     process: HelloProcess | None = None,
     commands: FakeCommands | None = None,
@@ -334,6 +367,7 @@ def workspace_with(
     servers = language_servers or FakeLanguageServers()
     return PracticeWorkspace(
         files=FakeFiles(set(COMPLETE_WORKSPACE) if paths is None else paths),
+        problems=problems or FakeProblemFiles(),
         created_with=RUNNING_VERSION,
         setup=setup or FakeSetup(),
         toolchains=FakeToolchains(healthy_runners() if runners is None else runners),
@@ -817,6 +851,35 @@ def test_core_files_still_fail_when_go_and_rust_files_are_missing_too():
     )
     assert summary(report, "go and rust files")[0] is WARN
     assert report.passed is False
+
+
+def test_a_misnamed_problem_folder_warns_with_the_rename_to_make():
+    problems = FakeProblemFiles((MisnamedDirectory(numbered_directory(1, "pair-sum"), "pair-sum"),))
+    report = doctor(workspace=workspace_with(problems=problems))
+    result = check(report, "workspace files")
+    assert (result.status, result.detail, result.fix) == (
+        WARN,
+        "1 in problems/ not named by a slug, so no problem loads from them; from the "
+        f"workspace root run: mv problems/{numbered_directory(1, 'pair-sum')} problems/pair-sum",
+        None,
+    )
+    assert report.passed is True
+
+
+def test_a_misnamed_problem_folder_without_a_slug_to_take_asks_for_one():
+    problems = FakeProblemFiles((MisnamedDirectory("Pair Sum", None),))
+    detail = check(doctor(workspace=workspace_with(problems=problems)), "workspace files").detail
+    assert detail.endswith("give problems/Pair Sum a slug")
+
+
+def test_a_missing_file_still_fails_beside_a_misnamed_problem_folder():
+    setup = FakeSetup(missing=("jvm/gradlew",))
+    problems = FakeProblemFiles((MisnamedDirectory(numbered_directory(1, "pair-sum"), "pair-sum"),))
+    result = check(
+        doctor(workspace=workspace_with(setup=setup, problems=problems)), "workspace files"
+    )
+    assert (result.status, result.fix) == (FAIL, "cstudy doctor --fix")
+    assert result.detail.startswith("1 missing: jvm/gradlew; 1 in problems/ not named")
 
 
 def test_many_missing_files_are_summarized():

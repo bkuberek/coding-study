@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # A function that imports only GraphNode, with no_alias_with on the return.
-id: "0107"
 slug: clone-graph
 title: Clone Graph
 status: draft

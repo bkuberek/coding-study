@@ -29,6 +29,15 @@ def test_a_stored_document_is_read():
     assert read_preferences(store) == Preferences(vim=True)
 
 
+def test_a_file_that_names_the_retired_id_column_still_loads():
+    store = MemoryPreferencesStore(
+        {"format": 1, "vim": True, "problem_columns": ["id", "problem", "status", "sets"]}
+    )
+    assert read_preferences(store) == Preferences(
+        vim=True, problem_columns=("problem", "status", "sets")
+    )
+
+
 def test_a_document_that_does_not_parse_means_the_defaults():
     store = MemoryPreferencesStore({"format": 1, "vim": "yes"})
     assert read_preferences(store) == Preferences()

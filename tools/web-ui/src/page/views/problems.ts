@@ -475,7 +475,6 @@ function labelsOf(labels: readonly string[]): string {
 
 /** Each column's cell of a row. */
 const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawing) => HTMLTableCellElement>> = {
-  id: (entry) => h("td", { class: "num" }, entry.id ?? "–"),
   problem: (entry) =>
     h(
       "td",

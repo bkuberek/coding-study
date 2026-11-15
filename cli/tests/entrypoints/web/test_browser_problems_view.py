@@ -647,7 +647,7 @@ def test_filtering_logs_no_problem(filter_row):
 COLUMNS_MENU = ".columns-menu"
 COLUMNS_SUMMARY = f"{COLUMNS_MENU} > summary"
 HEADERS = "table.problems thead th"
-DEFAULT_HEADERS = ["id", "problem", "difficulty", "pattern", "status", "due", "languages", "sets"]
+DEFAULT_HEADERS = ["problem", "difficulty", "pattern", "status", "due", "languages", "sets"]
 OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role"]
 PREFERENCES_FILE = ".cs/serve/preferences.json"
 NARROW = {"width": 390, "height": 844}
@@ -755,16 +755,16 @@ def _reload_the_columns(page: Any, seen: Columns) -> None:
     seen.reloaded = _headers(page)
     seen.reloaded_ticks = {
         column: page.locator(f"#column-{column}").is_checked()
-        for column in ("kind", "domain", "scope", "id")
+        for column in ("kind", "domain", "scope", "pattern")
     }
 
 
 def _hide_a_column(page: Any, seen: Columns) -> None:
     page.click(COLUMNS_SUMMARY)
-    page.uncheck("#column-id")
+    page.uncheck("#column-pattern")
     page.wait_for_function(
         "() => ![...document.querySelectorAll('table.problems thead th')]"
-        ".some((cell) => cell.textContent === 'id')"
+        ".some((cell) => cell.textContent === 'pattern')"
     )
     seen.without_a_column = _headers(page)
     page.keyboard.press("Escape")
@@ -867,11 +867,11 @@ def test_the_columns_survive_a_reload(columns):
 
 
 def test_the_menu_reads_the_stored_columns_after_a_reload(columns):
-    assert columns.reloaded_ticks == {"kind": True, "domain": True, "scope": False, "id": True}
+    assert columns.reloaded_ticks == {"kind": True, "domain": True, "scope": False, "pattern": True}
 
 
 def test_an_unticked_column_leaves_the_table(columns):
-    assert "id" not in columns.without_a_column
+    assert "pattern" not in columns.without_a_column
 
 
 def test_reset_shows_the_default_columns(columns):

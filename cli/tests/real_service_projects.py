@@ -55,7 +55,7 @@ class FixtureProject:
 
     @property
     def slug(self) -> str:
-        return self.directory.partition("-")[2]
+        return self.directory
 
     @property
     def folder(self) -> Path:

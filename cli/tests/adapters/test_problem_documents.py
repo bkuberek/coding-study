@@ -161,8 +161,7 @@ def test_maps_class_signature():
 
 def test_maps_identity_and_classification():
     meta = two_sum_meta()
-    assert (meta.id, meta.slug, meta.title, meta.kind, meta.patterns) == (
-        "0001",
+    assert (meta.slug, meta.title, meta.kind, meta.patterns) == (
         "two-sum",
         "Two Sum",
         ProblemKind.FUNCTION,

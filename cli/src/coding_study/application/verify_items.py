@@ -69,7 +69,7 @@ def problem_slug_conflicts(environment: Environment) -> dict[str, tuple[str, ...
 class _SlugConflicts:
     def __init__(self, environment: Environment) -> None:
         files, items = environment.files, environment.items
-        problem_directories = (f"{files.directory}/{name}" for name in files.directory_names())
+        problem_directories = (files.problem_directory(slug) for slug in files.slugs())
         self._problems = _by_slug(zip(files.slugs(), problem_directories, strict=True))
         self._items = _by_slug(zip(items.slugs(), items.directories(), strict=True))
 

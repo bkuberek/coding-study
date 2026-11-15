@@ -212,23 +212,23 @@ def verify_content(
         if slug not in known and slug not in item_slugs:
             raise UnknownProblemError(slug)
     selected = request.slugs or tuple(dict.fromkeys(known))
-    duplicates = _duplicate_issues(environment)
+    conflicts: dict[str, tuple[str, ...]] = {}
     for found in (problem_slug_conflicts(environment), reference_conflicts(environment)):
-        for slug, conflicts in found.items():
-            duplicates[slug] = (*duplicates.get(slug, ()), *conflicts)
+        for slug, issues in found.items():
+            conflicts[slug] = (*conflicts.get(slug, ()), *issues)
     all_slugs = frozenset((*known, *item_slugs))
     verifier = _ProblemVerifier(environment, request, notify, all_slugs)
-    checked = (
-        verifier.verify(slug, duplicates.get(slug, ())) for slug in selected if slug in known
-    )
+    checked = (verifier.verify(slug, conflicts.get(slug, ())) for slug in selected if slug in known)
     problems = tuple(problem for problem in checked if problem is not None)
     items = verify_items(environment, _item_selection(request), all_slugs)
     whole = _whole_catalog(request)
     guides = verify_guides(environment, known) if whole else ()
     docs = verify_user_docs(environment, request.commands) if whole else ()
+    misnamed = _misnamed_rows(environment) if whole else ()
     return VerifyReport(
         (
             *problems,
+            *misnamed,
             *map(_as_verification, items),
             *map(_guide_row, guides),
             *map(_doc_row, docs),
@@ -289,26 +289,20 @@ def problem_content(environment: Environment, slug: str, problem: Problem) -> Pr
     )
 
 
-def _duplicate_issues(environment: Environment) -> dict[str, tuple[str, ...]]:
-    """S2: ids and slugs are unique across the problems directory."""
+def _misnamed_rows(environment: Environment) -> tuple[ProblemVerification, ...]:
+    """S2: a directory of `problems/` whose name is not a slug loads as no problem; each row names
+    the rename to make."""
     files = environment.files
-    names = files.directory_names()
-    directories = [f"{files.directory}/{name}" for name in names]
-    keys = [(name.partition("-")[0], name.partition("-")[2]) for name in names]
-    issues: dict[str, list[str]] = {}
-    for position, (problem_id, slug) in enumerate(keys):
-        for other, (other_id, other_slug) in zip(directories, keys, strict=True):
-            if other == directories[position]:
-                continue
-            if other_id == problem_id:
-                issues.setdefault(slug, []).append(
-                    f'{directories[position]}: id "{problem_id}" is also used by {other}'
-                )
-            if other_slug == slug:
-                issues.setdefault(slug, []).append(
-                    f'{directories[position]}: slug "{slug}" is also used by {other}'
-                )
-    return {slug: tuple(dict.fromkeys(found)) for slug, found in issues.items()}
+    rows: list[ProblemVerification] = []
+    for found in files.misnamed():
+        directory = f"{files.directory}/{found.name}"
+        command = found.rename(files.directory)
+        advice = (
+            f"rename it with `{command}` from the workspace root" if command else "give it a slug"
+        )
+        message = f"{directory}: the name is not a slug, so no problem loads from it; {advice}"
+        rows.append(ProblemVerification(directory, None, static_errors=(message,)))
+    return tuple(rows)
 
 
 def _coverage(
@@ -340,14 +334,14 @@ class _ProblemVerifier:
         self._known_slugs = known_slugs
         self._guide_slugs = frozenset(environment.guides.slugs())
 
-    def verify(self, slug: str, duplicates: tuple[str, ...]) -> ProblemVerification | None:
+    def verify(self, slug: str, conflicts: tuple[str, ...]) -> ProblemVerification | None:
         """None when the problem is outside `--track`, or a project outside `--lang`: a project
         problem counts only in its one language."""
         directory = self._environment.files.problem_directory(slug)
         try:
             problem = self._environment.problems.load(slug)
         except ContentError as error:
-            issues = (*duplicates, *(str(issue) for issue in error.issues))
+            issues = (*conflicts, *(str(issue) for issue in error.issues))
             return ProblemVerification(directory, None, static_errors=issues)
         if self._request.track not in (None, problem.meta.track):
             return None
@@ -362,7 +356,7 @@ class _ProblemVerifier:
             directory=directory,
             meta=problem.meta,
             static_errors=(
-                *duplicates,
+                *conflicts,
                 *(str(issue) for issue in (*static.errors, *self._unknown_guides(content))),
             ),
             warnings=tuple(str(issue) for issue in (*static.warnings, *self._related(content))),

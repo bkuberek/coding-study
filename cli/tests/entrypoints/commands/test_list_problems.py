@@ -15,7 +15,7 @@ from tests.fakes import NOW, make_environment, repository_root
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
-HEADER = "ID    SLUG              DIFF    PATTERN          STATUS        DUE         REFS"
+HEADER = "SLUG              DIFF    PATTERN          STATUS        DUE         REFS"
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def invoke(*arguments: str):
 def test_lists_every_problem(environment):
     assert invoke().output.splitlines() == [
         HEADER,
-        "0001  two-sum           easy    arrays-hashing   new           -           py",
-        "0002  lru-cache         medium  linked-list      new           -           py",
+        "two-sum           easy    arrays-hashing   new           -           py",
+        "lru-cache         medium  linked-list      new           -           py",
     ]
 
 
@@ -50,20 +50,20 @@ def test_shows_progress_status_and_due_date(environment):
         ScheduleEntry("two-sum", ReviewState(interval_days=3), date(2026, 10, 27), Grade.OK, NOW)
     )
     row = invoke().output.splitlines()[1]
-    assert row == "0001  two-sum           easy    arrays-hashing   passed        2026-10-27  py"
+    assert row == "two-sum           easy    arrays-hashing   passed        2026-10-27  py"
 
 
 def test_a_problem_with_an_attempt_in_progress_reads_in_progress_in_words(environment):
     environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
     row = invoke().output.splitlines()[1]
-    assert row == "0001  two-sum           easy    arrays-hashing   in progress   -           py"
+    assert row == "two-sum           easy    arrays-hashing   in progress   -           py"
 
 
 @pytest.mark.parametrize("spelling", ["in_progress", "in-progress"])
 def test_the_status_filter_takes_in_progress_spelled_either_way(environment, spelling):
     environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
     rows = invoke("--status", spelling).output.splitlines()[1:]
-    assert [row.split()[1] for row in rows] == ["two-sum"]
+    assert [row.split()[0] for row in rows] == ["two-sum"]
 
 
 def test_the_status_filter_does_not_take_the_spaced_words(environment):
@@ -79,7 +79,7 @@ def test_an_unknown_status_is_a_usage_error_that_lists_the_statuses(environment)
 def test_the_status_filter_new_leaves_a_problem_in_progress_out(environment):
     environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
     rows = invoke("--status", "new").output.splitlines()[1:]
-    assert [row.split()[1] for row in rows] == ["lru-cache"]
+    assert [row.split()[0] for row in rows] == ["lru-cache"]
 
 
 def test_attempted_is_written_in_full(environment):
@@ -88,14 +88,14 @@ def test_attempted_is_written_in_full(environment):
     )
     environment.progress.update_attempt(replace(attempt, status=AttemptStatus.FAILED))
     row = invoke().output.splitlines()[1]
-    assert row == "0001  two-sum           easy    arrays-hashing   attempted     -           py"
+    assert row == "two-sum           easy    arrays-hashing   attempted     -           py"
 
 
 def test_long_slugs_and_patterns_are_truncated(environment):
     meta = environment.root / "problems/lru-cache/meta.yaml"
     meta.write_text(meta.read_text().replace("[linked-list]", "[segment-tree-fenwick]"))
     directory = environment.root / "problems/lru-cache"
-    renamed = directory.with_name("0002-least-recently-used-cache")
+    renamed = directory.with_name("least-recently-used-cache")
     directory.rename(renamed)
     (renamed / "meta.yaml").write_text(
         (renamed / "meta.yaml")
@@ -103,12 +103,12 @@ def test_long_slugs_and_patterns_are_truncated(environment):
         .replace("slug: lru-cache", "slug: least-recently-used-cache")
     )
     row = invoke().output.splitlines()[2]
-    assert row.startswith("0002  least-recent...   medium  segment-tre...   ")
+    assert row.startswith("least-recent...   medium  segment-tre...   ")
 
 
 def test_filters(environment):
     assert invoke("--difficulty", "medium").output.splitlines()[1:] == [
-        "0002  lru-cache         medium  linked-list      new           -           py"
+        "lru-cache         medium  linked-list      new           -           py"
     ]
 
 

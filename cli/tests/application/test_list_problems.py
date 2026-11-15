@@ -29,8 +29,14 @@ def slugs(environment, **fields) -> list[str]:
     ]
 
 
-def test_lists_every_problem_in_id_order(environment):
+def test_lists_every_problem_in_the_order_of_the_listing(environment):
     assert slugs(environment) == ["two-sum", "lru-cache"]
+
+
+def test_the_listing_follows_the_track_before_the_slug(environment):
+    meta = environment.root / "problems" / "two-sum" / "meta.yaml"
+    meta.write_text(meta.read_text().replace("track: dsa", "track: debugging"))
+    assert slugs(environment) == ["lru-cache", "two-sum"]
 
 
 def test_untouched_problems_are_new(environment):

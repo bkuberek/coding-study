@@ -51,7 +51,6 @@ def service(**changes) -> ServiceProject:
 
 def meta_of(project: ServiceProject, **changes) -> ProblemMeta:
     fields = {
-        "id": "0001",
         "slug": "rooms-typescript",
         "title": "Rooms",
         "status": ContentStatus.DRAFT,

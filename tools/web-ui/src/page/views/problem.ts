@@ -50,7 +50,7 @@ export function problemView(context: PageContext, slug: string): Cleanup {
 
 function header(problem: ProblemDocument): HTMLElement {
   const status = problemBadge(problem.status, problem.levels);
-  const facts = [problem.id ? `#${problem.id}` : null, problem.track, ...problem.patterns, problem.kind].filter(Boolean);
+  const facts = [problem.track, ...problem.patterns, problem.kind].filter(Boolean);
   return h(
     "header",
     { class: "problem-head" },

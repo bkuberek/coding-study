@@ -14,12 +14,7 @@ def changed_problem_slugs(problems: ProblemFiles, changes: ChangedFiles) -> tupl
         for path in changes.changed_since(CHANGED_BASE)
         if (name := _problem_directory(path, prefix)) is not None
     }
-    selected = (
-        slug
-        for slug, name in zip(problems.slugs(), problems.directory_names(), strict=True)
-        if name in changed_directories
-    )
-    return tuple(dict.fromkeys(selected))
+    return tuple(slug for slug in problems.slugs() if slug in changed_directories)
 
 
 def _problem_directory(path: str, prefix: str) -> str | None:

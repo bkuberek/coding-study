@@ -55,7 +55,7 @@ COMPOSE: dict[str, Any] = {
     },
     "volumes": {"pgdata": None},
 }
-BACKING = BackingServices(COMPOSE, "/content/problems/5903-fixture/services")
+BACKING = BackingServices(COMPOSE, "/content/problems/fixture/services")
 
 
 def plan(**changes: Any) -> StackPlan:

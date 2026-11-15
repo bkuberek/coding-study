@@ -38,7 +38,6 @@ from coding_study.entrypoints.shared import add_command, command_environ, consol
 
 NAME = "list"
 COLUMN_GAP = 2
-ID_WIDTH = 4
 SLUG_WIDTH = 16
 DIFFICULTY_WIDTH = 6
 PATTERN_WIDTH = 15
@@ -64,9 +63,9 @@ REFERENCE_LABELS = {
     Language.RUST: "rs",
 }
 REFS_WIDTH = len(" ".join(REFERENCE_LABELS.values()))
-_WIDTHS = (ID_WIDTH, SLUG_WIDTH, DIFFICULTY_WIDTH, PATTERN_WIDTH, STATUS_WIDTH, DUE_WIDTH)
+_WIDTHS = (SLUG_WIDTH, DIFFICULTY_WIDTH, PATTERN_WIDTH, STATUS_WIDTH, DUE_WIDTH)
 _WIDTHS_WITH_NEEDS = (*_WIDTHS, REFS_WIDTH)
-TABLE_HEADER = ("ID", "SLUG", "DIFF", "PATTERN", "STATUS", "DUE", "REFS")
+TABLE_HEADER = ("SLUG", "DIFF", "PATTERN", "STATUS", "DUE", "REFS")
 NEEDS_HEADER = "NEEDS"
 
 
@@ -158,7 +157,7 @@ def list_command(
     needs_column = any(need_markers(item.summary.meta) for item in problems)
     if needs_column:
         needed = {item.summary.meta.slug: _needs_cell(item) for item in problems}
-        rows = [(*cells, needed.get(cells[1], NO_VALUE)) for cells in rows]
+        rows = [(*cells, needed.get(cells[0], NO_VALUE)) for cells in rows]
     output = console(context)
     if rows:
         header = (*TABLE_HEADER, NEEDS_HEADER) if needs_column else TABLE_HEADER
@@ -235,7 +234,6 @@ def _in_order[Row](problem_filter: ProblemFilter, rows: list[tuple[str, Row]]) -
 def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, JsonValue]:
     meta = problem.summary.meta
     return {
-        "id": meta.id,
         "slug": meta.slug,
         "title": meta.title,
         "track": meta.track.value,
@@ -290,7 +288,6 @@ def _jdk_range_value(meta: ProblemMeta) -> JsonValue:
 def item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue]:
     meta = item.meta
     return {
-        "id": None,
         "slug": meta.slug,
         "title": meta.title,
         "track": meta.track.value,
@@ -328,7 +325,6 @@ def problem_cells(item: ListedProblem) -> tuple[str, ...]:
         _reference_label(language, item) for language in item.summary.reference_languages
     )
     return (
-        meta.id,
         meta.slug,
         meta.difficulty,
         meta.patterns[0] if meta.patterns else NO_VALUE,
@@ -364,10 +360,10 @@ def _footer(note: JdkNote) -> str:
 
 
 def item_cells(item: ListedItem) -> tuple[str, ...]:
-    """Items have no id, pattern or references; their track takes the pattern column."""
+    """Items have no pattern or references; their track takes the pattern column."""
     meta = item.meta
     due = item.due_on.isoformat() if item.due_on else NO_VALUE
-    return (NO_VALUE, meta.slug, meta.difficulty, meta.track, item.status.label, due, NO_VALUE)
+    return (meta.slug, meta.difficulty, meta.track, item.status.label, due, NO_VALUE)
 
 
 def table_row(cells: tuple[str, ...]) -> str:

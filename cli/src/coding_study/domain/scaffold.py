@@ -8,7 +8,7 @@ the author replaces it.
 
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -16,16 +16,12 @@ from coding_study.domain import project_tests
 from coding_study.domain.concurrency import ALLOWED_MODELS, ConcurrencyModel
 from coding_study.domain.errors import UsageError
 from coding_study.domain.labels import Labels
-from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.problem import SLUG_PATTERN, Difficulty, Language, Track
 from coding_study.domain.problem_files import RUBRIC_FILE
 from coding_study.domain.rubric import LLD_RUBRIC_SECTIONS, rubric_skeleton
 from coding_study.domain.taxonomy import PATTERNS, Scope
 from coding_study.domain.virtual_clock import CLOCK_LANGUAGES, GRADED_CLOCK_LANGUAGES
 
-ID_DIGITS = 4
-WORKSPACE_FIRST_ID = 5001
-"""The first id of a problem `cstudy new` writes into a workspace, above any catalog id."""
-SLUG_PATTERN = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 DEFAULT_DIFFICULTY = Difficulty.MEDIUM
 PROBLEM_TRACKS = (Track.DSA, Track.PRACTICAL, Track.LLD, Track.CONCURRENCY, Track.DEBUGGING)
 """Autograded tracks, whose content lives in problems/ (docs/specs/content.md#tracks)."""
@@ -146,7 +142,6 @@ class ScaffoldRequest:
 
 @dataclass(frozen=True, slots=True)
 class Scaffold:
-    id: str
     slug: str
     title: str
     difficulty: Difficulty
@@ -156,12 +151,11 @@ class Scaffold:
 
     @property
     def directory_name(self) -> str:
-        return f"{self.id}-{self.slug}"
+        return self.slug
 
     def placeholders(self) -> Mapping[str, str]:
         words = self.slug.split("-")
         return {
-            "id": self.id,
             "slug": self.slug,
             "title": self.title,
             "title_yaml": json.dumps(self.title),
@@ -181,7 +175,7 @@ class Scaffold:
         return {}
 
 
-def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
+def plan_scaffold(request: ScaffoldRequest) -> Scaffold:
     """Raises UsageError for an invalid slug, title, track or pattern, and for `--virtual-clock`
     or `--stress` on a template that has no such variant."""
     template_directories(request)
@@ -195,7 +189,6 @@ def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
         names = ", ".join(PROBLEM_TRACKS)
         raise UsageError(f"cstudy new scaffolds autograded problems; use a track from {names}")
     return Scaffold(
-        id=problem_id,
         slug=request.slug,
         title=_title(request),
         difficulty=request.difficulty or DEFAULT_DIFFICULTY,
@@ -265,16 +258,6 @@ def _variant_directory(request: ScaffoldRequest) -> str:
             f"cstudy does not write {language} tests on the virtual clock"
         )
     return f"{template}{CLOCK_TEMPLATE_SUFFIX}"
-
-
-def next_problem_id(directory_names: Sequence[str], first_id: int = 1) -> str:
-    """The highest `<id>-` prefix plus one, zero-padded, and at least `first_id`."""
-    ids = [
-        int(prefix)
-        for name in directory_names
-        if (prefix := name.partition("-")[0]).isdigit() and len(prefix) == ID_DIGITS
-    ]
-    return f"{max(max(ids, default=0) + 1, first_id):0{ID_DIGITS}d}"
 
 
 def render_template(text: str, placeholders: Mapping[str, str]) -> str:

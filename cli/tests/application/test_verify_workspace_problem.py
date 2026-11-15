@@ -15,7 +15,7 @@ from tests.fakes import repository_root
 from tests.helpers import SCHEMAS_DIRECTORY
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
-OWN = "problems/5001-two-sum"
+OWN = "problems/two-sum"
 
 
 @pytest.fixture
@@ -28,12 +28,8 @@ def catalog(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:
-    """The practice two-sum, renumbered into a workspace's own problems/."""
-    root = repository_root(tmp_path / "workspace", PRACTICE)
-    (root / "problems" / "two-sum").rename(root / OWN)
-    meta = root / OWN / "meta.yaml"
-    meta.write_text(meta.read_text().replace('id: "0001"', 'id: "5001"'))
-    return root
+    """The practice two-sum, as a workspace's own problem."""
+    return repository_root(tmp_path / "workspace", PRACTICE)
 
 
 def edit_meta(workspace: Path, old: str, new: str) -> None:

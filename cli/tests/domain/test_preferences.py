@@ -18,7 +18,6 @@ DEFAULT_DOCUMENT = {
     "code_intelligence": False,
     "autocomplete": False,
     "problem_columns": [
-        "id",
         "problem",
         "difficulty",
         "pattern",
@@ -110,7 +109,7 @@ def test_chosen_columns_round_trip():
     assert parse_preferences(preferences_document(preferences)) == preferences
 
 
-@pytest.mark.parametrize("value", ["id", None, 3, [3], [True]])
+@pytest.mark.parametrize("value", ["problem", None, 3, [3], [True]])
 def test_columns_that_are_not_a_list_of_names_are_refused(value):
     with pytest.raises(UsageError, match='preference "problem_columns" must be a list'):
         parse_preferences({"problem_columns": value})
@@ -123,11 +122,21 @@ def test_an_unknown_column_is_refused():
 
 @pytest.mark.parametrize("hidden", ["problem", "status"])
 def test_problem_and_status_cannot_be_left_out(hidden):
-    columns = [column for column in ("problem", "status", "id") if column != hidden]
+    columns = [column for column in ("problem", "status", "kind") if column != hidden]
     with pytest.raises(UsageError, match=f'column "{hidden}" cannot be hidden'):
         parse_preferences({"problem_columns": columns})
 
 
 def test_a_column_named_twice_is_refused():
-    with pytest.raises(UsageError, match='column "id" is named twice'):
-        parse_preferences({"problem_columns": ["problem", "status", "id", "id"]})
+    with pytest.raises(UsageError, match='column "kind" is named twice'):
+        parse_preferences({"problem_columns": ["problem", "status", "kind", "kind"]})
+
+
+def test_a_stored_id_column_is_dropped_without_a_word():
+    document = {"problem_columns": ["id", "problem", "status", "sets"]}
+    assert parse_preferences(document).problem_columns == ("problem", "status", "sets")
+
+
+def test_a_stored_id_column_is_not_counted_twice():
+    document = {"problem_columns": ["id", "problem", "status", "id"]}
+    assert parse_preferences(document).problem_columns == ("problem", "status")

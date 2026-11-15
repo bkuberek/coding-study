@@ -1,4 +1,4 @@
-"""Loads autograded problems from problems/<id>-<slug>/ (docs/specs/problem-format.md).
+"""Loads autograded problems from problems/<slug>/ (docs/specs/problem-format.md).
 
 The conformance suite uses the same format under runners/conformance/ (docs/specs/runners.md).
 """
@@ -27,6 +27,7 @@ from coding_study.domain.errors import ContentError, ContentIssue, UnknownProble
 from coding_study.domain.layout import language_of_extension
 from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import (
+    SLUG_PATTERN,
     Language,
     Problem,
     ProblemKind,
@@ -40,7 +41,6 @@ PROBLEMS_DIRECTORY = "problems"
 META_FILE = "meta.yaml"
 TESTS_FILE = "tests.json"
 SOLUTIONS_DIRECTORY = "solutions"
-ID_DIGITS = 4
 
 type _Parser = Callable[[str, str], Any]
 
@@ -74,8 +74,8 @@ class FsProblemRepository:
         return repository
 
     def slugs(self) -> tuple[str, ...]:
-        """The slug of every `<id>-<slug>` directory, valid or not, in directory order."""
-        return tuple(_slug_of(directory.name) or "" for directory in self._problem_directories())
+        """The slug of every problem directory, valid or not, in directory order."""
+        return tuple(directory.name for directory in self._problem_directories())
 
     def load(self, slug: str) -> Problem:
         directory = self._directory_of(slug)
@@ -179,7 +179,7 @@ class FsProblemRepository:
 
     def _directory_of(self, slug: str) -> Path:
         for directory in self._problem_directories():
-            if _slug_of(directory.name) == slug:
+            if directory.name == slug:
                 return directory
         raise UnknownProblemError(slug)
 
@@ -189,7 +189,7 @@ class FsProblemRepository:
         return [
             directory
             for directory in sorted(self._problems.iterdir())
-            if directory.is_dir() and _slug_of(directory.name) is not None
+            if directory.is_dir() and SLUG_PATTERN.fullmatch(directory.name)
         ]
 
     def _validated(
@@ -204,22 +204,11 @@ class FsProblemRepository:
 
     def _check_directory_name(self, directory: Path, meta: ProblemMeta) -> None:
         if directory.name != meta.directory_name:
-            message = (
-                f"directory name {directory.name} does not match id and slug "
-                f"(expected {meta.directory_name})"
-            )
-            raise ContentError([ContentIssue(self._source(directory / META_FILE), "id", message)])
+            message = f"directory name {directory.name} does not match slug {meta.slug}"
+            raise ContentError([ContentIssue(self._source(directory / META_FILE), "slug", message)])
 
     def _source(self, path: Path) -> str:
         return path.relative_to(self._root).as_posix()
-
-
-def _slug_of(directory_name: str) -> str | None:
-    """The slug of an `<id>-<slug>` directory name, or None for any other name."""
-    prefix, separator, slug = directory_name.partition("-")
-    if separator and len(prefix) == ID_DIGITS and prefix.isdigit():
-        return slug
-    return None
 
 
 def _reference_languages(directory: Path, meta: ProblemMeta) -> tuple[Language, ...]:

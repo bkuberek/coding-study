@@ -41,8 +41,6 @@ _UNTOUCHED = ProblemProgress()
 class Candidate:
     """Something `cstudy next` may pick: a problem or a non-autograded item, with its progress."""
 
-    id: str | None
-    """None for non-autograded items, which have no id."""
     slug: str
     track: Track
     difficulty: Difficulty
@@ -59,10 +57,8 @@ class Candidate:
     labels: Labels = field(default_factory=Labels)
     levels: int | None = None
     """A progressive or project problem's last level; None for anything else."""
-
-    @property
-    def autograded(self) -> bool:
-        return self.id is not None
+    autograded: bool = True
+    """False for a non-autograded item."""
 
     @property
     def group(self) -> Group:
@@ -74,19 +70,13 @@ class Candidate:
             return None
         return self.languages[0] if self.project and self.languages else chosen
 
-    @property
-    def sort_id(self) -> str:
-        """The `id` tie-break: the problem id, or the slug of an item."""
-        return self.id or self.slug
-
-    def sort_key(self) -> tuple[int, int, str, str]:
-        """Difficulty, curriculum order, id; the slug makes the order total."""
-        return _DIFFICULTY_ORDER.index(self.difficulty), self.order, self.sort_id, self.slug
+    def sort_key(self) -> tuple[int, int, str]:
+        """Difficulty, curriculum order, slug."""
+        return _DIFFICULTY_ORDER.index(self.difficulty), self.order, self.slug
 
 
 def candidate_of(meta: ProblemMeta, progress: ProblemProgress) -> Candidate:
     return Candidate(
-        id=meta.id,
         slug=meta.slug,
         track=meta.track,
         difficulty=meta.difficulty,
@@ -109,7 +99,6 @@ def _last_level(meta: ProblemMeta) -> int | None:
 
 def item_candidate_of(meta: ItemMeta, progress: ProblemProgress) -> Candidate:
     return Candidate(
-        id=None,
         slug=meta.slug,
         track=meta.track,
         difficulty=meta.difficulty,
@@ -118,6 +107,7 @@ def item_candidate_of(meta: ItemMeta, progress: ProblemProgress) -> Candidate:
         languages=(),
         progress=progress,
         labels=meta.labels,
+        autograded=False,
     )
 
 
@@ -369,14 +359,14 @@ class _Selection:
         mastered = sum(1 for candidate in problems if candidate.progress.is_mastered)
         return GroupHistory(len(problems), mastered, self._attempts[group]).weakness(self._today)
 
-    def _review_rank(self, candidate: Candidate) -> tuple[Fraction, int, str, str]:
-        """Highest priority first, then the smaller interval, then the id."""
+    def _review_rank(self, candidate: Candidate) -> tuple[Fraction, int, str]:
+        """Highest priority first, then the smaller interval, then the slug."""
         entry = candidate.progress.schedule
         assert entry is not None
         interval = max(entry.state.interval_days, 1)
         overdue = Fraction((self._today - entry.due_on).days + 1, interval)
         priority = overdue + self.weakness(candidate.group)
-        return -priority, entry.state.interval_days, candidate.sort_id, candidate.slug
+        return -priority, entry.state.interval_days, candidate.slug
 
     def _group_rank(self, group: Group) -> tuple[Fraction, tuple[int, int, str]]:
         return -self.weakness(group), group.tie_break_key()

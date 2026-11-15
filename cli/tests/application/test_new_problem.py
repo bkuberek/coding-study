@@ -20,7 +20,6 @@ from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, 
 from coding_study.domain.project import RUST_CLOCK_CRATES
 from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.scaffold import (
-    WORKSPACE_FIRST_ID,
     ScaffoldRequest,
     TemplateName,
     render_template,
@@ -64,7 +63,7 @@ def static_errors(environment, slug: str) -> tuple[str, ...]:
 
 
 def test_creates_the_next_problem_directory(environment):
-    assert create(environment).directory == "problems/0003-max-gap"
+    assert create(environment).directory == "problems/max-gap"
 
 
 def test_writes_every_template_file_and_one_empty_reference_per_language(environment):
@@ -73,7 +72,7 @@ def test_writes_every_template_file_and_one_empty_reference_per_language(environ
 
 def test_reference_files_are_empty(environment):
     create(environment)
-    assert environment.workspace.read_text("problems/0003-max-gap/solutions/reference.kt") == ""
+    assert environment.workspace.read_text("problems/max-gap/solutions/reference.kt") == ""
 
 
 def test_the_problem_is_a_draft(environment):
@@ -95,30 +94,28 @@ def test_an_existing_slug_is_a_usage_error_naming_its_directory(environment):
 def workspace_destination(content_root: Path, tmp_path: Path):
     """Bundled content: `cstudy new` writes into the workspace's own problems/."""
     workspace = tmp_path / "workspace"
-    destination = ProblemDestination(
-        FsProblemFiles(workspace), WorkspaceFs(workspace), first_id=WORKSPACE_FIRST_ID
-    )
+    destination = ProblemDestination(FsProblemFiles(workspace), WorkspaceFs(workspace))
     problems = OverlayProblemRepository(FsProblemRepository(content_root), workspace)
     files = OverlayProblemFiles(FsProblemFiles(content_root), workspace)
     overrides = {"problems": problems, "files": files, "new_problems": destination}
     return make_environment(content_root, **overrides), workspace
 
 
-def test_a_workspace_problem_is_numbered_from_the_first_workspace_id(workspace_destination):
+def test_a_workspace_problem_is_named_by_its_slug(workspace_destination):
     environment, _ = workspace_destination
-    assert create(environment).directory == f"problems/{WORKSPACE_FIRST_ID}-max-gap"
+    assert create(environment).directory == "problems/max-gap"
 
 
 def test_a_workspace_problem_is_written_into_the_workspace(workspace_destination):
     environment, workspace = workspace_destination
     create(environment)
-    assert (workspace / "problems" / f"{WORKSPACE_FIRST_ID}-max-gap" / "meta.yaml").is_file()
+    assert (workspace / "problems" / "max-gap" / "meta.yaml").is_file()
 
 
 def test_a_workspace_problem_joins_the_catalog(workspace_destination):
     environment, _ = workspace_destination
     create(environment)
-    assert environment.problems.load("max-gap").meta.id == str(WORKSPACE_FIRST_ID)
+    assert environment.problems.load("max-gap").meta.workspace
 
 
 def test_a_catalog_slug_is_taken_for_a_workspace_problem_too(workspace_destination):
@@ -146,9 +143,11 @@ def test_an_lld_problem_passes_static_checks_after_replacing_the_placeholders(en
 
 
 def test_an_existing_slug_writes_nothing(environment):
+    before = environment.workspace.read_text("problems/two-sum/meta.yaml")
     with pytest.raises(UsageError):
         create(environment, slug="two-sum")
-    assert not environment.workspace.exists("problems/0003-two-sum")
+    assert environment.workspace.read_text("problems/two-sum/meta.yaml") == before
+    assert not environment.workspace.exists("problems/two-sum/TODO")
 
 
 @pytest.mark.parametrize("template", list(TemplateName))
@@ -542,7 +541,7 @@ def test_a_go_clock_project_with_a_real_clock_go_mod_fails_static_checks(environ
     go_mod = environment.root / created.directory / "starter" / "go.mod"
     go_mod.write_text(go_mod.read_text().replace("go 1.25", "go 1.24"))
     assert static_errors(environment, CLOCK_SLUG) == (
-        f'problems/0003-{CLOCK_SLUG}/starter/go.mod: says "go 1.24"; '
+        f'problems/{CLOCK_SLUG}/starter/go.mod: says "go 1.24"; '
         "a virtual-clock project's go.mod says go 1.25",
     )
 
@@ -551,7 +550,7 @@ def test_the_virtual_clock_flag_on_another_template_writes_nothing(environment):
     request = ScaffoldRequest("max-gap", TemplateName.ARRAY, virtual_clock=True)
     with pytest.raises(UsageError, match="applies to the project-"):
         create_problem(environment, TEMPLATES, request)
-    assert not environment.workspace.exists("problems/0003-max-gap")
+    assert not environment.workspace.exists("problems/max-gap")
 
 
 def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_nothing(
@@ -561,7 +560,7 @@ def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_noth
     request = ScaffoldRequest("waiter-project-rust", TemplateName.PROJECT_RUST, virtual_clock=True)
     with pytest.raises(UsageError, match="does not grade the virtual clock"):
         create_problem(environment, TEMPLATES, request)
-    assert not environment.workspace.exists("problems/0003-waiter-project-rust")
+    assert not environment.workspace.exists("problems/waiter-project-rust")
 
 
 # a Python project on the virtual clock
@@ -633,7 +632,7 @@ def test_a_python_clock_starter_without_the_plugin_fails_static_checks(environme
     pyproject = environment.root / created.directory / "starter" / "pyproject.toml"
     pyproject.write_text(pyproject.read_text().replace(" -p cs_support.virtual_clock", ""))
     assert static_errors(environment, PYTHON_CLOCK_SLUG) == (
-        f"problems/0003-{PYTHON_CLOCK_SLUG}/starter/pyproject.toml: loads no "
+        f"problems/{PYTHON_CLOCK_SLUG}/starter/pyproject.toml: loads no "
         "cs_support.virtual_clock; a virtual-clock project's addopts holds "
         "-p cs_support.virtual_clock",
     )
@@ -682,7 +681,7 @@ def test_a_typescript_clock_starter_with_an_edited_helper_fails_static_checks(en
     helper = environment.root / created.directory / "starter" / "tests" / "virtual-clock.ts"
     helper.write_text(helper.read_text() + "// mine\n")
     assert static_errors(environment, TYPESCRIPT_CLOCK_SLUG) == (
-        f"problems/0003-{TYPESCRIPT_CLOCK_SLUG}/starter/tests/virtual-clock.ts: is not the clock "
+        f"problems/{TYPESCRIPT_CLOCK_SLUG}/starter/tests/virtual-clock.ts: is not the clock "
         "helper that the template writes; copy runners/typescript/lib/virtual-clock.ts again",
     )
 
@@ -732,7 +731,7 @@ def test_a_kotlin_clock_starter_without_the_coroutines_plugin_fails_static_check
     build = environment.root / created.directory / "starter" / "build.gradle.kts"
     build.write_text(jvm_build_files(created.slug, Language.KOTLIN)["build.gradle.kts"])
     assert static_errors(environment, KOTLIN_CLOCK_SLUG) == (
-        f"problems/0003-{KOTLIN_CLOCK_SLUG}/starter/build.gradle.kts: differs from what "
+        f"problems/{KOTLIN_CLOCK_SLUG}/starter/build.gradle.kts: differs from what "
         "cstudy new --from-template project-kotlin --virtual-clock writes",
     )
 
@@ -778,7 +777,7 @@ def test_a_rust_clock_starter_without_tokio_fails_static_checks(environment):
     manifest = environment.root / created.directory / "starter" / "Cargo.toml"
     manifest.write_text(manifest.read_text().partition("[dependencies]")[0])
     assert static_errors(environment, RUST_CLOCK_SLUG) == (
-        f"problems/0003-{RUST_CLOCK_SLUG}/starter/Cargo.toml: a virtual-clock project's "
+        f"problems/{RUST_CLOCK_SLUG}/starter/Cargo.toml: a virtual-clock project's "
         f"[dependencies] needs tokio = {RUST_CLOCK_CRATES['tokio']}",
     )
 
@@ -951,7 +950,7 @@ def test_a_stress_project_writes_the_build_files_of_its_base_template(environmen
     """Check S15 compares them with the template's, so the stress overlay must not alter them."""
     created = create_stress(environment, template, clock)
     request = ScaffoldRequest(STRESS_SLUG, template, virtual_clock=clock)
-    placeholders = scaffold.plan_scaffold(request, "0003").placeholders()
+    placeholders = scaffold.plan_scaffold(request).placeholders()
     base = scaffold.template_directories(request)[0]
     changed = {f"starter/{entry_of(template)}", "starter/README.md"}
     for name, text in TEMPLATES.files(base).items():
@@ -991,4 +990,4 @@ def test_stress_where_it_does_not_apply_writes_nothing(environment, template, cl
     request = ScaffoldRequest("tally-counter", template, virtual_clock=clock, stress=True)
     with pytest.raises(UsageError, match=re.escape(message)):
         create_problem(environment, TEMPLATES, request)
-    assert not environment.workspace.exists("problems/0003-tally-counter")
+    assert not environment.workspace.exists("problems/tally-counter")

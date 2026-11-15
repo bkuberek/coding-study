@@ -11,7 +11,6 @@ FORMAT_KEY = "format"
 THEME_KEY = "theme"
 COLUMNS_KEY = "problem_columns"
 PROBLEM_COLUMNS = (
-    "id",
     "problem",
     "difficulty",
     "pattern",
@@ -26,7 +25,6 @@ PROBLEM_COLUMNS = (
 )
 """The columns the Problems view's table can show, in its order."""
 DEFAULT_PROBLEM_COLUMNS = (
-    "id",
     "problem",
     "difficulty",
     "pattern",
@@ -36,6 +34,8 @@ DEFAULT_PROBLEM_COLUMNS = (
     "sets",
 )
 REQUIRED_PROBLEM_COLUMNS = ("problem", "status")
+RETIRED_PROBLEM_COLUMNS = ("id",)
+"""Columns an earlier file may still name: the reader drops them without a word."""
 
 
 class Theme(StrEnum):
@@ -111,8 +111,9 @@ def _theme(value: object) -> Theme:
 
 
 def _columns(value: object) -> tuple[str, ...]:
-    """A list of known columns, each once, that holds the ones that cannot be hidden."""
-    columns = _column_names(value)
+    """A list of known columns, each once, that holds the ones that cannot be hidden; retired
+    columns are dropped."""
+    columns = tuple(name for name in _column_names(value) if name not in RETIRED_PROBLEM_COLUMNS)
     for column in columns:
         if column not in PROBLEM_COLUMNS:
             raise UsageError(f'unknown column "{column}"')

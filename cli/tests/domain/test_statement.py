@@ -29,7 +29,6 @@ from coding_study.domain.type_dsl import ArrayType, ListType, Scalar, ScalarType
 
 INT = ScalarType(Scalar.INT)
 META = ProblemMeta(
-    id="0001",
     slug="two-sum",
     title="Two Sum",
     status=ContentStatus.READY,

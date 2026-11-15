@@ -110,7 +110,7 @@ def test_checker_without_check_is_a_content_error(loader, tmp_path):
 
 def test_modules_with_the_same_file_name_stay_separate(loader, tmp_path):
     first = write(tmp_path, "generator.py", "def generate(rng, n):\n    return {'a': 1}\n")
-    other = tmp_path / "problems" / "0002-other" / "generator.py"
+    other = tmp_path / "problems" / "other" / "generator.py"
     other.parent.mkdir(parents=True)
     other.write_text("def generate(rng, n):\n    return {'a': 2}\n")
     results = [loader.generator(path).generate(1, 1) for path in (first, other)]

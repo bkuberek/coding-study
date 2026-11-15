@@ -22,7 +22,7 @@ SOURCES = {
     "jvm/settings.gradle.kts": 'rootProject.name = "cs-jvm"\n',
     "jvm/runner/build/libs/runner.jar": "",
     "jvm/.gradle/state": "",
-    "conformance/9001-x/meta.yaml": "id: '9001'\n",
+    "conformance/x/meta.yaml": "slug: x\n",
 }
 OLD_NS = 1_000_000_000
 LAUNCHER = ".cs/runtime/ide/cstudy-launcher.jar"

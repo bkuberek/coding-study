@@ -18,7 +18,7 @@ TODAY = date(2026, 10, 24)
 
 
 def candidate(slug: str, track: Track = Track.DSA) -> Candidate:
-    return Candidate("0001", slug, track, Difficulty.EASY, patterns=("arrays-hashing",))
+    return Candidate(slug, track, Difficulty.EASY, patterns=("arrays-hashing",))
 
 
 def open_attempt(

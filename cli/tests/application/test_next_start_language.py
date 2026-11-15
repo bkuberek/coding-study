@@ -9,10 +9,10 @@ from tests.helpers import FIXTURE_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 
 PROJECT = Candidate(
-    "0001", PROJECT_SLUG, Track.PRACTICAL, Difficulty.MEDIUM, (), 1, languages=(Language.PYTHON,)
+    PROJECT_SLUG, Track.PRACTICAL, Difficulty.MEDIUM, (), 1, languages=(Language.PYTHON,)
 )
-TWO_SUM = Candidate("0001", "two-sum", Track.DSA, Difficulty.EASY)
-ITEM = Candidate(None, "url-shortener", Track.SYSTEM_DESIGN, Difficulty.MEDIUM)
+TWO_SUM = Candidate("two-sum", Track.DSA, Difficulty.EASY)
+ITEM = Candidate("url-shortener", Track.SYSTEM_DESIGN, Difficulty.MEDIUM, autograded=False)
 KOTLIN = Config(default_lang=Language.KOTLIN)
 
 

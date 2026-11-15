@@ -37,11 +37,9 @@ class ProblemDestination:
     (docs/specs/installation-and-workspaces.md#your-own-problems)."""
 
     files: ProblemFiles
-    """The problems already in this destination; their ids number the new one."""
+    """The problems already in this destination, and the directory the new one goes to."""
     writer: Workspace
-    """Writes paths relative to the destination root, e.g. `problems/0004-max-gap/meta.yaml`."""
-    first_id: int = 1
-    """The lowest id a new problem here gets."""
+    """Writes paths relative to the destination root, e.g. `problems/max-gap/meta.yaml`."""
 
 
 @dataclass(frozen=True, slots=True)

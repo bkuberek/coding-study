@@ -1,5 +1,4 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
-id: "0190"
 slug: bounded-blocking-queue
 title: Bounded Blocking Queue
 status: ready

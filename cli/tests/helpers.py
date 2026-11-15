@@ -78,6 +78,11 @@ def sequential_conformance_suite() -> ConformanceSuite:
     return replace(suite, expectations=expectations)
 
 
+def numbered_directory(number: int, slug: str) -> str:
+    """A folder name of the retired form `NNNN-<slug>`."""
+    return f"{number:04d}-{slug}"
+
+
 def copy_catalog_problems(destination: Path, directory_names: tuple[str, ...]) -> Path:
     """`destination` holding copies of the named problem directories of the real catalog."""
     for name in directory_names:

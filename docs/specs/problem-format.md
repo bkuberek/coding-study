@@ -37,8 +37,7 @@ problems/two-sum/
 
 | Rule | Detail |
 |------|--------|
-| Directory name | `<id>-<slug>` |
-| `id` | 4-digit zero-padded string, unique, assigned by `cstudy new` (max + 1); display and ordering only |
+| Directory name | `<slug>`, so `problems/<slug>/` |
 | `slug` | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, unique; the stable key in `progress.db`; immutable once merged |
 | `snake_slug` | `slug` with `-` replaced by `_`; used for Python modules and JVM packages |
 | Reference files | `solutions/<approach-id>.<ext>`, ext in `py`, `ts`, `java`, `kt`, `go`, `rs`; every file maps to a declared approach. A [project problem](#project-problems) has a directory `solutions/<approach-id>/` instead, and a `starter/` tree |
@@ -49,8 +48,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `id` | string | yes | Matches directory prefix |
-| `slug` | string | yes | Matches directory suffix |
+| `slug` | string | yes | Matches the directory name |
 | `title` | string | yes | Original title (common names such as "Two Sum" are allowed) |
 | `status` | `draft` or `ready` | yes | `ready` requirements: [authoring](authoring.md#ready-criteria) |
 | `difficulty` | `easy`, `medium`, `hard` | yes | |
@@ -113,7 +111,7 @@ A problem may need a tool that one language's standard library lacks, such as SH
 | Files | `helpers/<name>.<ext>`, any name, with the extension of a language in `languages` (`py`, `ts`, `java`, `kt`, `go`, `rs`); at most one per language. A file for another language, or a second one for the same language, is an error ([S8](authoring.md#static)). A hidden file, whose name starts with `.` (`.DS_Store`), is ignored |
 | Where | A generated starter only: `stub: buggy` and project problems have none, since their starter is a file or a tree of their own |
 | Text | Code that can follow the stub at the top level of its file: no `package` line, which the stub's file already has, and no import, since Go, Java and Kotlin take none after a declaration; a helper there writes qualified names instead (`java.security.MessageDigest`), and `sha256.rs` needs no `use` line |
-| References | References are copied unchanged, so a reference that uses the helper carries its own copy. A problem's content test can hold the copy equal to the helper, as `0322`'s does |
+| References | References are copied unchanged, so a reference that uses the helper carries its own copy. A problem's content test can hold the copy equal to the helper, as `content-addressed-store`'s does |
 | Existing files | Only a new start writes the helper; `cstudy` never rewrites a practice file, as for the [header](#starter-header) |
 
 ### JDK range
@@ -533,7 +531,7 @@ problems/bank-project-python/
 The TypeScript pilot has the same shape, with `package.json`, `tsconfig.json`, `src/bank.ts`, `src/models.ts` and `tests/`. A Go project has `go.mod` at its root, the entry type in a `.go` file such as `bank.go`, and `tests/`. A Java project is a Gradle project of its own:
 
 ```text
-problems/<id>-bank-project-java/
+problems/bank-project-java/
   meta.yaml                                  # project: {entry: bank.Bank, tests: src/test/java/bank}
   starter/
     README.md
@@ -551,7 +549,6 @@ A Kotlin project has `src/main/kotlin/` and `src/test/kotlin/` instead. A Rust p
 
 ```yaml
 # yaml-language-server: $schema=../../schemas/meta.schema.json
-id: "0249"
 slug: bank-project-python
 title: Bank Project (Python)
 status: draft
@@ -1368,11 +1365,10 @@ The stub header gains one line naming the model, for example `Concurrency: threa
 
 ### Worked example: bounded-blocking-queue
 
-`problems/0190-bounded-blocking-queue/meta.yaml` (the id is whatever `cstudy new` assigns):
+`problems/bounded-blocking-queue/meta.yaml`:
 
 ```yaml
 # yaml-language-server: $schema=../../schemas/meta.schema.json
-id: "0190"
 slug: bounded-blocking-queue
 title: Bounded Blocking Queue
 status: ready
@@ -1689,7 +1685,6 @@ perf:
 
 ```yaml
 # yaml-language-server: $schema=../../schemas/meta.schema.json
-id: "0001"
 slug: two-sum
 title: Two Sum
 status: ready
@@ -1858,7 +1853,6 @@ pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
 ## Worked example: lru-cache
 
 ```yaml
-id: "0002"
 slug: lru-cache
 title: LRU Cache
 status: ready

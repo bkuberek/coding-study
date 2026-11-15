@@ -73,7 +73,7 @@ def test_an_unchanged_file_is_not_read_again(root):
     problems(root).list_summaries()
     meta = root / TWO_SUM_META
     keep_stamp(meta, lambda: rewrite(meta, "status: ready", "status: draft"))
-    [two_sum, _] = problems(root).list_summaries()
+    [_, two_sum] = problems(root).list_summaries()
     assert two_sum.meta.status is ContentStatus.READY
 
 
@@ -82,7 +82,7 @@ def test_a_changed_modification_time_is_read_again(root):
     meta = root / TWO_SUM_META
     rewrite(meta, "status: ready", "status: draft")
     touch_forward(meta)
-    [two_sum, _] = problems(root).list_summaries()
+    [_, two_sum] = problems(root).list_summaries()
     assert two_sum.meta.status is ContentStatus.DRAFT
 
 
@@ -92,17 +92,16 @@ def test_a_changed_size_is_read_again(root):
     stamp = meta.stat()
     rewrite(meta, "status: ready", "status: draft\n# longer")
     os.utime(meta, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
-    [two_sum, _] = problems(root).list_summaries()
+    [_, two_sum] = problems(root).list_summaries()
     assert two_sum.meta.status is ContentStatus.DRAFT
 
 
 def test_an_added_problem_is_listed(root):
     problems(root).list_summaries()
-    shutil.copytree(root / "problems" / "two-sum", root / "problems" / "0003-three-sum")
-    rewrite(root / "problems" / "0003-three-sum" / "meta.yaml", "two-sum", "three-sum")
-    rewrite(root / "problems" / "0003-three-sum" / "meta.yaml", 'id: "0001"', 'id: "0003"')
+    shutil.copytree(root / "problems" / "two-sum", root / "problems" / "three-sum")
+    rewrite(root / "problems" / "three-sum" / "meta.yaml", "two-sum", "three-sum")
     slugs = [summary.meta.slug for summary in problems(root).list_summaries()]
-    assert slugs == ["two-sum", "lru-cache", "three-sum"]
+    assert slugs == ["lru-cache", "three-sum", "two-sum"]
 
 
 def test_a_removed_problem_is_dropped(root):
@@ -116,7 +115,7 @@ def test_a_new_reference_file_is_listed(root):
     solutions = root / "problems" / "two-sum" / "solutions"
     solutions.mkdir()
     (solutions / "hash-map.py").write_text("")
-    [two_sum, _] = problems(root).list_summaries()
+    [_, two_sum] = problems(root).list_summaries()
     assert [str(language) for language in two_sum.reference_languages] == ["python"]
 
 

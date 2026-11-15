@@ -738,8 +738,8 @@ def test_only_a_generated_name_is_a_stack_name(name):
     [
         run_stack_name(StackKind.TEST, 41, "abc"),
         run_stack_name(StackKind.GRADED, 41, "abc"),
-        dev_stack_name("5901-fixture-rooms", "d1g3st"),
-        install_stack_name("5901-fixture-rooms", "d1g3st"),
+        dev_stack_name("fixture-rooms", "d1g3st"),
+        install_stack_name("fixture-rooms", "d1g3st"),
         "cstudy-t-41-abc_sandbox",
     ],
 )

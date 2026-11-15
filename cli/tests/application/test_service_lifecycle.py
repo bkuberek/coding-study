@@ -778,7 +778,7 @@ def with_services(tmp_path, engine, compose_text: str = COMPOSE_TEXT, **project:
     document["project"]["requires"]["services"] = ["postgres"]  # type: ignore[index]
     document["project"]["requires"]["sizes"]["images_mb"]["postgres"] = 117  # type: ignore[index]
     write_problem(root, document)
-    compose = root / "problems" / f"0901-{SLUG}" / "services" / "compose.yaml"
+    compose = root / "problems" / f"{SLUG}" / "services" / "compose.yaml"
     compose.parent.mkdir()
     compose.write_text(compose_text)
     environment = make_environment(root, sandbox=engine)
@@ -801,7 +801,7 @@ def test_a_stack_copies_bind_mounts_from_the_compose_files_own_folder(tmp_path, 
     plan = dev_stack_plan(environment, problem_of(environment))
 
     assert plan.backing is not None
-    assert plan.backing.folder.endswith(f"0901-{SLUG}/services")
+    assert plan.backing.folder.endswith(f"{SLUG}/services")
 
 
 def test_finish_pulls_each_backing_services_image_too(tmp_path, engine):

@@ -64,7 +64,6 @@ def project_meta(
     clock: ProjectClock | None = None,
 ) -> ProblemMeta:
     return ProblemMeta(
-        id="0001",
         slug=f"bank-project-{language}",
         title="Bank Project",
         status=ContentStatus.DRAFT,

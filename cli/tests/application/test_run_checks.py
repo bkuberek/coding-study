@@ -33,7 +33,7 @@ from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_en
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
-OWN_PROBLEM = "problems/5001-two-sum"
+OWN_PROBLEM = "problems/two-sum"
 
 
 @pytest.fixture
@@ -124,9 +124,6 @@ def overlay(tmp_path) -> Environment:
     shutil.rmtree(catalog / "problems" / "two-sum")
     workspace = repository_root(tmp_path / "workspace", PRACTICE)
     shutil.rmtree(workspace / "problems" / "lru-cache")
-    (workspace / "problems" / "two-sum").rename(workspace / OWN_PROBLEM)
-    meta = workspace / OWN_PROBLEM / "meta.yaml"
-    meta.write_text(meta.read_text().replace('id: "0001"', 'id: "5001"'))
     return make_environment(
         workspace,
         content_root=catalog,

@@ -7,7 +7,7 @@ from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.problem import Language, ProblemKind, ProblemSummary
 from tests.fakes import repository_root
-from tests.helpers import PROJECT_PROBLEMS
+from tests.helpers import PROJECT_PROBLEMS, numbered_directory
 
 TWO_SUM = Path("problems/two-sum")
 
@@ -33,7 +33,7 @@ def test_unknown_slug_is_reported(content_root):
         FsProblemRepository(content_root).load("three-sum")
 
 
-def test_slug_must_match_the_whole_directory_suffix(content_root):
+def test_slug_must_match_the_whole_directory_name(content_root):
     with pytest.raises(UnknownProblemError):
         FsProblemRepository(content_root).load("sum")
 
@@ -61,9 +61,9 @@ def test_meta_and_tests_violations_are_reported_together(content_root):
 
 
 def test_malformed_yaml_reports_line(content_root):
-    (content_root / TWO_SUM / "meta.yaml").write_text('id: "0001"\nslug: [two-sum\n')
+    (content_root / TWO_SUM / "meta.yaml").write_text("slug: [two-sum\n")
     [issue] = issues_for(content_root)
-    assert issue.startswith(f"{TWO_SUM}/meta.yaml: line 3")
+    assert issue.startswith(f"{TWO_SUM}/meta.yaml: line 2")
 
 
 def test_malformed_json_reports_line_and_column(content_root):
@@ -77,12 +77,16 @@ def test_missing_file_is_reported(content_root):
     assert issues_for(content_root) == [f"{TWO_SUM}/tests.json: file not found"]
 
 
-def test_directory_name_must_match_id_and_slug(content_root):
-    (content_root / TWO_SUM).rename(content_root / "problems" / "0007-two-sum")
-    assert issues_for(content_root) == [
-        "problems/0007-two-sum/meta.yaml: id: directory name 0007-two-sum does not match "
-        "id and slug (expected two-sum)"
+def test_directory_name_must_match_the_slug(content_root):
+    (content_root / TWO_SUM).rename(content_root / "problems" / "word-break")
+    assert issues_for(content_root, "word-break") == [
+        "problems/word-break/meta.yaml: slug: directory name word-break does not match slug two-sum"
     ]
+
+
+def test_a_numbered_directory_is_not_a_problem(content_root):
+    (content_root / TWO_SUM).rename(content_root / "problems" / numbered_directory(7, "two-sum"))
+    assert FsProblemRepository(content_root).slugs() == ("lru-cache",)
 
 
 def test_invalid_type_dsl_is_a_content_error(content_root):
@@ -98,12 +102,12 @@ def slugs(summaries: tuple[ProblemSummary, ...]) -> list[str]:
     return [summary.meta.slug for summary in summaries]
 
 
-def test_lists_problems_in_id_order(content_root):
-    assert slugs(FsProblemRepository(content_root).list_summaries()) == ["two-sum", "lru-cache"]
+def test_lists_problems_in_directory_name_order(content_root):
+    assert slugs(FsProblemRepository(content_root).list_summaries()) == ["lru-cache", "two-sum"]
 
 
 def test_summary_names_the_problem_directory(content_root):
-    [two_sum, _] = FsProblemRepository(content_root).list_summaries()
+    [_, two_sum] = FsProblemRepository(content_root).list_summaries()
     assert two_sum.directory == "problems/two-sum"
 
 
@@ -112,18 +116,18 @@ def test_reference_languages_come_from_files_of_declared_approaches(content_root
     solutions.mkdir()
     for name in ("hash-map.kt", "brute-force.py", "explanation.md", "unknown.ts"):
         (solutions / name).write_text("")
-    [two_sum, _] = FsProblemRepository(content_root).list_summaries()
+    [_, two_sum] = FsProblemRepository(content_root).list_summaries()
     assert two_sum.reference_languages == (Language.PYTHON, Language.KOTLIN)
 
 
 def test_problem_without_solutions_has_no_reference_languages(content_root):
-    [two_sum, _] = FsProblemRepository(content_root).list_summaries()
+    [_, two_sum] = FsProblemRepository(content_root).list_summaries()
     assert two_sum.reference_languages == ()
 
 
 def test_listing_skips_entries_that_are_not_problem_directories(content_root):
     (content_root / "problems" / "README.md").write_text("")
-    (content_root / "problems" / "drafts").mkdir()
+    (content_root / "problems" / numbered_directory(7, "drafts")).mkdir()
     assert len(FsProblemRepository(content_root).list_summaries()) == 2
 
 

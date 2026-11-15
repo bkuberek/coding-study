@@ -53,7 +53,7 @@ def finish(environment, slug: str, status: AttemptStatus = AttemptStatus.PASSED)
 
 def listed(*arguments: str) -> list[str]:
     output = runner.invoke(cli.app, ["list", *arguments]).output
-    return [line.split()[1] for line in output.splitlines()[1:] if not line.startswith("missing")]
+    return [line.split()[0] for line in output.splitlines()[1:] if not line.startswith("missing")]
 
 
 def test_set_with_no_subcommand_shows_its_help(environment):
@@ -209,7 +209,7 @@ def test_an_unknown_set_exits_3(environment):
 def test_show_prints_the_rows_in_the_set_s_order(environment):
     looped("url-shortener", "two-sum")
     lines = invoke("show", LOOP).output.splitlines()
-    assert [line.split()[2] for line in lines if line[:4].strip().isdigit()] == [
+    assert [line.split()[1] for line in lines if line[:4].strip().isdigit()] == [
         "url-shortener",
         "two-sum",
     ]

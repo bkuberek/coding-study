@@ -19,13 +19,13 @@ def test_a_changed_file_selects_its_problem(content_root):
     assert slugs(content_root, "problems/lru-cache/tests.json") == ("lru-cache",)
 
 
-def test_problems_come_in_directory_order_once_each(content_root):
+def test_problems_come_in_name_order_once_each(content_root):
     changed = (
         "problems/lru-cache/meta.yaml",
         "problems/two-sum/meta.yaml",
         "problems/lru-cache/tests.json",
     )
-    assert slugs(content_root, *changed) == ("two-sum", "lru-cache")
+    assert slugs(content_root, *changed) == ("lru-cache", "two-sum")
 
 
 def test_files_outside_problem_directories_select_nothing(content_root):
@@ -33,4 +33,4 @@ def test_files_outside_problem_directories_select_nothing(content_root):
 
 
 def test_deleted_problems_select_nothing(content_root):
-    assert slugs(content_root, "problems/0009-gone/meta.yaml") == ()
+    assert slugs(content_root, "problems/gone/meta.yaml") == ()

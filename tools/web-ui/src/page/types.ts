@@ -60,7 +60,6 @@ export interface AttemptRef {
 
 /** An entry of `cstudy list --json`. */
 export interface ListEntry {
-  readonly id: string | null;
   readonly slug: string;
   readonly title: string;
   readonly track: string;

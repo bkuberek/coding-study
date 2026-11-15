@@ -10,7 +10,6 @@ from coding_study.domain.scaffold import (
     Scaffold,
     ScaffoldRequest,
     TemplateName,
-    next_problem_id,
     plan_scaffold,
     render_template,
     template_directories,
@@ -19,27 +18,7 @@ from coding_study.domain.taxonomy import Scope
 
 
 def plan(**fields: object) -> Scaffold:
-    return plan_scaffold(ScaffoldRequest(**fields), "0004")  # type: ignore[arg-type]
-
-
-def test_the_first_problem_gets_id_0001():
-    assert next_problem_id(()) == "0001"
-
-
-def test_the_next_id_follows_the_highest():
-    assert next_problem_id(("two-sum", "0009-word-break", "invert-binary-tree")) == "0010"
-
-
-def test_directories_without_an_id_are_ignored():
-    assert next_problem_id(("notes", "lru-cache")) == "0003"
-
-
-def test_the_first_id_applies_to_an_empty_destination():
-    assert next_problem_id((), first_id=5001) == "5001"
-
-
-def test_ids_above_the_first_id_keep_counting():
-    assert next_problem_id(("5001-pair-sum", "5007-max-gap"), first_id=5001) == "5008"
+    return plan_scaffold(ScaffoldRequest(**fields))  # type: ignore[arg-type]
 
 
 def test_the_title_comes_from_the_slug():
@@ -145,7 +124,7 @@ def test_tracks_outside_problems_are_usage_errors():
 
 
 def test_the_directory_name_joins_id_and_slug():
-    assert plan(slug="two-sum").directory_name == "0004-two-sum"
+    assert plan(slug="two-sum").directory_name == "two-sum"
 
 
 def placeholders(**fields: object) -> dict[str, str]:

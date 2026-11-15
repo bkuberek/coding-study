@@ -28,7 +28,6 @@ from coding_study.domain.signature import ClassSignature
 
 LEVELS = (Level(1, "Set and get"), Level(2, "Delete"), Level(3, "Prefix scans"))
 META = ProblemMeta(
-    id="0001",
     slug="level-store",
     title="Level Store",
     status=ContentStatus.DRAFT,

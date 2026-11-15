@@ -161,8 +161,8 @@ def conformance_root(tmp_path):
     (tmp_path / "problems").mkdir()
     fixtures = tmp_path / "runners" / "conformance"
     shutil.copytree(
-        CONFORMANCE / f"9026-{CONFORMANCE_JAVA_PROJECT}",
-        fixtures / f"9026-{CONFORMANCE_JAVA_PROJECT}",
+        CONFORMANCE / f"{CONFORMANCE_JAVA_PROJECT}",
+        fixtures / f"{CONFORMANCE_JAVA_PROJECT}",
     )
     expectations = json.loads((CONFORMANCE / "expectations.json").read_text())
     expectations["expectations"] = [

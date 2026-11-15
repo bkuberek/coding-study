@@ -4,15 +4,10 @@
   "description": "Metadata, signature, comparator, approaches and performance settings of one autograded problem. Spec: docs/specs/problem-format.md#metayaml",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "slug", "title", "status", "difficulty", "track", "kind", "comparator", "approaches"],
+  "required": ["slug", "title", "status", "difficulty", "track", "kind", "comparator", "approaches"],
   "properties": {
-    "id": {
-      "description": "4-digit zero-padded id; must match the directory prefix",
-      "type": "string",
-      "pattern": "^[0-9]{4}$"
-    },
     "slug": {
-      "description": "Stable key in progress.db; must match the directory suffix",
+      "description": "Stable key in progress.db; must match the directory name",
       "$ref": "#/$defs/slug"
     },
     "title": { "type": "string", "minLength": 1 },

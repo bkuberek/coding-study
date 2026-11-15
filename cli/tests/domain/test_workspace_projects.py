@@ -36,7 +36,6 @@ from coding_study.domain.workspace_projects import (
 
 BANK = "projects/bank-project-python"
 META = ProblemMeta(
-    id="0249",
     slug="bank-project-python",
     title="Bank Project (Python)",
     status=ContentStatus.DRAFT,

@@ -19,7 +19,6 @@ const STATS: StatsDocument = {
 
 function entry(slug: string, status: string, due_on: string | null): ListEntry {
   return {
-    id: "0001",
     slug,
     title: slug,
     track: "dsa",

@@ -368,8 +368,7 @@ def test_a_reference_outside_its_approachs_languages_is_an_error(problems):
     approaches = (meta.approaches[0], hash_map)
     problem = with_meta(problems, track=Track.DEBUGGING, approaches=approaches)
     assert errors(content(problems, problem=problem)) == [
-        "problems/two-sum/solutions/hash-map.py: "
-        "its language is not in the approach's languages"
+        "problems/two-sum/solutions/hash-map.py: its language is not in the approach's languages"
     ]
 
 

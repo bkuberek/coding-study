@@ -11,7 +11,6 @@ from coding_study.adapters.environment_factory import (
 from coding_study.adapters.locations import WorkspaceError
 from coding_study.domain.attempts import Grade
 from coding_study.domain.errors import ConfigError
-from coding_study.domain.scaffold import WORKSPACE_FIRST_ID
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.helpers import SCHEMAS_DIRECTORY, mark_workspace
 
@@ -83,14 +82,14 @@ def test_outside_a_workspace(content, tmp_path):
 
 
 def test_a_workspace_problem_overlays_the_catalog(environ, workspace, tmp_path):
-    (workspace / "problems" / "5001-pair-sum").mkdir(parents=True)
+    (workspace / "problems" / "pair-sum").mkdir(parents=True)
     environment = load_environment(tmp_path, environ, tmp_path)
     assert environment.files.slugs() == ("pair-sum",)
 
 
 def test_an_explicit_content_root_is_where_new_problems_go(environ, content, tmp_path):
     destination = load_environment(tmp_path, environ, tmp_path).new_problems
-    assert (destination.writer.absolute("x"), destination.first_id) == (content / "x", 1)
+    assert destination.writer.absolute("x") == content / "x"
 
 
 def test_bundled_content_sends_new_problems_to_the_workspace(
@@ -102,10 +101,7 @@ def test_bundled_content_sends_new_problems_to_the_workspace(
     monkeypatch.setattr("coding_study.adapters.locations.PACKAGE_DIRECTORY", package)
     environment = load_environment(tmp_path, {"CSTUDY_WORKSPACE": str(workspace)}, tmp_path)
     destination = environment.new_problems
-    assert (destination.writer.absolute("x"), destination.first_id) == (
-        workspace / "x",
-        WORKSPACE_FIRST_ID,
-    )
+    assert destination.writer.absolute("x") == workspace / "x"
 
 
 def test_the_catalog_environment_works_outside_a_workspace(content, tmp_path):

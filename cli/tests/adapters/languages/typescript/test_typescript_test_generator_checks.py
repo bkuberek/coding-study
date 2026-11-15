@@ -104,7 +104,7 @@ def load(directory: Path, root: Path) -> Problem:
     """The problem in `directory`, read from a repository holding only it and the schemas."""
     shutil.copytree(SCHEMAS_DIRECTORY, root / "schemas")
     shutil.copytree(directory, root / "problems" / directory.name)
-    return FsProblemRepository(root).load(directory.name.split("-", 1)[1])
+    return FsProblemRepository(root).load(directory.name)
 
 
 def level_files(problem: Problem) -> dict[str, str]:

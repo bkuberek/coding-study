@@ -1,5 +1,4 @@
 # yaml-language-server: $schema=../../schemas/meta.schema.json
-id: "{{id}}"
 slug: {{slug}}
 title: {{title_yaml}}
 status: draft

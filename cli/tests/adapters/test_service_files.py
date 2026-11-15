@@ -26,7 +26,7 @@ def root(tmp_path):
 
 
 def problem_directory(root):
-    return root / "problems" / f"0901-{SLUG}"
+    return root / "problems" / f"{SLUG}"
 
 
 def loaded(root) -> ProjectFiles:

@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.domain.errors import UnknownProblemError
+from tests.helpers import numbered_directory
 
 
 @pytest.fixture
@@ -15,27 +16,45 @@ def files(tmp_path: Path) -> FsProblemFiles:
     (problem / "solutions" / "brute-force.py").write_text("x = 2\n")
     (problem / "solutions" / "nested").mkdir()
     (tmp_path / "problems" / "lru-cache").mkdir()
-    (tmp_path / "problems" / "notes").mkdir()
     (tmp_path / "problems" / "README.md").write_text("")
     return FsProblemFiles(tmp_path)
 
 
-def test_slugs_of_problem_directories_in_order(files):
-    assert files.slugs() == ("two-sum", "lru-cache")
+def test_slugs_of_problem_directories_in_name_order(files):
+    assert files.slugs() == ("lru-cache", "two-sum")
 
 
-def test_directory_names_in_order(files):
-    assert files.directory_names() == ("two-sum", "lru-cache")
+def test_a_directory_that_is_not_a_slug_is_misnamed_not_a_problem(files, tmp_path):
+    (tmp_path / "problems" / numbered_directory(3, "word-break")).mkdir()
+    assert files.slugs() == ("lru-cache", "two-sum")
+    assert [found.name for found in files.misnamed()] == [numbered_directory(3, "word-break")]
 
 
-def test_duplicate_slugs_are_listed_once_per_directory(files, tmp_path):
-    (tmp_path / "problems" / "0003-two-sum").mkdir()
-    assert files.slugs() == ("two-sum", "lru-cache", "two-sum")
+def test_a_numbered_directory_is_renamed_by_the_slug_of_its_meta(files, tmp_path):
+    numbered = tmp_path / "problems" / numbered_directory(3, "word-break")
+    numbered.mkdir()
+    (numbered / "meta.yaml").write_text("slug: break-words\n")
+    assert files.misnamed()[0].rename("problems") == (
+        f"mv problems/{numbered_directory(3, 'word-break')} problems/break-words"
+    )
 
 
-def test_duplicate_slug_resolves_to_the_first_directory(files, tmp_path):
-    (tmp_path / "problems" / "0003-two-sum").mkdir()
-    assert files.problem_directory("two-sum") == "problems/two-sum"
+def test_a_numbered_directory_without_a_readable_meta_is_renamed_without_its_number(
+    files, tmp_path
+):
+    first, second = numbered_directory(3, "word-break"), numbered_directory(4, "two-pointers")
+    (tmp_path / "problems" / first).mkdir()
+    (tmp_path / "problems" / second).mkdir()
+    (tmp_path / "problems" / second / "meta.yaml").write_text("slug: [\n")
+    assert [found.rename("problems") for found in files.misnamed()] == [
+        f"mv problems/{first} problems/word-break",
+        f"mv problems/{second} problems/two-pointers",
+    ]
+
+
+def test_a_misnamed_directory_with_no_slug_to_take_has_no_rename(files, tmp_path):
+    (tmp_path / "problems" / "Word Break").mkdir()
+    assert [found.rename("problems") for found in files.misnamed()] == [None]
 
 
 def test_no_slugs_without_a_problems_directory(tmp_path):

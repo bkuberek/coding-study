@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # A function that imports only TreeNode.
-id: "0103"
 slug: invert-binary-tree
 title: Invert Binary Tree
 status: draft

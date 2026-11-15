@@ -27,8 +27,8 @@ def test_a_separator_or_a_solution_extension_makes_a_path(target):
     assert is_path_target(target)
 
 
-@pytest.mark.parametrize("target", ["two-sum", "lru-cache", "0001", "py", "ts-kt"])
-def test_a_slug_or_id_is_not_a_path(target):
+@pytest.mark.parametrize("target", ["two-sum", "lru-cache", "py", "ts-kt"])
+def test_a_slug_is_not_a_path(target):
     assert not is_path_target(target)
 
 

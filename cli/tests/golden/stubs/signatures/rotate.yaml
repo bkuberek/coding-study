@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=../../../../../schemas/meta.schema.json
 # An in-place function: void return with output_from.
-id: "0105"
 slug: rotate-array
 title: Rotate Array
 status: draft

@@ -30,7 +30,7 @@ This repository holds code and content only, never a workspace. Your practice fi
 
 - `cstudy init` refuses to create a workspace inside the checkout unless you pass `--force`.
 - The root `.gitignore` ignores `.cs/`, `.statements/`, `progress.db*`, `progress-export.json`, and practice directories at the root (`python/`, `typescript/`, `jvm/`, `notes/`, `.archive/`, `workspace/`) as a second guard.
-- Reference solutions under `problems/<id>-<slug>/solutions/` are content, not practice: they are the answers `cstudy solution` shows.
+- Reference solutions under `problems/<slug>/solutions/` are content, not practice: they are the answers `cstudy solution` shows.
 
 ## Checks
 

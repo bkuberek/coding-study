@@ -16,7 +16,7 @@ FORTY_FIVE_MINUTES = 45 * 60
 def problem(
     slug: str, pattern: str = "arrays-hashing", difficulty: Difficulty = Difficulty.MEDIUM, **fields
 ) -> Candidate:
-    return Candidate("0001", slug, Track.DSA, difficulty, (pattern,), **fields)
+    return Candidate(slug, Track.DSA, difficulty, (pattern,), **fields)
 
 
 def picked(*candidates: Candidate, count: int = 2) -> list[str]:

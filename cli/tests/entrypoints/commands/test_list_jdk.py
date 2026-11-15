@@ -21,8 +21,8 @@ PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "prob
 WEB_API = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
 TWO_SUM = "two-sum"
 LRU_CACHE = "lru-cache"
-ROW = "0001  two-sum           easy    arrays-hashing   new           -           "
-LRU_ROW = "0002  lru-cache         medium  linked-list      new           -           "
+ROW = "two-sum           easy    arrays-hashing   new           -           "
+LRU_ROW = "lru-cache         medium  linked-list      new           -           "
 SUPPORTS = "cstudy supports JDK 21 to 26"
 
 

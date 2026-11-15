@@ -31,6 +31,7 @@ from coding_study.domain.invariants import StressChecker
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemSummary
+from coding_study.domain.problem_files import MisnamedDirectory
 from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.progress_export import ProgressSnapshot
 from coding_study.domain.progress_migration import ProgressMigration
@@ -64,7 +65,8 @@ class ProblemRepository(Protocol):
         ...
 
     def list_summaries(self) -> tuple[ProblemSummary, ...]:
-        """Every problem in id order; raises ContentError listing every invalid meta.yaml."""
+        """Every problem, in the repository's order; raises ContentError listing every invalid
+        meta.yaml."""
         ...
 
 
@@ -662,16 +664,15 @@ class ProblemFiles(Protocol):
         ...
 
     def slugs(self) -> tuple[str, ...]:
-        """The slug of every `<id>-<slug>` directory, in directory order (duplicates kept)."""
+        """The name of every directory named by a slug, in name order."""
         ...
 
-    def directory_names(self) -> tuple[str, ...]:
-        """Every `<id>-<slug>` directory name, in the order of `slugs`."""
+    def misnamed(self) -> tuple[MisnamedDirectory, ...]:
+        """The directories whose name is not a slug, in name order."""
         ...
 
     def problem_directory(self, slug: str) -> str:
-        """Repository-relative, e.g. `problems/two-sum`, the first directory with this
-        slug; raises UnknownProblemError."""
+        """Repository-relative, e.g. `problems/two-sum`; raises UnknownProblemError."""
         ...
 
     def read_text(self, slug: str, name: str) -> str | None:

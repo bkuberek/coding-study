@@ -33,17 +33,17 @@ IN_PROGRESS = ProblemProgress(frozenset({AttemptStatus.IN_PROGRESS}))
 PATTERNS = ("arrays-hashing", "two-pointers", "sliding-window", "stack")
 
 
-def candidate(slug: str, problem_id: str = "0001", **fields: object) -> Candidate:
+def candidate(slug: str, **fields: object) -> Candidate:
     defaults: dict[str, object] = {"difficulty": Difficulty.EASY, "patterns": ("arrays-hashing",)}
     defaults.update(fields)
-    return Candidate(problem_id, slug, Track(defaults.pop("track", Track.DSA)), **defaults)  # type: ignore[arg-type]
+    return Candidate(slug, Track(defaults.pop("track", Track.DSA)), **defaults)  # type: ignore[arg-type]
 
 
 def item(slug: str, **fields: object) -> Candidate:
-    """A ready system design item: no id, no patterns, no languages."""
+    """A ready system design item: not autograded, no patterns, no languages."""
     defaults: dict[str, object] = {"difficulty": Difficulty.MEDIUM, "languages": ()}
     defaults.update(fields)
-    return Candidate(None, slug, Track.SYSTEM_DESIGN, **defaults)  # type: ignore[arg-type]
+    return Candidate(slug, Track.SYSTEM_DESIGN, autograded=False, **defaults)  # type: ignore[arg-type]
 
 
 def scheduled(
@@ -79,12 +79,12 @@ def test_nothing_in_scope_picks_nothing():
 
 
 def test_a_due_review_comes_before_new_problems():
-    due = candidate("due", "0002", progress=scheduled(0))
+    due = candidate("due", progress=scheduled(0))
     assert picked_slug(candidate("fresh"), due) == "due"
 
 
 def test_new_skips_reviews():
-    due = candidate("due", "0002", progress=scheduled(0))
+    due = candidate("due", progress=scheduled(0))
     assert picked_slug(candidate("fresh"), due, source=NextSource.NEW_ONLY) == "fresh"
 
 
@@ -98,27 +98,27 @@ def test_a_review_not_due_yet_is_not_picked():
 
 
 def test_reviews_overdue_longer_relative_to_their_interval_win():
-    week = candidate("week", "0001", progress=scheduled(-3, interval=7))
-    day = candidate("day", "0002", progress=scheduled(0, interval=1))
+    week = candidate("week", progress=scheduled(-3, interval=7))
+    day = candidate("day", progress=scheduled(0, interval=1))
     assert picked_slug(week, day) == "day"
 
 
 def test_reviews_in_weaker_groups_win():
-    strong = candidate("strong", "0001", progress=scheduled(0))
-    weak = candidate("weak", "0002", patterns=("stack",), progress=scheduled(0))
+    strong = candidate("strong", progress=scheduled(0))
+    weak = candidate("weak", patterns=("stack",), progress=scheduled(0))
     attempts = (graded("strong", Grade.OK, 1), graded("weak", Grade.AGAIN, 2))
     assert picked_slug(strong, weak, attempts=attempts) == "weak"
 
 
 def test_review_ties_go_to_the_smaller_interval():
-    longer = candidate("longer", "0001", progress=scheduled(-1, interval=2))
-    shorter = candidate("shorter", "0002", progress=scheduled(0, interval=1))
+    longer = candidate("longer", progress=scheduled(-1, interval=2))
+    shorter = candidate("shorter", progress=scheduled(0, interval=1))
     assert picked_slug(longer, shorter) == "shorter"
 
 
 def test_review_ties_then_go_to_the_lower_id():
-    second = candidate("second", "0002", progress=scheduled(0))
-    first = candidate("first", "0001", progress=scheduled(0))
+    second = candidate("second", progress=scheduled(0))
+    first = candidate("first", progress=scheduled(0))
     assert picked_slug(second, first) == "first"
 
 
@@ -129,30 +129,30 @@ def test_a_review_reports_its_overdue_days():
 
 
 def test_problems_in_progress_are_never_picked():
-    busy = candidate("busy", "0001", progress=scheduled(0, 3, Grade.OK, AttemptStatus.IN_PROGRESS))
-    assert picked_slug(busy, candidate("idle", "0002", progress=IN_PROGRESS)) is None
+    busy = candidate("busy", progress=scheduled(0, 3, Grade.OK, AttemptStatus.IN_PROGRESS))
+    assert picked_slug(busy, candidate("idle", progress=IN_PROGRESS)) is None
 
 
 def test_untouched_groups_come_before_a_group_just_passed():
-    done = candidate("done", "0001", progress=scheduled(3))
-    sibling = candidate("sibling", "0002")
-    other = candidate("other", "0003", patterns=("stack",))
+    done = candidate("done", progress=scheduled(3))
+    sibling = candidate("sibling")
+    other = candidate("other", patterns=("stack",))
     attempts = (graded("done", Grade.OK),)
     assert picked_slug(done, sibling, other, attempts=attempts) == "other"
 
 
 def test_a_group_just_failed_comes_before_untouched_groups():
     progress = scheduled(1, 1, Grade.AGAIN, AttemptStatus.FAILED)
-    failed = candidate("failed", "0001", patterns=("stack",), progress=progress)
-    sibling = candidate("sibling", "0002", patterns=("stack",))
-    other = candidate("other", "0003")
+    failed = candidate("failed", patterns=("stack",), progress=progress)
+    sibling = candidate("sibling", patterns=("stack",))
+    other = candidate("other")
     attempts = (graded("failed", Grade.AGAIN),)
     assert picked_slug(failed, sibling, other, attempts=attempts) == "sibling"
 
 
 def test_equally_weak_groups_follow_the_taxonomy_order():
-    later = candidate("later", "0001", patterns=("two-pointers",))
-    earlier = candidate("earlier", "0002", patterns=("arrays-hashing",))
+    later = candidate("later", patterns=("two-pointers",))
+    earlier = candidate("earlier", patterns=("arrays-hashing",))
     assert picked_slug(later, earlier) == "earlier"
 
 
@@ -163,48 +163,48 @@ def test_a_new_pick_reports_its_group_and_weakness():
 
 
 def test_easy_problems_come_first():
-    medium = candidate("medium", "0001", difficulty=Difficulty.MEDIUM)
-    easy = candidate("easy", "0002", difficulty=Difficulty.EASY)
+    medium = candidate("medium", difficulty=Difficulty.MEDIUM)
+    easy = candidate("easy", difficulty=Difficulty.EASY)
     assert picked_slug(medium, easy) == "easy"
 
 
 def test_medium_opens_once_an_easy_is_passed():
-    easy = candidate("easy", "0001", progress=scheduled(5))
-    medium = candidate("medium", "0002", difficulty=Difficulty.MEDIUM)
-    hard = candidate("hard", "0003", difficulty=Difficulty.HARD)
+    easy = candidate("easy", progress=scheduled(5))
+    medium = candidate("medium", difficulty=Difficulty.MEDIUM)
+    hard = candidate("hard", difficulty=Difficulty.HARD)
     assert picked_slug(easy, medium, hard) == "medium"
 
 
 def test_medium_is_open_in_a_group_without_easy_problems():
-    medium = candidate("medium", "0002", difficulty=Difficulty.MEDIUM, order=5)
-    hard = candidate("hard", "0001", difficulty=Difficulty.HARD, order=1)
+    medium = candidate("medium", difficulty=Difficulty.MEDIUM, order=5)
+    hard = candidate("hard", difficulty=Difficulty.HARD, order=1)
     assert picked_slug(hard, medium) == "medium"
 
 
 def test_hard_opens_in_a_group_without_medium_problems():
-    easy = candidate("easy", "0001", progress=scheduled(5))
-    hard = candidate("hard", "0002", difficulty=Difficulty.HARD)
+    easy = candidate("easy", progress=scheduled(5))
+    hard = candidate("hard", difficulty=Difficulty.HARD)
     assert picked_slug(easy, hard) == "hard"
 
 
 def test_hard_opens_once_a_medium_is_passed_even_while_medium_is_closed():
-    easy = candidate("easy", "0001", progress=scheduled(1, 1, Grade.AGAIN, AttemptStatus.FAILED))
-    passed = candidate("passed", "0002", difficulty=Difficulty.MEDIUM, progress=scheduled(5))
-    medium = candidate("medium", "0003", difficulty=Difficulty.MEDIUM)
-    hard = candidate("hard", "0004", difficulty=Difficulty.HARD)
+    easy = candidate("easy", progress=scheduled(1, 1, Grade.AGAIN, AttemptStatus.FAILED))
+    passed = candidate("passed", difficulty=Difficulty.MEDIUM, progress=scheduled(5))
+    medium = candidate("medium", difficulty=Difficulty.MEDIUM)
+    hard = candidate("hard", difficulty=Difficulty.HARD)
     assert picked_slug(easy, passed, medium, hard) == "hard"
 
 
 def test_a_gate_that_excludes_everything_falls_back_to_the_lowest_difficulty():
-    easy = candidate("easy", "0001", progress=IN_PROGRESS)
-    hard = candidate("hard", "0002", difficulty=Difficulty.HARD)
-    medium = candidate("medium", "0003", difficulty=Difficulty.MEDIUM)
+    easy = candidate("easy", progress=IN_PROGRESS)
+    hard = candidate("hard", difficulty=Difficulty.HARD)
+    medium = candidate("medium", difficulty=Difficulty.MEDIUM)
     assert picked_slug(easy, hard, medium) == "medium"
 
 
 def test_curriculum_order_comes_before_the_id():
-    later = candidate("later", "0001", order=2)
-    sooner = candidate("sooner", "0002", order=1)
+    later = candidate("later", order=2)
+    sooner = candidate("sooner", order=1)
     assert picked_slug(later, sooner) == "sooner"
 
 
@@ -314,10 +314,6 @@ def test_an_item_is_not_autograded():
     assert (item("url-shortener").autograded, candidate("two-sum").autograded) == (False, True)
 
 
-def test_an_item_ties_on_its_slug_for_an_id():
-    assert item("url-shortener").sort_id == "url-shortener"
-
-
 def test_a_new_item_is_picked_from_its_track_group():
     result = pick(item("url-shortener"), scope=SYSTEM_DESIGN_ONLY)
     assert isinstance(result, NewPick)
@@ -389,8 +385,8 @@ def _candidates(draw: st.DrawFn) -> tuple[Candidate, ...]:
     count = draw(st.integers(0, 12))
     return tuple(
         Candidate(
-            id=draw(st.sampled_from((None, "0001", "0002", "0003", f"{index:04d}"))),
             slug=f"p{index}",
+            autograded=draw(st.booleans()),
             track=draw(st.sampled_from(_TRACKS)),
             difficulty=draw(st.sampled_from(Difficulty)),
             patterns=tuple(draw(st.lists(st.sampled_from(PATTERNS), max_size=2, unique=True))),
@@ -458,7 +454,7 @@ def test_the_pick_is_always_in_scope_and_idle(snapshot):
 
 @pytest.mark.parametrize("source", list(NextSource))
 def test_repeated_picks_agree(source):
-    candidates = (candidate("a", "0001"), candidate("b", "0002", progress=scheduled(0)))
+    candidates = (candidate("a"), candidate("b", progress=scheduled(0)))
     query = NextQuery(DSA_ONLY, TODAY, source)
     assert pick_next(candidates, (), query) == pick_next(candidates, (), query)
 

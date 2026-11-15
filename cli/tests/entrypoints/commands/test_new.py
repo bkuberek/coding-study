@@ -24,7 +24,7 @@ def invoke(*arguments: str):
 
 def test_prints_the_new_directory(environment):
     assert invoke("max-gap").output.splitlines()[0] == (
-        "created  problems/0003-max-gap  (array template, draft)"
+        "created  problems/max-gap  (array template, draft)"
     )
 
 
@@ -109,8 +109,7 @@ def test_the_virtual_clock_flag_writes_a_kotlin_project_on_the_virtual_clock(env
 def test_a_virtual_clock_project_says_so_in_its_first_line(environment):
     result = invoke("waiter-project-go", "--from-template", "project-go", "--virtual-clock")
     assert result.output.splitlines()[0] == (
-        "created  problems/0003-waiter-project-go  "
-        "(project-go template with the virtual clock, draft)"
+        "created  problems/waiter-project-go  (project-go template with the virtual clock, draft)"
     )
 
 
@@ -151,7 +150,7 @@ def test_the_virtual_clock_flag_exits_3_where_it_does_not_apply(environment, arg
 
 def test_the_virtual_clock_flag_writes_nothing_where_it_does_not_apply(environment):
     invoke("waiter", "--from-template", "project-java", "--virtual-clock")
-    assert not environment.workspace.exists("problems/0003-waiter")
+    assert not environment.workspace.exists("problems/waiter")
 
 
 STRESS_TEMPLATES = (
@@ -186,14 +185,14 @@ def test_the_stress_flag_combines_with_the_virtual_clock(environment, template):
 def test_a_stress_project_says_so_in_its_first_line(environment):
     result = invoke("tally-go", "--from-template", "project-go", "--stress")
     assert result.output.splitlines()[0] == (
-        "created  problems/0003-tally-go  (project-go template with stress cases, draft)"
+        "created  problems/tally-go  (project-go template with stress cases, draft)"
     )
 
 
 def test_a_stress_project_on_the_virtual_clock_says_both_in_its_first_line(environment):
     result = invoke("tally-go", "--from-template", "project-go", "--virtual-clock", "--stress")
     assert result.output.splitlines()[0] == (
-        "created  problems/0003-tally-go  "
+        "created  problems/tally-go  "
         "(project-go template with the virtual clock and stress cases, draft)"
     )
 
@@ -248,7 +247,7 @@ def test_the_stress_flag_exits_3_where_it_does_not_apply(environment, arguments,
 
 def test_the_stress_flag_writes_nothing_where_it_does_not_apply(environment):
     invoke("tally", "--from-template", "project-typescript", "--stress")
-    assert not environment.workspace.exists("problems/0003-tally")
+    assert not environment.workspace.exists("problems/tally")
 
 
 @pytest.mark.parametrize("flags", [("--stress",), ("--virtual-clock", "--stress")])
@@ -256,7 +255,7 @@ def test_cs_verify_static_passes_once_the_placeholders_are_replaced_in_a_stress_
     environment, flags
 ):
     invoke("scaffolded", "--from-template", "project-go", *flags)
-    for path in (environment.root / "problems" / "0003-scaffolded").rglob("*"):
+    for path in (environment.root / "problems" / "scaffolded").rglob("*"):
         if path.is_file():
             path.write_text(path.read_text().replace("TODO", "Written"))
     result = runner.invoke(cli.app, ["verify", "scaffolded", "--static"])
@@ -282,7 +281,7 @@ def test_cs_verify_static_passes_once_the_placeholders_are_replaced_in_a_clock_p
     environment, flags
 ):
     invoke("scaffolded", "--from-template", "project-go", *flags)
-    for path in (environment.root / "problems" / "0003-scaffolded").rglob("*"):
+    for path in (environment.root / "problems" / "scaffolded").rglob("*"):
         if path.is_file():
             path.write_text(path.read_text().replace("TODO", "Written"))
     result = runner.invoke(cli.app, ["verify", "scaffolded", "--static"])
@@ -292,7 +291,7 @@ def test_cs_verify_static_passes_once_the_placeholders_are_replaced_in_a_clock_p
 @pytest.mark.parametrize("template", list(TemplateName))
 def test_cs_verify_static_passes_once_the_placeholders_are_replaced(environment, template):
     invoke("scaffolded", "--from-template", template)
-    for path in (environment.root / "problems" / "0003-scaffolded").rglob("*"):
+    for path in (environment.root / "problems" / "scaffolded").rglob("*"):
         if path.is_file():
             path.write_text(path.read_text().replace("TODO", "Written"))
     result = runner.invoke(cli.app, ["verify", "scaffolded", "--static"])

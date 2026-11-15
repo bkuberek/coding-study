@@ -302,7 +302,7 @@
         "theme": { "enum": ["system", "light", "dark"] },
         "code_intelligence": { "type": "boolean" },
         "autocomplete": { "type": "boolean" },
-        "problem_columns": { "description": "What the Problems view's table shows", "type": "array", "items": { "enum": ["id", "problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] }, "uniqueItems": true }
+        "problem_columns": { "description": "What the Problems view's table shows", "type": "array", "items": { "enum": ["problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] }, "uniqueItems": true }
       }
     },
     "code_intelligence_languages": {

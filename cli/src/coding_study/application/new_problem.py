@@ -6,8 +6,8 @@ the new meta.yaml, and for concurrent problems one empty broken reference file p
 language; a project template holds its starter and its reference overlay instead, and a stress
 variant lays the files a stress problem changes over them (a later template directory's file
 replaces an earlier one's). Slugs are unique across problems/ and tracks/. The problem goes to the
-environment's destination: an editable content checkout, or the workspace's own problems/ numbered
-from 5001.
+environment's destination, as `problems/<slug>/`: an editable content checkout, or the workspace's
+own problems/.
 """
 
 from dataclasses import dataclass
@@ -21,7 +21,6 @@ from coding_study.domain.problem_files import broken_file, solution_file
 from coding_study.domain.scaffold import (
     ScaffoldRequest,
     TemplateName,
-    next_problem_id,
     plan_scaffold,
     render_template,
     template_directories,
@@ -32,7 +31,7 @@ from coding_study.domain.scaffold import (
 class CreatedProblem:
     slug: str
     directory: str
-    """Relative to the destination root, e.g. `problems/0004-max-gap`."""
+    """Relative to the destination root, e.g. `problems/max-gap`."""
     template: TemplateName
     virtual_clock: bool
     """Written from the template's variant for code that waits."""
@@ -49,8 +48,7 @@ def create_problem(
     _require_new_slug(environment, request.slug)
     destination = environment.new_problems
     problems = destination.files
-    problem_id = next_problem_id(problems.directory_names(), destination.first_id)
-    scaffold = plan_scaffold(request, problem_id)
+    scaffold = plan_scaffold(request)
     layers = template_directories(request)
     directory = f"{problems.directory}/{scaffold.directory_name}"
     placeholders = scaffold.placeholders()
@@ -105,8 +103,7 @@ def _empty_references(meta: ProblemMeta) -> list[str]:
 
 def _require_new_slug(environment: Environment, slug: str) -> None:
     problems = environment.files
-    existing = dict(zip(problems.slugs(), problems.directory_names(), strict=True))
-    if slug in existing:
-        raise UsageError(f"{slug} already exists: {problems.directory}/{existing[slug]}")
+    if slug in problems.slugs():
+        raise UsageError(f"{slug} already exists: {problems.directory}/{slug}")
     if slug in environment.items.slugs():
         raise UsageError(f"{slug} already exists: {environment.items.item_directory(slug)}")

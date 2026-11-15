@@ -114,7 +114,7 @@ def set_returns(**values: Any) -> Mutation:
 
 INVALID_META: dict[str, tuple[Mutation, str]] = {
     "missing slug": (lambda meta: meta.pop("slug"), ""),
-    "id not 4 digits": (lambda meta: meta.update(id="1"), "id"),
+    "a numeric id": (lambda meta: meta.update(id="0001"), ""),
     "unknown status": (lambda meta: meta.update(status="done"), "status"),
     "unknown top-level key": (lambda meta: meta.update(hints=["think"]), ""),
     "dsa without patterns": (lambda meta: meta.pop("patterns"), ""),

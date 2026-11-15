@@ -131,12 +131,15 @@ class ListingContext:
 def list_problems(
     environment: Environment, problem_filter: ProblemFilter
 ) -> tuple[ListedProblem, ...]:
+    """The matching problems in the order of `cstudy list` (docs/specs/compatibility.md#order)."""
     progress = environment.progress.problem_progress()
     today = environment.clock.local_date(environment.clock.now())
     selected = environment.jdk.selected()
     listed = (
         _listed(summary, progress.get(summary.meta.slug, ProblemProgress()), today, selected)
-        for summary in environment.problems.list_summaries()
+        for summary in sorted(
+            environment.problems.list_summaries(), key=lambda summary: summary.meta.listing_key()
+        )
     )
     return tuple(item for item in listed if problem_filter.matches(item.summary, item.status))
 

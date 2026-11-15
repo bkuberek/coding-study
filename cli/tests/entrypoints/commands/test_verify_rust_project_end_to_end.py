@@ -29,7 +29,7 @@ pytestmark = [
 
 runner = CliRunner()
 SLUG = "bank-project-rust"
-NAME = "0001-bank-pro...  "
+NAME = "bank-project-...  "
 
 
 @pytest.fixture
