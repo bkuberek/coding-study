@@ -1,6 +1,6 @@
 # Spec: CLI (`cstudy`)
 
-`cstudy` is the interface: in the terminal, and through the local page that [`cstudy serve`](#cstudy-serve) serves, which calls the same use cases and starts the same commands ([web-ui](web-ui.md)). It is installed as a tool with its content bundled, and every command runs against a content root (problems, tracks, runners, schemas) and a workspace (your practice projects, notes and progress); [installation-and-workspaces](installation-and-workspaces.md) defines how both are found. Paths `cstudy` prints for workspace files are relative to the workspace root.
+`cstudy` is the interface: in the terminal, and through the local page that [`cstudy serve`](#cstudy-serve) serves, which calls the same use cases and starts the same commands ([web-ui](web-ui.md)). It is installed as a tool with its content bundled, and every command runs against a content root (problems, runners, schemas) and a workspace (your practice projects, notes and progress); [installation-and-workspaces](installation-and-workspaces.md) defines how both are found. Paths `cstudy` prints for workspace files are relative to the workspace root.
 
 ## Command summary
 

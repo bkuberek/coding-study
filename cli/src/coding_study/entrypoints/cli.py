@@ -57,7 +57,7 @@ def global_options(
         Path | None,
         typer.Option(
             "--content",
-            help="Read problems, tracks and runners from this checkout (default: CSTUDY_CONTENT).",
+            help="Read problems and runners from this checkout (default: CSTUDY_CONTENT).",
             file_okay=False,
             resolve_path=True,
         ),

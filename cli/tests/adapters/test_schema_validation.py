@@ -534,16 +534,22 @@ AUTOGRADED_FIELDS: dict[str, Any] = {
 
 
 @pytest.mark.parametrize("field", AUTOGRADED_FIELDS)
-def test_a_rubric_problem_refuses_an_autograded_field(field):
+def test_a_rubric_problem_refuses_an_autograded_field_by_name(field):
     meta = url_shortener()
     meta[field] = AUTOGRADED_FIELDS[field]
-    assert rubric_issues(meta) != []
+    assert field in rubric_issues(meta)
 
 
-def test_a_rubric_problem_refuses_a_leetcode_reference():
+def test_a_rubric_problem_refuses_a_leetcode_reference_by_name():
     meta = url_shortener()
     meta["references"]["leetcode"] = {"number": 1, "url": "https://leetcode.com/problems/two-sum/"}
-    assert rubric_issues(meta) != []
+    assert rubric_issues(meta) == ["references.leetcode"]
+
+
+def test_a_rubric_problem_refuses_a_repeated_link():
+    meta = url_shortener()
+    meta["references"]["links"] = ["https://example.com/a", "https://example.com/a"]
+    assert rubric_issues(meta) == ["references.links"]
 
 
 @pytest.mark.parametrize("field", ["comparator", "approaches"])

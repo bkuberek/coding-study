@@ -1,6 +1,6 @@
 # Spec: Installation and Workspaces
 
-`cstudy` is a tool you install, and you practice in a **workspace**: a directory of your own, versioned in its own git repository if you want, that holds your solutions, notes and progress. The tool ships the **content** (problems, tracks, runners, schemas and the workspace templates), so this repository never doubles as a workspace and solutions are never committed to it by accident ([ADR 0008](../decisions/0008-installable-tool-and-separate-workspaces.md)).
+`cstudy` is a tool you install, and you practice in a **workspace**: a directory of your own, versioned in its own git repository if you want, that holds your solutions, notes and progress. The tool ships the **content** (problems, runners, schemas and the workspace templates), so this repository never doubles as a workspace and solutions are never committed to it by accident ([ADR 0008](../decisions/0008-installable-tool-and-separate-workspaces.md)).
 
 ## Install
 
@@ -320,7 +320,7 @@ The page `cstudy serve` serves ([web-ui](web-ui.md#front-end-assets)) is a front
 | Languages | A problem in `problems/` may list any non-empty subset of the six languages in its `meta.yaml`, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), which is not the catalog's default of all six: a problem written before Go and Rust keeps working, and it needs no Go or Rust reference. `cstudy new` writes the line explicitly ([problem format](problem-format.md#metayaml)) |
 | `cstudy new` | With bundled content it writes `problems/<slug>/` in the workspace; with an editable checkout it writes `problems/<slug>/` into the checkout |
 | Folder names | A folder is named by its slug. A folder named `NNNN-<slug>`, as `cstudy new` wrote them before, is reported, not migrated, and so is a folder whose `meta.yaml` has an `id:` line: it loads as no problem, `cstudy verify` fails on it (S2) and `cstudy doctor` warns, each with the quoted `mv problems/<name> problems/<slug>` to run from the workspace root and the `id:` line to delete ([compatibility](compatibility.md#your-own-problems)) |
-| Rubric problems | Come from the content root only: a folder of your own `problems/` of kind `system-design` or `code-review` is a content error, `rubric problems are catalog-only`; your answers to them go to `notes/<track>/<slug>.md` as before |
+| Rubric problems | Come from the content root only: a folder of your own `problems/` of kind `system-design` or `code-review` is a content error, `rubric problems are catalog-only`; a problem of your own with the slug of one wins and hides it, as it hides any catalog problem with its slug; your answers to them go to `notes/<track>/<slug>.md` as before |
 
 ## Developing coding-study
 

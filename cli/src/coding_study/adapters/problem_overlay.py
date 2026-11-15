@@ -2,15 +2,17 @@
 (docs/specs/installation-and-workspaces.md#your-own-problems).
 
 The overlay is keyed by slug: a workspace problem hides every catalog problem with its slug, as a
-whole directory. The summaries list in slug order.
+whole directory, rubric-checked or not. The summaries list in slug order.
 """
 
 from collections.abc import Sequence
 from pathlib import Path
 
+from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
-from coding_study.adapters.fs_problem_repository import FsProblemRepository
-from coding_study.domain.errors import ContentError, ContentIssue
+from coding_study.adapters.fs_problem_repository import PROBLEMS_DIRECTORY, FsProblemRepository
+from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
+from coding_study.domain.items import ItemMeta
 from coding_study.domain.problem import Problem, ProblemSummary
 from coding_study.domain.problem_files import WORKSPACE_ROOT, MisnamedDirectory
 
@@ -74,6 +76,50 @@ class OverlayProblemFiles:
 
     def _owner(self, slug: str) -> FsProblemFiles:
         return self._own if slug in self._own.slugs() else self._catalog
+
+
+class OverlayItemRepository:
+    """`ItemRepository` over the catalog's rubric problems, less the ones a workspace problem
+    hides."""
+
+    def __init__(self, catalog: FsItemRepository, workspace: Path) -> None:
+        self._catalog = catalog
+        self._own = FsProblemFiles(workspace, PROBLEMS_DIRECTORY, WORKSPACE_ROOT)
+
+    def slugs(self) -> tuple[str, ...]:
+        return tuple(slug for slug, _ in self._visible())
+
+    def directories(self) -> tuple[str, ...]:
+        return tuple(directory for _, directory in self._visible())
+
+    def contains(self, slug: str) -> bool:
+        return slug not in self._own.slugs() and self._catalog.contains(slug)
+
+    def item_directory(self, slug: str) -> str:
+        return self._owner(slug).item_directory(slug)
+
+    def load(self, slug: str) -> ItemMeta:
+        return self._owner(slug).load(slug)
+
+    def list_items(self) -> tuple[ItemMeta, ...]:
+        hidden = set(self._own.slugs())
+        return tuple(meta for meta in self._catalog.list_items() if meta.slug not in hidden)
+
+    def read_text(self, slug: str, name: str) -> str | None:
+        return self._owner(slug).read_text(slug, name)
+
+    def file_names(self, slug: str, directory: str = "") -> tuple[str, ...]:
+        return self._owner(slug).file_names(slug, directory)
+
+    def _visible(self) -> list[tuple[str, str]]:
+        hidden = set(self._own.slugs())
+        pairs = zip(self._catalog.slugs(), self._catalog.directories(), strict=True)
+        return [(slug, directory) for slug, directory in pairs if slug not in hidden]
+
+    def _owner(self, slug: str) -> FsItemRepository:
+        if slug in self._own.slugs():
+            raise UnknownProblemError(slug)
+        return self._catalog
 
 
 def _summaries(

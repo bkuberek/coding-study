@@ -51,6 +51,13 @@ class FsItemRepository:
     def directories(self) -> tuple[str, ...]:
         return tuple(self._source(directory) for directory in self._item_directories())
 
+    def contains(self, slug: str) -> bool:
+        try:
+            self._directory_of(slug)
+        except UnknownProblemError:
+            return False
+        return True
+
     def item_directory(self, slug: str) -> str:
         return self._source(self._directory_of(slug))
 

@@ -9,12 +9,17 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.document_index import DocumentIndex
+from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
-from coding_study.adapters.problem_overlay import OverlayProblemFiles, OverlayProblemRepository
-from coding_study.domain.errors import ContentError
+from coding_study.adapters.problem_overlay import (
+    OverlayItemRepository,
+    OverlayProblemFiles,
+    OverlayProblemRepository,
+)
+from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.problem import ALL_LANGUAGES, CORE_LANGUAGES
-from tests.helpers import FIXTURE_PROBLEMS, numbered_directory
+from tests.helpers import FIXTURE_PROBLEMS, FIXTURE_RUBRIC_PROBLEMS, numbered_directory
 
 TWO_SUM = FIXTURE_PROBLEMS / "two-sum"
 
@@ -182,3 +187,38 @@ def test_only_a_workspace_problem_is_marked_as_one(problems):
         ("pair-sum", True),
         ("two-sum", False),
     ]
+
+
+@pytest.fixture
+def rubric_content(content_root: Path) -> Path:
+    shutil.copytree(FIXTURE_RUBRIC_PROBLEMS, content_root / "problems", dirs_exist_ok=True)
+    return content_root
+
+
+@pytest.fixture
+def items(rubric_content: Path, workspace: Path) -> OverlayItemRepository:
+    return OverlayItemRepository(FsItemRepository(rubric_content), workspace)
+
+
+def test_the_catalog_rubric_problems_are_visible_without_a_workspace_problem_of_their_slug(items):
+    assert items.slugs() == ("news-feed", "retry-wrapper", "url-shortener")
+
+
+def test_a_workspace_problem_hides_the_catalog_rubric_problem_with_its_slug(items, workspace):
+    own_problem(workspace, "url-shortener", "My URL Shortener")
+    assert (items.slugs(), items.contains("url-shortener")) == (
+        ("news-feed", "retry-wrapper"),
+        False,
+    )
+
+
+def test_a_hidden_rubric_problem_is_not_listed_or_loaded(items, workspace):
+    own_problem(workspace, "url-shortener", "My URL Shortener")
+    assert [meta.slug for meta in items.list_items()] == ["news-feed", "retry-wrapper"]
+    with pytest.raises(UnknownProblemError):
+        items.load("url-shortener")
+
+
+def test_the_directories_follow_the_visible_slugs(items, workspace):
+    own_problem(workspace, "news-feed", "My News Feed")
+    assert items.directories() == ("problems/retry-wrapper", "problems/url-shortener")

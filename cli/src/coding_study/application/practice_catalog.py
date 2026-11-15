@@ -17,7 +17,7 @@ _UNTOUCHED = ProblemProgress()
 
 def is_item(environment: Environment, slug: str) -> bool:
     """Whether `slug` names a problem checked by a rubric rather than by tests."""
-    return slug in environment.items.slugs()
+    return environment.items.contains(slug)
 
 
 def catalog_slugs(environment: Environment) -> frozenset[str]:

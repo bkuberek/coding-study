@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.fs_item_repository import FsItemRepository
+from coding_study.adapters.schema_validation import SchemaValidator
 from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.items import EntryKind, ItemMeta, ItemReferences
 from coding_study.domain.labels import Labels
@@ -165,3 +166,25 @@ def test_listing_reports_every_invalid_rubric_problem(root, repository):
     with pytest.raises(ContentError) as raised:
         repository.list_items()
     assert len(raised.value.issues) == 2
+
+
+def test_a_slug_is_a_rubric_problem_when_its_folder_has_a_rubric_kind(repository):
+    assert [repository.contains(slug) for slug in ("url-shortener", "two-sum", "absent")] == [
+        True,
+        False,
+        False,
+    ]
+
+
+def test_one_lookup_validates_at_most_one_meta_yaml(repository, monkeypatch):
+    validated: list[str] = []
+    violations = SchemaValidator.violations
+
+    def counting(self, document, source):
+        validated.append(source)
+        return violations(self, document, source)
+
+    monkeypatch.setattr(SchemaValidator, "violations", counting)
+    repository.contains("two-sum")
+    repository.contains("url-shortener")
+    assert validated == ["problems/two-sum/meta.yaml", "problems/url-shortener/meta.yaml"]

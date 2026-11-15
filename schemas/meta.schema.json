@@ -214,19 +214,16 @@
       "if": { "required": ["kind"], "properties": { "kind": { "enum": ["system-design", "code-review"] } } },
       "then": {
         "required": ["estimate_minutes"],
-        "not": {
-          "anyOf": [
-            { "required": ["signature"] }, { "required": ["comparator"] }, { "required": ["approaches"] },
-            { "required": ["patterns"] }, { "required": ["levels"] }, { "required": ["perf"] },
-            { "required": ["stub"] }, { "required": ["languages"] }, { "required": ["jdk"] },
-            { "required": ["limits"] }, { "required": ["project"] }, { "required": ["concurrency"] },
-            { "required": ["summary"] }, { "required": ["guides"] }
-          ]
-        },
         "properties": {
+          "signature": { "not": {} }, "comparator": { "not": {} }, "approaches": { "not": {} }, "patterns": { "not": {} },
+          "levels": { "not": {} }, "perf": { "not": {} }, "stub": { "not": {} }, "languages": { "not": {} }, "jdk": { "not": {} },
+          "limits": { "not": {} }, "project": { "not": {} }, "concurrency": { "not": {} }, "summary": { "not": {} },
+          "guides": { "not": {} },
           "references": {
-            "not": { "required": ["leetcode"] },
-            "properties": { "links": { "items": { "pattern": "^https?://\\S+$" } } }
+            "properties": {
+              "leetcode": { "not": {} },
+              "links": { "uniqueItems": true, "items": { "pattern": "^https?://\\S+$" } }
+            }
           }
         },
         "allOf": [

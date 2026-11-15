@@ -38,7 +38,11 @@ from coding_study.adapters.locations import (
     workspace_directory,
 )
 from coding_study.adapters.preferences_fs import FsPreferencesStore
-from coding_study.adapters.problem_overlay import OverlayProblemFiles, OverlayProblemRepository
+from coding_study.adapters.problem_overlay import (
+    OverlayItemRepository,
+    OverlayProblemFiles,
+    OverlayProblemRepository,
+)
 from coding_study.adapters.runner_runtime import RunnerRuntime
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.subprocess_runner import SubprocessRunner
@@ -141,7 +145,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         clock=SystemClock(),
         editor=EnvEditorOpener(user.environ),
         watcher=WatchfilesWatcher(),
-        items=FsItemRepository(content.path, index),
+        items=OverlayItemRepository(FsItemRepository(content.path, index), workspace),
         guides=FsGuideCatalog(content.path),
         docs=FsUserDocs(content.path),
         machine=SystemMachine(),

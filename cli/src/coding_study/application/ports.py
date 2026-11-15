@@ -82,6 +82,10 @@ class ItemRepository(Protocol):
         """Every rubric problem directory, repository-relative, in the order of `slugs`."""
         ...
 
+    def contains(self, slug: str) -> bool:
+        """Whether `slug` names a rubric problem; reads that directory's meta.yaml alone."""
+        ...
+
     def item_directory(self, slug: str) -> str:
         """Repository-relative, e.g. `problems/url-shortener`; raises UnknownProblemError."""
         ...
