@@ -114,7 +114,7 @@ def test_a_new_rust_project_verifies_once_its_placeholders_are_replaced(verify, 
     result = runner.invoke(cli.app, ["verify", "kv-project-rust"])
     assert (result.exit_code, reported(result.output)[0]) == (
         ExitCode.SUCCESS,
-        f"{directory.name[:13]}...  static ok · rs 1/1 ok · suite 2/2",
+        f"{directory.name:<16}  static ok · rs 1/1 ok · suite 2/2",
     )
 
 

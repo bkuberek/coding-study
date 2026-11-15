@@ -22,13 +22,13 @@ pytestmark = [
 ]
 
 runner = CliRunner()
-PROJECT_FIXTURES = {
-    "conformance-project-rust": "9032",
-    "conformance-suite-cargo": "9033",
-    "conformance-project-stress-rust": "9042",
-    "conformance-project-clock-rust": "9045",
-    "conformance-project-stress-clock-rust": "9046",
-}
+PROJECT_FIXTURES = (
+    "conformance-project-rust",
+    "conformance-suite-cargo",
+    "conformance-project-stress-rust",
+    "conformance-project-clock-rust",
+    "conformance-project-stress-clock-rust",
+)
 
 
 def test_the_rust_runner_meets_the_project_expectations(
@@ -40,8 +40,9 @@ def test_the_rust_runner_meets_the_project_expectations(
     monkeypatch.setenv("CSTUDY_CONFIG", str(tmp_path / "absent-config.toml"))
     arguments = ["verify", "--conformance", "--lang", "rust", *PROJECT_FIXTURES]
     result = runner.invoke(cli.app, arguments)
-    rows = [line.split() for line in result.output.splitlines() if line[:1].isdigit()]
+    words = [line.split() for line in result.output.splitlines()]
+    rows = [row for row in words if row[:1] and row[0] in PROJECT_FIXTURES]
     assert (result.exit_code, rows) == (
         ExitCode.SUCCESS,
-        [[f"{number}-{slug}", "rs", "ok"] for slug, number in PROJECT_FIXTURES.items()],
+        [[slug, "rs", "ok"] for slug in PROJECT_FIXTURES],
     )
