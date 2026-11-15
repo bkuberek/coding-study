@@ -13,6 +13,7 @@ from coding_study.adapters.conformance_fixtures import (
     conformance_repository,
 )
 from coding_study.adapters.content_code_loader import ContentCodeLoader
+from coding_study.adapters.deprecation_warnings import warn_about_deprecated_use
 from coding_study.adapters.docker_sandbox import DockerSandbox
 from coding_study.adapters.document_index import INDEX_FILE, DocumentIndex
 from coding_study.adapters.env_editor import EnvEditorOpener
@@ -56,6 +57,7 @@ from coding_study.adapters.yaml_problem_sets import YamlProblemSets
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
 from coding_study.domain.config import Config
+from coding_study.domain.deprecations import DEPRECATIONS
 from coding_study.domain.layout import RUNS_DIRECTORY
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID
 
@@ -108,7 +110,10 @@ class _User:
 
 
 def _user(environ: Mapping[str, str], home: Path) -> _User:
-    return _User(TomlConfigSource(config_path(environ, home)).load(), environ, home)
+    source = TomlConfigSource(config_path(environ, home))
+    config = source.load()
+    warn_about_deprecated_use(environ, source, DEPRECATIONS)
+    return _User(config, environ, home)
 
 
 def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environment:

@@ -13,14 +13,17 @@ import typer
 from rich.console import Console
 from rich.text import Text
 from typer._click import Context as ClickContext
+from typer._click.core import ParameterSource
 from typer.core import TyperCommand, TyperGroup
 
+from coding_study.adapters.deprecation_warnings import warn_deprecated
 from coding_study.adapters.locations import (
     CONTENT_VARIABLE,
     WORKSPACE_VARIABLE,
     ContentRootError,
     WorkspaceError,
 )
+from coding_study.domain.deprecations import Deprecation
 from coding_study.domain.errors import (
     BackupError,
     ConfigError,
@@ -128,6 +131,29 @@ def optional_value_command(option: str) -> type[TyperCommand]:
             return super().parse_args(ctx, [*options, *args[end:]])
 
     return _OptionalValueCommand
+
+
+def deprecated_flag(deprecation: Deprecation) -> Any:
+    """The hidden option of a deprecated flag, named by the last word of `deprecation.name`. Giving
+    it warns once; the command merges its value with its replacement's through `merged`:
+
+        old: Annotated[str | None, deprecated_flag(OLD_FLAG)] = None
+    """
+    flag = deprecation.name.rsplit(" ", 1)[-1]
+
+    def warn_when_given(context: typer.Context, parameter: typer.CallbackParam, value: Any) -> Any:
+        source = context.get_parameter_source(parameter.name or "")
+        if not context.resilient_parsing and source not in (None, ParameterSource.DEFAULT):
+            warn_deprecated(deprecation)
+        return value
+
+    return typer.Option(flag, hidden=True, callback=warn_when_given)
+
+
+def merged[T](replacement: T | None, deprecated: T | None) -> T | None:
+    """The value for a flag and its deprecated one: the replacement's unless the command line left
+    it unset (None or False), then the deprecated flag's."""
+    return deprecated if replacement is None or replacement is False else replacement
 
 
 def add_command[**P](

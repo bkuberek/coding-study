@@ -7,7 +7,7 @@ defined in `coding_study.domain.config`.
 
 import json
 import tomllib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Self, cast
@@ -25,6 +25,7 @@ from coding_study.domain.config import (
     TimeLimitSettings,
 )
 from coding_study.domain.config_keys import ConfigKey, KeyKind
+from coding_study.domain.deprecations import DeprecatedSurface, Deprecation
 from coding_study.domain.errors import ConfigError
 from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewIntervals
@@ -81,6 +82,17 @@ class TomlConfigSource:
             raise ConfigError(self.location, [str(error)]) from None
         return config_from_mapping(values, self.location)
 
+    def deprecated_keys(self, registry: Iterable[Deprecation]) -> tuple[Deprecation, ...]:
+        """The deprecated config keys of `registry` that the file sets, by their dotted names."""
+        keys = [entry for entry in registry if entry.surface is DeprecatedSurface.CONFIG_KEY]
+        if not keys or not self.exists():
+            return ()
+        try:
+            values = tomllib.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            return ()
+        return tuple(entry for entry in keys if _holds_key(values, entry.name.split(".")))
+
 
 def config_from_mapping(values: _Table, source: str) -> Config:
     """Validate every key, collecting all issues before raising ConfigError."""
@@ -88,6 +100,14 @@ def config_from_mapping(values: _Table, source: str) -> Config:
     if issues:
         raise ConfigError(source, issues)
     return config
+
+
+def _holds_key(values: _Table, path: list[str]) -> bool:
+    name, *rest = path
+    if name not in values:
+        return False
+    below = values[name]
+    return not rest or (isinstance(below, Mapping) and _holds_key(cast(_Table, below), rest))
 
 
 def config_issues(values: _Table) -> tuple[str, ...]:

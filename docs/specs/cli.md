@@ -79,6 +79,8 @@
 | `--workspace PATH` | The workspace, before the command (`cstudy --workspace ~/ws start two-sum`); overrides `CSTUDY_WORKSPACE` |
 | `--content PATH` | The content root, before the command; overrides `CSTUDY_CONTENT`. Unrelated to `cstudy list --content`, which filters by content status |
 
+A deprecated flag is hidden from `--help` and still works. It prints `warning: <name> is deprecated since cstudy <version> and is removed in 2.0; use <replacement>` on standard error, once per process, so `--json` and `--events` output is unchanged. A deprecated config key or environment variable warns the same way when the environment loads ([Deprecation](compatibility.md#deprecation)).
+
 ## JSON documents
 
 Each `--json` document, and the file [`cstudy export`](#cstudy-export) writes, has a JSON Schema in `schemas/cli/`, shipped in the package with the other schemas. The schemas close every object, so a field they do not name fails the contract tests; a program that reads a document still ignores the fields it does not know. The rules, and the tests that validate real output against each schema, are in [compatibility](compatibility.md#json-documents).

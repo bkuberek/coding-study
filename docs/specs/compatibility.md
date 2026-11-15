@@ -240,8 +240,8 @@ warning: <name> is deprecated since cstudy <version> and is removed in 2.0; use 
 |------|------|
 | Registry | `DEPRECATIONS` in `domain/deprecations.py`: entries `Deprecation(surface, name, since, replacement)`, `surface` one of `flag`, `config_key`, `env_var`, `json_field`, and `replacement` optional |
 | Names | A flag is `cstudy <command> [<subcommand>] --<flag>`; a config key its dotted TOML name; an environment variable its name; a JSON field `<document>.<path>`, the schema's file name without `.schema.json` and the field's dotted path through properties, arrays left out |
-| Flags | A deprecated flag stays as a hidden option that warns, and its value is merged with its replacement's. `commands.json` marks it `deprecated: true` |
-| Config keys, variables | Loading the environment warns about each deprecated key present in the config file and each deprecated variable that is set |
+| Flags | A deprecated flag stays as a hidden option that warns, and its value is merged with its replacement's. `commands.json` marks it `deprecated: true`. A command declares it with `deprecated_flag(deprecation)` from `entrypoints/shared.py`, which takes the flag from the entry's name and warns when the command line gives it, and uses `merged(replacement, deprecated)` for the value: the replacement's, unless the command line left it unset |
+| Config keys, variables | `load_environment` warns about each deprecated key present in the config file and each deprecated variable that is set (`warn_about_deprecated_use` in `adapters/deprecation_warnings.py`). The warning is all it does: the code that reads the key or variable keeps reading it |
 | Tests | `cli/tests/domain/test_deprecations.py` and `cli/tests/entrypoints/test_deprecation_warnings.py` use registries of their own. `cli/tests/contract/test_deprecations_table.py` holds `DEPRECATIONS` and the table below equal, and each `json_field` entry marked in its schema |
 
 ### Deprecations

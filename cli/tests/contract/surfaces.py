@@ -1,6 +1,7 @@
 """The public surfaces as the code has them now, each a flat mapping from an entry to its value."""
 
 import tomllib
+from collections.abc import Iterable
 from pathlib import Path
 
 import typer.main
@@ -17,6 +18,7 @@ from coding_study.adapters.workspace_marker import (
     record_license,
 )
 from coding_study.domain import environment_variables
+from coding_study.domain.deprecations import DEPRECATIONS, Deprecation, is_deprecated_flag
 from coding_study.domain.doc_checks import CommandSpec
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.command_table import command_spec
@@ -29,16 +31,20 @@ LICENSE_KEY = "<key>"
 """The name of the table `[licenses.<key>]` stands for."""
 
 
-def commands() -> Surface:
+def commands(registry: Iterable[Deprecation] = DEPRECATIONS) -> Surface:
     """Each command and subcommand by its path, and each flag by its path and name."""
     root = typer.main.get_command(cli.app)
     surface: dict[str, object] = {}
-    _add_command(surface, PROGRAM, command_spec(root), root)
+    _add_command(surface, PROGRAM, command_spec(root), root, tuple(registry))
     return surface
 
 
 def _add_command(
-    surface: dict[str, object], path: str, spec: CommandSpec, command: Command
+    surface: dict[str, object],
+    path: str,
+    spec: CommandSpec,
+    command: Command,
+    registry: tuple[Deprecation, ...],
 ) -> None:
     surface[path] = {"subcommands": sorted(spec.subcommands)}
     choices = _choices(command)
@@ -46,11 +52,11 @@ def _add_command(
         surface[f"{path} {name}"] = {
             "takes_value": takes_value,
             "choices": choices.get(name, []),
-            "deprecated": False,
+            "deprecated": is_deprecated_flag(path, name, registry),
         }
     if isinstance(command, TyperGroup):
         for name, subspec in spec.subcommands.items():
-            _add_command(surface, f"{path} {name}", subspec, command.commands[name])
+            _add_command(surface, f"{path} {name}", subspec, command.commands[name], registry)
 
 
 def _choices(command: Command) -> dict[str, list[str]]:
