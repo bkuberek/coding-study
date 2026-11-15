@@ -71,7 +71,7 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
     { class: "sheet-form" },
     choosesLanguage
       ? h("div", { class: "field" }, h("label", { for: "start-language" }, "language"), language)
-      : h("p", { class: "field quiet" }, fixedLanguage ? `${fixedLanguage}: a project starts in its one language` : "notes: an item takes no language"),
+      : h("p", { class: "field quiet" }, fixedLanguage ? `${fixedLanguage}: a project starts in its one language` : "notes: a problem checked by a rubric takes no language"),
     jdkNote,
     needsArea,
     h("div", { class: "field check" }, fresh, h("label", { for: "start-fresh" }, "start fresh"), h("p", { class: "quiet" }, "archive your current files to .archive/ and begin again")),

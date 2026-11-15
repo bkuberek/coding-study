@@ -10,6 +10,7 @@ import { confirmed } from "../confirmation.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, h } from "../dom.ts";
 import { problemBadge } from "../format.ts";
+import { selfGraded } from "../kinds.ts";
 import { attemptHash, problemHash, problemsHash, setHash, SETS_HASH } from "../routes.ts";
 import { movesOf, setNameIssue, standingWords, targetWords } from "../sets-model.ts";
 import { askNames, confirmAction, openStartDialog } from "../sheets.ts";
@@ -199,7 +200,7 @@ export function setView(context: PageContext, name: string): Cleanup {
     const status = entry === null ? { glyph: "?", text: "missing", tone: "warn" } : problemBadge(entry.status, entry.levels);
     return h(
       "tr",
-      { class: entry?.kind === "item" ? "is-item" : null },
+      { class: entry && selfGraded(entry.kind) ? "is-self-graded" : null },
       h("td", { class: "num" }, row.position),
       entry === null
         ? h("td", { class: "title-cell" }, h("span", { class: "slug" }, row.slug))
@@ -279,7 +280,7 @@ export function setView(context: PageContext, name: string): Cleanup {
     const form = h(
       "form",
       { class: "set-add", novalidate: true },
-      h("label", { for: field.id }, "Add a problem or item by slug"),
+      h("label", { for: field.id }, "Add a problem by slug"),
       field,
       h("button", { type: "submit", class: "button", title: `cstudy set add ${found.name} <slug>` }, "Add"),
       issue,

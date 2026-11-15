@@ -10,9 +10,9 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | Python runner | `runners/python/` | Python | Packages `cs_runner` (runner) and `cs_support` (`ListNode`, `TreeNode`, `GraphNode`) |
 | TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
 | JVM runner | `runners/jvm/` | Java, compiled at release 21; Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin. The module `cs.coroutines`, in Kotlin, is the bridge to the coroutine test scheduler that grades Kotlin projects on the virtual clock |
-| Content | `problems/`, `tracks/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
+| Content | `problems/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
 | Web UI | `cli/src/coding_study/entrypoints/web/`, sources in `tools/web-ui/` | Python (Starlette on uvicorn); TypeScript and CodeMirror 6, built and committed | `cstudy serve`: the local page, a second driving adapter ([below](#web-adapter), [web-ui](specs/web-ui.md)) |
-| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents |
+| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents |
 | Workspace templates | `cli/src/coding_study/adapters/workspace_template/` | 3 real projects | What `cstudy init` copies into a workspace |
 | Workspace | anywhere, outside this repository ([installation-and-workspaces](specs/installation-and-workspaces.md)) | 4 real projects | The user's code, notes and own problems, versioned on their own |
 | Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs |
@@ -53,8 +53,8 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | Port | Adapter | Notes |
 |------|---------|-------|
 | `ProblemRepository` | `FsProblemRepository` | Reads `problems/`, validates with JSON Schema, caches the validated `meta.yaml` documents in `.cs/index.json` ([index](#index-cache)) |
-| `ItemRepository` | `FsItemRepository` | Reads the non-autograded items in `tracks/<track>/<slug>/` and validates `item.yaml` with JSON Schema, through the same `.cs/index.json` |
-| `StudyGuides` | `FsStudyGuides` | Locates the user's own study guides under config `study_guides.root` for item statements ([study guides](specs/content.md#study-guides)) |
+| `ItemRepository` | `FsItemRepository` | Reads the rubric-checked problems of `problems/<slug>/`, the folders whose `kind` is `system-design` or `code-review`, and validates their `meta.yaml` with JSON Schema, through the same `.cs/index.json`; `FsProblemRepository` reads the other folders and treats these as absent |
+| `StudyGuides` | `FsStudyGuides` | Locates the user's own study guides under config `study_guides.root` for rubric problem statements ([study guides](specs/content.md#study-guides)) |
 | `ProgressStore` | `SqliteProgressStore` | Schema in [progress-and-scheduling](specs/progress-and-scheduling.md) |
 | `LanguageRunner` | one per language (`adapters/languages/<python,typescript,jvm,go,rust>/`; the JVM adapter serves Java and Kotlin) | `prepare(scope, notify)` returns `Prepared` (launch command) or `BuildFailed`, building when needed; scope `BenchCode` prepares the user's code and the references for one bench process. Several `cstudy` processes may share a workspace: the JVM, Go and Rust adapters build under a file lock and launch from a private copy of the build output, which `RunnerProcess` removes when the run ends (`RunnerLaunch.scratch`). The JVM adapter copies its class output ([JVM build details](specs/runners.md#jvm-build-details)); Go and Rust share `adapters/languages/compiled_builds.py` (lock, write-on-change generated files, abandoned-run cleanup) and each run gets its own scratch directory `.cs/build/<lang>/run/<pid>-<random>/` holding a copy of the binary ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) |
 | `RunnerProcess` | `SubprocessRunner` (one for every language) | `run(launch, request) -> RunReport` and `bench(launch, request) -> BenchReport`: request file, event file, hang guard, restarts; protocol in [runners](specs/runners.md) |
@@ -229,11 +229,10 @@ coding-study/
     typescript/             # runner.ts, support.ts
     jvm/                    # Gradle included build: support + runner (Java)
     conformance/            # fixture problems for every DSL type and error path, expectations.json
-  schemas/                  # meta, tests, item, conformance, events and web API JSON Schemas
+  schemas/                  # meta, tests, conformance, events and web API JSON Schemas
   tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
   tools/web-ui/             # sources, lockfile and build of the web UI front end (its bundle ships in entrypoints/web/static/)
-  problems/<slug>/          # autograded content (format: specs/problem-format.md)
-  tracks/                   # non-autograded content (system design, code review, behavioral)
+  problems/<slug>/          # every problem: autograded (specs/problem-format.md) or rubric-checked (specs/content.md#rubric-checked-problems)
 ```
 
 The repository holds no workspace. A workspace, created by `cstudy init` anywhere else, holds the practice projects, the project problems' folders in `projects/`, `notes/`, `.archive/`, `.statements/`, its own `problems/`, `.cs/` and `progress.db` ([layout](specs/installation-and-workspaces.md#layout)).
@@ -285,7 +284,7 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 
 | Path | Content | Invalidation |
 |------|---------|--------------|
-| `.cs/index.json` | Parsed and validated `meta.yaml` and `item.yaml` documents ([index](#index-cache)) | Per file: modification time (ns) and size of the file and of its schema |
+| `.cs/index.json` | Parsed and validated `meta.yaml` documents ([index](#index-cache)) | Per file: modification time (ns) and size of the file and of its schema |
 | `.cs/cases/<slug>/<hash>.json` | Generated cases with expected values | Hash of generator, tests, expected-source approach |
 | `.cs/calibration/<lang>/<slug>.json` | Reference per-case timings for time limits | Hash of reference file, tests, runtime version, machine id |
 | `.cs/build/<lang>/` | Materialized references for verify and bench; in Go and Rust also the generated build and its runner binaries ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) | Rebuilt on change |
@@ -296,7 +295,7 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 
 ### Index cache
 
-`cstudy list`, `cstudy next` and `cstudy stats` read every `meta.yaml` and `item.yaml`; parsing and schema-validating them dominated their time (about 0.8 s with 207 problems, against NFR-2's 500 ms). The index stores each file's validated document so a warm run only stats the files.
+`cstudy list`, `cstudy next` and `cstudy stats` read every `meta.yaml`; parsing and schema-validating them dominated their time (about 0.8 s with 207 problems, against NFR-2's 500 ms). The index stores each file's validated document so a warm run only stats the files.
 
 ```json
 {
@@ -313,6 +312,6 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 | `stamp` | `[file mtime ns, file size, schema mtime ns, schema size]`: an entry is a hit only when all four equal the current values, so editing a file or its schema is a miss. Nothing is hashed |
 | Stored | Only documents with no schema violation, so invalid content is reported on every run |
 | Not stored | `tests.json`, solutions and statements: `cstudy start`, `cstudy test` and `cstudy verify` read what they need directly. The reference languages of a problem still come from a directory listing each run |
-| Housekeeping | A full listing drops the entries of files that no longer exist under its directory (`problems/` or `tracks/`) and rewrites the index only when it changed (write to a temporary file, then rename) |
+| Housekeeping | A full listing drops the entries of files that no longer exist under `problems/` and rewrites the index only when it changed (write to a temporary file, then rename) |
 | Failure | A missing, corrupt or other-version index, or one that cannot be written, is a cold read: never an error |
 | Loader | `yaml.CSafeLoader` when PyYAML has libyaml, else `yaml.SafeLoader`; the schema validators are built on first use |

@@ -2,8 +2,7 @@
 the three labels `domains`, `job_roles` and `scope` (docs/decisions/0020-catalog-labels.md).
 
 The order of `PATTERNS` is the tie-break order of `cstudy next`. schemas/meta.schema.json lists the
-same patterns, and both it and schemas/item.schema.json list the same labels as `$defs`; a test
-holds each list and its schema equal.
+same patterns and the same labels as `$defs`; a test holds each list and the schema equal.
 """
 
 from enum import StrEnum

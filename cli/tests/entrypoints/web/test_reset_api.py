@@ -10,7 +10,7 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.runs import Children
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.scripted_runs import QUICK, Script
 from tests.stats_fixture import fill_progress
 from tests.web_server import WRITE_HEADERS, session_client, web_app, web_workspace
@@ -136,7 +136,7 @@ def test_a_body_that_is_not_an_object_gets_422(app, environment):
 
 
 def test_a_running_child_refuses_it_and_names_the_run(tmp_path):
-    root = repository_root(tmp_path / "workspace", PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path / "workspace", PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
     attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt
     script = Script(tmp_path / "script.json")

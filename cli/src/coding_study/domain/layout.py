@@ -173,7 +173,7 @@ def archive_directory(slug: str, attempt_id: int, language: Language) -> str:
 
 
 def notes_path(meta: ItemMeta) -> str:
-    """Where `cstudy start` puts the user's answer to a non-autograded item."""
+    """Where `cstudy start` puts the user's answer to a rubric-checked problem."""
     return f"{NOTES_DIRECTORY}/{meta.track}/{meta.slug}.md"
 
 

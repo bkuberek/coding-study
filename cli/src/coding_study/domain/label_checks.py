@@ -1,9 +1,9 @@
-"""Check S24: the labels of a catalog problem or item (docs/specs/authoring.md#static).
+"""Check S24: the labels of a catalog problem (docs/specs/authoring.md#static).
 
 A catalog entry has `domains`, `job_roles` and `scope`, and its scope fits what it is: a `project`
 problem works on a project or a system, any other problem on one function or class, a system design
-item on a system and a code review item on a function. A workspace problem may leave all three out,
-and when it names a scope that scope has to fit too.
+problem on a system and a code review problem on a function. A workspace problem may leave all
+three out, and when it names a scope that scope has to fit too.
 """
 
 from dataclasses import dataclass

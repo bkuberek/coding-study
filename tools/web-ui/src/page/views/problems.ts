@@ -1,7 +1,7 @@
 /**
  * The Problems view (docs/specs/web-ui.md#problems-view): the `cstudy next` pick with its action, the
  * search and the filters of `cstudy list`, kept in the fragment's query, the chips of what is active,
- * and the table in the columns the preferences hold, items after problems.
+ * and the table in the columns the preferences hold, in the order of `cstudy list`.
  */
 
 import "../filters.css";
@@ -11,6 +11,7 @@ import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../command
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, type Child, command, h, isSearchShortcut } from "../dom.ts";
 import { problemBadge } from "../format.ts";
+import { selfGraded } from "../kinds.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
 import { needMarkers } from "../needs-model.ts";
 import {
@@ -153,8 +154,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
         );
         narrow = () => {
           const found = rows.narrow(searched);
-          const items = found.filter((entry) => entry.kind === "item").length;
-          shell.setStatus({ mode: "LIST", where: `${counted(found.length - items, "problem")} · ${counted(items, "item")} · ${today}` });
+          shell.setStatus({ mode: "LIST", where: `${counted(found.length, "problem")} · ${today}` });
           count.textContent = countWords(found.length, everything?.entries.length ?? null);
           if (!summary.hidden) shell.announce(`showing ${count.textContent}`);
         };
@@ -411,7 +411,7 @@ function listing(
   const table = h(
     "table",
     { class: "problems problem-rows" },
-    h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
+    h("caption", { class: "sr-only" }, "Problems matching the filters"),
     h("thead", {}, h("tr", {}, ...columns.map((name) => h("th", { scope: "col" }, name)))),
     body,
   );
@@ -506,7 +506,7 @@ const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawi
 function row(entry: ListEntry, columns: readonly ProblemColumn[], drawing: RowDrawing): HTMLTableRowElement {
   return h(
     "tr",
-    { class: entry.kind === "item" ? "is-item" : null },
+    { class: selfGraded(entry.kind) ? "is-self-graded" : null },
     ...columns.map((column) => {
       const cell = CELLS[column](entry, drawing);
       cell.dataset["column"] = column;

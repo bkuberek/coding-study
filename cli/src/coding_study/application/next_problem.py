@@ -1,8 +1,8 @@
 """`cstudy next`: pick what to practice (docs/specs/cli.md#cstudy-next).
 
 The rules are pure (`coding_study.domain.next_selection`); this gathers their inputs from the
-content and progress.db. Candidates are the problems in `problems/` and the non-autograded items
-in `tracks/` of the tracks in scope.
+content and progress.db. Candidates are the problems in `problems/`, those checked by tests and
+those checked by a rubric, of the tracks in scope.
 """
 
 from collections.abc import Callable, Sequence
@@ -78,7 +78,7 @@ class Recommendation:
     kind: EntryKind
     language: Language | None
     """The language `cstudy next --start` starts it in, which is the language of the attempt a
-    resume picks up; None for an item."""
+    resume picks up; None for a rubric problem."""
     set_standing: SetStanding | None = None
     """How the set stands, under `--set`."""
 
@@ -208,7 +208,7 @@ def recommend(environment: Environment, request: NextRequest) -> Recommendation 
     candidate = picked.candidate
     if not candidate.autograded:
         item = environment.items.load(candidate.slug)
-        return Recommendation(picked, item.title, EntryKind.ITEM, None, standing)
+        return Recommendation(picked, item.title, item.kind, None, standing)
     meta = environment.problems.load(candidate.slug).meta
     language = _problem_language(environment, meta, request.language)
     if resumed is not None:
@@ -265,7 +265,7 @@ def start_language(
     environment: Environment, candidate: Candidate, requested: Language | None
 ) -> Language | None:
     """The language `cstudy next --start` starts `candidate` in: a project problem's own, `--lang`
-    or the config's `default_lang` for another problem, and none for an item."""
+    or the config's `default_lang` for another problem, and none for a rubric problem."""
     if not candidate.autograded:
         return None
     meta = environment.problems.load(candidate.slug).meta

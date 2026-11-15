@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+slug: review-payment-retry
+title: "Review: Payment Retry"
+track: code-review
+kind: code-review
+difficulty: hard
+domains: [backend, fintech]
+job_roles: [backend]
+scope: function
+estimate_minutes: 40
+status: ready
+order: 6
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#6-common-patterns"
+  links:
+    - https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/
+    - https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/
+    - https://stripe.com/blog/idempotency
+related: [payments-ledger, review-concurrent-counter]

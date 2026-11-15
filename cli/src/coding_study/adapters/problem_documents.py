@@ -95,7 +95,7 @@ class _DocumentError(Exception):
 
 
 def labels_from_document(document: Document) -> Labels:
-    """The `domains`, `job_roles` and `scope` of a `meta.yaml` or `item.yaml` document."""
+    """The `domains`, `job_roles` and `scope` of a `meta.yaml` document."""
     scope = document.get("scope")
     return Labels(
         domains=tuple(document.get("domains", ())),

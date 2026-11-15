@@ -55,8 +55,8 @@ class DoneSettings:
 @dataclass(frozen=True, slots=True)
 class StudyGuideSettings:
     root: str | None = None
-    """The directory item `references.study_guides` paths are relative to: absolute or
-    `~/`-relative. Unset, `cstudy start` and `cstudy show` link no study guide."""
+    """The directory that the `references.study_guides` paths of a rubric problem are relative to:
+    absolute or `~/`-relative. Unset, `cstudy start` and `cstudy show` link no study guide."""
 
 
 @dataclass(frozen=True, slots=True)

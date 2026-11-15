@@ -22,7 +22,7 @@ This guide covers changes to coding-study itself: the `cstudy` CLI, the runners,
 
 3. Make your change, run the [checks](#checks), and commit with a [Conventional Commit](#commits-and-versions) message.
 
-`uv run cstudy` in a checkout reads the checkout's `problems/`, `tracks/`, `runners/` and `schemas/`, and builds with the workspace's toolchains. To put the checkout's `cstudy` on your `PATH`, run `uv tool install --editable .`.
+`uv run cstudy` in a checkout reads the checkout's `problems/`, `runners/` and `schemas/`, and builds with the workspace's toolchains. To put the checkout's `cstudy` on your `PATH`, run `uv tool install --editable .`.
 
 ## Never commit solutions or progress
 
@@ -54,7 +54,7 @@ Changes to content, runners or code generation also need `cstudy verify` (with `
 |--------|------|
 | Runners or stub generation | `uv run cstudy verify --conformance`, then a full `uv run cstudy verify` |
 | Problems in `problems/` | `uv run cstudy verify --changed --oracle --ladder --require-ready` |
-| Items in `tracks/` | `uv run cstudy verify --track system-design --require-ready` (or `--track code-review`) |
+| Rubric problems (`system-design`, `code-review`) | `uv run cstudy verify --track system-design --require-ready` (or `--track code-review`) |
 
 `--ladder` measures timing, so run it on an idle machine on AC power; a busy machine reports lower confidence. Optional: run the problem gate in a `pre-push` git hook.
 
@@ -76,7 +76,7 @@ Problem statements, tests, hints and solutions must be original ([ADR 0004](docs
    uv run cstudy verify <slug> --oracle --ladder --require-ready
    ```
 
-Non-autograded items (system design, code review) follow the [item workflow](docs/specs/authoring.md#item-workflow). Slugs are unique across `problems/` and `tracks/` and never change once merged, because progress is keyed on the slug.
+Rubric problems (system design, code review) follow the [rubric problem workflow](docs/specs/authoring.md#rubric-problem-workflow). Slugs are unique and never change once merged, because progress is keyed on the slug.
 
 ## Commits and versions
 

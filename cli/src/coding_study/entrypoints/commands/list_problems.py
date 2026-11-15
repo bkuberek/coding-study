@@ -29,7 +29,14 @@ from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import jdk_range_of
 from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.level_passes import status_cell
-from coding_study.domain.problem import ContentStatus, Difficulty, Language, ProblemMeta, Track
+from coding_study.domain.problem import (
+    ContentStatus,
+    Difficulty,
+    Language,
+    ListingKey,
+    ProblemMeta,
+    Track,
+)
 from coding_study.domain.scheduling import ProblemStatus
 from coding_study.domain.service_project import need_markers, service_of
 from coding_study.domain.taxonomy import Scope
@@ -101,7 +108,7 @@ def list_command(
     ] = None,
     kind: Annotated[
         EntryKind | None,
-        typer.Option("--kind", help="Only this kind of problem, or item for the items."),
+        typer.Option("--kind", help="Only this kind of problem."),
     ] = None,
     domain: Annotated[
         str | None, typer.Option("--domain", help="Problems that list this domain.")
@@ -151,8 +158,11 @@ def list_command(
     problems, items = _entries(environment, problem_filter)
     rows = _in_order(
         problem_filter,
-        [(item.summary.meta.slug, problem_cells(item)) for item in problems]
-        + [(item.meta.slug, item_cells(item)) for item in items],
+        [
+            (item.summary.meta.slug, item.summary.meta.listing_key(), problem_cells(item))
+            for item in problems
+        ]
+        + [(item.meta.slug, item.meta.listing_key(), item_cells(item)) for item in items],
     )
     needs_column = any(need_markers(item.summary.meta) for item in problems)
     if needs_column:
@@ -186,13 +196,18 @@ def problem_status(text: str | None) -> ProblemStatus | None:
 
 
 def list_document(environment: Environment, problem_filter: ProblemFilter) -> dict[str, JsonValue]:
-    """`cstudy list --json`: the rows, problems then items."""
+    """`cstudy list --json`: the rows, in the order of the table."""
     problems, items = _entries(environment, problem_filter)
     listing = listing_context(environment)
-    rows: list[tuple[str, JsonValue]] = [
-        (problem.summary.meta.slug, problem_entry(problem, listing)) for problem in problems
+    rows: list[tuple[str, ListingKey, JsonValue]] = [
+        (
+            problem.summary.meta.slug,
+            problem.summary.meta.listing_key(),
+            problem_entry(problem, listing),
+        )
+        for problem in problems
     ]
-    rows += [(item.meta.slug, item_entry(item, listing)) for item in items]
+    rows += [(item.meta.slug, item.meta.listing_key(), item_entry(item, listing)) for item in items]
     document: dict[str, JsonValue] = {
         "today": listing.today.isoformat(),
         "entries": _in_order(problem_filter, rows),
@@ -223,12 +238,17 @@ def _entries(
     return list_problems(environment, problem_filter), list_items(environment, problem_filter)
 
 
-def _in_order[Row](problem_filter: ProblemFilter, rows: list[tuple[str, Row]]) -> list[Row]:
-    """Each row of `(slug, row)`: problems then items, or the set's order under `--set`."""
+def _in_order[Row](
+    problem_filter: ProblemFilter, rows: list[tuple[str, ListingKey, Row]]
+) -> list[Row]:
+    """Each row of `(slug, key, row)` in one list: the order of `cstudy list`
+    (docs/specs/compatibility.md#order), or the set's order under `--set`."""
     chosen = problem_filter.in_set
     if chosen is not None:
-        rows = sorted(rows, key=lambda row: chosen.position_of(row[0]))
-    return [row for _, row in rows]
+        ordered = sorted(rows, key=lambda row: chosen.position_of(row[0]))
+    else:
+        ordered = sorted(rows, key=lambda row: row[1])
+    return [row for _, _, row in ordered]
 
 
 def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, JsonValue]:
@@ -291,7 +311,7 @@ def item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue
         "slug": meta.slug,
         "title": meta.title,
         "track": meta.track.value,
-        "kind": EntryKind.ITEM.value,
+        "kind": meta.kind.value,
         "difficulty": meta.difficulty.value,
         "patterns": [],
         **_label_fields(meta.labels),
@@ -360,7 +380,7 @@ def _footer(note: JdkNote) -> str:
 
 
 def item_cells(item: ListedItem) -> tuple[str, ...]:
-    """Items have no pattern or references; their track takes the pattern column."""
+    """A rubric problem has no pattern or references; its track takes the pattern column."""
     meta = item.meta
     due = item.due_on.isoformat() if item.due_on else NO_VALUE
     return (meta.slug, meta.difficulty, meta.track, item.status.label, due, NO_VALUE)

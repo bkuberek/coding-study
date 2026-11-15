@@ -8,7 +8,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import start
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import make_environment, repository_root
-from tests.helpers import FIXTURE_PROBLEMS, FIXTURE_TRACKS, PROJECT_PROBLEMS
+from tests.helpers import FIXTURE_PROBLEMS, FIXTURE_RUBRIC_PROBLEMS, PROJECT_PROBLEMS
 from tests.project_fakes import PROJECT_FOLDER, PROJECT_SLUG
 from tests.project_locks import passing_environment
 
@@ -81,7 +81,9 @@ def test_restore_excludes_starting_flags(environment, flags):
 
 
 def test_restore_of_an_item_exits_3(tmp_path, monkeypatch):
-    environment = make_environment(repository_root(tmp_path, FIXTURE_PROBLEMS, FIXTURE_TRACKS))
+    environment = make_environment(
+        repository_root(tmp_path, FIXTURE_PROBLEMS, FIXTURE_RUBRIC_PROBLEMS)
+    )
     monkeypatch.setattr(start, "load_environment", lambda *_: environment)
     result = runner.invoke(cli.app, ["start", "url-shortener", "--restore", "notes.md"])
     assert (result.exit_code, result.stderr) == (

@@ -48,8 +48,8 @@ class RunSubject:
 
 def check_run(environment: Environment, check: RunCheck) -> RunSubject:
     """Raises UnknownAttemptError and AttemptEndedError for an attempt not in progress, and
-    UsageError for an item, `submit` on a problem that is not a project, and a level the problem
-    lacks or keeps locked."""
+    UsageError for a rubric problem, `submit` on a problem that is not a project, and a level the
+    problem lacks or keeps locked."""
     attempt = attempt_in_progress(environment.progress, check.attempt_id)
     language = autograded_language(attempt)
     meta = environment.problems.load(attempt.slug).meta

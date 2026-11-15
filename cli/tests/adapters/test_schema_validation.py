@@ -3,6 +3,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+import yaml
 from jsonschema import Draft202012Validator
 
 from coding_study.adapters.schema_validation import (
@@ -13,6 +14,8 @@ from coding_study.adapters.schema_validation import (
 )
 from tests.helpers import (
     BANK_PROJECT,
+    CATALOG_PROBLEMS,
+    FIXTURE_RUBRIC_PROBLEMS,
     PROJECT_PROBLEMS,
     PROJECT_STRESS_PROBLEMS,
     SCHEMAS_DIRECTORY,
@@ -428,3 +431,145 @@ def test_a_changed_schema_is_checked_again(monkeypatch):
     for title in ("first", "second"):
         SchemaValidator({"title": f"changed {title}"}).violations({}, SOURCE)
     assert len(checks) == 2
+
+
+# rubric kinds
+
+RUBRIC_SOURCE = "problems/url-shortener/meta.yaml"
+
+
+def rubric_documents(problems) -> dict[str, dict[str, Any]]:
+    documents = (yaml.safe_load(path.read_text()) for path in sorted(problems.glob("*/meta.yaml")))
+    return {
+        document["slug"]: document
+        for document in documents
+        if document["kind"] in ("system-design", "code-review")
+    }
+
+
+def url_shortener() -> dict[str, Any]:
+    return yaml.safe_load((FIXTURE_RUBRIC_PROBLEMS / "url-shortener" / "meta.yaml").read_text())
+
+
+def rubric_issues(meta: dict[str, Any]) -> list[str]:
+    return [issue.location for issue in validator_for_meta_file().violations(meta, RUBRIC_SOURCE)]
+
+
+@pytest.mark.parametrize("slug", rubric_documents(FIXTURE_RUBRIC_PROBLEMS))
+def test_fixture_rubric_problems_are_valid(slug):
+    meta = rubric_documents(FIXTURE_RUBRIC_PROBLEMS)[slug]
+    assert rubric_issues(meta) == []
+
+
+def test_the_catalog_holds_ten_system_design_and_six_code_review_problems():
+    kinds = [meta["kind"] for meta in rubric_documents(CATALOG_PROBLEMS).values()]
+    assert (kinds.count("system-design"), kinds.count("code-review")) == (10, 6)
+
+
+@pytest.mark.parametrize("slug", rubric_documents(CATALOG_PROBLEMS))
+def test_every_catalog_rubric_problem_is_valid(slug):
+    assert rubric_issues(rubric_documents(CATALOG_PROBLEMS)[slug]) == []
+
+
+RUBRIC_INVALID: dict[str, tuple[Mutation, str]] = {
+    "missing estimate": (lambda meta: meta.pop("estimate_minutes"), ""),
+    "missing kind": (lambda meta: meta.pop("kind"), ""),
+    "a track other than the kind": (lambda meta: meta.update(track="code-review"), "track"),
+    "an autograded track": (lambda meta: meta.update(track="dsa"), "track"),
+    "behavioral track": (lambda meta: meta.update(track="behavioral"), "track"),
+    "unknown key": (lambda meta: meta.update(hints=["think"]), ""),
+    "home study guide": (
+        lambda meta: meta["references"].update(study_guides=["~/guides/caching.md"]),
+        "references.study_guides[0]",
+    ),
+    "absolute study guide": (
+        lambda meta: meta["references"].update(study_guides=["/guides/caching.md"]),
+        "references.study_guides[0]",
+    ),
+    "study guide above the root": (
+        lambda meta: meta["references"].update(study_guides=["../caching.md"]),
+        "references.study_guides[0]",
+    ),
+    "study guide escaping through a subdirectory": (
+        lambda meta: meta["references"].update(study_guides=["systems/../../caching.md"]),
+        "references.study_guides[0]",
+    ),
+    "link without scheme": (
+        lambda meta: meta["references"].update(links=["example.com"]),
+        "references.links[0]",
+    ),
+    "invalid related slug": (lambda meta: meta.update(related=["News Feed"]), "related[0]"),
+}
+
+
+@pytest.mark.parametrize(("mutate", "location"), RUBRIC_INVALID.values(), ids=RUBRIC_INVALID.keys())
+def test_invalid_rubric_problems_are_rejected(mutate, location):
+    meta = url_shortener()
+    mutate(meta)
+    assert set(rubric_issues(meta)) == {location}
+
+
+def test_a_code_review_problem_has_the_code_review_track():
+    meta = yaml.safe_load((FIXTURE_RUBRIC_PROBLEMS / "retry-wrapper" / "meta.yaml").read_text())
+    meta["track"] = "system-design"
+    assert rubric_issues(meta) == ["track"]
+
+
+AUTOGRADED_FIELDS: dict[str, Any] = {
+    "signature": {"function": {"name": "f", "params": [], "returns": {"type": "int"}}},
+    "comparator": {"type": "exact"},
+    "approaches": [{"id": "a", "role": "optimal"}],
+    "patterns": ["arrays-hashing"],
+    "levels": [{"level": 1, "title": "Basics"}],
+    "perf": {},
+    "stub": "generated",
+    "languages": ["python"],
+    "jdk": {"min": 24},
+    "limits": {"hang_guard_ms": 5000},
+    "project": {},
+    "concurrency": {},
+    "summary": "A summary.",
+    "guides": ["hashing"],
+}
+
+
+@pytest.mark.parametrize("field", AUTOGRADED_FIELDS)
+def test_a_rubric_problem_refuses_an_autograded_field(field):
+    meta = url_shortener()
+    meta[field] = AUTOGRADED_FIELDS[field]
+    assert rubric_issues(meta) != []
+
+
+def test_a_rubric_problem_refuses_a_leetcode_reference():
+    meta = url_shortener()
+    meta["references"]["leetcode"] = {"number": 1, "url": "https://leetcode.com/problems/two-sum/"}
+    assert rubric_issues(meta) != []
+
+
+@pytest.mark.parametrize("field", ["comparator", "approaches"])
+def test_an_autograded_problem_requires_a_comparator_and_approaches(field):
+    meta = load_fixture_meta("two-sum")
+    del meta[field]
+    assert validator_for_meta_file().violations(meta, SOURCE) != []
+
+
+def test_an_autograded_problem_refuses_a_study_guide_reference():
+    meta = load_fixture_meta("two-sum")
+    meta["references"] = {"study_guides": ["caching.md"]}
+    assert validator_for_meta_file().violations(meta, SOURCE) != []
+
+
+@pytest.mark.parametrize("track", ["system-design", "code-review"])
+def test_an_autograded_problem_refuses_a_rubric_track(track):
+    meta = load_fixture_meta("two-sum")
+    meta["track"] = track
+    assert validator_for_meta_file().violations(meta, SOURCE) != []
+
+
+@pytest.mark.parametrize(
+    "guide", ["caching.md", "systems/caching.md#eviction", "caching..notes.md"]
+)
+def test_study_guides_are_relative_to_the_study_guides_root(guide):
+    meta = url_shortener()
+    meta["references"]["study_guides"] = [guide]
+    assert rubric_issues(meta) == []

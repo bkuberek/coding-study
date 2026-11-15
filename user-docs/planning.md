@@ -55,7 +55,7 @@ cstudy set list                          # your sets, with passed of total
 | Command | Does |
 |---------|------|
 | `cstudy set create <name>` | Makes an empty set; `--description` says what it is for |
-| `cstudy set add <name> <slug>...` | Adds problems or items to its end |
+| `cstudy set add <name> <slug>...` | Adds problems to its end |
 | `cstudy set remove <name> <slug>...` | Takes them out |
 | `cstudy set move <name> <slug> <position>` | Moves one, counting from 1 |
 | `cstudy set show <name>` | Its entries in order, with their status |

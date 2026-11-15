@@ -1,4 +1,4 @@
-"""`cstudy list` and `cstudy next` over non-autograded items, and the Phase 6 practice loop."""
+"""`cstudy list` and `cstudy next` over rubric problems, and the Phase 6 practice loop."""
 
 from datetime import timedelta
 from pathlib import Path
@@ -11,7 +11,7 @@ from coding_study.domain.problem import Track
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import done, list_problems, next_problem, solution, start
 from tests.fakes import FakeClock, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -25,7 +25,7 @@ def clock() -> FakeClock:
 
 @pytest.fixture
 def environment(tmp_path, clock, monkeypatch):
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, clock=clock, config=Config(open_on_start=False))
     for command in COMMANDS:
         loader = "load_catalog_environment" if command is list_problems else "load_environment"
@@ -37,7 +37,7 @@ def invoke(*arguments: str):
     return runner.invoke(cli.app, ["--no-color", *arguments])
 
 
-def test_list_track_shows_its_items(environment):
+def test_list_track_shows_its_rubric_problems(environment):
     assert invoke("list", "--track", "system-design").output.splitlines() == [
         "SLUG              DIFF    PATTERN          STATUS        DUE         REFS",
         "url-shortener     medium  system-design    new           -           -",
@@ -45,28 +45,28 @@ def test_list_track_shows_its_items(environment):
     ]
 
 
-def test_list_shows_items_after_problems(environment):
+def test_list_shows_rubric_problems_by_track_after_the_earlier_tracks(environment):
     slugs = [line.split()[0] for line in invoke("list").output.splitlines()[1:]]
     assert slugs == ["two-sum", "lru-cache", "url-shortener", "news-feed", "retry-wrapper"]
 
 
-def test_list_content_filter_applies_to_items(environment):
+def test_list_content_filter_applies_to_rubric_problems(environment):
     output = invoke("list", "--track", "system-design", "--content", "draft").output
     assert [line.split()[0] for line in output.splitlines()[1:]] == ["news-feed"]
 
 
-def test_list_pattern_filter_leaves_items_out(environment):
+def test_list_pattern_filter_leaves_rubric_problems_out(environment):
     assert "url-shortener" not in invoke("list", "--pattern", "arrays-hashing").output
 
 
-def test_next_track_picks_a_new_item(environment):
+def test_next_track_picks_a_new_rubric_problem(environment):
     assert invoke("next", "--track", "system-design").output.splitlines() == [
         "new     url-shortener  (medium · system-design)  weakest track: system-design (0.75)",
         "start   cstudy start url-shortener",
     ]
 
 
-def test_next_start_line_for_an_item_ignores_lang(environment):
+def test_next_start_line_for_a_rubric_problem_ignores_lang(environment):
     output = invoke("next", "--track", "system-design", "--lang", "kotlin").output
     assert output.splitlines()[1] == "start   cstudy start url-shortener"
 
@@ -112,7 +112,7 @@ def test_next_new_and_review_together_are_a_usage_error(environment):
     assert invoke("next", "--new", "--review").exit_code == 3
 
 
-def test_config_tracks_reach_items(environment, monkeypatch):
+def test_config_tracks_reach_rubric_problems(environment, monkeypatch):
     tracks = Config(open_on_start=False, next=NextSettings((Track.CODE_REVIEW,)))
     configured = make_environment(environment.root, config=tracks)
     monkeypatch.setattr(next_problem, "load_environment", lambda *_: configured)

@@ -14,7 +14,7 @@ from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, Rati
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import GuideLink
 from tests.fakes import FakeClock, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 NOTES = "notes/system-design/url-shortener.md"
@@ -30,7 +30,9 @@ def clock() -> FakeClock:
 
 @pytest.fixture
 def environment(tmp_path, clock):
-    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS), clock=clock)
+    return make_environment(
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS), clock=clock
+    )
 
 
 @pytest.fixture

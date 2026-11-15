@@ -280,12 +280,13 @@ class ScriptedWatcher:
             yield None
 
 
-def repository_root(tmp_path: Path, problems: Path, tracks: Path | None = None) -> Path:
-    """A repository root holding the real schemas, a copy of `problems` and of `tracks`."""
+def repository_root(tmp_path: Path, problems: Path, rubric_problems: Path | None = None) -> Path:
+    """A repository root holding the real schemas and a copy of `problems`, with the problems of
+    `rubric_problems` beside them."""
     shutil.copytree(SCHEMAS_DIRECTORY, tmp_path / "schemas")
     shutil.copytree(problems, tmp_path / "problems")
-    if tracks is not None:
-        shutil.copytree(tracks, tmp_path / "tracks")
+    if rubric_problems is not None:
+        shutil.copytree(rubric_problems, tmp_path / "problems", dirs_exist_ok=True)
     return tmp_path
 
 

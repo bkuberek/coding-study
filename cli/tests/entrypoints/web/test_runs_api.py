@@ -19,7 +19,7 @@ from coding_study.application.start_item import ItemStartRequest, start_item_att
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.runs import Children
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.sandbox_fakes import FakeSandbox
 from tests.scripted_runs import (
@@ -86,7 +86,7 @@ class Server:
 
 @pytest.fixture
 def practice(tmp_path) -> Environment:
-    root = repository_root(tmp_path / "workspace", PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path / "workspace", PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
 
 

@@ -9,7 +9,7 @@ import pytest
 from coding_study.application.environment import Environment
 from coding_study.application.progress_backup import export_progress
 from tests.fakes import make_environment, repository_root
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 from tests.stats_fixture import fill_progress
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
@@ -27,14 +27,16 @@ def problems(tmp_path_factory):
 
 @pytest.fixture
 def source(tmp_path, problems) -> Environment:
-    environment = make_environment(repository_root(tmp_path / "source", problems, FIXTURE_TRACKS))
+    environment = make_environment(
+        repository_root(tmp_path / "source", problems, FIXTURE_RUBRIC_PROBLEMS)
+    )
     fill_progress(environment)
     return environment
 
 
 @pytest.fixture
 def target(tmp_path, problems) -> Environment:
-    return make_environment(repository_root(tmp_path / "target", problems, FIXTURE_TRACKS))
+    return make_environment(repository_root(tmp_path / "target", problems, FIXTURE_RUBRIC_PROBLEMS))
 
 
 @pytest.fixture

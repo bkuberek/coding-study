@@ -24,7 +24,7 @@ from coding_study.domain.problem import Language
 from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 LOOP = "backend-loop"
@@ -32,7 +32,7 @@ LOOP = "backend-loop"
 
 @pytest.fixture
 def environment(tmp_path: Path):
-    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
 
 
 @pytest.fixture

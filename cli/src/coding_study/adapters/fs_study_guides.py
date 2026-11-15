@@ -1,7 +1,7 @@
 """The user's study guides on disk, under config `study_guides.root`.
 
-Items reference guide files relative to that root
-(docs/specs/content.md#non-autograded-item-format); a reference is linked only when its file
+A rubric problem references guide files relative to that root
+(docs/specs/content.md#rubric-checked-problems); a reference is linked only when its file
 exists there.
 """
 

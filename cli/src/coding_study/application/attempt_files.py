@@ -2,9 +2,9 @@
 (docs/specs/web-ui.md#file-api-rules).
 
 Each attempt has a root and a scope: a project its folder, a single-file problem on the JVM or in
-Go its package directory, any other problem the directory of its file, an item its track's notes
-directory. Paths are relative to the root; none may leave it, and no link on the way is followed.
-Files are created, moved and deleted only in a project folder and a JVM or Go package.
+Go its package directory, any other problem the directory of its file, a rubric problem its
+track's notes directory. Paths are relative to the root; none may leave it, and no link on the way
+is followed. Files are created, moved and deleted only in a project folder and a JVM or Go package.
 """
 
 import hashlib
@@ -50,7 +50,7 @@ TOOL_OUTPUT = "the page never shows what tools write (.venv, node_modules, cache
 
 
 class StartedFile(StrEnum):
-    """The file `cstudy start` wrote for a single-file problem or an item."""
+    """The file `cstudy start` wrote for a single-file problem or a rubric problem."""
 
     STUB = "stub"
     NOTES = "notes"

@@ -59,7 +59,15 @@ def test_the_session_describes_the_server_and_the_workspace(tmp_path, app):
             "code-review",
             "behavioral",
         ],
-        "kinds": ["function", "design", "progressive", "concurrent", "project", "item"],
+        "kinds": [
+            "function",
+            "design",
+            "progressive",
+            "concurrent",
+            "project",
+            "system-design",
+            "code-review",
+        ],
         "domains": [
             "algorithms",
             "backend",

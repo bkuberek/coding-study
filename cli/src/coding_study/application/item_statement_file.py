@@ -1,4 +1,4 @@
-""".statements/<slug>.md for a non-autograded item (docs/specs/cli.md#cstudy-start).
+""".statements/<slug>.md for a rubric problem (docs/specs/cli.md#cstudy-start).
 
 `cstudy start` writes it; `cstudy show` prints the same text without writing it.
 """
@@ -22,7 +22,7 @@ from coding_study.domain.items import (
 
 
 def guide_links(environment: Environment, meta: ItemMeta) -> tuple[GuideLink, ...]:
-    """The item's study-guide references whose file exists under the user's study-guides root,
+    """The problem's study-guide references whose file exists under the user's study-guides root,
     in `references.study_guides` order."""
     links: list[GuideLink] = []
     for reference in meta.references.study_guides:

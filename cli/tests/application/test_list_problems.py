@@ -91,15 +91,21 @@ def test_filter_by_kind(environment):
     assert slugs(environment, kind=EntryKind.DESIGN) == ["lru-cache"]
 
 
-def test_the_item_kind_leaves_every_problem_out(environment):
-    assert slugs(environment, kind=EntryKind.ITEM) == []
+def test_a_rubric_kind_leaves_every_autograded_problem_out(environment):
+    assert slugs(environment, kind=EntryKind.SYSTEM_DESIGN) == []
 
 
 @pytest.mark.parametrize(
-    ("kind", "lists_items"), [(None, True), (EntryKind.ITEM, True), (EntryKind.FUNCTION, False)]
+    ("kind", "lists_rubric_problems"),
+    [
+        (None, True),
+        (EntryKind.SYSTEM_DESIGN, True),
+        (EntryKind.CODE_REVIEW, True),
+        (EntryKind.FUNCTION, False),
+    ],
 )
-def test_only_no_kind_or_the_item_kind_lists_items(kind, lists_items):
-    assert ProblemFilter(kind=kind).lists_items is lists_items
+def test_only_no_kind_or_a_rubric_kind_lists_rubric_problems(kind, lists_rubric_problems):
+    assert ProblemFilter(kind=kind).lists_rubric_problems is lists_rubric_problems
 
 
 @pytest.mark.parametrize(

@@ -10,6 +10,7 @@ import { ApiError } from "./api.ts";
 import type { Confirmation } from "./dialogs.ts";
 import { h } from "./dom.ts";
 import { LiveStream } from "./event-stream.ts";
+import { selfGraded } from "./kinds.ts";
 import { confirmLazily, fetchChunk } from "./lazy.ts";
 import type { JobPanel } from "./jobs.ts";
 import { drawRun } from "./results-draw.ts";
@@ -106,7 +107,7 @@ export class RunSession {
 
   async start(command: RunCommandName, change: Partial<RunOptionsState> = {}): Promise<void> {
     const { status } = this.#shell;
-    if (this.#running || status === null || status.kind === "item") return;
+    if (this.#running || status === null || selfGraded(status.kind)) return;
     if (command === "submit" && status.kind !== "project") return;
     const options = { ...this.#shell.options, ...change };
     const context = this.#shell.runContext();

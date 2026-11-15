@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 210 DSA problems and 190 non-DSA items (174 problems and 16 items in `tracks/`), each with its slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog problem: 210 DSA problems and 190 non-DSA problems (174 checked by tests and 16 by a rubric), each with its slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
-| Track | Problems or items | Where |
+| Track | Problems | Where |
 |-------|-------------------|-------|
 | `dsa` | 210 (185 planned, 25 added) | `problems/` |
 | `practical` | 137 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 20 service projects added, 11 memory and retrieval problems added, 1 search box problem added, 1 hash-chaining problem added, 3 trees, graphs and terrain problems added, 1 redaction project added, 5 knowledge representation problems added, 1 content-addressed storage problem added, 9 AI engineering problems added, 7 data engineering problems added, 1 architecture problem added, 5 infrastructure as code problems added, 3 security problems added, 2 machine learning problems added, 2 testing problems added, 3 networking problems added, 2 operating systems problems added, 1 sorting problem added, 3 language and editor problems added, 2 database internals problems added, 4 distributed systems problems added, 2 platform problems added, 3 internals problems added, 2 AI engineering problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
-| `system-design` | 10 | `tracks/system-design/` |
-| `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **400** (384 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| `system-design` | 10 | `problems/` |
+| `code-review` | 6 | `problems/` |
+| **Total** | **400** (384 checked by tests, 16 by a rubric) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write a rubric problem is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -19,8 +19,8 @@ Every row has three [labels](content.md#labels): `domains`, `job_roles` and `sco
 
 | Rule | Detail |
 |------|--------|
-| Binding | `slug`, `title`, primary pattern, `kind` and `batch` in this file are binding. A stream creates exactly the rows it owns, at `problems/<slug>/` (or `tracks/<track>/<slug>/`), and touches no other row |
-| Slugs | Unique across `problems/` and `tracks/` and immutable once merged, because `progress.db` keys on the slug |
+| Binding | `slug`, `title`, primary pattern, `kind` and `batch` in this file are binding. A stream creates exactly the rows it owns, at `problems/<slug>/`, and touches no other row |
+| Slugs | Unique, because they are directory names, and immutable once merged, because `progress.db` keys on the slug |
 | `meta.yaml` | `patterns` is the primary pattern followed by the secondary patterns in the listed order; `difficulty` and `kind` match the row; `domains`, `job_roles` and `scope` are the section's labels, with its exceptions; `references.leetcode.number` is the `lc` column |
 | Changes | A stream that cannot build a row as listed stops and reports. The catalog is amended in the main checkout first, never inside a stream worktree |
 | Wording | Statements, examples, tests, hints and explanations are original ([ADR 0004](../decisions/0004-original-problem-wording.md)). Common titles are allowed; LeetCode appears only as a link in `references.leetcode` |
@@ -707,9 +707,9 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; `d
 | `debug-shared-default-config` | Debug: Shared Default Config | A spread is a shallow copy, so one tenant's change reaches the module-level defaults | medium | typescript | `backend` | `backend` | function |
 | `debug-falsy-plan-update` | Debug: Falsy Plan Update | `\|\|` and a bare `if` eat `0`, `""` and `false`; `??` and an explicit check do not | easy | typescript | `backend` | `backend` | function |
 
-### system-design (10, owner S1, `tracks/system-design/`)
+### system-design (10, owner S1, `problems/`)
 
-Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: system`. Exception: `payments-ledger` also has `fintech`.
+`kind` and `track` are `system-design`. Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: system`. Exception: `payments-ledger` also has `fintech`.
 
 | slug | title | covers | difficulty |
 |------|-------|-------|------------|
@@ -724,9 +724,9 @@ Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: syste
 | `metrics-monitoring` | Metrics and Monitoring | Ingestion at high cardinality, time-series storage, downsampling, alert evaluation | hard |
 | `ride-hailing` | Ride Hailing | Driver location updates, geospatial matching, trip state machine, surge pricing, consistency | hard |
 
-### code-review (6, owner S1, `tracks/code-review/`)
+### code-review (6, owner S1, `problems/`)
 
-Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function`. Exceptions: `review-auth-endpoint` also has `security` and `identity` and the role `security-engineer`, and `review-payment-retry` also has `fintech`.
+`kind` and `track` are `code-review`. Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function`. Exceptions: `review-auth-endpoint` also has `security` and `identity` and the role `security-engineer`, and `review-payment-retry` also has `fintech`.
 
 | slug | title | covers | difficulty |
 |------|-------|-------|------------|

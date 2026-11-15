@@ -1,4 +1,4 @@
-"""`cstudy history`: one problem's or item's past in this workspace, its review schedule and
+"""`cstudy history`: one problem's past in this workspace, its review schedule and
 every attempt with the runs it recorded (docs/specs/cli.md#cstudy-history).
 
 It reads progress.db, and the content only for the header and the problem's levels. The local web
@@ -43,7 +43,7 @@ class ProblemHistory:
     track: Track
     difficulty: Difficulty
     patterns: tuple[str, ...]
-    """Empty for an item."""
+    """Empty for a rubric problem."""
     status: ProblemStatus
     schedule: ScheduleEntry | None
     today: date
@@ -69,7 +69,7 @@ class _Header:
 
 
 def problem_history(environment: Environment, slug: str) -> ProblemHistory:
-    """Raises UnknownProblemError for a slug that names no problem or item."""
+    """Raises UnknownProblemError for a slug that names no problem."""
     header = _header(environment, slug)
     progress = environment.progress
     today = environment.clock.local_date(environment.clock.now())
@@ -94,7 +94,7 @@ def problem_history(environment: Environment, slug: str) -> ProblemHistory:
 def _header(environment: Environment, slug: str) -> _Header:
     if is_item(environment, slug):
         item = environment.items.load(slug)
-        return _Header(EntryKind.ITEM, item.track, item.difficulty)
+        return _Header(item.kind, item.track, item.difficulty)
     meta = environment.problems.load(slug).meta
     levels = len(meta.levels) if level_progress(meta, None) is not None else None
     return _Header(entry_kind(meta.kind), meta.track, meta.difficulty, meta.patterns, levels)

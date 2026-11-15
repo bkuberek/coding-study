@@ -7,10 +7,10 @@ from coding_study.domain.items import ItemMeta, ItemReferences
 from coding_study.domain.labels import Labels
 from coding_study.domain.problem import ContentStatus, Difficulty, Track
 from coding_study.domain.taxonomy import Scope
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
-SYSTEM_DESIGN = "tracks/system-design/url-shortener"
-CODE_REVIEW = "tracks/code-review/retry-wrapper"
+SYSTEM_DESIGN = "problems/url-shortener"
+CODE_REVIEW = "problems/retry-wrapper"
 URL_SHORTENER = ItemMeta(
     slug="url-shortener",
     title="URL Shortener",
@@ -33,14 +33,14 @@ RETRY_WRAPPER = ItemMeta(
 
 
 def fixture_content(meta: ItemMeta) -> ItemContent:
-    directory = FIXTURE_TRACKS / meta.track / meta.slug
+    directory = FIXTURE_RUBRIC_PROBLEMS / meta.slug
 
     def text(name: str) -> str | None:
         path = directory / name
         return path.read_text() if path.is_file() else None
 
     return ItemContent(
-        directory=f"tracks/{meta.track}/{meta.slug}",
+        directory=f"problems/{meta.slug}",
         meta=meta,
         prompt=text("prompt.md"),
         rubric=text("rubric.md"),
@@ -70,28 +70,28 @@ def edited(content: ItemContent, field: str, old: str, new: str) -> ItemContent:
     return replace(content, **{field: text.replace(old, new)})
 
 
-def test_complete_system_design_item_passes(system_design):
+def test_complete_system_design_problem_passes(system_design):
     assert messages(system_design) == []
 
 
-def test_complete_code_review_item_passes(code_review):
+def test_complete_code_review_problem_passes(code_review):
     assert messages(code_review) == []
 
 
-def test_an_item_without_labels_fails(system_design):
+def test_a_problem_without_labels_fails(system_design):
     content = replace(system_design, meta=replace(system_design.meta, labels=Labels()))
     assert messages(content) == [
-        f"{SYSTEM_DESIGN}/item.yaml: domains: required in the catalog",
-        f"{SYSTEM_DESIGN}/item.yaml: job_roles: required in the catalog",
-        f"{SYSTEM_DESIGN}/item.yaml: scope: required in the catalog",
+        f"{SYSTEM_DESIGN}/meta.yaml: domains: required in the catalog",
+        f"{SYSTEM_DESIGN}/meta.yaml: job_roles: required in the catalog",
+        f"{SYSTEM_DESIGN}/meta.yaml: scope: required in the catalog",
     ]
 
 
-def test_an_item_with_a_scope_its_track_does_not_allow_fails(code_review):
+def test_a_problem_with_a_scope_its_track_does_not_allow_fails(code_review):
     labels = Labels(domains=("backend",), job_roles=("backend",), scope=Scope.SYSTEM)
     content = replace(code_review, meta=replace(code_review.meta, labels=labels))
     assert messages(content) == [
-        f"{CODE_REVIEW}/item.yaml: scope: system does not fit track code-review: use function"
+        f"{CODE_REVIEW}/meta.yaml: scope: system does not fit track code-review: use function"
     ]
 
 
@@ -101,7 +101,7 @@ def test_every_markdown_file_is_required(system_design, field):
     assert messages(content) == [f"{SYSTEM_DESIGN}/{field}.md: missing"]
 
 
-def test_prompt_title_equals_the_item_title(system_design):
+def test_prompt_title_equals_the_problem_title(system_design):
     content = edited(system_design, "prompt", "# URL Shortener", "# Shortener")
     assert messages(content) == [
         f'{SYSTEM_DESIGN}/prompt.md: title "Shortener" must be "URL Shortener"'
@@ -220,11 +220,11 @@ def test_empty_diff_is_rejected(code_review):
 
 def test_system_design_has_no_change(system_design):
     assert messages(replace(system_design, change="--- a\n")) == [
-        f"{SYSTEM_DESIGN}/change.diff: only code-review items have a change under review"
+        f"{SYSTEM_DESIGN}/change.diff: only code-review problems have a change under review"
     ]
 
 
-def test_ready_item_has_no_ready_problems(system_design):
+def test_a_ready_problem_has_no_ready_problems(system_design):
     assert item_ready_problems(system_design) == ()
 
 
@@ -236,7 +236,7 @@ def test_draft_is_not_ready(system_design):
 def test_ready_system_design_needs_a_reference(system_design):
     content = replace(system_design, meta=replace(URL_SHORTENER, references=ItemReferences()))
     assert item_ready_problems(content) == (
-        "system-design items need at least one reference (links or study_guides)",
+        "system-design problems need at least one reference (links or study_guides)",
     )
 
 

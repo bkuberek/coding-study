@@ -28,7 +28,7 @@ from coding_study.domain.signature import ClassSignature
 from coding_study.domain.stress import StressScenario
 from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import make_environment
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 TEMPLATES = PackagedProblemTemplates()
 TEMPLATE_FILES = (
@@ -124,9 +124,9 @@ def test_a_catalog_slug_is_taken_for_a_workspace_problem_too(workspace_destinati
         create(environment, slug="two-sum")
 
 
-def test_a_slug_an_item_uses_is_a_usage_error_naming_its_directory(content_root):
-    shutil.copytree(FIXTURE_TRACKS, content_root / "tracks")
-    with pytest.raises(UsageError, match="tracks/system-design/url-shortener"):
+def test_a_slug_a_rubric_problem_uses_is_a_usage_error_naming_its_directory(content_root):
+    shutil.copytree(FIXTURE_RUBRIC_PROBLEMS, content_root / "problems", dirs_exist_ok=True)
+    with pytest.raises(UsageError, match="problems/url-shortener"):
         create(make_environment(content_root), slug="url-shortener")
 
 

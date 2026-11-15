@@ -24,7 +24,7 @@ from coding_study.domain.attempts import Attempt
 from coding_study.domain.problem import Language
 from coding_study.domain.project_manifest import manifest_path
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
@@ -56,7 +56,7 @@ def project(tmp_path) -> Started:
 
 @pytest.fixture
 def python(tmp_path) -> Started:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
     request = StartRequest("two-sum", Language.PYTHON)
     return Started(environment, start_attempt(environment, request).attempt)
@@ -96,7 +96,7 @@ def test_progress_db_and_its_write_ahead_log_are_watched_by_name(project):
 
 
 def test_a_folder_that_does_not_exist_is_not_watched(tmp_path):
-    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
     environment.progress.attempts_in_progress()
     assert workspace_snapshot(environment).folders == (PROGRESS_FILES,)
 

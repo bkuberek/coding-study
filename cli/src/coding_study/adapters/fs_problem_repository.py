@@ -1,5 +1,9 @@
 """Loads autograded problems from problems/<slug>/ (docs/specs/problem-format.md).
 
+A folder whose `kind` is a rubric kind belongs to `FsItemRepository`: here it is absent from the
+catalog, and a content error in a workspace, which holds no rubric problems
+(docs/specs/compatibility.md#rubric-checked-problems).
+
 The conformance suite uses the same format under runners/conformance/ (docs/specs/runners.md).
 """
 
@@ -8,7 +12,7 @@ import json
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -24,6 +28,7 @@ from coding_study.adapters.schema_validation import (
 )
 from coding_study.adapters.service_files import mock_files
 from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
+from coding_study.domain.items import RUBRIC_KINDS
 from coding_study.domain.layout import language_of_extension
 from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import (
@@ -41,6 +46,7 @@ PROBLEMS_DIRECTORY = "problems"
 META_FILE = "meta.yaml"
 TESTS_FILE = "tests.json"
 SOLUTIONS_DIRECTORY = "solutions"
+RUBRIC_CATALOG_ONLY = "rubric problems are catalog-only"
 
 type _Parser = Callable[[str, str], Any]
 
@@ -74,13 +80,15 @@ class FsProblemRepository:
         return repository
 
     def slugs(self) -> tuple[str, ...]:
-        """The slug of every problem directory, valid or not, in directory order."""
+        """The slug of every problem directory, valid or not, in directory order. The catalog's
+        rubric problems are another repository's."""
         return tuple(directory.name for directory in self._problem_directories())
 
     def load(self, slug: str) -> Problem:
         directory = self._directory_of(slug)
         meta_file, tests_file = directory / META_FILE, directory / TESTS_FILE
         meta_document, meta_issues = self._validated(meta_file, parse_yaml, self._meta_schema)
+        self._refuse_rubric(directory, meta_document)
         tests_document, tests_issues = self._validated(tests_file, _parse_json, self._tests_schema)
         if meta_issues or tests_issues:
             raise ContentError([*meta_issues, *tests_issues])
@@ -91,24 +99,37 @@ class FsProblemRepository:
     def list_summaries(self) -> tuple[ProblemSummary, ...]:
         summaries: list[ProblemSummary] = []
         issues: list[ContentIssue] = []
-        directories = self._problem_directories()
+        directories = slug_directories(self._problems)
         for directory in directories:
             try:
-                summaries.append(self._summary(directory))
+                summary = self._summary(directory)
             except ContentError as error:
                 issues.extend(error.issues)
+            else:
+                if summary is not None:
+                    summaries.append(summary)
         self._save_index(directories)
         if issues:
             raise ContentError(issues)
         return tuple(summaries)
 
-    def _summary(self, directory: Path) -> ProblemSummary:
+    def _summary(self, directory: Path) -> ProblemSummary | None:
+        """None for a rubric problem of the catalog."""
         meta_file = directory / META_FILE
         meta_document, issues = self._indexed_meta(meta_file)
+        if is_rubric_document(meta_document):
+            self._refuse_rubric(directory, meta_document)
+            return None
         if issues:
             raise ContentError(issues)
         meta = self._meta(directory, meta_document)
         return ProblemSummary(meta, self._source(directory), _reference_languages(directory, meta))
+
+    def _refuse_rubric(self, directory: Path, meta_document: Any) -> None:
+        """A workspace holds no rubric problems."""
+        if self._workspace and is_rubric_document(meta_document):
+            source = self._source(directory / META_FILE)
+            raise ContentError([ContentIssue(source, "kind", RUBRIC_CATALOG_ONLY)])
 
     def _indexed_meta(self, meta_file: Path) -> tuple[Any, list[ContentIssue]]:
         def read() -> tuple[Any, list[ContentIssue]]:
@@ -178,19 +199,22 @@ class FsProblemRepository:
             return None, list(error.issues)
 
     def _directory_of(self, slug: str) -> Path:
-        for directory in self._problem_directories():
-            if directory.name == slug:
-                return directory
+        directory = self._problems / slug
+        if SLUG_PATTERN.fullmatch(slug) and directory.is_dir() and self._owns(directory):
+            return directory
         raise UnknownProblemError(slug)
 
     def _problem_directories(self) -> list[Path]:
-        if not self._problems.is_dir():
-            return []
         return [
-            directory
-            for directory in sorted(self._problems.iterdir())
-            if directory.is_dir() and SLUG_PATTERN.fullmatch(directory.name)
+            directory for directory in slug_directories(self._problems) if self._owns(directory)
         ]
+
+    def _owns(self, directory: Path) -> bool:
+        """Whether the directory is a problem here: not a rubric problem of the catalog."""
+        if self._workspace:
+            return True
+        document, _ = self._indexed_meta(directory / META_FILE)
+        return not is_rubric_document(document)
 
     def _validated(
         self, path: Path, parse: _Parser, schema: SchemaValidator
@@ -209,6 +233,24 @@ class FsProblemRepository:
 
     def _source(self, path: Path) -> str:
         return path.relative_to(self._root).as_posix()
+
+
+def slug_directories(problems: Path) -> list[Path]:
+    """The directories of `problems` named by a slug, in name order, whatever their kind."""
+    if not problems.is_dir():
+        return []
+    return [
+        directory
+        for directory in sorted(problems.iterdir())
+        if directory.is_dir() and SLUG_PATTERN.fullmatch(directory.name)
+    ]
+
+
+def is_rubric_document(document: Any) -> bool:
+    """Whether a parsed meta.yaml is of a rubric kind, which `FsItemRepository` loads."""
+    return (
+        isinstance(document, dict) and cast("dict[str, Any]", document).get("kind") in RUBRIC_KINDS
+    )
 
 
 def _reference_languages(directory: Path, meta: ProblemMeta) -> tuple[Language, ...]:

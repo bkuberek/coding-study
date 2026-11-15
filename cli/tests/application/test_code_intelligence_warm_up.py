@@ -20,7 +20,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 ON = Preferences(code_intelligence=True)
@@ -33,7 +33,7 @@ def environment(
     jdk: int = 25,
 ) -> Environment:
     return make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         config=Config(default_lang=language),
         language_servers=servers or FakeLanguageServers(INSTALLED_SERVERS),
         jdk=jdk_of(jdk),

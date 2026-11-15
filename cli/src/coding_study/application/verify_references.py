@@ -1,9 +1,9 @@
 """S26: no two problems carry the same external judge reference (docs/specs/authoring.md#static).
 
 A reference names the judge's problem a catalog problem is based on. Two problems with the same
-one are the same problem written twice, so each of them reports the others. Items have no
-`references.leetcode`, so only problems take part. A problem whose files do not load has no
-reference to compare: its own load error is reported instead. Like S2, it is an error.
+one are the same problem written twice, so each of them reports the others. A rubric problem has
+no `references.leetcode`, so only autograded problems take part. A problem whose files do not load
+has no reference to compare: its own load error is reported instead. Like S2, it is an error.
 """
 
 from collections import defaultdict
@@ -18,8 +18,11 @@ REFERENCE_FIELD = "references.leetcode"
 def reference_conflicts(environment: Environment) -> dict[str, tuple[str, ...]]:
     """The issues of every problem that shares its reference, keyed by slug."""
     files = environment.files
+    rubric = frozenset(environment.items.slugs())
     by_number: defaultdict[int, list[str]] = defaultdict(list)
     for slug in dict.fromkeys(files.slugs()):
+        if slug in rubric:
+            continue
         number = _leetcode_number(environment, slug)
         if number is not None:
             by_number[number].append(slug)

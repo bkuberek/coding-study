@@ -13,7 +13,7 @@ from coding_study.domain.attempts import Attempt, AttemptStatus
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.runs import Children
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.scripted_runs import QUICK, Script
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
@@ -25,7 +25,7 @@ MINE = "def two_sum(): ...\n"
 
 @pytest.fixture
 def environment(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
 
 
@@ -115,7 +115,7 @@ def test_an_unknown_attempt_gets_404(tmp_path, environment):
 
 
 def test_a_running_child_refuses_and_names_the_run(tmp_path):
-    root = repository_root(tmp_path / "workspace", PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path / "workspace", PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
     attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt
     script = Script(tmp_path / "script.json")

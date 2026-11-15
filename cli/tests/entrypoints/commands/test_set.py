@@ -14,7 +14,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems, next_problem, problem_sets
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import NOW, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -23,7 +23,7 @@ LOOP = "backend-loop"
 
 @pytest.fixture
 def environment(tmp_path, monkeypatch):
-    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
     for module in (problem_sets, list_problems, next_problem):
         monkeypatch.setattr(module, "load_environment", lambda *_: environment)
     monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: environment)

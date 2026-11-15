@@ -1,12 +1,9 @@
-"""`cstudy verify` on non-autograded items (docs/specs/authoring.md#items): static checks only.
-
-Slugs are unique across problems/ and tracks/ (S2), because progress.db keys on the slug. Like
-problems, a duplicated slug is verified once, in its first directory, which reports the others.
+"""`cstudy verify` on rubric-checked problems (docs/specs/authoring.md#rubric-checked-problems):
+static checks only.
 """
 
-from collections import defaultdict
-from collections.abc import Collection, Iterable, Iterator
-from dataclasses import dataclass, replace
+from collections.abc import Collection, Iterator
+from dataclasses import dataclass
 
 from coding_study.application.environment import Environment
 from coding_study.domain.errors import ContentError
@@ -14,20 +11,19 @@ from coding_study.domain.item_checks import ItemContent, item_ready_problems, it
 from coding_study.domain.items import (
     CHANGE_DIRECTORY,
     CHANGE_FILE,
-    ITEM_FILE,
     PROMPT_FILE,
     REFERENCE_FILE,
     TEMPLATE_FILE,
     ItemMeta,
 )
 from coding_study.domain.problem import Track
-from coding_study.domain.problem_files import RUBRIC_FILE
+from coding_study.domain.problem_files import META_FILE, RUBRIC_FILE
 
 
 @dataclass(frozen=True, slots=True)
 class ItemSelection:
     slugs: tuple[str, ...] = ()
-    """Empty: every item."""
+    """Empty: every rubric problem."""
     track: Track | None = None
     require_ready: bool = False
 
@@ -43,64 +39,21 @@ class ItemVerification:
 def verify_items(
     environment: Environment, selection: ItemSelection, known_slugs: Collection[str]
 ) -> tuple[ItemVerification, ...]:
-    """`known_slugs` are every problem and item slug, for the `related` warnings."""
-    conflicts = _SlugConflicts(environment)
+    """`known_slugs` are every problem slug, for the `related` warnings."""
     verified: list[ItemVerification] = []
-    for slug in dict.fromkeys(environment.items.slugs()):
+    for slug in environment.items.slugs():
         if selection.slugs and slug not in selection.slugs:
             continue
         verification = _verify(environment, slug, selection, known_slugs)
         if verification is not None:
-            duplicates = (*conflicts.of_item(slug), *verification.static_errors)
-            verified.append(replace(verification, static_errors=duplicates))
+            verified.append(verification)
     return tuple(verified)
-
-
-def problem_slug_conflicts(environment: Environment) -> dict[str, tuple[str, ...]]:
-    """S2 for problem slugs that an item also uses, keyed by slug."""
-    conflicts = _SlugConflicts(environment)
-    return {
-        slug: issues
-        for slug in dict.fromkeys(environment.files.slugs())
-        if (issues := conflicts.of_problem(slug))
-    }
-
-
-class _SlugConflicts:
-    def __init__(self, environment: Environment) -> None:
-        files, items = environment.files, environment.items
-        problem_directories = (files.problem_directory(slug) for slug in files.slugs())
-        self._problems = _by_slug(zip(files.slugs(), problem_directories, strict=True))
-        self._items = _by_slug(zip(items.slugs(), items.directories(), strict=True))
-
-    def of_problem(self, slug: str) -> tuple[str, ...]:
-        """The first problem directory with `slug` against every item that uses it."""
-        problems = self._problems.get(slug, [])
-        if not problems:
-            return ()
-        return _messages(problems[0], slug, self._items.get(slug, []))
-
-    def of_item(self, slug: str) -> tuple[str, ...]:
-        """The first item directory with `slug` against every other directory that uses it."""
-        items = self._items[slug]
-        return _messages(items[0], slug, [*self._problems.get(slug, []), *items[1:]])
-
-
-def _by_slug(pairs: Iterable[tuple[str, str]]) -> dict[str, list[str]]:
-    directories: defaultdict[str, list[str]] = defaultdict(list)
-    for slug, directory in pairs:
-        directories[slug].append(directory)
-    return directories
-
-
-def _messages(directory: str, slug: str, others: list[str]) -> tuple[str, ...]:
-    return tuple(f'{directory}: slug "{slug}" is also used by {other}' for other in others)
 
 
 def _verify(
     environment: Environment, slug: str, selection: ItemSelection, known_slugs: Collection[str]
 ) -> ItemVerification | None:
-    """None when the item is outside `selection.track`."""
+    """None when the problem is outside `selection.track`."""
     directory = environment.items.item_directory(slug)
     try:
         meta = environment.items.load(slug)
@@ -136,4 +89,4 @@ def _related_warnings(
 ) -> Iterator[str]:
     for slug in meta.related:
         if slug not in known_slugs:
-            yield f'{directory}/{ITEM_FILE}: related: "{slug}" is not a problem or item (yet)'
+            yield f'{directory}/{META_FILE}: related: "{slug}" is not a problem (yet)'

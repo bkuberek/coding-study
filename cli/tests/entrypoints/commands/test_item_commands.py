@@ -10,7 +10,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import done, solution, start, test
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import FakeClock, RecordingEditor, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -30,7 +30,7 @@ def clock() -> FakeClock:
 
 @pytest.fixture
 def environment(tmp_path, editor, clock, monkeypatch):
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, editor=editor, clock=clock)
     for command in (start, solution, done, test):
         monkeypatch.setattr(command, "load_environment", lambda *_: environment)

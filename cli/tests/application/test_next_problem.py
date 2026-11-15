@@ -23,7 +23,7 @@ from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment
 from tests.fakes import repository_root as copy_repository
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ def test_tracks_given_replace_the_configured_ones(tmp_path, problems):
 
 @pytest.fixture
 def with_items(tmp_path: Path, problems: Path):
-    return make_environment(copy_repository(tmp_path, problems, FIXTURE_TRACKS))
+    return make_environment(copy_repository(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
 
 
 def test_a_label_filter_searches_every_track(with_items):
@@ -156,10 +156,14 @@ def test_a_recommendation_starts_in_the_language_asked_for(environment):
     assert described(recommend(environment, request))[2] is Language.KOTLIN
 
 
-def test_an_item_recommendation_has_no_language(tmp_path, problems):
-    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_TRACKS))
+def test_a_rubric_problem_recommendation_has_no_language(tmp_path, problems):
+    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
     request = NextRequest(tracks=(Track.SYSTEM_DESIGN,))
-    assert described(recommend(environment, request)) == ("URL Shortener", EntryKind.ITEM, None)
+    assert described(recommend(environment, request)) == (
+        "URL Shortener",
+        EntryKind.SYSTEM_DESIGN,
+        None,
+    )
 
 
 def test_nothing_in_scope_recommends_nothing(environment):
@@ -267,9 +271,9 @@ def test_an_attempt_aborted_is_no_longer_recommended(environment):
     assert isinstance(recommended(environment).pick, NewPick)
 
 
-def test_an_item_in_progress_is_resumed_without_a_language(tmp_path, problems):
-    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_TRACKS))
+def test_a_rubric_problem_in_progress_is_resumed_without_a_language(tmp_path, problems):
+    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
     environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
     found = recommended(environment, tracks=(Track.SYSTEM_DESIGN,))
     assert isinstance(found.pick, ResumePick)
-    assert (found.kind, found.language) == (EntryKind.ITEM, None)
+    assert (found.kind, found.language) == (EntryKind.SYSTEM_DESIGN, None)

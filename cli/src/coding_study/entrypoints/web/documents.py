@@ -18,7 +18,7 @@ from coding_study.application.reveal_hint import HintsLocked, RevealedHint
 from coding_study.domain.about import About, Credit, Link
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.items import entry_kind
+from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, PATTERNS, Scope
 from coding_study.entrypoints.commands._events import EVENTS_VERSION
@@ -29,8 +29,6 @@ from coding_study.entrypoints.web.markdown import render_markdown
 
 API_VERSION = 1
 """Changes only when a response changes incompatibly (docs/specs/web-ui.md#api-conventions)."""
-ITEM_KIND = "item"
-"""The kind `cstudy list --kind` gives the non-autograded items."""
 MOCK_LOCKS = ("hint", "solution", "mock")
 """What a running mock interview locks, as `cstudy hint`, `cstudy solution` and `cstudy mock`."""
 
@@ -47,7 +45,7 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
         "default_lang": environment.config.default_lang.value,
         "languages": [language.value for language in Language],
         "tracks": [track.value for track in Track],
-        "kinds": [*(kind.value for kind in ProblemKind), ITEM_KIND],
+        "kinds": [kind.value for kind in EntryKind],
         "domains": list(DOMAINS),
         "job_roles": list(JOB_ROLES),
         "scopes": [scope.value for scope in Scope],
@@ -271,9 +269,9 @@ def _mock_attempt_value(started: MockAttempt) -> JsonValue:
 
 
 def _mock_kind(started: MockAttempt) -> str:
-    """As `cstudy list --json` names it: `item` for an item."""
+    """As `cstudy list --json` names it."""
     meta = started.meta
-    return entry_kind(meta.kind).value if isinstance(meta, ProblemMeta) else ITEM_KIND
+    return entry_kind(meta.kind).value if isinstance(meta, ProblemMeta) else meta.kind.value
 
 
 def _file_value(file: ScopedFile) -> dict[str, JsonValue]:

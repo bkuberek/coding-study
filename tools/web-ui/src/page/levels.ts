@@ -5,10 +5,10 @@
  * dialog read this module, so it stays out of what loads before a file is editable.
  */
 
+import { selfGraded } from "./kinds.ts";
 import type { AttemptStatus, History, PastAttempt } from "./types.ts";
 
 const PASSED = "passed";
-const ITEM = "item";
 const PROJECT = "project";
 const MOCK = "mock";
 const GAVE_UP = "giving up grades again";
@@ -41,7 +41,7 @@ export function goalLines(levels: History["levels"]): string[] {
 
 /** What a rating takes, as `cstudy done` refuses it: a mock keeps every case. */
 export function ratingRule(status: Pick<AttemptStatus, "kind" | "mode"> & { readonly levels: object | null }): string {
-  if (status.kind === ITEM) return "an item takes a rating only, graded by it alone";
+  if (selfGraded(status.kind)) return "a rubric problem takes a rating only, graded by it alone";
   if (status.levels === null || status.mode === MOCK) return `a rating needs the latest run to pass every case; ${GAVE_UP}`;
   const latest = status.kind === PROJECT ? "the latest submission of every unlocked level to pass level 1" : "the latest run to pass every case of level 1 at least";
   return `a rating needs ${latest}, and passes the attempt through the levels it passed; ${GAVE_UP}`;

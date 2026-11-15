@@ -21,7 +21,7 @@ from coding_study.domain.items import EntryKind
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language, Track
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 PRACTICE = FIXTURES / "practice" / "problems"
@@ -38,7 +38,7 @@ def started(environment: Environment, slug: str) -> Environment:
 
 @pytest.fixture
 def function(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return started(make_environment(root, toolchains=TOOLCHAINS), "two-sum")
 
 
@@ -50,7 +50,7 @@ def progressive(tmp_path) -> Environment:
 
 @pytest.fixture
 def item(tmp_path) -> Environment:
-    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
     start_item_attempt(environment, ItemStartRequest("url-shortener"))
     return environment
 
@@ -150,12 +150,12 @@ def test_a_pass_of_every_level_makes_done_next(progressive):
     assert status(progressive).next_step == DONE_NEXT
 
 
-# items
+# rubric problems
 
 
-def test_an_item_is_of_the_item_kind_on_its_track(item):
+def test_a_rubric_problem_is_of_its_rubric_kind_on_its_track(item):
     found = status(item)
-    assert (found.kind, found.track) == (EntryKind.ITEM, Track.SYSTEM_DESIGN)
+    assert (found.kind, found.track) == (EntryKind.SYSTEM_DESIGN, Track.SYSTEM_DESIGN)
 
 
 def test_an_items_file_is_its_notes(item):

@@ -24,7 +24,7 @@ from coding_study.domain.errors import UnknownAttemptError, UnknownFileError, Us
 from coding_study.domain.problem import Language
 from coding_study.domain.workspace_projects import is_untracked
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
@@ -38,7 +38,7 @@ SOLVED = "def two_sum(): return [0, 1]\n"
 
 @pytest.fixture
 def environment(tmp_path: Path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
     return make_environment(root, toolchains=toolchains)
 

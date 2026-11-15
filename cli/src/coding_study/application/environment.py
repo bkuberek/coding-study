@@ -47,7 +47,7 @@ class Environment:
     root: Path
     """The absolute workspace root: practice projects, `.cs/` and progress.db live under it."""
     content_root: Path
-    """The absolute content root: problems/, tracks/, runners/ and schemas/."""
+    """The absolute content root: problems/, runners/ and schemas/."""
     config: Config
     problems: ProblemRepository
     files: ProblemFiles
@@ -65,7 +65,7 @@ class Environment:
     editor: EditorOpener
     watcher: ChangeWatcher
     items: ItemRepository
-    """Non-autograded items in tracks/."""
+    """The rubric-checked problems of problems/."""
     guides: GuideCatalog
     """Concept guides and learning paths in guides/ (docs/specs/guides.md)."""
     docs: UserDocs

@@ -10,7 +10,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 3 | DSA catalog complete (185) | none |
 | 4 | Practical (progressive) and low-level design tracks | progressive support |
 | 5 | Concurrency track | concurrent kind, `test --stress` and `--seed` for concurrent problems, `solution --broken` |
-| 6 | System design, code review, debugging, behavioral | non-autograded items, buggy stubs |
+| 6 | System design, code review, debugging, behavioral | rubric-checked problems, buggy stubs |
 | 7 | Progress polish | `stats`, `mock`, `export`, `import`, `test --stress` for oracle inputs, `test --json` |
 | 8 | Project problems: Python, then TypeScript | project kind, `submit`, `status` |
 | 9 | Local web UI with full practice parity | `serve`, `history`, `test --events` for every kind, `--json` for `list`, `next` and `doctor` |
@@ -20,7 +20,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 
 ## Status
 
-Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 384 `ready` problems and 16 `ready` items. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
+Phases 0 to 7 are implemented: every command in the table above exists with its tests, and the catalog holds 400 `ready` problems, 384 checked by tests and 16 by a rubric. Exit criteria with recorded evidence are ticked in the phase sections. These validation items are still open:
 
 | Item | Phase | Needs |
 |------|-------|-------|
@@ -417,12 +417,12 @@ Two additions, each additive to the 1.0 promise.
 
 ## Phase 6: System design, code review, debugging, behavioral
 
-**Scope.** `tracks/` items with `item.yaml`, notes templates, `cstudy solution` for references and rubrics; `stub: buggy`; `tracks/behavioral/README.md` on preparing from your own story bank.
+**Scope.** Rubric-checked problems of the kinds `system-design` and `code-review` in `problems/`, notes templates, `cstudy solution` for references and rubrics; `stub: buggy`; guidance on preparing behavioral rounds from your own story bank.
 
 **Exit criteria.**
 
-- [x] 10 system design and 6 code review items `ready`; 8 debugging problems `ready`.
-- [x] `cstudy next --track system-design` and `cstudy done` work for non-autograded items.
+- [x] 10 system design and 6 code review problems `ready`; 8 debugging problems `ready`.
+- [x] `cstudy next --track system-design` and `cstudy done` work for rubric-checked problems.
 
 ## Phase 7: Progress polish
 
@@ -520,7 +520,7 @@ The pilots are written with the next project problems.
 
 **Status.** Steps 1 and 2 are built; step 3 is planned, not started. Step 3's project-size problems need Phase 12.
 
-**Scope.** [ADR 0020](decisions/0020-catalog-labels.md): `domains`, `job_roles` and `scope` on problems and items, in closed lists; a one-pass backfill of the 270 existing entries; filters in `cstudy list`, `cstudy next` and the Problems view; then a first wave of function-size security and AI/LLM problems in Python and TypeScript.
+**Scope.** [ADR 0020](decisions/0020-catalog-labels.md): `domains`, `job_roles` and `scope` on problems, in closed lists; a one-pass backfill of the 270 existing entries; filters in `cstudy list`, `cstudy next` and the Problems view; then a first wave of function-size security and AI/LLM problems in Python and TypeScript.
 
 **Exit criteria.** Every catalog entry passes the new static check, the filters give the same rows in the CLI and the page, and each new problem passes `cstudy verify <slug> --require-ready`.
 
@@ -622,7 +622,7 @@ Suggested order: PP1 to PP15 are built. P9, code intelligence and the Web UI, is
 **Scope.** [ADR 0021](decisions/0021-ai-reviewed-problems.md): an opt-in class of problems reviewed by a live LLM with your own key. It needs the environment allowlist of Phase 12's P2, which is built.
 
 - [ ] Step 1: provider port and keys.
-- [ ] Step 2: written answers on existing items.
+- [ ] Step 2: written answers on existing rubric problems.
 - [ ] Step 3: simulated interview.
 - [ ] Step 4: whiteboard, after its spike.
 
@@ -630,7 +630,7 @@ Suggested order: PP1 to PP15 are built. P9, code intelligence and the Web UI, is
 
 **Status.** Built; it does not wait for Phases 12 and 14.
 
-**Scope.** [ADR 0023](decisions/0023-problem-sets.md): named, ordered lists of problems and items in `sets.yaml`, with `cstudy set`, `--set` on `cstudy list` and `cstudy next`, a Set filter, an add-to-set control and a Sets view on the page. Sets shipped in the catalog, a language per set and due dates are later options.
+**Scope.** [ADR 0023](decisions/0023-problem-sets.md): named, ordered lists of problems in `sets.yaml`, with `cstudy set`, `--set` on `cstudy list` and `cstudy next`, a Set filter, an add-to-set control and a Sets view on the page. Sets shipped in the catalog, a language per set and due dates are later options.
 
 **Exit criteria.** A problem can be in two sets, a set's rows and order match between the CLI and the page, `cstudy reset` keeps sets with or without `--files`, and a hand-edited invalid file gives a clear error and is never overwritten.
 

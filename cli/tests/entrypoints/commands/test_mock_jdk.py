@@ -17,7 +17,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 
 runner = CliRunner()
 SLICE = (
@@ -33,7 +33,7 @@ NOTHING = "no new medium or hard problems in scope"
 @pytest.fixture
 def root(tmp_path_factory, tmp_path):
     problems = copy_catalog_problems(tmp_path_factory.mktemp("catalog"), SLICE)
-    return repository_root(tmp_path, problems, FIXTURE_TRACKS)
+    return repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS)
 
 
 @pytest.fixture

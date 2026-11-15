@@ -54,7 +54,7 @@ test("the label filters are kept in the fragment's query", () => {
 });
 
 test("a query key that is no filter is dropped", () => {
-  assert.deepEqual(parseRoute("#/?sort=title&kind=item"), { view: "problems", filters: { kind: "item" } });
+  assert.deepEqual(parseRoute("#/?sort=title&kind=code-review"), { view: "problems", filters: { kind: "code-review" } });
 });
 
 test("a problem is addressed by its slug", () => {

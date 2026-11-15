@@ -176,8 +176,8 @@ tr:hover > td > .problem-link {
   color: var(--ink-soft);
 }
 
-.is-item .slug,
-.is-item .problem-link {
+.is-self-graded .slug,
+.is-self-graded .problem-link {
   font-style: italic;
 }
 

@@ -9,14 +9,14 @@ from coding_study.application.problem_details import ITEM_DETAILS, problem_detai
 from coding_study.domain.errors import UnknownProblemError
 from coding_study.domain.problem import ALL_LANGUAGES, Language
 from tests.fakes import make_environment, repository_root
-from tests.helpers import CONCURRENCY_PROBLEMS, FIXTURE_TRACKS, PROJECT_PROBLEMS
+from tests.helpers import CONCURRENCY_PROBLEMS, FIXTURE_RUBRIC_PROBLEMS, PROJECT_PROBLEMS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 
 
 @pytest.fixture
 def practice(tmp_path):
-    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
 
 
 @pytest.fixture

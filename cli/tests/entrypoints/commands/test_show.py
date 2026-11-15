@@ -7,7 +7,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import show
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import declare_jdk, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 runner = CliRunner()
 PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
@@ -46,7 +46,7 @@ def test_an_unknown_problem_exits_3(environment):
 
 
 def test_prints_an_item_prompt(tmp_path, monkeypatch):
-    environment = make_environment(repository_root(tmp_path, PHASE4, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PHASE4, FIXTURE_RUBRIC_PROBLEMS))
     monkeypatch.setattr(show, "load_catalog_environment", lambda *_: environment)
     assert invoke("url-shortener").output.startswith("# URL Shortener\n\nmedium · system-design")
 

@@ -28,8 +28,10 @@ WORKSPACE_TEMPLATE = (
     REPOSITORY_ROOT / "cli" / "src" / "coding_study" / "adapters" / "workspace_template"
 )
 """What `cstudy init` copies into a new workspace."""
-FIXTURE_TRACKS = Path(__file__).resolve().parent / "fixtures" / "tracks"
-"""Non-autograded fixture items: tracks/<track>/<slug>/."""
+FIXTURE_RUBRIC_PROBLEMS = (
+    Path(__file__).resolve().parent / "fixtures" / "rubric_problems" / "problems"
+)
+"""Rubric-checked fixture problems: <slug>/, to copy into a repository's problems/."""
 CONCURRENCY_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "concurrency" / "problems"
 """A concurrent fixture problem with correct and broken references in every language."""
 PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project" / "problems"

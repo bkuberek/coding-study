@@ -94,7 +94,7 @@ def _broken(body: Body) -> str | None:
 
 
 def _require_item_options(request: SolutionRequest) -> None:
-    """Items have one rubric and one reference: no languages and no approaches."""
+    """A rubric problem has one rubric and one reference: no languages and no approaches."""
     has_problem_options = (
         request.language is not None
         or request.approach_id is not None

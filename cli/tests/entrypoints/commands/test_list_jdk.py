@@ -14,7 +14,7 @@ from coding_study.domain.jdk import JdkSource
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems
 from tests.fakes import FakeJdk, declare_jdk, jdk_of, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS, SCHEMAS_DIRECTORY
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, SCHEMAS_DIRECTORY
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -159,8 +159,8 @@ def test_a_problem_without_java_and_kotlin_has_no_range(on_jdk, root):
     assert entry("lru-cache")["jdk"] is None
 
 
-def test_an_item_has_no_range(on_jdk, root):
-    shutil.copytree(FIXTURE_TRACKS, root / "tracks")
+def test_a_rubric_problem_has_no_range(on_jdk, root):
+    shutil.copytree(FIXTURE_RUBRIC_PROBLEMS, root / "problems", dirs_exist_ok=True)
     on_jdk(jdk_of(26))
     assert entry("url-shortener")["jdk"] is None
 

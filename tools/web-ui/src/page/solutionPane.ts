@@ -9,11 +9,11 @@ import { confirmed } from "./confirmation.ts";
 import type { PageContext } from "./context.ts";
 import { confirmAction, openSheet } from "./dialogs.ts";
 import { h, rendered } from "./dom.ts";
+import { selfGraded } from "./kinds.ts";
 import { SOLUTION_COMMAND } from "./solution.ts";
 import { failure, loading } from "./states.ts";
 import type { ProblemDocument, SolutionDocument } from "./types.ts";
 
-const ITEM = "item";
 const PROJECT = "project";
 const DEFAULT = "";
 const ALL = "*all";
@@ -67,11 +67,11 @@ export function openSolution(context: PageContext, slug: string): void {
 }
 
 function solutionPane(context: PageContext, problem: ProblemDocument): HTMLElement {
-  const isItem = problem.kind === ITEM;
+  const byRubric = selfGraded(problem.kind);
   const pane = h("div", { class: "solution-pane" });
   const line = h("code", { class: "cmd" });
-  const show = h("button", { type: "submit", class: "button primary" }, isItem ? "Show the rubric and reference" : "Show");
-  const controls = isItem ? null : selectionControls(problem);
+  const show = h("button", { type: "submit", class: "button primary" }, byRubric ? "Show the rubric and reference" : "Show");
+  const controls = byRubric ? null : selectionControls(problem);
   const selection = () => (controls ? controls.selection() : NO_SELECTION);
   const update = () => {
     line.textContent = solutionCommand(problem.slug, selection());
@@ -97,8 +97,8 @@ function solutionPane(context: PageContext, problem: ProblemDocument): HTMLEleme
   const form = h(
     "form",
     { class: "solution-form" },
-    controls?.element ?? h("p", { class: "quiet" }, "comparing your notes with the rubric and the reference is the self-review: revealing never lowers an item's grade"),
-    isItem ? null : h("p", { class: "quiet" }, "with an unsolved attempt in progress, revealing grades it again; the page asks first"),
+    controls?.element ?? h("p", { class: "quiet" }, "comparing your notes with the rubric and the reference is the self-review: revealing never lowers the grade of a rubric problem"),
+    byRubric ? null : h("p", { class: "quiet" }, "with an unsolved attempt in progress, revealing grades it again; the page asks first"),
     h("p", { class: "sheet-command" }, line, show),
   );
   form.addEventListener("input", update);

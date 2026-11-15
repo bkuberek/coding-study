@@ -1,7 +1,7 @@
-"""Non-autograded items: system design and code review prompts with a rubric and a reference.
+"""Rubric-checked problems: system design and code review prompts with a rubric and a reference.
 
-They live in `tracks/<track>/<slug>/` (docs/specs/content.md#non-autograded-item-format). The
-user answers in a notes file; `cstudy done` takes a self-graded rating. The rubric file name is
+They live in `problems/<slug>/` (docs/specs/content.md#rubric-checked-problems). The user answers
+in a notes file; `cstudy done` takes a self-graded rating. The rubric file name is
 `coding_study.domain.problem_files.RUBRIC_FILE`, shared with `lld` problems.
 """
 
@@ -11,20 +11,21 @@ from enum import StrEnum
 from coding_study.domain.labels import Labels
 from coding_study.domain.problem import (
     DEFAULT_CURRICULUM_ORDER,
+    NO_PATTERN_RANK,
     ContentStatus,
     Difficulty,
+    ListingKey,
     ProblemKind,
     Track,
+    track_rank,
 )
 
-ITEM_FILE = "item.yaml"
 PROMPT_FILE = "prompt.md"
 REFERENCE_FILE = "reference.md"
 TEMPLATE_FILE = "template.md"
 CHANGE_FILE = "change.diff"
 """Code review only: the change under review, or `files/` instead."""
 CHANGE_DIRECTORY = "files"
-ITEM_TRACKS = (Track.SYSTEM_DESIGN, Track.CODE_REVIEW)
 REFERENCE_TITLE_SUFFIX = ": Reference"
 NOTES_TITLE_SUFFIX = ": Notes"
 GUIDE_ANCHOR = "#"
@@ -61,7 +62,7 @@ def guide_path(reference: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ItemMeta:
-    """item.yaml, validated by schemas/item.schema.json."""
+    """The meta.yaml of a rubric-checked problem, validated by schemas/meta.schema.json."""
 
     slug: str
     title: str
@@ -75,17 +76,36 @@ class ItemMeta:
     references: ItemReferences = ItemReferences()
     related: tuple[str, ...] = ()
 
+    @property
+    def kind(self) -> "EntryKind":
+        """A rubric problem has the track of its own kind's name."""
+        return EntryKind(self.track.value)
+
+    def listing_key(self) -> ListingKey:
+        """The order of `cstudy list` (docs/specs/compatibility.md#order): a rubric problem is in
+        the catalog and has no pattern, so it lists first in its track, by `order` and slug."""
+        return (False, track_rank(self.track), NO_PATTERN_RANK, self.order, self.slug)
+
 
 class EntryKind(StrEnum):
-    """A catalog entry's `kind` in the CLI's JSON documents and `cstudy list --kind`: its kind of
-    problem, or `item` for a non-autograded item."""
+    """A catalog entry's `kind` in the CLI's JSON documents and `cstudy list --kind`: an autograded
+    kind of problem, or a rubric kind."""
 
     FUNCTION = "function"
     DESIGN = "design"
     PROGRESSIVE = "progressive"
     CONCURRENT = "concurrent"
     PROJECT = "project"
-    ITEM = "item"
+    SYSTEM_DESIGN = "system-design"
+    CODE_REVIEW = "code-review"
+
+
+RUBRIC_KINDS = (EntryKind.SYSTEM_DESIGN, EntryKind.CODE_REVIEW)
+"""The kinds checked by a rubric and graded by the user. Each has the track of its own name."""
+
+
+def is_rubric_track(track: Track) -> bool:
+    return any(track.value == kind.value for kind in RUBRIC_KINDS)
 
 
 def entry_kind(kind: ProblemKind) -> EntryKind:

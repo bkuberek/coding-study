@@ -32,7 +32,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIXTURE_TRACKS, RUST_PROJECT_PROBLEMS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, RUST_PROJECT_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
@@ -58,7 +58,7 @@ Check both accounts before moving money.
 
 @pytest.fixture
 def practice(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
 
 
@@ -143,9 +143,9 @@ def test_a_time_box_outside_1_to_600_minutes_gets_422(tmp_path, practice, minute
     assert error(post(tmp_path, practice, ATTEMPTS, body)) == (422, "usage")
 
 
-def test_a_start_of_an_item_takes_no_language(tmp_path, practice):
+def test_a_start_of_a_rubric_problem_takes_no_language(tmp_path, practice):
     response = post(tmp_path, practice, ATTEMPTS, {"slug": "url-shortener"})
-    assert (response.status_code, response.json()["kind"]) == (201, "item")
+    assert (response.status_code, response.json()["kind"]) == (201, "system-design")
 
 
 def test_an_item_with_a_language_gets_the_clis_refusal(tmp_path, practice):
@@ -180,7 +180,7 @@ def test_a_body_that_is_not_an_object_gets_422(tmp_path, practice):
 
 
 def test_a_start_the_selected_jdk_cannot_run_is_refused_with_the_clis_fix(tmp_path):
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, jdk=jdk_of(27), toolchains=FakeToolchains())
     response = post(tmp_path, environment, ATTEMPTS, {"slug": "two-sum", "language": "java"})
     assert (response.status_code, response.json()["error"]) == (

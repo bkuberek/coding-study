@@ -40,8 +40,8 @@ test("a project starts in its one language without --lang", () => {
   assert.equal(defaultLanguage({ kind: "project", languages: ["python"] }, "kotlin"), null);
 });
 
-test("an item starts without a language", () => {
-  assert.equal(defaultLanguage({ kind: "item", languages: [] }, "python"), null);
+test("a rubric problem starts without a language", () => {
+  assert.equal(defaultLanguage({ kind: "code-review", languages: [] }, "python"), null);
 });
 
 test("default_lang is skipped for the first language the JDK can run", () => {
@@ -150,7 +150,7 @@ test("giving up reads as gave up", () => {
   assert.match(doneLines({ ...PASSED, status: "failed", rating: null, grade: "again" })[0] ?? "", / · gave up · /);
 });
 
-test("an item's outcome has no language", () => {
+test("a rubric problem's outcome has no language", () => {
   assert.equal(
     doneLines({ ...PASSED, slug: "url-shortener", language: null, solve_s: 42 })[0],
     "url-shortener · passed · 42s · rating ok · hints 0",

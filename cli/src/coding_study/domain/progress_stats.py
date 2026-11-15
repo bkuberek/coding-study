@@ -1,6 +1,6 @@
 """What `cstudy stats` reports (docs/specs/progress-and-scheduling.md#statistics).
 
-Groups cover the `ready` problems and items, the content `cstudy next` can pick, so a group's
+Groups cover the `ready` problems, the content `cstudy next` can pick, so a group's
 weakness equals the score `cstudy next` uses for it. `since` only narrows the attempt columns and
 the finished count; problems, mastery, weakness, reviews and the streak always describe today.
 """
@@ -256,7 +256,7 @@ def _by_difficulty(entry: Candidate) -> list[tuple[str, _Rank]]:
 
 
 def _by_language(entry: Candidate) -> list[tuple[str, _Rank]]:
-    """Items have no language, so they belong to no group."""
+    """A rubric problem has no language, so it belongs to no group."""
     if not entry.autograded:
         return []
     return [(language.value, _enum_rank(_LANGUAGES, language)) for language in entry.languages]

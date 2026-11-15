@@ -28,7 +28,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import history
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import NOW, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 
 runner = CliRunner()
@@ -39,7 +39,7 @@ REVIEWED = NOW - timedelta(hours=1)
 
 @pytest.fixture
 def environment(tmp_path, monkeypatch) -> Environment:
-    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
     monkeypatch.setattr(history, "load_environment", lambda *_: environment)
     return environment
 
@@ -286,7 +286,7 @@ def test_json_gives_an_abandoned_attempt_no_solve_time(environment):
 def test_json_of_an_item_has_no_language(environment):
     environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
     found = document("url-shortener")
-    assert (found["kind"], found["attempts"][0]["language"]) == ("item", None)
+    assert (found["kind"], found["attempts"][0]["language"]) == ("system-design", None)
 
 
 # project problems

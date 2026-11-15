@@ -1,4 +1,4 @@
-"""`cstudy set` (docs/specs/cli.md#cstudy-set): your own named lists of problems and items, in
+"""`cstudy set` (docs/specs/cli.md#cstudy-set): your own named lists of problems, in
 `sets.yaml`, to study from without searching."""
 
 import json
@@ -48,7 +48,7 @@ MISSING_STATUS = "missing"
 NO_SETS = "no sets yet: create one with cstudy set create <name>"
 NOT_DELETED = "not deleted"
 _NAME_HELP = "The set, a kebab-case slug such as backend-loop."
-_SLUGS_HELP = "Problems or items, by slug."
+_SLUGS_HELP = "Problems, by slug."
 
 
 def register(app: typer.Typer) -> None:
@@ -130,7 +130,7 @@ def add(
         ),
     ] = None,
 ) -> None:
-    """Add problems or items to the end of a set."""
+    """Add problems to the end of a set."""
     change = add_to_set(_environment(context), name, slugs, level)
     output = console(context)
     target = "" if level is None else f", {target_text(level)}"
@@ -152,7 +152,7 @@ def remove(
     name: Annotated[str, typer.Argument(help=_NAME_HELP)],
     slugs: Annotated[list[str], typer.Argument(help=_SLUGS_HELP)],
 ) -> None:
-    """Take problems or items out of a set."""
+    """Take problems out of a set."""
     change = remove_from_set(_environment(context), name, slugs)
     output = console(context)
     for slug in change.changed:
@@ -164,10 +164,10 @@ def remove(
 def move(
     context: typer.Context,
     name: Annotated[str, typer.Argument(help=_NAME_HELP)],
-    slug: Annotated[str, typer.Argument(help="The problem or item to move.")],
+    slug: Annotated[str, typer.Argument(help="The problem to move.")],
     position: Annotated[int, typer.Argument(help="Where it goes, from 1.")],
 ) -> None:
-    """Move a problem or item within a set."""
+    """Move a problem within a set."""
     moved = move_in_set(_environment(context), name, slug, position)
     console(context).print(Text(f"moved {slug} to {position} of {len(moved.slugs)} in {name}"))
 

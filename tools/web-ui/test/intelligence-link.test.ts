@@ -76,7 +76,7 @@ test("a file of another language than the attempt's is left alone", () => {
   assert.deepEqual(decide("a.ts", attempt("python"), STATES), { kind: "none" });
 });
 
-test("an attempt with no language, as an item has, is left alone", () => {
+test("an attempt with no language, as a rubric problem has, is left alone", () => {
   assert.deepEqual(decide("a.py", attempt(null), STATES), { kind: "none" });
 });
 

@@ -1,6 +1,6 @@
 """The labels of a catalog entry and the filter over them (docs/decisions/0020-catalog-labels.md).
 
-A problem or an item says what it is about (`domains`), who it is for (`job_roles`) and how big the
+A problem says what it is about (`domains`), who it is for (`job_roles`) and how big the
 thing you work on is (`scope`). The values come from `coding_study.domain.taxonomy`.
 """
 

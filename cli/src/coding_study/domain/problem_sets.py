@@ -1,5 +1,5 @@
-"""Problem sets: a name, an optional description and an ordered list of slugs, of problems and
-items alike, and the shape of `sets.yaml`, which schemas/sets.schema.json states too
+"""Problem sets: a name, an optional description and an ordered list of slugs, of problems, and
+the shape of `sets.yaml`, which schemas/sets.schema.json states too
 (docs/decisions/0023-problem-sets.md). What the catalog holds is not this file's concern: a slug it
 no longer has stays in the set and shows as missing. An entry may name the level a progressive or
 project problem is done at (docs/decisions/0024-level-passes.md#target-levels-in-sets)."""
@@ -237,7 +237,7 @@ def _entry(name: str, entry: object, issues: list[str]) -> tuple[str | None, int
     issues.extend(f"set {name}: {issue}" for issue in _unknown_keys(fields, _ENTRY_KEYS))
     slug = fields.get(SLUG_KEY)
     if not isinstance(slug, str) or not slug:
-        issues.append(f'set {name}: an entry needs "{SLUG_KEY}", the slug of a problem or item')
+        issues.append(f'set {name}: an entry needs "{SLUG_KEY}", the slug of a problem')
         return None, None
     level = fields.get(LEVEL_KEY)
     if level is None:

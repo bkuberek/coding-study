@@ -39,7 +39,7 @@ from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from tests.fakes import FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import PRACTICE, STUBS, received, session
 from tests.web_server import session_client, web_app
@@ -181,7 +181,7 @@ def _of(document: str) -> dict[str, Any]:
 
 @pytest.fixture(scope="module")
 def played(on_path: VersionPrinted, tmp_path_factory: pytest.TempPathFactory) -> Played:
-    root = repository_root(tmp_path_factory.mktemp("real-ra"), PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path_factory.mktemp("real-ra"), PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     (root / "rust").mkdir()
     (root / "rust" / "Cargo.toml").write_text(CARGO_TOML)
     (root / "rust" / "lib.rs").write_text(LIB_RS)

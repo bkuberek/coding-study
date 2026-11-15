@@ -95,7 +95,7 @@ For other problems the tree shows the files you may edit: the stub `cstudy start
 
 A [service project](service-projects.md) runs your app in a Docker sandbox, with mock servers for the APIs it calls. The page runs the same commands as the terminal, and shows the stack as it starts, runs and stops.
 
-| Item | What you see |
+| Part | What you see |
 |------|--------------|
 | Before you start | The Problems view, the Problem view and the Start dialog list what the project needs: Docker, its images, the size of its install and the memory it takes. Start downloads nothing: the first run, or the first dev stack, pulls the images and installs the dependencies |
 | Docker messages | A Docker that is missing or refuses you is said in the words of `cstudy start`: in the Start dialog, in the Attempt view before any run, at the end of a run that Docker stopped, and in the Health view. A stopped Docker is no problem: the first run starts it |

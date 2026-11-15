@@ -36,12 +36,7 @@ from coding_study.application.stress_judging import without_stress
 from coding_study.application.user_docs import DocVerification, verify_user_docs
 from coding_study.application.verify_concurrency import ConcurrentVerifier
 from coding_study.application.verify_guides import GuideVerification, verify_guides
-from coding_study.application.verify_items import (
-    ItemSelection,
-    ItemVerification,
-    problem_slug_conflicts,
-    verify_items,
-)
+from coding_study.application.verify_items import ItemSelection, ItemVerification, verify_items
 from coding_study.application.verify_ladder import LadderResult, verify_ladder
 from coding_study.application.verify_projects import SuiteCheck, verify_project
 from coding_study.application.verify_references import reference_conflicts
@@ -207,20 +202,20 @@ def verify_content(
     environment: Environment, request: VerifyRequest, notify: ProgressNotice
 ) -> VerifyReport:
     known = environment.files.slugs()
-    item_slugs = environment.items.slugs()
     for slug in request.slugs:
-        if slug not in known and slug not in item_slugs:
+        if slug not in known:
             raise UnknownProblemError(slug)
+    rubric = frozenset(environment.items.slugs())
     selected = request.slugs or tuple(dict.fromkeys(known))
-    conflicts: dict[str, tuple[str, ...]] = {}
-    for found in (problem_slug_conflicts(environment), reference_conflicts(environment)):
-        for slug, issues in found.items():
-            conflicts[slug] = (*conflicts.get(slug, ()), *issues)
-    all_slugs = frozenset((*known, *item_slugs))
-    verifier = _ProblemVerifier(environment, request, notify, all_slugs)
-    checked = (verifier.verify(slug, conflicts.get(slug, ())) for slug in selected if slug in known)
+    conflicts = reference_conflicts(environment)
+    verifier = _ProblemVerifier(environment, request, notify, frozenset(known))
+    checked = (
+        verifier.verify(slug, conflicts.get(slug, ()))
+        for slug in selected
+        if slug in known and slug not in rubric
+    )
     problems = tuple(problem for problem in checked if problem is not None)
-    items = verify_items(environment, _item_selection(request), all_slugs)
+    items = verify_items(environment, _item_selection(request), frozenset(known))
     whole = _whole_catalog(request)
     guides = verify_guides(environment, known) if whole else ()
     docs = verify_user_docs(environment, request.commands) if whole else ()
@@ -263,7 +258,7 @@ def _item_selection(request: VerifyRequest) -> ItemSelection:
 
 
 def _as_verification(item: ItemVerification) -> ProblemVerification:
-    """Items run no code, so they have no meta, languages or coverage."""
+    """Rubric problems run no code, so they have no meta, languages or coverage."""
     return ProblemVerification(
         directory=item.directory,
         meta=None,

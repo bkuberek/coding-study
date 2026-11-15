@@ -36,7 +36,7 @@ from coding_study.domain.problem import Language
 from coding_study.entrypoints.web import code_intelligence
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from tests.fakes import FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import PRACTICE, STUBS, received, session
 from tests.web_server import session_client, web_app
@@ -113,7 +113,9 @@ def until(
 
 @pytest.fixture(scope="module")
 def played(practice_workspace: Path, installed: Path, tmp_path_factory) -> Played:
-    root = repository_root(tmp_path_factory.mktemp("real-servers"), PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(
+        tmp_path_factory.mktemp("real-servers"), PRACTICE, FIXTURE_RUBRIC_PROBLEMS
+    )
     python = root / "python"
     python.mkdir()
     shutil.copyfile(practice_workspace / "python" / "pyproject.toml", python / "pyproject.toml")
@@ -305,7 +307,9 @@ class PlayedTypeScript:
 @pytest.fixture(scope="module")
 def typescript_root(practice_workspace: Path, installed: Path, tmp_path_factory) -> Path:
     """A workspace whose `typescript/` project is the practice workspace's, with the servers."""
-    root = repository_root(tmp_path_factory.mktemp("real-typescript"), PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(
+        tmp_path_factory.mktemp("real-typescript"), PRACTICE, FIXTURE_RUBRIC_PROBLEMS
+    )
     project = root / "typescript"
     project.mkdir()
     for name in TYPESCRIPT_PROJECT_FILES:
@@ -516,7 +520,9 @@ def test_nothing_the_page_asks_of_typescript_shows_what_a_reference_declares(typ
 def python_root(tmp_path_factory, installed: Path) -> Path:
     """A workspace whose `python/` project reaches `.cs/build/python` by `extraPaths`, as a
     project folder's `pyproject.toml` could be made to say."""
-    root = repository_root(tmp_path_factory.mktemp("real-python-imports"), PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(
+        tmp_path_factory.mktemp("real-python-imports"), PRACTICE, FIXTURE_RUBRIC_PROBLEMS
+    )
     (root / "python").mkdir()
     (root / "python" / "pyproject.toml").write_text(
         '[tool.pyright]\ninclude = ["practice"]\nextraPaths = ["../.cs/build/python"]\n'

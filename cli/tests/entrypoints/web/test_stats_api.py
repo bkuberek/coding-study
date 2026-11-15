@@ -10,7 +10,7 @@ from coding_study.application.show_stats import StatsRequest, show_stats
 from coding_study.domain.progress_stats import StatsGrouping
 from coding_study.entrypoints.commands.stats import stats_document
 from tests.fakes import make_environment, repository_root
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 from tests.stats_fixture import fill_progress
 from tests.web_server import session_client, web_app
 
@@ -24,7 +24,7 @@ def problems(tmp_path_factory):
 
 @pytest.fixture
 def environment(tmp_path, problems) -> Environment:
-    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
     fill_progress(environment)
     return environment
 

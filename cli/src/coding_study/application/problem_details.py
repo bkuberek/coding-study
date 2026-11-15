@@ -37,11 +37,11 @@ class ProblemDetails:
 
 
 ITEM_DETAILS = ProblemDetails((), (), (), None, 0, bench=False, oracle=False)
-"""A non-autograded item: no language, no references, levels, hints, bench, oracle or guides."""
+"""A rubric problem: no language, no references, levels, hints, bench, oracle or guides."""
 
 
 def problem_details(environment: Environment, slug: str) -> ProblemDetails:
-    """Raises UnknownProblemError for a slug that names no problem or item."""
+    """Raises UnknownProblemError for a slug that names no problem."""
     if is_item(environment, slug):
         return ITEM_DETAILS
     meta = environment.problems.load(slug).meta

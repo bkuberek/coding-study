@@ -44,7 +44,7 @@ problems/two-sum/
 
 ## meta.yaml
 
-Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-language-server: $schema=../../schemas/meta.schema.json` for editor completion.
+Validated against `schemas/meta.schema.json`, which also validates the [rubric-checked problems](content.md#rubric-checked-problems): this page describes the autograded kinds, and the fields of the two rubric kinds are in [compatibility](compatibility.md#schema). The first line may carry `# yaml-language-server: $schema=../../schemas/meta.schema.json` for editor completion.
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
@@ -52,28 +52,28 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `title` | string | yes | Original title (common names such as "Two Sum" are allowed) |
 | `status` | `draft` or `ready` | yes | `ready` requirements: [authoring](authoring.md#ready-criteria) |
 | `difficulty` | `easy`, `medium`, `hard` | yes | |
-| `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging` | yes | Non-autograded tracks live in `tracks/` ([content](content.md)) |
-| `kind` | `function`, `design`, `progressive`, `concurrent`, `project` | yes | `project`: [Project problems](#project-problems) |
+| `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging`; a rubric kind has the track of its own name | yes | The rubric-checked kinds are in [content](content.md#rubric-checked-problems) |
+| `kind` | `function`, `design`, `progressive`, `concurrent`, `project`; `system-design` and `code-review` for a [rubric-checked problem](content.md#rubric-checked-problems) | yes | `project`: [Project problems](#project-problems) |
 | `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
 | `domains` | list of domain ids | yes in the catalog | What the problem is about; one or more of `algorithms`, `backend`, `security`, `identity`, `ai-llm`, `fintech`, `data`, `infrastructure`, `systems`, `software-design`, `frontend` ([content](content.md#labels)). Check S24 requires it on catalog content only, so a problem of your own may leave it out |
 | `job_roles` | list of role ids | yes in the catalog | Who it is for; one or more of `general`, `backend`, `platform`, `security-engineer`, `ai-engineer`, `ml-engineer`, `data-engineer`, `frontend`. Not the `role` of an approach, which is `brute`, `intermediate` or `optimal` |
 | `scope` | `function`, `project` or `system` | yes in the catalog | How big the thing you work on is. S24 ties it to `kind`: `project` or `system` for `kind: project`, `function` for any other kind |
 | `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default all six, which every problem lists, except a language that cannot express the problem: Rust where an `Option<Box<ListNode>>` cannot ([S13](authoring.md#static)), so `linked-list-cycle` lists the other five. `concurrency` and `debugging` problems are the exception: they may list any subset of the six languages, so a Go- or Rust-native bug lists just `go` or `rust`, and the original debugging problems list the languages their bugs exist in ([ADR 0012](../decisions/0012-go-and-rust.md)). So may a problem with `security`, `identity` or `ai-llm` among its `domains`, and any one of them is enough: the first wave lists Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). A `project` problem lists exactly one language, `python` or `typescript` ([Project problems](#project-problems), [ADR 0014](../decisions/0014-project-problems.md)). A problem you write in your own workspace is the exception to the catalog's rule: it lists any non-empty subset, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), what every problem listed before Go and Rust, so a problem written with an older `cstudy` keeps working. `cstudy new` writes the line explicitly. List `languages` in the catalog only where it differs from the default |
 | `jdk` | object | no | `min`, `max` or both: the JDK feature releases (integers) that the problem's Java and Kotlin code runs on. Only for a problem that lists `java` or `kotlin`; a missing field or bound is the bound of the supported range, JDK 21 to 26 ([JDK range](#jdk-range), [ADR 0016](../decisions/0016-jdk-range.md)) |
-| `signature` | object | yes | See [Signatures](#signatures) |
-| `comparator` | object | yes | See [Comparators](#comparators) |
+| `signature` | object | yes, for an autograded kind | See [Signatures](#signatures) |
+| `comparator` | object | yes, for an autograded kind | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
 | `levels` | list | `progressive` and `project` only | See [Progressive problems](#progressive-problems) |
 | `project` | object | `project` only | `entry` (required), `tests` and `clock`; see [Project problems](#project-problems) |
-| `approaches` | list | yes, at least 1; exactly 1 for `project` | See [Approaches](#approaches-and-complexity) |
+| `approaches` | list | yes for an autograded kind, at least 1; exactly 1 for `project` | See [Approaches](#approaches-and-complexity) |
 | `perf` | object | no | See [Performance block](#performance-block) |
 | `limits.hang_guard_ms` | int | no | Overrides the per-case hang guard (default 10000). A [virtual-clock](#asynchronous-code-and-the-virtual-clock) problem lowers it to a few seconds, since a correct case takes milliseconds |
 | `concurrency` | object | `concurrent` (required); `project` (optional, with stress cases) | See [Concurrent problems](#concurrent-problems) and [Stress cases in projects](#stress-cases-in-projects) |
-| `references` | object | no | `leetcode: {number, url}`, `links: [url]`. No two problems share a `leetcode.number` (S26) |
+| `references` | object | no | `leetcode: {number, url}`, `links: [url]`; a rubric-checked problem has `study_guides` too and no `leetcode`. No two problems share a `leetcode.number` (S26) |
 | `related` | list of slugs | no | |
 | `guides` | list of guide slugs | no | The [concept guides](guides.md) to read before the problem; each must exist (S25) |
 | `order` | int | no | Curriculum order within the primary pattern (default 1000) |
-| `estimate_minutes` | int | no | Expected interview solve time |
+| `estimate_minutes` | int | no; yes for a rubric-checked problem | Expected interview solve time |
 | `summary` | string, 1 to 240 characters | no | The summary in the [starter header](#starter-header), in place of the one taken from the statement; for a problem whose opening reads badly there, or gives away the approach |
 
 Hints are not in `meta.yaml`; they are the `## Hints` section of `problem.md`, so there is one source.
@@ -100,7 +100,7 @@ Run: cstudy test two-sum
 | What a summary says | What the problem asks, never how to solve it: it names no technique, pattern or data structure that the statement itself keeps for the hints and the explanation. A catalog problem whose opening would say so, or would be cut short, carries a `summary` |
 | Concurrent problems | The model follows, as `Concurrency: threads` after an empty line in Python, and on the line after the run command in the other languages |
 | Existing files | Only a new start writes a header. `cstudy` never rewrites a practice file, so a file started earlier keeps the header it has |
-| Project problems and items | Neither has a generated stub, so neither has this header: a project problem copies its `starter/` tree, and an item's notes file keeps its own one-line comment ([cli](cli.md#cstudy-start)) |
+| Project and rubric problems | Neither has a generated stub, so neither has this header: a project problem copies its `starter/` tree, and a rubric problem's notes file keeps its own one-line comment ([cli](cli.md#cstudy-start)) |
 
 ### Starter helpers
 

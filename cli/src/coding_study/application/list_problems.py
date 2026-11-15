@@ -7,7 +7,7 @@ from datetime import date
 
 from coding_study.application.environment import Environment
 from coding_study.domain.attempts import Attempt
-from coding_study.domain.items import EntryKind, entry_kind
+from coding_study.domain.items import RUBRIC_KINDS, EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import fit_of, listing_reason
 from coding_study.domain.labels import LabelFilter
@@ -38,7 +38,8 @@ class ProblemFilter:
     language: Language | None = None
     """Problems with a reference in this language."""
     kind: EntryKind | None = None
-    """`item` keeps the non-autograded items only; a kind of problem leaves them out."""
+    """A rubric kind keeps the rubric problems of that kind only; an autograded kind leaves them
+    out."""
     labels: LabelFilter = field(default_factory=LabelFilter)
     """`--domain`, `--role` and `--scope`; an entry without labels matches none that is set."""
     in_set: ProblemSet | None = None
@@ -49,10 +50,13 @@ class ProblemFilter:
     """`--needs`: `none`, or `docker` or a service a problem needs."""
 
     @property
-    def lists_items(self) -> bool:
-        """Whether the kind leaves room for items, which `list_items` filters further. An item
-        needs nothing."""
-        return self.kind in (None, EntryKind.ITEM) and self.needs in (None, NEEDS_NOTHING)
+    def lists_rubric_problems(self) -> bool:
+        """Whether the kind leaves room for rubric problems, which `list_items` filters further. A
+        rubric problem needs nothing."""
+        return (self.kind is None or self.kind in RUBRIC_KINDS) and self.needs in (
+            None,
+            NEEDS_NOTHING,
+        )
 
     def matches(self, summary: ProblemSummary, status: ProblemStatus) -> bool:
         meta = summary.meta

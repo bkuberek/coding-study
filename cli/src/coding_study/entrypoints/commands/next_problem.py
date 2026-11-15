@@ -195,7 +195,7 @@ def _also_open(others: tuple[OpenAttempt, ...]) -> str:
 
 
 def _start_command(slug: str, language: Language | None) -> str:
-    """Items take no `--lang`."""
+    """Rubric problems take no `--lang`."""
     command = f"cstudy start {slug}"
     return command if language is None else f"{command} --lang {language}"
 

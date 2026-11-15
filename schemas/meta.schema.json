@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "coding-study problem meta.yaml",
-  "description": "Metadata, signature, comparator, approaches and performance settings of one autograded problem. Spec: docs/specs/problem-format.md#metayaml",
+  "description": "Metadata of one problem: for an autograded kind its signature, comparator, approaches and performance settings, for system-design and code-review the fields of a rubric-checked problem. Spec: docs/specs/problem-format.md#metayaml and docs/specs/compatibility.md#rubric-checked-problems",
   "type": "object",
   "additionalProperties": false,
-  "required": ["slug", "title", "status", "difficulty", "track", "kind", "comparator", "approaches"],
+  "required": ["slug", "title", "status", "difficulty", "track", "kind"],
   "properties": {
     "slug": {
       "description": "Stable key in progress.db; must match the directory name",
@@ -13,8 +13,11 @@
     "title": { "type": "string", "minLength": 1 },
     "status": { "enum": ["draft", "ready"] },
     "difficulty": { "enum": ["easy", "medium", "hard"] },
-    "track": { "enum": ["dsa", "practical", "lld", "concurrency", "debugging"] },
-    "kind": { "enum": ["function", "design", "progressive", "concurrent", "project"] },
+    "track": {
+      "description": "A rubric kind has the track of its own name",
+      "enum": ["dsa", "practical", "lld", "concurrency", "debugging", "system-design", "code-review"]
+    },
+    "kind": { "enum": ["function", "design", "progressive", "concurrent", "project", "system-design", "code-review"] },
     "patterns": {
       "description": "The first entry is the primary pattern",
       "type": "array",
@@ -106,6 +109,12 @@
             "url": { "type": "string", "format": "uri" }
           }
         },
+        "study_guides": {
+          "description": "System-design and code-review problems only: paths relative to the user's study-guides root (config study_guides.root), optionally with a #section anchor; referenced, never copied",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(?![/~])(?!(?:.*/)?\\.\\.(?:[/#]|$))\\S+$" }
+        },
         "links": { "type": "array", "items": { "type": "string", "format": "uri" } }
       }
     },
@@ -124,68 +133,113 @@
   },
   "allOf": [
     {
-      "if": { "required": ["track"], "properties": { "track": { "const": "dsa" } } },
-      "then": { "required": ["patterns"] }
-    },
-    {
-      "if": { "required": ["kind"], "properties": { "kind": { "enum": ["progressive", "project"] } } },
-      "then": { "required": ["levels"] },
-      "else": { "not": { "required": ["levels"] } }
-    },
-    {
-      "description": "Project problems: a project block and exactly one language; no stub or perf, even at their defaults (check S14); a concurrency block names one model, since a project lists one language",
-      "if": { "required": ["kind"], "properties": { "kind": { "const": "project" } } },
+      "description": "An autograded kind: a comparator and approaches, and no rubric-only field",
+      "if": { "required": ["kind"], "properties": { "kind": { "enum": ["function", "design", "progressive", "concurrent", "project"] } } },
       "then": {
-        "required": ["project", "languages"],
-        "not": { "anyOf": [{ "required": ["stub"] }, { "required": ["perf"] }] },
+        "required": ["comparator", "approaches"],
         "properties": {
-          "languages": { "maxItems": 1 },
-          "concurrency": { "properties": { "model": { "$ref": "#/$defs/concurrencyModel" } } }
-        }
-      },
-      "else": { "not": { "required": ["project"] } }
-    },
-    {
-      "description": "A service project (project.grading: http) is judged over HTTP, so it has no signature, no concurrency block and no complexity classes; every other problem has a signature (docs/specs/service-projects.md#manifest-sketch)",
-      "if": { "required": ["project"], "properties": { "project": { "required": ["grading"] } } },
-      "then": {
-        "not": { "anyOf": [{ "required": ["signature"] }, { "required": ["concurrency"] }] },
-        "properties": { "kind": { "const": "project" } }
-      },
-      "else": { "required": ["signature"] }
-    },
-    {
-      "if": { "required": ["kind"], "properties": { "kind": { "const": "function" } } },
-      "then": { "properties": { "signature": { "required": ["function"] } } },
-      "else": { "properties": { "signature": { "required": ["class"] } } }
-    },
-    {
-      "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes, and only a project may also have a concurrency block",
-      "if": { "required": ["kind"], "properties": { "kind": { "const": "concurrent" } } },
-      "then": {
-        "required": ["concurrency"],
-        "not": { "required": ["perf"] },
-        "properties": {
-          "comparator": { "properties": { "type": { "const": "ops" } } },
-          "approaches": {
-            "items": {
-              "not": { "anyOf": [{ "required": ["time_class"] }, { "required": ["space_class"] }, { "required": ["oracle"] }] },
-              "properties": { "id": { "not": { "pattern": "^broken-" } } }
+          "track": { "enum": ["dsa", "practical", "lld", "concurrency", "debugging"] },
+          "references": { "not": { "required": ["study_guides"] } }
+        },
+        "allOf": [
+          {
+            "if": { "required": ["track"], "properties": { "track": { "const": "dsa" } } },
+            "then": { "required": ["patterns"] }
+          },
+          {
+            "if": { "required": ["kind"], "properties": { "kind": { "enum": ["progressive", "project"] } } },
+            "then": { "required": ["levels"] },
+            "else": { "not": { "required": ["levels"] } }
+          },
+          {
+            "description": "Project problems: a project block and exactly one language; no stub or perf, even at their defaults (check S14); a concurrency block names one model, since a project lists one language",
+            "if": { "required": ["kind"], "properties": { "kind": { "const": "project" } } },
+            "then": {
+              "required": ["project", "languages"],
+              "not": { "anyOf": [{ "required": ["stub"] }, { "required": ["perf"] }] },
+              "properties": {
+                "languages": { "maxItems": 1 },
+                "concurrency": { "properties": { "model": { "$ref": "#/$defs/concurrencyModel" } } }
+              }
+            },
+            "else": { "not": { "required": ["project"] } }
+          },
+          {
+            "description": "A service project (project.grading: http) is judged over HTTP, so it has no signature, no concurrency block and no complexity classes; every other problem has a signature (docs/specs/service-projects.md#manifest-sketch)",
+            "if": { "required": ["project"], "properties": { "project": { "required": ["grading"] } } },
+            "then": {
+              "not": { "anyOf": [{ "required": ["signature"] }, { "required": ["concurrency"] }] },
+              "properties": { "kind": { "const": "project" } }
+            },
+            "else": { "required": ["signature"] }
+          },
+          {
+            "if": { "required": ["kind"], "properties": { "kind": { "const": "function" } } },
+            "then": { "properties": { "signature": { "required": ["function"] } } },
+            "else": { "properties": { "signature": { "required": ["class"] } } }
+          },
+          {
+            "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes, and only a project may also have a concurrency block",
+            "if": { "required": ["kind"], "properties": { "kind": { "const": "concurrent" } } },
+            "then": {
+              "required": ["concurrency"],
+              "not": { "required": ["perf"] },
+              "properties": {
+                "comparator": { "properties": { "type": { "const": "ops" } } },
+                "approaches": {
+                  "items": {
+                    "not": { "anyOf": [{ "required": ["time_class"] }, { "required": ["space_class"] }, { "required": ["oracle"] }] },
+                    "properties": { "id": { "not": { "pattern": "^broken-" } } }
+                  }
+                }
+              }
+            },
+            "else": {
+              "if": { "required": ["project"], "properties": { "project": { "required": ["grading"] } } },
+              "else": {
+                "properties": { "approaches": { "items": { "required": ["time_class", "space_class"] } } }
+              }
             }
+          },
+          {
+            "description": "A concurrency block belongs to a concurrent problem or a project with stress cases (docs/specs/problem-format.md#stress-cases-in-projects)",
+            "if": { "required": ["kind"], "properties": { "kind": { "enum": ["concurrent", "project"] } } },
+            "else": { "not": { "required": ["concurrency"] } }
           }
-        }
-      },
-      "else": {
-        "if": { "required": ["project"], "properties": { "project": { "required": ["grading"] } } },
-        "else": {
-          "properties": { "approaches": { "items": { "required": ["time_class", "space_class"] } } }
-        }
+        ]
       }
     },
     {
-      "description": "A concurrency block belongs to a concurrent problem or a project with stress cases (docs/specs/problem-format.md#stress-cases-in-projects)",
-      "if": { "required": ["kind"], "properties": { "kind": { "enum": ["concurrent", "project"] } } },
-      "else": { "not": { "required": ["concurrency"] } }
+      "description": "A rubric kind (system-design, code-review): an estimate and the track of its own name, none of the autograded fields",
+      "if": { "required": ["kind"], "properties": { "kind": { "enum": ["system-design", "code-review"] } } },
+      "then": {
+        "required": ["estimate_minutes"],
+        "not": {
+          "anyOf": [
+            { "required": ["signature"] }, { "required": ["comparator"] }, { "required": ["approaches"] },
+            { "required": ["patterns"] }, { "required": ["levels"] }, { "required": ["perf"] },
+            { "required": ["stub"] }, { "required": ["languages"] }, { "required": ["jdk"] },
+            { "required": ["limits"] }, { "required": ["project"] }, { "required": ["concurrency"] },
+            { "required": ["summary"] }, { "required": ["guides"] }
+          ]
+        },
+        "properties": {
+          "references": {
+            "not": { "required": ["leetcode"] },
+            "properties": { "links": { "items": { "pattern": "^https?://\\S+$" } } }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "kind": { "const": "system-design" } } },
+            "then": { "properties": { "track": { "const": "system-design" } } }
+          },
+          {
+            "if": { "properties": { "kind": { "const": "code-review" } } },
+            "then": { "properties": { "track": { "const": "code-review" } } }
+          }
+        ]
+      }
     }
   ],
   "$defs": {

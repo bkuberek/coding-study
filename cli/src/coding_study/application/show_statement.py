@@ -2,7 +2,7 @@
 
 Progressive and project problems show the levels the attempt in progress has unlocked (level 1
 without one), or levels 1 to `--level`; a project problem's statement speaks its language.
-Non-autograded items show their rendered prompt.
+Rubric problems show their rendered prompt.
 """
 
 from dataclasses import dataclass

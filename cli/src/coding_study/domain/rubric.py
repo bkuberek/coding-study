@@ -2,7 +2,7 @@
 
 A rubric is a Markdown file whose `##` sections are either checklists of `- [ ] <criterion>`
 items or prose. Low-level design problems require `LLD_RUBRIC_SECTIONS` (`rubric_issues`);
-non-autograded items (docs/specs/content.md) name their own areas, every one a checklist, under
+rubric-checked problems (docs/specs/content.md) name their own areas, every one a checklist, under
 a fixed title (`item_rubric_issues`).
 """
 
@@ -105,7 +105,8 @@ def rubric_skeleton(title: str, sections: Sequence[RubricSection]) -> str:
 
 
 def item_rubric_issues(text: str, title: str) -> tuple[str, ...]:
-    """Why `text` is not an item rubric titled `title`: any areas, each with a criterion."""
+    """Why `text` is not the rubric of a rubric problem titled `title`: any areas, each with a
+    criterion."""
     rubric = parse_rubric(text)
     issues: list[str] = []
     if rubric.title != title:

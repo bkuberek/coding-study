@@ -138,7 +138,7 @@ def _best(found: ProblemHistory) -> str:
 
 
 def _header(found: ProblemHistory) -> str:
-    """The primary pattern, or the track of a problem without patterns and of an item."""
+    """The primary pattern, or the track of a problem without patterns and of a rubric problem."""
     topic = found.patterns[0] if found.patterns else found.track.value
     mastered = None if found.levels is None else (found.mastered, found.levels)
     return " · ".join((found.slug, found.difficulty, topic, status_text(found.status, mastered)))

@@ -1,7 +1,7 @@
 """`cstudy stats`: a progress summary (docs/specs/cli.md#cstudy-stats).
 
 The rules are pure (`coding_study.domain.progress_stats`); this gathers their inputs: every
-problem and item with its progress, the finished attempts and the latest bench verdicts.
+problem with its progress, the finished attempts and the latest bench verdicts.
 """
 
 from dataclasses import dataclass

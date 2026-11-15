@@ -28,7 +28,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import stats
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import make_environment, repository_root
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 from tests.stats_fixture import fill_progress
 
 runner = CliRunner()
@@ -42,7 +42,7 @@ def problems(tmp_path_factory):
 
 @pytest.fixture
 def environment(tmp_path, monkeypatch, problems):
-    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
     monkeypatch.setattr(stats, "load_environment", lambda *_: environment)
     return environment
 

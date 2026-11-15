@@ -146,7 +146,15 @@ cstudy stats                    # your progress by pattern
 
 ## System design and code review
 
-System design and code review problems are graded by you, against a rubric. `cstudy start url-shortener` writes a notes file in `notes/` from the problem's template and opens it with the prompt. Answer in the notes, then compare with the reference:
+System design and code review problems are graded by you, against a rubric: `cstudy list --kind system-design` and `--kind code-review` list them. `cstudy start url-shortener` writes a notes file in `notes/<track>/<slug>.md` from the problem's template and renders the prompt, with the change to review for code review, to `.statements/<slug>.md`. Answer in the notes, then compare with the reference:
+
+| Step | Command | Effect |
+|------|---------|--------|
+| 1 | `cstudy next --track system-design` | Picks a due or new problem |
+| 2 | `cstudy start <slug>` | Writes the notes file and the prompt; time box it with `--timer 45m` |
+| 3 | Answer in the notes file | System design: requirements, estimates, API, data model, high-level design, deep dives, trade-offs. Code review: issues by severity, each with its location and the change you would ask for |
+| 4 | `cstudy solution <slug>` | Shows the rubric, then the reference answer, or the issues a strong reviewer finds |
+| 5 | `cstudy done <slug> --rating easy\|ok\|hard` | Self-graded; schedules the next review |
 
 ```bash
 cstudy start url-shortener
@@ -154,4 +162,4 @@ cstudy solution url-shortener   # the rubric and the reference
 cstudy done --rating ok
 ```
 
-Here the rating is the whole grade: seeing the reference, hints and the timer never lower it.
+Here the rating is the whole grade: seeing the reference, hints and the timer never lower it. Behavioral rounds have no problems: prepare from your own story bank, kept with your other notes and outside the catalog.

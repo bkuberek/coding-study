@@ -178,7 +178,7 @@ The system design and code review exercises are problems of the kinds `system-de
 | Always required | `slug`, `title`, `status`, `difficulty`, `track`, `kind` |
 | `track`, `kind` | Both enums gain `system-design` and `code-review` |
 | An autograded kind (`function`, `design`, `progressive`, `concurrent`, `project`) | Requires `comparator` and `approaches`, and keeps every signature, levels, project and concurrency condition of today, all under this branch |
-| A rubric kind (`system-design`, `code-review`) | Requires `estimate_minutes` and `track` equal to `kind`; allows `references.study_guides`; forbids `signature`, `comparator`, `approaches`, `patterns`, `levels`, `perf`, `stub`, `languages`, `jdk`, `hang_guard_ms`, `project`, `concurrency`, `summary`, `guides` and `references.leetcode` |
+| A rubric kind (`system-design`, `code-review`) | Requires `estimate_minutes` and `track` equal to `kind`; allows `references.study_guides`; forbids `signature`, `comparator`, `approaches`, `patterns`, `levels`, `perf`, `stub`, `languages`, `jdk`, `limits` (which holds `hang_guard_ms`), `project`, `concurrency`, `summary`, `guides` and `references.leetcode` |
 
 ### Loading
 

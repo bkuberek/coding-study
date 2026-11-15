@@ -16,7 +16,7 @@ from coding_study.domain.items import EntryKind
 from coding_study.domain.problem import Language, Track
 from tests.fakes import FakeJdk, declare_jdk, jdk_of, make_environment
 from tests.fakes import repository_root as copy_repository
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 
 JVM_PROJECTS = Path(__file__).resolve().parents[1] / "fixtures" / "jvm-projects" / "problems"
 JAVA = NextRequest(language=Language.JAVA)
@@ -77,14 +77,14 @@ def test_a_problem_that_opts_in_to_the_jdk_is_the_only_pick_on_it(tmp_path, prob
     assert picked(make_environment(root, jdk=jdk_of(27)), JAVA) == "invert-binary-tree"
 
 
-def test_items_stay_in_scope_whatever_the_jdk(tmp_path, problems):
+def test_rubric_problems_stay_in_scope_whatever_the_jdk(tmp_path, problems):
     environment = make_environment(
-        copy_repository(tmp_path, problems, FIXTURE_TRACKS), jdk=FakeJdk(None)
+        copy_repository(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS), jdk=FakeJdk(None)
     )
     request = NextRequest(tracks=(Track.SYSTEM_DESIGN,), language=Language.JAVA)
     result = recommend(environment, request)
     assert not isinstance(result, NothingToPick)
-    assert result.kind is EntryKind.ITEM
+    assert result.kind is EntryKind.SYSTEM_DESIGN
 
 
 # the message

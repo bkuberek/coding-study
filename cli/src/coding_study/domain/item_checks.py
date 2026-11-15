@@ -1,8 +1,9 @@
-"""`cstudy verify` checks on non-autograded items (docs/specs/authoring.md#items).
+"""`cstudy verify` checks on rubric-checked problems
+(docs/specs/authoring.md#rubric-checked-problems).
 
-The schema and the directory rules (I1, I2) fail while loading `item.yaml`; slug uniqueness needs
-every problem and item and is checked by the caller. This module checks the Markdown files and
-the change under review (I3 to I7), the labels (S24) and what `status: ready` adds.
+The schema and the directory rule (I1, I2) fail while loading `meta.yaml`. This module checks the
+Markdown files and the change under review (I3 to I7), the labels (S24) and what `status: ready`
+adds.
 """
 
 import re
@@ -13,7 +14,6 @@ from coding_study.domain.errors import ContentIssue
 from coding_study.domain.items import (
     CHANGE_DIRECTORY,
     CHANGE_FILE,
-    ITEM_FILE,
     NOTES_TITLE_SUFFIX,
     PROMPT_FILE,
     REFERENCE_FILE,
@@ -24,7 +24,7 @@ from coding_study.domain.items import (
 from coding_study.domain.label_checks import item_label_issues
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.problem import ContentStatus, Track
-from coding_study.domain.problem_files import RUBRIC_FILE
+from coding_study.domain.problem_files import META_FILE, RUBRIC_FILE
 from coding_study.domain.rubric import RUBRIC_TITLE_SUFFIX, item_rubric_issues
 from coding_study.domain.static_checks import PLACEHOLDER
 
@@ -53,10 +53,10 @@ _ISSUE = re.compile(r"\s*- \S")
 
 @dataclass(frozen=True, slots=True)
 class ItemContent:
-    """Everything the item checks read, gathered from one item directory."""
+    """Everything the rubric problem checks read, gathered from one problem directory."""
 
     directory: str
-    """Repository-relative, e.g. `tracks/system-design/url-shortener`."""
+    """Repository-relative, e.g. `problems/url-shortener`."""
     meta: ItemMeta
     prompt: str | None
     rubric: str | None
@@ -94,21 +94,23 @@ def item_static_checks(content: ItemContent) -> tuple[ContentIssue, ...]:
 
 
 def item_ready_problems(content: ItemContent) -> tuple[str, ...]:
-    """Every reason the item is not ready; empty when it is."""
+    """Every reason the problem is not ready; empty when it is."""
     meta = content.meta
     problems: list[str] = []
     if meta.status is not ContentStatus.READY:
         problems.append(f"status is {meta.status}, not ready")
     references = meta.references
     if meta.track is Track.SYSTEM_DESIGN and not (references.links or references.study_guides):
-        problems.append("system-design items need at least one reference (links or study_guides)")
+        problems.append(
+            "system-design problems need at least one reference (links or study_guides)"
+        )
     return tuple(problems)
 
 
 def _labels(issues: "_Issues", meta: ItemMeta) -> None:
-    """S24: an item has `domains`, `job_roles` and a `scope` that fits its track."""
+    """S24: a rubric problem has `domains`, `job_roles` and a `scope` that fits its track."""
     for issue in item_label_issues(meta):
-        issues.error(ITEM_FILE, f"{issue.location}: {issue.message}")
+        issues.error(META_FILE, f"{issue.location}: {issue.message}")
 
 
 class _FileIssues:
@@ -187,14 +189,14 @@ def _placeholders(issues: _FileIssues, document: MarkdownDocument) -> None:
 
 
 def _change(issues: _Issues, content: ItemContent) -> None:
-    """I7: code review items carry exactly one form of the change; other items carry none."""
+    """I7: a code-review problem has exactly one form of the change; a system-design one, none."""
     has_diff = content.change is not None
     has_files = bool(content.change_files)
     if content.meta.track is not Track.CODE_REVIEW:
         if has_diff:
-            issues.error(CHANGE_FILE, "only code-review items have a change under review")
+            issues.error(CHANGE_FILE, "only code-review problems have a change under review")
         if has_files:
-            issues.error(CHANGE_DIRECTORY, "only code-review items have a change under review")
+            issues.error(CHANGE_DIRECTORY, "only code-review problems have a change under review")
         return
     if has_diff == has_files:
         issues.error("", f"needs {CHANGE_FILE} or {CHANGE_DIRECTORY}/ (exactly one)")

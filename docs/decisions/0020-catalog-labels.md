@@ -128,7 +128,7 @@ Proposed overrides, to confirm in R3:
 | [`cstudy next`](../specs/cli.md#cstudy-next) | The same flags. **A catch:** its default scope is `next.tracks`, default `["dsa"]` ([PRD Q9](../prd.md#8-open-questions)), so `cstudy next --domain security` would find nothing. A label filter with no `--track` therefore searches every track. A new problem outside `dsa` falls in its track's weakness group ([selection](../specs/progress-and-scheduling.md#weakness-score)), so a domain gets no weakness of its own in this plan |
 | [Problems view](../specs/web-ui.md#problems-view) | Domain, Role and Scope filters, kept in the route's query as the others are, and a Scope column. `GET /api/v1/problems` returns entries of `cstudy list --json`, so it gains the fields with it |
 | [catalog](../specs/catalog.md) | New tables carry `domains`, `job_roles` and `scope` as binding columns. Existing tables get a line per section with that section's values and an exceptions list, not three columns on 270 rows. `scope` the prose column becomes `covers` |
-| [problem-format](../specs/problem-format.md#metayaml), [content](../specs/content.md#non-autograded-item-format) | The field tables |
+| [problem-format](../specs/problem-format.md#metayaml), [content](../specs/content.md#rubric-checked-problems) | The field tables |
 | The website's catalog sync | **No change now.** It lives in another repository and was not read for this ADR. The fields are additive, and no `track` or `kind` value changes, so a reader that ignores unknown fields keeps working. It may want the filters, and a page per domain, when phase 2 ships |
 
 ### The first wave

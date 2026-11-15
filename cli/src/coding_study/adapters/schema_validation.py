@@ -14,7 +14,6 @@ from coding_study.domain.errors import ContentIssue
 SCHEMAS_DIRECTORY = "schemas"
 META_SCHEMA_FILE = "meta.schema.json"
 TESTS_SCHEMA_FILE = "tests.schema.json"
-ITEM_SCHEMA_FILE = "item.schema.json"
 MOCK_SCHEMA_FILE = "mock.schema.json"
 MAX_MESSAGE_LENGTH = 200
 _ELLIPSIS = "..."

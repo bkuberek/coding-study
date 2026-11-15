@@ -1,12 +1,12 @@
 # Spec: Content
 
-What the catalog contains: tracks, the DSA pattern taxonomy with Phase targets, non-autograded item formats, and the copyright policy. How to write a problem is in [authoring](authoring.md).
+What the catalog contains: tracks, the DSA pattern taxonomy with Phase targets, the format of rubric-checked problems, and the copyright policy. How to write a problem is in [authoring](authoring.md).
 
 ## Tracks
 
 DSA is roughly a third of a senior or staff loop, so the catalog covers the other rounds too.
 
-Every problem and item also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. The first security and AI/LLM problems use them: `token-claim-validator`, `refresh-token-rotation`, `authorization-policy-engine`, `calibration-metrics`, `token-cost-reconciler`, `bm25-hybrid-ranker`, `stream-reassembler` in the [catalog](catalog.md#practical-137-problems), in Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
+Every problem also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. The first security and AI/LLM problems use them: `token-claim-validator`, `refresh-token-rotation`, `authorization-policy-engine`, `calibration-metrics`, `token-cost-reconciler`, `bm25-hybrid-ranker`, `stream-reassembler` in the [catalog](catalog.md#practical-137-problems), in Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
 
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
@@ -15,11 +15,11 @@ Every problem and item also has three [labels](#labels) that are independent of 
 | `lld` | Object-oriented and low-level design | API by ops tests; design by rubric | `problems/` | `design` plus `rubric.md` | 8 (Phase 4) |
 | `concurrency` | Concurrency | yes, per language subset | `problems/` | `concurrent` | 6 (Phase 5) |
 | `debugging` | Debugging | yes | `problems/` | `function` or `design` with `stub: buggy` | 8 (Phase 6); 7 JavaScript traps (Phase 13) |
-| `system-design` | System design | no (rubric) | `tracks/system-design/` | item | 10 (Phase 6) |
-| `code-review` | Code review | no (rubric) | `tracks/code-review/` | item | 6 (Phase 6) |
-| `behavioral` | Behavioral | no | `tracks/behavioral/README.md` | guidance only | 0 items |
+| `system-design` | System design | no (rubric) | `problems/` | `system-design` | 10 (Phase 6) |
+| `code-review` | Code review | no (rubric) | `problems/` | `code-review` | 6 (Phase 6) |
+| `behavioral` | Behavioral | no | none | guidance only | 0 problems |
 
-Placement rule: autograded content lives in `problems/`, everything else in `tracks/`. Slugs are unique across both, because `progress.db` keys on the slug.
+Placement rule: every problem lives in `problems/<slug>/`, whatever checks it. Slugs are unique, because they are directory names and `progress.db` keys on the slug.
 
 ### Track notes
 
@@ -29,9 +29,9 @@ Placement rule: autograded content lives in `problems/`, everything else in `tra
 | `lld` | Ops tests check the public behavior; `rubric.md` lists design criteria (responsibilities, extension points, patterns, testability) used for self-review after `cstudy done`, then the reference design; `cstudy solution` shows it before the code ([format](authoring.md#rubricmd)). Candidates: parking lot, rate limiter, event bus, LFU cache, logger with sinks, vending machine, elevator controller, library checkout |
 | `concurrency` | Language differences are the content: Java platform and virtual threads and `java.util.concurrent`; Kotlin threads (coroutines as explanation sections, PRD Q5); Python `threading` under the GIL or `asyncio`; TypeScript async concurrency on the event loop (no `worker_threads`). Each problem lists its `languages` and a model per language; format and verdict rules in [problem-format](problem-format.md#concurrent-problems). Phase 5 problems: [below](#concurrency-problems) |
 | `debugging` | Buggy code per language in `buggy/solution.<ext>`; the user fixes it until tests pass. Bugs may be language-specific (integer overflow, mutable default arguments, boxed equality), so `languages` may be a subset |
-| `system-design` | Prompt, scale assumptions, rubric and a reference design. Items reference public articles and, optionally, sections of a distributed-systems study guide under your [study-guides root](#study-guides) (fundamentals, databases, messaging, storage, networking, observability, example designs). Candidates: URL shortener, distributed rate limiter, news feed, chat, distributed cache, notification system, web crawler, metrics ingestion, payment ledger, job scheduler |
+| `system-design` | Prompt, scale assumptions, rubric and a reference design. The problems reference public articles and, optionally, sections of a distributed-systems study guide under your [study-guides root](#study-guides) (fundamentals, databases, messaging, storage, networking, observability, example designs). Candidates: URL shortener, distributed rate limiter, news feed, chat, distributed cache, notification system, web crawler, metrics ingestion, payment ledger, job scheduler |
 | `code-review` | A diff or small set of files plus a prompt ("review this PR"); `reference.md` lists the issues a strong reviewer finds, by severity |
-| `behavioral` | `tracks/behavioral/README.md` describes how to prepare from your own story bank (stories by theme, question-to-story map), which stays outside this repository |
+| `behavioral` | The catalog holds no content: prepare from your own story bank, which stays outside this repository. Write your stories by theme (conflict, failure, leadership, ambiguity, impact), each in a situation, task, action and result shape; map common questions to the story that answers them best; keep the bank with your other study guides, under your [study-guides root](#study-guides). The track has no problems, notes or scheduling, so `cstudy next --track behavioral` reports nothing in scope, and no story-bank content belongs in this repository |
 
 ### Concurrency problems
 
@@ -48,29 +48,30 @@ The 6 Phase 5 problems and their model per language (`-`: not listed in `languag
 
 `worker-pool` and `async-promise-pool` from earlier drafts are folded into `concurrency-limiter`: the type DSL has no function values, so a pool that runs caller-supplied tasks cannot be expressed, and limiting concurrency is the part interviews probe. TypeScript is omitted where a correct and a broken solution behave identically on one event loop (synchronous methods are atomic there).
 
-## Non-autograded item format
+## Rubric-checked problems
 
-Planned: these items, self-reviewed today, gain optional AI review, with no change for those who do not use it. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
+The problems of the kinds `system-design` and `code-review` are checked against a rubric, by you; nothing grades them automatically. The rules that make them problems are in [compatibility](compatibility.md#rubric-checked-problems). Planned: these problems, self-reviewed today, gain optional AI review, with no change for those who do not use it. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
 
 ```text
-tracks/system-design/<slug>/
-  item.yaml       # validated by schemas/item.schema.json
+problems/<slug>/              # kind: system-design
+  meta.yaml       # validated by schemas/meta.schema.json
   prompt.md       # the question, functional and non-functional requirements, scale
   rubric.md       # checklist of what a strong senior or staff answer covers
   reference.md    # reference answer, revealed by cstudy solution
   template.md     # copied to notes/<track>/<slug>.md by cstudy start
-tracks/code-review/<slug>/
-  item.yaml, prompt.md, rubric.md, reference.md, template.md
+problems/<slug>/              # kind: code-review
+  meta.yaml, prompt.md, rubric.md, reference.md, template.md
   change.diff     # or files/ with the code under review
 ```
 
-Every directory directly inside `tracks/<track>/` is an item; its name is the slug. Other entries, such as a track's `README.md`, are ignored. Items have no numeric id.
+Every directory directly inside `problems/` is a problem, and its name is the slug; its `kind` says whether tests or a rubric check it.
 
 ```yaml
-# yaml-language-server: $schema=../../../schemas/item.schema.json
+# yaml-language-server: $schema=../../schemas/meta.schema.json
 slug: url-shortener
 title: URL Shortener
-track: system-design          # system-design or code-review; equals the parent directory
+track: system-design          # equals kind
+kind: system-design           # system-design or code-review
 difficulty: medium
 domains: [backend]            # what it is about; required in the catalog (S24), see Labels
 job_roles: [backend, platform]  # who it is for; required in the catalog
@@ -82,10 +83,10 @@ references:                   # optional
   study_guides:               # relative to the user's study-guides root, optionally with a #section anchor
     - "distributed-systems-study-guide.md#databases"
   links: [https://example.com/article]
-related: [distributed-cache]  # optional slugs of problems or items
+related: [distributed-cache]  # optional slugs of problems
 ```
 
-Each Markdown file starts with a `#` title and uses `##` sections; `cstudy verify` enforces the sections below in this order (extra sections are allowed, except in a code review reference) and rejects `TODO` in the prompt, rubric and reference ([checks](authoring.md#items)).
+Each Markdown file starts with a `#` title and uses `##` sections; `cstudy verify` enforces the sections below in this order (extra sections are allowed, except in a code review reference) and rejects `TODO` in the prompt, rubric and reference ([checks](authoring.md#rubric-checked-problems)).
 
 | File | Title | Required `##` sections |
 |------|-------|------------------------|
@@ -94,17 +95,57 @@ Each Markdown file starts with a `#` title and uses `##` sections; `cstudy verif
 | `reference.md` | `# <title>: Reference` | system design: `Requirements`, `Estimates`, `API`, `Data model`, `High-level design`, `Deep dives`, `Trade-offs`; code review: only severities, most severe first, from `Blocker`, `Major`, `Minor`, `Nit`, each listing `- ` issues (at least one severity) |
 | `template.md` | `# <title>: Notes` | At least one; usually the reference's sections with empty bodies or `<!-- guidance -->` comments, so self-review compares section by section |
 
-A code review item carries exactly one of `change.diff` (a unified diff, not empty) or `files/` (the files under review); other items carry neither. `cstudy start` renders the prompt to `.statements/<slug>.md` and appends the change: the diff in a `diff` block, or each file of `files/` in a block named after its extension.
+A code review problem carries exactly one of `change.diff` (a unified diff, not empty) or `files/` (the files under review); a system design problem carries neither. `cstudy start` renders the prompt to `.statements/<slug>.md` and appends the change: the diff in a `diff` block, or each file of `files/` in a block named after its extension.
+
+Write a code review change yourself (original code, never copied from a real project), small enough to review in the problem's `estimate_minutes`, and plant issues across severities. Each `reference.md` issue names its location first, for example ``- `charge`: retrying a POST without an idempotency key can charge twice.``
+
+The notes template of a system design problem is the reference's sections with empty bodies:
+
+```markdown
+# <title>: Notes
+
+## Requirements
+
+<!-- Functional and non-functional requirements you clarified, with the numbers you assume. -->
+
+## Estimates
+
+## API
+
+## Data model
+
+## High-level design
+
+## Deep dives
+
+## Trade-offs
+```
+
+and that of a code review problem the severities:
+
+```markdown
+# <title>: Notes
+
+## Blocker
+
+## Major
+
+## Minor
+
+## Nit
+```
+
+List public sources in `references.links` and, optionally, sections of your own study guide in `references.study_guides`, relative to your [study-guides root](#study-guides). `status: ready` needs at least one of the two for a system design problem. Never copy a guide's content into the problem.
 
 ### Study guides
 
-Study guides are your own notes, kept outside this repository and never copied into it. Set their directory as `root` in the `[study_guides]` table of the [user config](cli.md#configuration); `references.study_guides` paths are relative to it. The bundled items reference sections of `distributed-systems-study-guide.md`; any guide file you place at that path under your root is linked.
+Study guides are your own notes, kept outside this repository and never copied into it. Set their directory as `root` in the `[study_guides]` table of the [user config](cli.md#configuration); `references.study_guides` paths are relative to it. The bundled rubric problems reference sections of `distributed-systems-study-guide.md`; any guide file you place at that path under your root is linked.
 
 When the root is set, `cstudy start` and `cstudy show` list every referenced guide whose file exists under it, in a final `## Study guides` section of the statement, as a `file://` link that keeps the `#section` anchor; `cstudy start` also prints one `guide` line per link. Without a root, or for a missing file, nothing is shown and nothing fails.
 
 ## Labels
 
-Three labels say what a problem or item is about, who it is for and how big the thing you work on is. They are independent of the track, of `kind` and of `difficulty`: a project can be easy and a function hard, and a security problem is `practical` or `debugging` with `domains: [security]`, not a track of its own. The lists are closed, since free-form tags drift into near-duplicates. A value is added deliberately, by a change to its table here, to `DOMAINS`, `JOB_ROLES` or `Scope` in `domain/taxonomy.py` and to the `$defs` of `schemas/meta.schema.json` and `schemas/item.schema.json`; a fast test holds the module and both schemas equal ([ADR 0020](../decisions/0020-catalog-labels.md)).
+Three labels say what a problem is about, who it is for and how big the thing you work on is. They are independent of the track, of `kind` and of `difficulty`: a project can be easy and a function hard, and a security problem is `practical` or `debugging` with `domains: [security]`, not a track of its own. The lists are closed, since free-form tags drift into near-duplicates. A value is added deliberately, by a change to its table here, to `DOMAINS`, `JOB_ROLES` or `Scope` in `domain/taxonomy.py` and to the `$defs` of `schemas/meta.schema.json`; a fast test holds the module and the schema equal ([ADR 0020](../decisions/0020-catalog-labels.md)).
 
 | Label | Field | How many | Answers |
 |-------|-------|----------|---------|
@@ -139,9 +180,9 @@ Three labels say what a problem or item is about, who it is for and how big the 
 
 | `scope` value | Meaning | Fits |
 |---------------|---------|------|
-| `function` | One function or class, in one file, with no folder or process of yours | `kind` `function`, `design`, `progressive` or `concurrent`, and code review items |
+| `function` | One function or class, in one file, with no folder or process of yours | `kind` `function`, `design`, `progressive` or `concurrent`, and code review problems |
 | `project` | A folder of files | `kind: project` |
-| `system` | Several services; today the design discussions of the `system-design` items | `system-design` items, and a `kind: project` problem that builds several services (none yet) |
+| `system` | Several services; today the design discussions of the `system-design` problems | `system-design` problems, and a `kind: project` problem that builds several services (none yet) |
 
 `cstudy list` and `cstudy next` filter by them with `--domain`, `--role` and `--scope`, each one value that matches any listed value ([cli](cli.md#cstudy-list)), and the Problems view does the same ([web-ui](web-ui.md#problems-view)). `--role X` matches only entries that list `X`, so an entry for security engineers keeps a short list and the filter stays useful.
 
@@ -211,7 +252,7 @@ Each batch is merged only when all its problems are `ready` and pass `cstudy ver
 
 LeetCode statements, examples, test data, editorials and community solutions are copyrighted. Decision: [ADR 0004](../decisions/0004-original-problem-wording.md).
 
-| Item | Rule |
+| Aspect | Rule |
 |------|------|
 | Statement | Written from scratch in own words and structure; never pasted or paraphrased sentence by sentence |
 | Examples and tests | Own values; never copied from the original problem |

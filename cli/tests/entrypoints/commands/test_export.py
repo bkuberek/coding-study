@@ -7,7 +7,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import export, import_progress, stats
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import make_environment, repository_root
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 from tests.stats_fixture import fill_progress
 
 runner = CliRunner()
@@ -24,7 +24,7 @@ def problems(tmp_path_factory):
 
 
 def environment_on(tmp_path_factory, problems, name: str):
-    root = repository_root(tmp_path_factory.mktemp(name), problems, FIXTURE_TRACKS)
+    root = repository_root(tmp_path_factory.mktemp(name), problems, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root)
 
 

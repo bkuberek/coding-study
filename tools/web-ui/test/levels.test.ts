@@ -68,6 +68,6 @@ test("a problem without levels needs every case", () => {
   assert.equal(ratingRule({ kind: "function", mode: "new", levels: null }), "a rating needs the latest run to pass every case; giving up grades again");
 });
 
-test("an item takes a rating only", () => {
-  assert.equal(ratingRule({ kind: "item", mode: "new", levels: null }), "an item takes a rating only, graded by it alone");
+test("a rubric problem takes a rating only", () => {
+  assert.equal(ratingRule({ kind: "system-design", mode: "new", levels: null }), "a rubric problem takes a rating only, graded by it alone");
 });

@@ -61,6 +61,17 @@ class Track(StrEnum):
 
 _TRACK_ORDER = tuple(Track)
 
+type ListingKey = tuple[bool, int, int, int, str]
+"""Own problem, track rank, primary pattern rank, `order`, slug."""
+NO_PATTERN_RANK = -1
+"""Before every pattern: a problem without patterns lists first in its track."""
+
+
+def track_rank(track: Track) -> int:
+    """The position of the track in `Track` order, which is the order of `cstudy list`."""
+    return _TRACK_ORDER.index(track)
+
+
 LANGUAGE_SUBSET_TRACKS = frozenset({Track.CONCURRENCY, Track.DEBUGGING})
 """Tracks whose problems may list any subset of the languages, and whose approaches may have
 references in fewer languages than their problem: a race or a bug often exists in some languages
@@ -222,12 +233,12 @@ class ProblemMeta:
     def directory_name(self) -> str:
         return self.slug
 
-    def listing_key(self) -> tuple[bool, int, int, int, str]:
+    def listing_key(self) -> ListingKey:
         """The order of `cstudy list` (docs/specs/compatibility.md#order): the catalog before
         your own problems, then the track, the taxonomy position of the primary pattern (none
         first), `order` and the slug."""
-        primary = pattern_rank(self.patterns[0]) if self.patterns else -1
-        return (self.workspace, _TRACK_ORDER.index(self.track), primary, self.order, self.slug)
+        primary = pattern_rank(self.patterns[0]) if self.patterns else NO_PATTERN_RANK
+        return (self.workspace, track_rank(self.track), primary, self.order, self.slug)
 
     @property
     def snake_slug(self) -> str:

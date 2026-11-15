@@ -24,7 +24,7 @@ from coding_study.application.attempt_status import (
 )
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.items import EntryKind
+from coding_study.domain.items import RUBRIC_KINDS
 from coding_study.domain.level_passes import LevelMastery, LevelsPassed
 from coding_study.domain.levels import LevelProgress
 from coding_study.domain.service_project import MockScenarios
@@ -161,10 +161,15 @@ def _levels_value(found: AttemptStanding) -> JsonValue:
 
 
 def _header(found: AttemptStanding) -> str:
-    """An item has no language, and its track stands for its kind."""
+    """A rubric problem has no language."""
     attempt = found.attempt
-    kind = found.track.value if found.kind is EntryKind.ITEM else found.kind.value
-    parts = (attempt.slug, attempt.language, kind, f"attempt {attempt.id}", attempt.mode)
+    parts = (
+        attempt.slug,
+        attempt.language,
+        found.kind.value,
+        f"attempt {attempt.id}",
+        attempt.mode,
+    )
     return " · ".join(part for part in parts if part)
 
 
@@ -185,8 +190,8 @@ def _lines(found: AttemptStanding) -> Iterator[tuple[str, str]]:
     if found.hints.total:
         yield "hints", _hints(found.hints)
     if attempt.solution_revealed:
-        yield "solution", REVEALED if found.kind is EntryKind.ITEM else REVEALED_AND_GRADED
-    if found.kind is not EntryKind.ITEM:
+        yield "solution", REVEALED if found.kind in RUBRIC_KINDS else REVEALED_AND_GRADED
+    if found.kind not in RUBRIC_KINDS:
         yield "tested", _tested(found)
     if found.project is not None:
         yield from _project_lines(found.project, found.now)

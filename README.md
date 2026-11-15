@@ -66,10 +66,10 @@ To change `cstudy` itself: [the developer docs](docs/README.md) (the PRD, archit
 
 ## Content catalog
 
-All problem statements, tests and solutions are original ([ADR 0004](docs/decisions/0004-original-problem-wording.md)); LeetCode references only link to the well-known problem a statement is modeled on.
+All problem statements, tests and solutions are original ([ADR 0004](docs/decisions/0004-original-problem-wording.md)); LeetCode references only link to the well-known problem a statement is modeled on. The catalog holds 400 problems:
 
-| Track | Items | Graded by | Format |
-|-------|------:|-----------|--------|
+| Track | Problems | Graded by | Format |
+|-------|---------:|-----------|--------|
 | `dsa` | 210 | Tests, in all 6 languages | Functions and data-structure designs across 24 patterns |
 | `practical` | 137 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, a business task with money and dates, a security or AI/LLM task in Python and TypeScript, a small service to extend, or a service project in Docker with mock servers and backing services |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |

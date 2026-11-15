@@ -14,12 +14,12 @@ test("a Java, Kotlin or Go single-file problem has a package", () => {
   assert.deepEqual(scopes, ["package", "package", "package"]);
 });
 
-test("a Python, TypeScript or Rust problem and an item have one file", () => {
+test("a Python, TypeScript or Rust problem and a rubric problem have one file", () => {
   const attempts = [
     { kind: "function", language: "python" },
     { kind: "design", language: "typescript" },
     { kind: "concurrent", language: "rust" },
-    { kind: "item", language: null },
+    { kind: "system-design", language: null },
   ];
   assert.deepEqual(attempts.map(fileScope), ["single", "single", "single", "single"]);
 });

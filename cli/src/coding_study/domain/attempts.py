@@ -68,7 +68,7 @@ SUBOPTIMAL_GRADE_CAP = Grade.HARD
 class NewAttempt:
     slug: str
     language: Language | None
-    """None for items that are not autograded."""
+    """None for a rubric problem."""
     mode: AttemptMode
     started_at: datetime
     time_limit_s: int | None = None
@@ -183,7 +183,7 @@ def cap_grade(grade: Grade, caps: Iterable[Grade]) -> Grade:
 
 
 def self_graded(rating: Rating) -> Grade:
-    """Non-autograded items: the rating alone, with no caps (progress-and-scheduling.md#grade)."""
+    """Rubric problems: the rating alone, with no caps (progress-and-scheduling.md#grade)."""
     return _RATING_GRADES[rating]
 
 

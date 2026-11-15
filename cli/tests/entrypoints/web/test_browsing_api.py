@@ -26,7 +26,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIXTURE_TRACKS, PROJECT_PROBLEMS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, PROJECT_PROBLEMS
 from tests.web_server import session_client, web_app
 
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -36,7 +36,7 @@ TOOLCHAINS = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator(
 @pytest.fixture
 def environment(tmp_path):
     return make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS), toolchains=TOOLCHAINS
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS), toolchains=TOOLCHAINS
     )
 
 
@@ -78,7 +78,7 @@ def test_a_started_problem_reads_in_progress_in_the_list(client, environment):
     ("query", "problem_filter"),
     [
         ("track=system-design", ProblemFilter(track=Track.SYSTEM_DESIGN)),
-        ("kind=item", ProblemFilter(kind=EntryKind.ITEM)),
+        ("kind=system-design", ProblemFilter(kind=EntryKind.SYSTEM_DESIGN)),
         ("kind=design", ProblemFilter(kind=EntryKind.DESIGN)),
         ("difficulty=medium", ProblemFilter(difficulty=Difficulty.MEDIUM)),
         (
@@ -189,7 +189,7 @@ def test_an_item_has_empty_details(client):
             "oracle",
         )
     } == {
-        "kind": "item",
+        "kind": "system-design",
         "languages": [],
         "approaches": [],
         "broken": [],
@@ -218,7 +218,7 @@ def test_the_statement_comes_rendered_as_html(client):
 
 
 def test_the_statement_names_the_jdk_range_the_problem_declares(tmp_path):
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     declare_jdk(root, "two-sum", "{min: 24}")
     environment = make_environment(root, toolchains=TOOLCHAINS)
     with session_client(web_app(tmp_path, environment)) as client:
@@ -227,7 +227,7 @@ def test_the_statement_names_the_jdk_range_the_problem_declares(tmp_path):
 
 
 def test_the_problem_document_carries_the_range_the_problem_declares(tmp_path):
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     declare_jdk(root, "two-sum", "{min: 24}")
     environment = make_environment(root, toolchains=TOOLCHAINS)
     with session_client(web_app(tmp_path, environment)) as client:

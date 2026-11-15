@@ -74,5 +74,5 @@ test("problem and status cannot be hidden, and the others can", () => {
 });
 
 test("a count of one has no plural", () => {
-  assert.deepEqual([counted(1, "problem"), counted(0, "item"), counted(8, "problem")], ["1 problem", "0 items", "8 problems"]);
+  assert.deepEqual([counted(1, "problem"), counted(0, "problem"), counted(8, "problem")], ["1 problem", "0 problems", "8 problems"]);
 });

@@ -1,8 +1,10 @@
+import shutil
 from pathlib import Path
 
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.application.changed_problems import CHANGED_BASE, changed_problems
 from tests.fakes import FixedChangedFiles
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 
 def slugs(content_root: Path, *paths: str) -> tuple[str, ...]:
@@ -55,3 +57,8 @@ def test_an_unchanged_misnamed_directory_is_left_out(content_root):
 
 def test_nothing_changed_is_falsy(content_root):
     assert not changed_problems(FsProblemFiles(content_root), FixedChangedFiles("README.md"))
+
+
+def test_a_changed_rubric_problem_is_selected(content_root):
+    shutil.copytree(FIXTURE_RUBRIC_PROBLEMS, content_root / "problems", dirs_exist_ok=True)
+    assert slugs(content_root, "problems/url-shortener/prompt.md") == ("url-shortener",)

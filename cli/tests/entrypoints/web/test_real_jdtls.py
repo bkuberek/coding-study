@@ -33,7 +33,7 @@ from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from tests.fakes import FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import PRACTICE, STUBS, received, session
 from tests.web_server import session_client, web_app
@@ -127,7 +127,7 @@ def _has_errors(message: dict[str, Any], document: str) -> bool:
 
 @pytest.fixture(scope="module")
 def played(unpacked: Path, jdk_home: Path, tmp_path_factory: pytest.TempPathFactory) -> Played:
-    root = repository_root(tmp_path_factory.mktemp("real-jdtls"), PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path_factory.mktemp("real-jdtls"), PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     (root / LSP_DIRECTORY).mkdir(parents=True)
     (root / LSP_DIRECTORY / "jdtls").symlink_to(unpacked, target_is_directory=True)
     environment = make_environment(

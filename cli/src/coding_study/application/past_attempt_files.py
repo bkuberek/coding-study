@@ -1,10 +1,10 @@
 """The files of an attempt that is over, which the web UI's History shows read-only
 (docs/specs/web-ui.md#past-attempt-files).
 
-The next start moves an attempt's files to `.archive/<slug>/<attempt_id>-<lang>/` (`-notes` for an
-item), so that folder holds them. Without one, the latest attempt of a problem and language has
-its files where it left them, and they may have been edited since it ended. Any other attempt
-has none to show. Reads never follow a link and never leave the folder they read from.
+The next start moves an attempt's files to `.archive/<slug>/<attempt_id>-<lang>/` (`-notes` for a
+rubric problem), so that folder holds them. Without one, the latest attempt of a problem and
+language has its files where it left them, and they may have been edited since it ended. Any other
+attempt has none to show. Reads never follow a link and never leave the folder they read from.
 """
 
 from dataclasses import dataclass

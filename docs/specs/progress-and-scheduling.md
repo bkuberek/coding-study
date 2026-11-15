@@ -144,7 +144,7 @@ Grades: 0 `again`, 1 `hard`, 2 `ok`, 3 `easy`. Computed in order:
 
 A problem with levels passes through level N of M with its own rating rule, and a mock adds a level cap ([level passes](#level-passes)). The solution step counts `first_pass_at`, which still means every level, so a solution revealed before then grades 0.
 
-Non-autograded items use step 2 only: no `--gave-up`, and revealing the reference, hints and the timer never lower the grade. Their attempts have `lang` NULL and `stub_path` set to the notes file.
+Rubric problems use step 2 only: no `--gave-up`, and revealing the reference, hints and the timer never lower the grade. Their attempts have `lang` NULL and `stub_path` set to the notes file.
 
 ## Project attempts
 
@@ -271,7 +271,7 @@ An untouched group scores 0.75. After one passed attempt (grade 2 or 3) it drops
 
 Deterministic: the same database, content, date and flags give the same answer.
 
-**Scope.** Tracks from `--track`, else every track when `--domain`, `--role` or `--scope` is given (the config's `next.tracks`, `dsa` by default, would leave out what a label names), else config `next.tracks`; content `status: ready` only; `--pattern` matches any listed pattern; `--domain` and `--role` match any listed [domain or job role](content.md#labels), `--scope` the scope, for problems and items alike, so a problem of your own without labels is out of scope under any of them; `--difficulty`; with `--lang`, problems whose `languages` include it (non-autograded items have no language and stay in scope; `--pattern` excludes them, since they have no patterns). When the language a problem starts in (`--lang`, else `default_lang`; a project problem's own) is Java or Kotlin, problems whose [JDK range](problem-format.md#jdk-range) does not contain the [selected JDK](cli.md#the-selected-jdk) are out of scope too, and so is every Java and Kotlin problem when no JDK is selected. Problems and items with an `in_progress` attempt are excluded. Items take part like problems: their group is their track, and ties on `id` use the slug.
+**Scope.** Tracks from `--track`, else every track when `--domain`, `--role` or `--scope` is given (the config's `next.tracks`, `dsa` by default, would leave out what a label names), else config `next.tracks`; content `status: ready` only; `--pattern` matches any listed pattern; `--domain` and `--role` match any listed [domain or job role](content.md#labels), `--scope` the scope, for problems alike, so a problem of your own without labels is out of scope under any of them; `--difficulty`; with `--lang`, problems whose `languages` include it (rubric problems have no language and stay in scope; `--pattern` excludes them, since they have no patterns). When the language a problem starts in (`--lang`, else `default_lang`; a project problem's own) is Java or Kotlin, problems whose [JDK range](problem-format.md#jdk-range) does not contain the [selected JDK](cli.md#the-selected-jdk) are out of scope too, and so is every Java and Kotlin problem when no JDK is selected. Problems and rubric problems with an `in_progress` attempt are excluded. Rubric problems take part like problems: their group is their track, and ties on `id` use the slug.
 
 **Step 0: resume** (skipped with `--new` or `--review`). The attempt in progress that was used most recently, among those whose problem is in scope: the later of its start and its last test run, a tie going to the later attempt. When one is open, nothing below runs, and the other attempts in progress in scope are listed after it, most recently used first, to pick another. The weakness score and steps 1 and 2 do not change: they still leave out the problems with an attempt in progress, and they decide the pick when none is open (after a `cstudy done` or a [`cstudy abort`](cli.md#cstudy-abort)).
 
@@ -306,11 +306,11 @@ The printed reason names the step, the overdue days or the weakness value.
 
 ## Statistics
 
-What `cstudy stats` reports ([cli](cli.md#cstudy-stats)). The content is every `ready` problem and item of every track, the content `cstudy next` can pick, so a group's weakness under `--by pattern` equals the score `cstudy next` uses for it with the default filters. Attempts on other slugs (draft or removed content) count only in the totals. Dates are local calendar dates from the injected `Clock`; "finished" means status `passed` or `failed`.
+What `cstudy stats` reports ([cli](cli.md#cstudy-stats)). The content is every `ready` problem of every track, the content `cstudy next` can pick, so a group's weakness under `--by pattern` equals the score `cstudy next` uses for it with the default filters. Attempts on other slugs (draft or removed content) count only in the totals. Dates are local calendar dates from the injected `Clock`; "finished" means status `passed` or `failed`.
 
 | Value | Definition |
 |-------|------------|
-| Group | `--by pattern`: the [weakness group](#weakness-score) (primary pattern of a `dsa` problem, else the track); `track`; `difficulty`; `lang`: every language in a problem's `languages` (items have none and are left out), and an attempt belongs to the group of its language |
+| Group | `--by pattern`: the [weakness group](#weakness-score) (primary pattern of a `dsa` problem, else the track); `track`; `difficulty`; `lang`: every language in a problem's `languages` (rubric problems have none and are left out), and an attempt belongs to the group of its language |
 | problems | Content in the group |
 | attempted | Content with a finished attempt in the group |
 | passed | Content with a `passed` attempt in the group |

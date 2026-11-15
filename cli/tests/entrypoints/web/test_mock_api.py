@@ -22,7 +22,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
 SLICE = (*FIRST_CATALOG, "group-anagrams", "first-missing-positive")
@@ -38,7 +38,7 @@ def problems(tmp_path_factory):
 
 @pytest.fixture
 def environment(tmp_path, problems) -> Environment:
-    root = repository_root(tmp_path, problems, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
 
 
@@ -109,7 +109,7 @@ def test_tracks_and_language_choose_the_scope(tmp_path, environment):
     problem = post(tmp_path, environment, body).json()["problems"][0]
     assert (problem["slug"], problem["kind"], problem["file"]) == (
         "url-shortener",
-        "item",
+        "system-design",
         "notes/system-design/url-shortener.md",
     )
 

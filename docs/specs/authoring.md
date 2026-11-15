@@ -181,7 +181,7 @@ Low-level design problems (track `lld`) have `rubric.md` next to `problem.md`. T
 | `## Testability` | How behavior is observed and isolated (no clock, randomness or I/O) | at least one `- [ ] <criterion>` item |
 | `## Reference design` | The reference classes, their relationships and the key trade-offs, in prose (a text diagram is welcome) | non-empty |
 
-The title is `# <title>: Rubric`. Other `##` sections (for example `## Follow-ups`) are allowed; no required section may contain `TODO`. The checklist items are written as checks a reviewer can tick against their own code, not as instructions. Rubrics of the non-autograded tracks (`tracks/`) follow [content](content.md#non-autograded-item-format) instead: any `##` areas, each a checklist. `coding_study.domain.rubric` checks both formats with one criterion parser, which ignores checkboxes inside code fences.
+The title is `# <title>: Rubric`. Other `##` sections (for example `## Follow-ups`) are allowed; no required section may contain `TODO`. The checklist items are written as checks a reviewer can tick against their own code, not as instructions. Rubrics of the rubric-checked problems follow [content](content.md#rubric-checked-problems) instead: any `##` areas, each a checklist. `coding_study.domain.rubric` checks both formats with one criterion parser, which ignores checkboxes inside code fences.
 
 ```markdown
 # Parking Lot: Rubric
@@ -211,7 +211,7 @@ The title is `# <title>: Rubric`. Other `##` sections (for example `## Follow-up
 
 What a content stream writes for the `practical` and `lld` tracks, beyond what every problem needs (a `practical` project problem follows [Project problems](#project-problems) instead):
 
-| Item | `practical` | `lld` |
+| Aspect | `practical` | `lld` |
 |------|-------------|-------|
 | `meta.yaml` | `track: practical`, `kind: progressive`, `levels` (at least 2, usually 4) with `level` and `title`, `level` on every method, `comparator: {type: ops}` | `track: lld`, `kind: design`, `comparator: {type: ops}` |
 | API | One class; later levels add methods and may refine earlier rules; time is an explicit `timestamp` (`long`) argument, never a clock | One class or a facade class over the design; absence as sentinel values, never exceptions |
@@ -264,8 +264,8 @@ A service project (`project.grading: http`) has its [own manifest](service-proje
 
 | Id | Check |
 |----|-------|
-| S1 | `meta.yaml` valid against `schemas/meta.schema.json`; `tests.json` against `schemas/tests.schema.json`; `item.yaml` against `schemas/item.schema.json` ([items](#items)) |
-| S2 | Directory name equals `slug`, and slugs are unique across `problems/` and `tracks/`. A directory of `problems/` whose name is not a slug, or whose `meta.yaml` still has an `id:` line, loads as no problem, and `cstudy verify` (without slugs or `--track`, and for the changed directories with `--changed`) fails on it with the fix to make: the quoted `mv` to run from the workspace root (the content root for the catalog) and the `id:` line to delete, or a request for a free slug when the target is taken ([compatibility](compatibility.md#your-own-problems)) |
+| S1 | `meta.yaml` valid against `schemas/meta.schema.json`; `tests.json` against `schemas/tests.schema.json`; a rubric problem is checked against the same `schemas/meta.schema.json` ([rubric-checked problems](#rubric-checked-problems)) |
+| S2 | Directory name equals `slug`. A directory of `problems/` whose name is not a slug, or whose `meta.yaml` still has an `id:` line, loads as no problem, and `cstudy verify` (without slugs or `--track`, and for the changed directories with `--changed`) fails on it with the fix to make: the quoted `mv` to run from the workspace root (the content root for the catalog) and the `id:` line to delete, or a request for a free slug when the target is taken ([compatibility](compatibility.md#your-own-problems)) |
 | S3 | Signature parses with the type DSL; names valid; no reserved words after per-language conversion, in the languages the problem lists (a Rust keyword other than `self`, `Self`, `super` and `crate` is allowed: Rust writes it as a raw identifier, `r#move`); no Go function named after a package its stub imports (`time` where the signature uses `date`, `decimal` where it uses `decimal`) and no Rust class named after an imported type (`NaiveDate`, `Decimal`), since neither stub compiles. Warnings, not errors: a Python name that shadows a builtin (`sum`), the type the Python stub imports for the signature (`date` where it uses `date`, `Decimal` where it uses `decimal`), or a Go parameter named after an imported package ([naming rules](problem-format.md#naming-rules)) |
 | S4 | Every case input and expected value conforms to the signature (ranges, char length, node encodings, op names and arities, the arguments and expected values of the harness operations of a [virtual-clock project](problem-format.md#asynchronous-code-and-the-virtual-clock) (`@spawn` takes a method's arguments, `@join` returns its result type), `long` at most 2^53-1, `decimal` and `date` strings; an expected `decimal` is canonical, [Decimal and date](problem-format.md#decimal-and-date)) |
 | S5 | `problem.md` required headings, example markers and hint numbering; progressive and project: no `## Examples`, one `## Level <n>: <title>` per level as in `meta.yaml`, in order, each with at least one example, and each example in its case's level section |
@@ -283,9 +283,9 @@ A service project (`project.grading: http`) has its [own manifest](service-proje
 | S17 | `jdk` ([JDK range](problem-format.md#jdk-range)): present only on a problem that lists `java` or `kotlin`. `min`, when given, is above the supported minimum (21) and at most the supported maximum (26), which caps every level. `max`, when given, is at least the effective minimum (`min`, else 21) and differs from the supported maximum (26), because an explicit 26 would keep the problem from following the range when it grows; a `max` above 26 is an opt-in and passes. When the supported range grows, S17 flags each `max` that the new range reaches. The schema (S1) holds the shape: integers, no other keys, at least one of `min` and `max` |
 | S18 | Virtual clock ([project problems](problem-format.md#asynchronous-code-and-the-virtual-clock)): `async` only on methods of a project in Python, TypeScript, Kotlin or Rust, and only with `project.clock: virtual`; `project.clock: virtual` only in Go, Python, TypeScript, Kotlin or Rust, and only in a language whose runner grades it ([scope and order](../decisions/0017-async-project-problems.md#scope-and-order)). Harness operations only with the virtual clock, with valid arguments: `@advance` from 1 to 2,147,483,647 ms (Node's largest timer delay); `@spawn` a task name unique in its case and a method of the case's level or below with its arguments, an asynchronous method outside Go; `@join` a task spawned earlier and not yet joined; `@now` none. Every spawned task is joined. Expected values: `null` for `@advance` and `@spawn`, the method's result type for `@join`, an integer for `@now`. Ties are content's to avoid; no static check finds them, and D10 finds those that Go and Python shuffle |
 | S19 to S23 | [Service projects](service-projects.md#static): the manifest, the mock configs, the compose file, `requires` and the HTTP cases. S14 to S16 read differently for one |
-| S24 | Labels ([content](content.md#labels)): a catalog problem has `domains`, `job_roles` and `scope`, and `scope` fits `kind`: `project` or `system` for `kind: project`, `function` for any other kind. A problem in your own workspace may leave all three out, and one that names a `scope` still has to fit it. An item has the same three, with `scope: system` for a `system-design` item and `function` for a `code-review` item ([items](#items)) |
+| S24 | Labels ([content](content.md#labels)): a catalog problem has `domains`, `job_roles` and `scope`, and `scope` fits `kind`: `project` or `system` for `kind: project`, `function` for any other kind. A problem in your own workspace may leave all three out, and one that names a `scope` still has to fit it. A rubric problem has the same three, with `scope: system` for a `system-design` problem and `function` for a `code-review` problem ([rubric-checked problems](#rubric-checked-problems)) |
 | S25 | `guides` names [concept guides](guides.md) that exist |
-| S26 | No two problems share a `references.leetcode.number` ([meta.yaml](problem-format.md#metayaml)). Each problem in a group names the number and every other problem that carries it. Items have no such reference, so only problems take part. A problem that builds on another (a concurrent version of the same data structure) names it in `related` and carries no reference of its own |
+| S26 | No two problems share a `references.leetcode.number` ([meta.yaml](problem-format.md#metayaml)). Each problem in a group names the number and every other problem that carries it. A rubric problem has no such reference, so only problems checked by tests take part. A problem that builds on another (a concurrent version of the same data structure) names it in `related` and carries no reference of its own |
 
 ### Dynamic
 
@@ -323,28 +323,28 @@ A debugging problem is an ordinary problem (`track: debugging`, `stub: buggy`) w
 - A debugging problem is graded synchronously, so a fix that needs a real `await` cannot pass one: `async` is for projects only (S18), and a Promise result is `invalid_output`. Such a bug is a project on the virtual clock whose starter holds it (`debug-async-batch-typescript`).
 - A language-specific bug (integer overflow, mutable default arguments, boxed equality) restricts `languages` to the languages that have it. Go and Rust get bugs of their own (append aliasing, nil map writes, `usize` underflow, NaN ordering and others), each listing only `go` or `rust`, rather than ports of the core-language problems ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
-## Items
+## Rubric-checked problems
 
-System design and code review items (`tracks/<track>/<slug>/`, format in [content](content.md#non-autograded-item-format)) run no code: `cstudy verify` applies static checks only, under the same flags (`--track`, `--static`, `--require-ready`), and items do not count towards the coverage report.
+System design and code review problems (`problems/<slug>/`, format in [content](content.md#rubric-checked-problems)) run no code: `cstudy verify` applies static checks only, under the same flags (`--track`, `--static`, `--require-ready`), and they do not count towards the coverage report. `--changed` selects a changed rubric problem like any other.
 
 | Id | Check |
 |----|-------|
-| I1 | `item.yaml` valid against `schemas/item.schema.json` |
-| I2 | The directory name equals `slug` and its parent equals `track`; slugs unique across `problems/` and `tracks/` |
+| I1 | `meta.yaml` valid against `schemas/meta.schema.json`, with a rubric kind: `estimate_minutes`, a `track` equal to `kind`, and none of the autograded fields ([compatibility](compatibility.md#schema)) |
+| I2 | The directory name equals `slug` |
 | I3 | `prompt.md`: `# <title>`, the track's required sections, non-empty and in order, no `TODO` |
 | I4 | `rubric.md`: `# <title>: Rubric`, at least one `##` area, every area with a `- [ ] <criterion>` line, no `TODO` |
 | I5 | `reference.md`: `# <title>: Reference`; system design: required sections, non-empty and in order; code review: severity sections only, in order, each listing `- ` issues; no `TODO` |
 | I6 | `template.md`: `# <title>: Notes` and at least one `##` section |
-| I7 | Code review: exactly one of `change.diff` (not empty) or `files/`; other tracks: neither |
-| S24 | `item.yaml` has `domains`, `job_roles` and `scope`, and `scope` is `system` for a `system-design` item and `function` for a `code-review` item ([content](content.md#labels)) |
+| I7 | Code review: exactly one of `change.diff` (not empty) or `files/`; a system design problem: neither |
+| S24 | `meta.yaml` has `domains`, `job_roles` and `scope`, and `scope` is `system` for a `system-design` problem and `function` for a `code-review` problem ([content](content.md#labels)) |
 
-`related` slugs that name no problem or item are warnings. `status: ready` additionally requires, for system design, at least one reference: a `references.links` or a `references.study_guides` entry. Study-guide paths are relative to the user's study-guides root ([study guides](content.md#study-guides)); `cstudy verify` checks their form, not that the files exist.
+`related` slugs that name no problem are warnings. `status: ready` additionally requires, for system design, at least one reference: a `references.links` or a `references.study_guides` entry. Study-guide paths are relative to the user's study-guides root ([study guides](content.md#study-guides)); `cstudy verify` checks their form, not that the files exist.
 
-### Item workflow
+### Rubric problem workflow
 
 | Step | Action | Check |
 |------|--------|-------|
-| 1 | Create `tracks/<track>/<slug>/` with `item.yaml` (`status: draft`, and the [labels](content.md#labels)) | `cstudy verify <slug> --static` |
+| 1 | Create `problems/<slug>/` with `meta.yaml` (`kind` and `track` both `system-design` or `code-review`, `status: draft`, and the [labels](content.md#labels)); these problems are written in a content checkout, since a workspace holds none | `cstudy verify <slug> --static` |
 | 2 | Write `prompt.md`, then `reference.md` | `--static` |
 | 3 | Write `rubric.md` from the reference: one criterion per point a strong answer makes | `--static` |
 | 4 | Write `template.md` with the reference's sections | `--static` |

@@ -71,36 +71,37 @@ class ProblemRepository(Protocol):
 
 
 class ItemRepository(Protocol):
-    """Non-autograded items in `tracks/<track>/<slug>/` (docs/specs/content.md)."""
+    """The rubric-checked problems in `problems/<slug>/` of the content root
+    (docs/specs/compatibility.md#rubric-checked-problems)."""
 
     def slugs(self) -> tuple[str, ...]:
-        """The slug of every item directory, in directory order (duplicates kept)."""
+        """The slug of every rubric problem directory, in name order."""
         ...
 
     def directories(self) -> tuple[str, ...]:
-        """Every item directory, repository-relative, in the order of `slugs`."""
+        """Every rubric problem directory, repository-relative, in the order of `slugs`."""
         ...
 
     def item_directory(self, slug: str) -> str:
-        """Repository-relative, e.g. `tracks/system-design/url-shortener`; raises
-        UnknownProblemError."""
+        """Repository-relative, e.g. `problems/url-shortener`; raises UnknownProblemError."""
         ...
 
     def load(self, slug: str) -> ItemMeta:
         """Raises UnknownProblemError for an unknown slug and ContentError for an invalid
-        item.yaml."""
+        meta.yaml."""
         ...
 
     def list_items(self) -> tuple[ItemMeta, ...]:
-        """Every item in directory order; raises ContentError listing every invalid item.yaml."""
+        """Every rubric problem in name order; raises ContentError listing every invalid
+        meta.yaml."""
         ...
 
     def read_text(self, slug: str, name: str) -> str | None:
-        """`name` is relative to the item directory; None when the file does not exist."""
+        """`name` is relative to the problem directory; None when the file does not exist."""
         ...
 
     def file_names(self, slug: str, directory: str = "") -> tuple[str, ...]:
-        """Sorted names of the files (not directories) in an item subdirectory."""
+        """Sorted names of the files (not directories) in a problem subdirectory."""
         ...
 
 
@@ -508,11 +509,11 @@ class ProgressStore(Protocol):
         ...
 
     def in_progress_attempt(self, slug: str, language: Language | None) -> Attempt | None:
-        """`language` None: an attempt at an item that is not autograded."""
+        """`language` None: an attempt at a rubric problem."""
         ...
 
     def latest_attempt(self, slug: str, language: Language | None) -> Attempt | None:
-        """The most recent attempt in any status; `language` None for items."""
+        """The most recent attempt in any status; `language` None for rubric problems."""
         ...
 
     def add_test_run(self, run: RunRecord) -> None: ...

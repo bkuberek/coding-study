@@ -50,7 +50,7 @@ class OpenLevel:
 class HintCount:
     used: int
     total: int
-    """The problem's hints; 0 for an item."""
+    """The problem's hints; 0 for a rubric problem."""
     locked_until_level: int | None
     """The level a project problem's next hint opens with, while that level is locked."""
 
@@ -133,7 +133,7 @@ def _item_status(environment: Environment, attempt: Attempt) -> AttemptStanding:
     meta = environment.items.load(attempt.slug)
     return AttemptStanding(
         attempt=attempt,
-        kind=EntryKind.ITEM,
+        kind=meta.kind,
         track=meta.track,
         statement=layout.statement_path(meta.slug),
         hints=HintCount(attempt.hints_used, NO_HINTS, None),

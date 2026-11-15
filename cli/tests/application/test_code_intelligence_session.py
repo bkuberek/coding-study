@@ -50,7 +50,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.sandbox_fakes import FakeSandbox
 from tests.service_problems import (
@@ -69,7 +69,7 @@ STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for langua
 
 @pytest.fixture
 def practice(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(
         root,
         toolchains=FakeToolchains(stub_generators=STUBS),
@@ -101,7 +101,7 @@ def test_a_typescript_attempt_gets_its_language_server_rooted_in_the_practice_pr
 
 def java_practice(tmp_path, feature: int) -> Environment:
     return make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
         language_servers=FakeLanguageServers(INSTALLED_SERVERS),
         jdk=jdk_of(feature),
@@ -212,7 +212,7 @@ def test_a_session_of_another_server_has_no_links_to_a_standard_library(practice
 def test_a_rust_attempt_without_rust_analyzer_is_refused_with_the_rustup_fix(tmp_path):
     probes = {name: probe for name, probe in INSTALLED_SERVERS.items() if name != "rust-analyzer"}
     environment = make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
         language_servers=FakeLanguageServers(probes),
     )
@@ -226,7 +226,7 @@ def test_a_rust_attempt_without_rust_analyzer_is_refused_with_the_rustup_fix(tmp
 
 def test_a_go_attempt_whose_gopls_was_built_for_another_go_is_refused_with_the_fix(tmp_path):
     environment = make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
         language_servers=FakeLanguageServers(INSTALLED_SERVERS, go="1.26.1"),
     )
@@ -242,7 +242,7 @@ def test_a_kotlin_attempt_whose_license_is_not_accepted_is_refused_with_the_acce
     tmp_path,
 ):
     environment = make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
         language_servers=FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset()),
     )
@@ -532,7 +532,7 @@ def test_an_item_has_no_code(practice):
 
 def test_a_server_that_is_not_installed_is_refused_with_the_fix(tmp_path):
     environment = make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
     )
     attempt = started(environment, Language.PYTHON)
@@ -544,7 +544,7 @@ def test_a_server_that_is_not_installed_is_refused_with_the_fix(tmp_path):
 def test_a_server_of_another_version_is_refused_naming_both(tmp_path):
     probes = {**INSTALLED_SERVERS, "basedpyright": VersionPrinted("basedpyright 1.39.0\n")}
     environment = make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
         language_servers=FakeLanguageServers(probes),
     )
@@ -559,7 +559,7 @@ def test_a_server_of_another_version_is_refused_naming_both(tmp_path):
 def test_a_version_command_that_fails_is_refused_in_its_own_words(tmp_path):
     probes = {**INSTALLED_SERVERS, "basedpyright": VersionFailed("Error: no module")}
     environment = make_environment(
-        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=STUBS),
         language_servers=FakeLanguageServers(probes),
     )

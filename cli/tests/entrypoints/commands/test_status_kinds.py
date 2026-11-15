@@ -18,7 +18,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import status as status_command
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 runner = CliRunner()
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
@@ -36,7 +36,7 @@ def use(monkeypatch: pytest.MonkeyPatch, environment: Environment) -> Environmen
 
 @pytest.fixture
 def function(tmp_path, monkeypatch) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, toolchains=TOOLCHAINS)
     start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
     return use(monkeypatch, environment)
@@ -51,7 +51,7 @@ def progressive(tmp_path, monkeypatch) -> Environment:
 
 @pytest.fixture
 def item(tmp_path, monkeypatch) -> Environment:
-    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
     start_item_attempt(environment, ItemStartRequest("url-shortener"))
     return use(monkeypatch, environment)
 
@@ -265,7 +265,7 @@ def test_an_items_revealed_solution_keeps_its_grade(item):
 def test_json_describes_an_item_attempt(item):
     assert document() == {
         "slug": "url-shortener",
-        "kind": "item",
+        "kind": "system-design",
         "track": "system-design",
         "language": None,
         "attempt_id": 1,

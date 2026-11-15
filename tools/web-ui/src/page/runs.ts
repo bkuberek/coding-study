@@ -16,6 +16,7 @@
 import { FILE_SAVED_EVENT, type FileSaved } from "./api.ts";
 import type { PageContext } from "./context.ts";
 import { badge, fixHint, h } from "./dom.ts";
+import { selfGraded } from "./kinds.ts";
 import { fetchChunk } from "./lazy.ts";
 import { needsRefusal } from "./needs-model.ts";
 import { noRunYet, ResultsPanel } from "./results.ts";
@@ -134,8 +135,8 @@ export class AttemptRuns implements RunShell {
     const first = this.#status === null;
     this.#status = status;
     this.#root = root;
-    if (status.kind === "item") {
-      this.results.show(null, [h("p", { class: "quiet" }, "Items have no runs: answer in the notes.")]);
+    if (selfGraded(status.kind)) {
+      this.results.show(null, [h("p", { class: "quiet" }, "A problem checked by a rubric has no runs: answer in the notes.")]);
       return;
     }
     await this.showToolbar(status);
@@ -150,7 +151,7 @@ export class AttemptRuns implements RunShell {
    * view waits for it before its first draw: the toolbar shown later would make the header taller
    * and move the file tree under a pointer about to click it, which then clicks nothing. */
   async showToolbar(status: AttemptStatus): Promise<void> {
-    if (status.kind === "item") return;
+    if (selfGraded(status.kind)) return;
     this.#problemRead ??= this.host.context.api
       .get<ProblemDocument>(`/api/v1/problems/${encodeURIComponent(status.slug)}`)
       .then(

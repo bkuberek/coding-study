@@ -7,7 +7,7 @@ from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.problem import Language, ProblemKind, ProblemSummary
 from tests.fakes import repository_root
-from tests.helpers import PROJECT_PROBLEMS, numbered_directory
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, PROJECT_PROBLEMS, numbered_directory
 
 TWO_SUM = Path("problems/two-sum")
 
@@ -189,3 +189,47 @@ def test_a_project_without_files_in_its_overlay_has_no_reference_languages(tmp_p
     overlay.mkdir()
     [bank] = FsProblemRepository(root).list_summaries()
     assert bank.reference_languages == ()
+
+
+@pytest.fixture
+def with_rubric_problems(content_root):
+    shutil.copytree(FIXTURE_RUBRIC_PROBLEMS, content_root / "problems", dirs_exist_ok=True)
+    return content_root
+
+
+def test_the_rubric_problems_of_the_catalog_are_absent(with_rubric_problems):
+    repository = FsProblemRepository(with_rubric_problems)
+    assert repository.slugs() == ("lru-cache", "two-sum")
+    assert slugs(repository.list_summaries()) == ["lru-cache", "two-sum"]
+
+
+def test_a_rubric_problem_of_the_catalog_is_an_unknown_slug(with_rubric_problems):
+    with pytest.raises(UnknownProblemError):
+        FsProblemRepository(with_rubric_problems).load("url-shortener")
+
+
+def test_an_invalid_rubric_problem_is_not_reported_by_the_problems(with_rubric_problems):
+    meta = with_rubric_problems / "problems" / "url-shortener" / "meta.yaml"
+    meta.write_text(meta.read_text().replace("status: ready", "status: done"))
+    assert slugs(FsProblemRepository(with_rubric_problems).list_summaries()) == [
+        "lru-cache",
+        "two-sum",
+    ]
+
+
+def test_a_rubric_problem_in_a_workspace_is_a_content_error(with_rubric_problems, tmp_path_factory):
+    workspace = tmp_path_factory.mktemp("workspace")
+    shutil.copytree(
+        with_rubric_problems / "problems" / "url-shortener",
+        workspace / "problems" / "url-shortener",
+    )
+    own = FsProblemRepository(with_rubric_problems).over(workspace)
+    expected = "problems/url-shortener/meta.yaml: kind: rubric problems are catalog-only"
+    with pytest.raises(ContentError) as listed:
+        own.list_summaries()
+    with pytest.raises(ContentError) as loaded:
+        own.load("url-shortener")
+    assert ([str(issue) for issue in listed.value.issues], str(loaded.value.issues[0])) == (
+        [expected],
+        expected,
+    )

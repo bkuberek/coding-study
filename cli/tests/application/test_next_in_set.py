@@ -27,7 +27,7 @@ from coding_study.domain.next_selection import (
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, jdk_of, make_environment, repository_root
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 
 LOOP = "backend-loop"
 
@@ -35,7 +35,7 @@ LOOP = "backend-loop"
 @pytest.fixture
 def environment(tmp_path: Path, tmp_path_factory: pytest.TempPathFactory):
     problems = copy_catalog_problems(tmp_path_factory.mktemp("catalog"), FIRST_CATALOG)
-    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
     create_set(environment, LOOP)
     return environment
 
@@ -198,12 +198,12 @@ def test_a_slug_the_catalog_lost_is_passed_over(tmp_path, environment):
     assert picked_slug(environment) == "two-sum"
 
 
-def test_an_item_can_be_the_pick_whatever_next_tracks_says(environment):
+def test_a_rubric_problem_can_be_the_pick_whatever_next_tracks_says(environment):
     in_order(environment, "url-shortener")
     found = recommended(environment)
     assert (found.pick.candidate.slug, found.kind, found.language) == (
         "url-shortener",
-        EntryKind.ITEM,
+        EntryKind.SYSTEM_DESIGN,
         None,
     )
 
@@ -253,7 +253,7 @@ def test_reviews_only_with_none_due_has_nothing_to_pick(environment):
 def test_a_problem_the_jdk_cannot_run_is_passed_over(tmp_path, tmp_path_factory):
     problems = copy_catalog_problems(tmp_path_factory.mktemp("catalog"), FIRST_CATALOG)
     environment = make_environment(
-        repository_root(tmp_path, problems, FIXTURE_TRACKS),
+        repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS),
         config=Config(default_lang=Language.JAVA),
         jdk=jdk_of(27),
     )
@@ -265,7 +265,7 @@ def test_a_problem_the_jdk_cannot_run_is_passed_over(tmp_path, tmp_path_factory)
 def test_when_the_jdk_left_nothing_it_says_why(tmp_path, tmp_path_factory):
     problems = copy_catalog_problems(tmp_path_factory.mktemp("catalog"), FIRST_CATALOG)
     environment = make_environment(
-        repository_root(tmp_path, problems, FIXTURE_TRACKS),
+        repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS),
         config=Config(default_lang=Language.JAVA),
         jdk=jdk_of(27),
     )
@@ -277,7 +277,7 @@ def test_when_the_jdk_left_nothing_it_says_why(tmp_path, tmp_path_factory):
 def test_the_jdk_is_not_blamed_for_what_is_outside_the_set(tmp_path, tmp_path_factory):
     problems = copy_catalog_problems(tmp_path_factory.mktemp("catalog"), FIRST_CATALOG)
     environment = make_environment(
-        repository_root(tmp_path, problems, FIXTURE_TRACKS),
+        repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS),
         config=Config(default_lang=Language.JAVA),
         jdk=jdk_of(27),
     )

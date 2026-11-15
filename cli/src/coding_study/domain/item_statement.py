@@ -1,8 +1,8 @@
-"""What `cstudy start` writes for a non-autograded item: the rendered prompt and the notes file.
+"""What `cstudy start` writes for a rubric-checked problem: the rendered prompt and the notes file.
 
 The statement (`.statements/<slug>.md`) is prompt.md with a metadata line, followed by
-the change under review for code review items and the study guides found under the user's
-study-guides root. The notes file is the item's template.md with a header comment, like the
+the change under review for code review problems and the study guides found under the user's
+study-guides root. The notes file is the problem's template.md with a header comment, like the
 header of a generated stub.
 """
 
@@ -14,7 +14,7 @@ from coding_study.domain.items import GuideLink, ItemMeta
 from coding_study.domain.layout import statement_path
 
 STATEMENT_FOOTER = (
-    "<!-- Rendered by cstudy from the item's prompt.md; edits here are overwritten. -->"
+    "<!-- Rendered by cstudy from the problem's prompt.md; edits here are overwritten. -->"
 )
 CHANGE_SECTION = "## Change"
 FILES_SECTION = "## Files"
@@ -27,13 +27,13 @@ _RATINGS = "|".join(Rating)
 @dataclass(frozen=True, slots=True)
 class ChangeFile:
     name: str
-    """Relative to the item's `files/` directory."""
+    """Relative to the problem's `files/` directory."""
     text: str
 
 
 @dataclass(frozen=True, slots=True)
 class Change:
-    """A code review item's change: `change.diff`, or the files in `files/`."""
+    """A code review problem's change: `change.diff`, or the files in `files/`."""
 
     diff: str | None = None
     files: tuple[ChangeFile, ...] = ()
@@ -41,10 +41,10 @@ class Change:
 
 @dataclass(frozen=True, slots=True)
 class ItemStatementParts:
-    """What the statement shows besides the item's metadata."""
+    """What the statement shows besides the problem's metadata."""
 
     prompt: str | None = None
-    """prompt.md; None when the item has none."""
+    """prompt.md; None when the problem has none."""
     change: Change = Change()
     guides: tuple[GuideLink, ...] = ()
     """Only the study guides found under the user's study-guides root."""

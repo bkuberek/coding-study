@@ -30,7 +30,7 @@ export const REVIEW_PRACTISE_NOTE = `a start is a review attempt: ${ARCHIVE_NOTE
 
 export interface StartChoice {
   readonly slug: string;
-  /** Null for a project, which starts in its one language, and for an item. */
+  /** Null for a project, which starts in its one language, and for a problem checked by a rubric. */
   readonly language: string | null;
   readonly fresh: boolean;
   /** The time box field as typed: minutes, or empty for none. */
@@ -44,7 +44,7 @@ export interface DoneChoice {
   readonly notes: string;
 }
 
-/** The language `cstudy start` gets `--lang` for: none for a project or an item, else
+/** The language `cstudy start` gets `--lang` for: none for a project or a problem checked by a rubric, else
  * `default_lang` when the problem has it, else its first language. A language in `blocked`, such as
  * a Java the selected JDK cannot run, gives way to the first one that is not; when every language
  * is blocked, the usual choice stays. */

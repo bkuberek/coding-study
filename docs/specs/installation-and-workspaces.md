@@ -17,16 +17,16 @@ When several installs exist, the first `cstudy` on `PATH` runs; Homebrew's cavea
 | Item | Rule |
 |------|------|
 | Distribution | `coding-study`, defined by the root `pyproject.toml` (hatchling); the `cstudy` script |
-| Wheel | `coding_study/` from `cli/src/coding_study/`, the web UI's built assets in `coding_study/entrypoints/web/static/` included ([Web UI assets](#web-ui-assets)), plus `coding_study/content/{problems,tracks,guides,runners,schemas}` from the repository root |
+| Wheel | `coding_study/` from `cli/src/coding_study/`, the web UI's built assets in `coding_study/entrypoints/web/static/` included ([Web UI assets](#web-ui-assets)), plus `coding_study/content/{problems,guides,runners,schemas}` from the repository root |
 | Runtime dependencies | Those in `uv.lock`, which include starlette, uvicorn (without its `standard` extra), h11 and wsproto for `cstudy serve`: pure-Python wheels, so the Homebrew formula needs no change ([ADR 0015](../decisions/0015-local-web-ui.md)) |
 | Release files | The wheel and `requirements.txt` (the runtime dependencies from `uv.lock`, with hashes), attached to the GitHub release of each version ([versioning](versioning.md#github-release)) |
-| sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `tracks`, `guides`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
+| sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `guides`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
 | Excluded | Build output and caches (`node_modules`, `build`, `.gradle`, `.kotlin`, `.venv`, `__pycache__`, `.pytest_cache`, `.ruff_cache`, `target`) and `runners/python/tests` |
 | Workspace templates | Package data in `coding_study/adapters/workspace_template/`: the practice projects with the Gradle wrapper and lock files, and the root `go.work` |
 
 ## Content root
 
-The content root holds `problems/`, `tracks/`, `guides/` ([concept guides and learning paths](guides.md), which a root may leave out), `user-docs/` ([the user docs](user-docs.md), which a root may leave out too), `runners/` and `schemas/`. `cstudy` reads it and never writes to it, except `cstudy new` in a checkout.
+The content root holds `problems/`, `guides/` ([concept guides and learning paths](guides.md), which a root may leave out), `user-docs/` ([the user docs](user-docs.md), which a root may leave out too), `runners/` and `schemas/`. `cstudy` reads it and never writes to it, except `cstudy new` in a checkout.
 
 | Order | Source | Used for |
 |-------|--------|----------|
@@ -88,7 +88,7 @@ created_with = "0.1.0"
   go.work                 # use ./go, so gopls and the go command find go/ from the root
   rust/                   # Cargo.toml (package practice, one [[example]] per started problem), .cargo/config.toml, lib.rs, practice/<snake_slug>.rs
   projects/               # one folder per started project problem: projects/<slug>/ (tracked)
-  notes/                  # answers to non-autograded items
+  notes/                  # answers to rubric problems
   problems/               # your own problems, overlaid on the catalog
   sets.yaml               # your problem sets, written by cstudy set or by hand (tracked; made at the first write)
   .archive/               # previous attempts (tracked)
@@ -113,7 +113,7 @@ Every path `cstudy` prints for a workspace file is relative to the workspace roo
 | `.statements/` | Statements rendered for the attempts | Deletes them; `cstudy start` renders them again |
 | `python/practice/`, `typescript/practice/`, `jvm/*/src/main/*/practice/`, `go/practice/`, `rust/practice/` | Your practice files | With `--files`: deletes all but `.gitkeep`, and takes the problems out of `rust/Cargo.toml` |
 | `projects/`, `.cs/projects/` | Your project folders, their manifests and locks | With `--files`: deletes all but `.gitkeep`, and refreshes VS Code's linked projects when `cstudy` wrote them |
-| `notes/` | Your answers to items | With `--files`: deletes all but `.gitkeep` |
+| `notes/` | Your answers to rubric problems | With `--files`: deletes all but `.gitkeep` |
 | `.archive/` | The files of earlier attempts | With `--archive` only |
 | `config.toml`, `.cs/serve/` | Your configuration and preferences | Keeps |
 | `.cs/workspace.toml`, `.cs/ide.json`, `.vscode/`, `.idea/`, `.gitignore`, `README.md` | The marker and the project files | Keeps |
@@ -320,7 +320,7 @@ The page `cstudy serve` serves ([web-ui](web-ui.md#front-end-assets)) is a front
 | Languages | A problem in `problems/` may list any non-empty subset of the six languages in its `meta.yaml`, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), which is not the catalog's default of all six: a problem written before Go and Rust keeps working, and it needs no Go or Rust reference. `cstudy new` writes the line explicitly ([problem format](problem-format.md#metayaml)) |
 | `cstudy new` | With bundled content it writes `problems/<slug>/` in the workspace; with an editable checkout it writes `problems/<slug>/` into the checkout |
 | Folder names | A folder is named by its slug. A folder named `NNNN-<slug>`, as `cstudy new` wrote them before, is reported, not migrated, and so is a folder whose `meta.yaml` has an `id:` line: it loads as no problem, `cstudy verify` fails on it (S2) and `cstudy doctor` warns, each with the quoted `mv problems/<name> problems/<slug>` to run from the workspace root and the `id:` line to delete ([compatibility](compatibility.md#your-own-problems)) |
-| Tracks | Non-autograded items come from the content root only |
+| Rubric problems | Come from the content root only: a folder of your own `problems/` of kind `system-design` or `code-review` is a content error, `rubric problems are catalog-only`; your answers to them go to `notes/<track>/<slug>.md` as before |
 
 ## Developing coding-study
 

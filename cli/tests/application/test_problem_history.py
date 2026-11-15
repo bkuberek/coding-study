@@ -20,7 +20,7 @@ from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.scheduling import ProblemStatus, ReviewState, ScheduleEntry
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from tests.fakes import NOW, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
@@ -29,7 +29,7 @@ LATER = NOW + timedelta(days=1)
 
 @pytest.fixture
 def environment(tmp_path) -> Environment:
-    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
 
 
 def start(environment: Environment, language: Language, at=NOW) -> int:
@@ -52,9 +52,13 @@ def test_a_problem_names_its_kind_track_and_difficulty(environment):
     )
 
 
-def test_an_item_is_of_the_item_kind_on_its_track(environment):
+def test_a_rubric_problem_is_of_its_rubric_kind_on_its_track(environment):
     found = problem_history(environment, "url-shortener")
-    assert (found.kind, found.track, found.patterns) == (EntryKind.ITEM, Track.SYSTEM_DESIGN, ())
+    assert (found.kind, found.track, found.patterns) == (
+        EntryKind.SYSTEM_DESIGN,
+        Track.SYSTEM_DESIGN,
+        (),
+    )
 
 
 def test_an_untouched_problem_is_new_without_schedule_or_attempts(environment):

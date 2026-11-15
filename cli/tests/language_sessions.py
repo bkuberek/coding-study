@@ -35,7 +35,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.language_server_scripts import QUICK, ScriptedServer
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.web_server import HOST, ORIGIN, SECRETS, web_app
@@ -115,7 +115,7 @@ def rig(
         for project_directory in ("python", "jvm", "go", "rust"):
             (tmp_path / project_directory).mkdir(parents=True, exist_ok=True)
         environment = make_environment(
-            repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+            repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
             toolchains=FakeToolchains(stub_generators=STUBS),
             language_servers=servers,
             content_root=tmp_path / "reference-content",

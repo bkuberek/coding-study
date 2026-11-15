@@ -14,7 +14,7 @@ from coding_study.domain.attempts import Attempt
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.markdown import render_markdown
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
@@ -28,7 +28,7 @@ BRUTE_FORCE_LINE = "for j in range(i + 1, len(nums)):"
 
 @pytest.fixture
 def practice(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
 
 
@@ -174,11 +174,11 @@ def test_a_projects_changed_file_shows_as_a_diff(tmp_path):
 ITEM = "/api/v1/problems/url-shortener/solution"
 
 
-def test_an_items_rubric_and_reference_show_without_a_confirmation(tmp_path, practice):
+def test_a_rubric_problems_rubric_and_reference_show_without_a_confirmation(tmp_path, practice):
     start_item_attempt(practice, ItemStartRequest("url-shortener"))
     document = post(tmp_path, practice, {}, ITEM).json()
     assert (document["kind"], document["language"], document["marked_attempt_id"]) == (
-        "item",
+        "system-design",
         None,
         None,
     )

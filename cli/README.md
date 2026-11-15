@@ -14,7 +14,7 @@ uv run cstudy doctor --fix
 uv run cstudy verify --conformance
 ```
 
-A checkout is its own content root, so `uv run cstudy` reads this repository's `problems/`, `tracks/`, `runners/` and `schemas/`, and builds with the workspace's toolchains. To put this checkout's `cstudy` on `PATH` (editable, so changes apply without reinstalling):
+A checkout is its own content root, so `uv run cstudy` reads this repository's `problems/`, `runners/` and `schemas/`, and builds with the workspace's toolchains. To put this checkout's `cstudy` on `PATH` (editable, so changes apply without reinstalling):
 
 ```sh
 uv tool install --editable .

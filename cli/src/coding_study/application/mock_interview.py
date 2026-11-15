@@ -38,7 +38,7 @@ class MockRequest:
 
 @dataclass(frozen=True, slots=True)
 class MockAttempt:
-    """One problem of a mock interview: its attempt, and the problem or item it practises."""
+    """One problem of a mock interview: its attempt, and the problem it practises."""
 
     attempt: Attempt
     meta: ProblemMeta | ItemMeta
@@ -53,7 +53,7 @@ class MockProblem:
     pick: NewPick
     started: MockAttempt
     user_file: str
-    """The stub, the folder of a project problem, or the notes of a non-autograded item."""
+    """The stub, the folder of a project problem, or the notes of a rubric problem."""
     statement: str
 
     @property

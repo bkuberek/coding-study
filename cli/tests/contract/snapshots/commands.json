@@ -450,7 +450,8 @@
       "progressive",
       "concurrent",
       "project",
-      "item"
+      "system-design",
+      "code-review"
     ],
     "deprecated": false,
     "takes_value": true

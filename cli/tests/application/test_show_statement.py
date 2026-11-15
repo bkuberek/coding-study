@@ -11,7 +11,7 @@ from coding_study.domain.errors import UnknownProblemError, UsageError
 from coding_study.domain.problem import Language
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment
 from tests.fakes import repository_root as copy_repository
-from tests.helpers import FIXTURE_TRACKS, PROJECT_PROBLEMS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, PROJECT_PROBLEMS
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 PHASE4 = FIXTURES / "phase4" / "problems"
@@ -94,7 +94,7 @@ def test_unknown_problem(environment):
 
 @pytest.fixture
 def items(tmp_path):
-    return make_environment(copy_repository(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    return make_environment(copy_repository(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
 
 
 def test_an_item_shows_its_rendered_prompt(items):

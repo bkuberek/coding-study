@@ -22,7 +22,7 @@ guides/
     hashing.yaml         # a path
 ```
 
-`guides/` sits at the [content root](installation-and-workspaces.md#content-root) beside `problems/` and `tracks/`; the wheel ships it as `coding_study/content/guides/`, the SVG drawings with it. A content root without it has no guides, and `cstudy learn` says so. A guide folder holds `meta.yaml`, `guide.md`, when it has examples `examples/` with files only, and when it has diagrams `diagrams/` with their [SVG drawings](#svg-drawings) only; nothing else. A diagram's source is [Mermaid](#diagrams) in `guide.md`; its text drawing and its SVG drawings are made from it.
+`guides/` sits at the [content root](installation-and-workspaces.md#content-root) beside `problems/`; the wheel ships it as `coding_study/content/guides/`, the SVG drawings with it. A content root without it has no guides, and `cstudy learn` says so. A guide folder holds `meta.yaml`, `guide.md`, when it has examples `examples/` with files only, and when it has diagrams `diagrams/` with their [SVG drawings](#svg-drawings) only; nothing else. A diagram's source is [Mermaid](#diagrams) in `guide.md`; its text drawing and its SVG drawings are made from it.
 
 A guide's slug is its folder's name and a path's is its file's name without `.yaml`: lowercase letters, digits and single hyphens, a letter first, at most 64 characters. `paths` is not a guide slug. Guide and path slugs are their own namespace: a guide may share a slug with a problem.
 
@@ -271,7 +271,7 @@ The shipped paths name these levels, from what each teaches: `intro` for "Gettin
 
 ## Static checks
 
-`cstudy verify` runs these after the problems' and items' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure. A warning, G11's, shows under its guide's line and fails nothing.
+`cstudy verify` runs these after the problems' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure. A warning, G11's, shows under its guide's line and fails nothing.
 
 ### Guides
 

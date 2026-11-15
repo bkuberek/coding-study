@@ -10,6 +10,7 @@ import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";
 import { command, h } from "./dom.ts";
 import { secondsSince } from "./format.ts";
+import { selfGraded } from "./kinds.ts";
 import { ratingRule } from "./levels.ts";
 import { problemHash } from "./routes.ts";
 import { unsavedPaths } from "./save.ts";
@@ -18,13 +19,12 @@ import type { AttemptStatus, DoneDocument } from "./types.ts";
 
 const RATINGS = ["easy", "ok", "hard"] as const;
 const GAVE_UP = "gave-up";
-const ITEM = "item";
 
 /** The Done dialog: a rating, or giving up, and notes; then the lines `cstudy done` prints. */
 export function openDoneDialog(context: PageContext, status: AttemptStatus, finishing: Finishing): void {
   const sheet = openSheet(`done · ${status.slug}`);
-  const isItem = status.kind === ITEM;
-  const choices = [...RATINGS, ...(isItem ? [] : [GAVE_UP])];
+  const byRubric = selfGraded(status.kind);
+  const choices = [...RATINGS, ...(byRubric ? [] : [GAVE_UP])];
   const radios = choices.map((value, index) => {
     const input = h("input", { type: "radio", name: "outcome", id: `done-${value}`, value, checked: index === 1 });
     return h("label", { class: `outcome outcome-${value}`, for: `done-${value}` }, input, h("span", {}, value === GAVE_UP ? "gave up" : value));
@@ -43,7 +43,7 @@ export function openDoneDialog(context: PageContext, status: AttemptStatus, fini
   const form = h(
     "form",
     { class: "sheet-form" },
-    h("fieldset", { class: "outcomes" }, h("legend", {}, isItem ? "how it went" : "how it went, or give up"), ...radios),
+    h("fieldset", { class: "outcomes" }, h("legend", {}, byRubric ? "how it went" : "how it went, or give up"), ...radios),
     h("ul", { class: "plain caps" }, ...capNotes(status).map((note) => h("li", { class: "tone-warn" }, note))),
     h("p", { class: "quiet" }, ratingRule(status)),
     h("div", { class: "field" }, h("label", { for: "done-notes" }, "notes"), notes),
@@ -89,10 +89,11 @@ export function openDoneDialog(context: PageContext, status: AttemptStatus, fini
 /** Why the grade may land below the rating, as the attempt stands. */
 function capNotes(status: AttemptStatus): string[] {
   const notes: string[] = [];
-  if (status.solution_revealed && status.kind !== ITEM) notes.push("the solution was revealed: the attempt is graded as again");
-  if (status.hints.used > 0 && status.kind !== ITEM) notes.push("a hint was used: the grade is capped at ok");
+  const byRubric = selfGraded(status.kind);
+  if (status.solution_revealed && !byRubric) notes.push("the solution was revealed: the attempt is graded as again");
+  if (status.hints.used > 0 && !byRubric) notes.push("a hint was used: the grade is capped at ok");
   const limit = status.timer?.limit_s ?? null;
-  if (limit !== null && status.kind !== ITEM && secondsSince(status.started_at, Date.now()) > limit) {
+  if (limit !== null && !byRubric && secondsSince(status.started_at, Date.now()) > limit) {
     notes.push("past the time box: the grade is capped at hard");
   }
   return notes;

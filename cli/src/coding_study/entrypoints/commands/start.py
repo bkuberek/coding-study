@@ -110,7 +110,7 @@ def start(
 def start_and_report(
     output: Console, environment: Environment, request: StartRequest, yes: bool = False
 ) -> OpenFiles:
-    """Starts the problem or item `request` names and prints the report; returns its two files.
+    """Starts the problem `request` names and prints the report; returns its two files.
     `yes` is `--yes`, for a service project that would download something."""
     if is_item(environment, request.slug):
         lines, files = _start_item(environment, request)
@@ -262,7 +262,7 @@ def _project_lines(project: StartedProject) -> Iterator[Text]:
 
 
 def _start_item(environment: Environment, request: StartRequest) -> tuple[list[Text], OpenFiles]:
-    """Non-autograded items: the answer goes in a notes file, so there is no language."""
+    """Rubric problems: the answer goes in a notes file, so there is no language."""
     if request.language is not None:
         raise UsageError(f"{request.slug} is not autograded; --lang applies to problems")
     item_request = ItemStartRequest(request.slug, request.fresh, request.timer_s)

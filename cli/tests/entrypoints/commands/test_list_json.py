@@ -1,6 +1,7 @@
 """The filters and `--json` of `cstudy list` (docs/specs/cli.md#cstudy-list)."""
 
 import json
+import shutil
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -9,13 +10,14 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
+from coding_study.adapters.problem_overlay import OverlayProblemRepository
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems
 from tests.fakes import NOW, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -23,7 +25,7 @@ PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "prob
 
 @pytest.fixture
 def environment(tmp_path, monkeypatch):
-    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
     monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: environment)
     return environment
 
@@ -44,7 +46,7 @@ def entry(slug: str, *arguments: str):
     return next(found for found in document(*arguments)["entries"] if found["slug"] == slug)
 
 
-def test_without_a_kind_problems_come_before_items(environment):
+def test_without_a_kind_rubric_problems_list_by_track_after_the_problems_before_them(environment):
     assert listed_slugs() == [
         "two-sum",
         "lru-cache",
@@ -54,19 +56,24 @@ def test_without_a_kind_problems_come_before_items(environment):
     ]
 
 
-def test_a_kind_of_problem_leaves_the_items_out(environment):
+def test_a_kind_of_problem_leaves_the_rubric_problems_out(environment):
     assert listed_slugs("--kind", "function") == ["two-sum"]
 
 
-def test_the_item_kind_lists_the_items_only(environment):
-    assert listed_slugs("--kind", "item") == ["url-shortener", "news-feed", "retry-wrapper"]
+def test_a_rubric_kind_lists_its_problems_only(environment):
+    assert listed_slugs("--kind", "system-design") == ["url-shortener", "news-feed"]
+    assert listed_slugs("--kind", "code-review") == ["retry-wrapper"]
+
+
+def test_the_item_kind_is_gone(environment):
+    assert invoke("--kind", "item").exit_code != 0
 
 
 def test_an_unknown_kind_is_a_usage_error(environment):
     assert invoke("--kind", "puzzle").exit_code != 0
 
 
-def test_a_domain_lists_the_problems_and_items_that_name_it(environment):
+def test_a_domain_lists_the_problems_that_name_it(environment):
     assert listed_slugs("--domain", "backend") == [
         "lru-cache",
         "url-shortener",
@@ -134,12 +141,12 @@ def test_json_describes_a_problem(environment):
     }
 
 
-def test_json_describes_an_item(environment):
+def test_json_describes_a_rubric_problem(environment):
     assert entry("url-shortener") == {
         "slug": "url-shortener",
         "title": "URL Shortener",
         "track": "system-design",
-        "kind": "item",
+        "kind": "system-design",
         "difficulty": "medium",
         "patterns": [],
         "domains": ["backend"],
@@ -199,18 +206,38 @@ def test_json_has_the_status_and_due_date(environment):
     assert (found["status"], found["due_on"]) == ("passed", "2026-10-27")
 
 
-def test_json_names_a_workspace_problem_as_yours(environment, monkeypatch):
-    workspace_problems = FsProblemRepository(environment.root).over(environment.root)
-    yours = replace(environment, problems=workspace_problems)
-    monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: yours)
+@pytest.fixture
+def yours(environment, tmp_path_factory, monkeypatch):
+    """The environment with lru-cache as a problem of the workspace, not of the catalog."""
+    workspace = tmp_path_factory.mktemp("workspace")
+    shutil.copytree(
+        environment.root / "problems" / "lru-cache", workspace / "problems" / "lru-cache"
+    )
+    shutil.rmtree(environment.root / "problems" / "lru-cache")
+    problems = OverlayProblemRepository(FsProblemRepository(environment.root), workspace)
+    overlaid = replace(environment, problems=problems)
+    monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: overlaid)
+    return overlaid
+
+
+def test_json_names_a_workspace_problem_as_yours(yours):
     assert entry("lru-cache")["source"] == "workspace"
 
 
-def test_json_applies_the_filters(environment):
-    assert [found["slug"] for found in document("--kind", "item")["entries"]] == [
+def test_your_own_problems_list_after_the_catalogs_rubric_problems(yours):
+    assert listed_slugs() == ["two-sum", "url-shortener", "news-feed", "retry-wrapper", "lru-cache"]
+    assert [found["slug"] for found in document()["entries"]] == [
+        "two-sum",
         "url-shortener",
         "news-feed",
         "retry-wrapper",
+        "lru-cache",
+    ]
+
+
+def test_json_applies_the_filters(environment):
+    assert [found["slug"] for found in document("--kind", "code-review")["entries"]] == [
+        "retry-wrapper"
     ]
 
 
@@ -239,7 +266,7 @@ def test_search_reads_the_items_too(environment):
 
 
 def test_search_narrows_what_the_other_filters_leave(environment):
-    assert listed_slugs("--search", "two", "--kind", "item") == []
+    assert listed_slugs("--search", "two", "--kind", "system-design") == []
 
 
 def test_a_search_nothing_holds_says_so(environment):

@@ -14,7 +14,7 @@ from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems, next_problem, problem_sets
 from tests.fakes import NOW, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -35,7 +35,7 @@ runner = CliRunner()
 
 @pytest.fixture
 def environment(tmp_path: Path):
-    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    return make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS))
 
 
 @pytest.fixture
@@ -265,7 +265,9 @@ def test_the_problems_of_a_set_keep_its_order(client, file):
 
 
 def test_the_problems_combine_the_set_with_the_other_filters(client, file):
-    entries = client.get("/api/v1/problems", params={"set": LOOP, "kind": "item"}).json()["entries"]
+    entries = client.get("/api/v1/problems", params={"set": LOOP, "kind": "system-design"}).json()[
+        "entries"
+    ]
     assert [entry["slug"] for entry in entries] == ["url-shortener"]
 
 

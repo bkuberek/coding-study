@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 from coding_study.adapters.problem_documents import meta_from_document
+from coding_study.domain.items import RUBRIC_KINDS
 from coding_study.domain.problem import ProblemKind, StubSource
 from coding_study.domain.starter_summary import SUMMARY_LIMIT, starter_summary
 from tests.helpers import REPOSITORY_ROOT
@@ -17,6 +18,8 @@ def generated_starters() -> dict[str, str | None]:
     summaries: dict[str, str | None] = {}
     for directory in sorted((REPOSITORY_ROOT / "problems").iterdir()):
         document = yaml.safe_load((directory / "meta.yaml").read_text(encoding="utf-8"))
+        if document["kind"] in RUBRIC_KINDS:
+            continue
         meta = meta_from_document(document, f"{directory.name}/meta.yaml")
         if meta.kind is ProblemKind.PROJECT or meta.stub is not StubSource.GENERATED:
             continue

@@ -27,7 +27,12 @@ from coding_study.entrypoints.web.runs import Children
 from tests.doc_builders import write_docs
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.guide_builders import write_guide
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, SCHEMAS_DIRECTORY, copy_catalog_problems
+from tests.helpers import (
+    FIRST_CATALOG,
+    FIXTURE_RUBRIC_PROBLEMS,
+    SCHEMAS_DIRECTORY,
+    copy_catalog_problems,
+)
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.sandbox_fakes import FakeSandbox
 from tests.scripted_runs import (
@@ -307,7 +312,7 @@ def _reset(root: Path, record: Recorder) -> None:
 def _sets(root: Path, record: Recorder) -> None:
     """A set created, filled, reordered, renamed and deleted, with a slug the catalog lost."""
     problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
-    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_RUBRIC_PROBLEMS)
     sets = "/api/v1/sets"
     loop = f"{sets}/backend-loop"
     with session_client(web_app(workspace, make_environment(workspace))) as client:
@@ -337,7 +342,7 @@ def _sets(root: Path, record: Recorder) -> None:
 def _guides(root: Path, record: Recorder) -> None:
     """A guide, marked read, and a problem that names it."""
     problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
-    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_RUBRIC_PROBLEMS)
     write_guide(workspace, "hash-maps-and-sets", "Hash maps and sets")
     with session_client(web_app(workspace, make_environment(workspace))) as client:
         record("guide", client.get("/api/v1/guides/hash-maps-and-sets"))
@@ -350,7 +355,7 @@ def _guides(root: Path, record: Recorder) -> None:
 def _docs(root: Path, record: Recorder) -> None:
     """The user docs, a page of them, and a topic that does not exist."""
     problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
-    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_RUBRIC_PROBLEMS)
     write_docs(workspace)
     with session_client(web_app(workspace, make_environment(workspace))) as client:
         record("docs", client.get("/api/v1/docs"))
@@ -361,7 +366,7 @@ def _docs(root: Path, record: Recorder) -> None:
 def _abort(root: Path, record: Recorder) -> None:
     """An attempt aborted: the question first, then the abort."""
     problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
-    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(workspace, toolchains=FakeToolchains(stub_generators=STUBS))
     attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt.id
     path = f"/api/v1/attempts/{attempt}/abort"
@@ -372,7 +377,7 @@ def _abort(root: Path, record: Recorder) -> None:
 
 def _mock(root: Path, record: Recorder) -> None:
     problems = copy_catalog_problems(root / "catalog", MOCK_CATALOG)
-    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(workspace, toolchains=FakeToolchains(stub_generators=STUBS))
     with session_client(web_app(workspace, environment)) as client:
         record("mock_started", client.post("/api/v1/mock", json={}, headers=WRITE_HEADERS))

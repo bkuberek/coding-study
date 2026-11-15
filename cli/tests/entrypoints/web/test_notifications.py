@@ -31,7 +31,7 @@ from coding_study.entrypoints.web.notifications import (
 )
 from coding_study.entrypoints.web.runs import Child, Children, ChildStart
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.scripted_runs import QUICK, RUN_END, RUN_START, Script, eventually, outs
 from tests.waits import GENEROUS_WAIT_S
@@ -313,7 +313,7 @@ def test_a_burst_that_changes_nothing_sends_nothing(project):
 
 
 def test_a_new_attempt_restarts_the_watch_with_its_folder(tmp_path):
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     environment = make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
     start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
 

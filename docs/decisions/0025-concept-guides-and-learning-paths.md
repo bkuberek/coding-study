@@ -20,7 +20,7 @@ Three questions were open: where the guides live, what a first path covers, and 
 
 ### Guides and paths are a content folder of their own
 
-`guides/` sits at the content root beside `problems/` and `tracks/`, and ships in the sdist and in the wheel at `coding_study/content/guides/`. A guide is not a problem (it has no tests and no attempts) and not an item (an item is answered and graded against a rubric), so neither folder fits it. A content root without `guides/` simply has no guides.
+`guides/` sits at the content root beside `problems/`, and ships in the sdist and in the wheel at `coding_study/content/guides/`. A guide is not a problem (it has no tests and no attempts) and not an item (an item is answered and graded against a rubric), so neither folder fits it. A content root without `guides/` simply has no guides.
 
 | Path | Holds |
 |------|-------|

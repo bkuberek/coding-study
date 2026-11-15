@@ -16,7 +16,7 @@ user-docs/
   ...
 ```
 
-`user-docs/` sits at the [content root](installation-and-workspaces.md#content-root) beside `problems/`, `tracks/` and `guides/`; the sdist ships it and the wheel ships it as `coding_study/content/user-docs/`. A content root without it has no docs, and `cstudy docs` says so. It holds `<slug>.md` files and nothing else: no folders, no images. A page's slug is its file's name without `.md`: lowercase letters, digits and single hyphens, a letter first, at most 64 characters, as a guide's.
+`user-docs/` sits at the [content root](installation-and-workspaces.md#content-root) beside `problems/` and `guides/`; the sdist ships it and the wheel ships it as `coding_study/content/user-docs/`. A content root without it has no docs, and `cstudy docs` says so. It holds `<slug>.md` files and nothing else: no folders, no images. A page's slug is its file's name without `.md`: lowercase letters, digits and single hyphens, a letter first, at most 64 characters, as a guide's.
 
 ## A page
 

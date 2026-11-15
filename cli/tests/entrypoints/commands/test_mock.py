@@ -24,7 +24,7 @@ from tests.fakes import (
     make_environment,
     repository_root,
 )
-from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
 
 runner = CliRunner()
 SLICE = (*FIRST_CATALOG, "group-anagrams", "first-missing-positive")
@@ -47,7 +47,7 @@ def environment(tmp_path, monkeypatch, problems, editor):
         language: FakeStubGenerator() for language in Language
     }
     environment = make_environment(
-        repository_root(tmp_path, problems, FIXTURE_TRACKS),
+        repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS),
         toolchains=FakeToolchains(stub_generators=generators),
         editor=editor,
     )

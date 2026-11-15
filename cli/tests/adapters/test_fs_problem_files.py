@@ -26,6 +26,13 @@ def test_slugs_of_problem_directories_in_name_order(files):
     assert files.slugs() == ("lru-cache", "two-sum")
 
 
+def test_every_folder_is_listed_whatever_its_kind(files, tmp_path):
+    make_directory(tmp_path, "url-shortener", "slug: url-shortener\nkind: system-design\n")
+    assert files.slugs() == ("lru-cache", "two-sum", "url-shortener")
+    assert files.problem_directory("url-shortener") == "problems/url-shortener"
+    assert files.misnamed() == ()
+
+
 def test_a_directory_that_is_not_a_slug_is_misnamed_not_a_problem(files, tmp_path):
     (tmp_path / "problems" / numbered_directory(3, "word-break")).mkdir()
     assert files.slugs() == ("lru-cache", "two-sum")

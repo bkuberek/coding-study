@@ -1,8 +1,8 @@
-"""`cstudy start` for a non-autograded item: notes from the template, the prompt, an attempt.
+"""`cstudy start` for a rubric problem: notes from the template, the prompt, an attempt.
 
-Specs: docs/specs/cli.md#cstudy-start and content.md#non-autograded-item-format. Item attempts have
-no language; `stub_path` holds the notes file. Like stubs, the notes are kept on resume and
-archived for `--fresh` and review attempts.
+Specs: docs/specs/cli.md#cstudy-start and content.md#rubric-checked-problems. A rubric problem's
+attempts have no language; `stub_path` holds the notes file. Like stubs, the notes are kept on
+resume and archived for `--fresh` and review attempts.
 """
 
 from dataclasses import dataclass, replace
@@ -83,7 +83,7 @@ class _ItemStart:
 
 
 class _Notes:
-    """The user's notes file for one item."""
+    """The user's notes file for one rubric problem."""
 
     def __init__(self, environment: Environment, meta: ItemMeta) -> None:
         self._environment = environment

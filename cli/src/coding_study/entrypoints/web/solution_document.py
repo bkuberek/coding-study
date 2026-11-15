@@ -13,7 +13,7 @@ from coding_study.application.reveal_solution import (
     SolutionView,
 )
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.items import REFERENCE_FILE, EntryKind, entry_kind
+from coding_study.domain.items import REFERENCE_FILE, entry_kind
 from coding_study.domain.problem import Language
 from coding_study.domain.problem_files import RUBRIC_FILE
 from coding_study.domain.project_reference import ReferenceFile
@@ -37,7 +37,7 @@ def solution_document(view: SolutionView, marked_attempt_id: int | None) -> dict
 
 
 def item_solution_document(view: ItemSolutionView) -> dict[str, JsonValue]:
-    """An item's rubric and reference: revealing them never lowers its grade, so no attempt
+    """A rubric problem's rubric and reference: revealing them never lowers its grade, so no attempt
     counts as marked."""
     meta = view.meta
     blocks = [f"# {meta.title} · {meta.track}"]
@@ -45,7 +45,7 @@ def item_solution_document(view: ItemSolutionView) -> dict[str, JsonValue]:
         blocks.append(text if text else _note(f"no {name}"))
     return {
         "slug": meta.slug,
-        "kind": EntryKind.ITEM.value,
+        "kind": meta.kind.value,
         "language": None,
         "approaches": [],
         "marked_attempt_id": None,

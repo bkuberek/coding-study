@@ -14,10 +14,10 @@ from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError
 from coding_study.domain.problem import ContentStatus
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
 TWO_SUM_META = Path("problems/two-sum/meta.yaml")
-URL_SHORTENER_ITEM = Path("tracks/system-design/url-shortener/item.yaml")
+URL_SHORTENER_META = Path("problems/url-shortener/meta.yaml")
 FUTURE_NS = 4_000_000_000_000_000_000
 
 
@@ -50,7 +50,7 @@ def touch_forward(path: Path) -> None:
 
 @pytest.fixture
 def root(content_root: Path) -> Path:
-    shutil.copytree(FIXTURE_TRACKS, content_root / "tracks")
+    shutil.copytree(FIXTURE_RUBRIC_PROBLEMS, content_root / "problems", dirs_exist_ok=True)
     return content_root
 
 
@@ -171,48 +171,57 @@ def test_a_cache_directory_that_cannot_be_written_does_not_break_listing(root):
     assert len(problems(root).list_summaries()) == 2
 
 
-def test_problems_and_items_share_one_index_file(root):
+def indexed(root: Path) -> set[str]:
+    entries = json.loads((root / INDEX_FILE).read_text())["entries"]
+    return {Path(key).relative_to(root).parts[1] for key in entries}
+
+
+def test_problems_and_rubric_problems_share_one_index_file(root):
     problems(root).list_summaries()
     items(root).list_items()
-    entries = json.loads((root / INDEX_FILE).read_text())["entries"]
-    kinds = {Path(key).relative_to(root).parts[0] for key in entries}
-    assert kinds == {"problems", "tracks"}
+    assert indexed(root) == {"lru-cache", "two-sum", "news-feed", "retry-wrapper", "url-shortener"}
 
 
-def test_a_warm_item_listing_equals_the_cold_one(root):
+def test_listing_one_kind_keeps_the_index_entries_of_the_other(root):
+    problems(root).list_summaries()
+    items(root).list_items()
+    problems(root).list_summaries()
+    assert indexed(root) >= {"news-feed", "retry-wrapper", "url-shortener"}
+    items(root).list_items()
+    assert indexed(root) >= {"lru-cache", "two-sum"}
+
+
+def test_a_warm_rubric_listing_equals_the_cold_one(root):
     cold = items(root).list_items()
     assert items(root).list_items() == cold
 
 
-def test_an_unchanged_item_is_not_read_again(root):
+def test_an_unchanged_rubric_problem_is_not_read_again(root):
     items(root).list_items()
-    item = root / URL_SHORTENER_ITEM
+    item = root / URL_SHORTENER_META
     keep_stamp(item, lambda: rewrite(item, "status: ready", "status: draft"))
     assert {meta.slug: meta.status for meta in items(root).list_items()}[
         "url-shortener"
     ] is ContentStatus.READY
 
 
-def test_a_changed_item_is_read_again(root):
+def test_a_changed_rubric_problem_is_read_again(root):
     items(root).list_items()
-    item = root / URL_SHORTENER_ITEM
+    item = root / URL_SHORTENER_META
     rewrite(item, "status: ready", "status: draft")
     touch_forward(item)
     statuses = {meta.slug: meta.status for meta in items(root).list_items()}
     assert statuses["url-shortener"] is ContentStatus.DRAFT
 
 
-def test_a_removed_item_is_dropped(root):
+def test_a_removed_rubric_problem_is_dropped(root):
     items(root).list_items()
-    shutil.rmtree(root / "tracks" / "system-design" / "news-feed")
+    shutil.rmtree(root / "problems" / "news-feed")
     assert "news-feed" not in [meta.slug for meta in items(root).list_items()]
 
 
-def test_an_added_item_is_listed(root):
+def test_an_added_rubric_problem_is_listed(root):
     items(root).list_items()
-    shutil.copytree(
-        root / "tracks" / "system-design" / "news-feed",
-        root / "tracks" / "system-design" / "chat-app",
-    )
-    rewrite(root / "tracks" / "system-design" / "chat-app" / "item.yaml", "news-feed", "chat-app")
+    shutil.copytree(root / "problems" / "news-feed", root / "problems" / "chat-app")
+    rewrite(root / "problems" / "chat-app" / "meta.yaml", "news-feed", "chat-app")
     assert "chat-app" in [meta.slug for meta in items(root).list_items()]

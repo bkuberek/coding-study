@@ -1,6 +1,6 @@
-"""`cstudy solution` for a non-autograded item: its rubric, then its reference answer.
+"""`cstudy solution` for a rubric problem: its rubric, then its reference answer.
 
-Self-review against the reference is the point of an item, so revealing it never lowers the
+Self-review against the reference is the point of a rubric problem, so revealing it never lowers the
 grade (docs/specs/progress-and-scheduling.md#grade); an attempt in progress still records it.
 """
 
@@ -21,7 +21,7 @@ class ItemSolutionView:
 
 
 def reveal_item_solution(environment: Environment, slug: str) -> ItemSolutionView:
-    """Also sets `solution_revealed` on the item's attempt in progress; raises UsageError during
+    """Also sets `solution_revealed` on the problem's attempt in progress; raises UsageError during
     a mock interview."""
     require_no_running_mock(environment, "cstudy solution")
     meta = environment.items.load(slug)

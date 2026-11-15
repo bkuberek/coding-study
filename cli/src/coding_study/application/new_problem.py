@@ -5,7 +5,7 @@ Writes the template files with their placeholders filled in and the files the tr
 the new meta.yaml, and for concurrent problems one empty broken reference file per broken id and
 language; a project template holds its starter and its reference overlay instead, and a stress
 variant lays the files a stress problem changes over them (a later template directory's file
-replaces an earlier one's). Slugs are unique across problems/ and tracks/. The problem goes to the
+replaces an earlier one's). The problem goes to the
 environment's destination, as `problems/<slug>/`: an editable content checkout, or the workspace's
 own problems/.
 """
@@ -44,7 +44,7 @@ class CreatedProblem:
 def create_problem(
     environment: Environment, templates: ProblemTemplates, request: ScaffoldRequest
 ) -> CreatedProblem:
-    """Raises UsageError when a problem or item has the slug, or the request is invalid."""
+    """Raises UsageError when a problem has the slug, or the request is invalid."""
     _require_new_slug(environment, request.slug)
     destination = environment.new_problems
     problems = destination.files
@@ -105,5 +105,3 @@ def _require_new_slug(environment: Environment, slug: str) -> None:
     problems = environment.files
     if slug in problems.slugs():
         raise UsageError(f"{slug} already exists: {problems.directory}/{slug}")
-    if slug in environment.items.slugs():
-        raise UsageError(f"{slug} already exists: {environment.items.item_directory(slug)}")

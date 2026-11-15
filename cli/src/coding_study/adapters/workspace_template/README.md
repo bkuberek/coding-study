@@ -19,7 +19,7 @@ Run `cstudy` anywhere inside this directory, or from elsewhere with `cstudy --wo
 |------|---------------|
 | `python/`, `typescript/`, `jvm/`, `go/`, `rust/` | One practice project per runtime; open this directory, the workspace root, in your IDE ([below](#using-an-ide)). `go/` needs Go 1.25 or newer, only for `--lang go`; `go.work` lets gopls find it from the root. `rust/` needs Rust 1.80 or newer (rustup), only for `--lang rust`; `cstudy start` lists each problem in `rust/Cargo.toml` so rust-analyzer checks it |
 | `.vscode/`, `.idea/` | VS Code and IntelliJ IDEA project files written by `cstudy init` and `cstudy ide`; yours to edit |
-| `notes/` | Your answers to system design and code review items |
+| `notes/` | Your answers to system design and code review problems |
 | `problems/` | Problems you write yourself (`cstudy new <slug>`); they join the catalog |
 | `sets.yaml` | Your problem sets (`cstudy set`), made at the first write; edit it by hand if you like |
 | `projects/` | One folder per project problem you started (`projects/<slug>/`), seeded from its starter; a Python folder reaches `python/.venv` through its `.venv` link |

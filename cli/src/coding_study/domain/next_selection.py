@@ -39,7 +39,8 @@ _UNTOUCHED = ProblemProgress()
 
 @dataclass(frozen=True, slots=True)
 class Candidate:
-    """Something `cstudy next` may pick: a problem or a non-autograded item, with its progress."""
+    """Something `cstudy next` may pick: a problem, checked by tests or by a rubric, with its
+    progress."""
 
     slug: str
     track: Track
@@ -48,7 +49,7 @@ class Candidate:
     order: int = DEFAULT_CURRICULUM_ORDER
     content: ContentStatus = ContentStatus.READY
     languages: tuple[Language, ...] = ALL_LANGUAGES
-    """The problem's `languages`; items have none and need none."""
+    """The problem's `languages`; a rubric problem has none and needs none."""
     progress: ProblemProgress = _UNTOUCHED
     jdk: DeclaredJdk | None = None
     """The JDK range the problem declares for its Java and Kotlin."""
@@ -58,14 +59,14 @@ class Candidate:
     levels: int | None = None
     """A progressive or project problem's last level; None for anything else."""
     autograded: bool = True
-    """False for a non-autograded item."""
+    """False for a rubric problem."""
 
     @property
     def group(self) -> Group:
         return group_of(self.track, self.patterns)
 
     def start_language(self, chosen: Language) -> Language | None:
-        """The language `cstudy next --start` starts it in; None for an item."""
+        """The language `cstudy next --start` starts it in; None for a rubric problem."""
         if not self.autograded:
             return None
         return self.languages[0] if self.project and self.languages else chosen
@@ -139,11 +140,11 @@ class NextScope:
     """Matches any listed pattern."""
     difficulty: Difficulty | None = None
     language: Language | None = None
-    """Problems whose `languages` include it; items stay in scope."""
+    """Problems whose `languages` include it; rubric problems stay in scope."""
     jdk: JdkScope | None = None
     """None: the selected JDK does not narrow the scope."""
     labels: LabelFilter = field(default_factory=LabelFilter)
-    """`--domain`, `--role` and `--scope`; items and problems both carry labels."""
+    """`--domain`, `--role` and `--scope`; every problem carries labels."""
 
     def includes(self, candidate: Candidate) -> bool:
         checks = (
@@ -231,7 +232,7 @@ class OpenAttempt:
     candidate: Candidate
     attempt_id: int
     language: Language | None
-    """None for an item."""
+    """None for a rubric problem."""
     used_at: datetime
     """The later of its start and its last test run."""
     used_on: date

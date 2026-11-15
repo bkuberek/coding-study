@@ -82,7 +82,8 @@ def _report(session: MockSession) -> Iterator[Text]:
 
 
 def _labels(problem: MockProblem) -> tuple[str, str]:
-    """The user's file and the statement: a stub, a project folder, or an item's notes."""
+    """The user's file and the statement: a stub, a project folder, or the notes of a rubric
+    problem."""
     if not problem.pick.candidate.autograded:
         return "notes", "prompt"
     return ("project" if problem.is_project else "stub"), "statement"

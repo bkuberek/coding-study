@@ -1,0 +1,10 @@
+slug: retry-wrapper
+title: Retry Wrapper
+track: code-review
+kind: code-review
+difficulty: easy
+domains: [backend]
+job_roles: [backend]
+scope: function
+estimate_minutes: 20
+status: ready

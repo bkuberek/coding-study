@@ -16,7 +16,7 @@ from coding_study.domain.attempts import Attempt, AttemptStatus
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.commands.status import status_document
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.web_server import session_client, web_app
 
@@ -28,7 +28,7 @@ PROJECT = f"projects/{PROJECT_SLUG}"
 
 @pytest.fixture
 def practice(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     return make_environment(root, toolchains=FakeToolchains(stub_generators=STUBS))
 
 

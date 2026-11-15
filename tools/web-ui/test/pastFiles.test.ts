@@ -85,7 +85,7 @@ test("the dialog is titled with the problem, the attempt and its language", () =
   assert.equal(viewerTitle("two-sum", { attempt_id: 2, language: "python" }), "code · two-sum · attempt 2 · python");
 });
 
-test("the dialog of an item names no language", () => {
+test("the dialog of a rubric problem names no language", () => {
   assert.equal(viewerTitle("url-shortener", { attempt_id: 5, language: null }), "code · url-shortener · attempt 5");
 });
 

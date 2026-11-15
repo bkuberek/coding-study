@@ -14,7 +14,7 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.problem import Language
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.web_server import (
     PORT,
     WRITE_HEADERS,
@@ -30,7 +30,7 @@ SOLVED = "def two_sum(): return [0, 1]\n"
 
 @pytest.fixture
 def practice(tmp_path) -> Environment:
-    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
     return make_environment(root, toolchains=toolchains)
 

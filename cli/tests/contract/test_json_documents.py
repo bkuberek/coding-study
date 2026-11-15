@@ -35,7 +35,7 @@ from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import NOW, make_environment, repository_root
 from tests.helpers import (
     FIRST_CATALOG,
-    FIXTURE_TRACKS,
+    FIXTURE_RUBRIC_PROBLEMS,
     REPOSITORY_ROOT,
     copy_catalog_problems,
     mark_workspace,
@@ -151,7 +151,7 @@ def problems(tmp_path_factory):
 
 @pytest.fixture
 def empty_environment(tmp_path, problems, monkeypatch):
-    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_TRACKS))
+    environment = make_environment(repository_root(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
     monkeypatch.setattr(stats, "load_environment", lambda *_: environment)
     return environment
 

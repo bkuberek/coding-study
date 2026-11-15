@@ -24,8 +24,8 @@ def problem_meta(kind: ProblemKind, labels: Labels = LABELS, workspace: bool = F
 
 def item_meta(track: Track, labels: Labels) -> ItemMeta:
     return ItemMeta(
-        slug="an-item",
-        title="An Item",
+        slug="a-rubric-problem",
+        title="A Rubric Problem",
         track=track,
         difficulty=Difficulty.EASY,
         estimate_minutes=20,
