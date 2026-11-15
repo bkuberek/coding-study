@@ -53,6 +53,8 @@ class ExitCode(IntEnum):
     ENVIRONMENT_ERROR = 4
     CONTENT_ERROR = 5
     INTERNAL_ERROR = 70
+    HANGUP = 129
+    """128 + SIGHUP, as a shell reports a process that SIGHUP ended."""
     INTERRUPTED = 130
     TERMINATED = 143
     """128 + SIGTERM, as a shell reports a process that SIGTERM ended."""

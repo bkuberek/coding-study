@@ -55,7 +55,7 @@ Each snapshot is a JSON file in `cli/tests/contract/snapshots/`, written from th
 | Snapshot | Holds | Read from |
 |----------|-------|-----------|
 | `commands.json` | Every command and subcommand, and for each flag: its names, whether it takes a value, its choices when it is a choice, and `deprecated` | `command_spec` in `entrypoints/command_table.py` |
-| `exit-codes.json` | Each exit code by name: the [exit codes](cli.md#exit-codes) of `ExitCode` in `entrypoints/shared.py`, which gains `TERMINATED = 143` for the two places that exit with it | `ExitCode` |
+| `exit-codes.json` | Each exit code by name: the [exit codes](cli.md#exit-codes) of `ExitCode` in `entrypoints/shared.py`, which gains `HANGUP = 129` and `TERMINATED = 143`, the exits of a run or a server that a signal stopped | `ExitCode` |
 | `config-keys.json` | Each key of `config.toml`: name, kind, default, choices and whether it is reserved | `domain/config_keys.py` and the parser's key names in `adapters/toml_config.py` |
 | `environment.json` | The variable names of each class of [Environment variables](#environment-variables) | `domain/environment_variables.py` |
 | `marker.json` | The marker's keys, `schema` and `created_with`, the shape of `[licenses.<key>]`, and `SCHEMA_VERSION` | `adapters/workspace_marker.py` |

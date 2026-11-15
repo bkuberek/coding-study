@@ -63,8 +63,9 @@
 | 4 | Environment error (toolchain missing, selected JDK outside a problem's range, runner did not start) |
 | 5 | Content error (schema or static check failure in problem files) |
 | 70 | Internal error (bug in `cstudy` or a runner protocol violation) |
+| 129 | Hung up (SIGHUP) during a `cstudy test --debug` run |
 | 130 | Interrupted |
-| 143 | Terminated (SIGTERM) during an `--events` run or `cstudy serve` |
+| 143 | Terminated (SIGTERM) during a `cstudy test` or `cstudy submit` run with `--events`, during a `cstudy test --debug` run, or while `cstudy serve` runs |
 
 ## Global flags
 

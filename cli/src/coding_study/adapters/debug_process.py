@@ -85,7 +85,8 @@ def _has_content(path: Path | None) -> bool:
 @contextmanager
 def terminated_like_interrupt() -> Generator[None]:
     """SIGTERM and SIGHUP, which an IDE sends when its task is stopped, unwind like Ctrl-C so the
-    runner's process group is killed instead of left holding the debug port.
+    runner's process group is killed instead of left holding the debug port. `cstudy` then exits
+    with 128 plus the signal, as a shell reports it: 143 for SIGTERM, 129 for SIGHUP.
 
     Does nothing off the main thread, where signal handlers cannot be set.
     """

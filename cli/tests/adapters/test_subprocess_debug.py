@@ -36,6 +36,7 @@ from coding_study.domain.runs import (
 )
 from coding_study.domain.signature import FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import Scalar, ScalarType
+from coding_study.entrypoints.shared import ExitCode
 
 FAKE_RUNNER = Path(__file__).resolve().parents[1] / "fixtures" / "fake_runner.py"
 READY = "fake agent listening"
@@ -444,6 +445,10 @@ def test_stop_signals_unwind_like_ctrl_c(signal_number):
     with pytest.raises(SystemExit) as raised, terminated_like_interrupt():
         os.kill(os.getpid(), signal_number)
     assert raised.value.code == 128 + signal_number
+    assert (
+        raised.value.code
+        == {signal.SIGTERM: ExitCode.TERMINATED, signal.SIGHUP: ExitCode.HANGUP}[signal_number]
+    )
 
 
 @pytest.mark.parametrize("signal_number", [signal.SIGTERM, signal.SIGHUP])
