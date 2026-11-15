@@ -148,7 +148,14 @@ A piece of content is named `<type>/<slug>`:
 
 ### Your own problems
 
-A folder of your workspace named `NNNN-<slug>`, as `cstudy new` wrote them before, is reported, not migrated. A directory under `<workspace>/problems/` whose name is not a valid slug is not loaded as a problem: `cstudy verify` (check S2) fails on it, and `cstudy doctor` warns on its workspace files row. Both name each such directory with the rename to make, a command run from the workspace root, `mv problems/<name> problems/<slug>`, where `<slug>` is the `slug` of its `meta.yaml`, or, when that cannot be read, the name without its leading `NNNN-`. The marker stays `schema = 1`.
+A folder of your workspace named `NNNN-<slug>`, as `cstudy new` wrote them before, is reported, not migrated, and so is a folder whose `meta.yaml` still has an `id:` line, which `cstudy new` wrote before problems lost their numeric id and which the schema no longer accepts. A directory of `problems/` whose name is not a valid slug is not loaded as a problem, and neither is one whose `meta.yaml` has `id`: `cstudy verify` (check S2) fails on it, and `cstudy doctor` warns on its workspace files row. Both say what to do, with paths from the root that holds the `problems/` directory (the workspace root for your own problems, the content root for the catalog's) and hidden directories and `__pycache__` left out:
+
+- A directory whose name is not a slug: rename it with `mv 'problems/<name>' problems/<slug>`, both paths quoted for the shell, where `<slug>` is the `slug` of its `meta.yaml`, or, when that cannot be read, the name without its leading `NNNN-`; then delete the `id:` line of its `meta.yaml`, when it has one.
+- A directory already named by a slug whose `meta.yaml` has `id`: delete that `id:` line.
+- A directory whose slug is already the name of another directory of `problems/`, or of another directory that would be renamed to it: no `mv`; the advice says the slug is taken and asks for a free one.
+- A directory with no slug to take: the advice asks for one.
+
+`cstudy verify --changed` reports a changed directory of `problems/` of these kinds too. The marker stays `schema = 1`.
 
 ## Rubric-checked problems
 

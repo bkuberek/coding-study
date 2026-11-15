@@ -1,5 +1,6 @@
 """The global `--workspace` and `--content` flags (docs/specs/installation-and-workspaces.md)."""
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -66,3 +67,21 @@ def test_the_content_flag_must_name_a_content_root(tmp_path, workspace):
         ExitCode.USAGE_ERROR,
         True,
     )
+
+
+def test_cs_list_works_after_an_old_workspace_problem_is_fixed_as_advised(
+    workspace, content_root, monkeypatch
+):
+    monkeypatch.setenv("CSTUDY_CONTENT", str(content_root))
+    old = workspace / "problems" / "5001-pair-sum"
+    shutil.copytree(content_root / "problems" / "two-sum", old)
+    meta = (old / "meta.yaml").read_text().replace("slug: two-sum", "slug: pair-sum")
+    (old / "meta.yaml").write_text(f"id: '5001'\n{meta}")
+    command = ["--workspace", str(workspace), "list"]
+    assert runner.invoke(cli.app, command).exit_code == 0
+    old.rename(workspace / "problems" / "pair-sum")
+    assert runner.invoke(cli.app, command).exit_code != 0
+    fixed = workspace / "problems" / "pair-sum" / "meta.yaml"
+    fixed.write_text(fixed.read_text().removeprefix("id: '5001'\n"))
+    result = runner.invoke(cli.app, command)
+    assert (result.exit_code, "pair-sum" in result.output) == (0, True)

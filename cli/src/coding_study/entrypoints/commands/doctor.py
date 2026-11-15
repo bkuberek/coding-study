@@ -62,6 +62,7 @@ from coding_study.domain.code_intelligence import LANGUAGE_SERVERS, LanguageServ
 from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, UsageError
 from coding_study.domain.layout import RUNS_DIRECTORY
+from coding_study.domain.problem_files import WORKSPACE_ROOT
 from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
 from coding_study.entrypoints.web import STATIC_DIRECTORY
 
@@ -202,7 +203,7 @@ def _workspace(
     language_servers = LspDirectory(root, SubprocessToolProbe(), SubprocessCommandRunner())
     return PracticeWorkspace(
         files=FsRepositoryFiles(root),
-        problems=FsProblemFiles(root),
+        problems=FsProblemFiles(root, root_name=WORKSPACE_ROOT),
         created_with=read_marker(root).created_with,
         setup=FsWorkspaceSetup(content_root / RUNNERS_DIRECTORY, tool_version()),
         toolchains=RegistryToolchains(LANGUAGES, LanguageContext(root, root / RUNTIME_RUNNERS)),

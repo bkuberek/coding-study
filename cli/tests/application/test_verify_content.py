@@ -96,14 +96,55 @@ def test_a_numbered_directory_fails_with_the_rename_to_make(environment):
     assert report.failed == 1
     assert misnamed_errors(report) == [
         f"problems/{name}: the name is not a slug, so no problem loads from it; "
-        f"rename it with `mv problems/{name} problems/word-break` from the workspace root"
+        f"from the content root run `mv problems/{name} problems/word-break`"
+    ]
+
+
+def test_a_numbered_directory_with_an_id_also_loses_the_id_line(environment):
+    name = numbered_directory(5001, "max-gap")
+    numbered = environment.root / "problems" / name
+    numbered.mkdir()
+    (numbered / "meta.yaml").write_text("id: '5001'\nslug: max-gap\n")
+    assert misnamed_errors(verify(environment, static_only=True)) == [
+        f"problems/{name}: the name is not a slug, so no problem loads from it; "
+        f"from the content root run `mv problems/{name} problems/max-gap`, "
+        "then delete the `id:` line of `problems/max-gap/meta.yaml`"
+    ]
+
+
+def test_a_directory_named_by_a_slug_with_an_id_is_told_to_lose_the_id_line(environment):
+    meta = environment.root / TWO_SUM / "meta.yaml"
+    meta.write_text(f"id: '5001'\n{meta.read_text()}")
+    assert misnamed_errors(verify(environment, static_only=True))[-1] == (
+        "problems/two-sum: meta.yaml still has an `id:` line, so no problem loads from it; "
+        "delete the `id:` line of `problems/two-sum/meta.yaml` in the content root"
+    )
+
+
+def test_a_taken_slug_is_not_given_a_command(environment):
+    name = numbered_directory(3, "two-sum")
+    (environment.root / "problems" / name).mkdir()
+    assert misnamed_errors(verify(environment, static_only=True)) == [
+        f"problems/{name}: the name is not a slug, so no problem loads from it; "
+        f"`problems/two-sum` is taken: give `problems/{name}` a free slug in the content root"
+    ]
+
+
+def test_a_name_with_a_space_is_quoted_in_the_command(environment):
+    spaced = environment.root / "problems" / "my problem"
+    spaced.mkdir()
+    (spaced / "meta.yaml").write_text("slug: my-problem\n")
+    assert misnamed_errors(verify(environment, static_only=True)) == [
+        "problems/my problem: the name is not a slug, so no problem loads from it; "
+        "from the content root run `mv 'problems/my problem' problems/my-problem`"
     ]
 
 
 def test_a_directory_with_no_slug_to_take_fails_without_a_command(environment):
     (environment.root / "problems" / "Word Break").mkdir()
     assert misnamed_errors(verify(environment, static_only=True)) == [
-        "problems/Word Break: the name is not a slug, so no problem loads from it; give it a slug"
+        "problems/Word Break: the name is not a slug, so no problem loads from it; "
+        "give `problems/Word Break` a slug"
     ]
 
 

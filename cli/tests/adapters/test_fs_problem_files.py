@@ -1,9 +1,11 @@
+import shlex
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.domain.errors import UnknownProblemError
+from coding_study.domain.problem_files import WORKSPACE_ROOT
 from tests.helpers import numbered_directory
 
 
@@ -17,7 +19,7 @@ def files(tmp_path: Path) -> FsProblemFiles:
     (problem / "solutions" / "nested").mkdir()
     (tmp_path / "problems" / "lru-cache").mkdir()
     (tmp_path / "problems" / "README.md").write_text("")
-    return FsProblemFiles(tmp_path)
+    return FsProblemFiles(tmp_path, root_name=WORKSPACE_ROOT)
 
 
 def test_slugs_of_problem_directories_in_name_order(files):
@@ -30,31 +32,118 @@ def test_a_directory_that_is_not_a_slug_is_misnamed_not_a_problem(files, tmp_pat
     assert [found.name for found in files.misnamed()] == [numbered_directory(3, "word-break")]
 
 
+def make_directory(tmp_path: Path, name: str, meta: str | None = None) -> None:
+    directory = tmp_path / "problems" / name
+    directory.mkdir()
+    if meta is not None:
+        (directory / "meta.yaml").write_text(meta)
+
+
+def fixes(files: FsProblemFiles) -> list[str]:
+    return [found.fix("problems") for found in files.misnamed()]
+
+
 def test_a_numbered_directory_is_renamed_by_the_slug_of_its_meta(files, tmp_path):
-    numbered = tmp_path / "problems" / numbered_directory(3, "word-break")
-    numbered.mkdir()
-    (numbered / "meta.yaml").write_text("slug: break-words\n")
-    assert files.misnamed()[0].rename("problems") == (
-        f"mv problems/{numbered_directory(3, 'word-break')} problems/break-words"
-    )
+    name = numbered_directory(3, "word-break")
+    make_directory(tmp_path, name, "slug: break-words\n")
+    assert fixes(files) == [
+        f"from the workspace root run `mv problems/{name} problems/break-words`"
+    ]
 
 
 def test_a_numbered_directory_without_a_readable_meta_is_renamed_without_its_number(
     files, tmp_path
 ):
     first, second = numbered_directory(3, "word-break"), numbered_directory(4, "two-pointers")
-    (tmp_path / "problems" / first).mkdir()
-    (tmp_path / "problems" / second).mkdir()
-    (tmp_path / "problems" / second / "meta.yaml").write_text("slug: [\n")
-    assert [found.rename("problems") for found in files.misnamed()] == [
-        f"mv problems/{first} problems/word-break",
-        f"mv problems/{second} problems/two-pointers",
+    make_directory(tmp_path, first)
+    make_directory(tmp_path, second, "slug: [\n")
+    assert fixes(files) == [
+        f"from the workspace root run `mv problems/{first} problems/word-break`",
+        f"from the workspace root run `mv problems/{second} problems/two-pointers`",
     ]
 
 
-def test_a_misnamed_directory_with_no_slug_to_take_has_no_rename(files, tmp_path):
-    (tmp_path / "problems" / "Word Break").mkdir()
-    assert [found.rename("problems") for found in files.misnamed()] == [None]
+def test_a_numbered_directory_with_an_id_is_renamed_and_loses_the_id_line(files, tmp_path):
+    name = numbered_directory(5001, "max-gap")
+    make_directory(tmp_path, name, "id: '5001'\nslug: max-gap\n")
+    assert fixes(files) == [
+        f"from the workspace root run `mv problems/{name} problems/max-gap`, "
+        "then delete the `id:` line of `problems/max-gap/meta.yaml`"
+    ]
+
+
+def test_a_directory_named_by_a_slug_with_an_id_loses_the_id_line(files, tmp_path):
+    make_directory(tmp_path, "max-gap", "id: '5001'\nslug: max-gap\n")
+    found = files.misnamed()
+    assert [item.name for item in found] == ["max-gap"]
+    assert files.slugs() == ("lru-cache", "max-gap", "two-sum")
+    assert fixes(files) == [
+        "delete the `id:` line of `problems/max-gap/meta.yaml` in the workspace root"
+    ]
+
+
+def test_a_misnamed_directory_with_no_slug_to_take_asks_for_one(files, tmp_path):
+    make_directory(tmp_path, "Word Break")
+    assert fixes(files) == ["give `problems/Word Break` a slug"]
+
+
+def test_a_misnamed_directory_with_no_slug_and_an_id_also_loses_the_id_line(files, tmp_path):
+    make_directory(tmp_path, "Word Break", "id: '5001'\n")
+    assert fixes(files) == [
+        "give `problems/Word Break` a slug, then delete the `id:` line of its meta.yaml"
+    ]
+
+
+def test_a_name_with_a_space_gives_a_command_that_survives_pasting(files, tmp_path):
+    make_directory(tmp_path, "my problem", "slug: my-problem\n")
+    assert fixes(files) == [
+        "from the workspace root run `mv 'problems/my problem' problems/my-problem`"
+    ]
+
+
+def test_a_name_with_a_semicolon_is_quoted_so_nothing_else_runs(files, tmp_path):
+    make_directory(tmp_path, "x;echo hi", "slug: x\n")
+    (command,) = fixes(files)
+    assert shlex.split(command.split("`")[1]) == ["mv", "problems/x;echo hi", "problems/x"]
+
+
+def test_a_slug_already_taken_gives_no_command(files, tmp_path):
+    make_directory(tmp_path, numbered_directory(3, "two-sum"))
+    assert fixes(files) == [
+        "`problems/two-sum` is taken: give `problems/0003-two-sum` a free slug in the "
+        "workspace root"
+    ]
+
+
+def test_a_taken_slug_with_an_id_still_loses_the_id_line(files, tmp_path):
+    make_directory(tmp_path, numbered_directory(3, "two-sum"), "id: '3'\n")
+    assert fixes(files)[0].endswith(
+        "a free slug in the workspace root, then delete the `id:` line of its meta.yaml"
+    )
+
+
+def test_two_directories_for_one_slug_give_no_command(files, tmp_path):
+    first, second = numbered_directory(3, "word-break"), numbered_directory(4, "word-break")
+    make_directory(tmp_path, first)
+    make_directory(tmp_path, second)
+    assert [found.taken for found in files.misnamed()] == [True, True]
+    assert all("is taken" in fix and "mv" not in fix for fix in fixes(files))
+
+
+def test_hidden_directories_and_pycache_are_no_problems(files, tmp_path):
+    for name in (".cs", ".git", "__pycache__"):
+        make_directory(tmp_path, name)
+    assert files.misnamed() == ()
+
+
+def test_the_root_is_the_one_the_directory_sits_under(tmp_path):
+    make_directory_in = tmp_path / "problems" / numbered_directory(3, "word-break")
+    make_directory_in.mkdir(parents=True)
+    found = FsProblemFiles(tmp_path, root_name=WORKSPACE_ROOT).misnamed()
+    assert [item.fix("problems").split(" run")[0] for item in found] == ["from the workspace root"]
+    assert (
+        FsProblemFiles(tmp_path).misnamed()[0].fix("problems").startswith("from the content root")
+    )
 
 
 def test_no_slugs_without_a_problems_directory(tmp_path):

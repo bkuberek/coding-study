@@ -1,7 +1,9 @@
 """Raw files of problem directories (`<slug>/`), for checks that go beyond meta.yaml."""
 
 import hashlib
+from collections import Counter
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -12,15 +14,18 @@ from coding_study.adapters.fs_problem_repository import (
 )
 from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.problem import SLUG_PATTERN
-from coding_study.domain.problem_files import MisnamedDirectory, misnamed_directory
+from coding_study.domain.problem_files import CONTENT_ROOT, MisnamedDirectory, misnamed_directory
 
 
 class FsProblemFiles:
     """`ProblemFiles` for one problems directory under the repository root."""
 
-    def __init__(self, root: Path, directory: str = PROBLEMS_DIRECTORY) -> None:
+    def __init__(
+        self, root: Path, directory: str = PROBLEMS_DIRECTORY, root_name: str = CONTENT_ROOT
+    ) -> None:
         self._root = root
         self._directory = directory
+        self._root_name = root_name
 
     @property
     def directory(self) -> str:
@@ -31,10 +36,26 @@ class FsProblemFiles:
         return tuple(entry.name for entry in self._entries() if SLUG_PATTERN.fullmatch(entry.name))
 
     def misnamed(self) -> tuple[MisnamedDirectory, ...]:
+        """Directories not named by a slug, or whose meta.yaml still has `id`; hidden directories
+        and `__pycache__` are no problems and are left out."""
+        found: list[MisnamedDirectory] = []
+        for entry in self._entries():
+            if entry.name.startswith(".") or entry.name == "__pycache__":
+                continue
+            meta = _meta(entry)
+            stale_id = "id" in meta
+            if SLUG_PATTERN.fullmatch(entry.name) and not stale_id:
+                continue
+            found.append(
+                misnamed_directory(entry.name, meta.get("slug"), self._root_name, stale_id)
+            )
+        renamed = Counter(item.slug for item in found if not item.is_named_by_slug)
+        folder = self._root / self._directory
         return tuple(
-            misnamed_directory(entry.name, _meta_slug(entry))
-            for entry in self._entries()
-            if not SLUG_PATTERN.fullmatch(entry.name)
+            replace(item, taken=renamed[item.slug] > 1 or (folder / item.slug).exists())
+            if item.slug is not None and not item.is_named_by_slug
+            else item
+            for item in found
         )
 
     def problem_directory(self, slug: str) -> str:
@@ -70,11 +91,11 @@ class FsProblemFiles:
         return [entry for entry in sorted(folder.iterdir()) if entry.is_dir()]
 
 
-def _meta_slug(directory: Path) -> object:
-    """The `slug` of the directory's meta.yaml; None when there is no readable one."""
+def _meta(directory: Path) -> dict[str, object]:
+    """The directory's meta.yaml as a mapping; empty when there is no readable one."""
     source = f"{directory.name}/{META_FILE}"
     try:
         document = parse_yaml((directory / META_FILE).read_text(encoding="utf-8"), source)
     except (OSError, UnicodeDecodeError, ContentError):
-        return None
-    return cast(dict[str, object], document).get("slug") if isinstance(document, dict) else None
+        return {}
+    return cast(dict[str, object], document) if isinstance(document, dict) else {}

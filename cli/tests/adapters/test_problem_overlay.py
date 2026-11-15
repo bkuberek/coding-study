@@ -3,6 +3,7 @@
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -95,6 +96,50 @@ def test_problem_files_report_the_misnamed_directories_of_both_layers(files, wor
     name = numbered_directory(5001, "max-gap")
     (workspace / "problems" / name).mkdir()
     assert [found.name for found in files.misnamed()] == [name]
+
+
+def test_each_misnamed_directory_names_the_root_it_sits_under(files, content_root, workspace):
+    (content_root / "problems" / numbered_directory(1, "catalog-one")).mkdir()
+    (workspace / "problems" / numbered_directory(2, "own-one")).mkdir()
+    assert [found.fix("problems").split(" run")[0] for found in files.misnamed()] == [
+        "from the content root",
+        "from the workspace root",
+    ]
+
+
+def test_hidden_directories_of_both_layers_are_no_problems(files, content_root, workspace):
+    for root in (content_root, workspace):
+        (root / "problems" / "__pycache__").mkdir()
+        (root / "problems" / ".cache").mkdir()
+    assert files.misnamed() == ()
+
+
+def old_workspace_problem(workspace: Path) -> str:
+    """A problem as `cstudy new` wrote it before problem ids went: a numbered folder whose
+    meta.yaml has an `id:` line."""
+    name = numbered_directory(5001, "max-gap")
+    target = own_problem(workspace, "max-gap", "Max Gap")
+    target.rename(workspace / "problems" / name)
+    meta = workspace / "problems" / name / "meta.yaml"
+    meta.write_text("id: '5001'\n" + meta.read_text())
+    return name
+
+
+def test_an_old_workspace_problem_loads_once_the_advice_is_followed(problems, files, workspace):
+    name = old_workspace_problem(workspace)
+    (found,) = files.misnamed()
+    assert found.name == name
+    command = found.fix("problems").split("`")[1]
+    subprocess.run(command, shell=True, cwd=workspace, check=True)
+    with pytest.raises(ContentError, match="id"):
+        problems.list_summaries()
+    assert [found.name for found in files.misnamed()] == ["max-gap"]
+    meta = workspace / "problems" / "max-gap" / "meta.yaml"
+    meta.write_text(
+        "".join(line for line in meta.read_text().splitlines(True) if line[:3] != "id:")
+    )
+    assert files.misnamed() == ()
+    assert slugs_listed(problems) == ["lru-cache", "max-gap", "pair-sum", "two-sum"]
 
 
 def test_problem_files_resolve_a_workspace_problem_in_the_workspace(files, workspace):

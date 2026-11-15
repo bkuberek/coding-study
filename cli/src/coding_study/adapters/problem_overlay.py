@@ -12,7 +12,7 @@ from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.problem import Problem, ProblemSummary
-from coding_study.domain.problem_files import MisnamedDirectory
+from coding_study.domain.problem_files import WORKSPACE_ROOT, MisnamedDirectory
 
 
 class OverlayProblemRepository:
@@ -41,7 +41,7 @@ class OverlayProblemFiles:
 
     def __init__(self, catalog: FsProblemFiles, workspace: Path) -> None:
         self._catalog = catalog
-        self._own = FsProblemFiles(workspace, catalog.directory)
+        self._own = FsProblemFiles(workspace, catalog.directory, WORKSPACE_ROOT)
 
     @property
     def directory(self) -> str:

@@ -854,22 +854,57 @@ def test_core_files_still_fail_when_go_and_rust_files_are_missing_too():
 
 
 def test_a_misnamed_problem_folder_warns_with_the_rename_to_make():
-    problems = FakeProblemFiles((MisnamedDirectory(numbered_directory(1, "pair-sum"), "pair-sum"),))
+    name = numbered_directory(1, "pair-sum")
+    problems = FakeProblemFiles((MisnamedDirectory(name, "pair-sum"),))
     report = doctor(workspace=workspace_with(problems=problems))
     result = check(report, "workspace files")
     assert (result.status, result.detail, result.fix) == (
         WARN,
-        "1 in problems/ not named by a slug, so no problem loads from them; from the "
-        f"workspace root run: mv problems/{numbered_directory(1, 'pair-sum')} problems/pair-sum",
+        f"1 in problems/ load as no problem; problems/{name}: from the workspace root run "
+        f"`mv problems/{name} problems/pair-sum`",
         None,
     )
     assert report.passed is True
 
 
+def test_a_misnamed_problem_folder_with_an_id_also_loses_the_id_line():
+    name = numbered_directory(5001, "pair-sum")
+    problems = FakeProblemFiles((MisnamedDirectory(name, "pair-sum", stale_id=True),))
+    detail = check(doctor(workspace=workspace_with(problems=problems)), "workspace files").detail
+    assert detail.endswith(
+        f"`mv problems/{name} problems/pair-sum`, "
+        "then delete the `id:` line of `problems/pair-sum/meta.yaml`"
+    )
+
+
+def test_a_problem_folder_named_by_a_slug_with_an_id_loses_the_id_line():
+    problems = FakeProblemFiles((MisnamedDirectory("pair-sum", "pair-sum", stale_id=True),))
+    detail = check(doctor(workspace=workspace_with(problems=problems)), "workspace files").detail
+    assert detail == (
+        "1 in problems/ load as no problem; problems/pair-sum: "
+        "delete the `id:` line of `problems/pair-sum/meta.yaml` in the workspace root"
+    )
+
+
+def test_a_taken_slug_is_not_given_a_command():
+    name = numbered_directory(1, "pair-sum")
+    problems = FakeProblemFiles((MisnamedDirectory(name, "pair-sum", taken=True),))
+    detail = check(doctor(workspace=workspace_with(problems=problems)), "workspace files").detail
+    assert detail.endswith(
+        f"`problems/pair-sum` is taken: give `problems/{name}` a free slug in the workspace root"
+    )
+
+
+def test_a_name_with_a_space_is_quoted_in_the_command():
+    problems = FakeProblemFiles((MisnamedDirectory("my problem", "my-problem"),))
+    detail = check(doctor(workspace=workspace_with(problems=problems)), "workspace files").detail
+    assert detail.endswith("run `mv 'problems/my problem' problems/my-problem`")
+
+
 def test_a_misnamed_problem_folder_without_a_slug_to_take_asks_for_one():
     problems = FakeProblemFiles((MisnamedDirectory("Pair Sum", None),))
     detail = check(doctor(workspace=workspace_with(problems=problems)), "workspace files").detail
-    assert detail.endswith("give problems/Pair Sum a slug")
+    assert detail.endswith("give `problems/Pair Sum` a slug")
 
 
 def test_a_missing_file_still_fails_beside_a_misnamed_problem_folder():
@@ -879,7 +914,7 @@ def test_a_missing_file_still_fails_beside_a_misnamed_problem_folder():
         doctor(workspace=workspace_with(setup=setup, problems=problems)), "workspace files"
     )
     assert (result.status, result.fix) == (FAIL, "cstudy doctor --fix")
-    assert result.detail.startswith("1 missing: jvm/gradlew; 1 in problems/ not named")
+    assert result.detail.startswith("1 missing: jvm/gradlew; 1 in problems/ load as no problem")
 
 
 def test_many_missing_files_are_summarized():

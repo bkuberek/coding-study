@@ -128,7 +128,6 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
-from coding_study.domain.problem_files import MisnamedDirectory
 from coding_study.domain.project import PROJECT_LANGUAGES
 from coding_study.domain.runs import RunnerInfo, RunRequest
 from coding_study.domain.signature import FunctionSignature, Returns
@@ -1073,7 +1072,8 @@ def _workspace_files(workspace: PracticeWorkspace) -> list[CheckResult]:
 
 def _files_row(missing: tuple[str, ...], problems: ProblemFiles) -> CheckResult:
     """FAIL for a missing file, which blocks practice; WARN for a directory of the workspace's
-    `problems/` whose name is not a slug, which loads as no problem, with the rename to make."""
+    `problems/` that loads as no problem (a name that is not a slug, or an `id:` line in its
+    meta.yaml), with the fix to make."""
     misnamed = problems.misnamed()
     if not missing and not misnamed:
         return CheckResult("workspace files", CheckStatus.OK)
@@ -1081,19 +1081,18 @@ def _files_row(missing: tuple[str, ...], problems: ProblemFiles) -> CheckResult:
     if missing:
         details.append(f"{len(missing)} missing: {_first_few(missing, ', ')}")
     if misnamed:
-        renames = tuple(_rename_of(found, problems.directory) for found in misnamed)
+        fixes = tuple(
+            f"{problems.directory}/{found.name}: {found.fix(problems.directory)}"
+            for found in misnamed
+        )
         details.append(
-            f"{len(misnamed)} in {problems.directory}/ not named by a slug, so no problem loads "
-            f"from them; from the workspace root run: {_first_few(renames, '; ')}"
+            f"{len(misnamed)} in {problems.directory}/ load as no problem; "
+            f"{_first_few(fixes, '; ')}"
         )
     status = CheckStatus.FAIL if missing else CheckStatus.WARN
     return CheckResult(
         "workspace files", status, "; ".join(details), FIX_COMMAND if missing else None
     )
-
-
-def _rename_of(found: MisnamedDirectory, directory: str) -> str:
-    return found.rename(directory) or f"give {directory}/{found.name} a slug"
 
 
 def _is_optional_language_file(path: str) -> bool:

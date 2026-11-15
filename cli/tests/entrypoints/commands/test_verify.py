@@ -136,6 +136,26 @@ def test_changed_without_changed_problems_verifies_nothing(environment, monkeypa
     assert (result.exit_code, result.report) == (0, ["no problems changed relative to main"])
 
 
+def test_changed_reports_a_new_misnamed_directory(environment, monkeypatch):
+    (environment.content_root / "problems" / "0099-foo").mkdir()
+    changed_files(monkeypatch, "problems/0099-foo/meta.yaml")
+    result = invoke("--changed", "--static")
+    assert (result.exit_code, result.report[0], result.report[-1]) == (
+        ExitCode.CONTENT_ERROR,
+        "0099-foo          FAIL static: problems/0099-foo: the name is not a slug, so no problem "
+        "loads from it; from the content root run `mv problems/0099-foo problems/foo`",
+        "result    1 failed · 0 passed",
+    )
+
+
+def test_changed_reports_a_misnamed_directory_beside_the_changed_problems(environment, monkeypatch):
+    (environment.content_root / "problems" / "0099-foo").mkdir()
+    changed_files(monkeypatch, "problems/lru-cache/tests.json", "problems/0099-foo/meta.yaml")
+    report = invoke("--changed", "--static").report
+    assert [line.split()[0] for line in report[:1]] == ["lru-cache"]
+    assert report[-1] == "result    1 failed · 1 passed"
+
+
 def test_changed_with_slugs_is_a_usage_error(environment, monkeypatch):
     changed_files(monkeypatch)
     assert invoke("--changed", "two-sum").exit_code == ExitCode.USAGE_ERROR

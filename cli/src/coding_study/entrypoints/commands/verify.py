@@ -11,7 +11,7 @@ from rich.text import Text
 from coding_study.adapters.conformance_fixtures import load_conformance_suite
 from coding_study.adapters.environment_factory import conformance_environment, load_environment
 from coding_study.adapters.git_changed_files import GitChangedFiles
-from coding_study.application.changed_problems import CHANGED_BASE, changed_problem_slugs
+from coding_study.application.changed_problems import CHANGED_BASE, changed_problems
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     ProgressNotice,
@@ -26,6 +26,7 @@ from coding_study.application.verify_content import (
     ProblemVerification,
     VerifyReport,
     VerifyRequest,
+    verify_changed,
     verify_content,
 )
 from coding_study.application.verify_ladder import LadderResult
@@ -106,11 +107,11 @@ def verify(
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     output = console(context)
     selected = tuple(slugs or ())
+    misnamed: tuple[str, ...] = ()
     if changed:
-        selected = changed_problem_slugs(
-            environment.files, GitChangedFiles(environment.content_root)
-        )
-        if not selected:
+        changes = changed_problems(environment.files, GitChangedFiles(environment.content_root))
+        selected, misnamed = changes.slugs, changes.misnamed
+        if not changes:
             output.print(f"no problems changed relative to {CHANGED_BASE}")
             raise typer.Exit(ExitCode.SUCCESS)
     if conformance:
@@ -128,7 +129,10 @@ def verify(
         stress_runs=stress,
         commands=command_spec(context.find_root().command),
     )
-    report = verify_content(environment, request, _notice(output))
+    if changed:
+        report = verify_changed(environment, request, _notice(output), misnamed)
+    else:
+        report = verify_content(environment, request, _notice(output))
     for line in _content_lines(report):
         output.print(line)
     raise typer.Exit(_content_exit_code(report))

@@ -13,7 +13,7 @@ require a generator for every `dsa` problem.
 """
 
 import threading
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
@@ -224,7 +224,7 @@ def verify_content(
     whole = _whole_catalog(request)
     guides = verify_guides(environment, known) if whole else ()
     docs = verify_user_docs(environment, request.commands) if whole else ()
-    misnamed = _misnamed_rows(environment) if whole else ()
+    misnamed = misnamed_rows(environment) if whole else ()
     return VerifyReport(
         (
             *problems,
@@ -289,20 +289,35 @@ def problem_content(environment: Environment, slug: str, problem: Problem) -> Pr
     )
 
 
-def _misnamed_rows(environment: Environment) -> tuple[ProblemVerification, ...]:
-    """S2: a directory of `problems/` whose name is not a slug loads as no problem; each row names
-    the rename to make."""
+def misnamed_rows(
+    environment: Environment, only: Collection[str] | None = None
+) -> tuple[ProblemVerification, ...]:
+    """S2: a directory of `problems/` that loads as no problem, by name or by an `id:` line in its
+    meta.yaml; each row says what to do. `only` limits the rows to those directory names."""
     files = environment.files
     rows: list[ProblemVerification] = []
     for found in files.misnamed():
+        if only is not None and found.name not in only:
+            continue
         directory = f"{files.directory}/{found.name}"
-        command = found.rename(files.directory)
-        advice = (
-            f"rename it with `{command}` from the workspace root" if command else "give it a slug"
-        )
-        message = f"{directory}: the name is not a slug, so no problem loads from it; {advice}"
+        message = f"{directory}: {found.problem()}; {found.fix(files.directory)}"
         rows.append(ProblemVerification(directory, None, static_errors=(message,)))
     return tuple(rows)
+
+
+def verify_changed(
+    environment: Environment,
+    request: VerifyRequest,
+    notify: ProgressNotice,
+    misnamed: Collection[str],
+) -> VerifyReport:
+    """`--changed`: the selected problems, then the changed directories that load as no problem;
+    with no problem selected, only those."""
+    rows = misnamed_rows(environment, misnamed)
+    if not request.slugs:
+        return VerifyReport(rows, _coverage((), request.language))
+    report = verify_content(environment, request, notify)
+    return VerifyReport((*report.problems, *rows), report.coverage)
 
 
 def _coverage(

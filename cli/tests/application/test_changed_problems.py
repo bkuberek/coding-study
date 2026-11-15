@@ -1,17 +1,21 @@
 from pathlib import Path
 
 from coding_study.adapters.fs_problem_files import FsProblemFiles
-from coding_study.application.changed_problems import CHANGED_BASE, changed_problem_slugs
+from coding_study.application.changed_problems import CHANGED_BASE, changed_problems
 from tests.fakes import FixedChangedFiles
 
 
 def slugs(content_root: Path, *paths: str) -> tuple[str, ...]:
-    return changed_problem_slugs(FsProblemFiles(content_root), FixedChangedFiles(*paths))
+    return changed_problems(FsProblemFiles(content_root), FixedChangedFiles(*paths)).slugs
+
+
+def misnamed(content_root: Path, *paths: str) -> tuple[str, ...]:
+    return changed_problems(FsProblemFiles(content_root), FixedChangedFiles(*paths)).misnamed
 
 
 def test_compares_with_main(content_root):
     changes = FixedChangedFiles()
-    changed_problem_slugs(FsProblemFiles(content_root), changes)
+    changed_problems(FsProblemFiles(content_root), changes)
     assert changes.bases == [CHANGED_BASE] == ["main"]
 
 
@@ -34,3 +38,20 @@ def test_files_outside_problem_directories_select_nothing(content_root):
 
 def test_deleted_problems_select_nothing(content_root):
     assert slugs(content_root, "problems/gone/meta.yaml") == ()
+
+
+def test_a_changed_misnamed_directory_is_reported_not_selected(content_root):
+    (content_root / "problems" / "0099-foo").mkdir()
+    changes = changed_problems(
+        FsProblemFiles(content_root), FixedChangedFiles("problems/0099-foo/meta.yaml")
+    )
+    assert (changes.slugs, changes.misnamed, bool(changes)) == ((), ("0099-foo",), True)
+
+
+def test_an_unchanged_misnamed_directory_is_left_out(content_root):
+    (content_root / "problems" / "0099-foo").mkdir()
+    assert misnamed(content_root, "problems/lru-cache/tests.json") == ()
+
+
+def test_nothing_changed_is_falsy(content_root):
+    assert not changed_problems(FsProblemFiles(content_root), FixedChangedFiles("README.md"))
