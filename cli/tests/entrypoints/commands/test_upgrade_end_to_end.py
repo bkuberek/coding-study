@@ -8,7 +8,9 @@ uv's cache. Only the Python project exists, so `doctor` rows about the other too
 """
 
 import shutil
+import sqlite3
 import subprocess
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +18,7 @@ import pytest
 from typer.testing import CliRunner, Result
 
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
+from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.adapters.workspace_setup import FsWorkspaceSetup
 from coding_study.application.doctor import PYTHON_FIX
 from coding_study.domain.problem import Language
@@ -28,6 +31,7 @@ pytestmark = pytest.mark.slow
 V0_7_0_PYTHON = Path(__file__).resolve().parents[2] / "fixtures" / "workspace_v0_7_0" / "python"
 OLD_VERSION = "0.7.0"
 OLD_SCHEMA = 4
+LATEST_SCHEMA = latest_schema_version()
 OLD_ATTEMPT = 7
 SLUG = "bank-project-python"
 OTHER_TOOLCHAINS = ("jvm", "typescript")
@@ -88,15 +92,27 @@ def test_before_the_fix_pytest_is_missing(upgrade: Upgrade):
 
 
 def test_before_the_fix_the_progress_database_is_older(upgrade: Upgrade):
-    assert "WARN  progress database schema 4, this cstudy uses 5" in upgrade.before.output
+    assert (
+        f"WARN  progress database schema {OLD_SCHEMA}, this cstudy uses {LATEST_SCHEMA}"
+        in upgrade.before.output
+    )
 
 
 def test_the_fix_adds_pytest_without_the_network(upgrade: Upgrade):
     assert "ok    uv add --dev --offline pytest>=9.1 (in python)" in upgrade.fix.output
 
 
-def test_the_fix_migrates_the_progress_database(upgrade: Upgrade):
-    assert "migrated progress.db from schema 4 to 5" in upgrade.fix.output
+def test_the_fix_backs_up_and_migrates_the_progress_database(upgrade: Upgrade):
+    assert (
+        f"progress.db: backed up to .cs/backups/progress-schema-{OLD_SCHEMA}-" in upgrade.fix.output
+    )
+    assert f"; migrated from schema {OLD_SCHEMA} to {LATEST_SCHEMA}" in upgrade.fix.output
+
+
+def test_the_backup_holds_the_attempt_from_before_the_upgrade(upgrade: Upgrade):
+    (backup,) = (upgrade.workspace / ".cs" / "backups").glob("*.db")
+    with closing(sqlite3.connect(backup)) as connection:
+        assert connection.execute("SELECT id FROM attempts").fetchall() == [(OLD_ATTEMPT,)]
 
 
 def test_after_the_fix_pytest_is_installed(upgrade: Upgrade):
@@ -104,7 +120,7 @@ def test_after_the_fix_pytest_is_installed(upgrade: Upgrade):
 
 
 def test_after_the_fix_the_progress_database_is_current(upgrade: Upgrade):
-    assert "ok    progress database schema 5" in upgrade.after.output
+    assert f"ok    progress database schema {LATEST_SCHEMA}" in upgrade.after.output
 
 
 def test_after_the_fix_the_projects_folder_is_back(upgrade: Upgrade):

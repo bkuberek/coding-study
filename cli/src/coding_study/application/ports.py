@@ -33,6 +33,7 @@ from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemSummary
 from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.progress_export import ProgressSnapshot
+from coding_study.domain.progress_migration import ProgressMigration
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import CaseReport, RunReport, RunRequest
@@ -1101,9 +1102,10 @@ class ProgressDatabase(Protocol):
         file is not a progress database."""
         ...
 
-    def migrate(self) -> None:
-        """Brings the file to the latest schema, as the first command to open it would; raises
-        UsageError when it cannot."""
+    def migrate(self) -> ProgressMigration | None:
+        """Brings the file to the latest schema, as the first command to open it would, and
+        returns what it did; None when the file was at the latest already. Raises UsageError when
+        it cannot, and BackupError when the copy it makes first fails, with the file unchanged."""
         ...
 
 

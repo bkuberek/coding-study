@@ -123,7 +123,9 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         problems=OverlayProblemRepository(catalog, workspace),
         files=OverlayProblemFiles(FsProblemFiles(content.path), workspace),
         progress=SqliteProgressStore(
-            workspace / config.progress_db, config.schedule.mastered_interval_days
+            workspace / config.progress_db,
+            config.schedule.mastered_interval_days,
+            workspace=workspace,
         ),
         toolchains=workspace_toolchains(content.path, workspace, jdk),
         jdk=jdk,

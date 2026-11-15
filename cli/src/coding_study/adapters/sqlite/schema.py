@@ -2,34 +2,61 @@
 (docs/specs/progress-and-scheduling.md#schema).
 
 `migrations/0001_init.sql`, ... run in order; `meta.schema_version` records the last one applied.
+A database that has a schema is copied first, and one newer than the last migration is refused
+(docs/specs/compatibility.md#migrations).
 """
 
 import sqlite3
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
 
 from coding_study.adapters.sqlite.migration_lock import migration_lock
+from coding_study.domain.errors import BackupError, UsageError
+from coding_study.domain.layout import BACKUPS_DIRECTORY
+from coding_study.domain.progress_migration import ProgressMigration
 
 _DUPLICATE_COLUMN = "duplicate column name"
 SCHEMA_VERSION_KEY = "schema_version"
 MIGRATIONS_PACKAGE = "coding_study.adapters.sqlite"
 MIGRATIONS_DIRECTORY = "migrations"
 MIGRATION_SUFFIX = ".sql"
+BACKUP_STAMP = "%Y%m%dT%H%M%SZ"
 
 
-def migrate_locked(database: Path, connection: sqlite3.Connection) -> None:
+def migrate_locked(
+    database: Path, connection: sqlite3.Connection, workspace: Path
+) -> ProgressMigration | None:
     """Migrate under a lock that every process of this database takes: the scripts commit on
-    their own, so a transaction cannot make the check and the change one step."""
+    their own, so a transaction cannot make the check and the change one step. The copy of an
+    older database is made under it too, so of processes that open one together, one copies and
+    migrates, and the others find it migrated."""
     with migration_lock(database):
-        migrate(connection)
+        return migrate(connection, database, workspace)
 
 
-def migrate(connection: sqlite3.Connection) -> None:
+def migrate(
+    connection: sqlite3.Connection, database: Path, workspace: Path
+) -> ProgressMigration | None:
+    """Brings the database to the latest schema; None when it was there already.
+
+    A database that has a schema is copied into the workspace's `.cs/backups` before the first
+    script runs. Raises UsageError for a newer database and BackupError when the copy fails; both
+    leave it unchanged.
+    """
+    migrations = _migrations()
+    latest = migrations[-1][0]
+    found = schema_version(connection)
+    if found > latest:
+        raise UsageError(
+            f"progress.db uses schema {found}, newer than the {latest} this cstudy reads: "
+            "upgrade cstudy"
+        )
+    copy = _back_up(connection, workspace, database.stem, found) if 0 < found < latest else None
     connection.execute("PRAGMA journal_mode = WAL")
-    applied = schema_version(connection)
-    for number, script in _migrations():
-        if number <= applied:
+    for number, script in migrations:
+        if number <= found:
             continue
         _apply(connection, script)
         with connection:
@@ -37,6 +64,74 @@ def migrate(connection: sqlite3.Connection) -> None:
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
                 (SCHEMA_VERSION_KEY, str(number)),
             )
+    if found == latest:
+        return None
+    return ProgressMigration(
+        found, latest, None if copy is None else copy.relative_to(workspace).as_posix()
+    )
+
+
+def _back_up(connection: sqlite3.Connection, workspace: Path, stem: str, found: int) -> Path:
+    """Copies the database into the workspace's `.cs/backups` with SQLite's online backup, as a
+    file of its own, and checks that the copy reads schema `found`; a copy that fails either step
+    is removed."""
+    copy: Path | None = None
+    try:
+        backups = workspace / BACKUPS_DIRECTORY
+        backups.mkdir(parents=True, exist_ok=True)
+        copy = _unused_file(backups, f"{stem}-schema-{found}-{_utc_stamp()}")
+        _copy_to(connection, copy)
+        copied = _copy_schema(copy)
+        if copied != found:
+            raise BackupError(f"the copy reads schema {copied}, not {found}")
+    except (OSError, sqlite3.Error) as error:
+        _remove(copy)
+        raise BackupError(str(error)) from None
+    except BaseException:
+        _remove(copy)
+        raise
+    return copy
+
+
+def _utc_stamp() -> str:
+    return datetime.now(UTC).strftime(BACKUP_STAMP)
+
+
+def _unused_file(directory: Path, name: str) -> Path:
+    """Creates an empty `<name>.db`, or `<name>-2.db`, `<name>-3.db`, ... for the first that no
+    file has."""
+    number = 1
+    while True:
+        file = directory / (f"{name}.db" if number == 1 else f"{name}-{number}.db")
+        try:
+            file.touch(exist_ok=False)
+        except FileExistsError:
+            number += 1
+        else:
+            return file
+
+
+def _copy_to(connection: sqlite3.Connection, file: Path) -> None:
+    """The copy leaves write-ahead logging, so it is one file that opens read-only."""
+    destination = sqlite3.connect(file)
+    try:
+        connection.backup(destination)
+        destination.execute("PRAGMA journal_mode = DELETE")
+    finally:
+        destination.close()
+
+
+def _copy_schema(file: Path) -> int:
+    copy = sqlite3.connect(f"{file.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        return schema_version(copy)
+    finally:
+        copy.close()
+
+
+def _remove(file: Path | None) -> None:
+    if file is not None:
+        file.unlink(missing_ok=True)
 
 
 def _apply(connection: sqlite3.Connection, script: str) -> None:

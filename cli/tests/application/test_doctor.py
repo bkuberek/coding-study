@@ -46,6 +46,7 @@ from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.config import Config
 from coding_study.domain.docker_engine import DockerGroup, EngineState, EngineStatus
 from coding_study.domain.errors import (
+    BackupError,
     ConfigError,
     RunnerProtocolError,
     RunnerStartError,
@@ -53,6 +54,7 @@ from coding_study.domain.errors import (
 )
 from coding_study.domain.jdk import JDK_FIX, JdkSource, SelectedJdk
 from coding_study.domain.problem import Language
+from coding_study.domain.progress_migration import ProgressMigration
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
 from coding_study.domain.sandbox import SandboxInventory, StackContainer, StackResource
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
@@ -262,6 +264,8 @@ class FakeProgress:
     latest: int = LATEST_SCHEMA
     unreadable: str | None = None
     migration_error: str | None = None
+    backup_error: str | None = None
+    backup: str | None = ".cs/backups/progress-schema-4-20261114T101500Z.db"
     migrations: int = 0
 
     def schema(self) -> ProgressSchema:
@@ -269,11 +273,15 @@ class FakeProgress:
             raise UsageError(self.unreadable)
         return ProgressSchema(self.found, self.latest)
 
-    def migrate(self) -> None:
+    def migrate(self) -> ProgressMigration | None:
+        if self.backup_error:
+            raise BackupError(self.backup_error)
         if self.migration_error:
             raise UsageError(self.migration_error)
         self.migrations += 1
+        migration = ProgressMigration(self.found or 0, self.latest, self.backup)
         self.found = self.latest
+        return migration
 
 
 def healthy_runners() -> dict[Language, LanguageRunner]:
@@ -996,10 +1004,26 @@ def test_repair_migrates_an_older_progress_database():
     assert progress.migrations == 1
 
 
-def test_repair_names_the_migration():
+def test_repair_names_the_backup_and_the_migration():
     lines: list[str] = []
     repair_workspace(workspace_with(progress=FakeProgress(found=4)), lines.append)
-    assert lines == ["migrated progress.db from schema 4 to 5"]
+    assert lines == [
+        "progress.db: backed up to .cs/backups/progress-schema-4-20261114T101500Z.db; "
+        "migrated from schema 4 to 5"
+    ]
+
+
+def test_repair_names_the_migration_of_a_database_that_had_no_schema():
+    lines: list[str] = []
+    repair_workspace(workspace_with(progress=FakeProgress(found=0, backup=None)), lines.append)
+    assert lines == ["progress.db: migrated from schema 0 to 5"]
+
+
+def test_repair_stops_when_the_backup_fails():
+    progress = FakeProgress(found=4, backup_error="database or disk is full")
+    with pytest.raises(BackupError, match="database or disk is full; nothing changed"):
+        repair_workspace(workspace_with(progress=progress), lambda _line: None)
+    assert progress.migrations == 0
 
 
 @pytest.mark.parametrize("found", [LATEST_SCHEMA, None, 6])

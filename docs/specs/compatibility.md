@@ -221,7 +221,7 @@ The ID column is gone from the `cstudy list` table and from the Problems view. T
 |------|------|
 | Fixtures | `cli/tests/fixtures/progress/schema-<N>.sql`, plain SQL, for each schema N from 1 to the latest, today 7. Each applies migrations 1 to N and inserts at least one row into every table that exists at N, covering every `mode` and `status` value, and the JSON of `schedule.levels` from N = 6 |
 | Coverage | A test fails when the latest migration has no fixture |
-| Upgrades | For each N, through the store's first use and through `cstudy doctor --fix`: the schema is the latest; one backup exists, reads schema N and holds the fixture's rows; every fixture row survives with its values, and new columns are NULL |
+| Upgrades | For each N below the latest, through the store's first use and through `cstudy doctor --fix`: the schema is the latest; one backup exists, reads schema N and holds the fixture's rows; every fixture row survives with its values, and new columns are NULL. The latest fixture opens as it is, with no backup |
 | Round trips | For each N, an export of the migrated database imports into an empty database, and exporting that gives the same document except `exported_at`. An export built at schema N imports into the latest schema with every row |
 
 ## Deprecation

@@ -11,13 +11,18 @@ from coding_study.adapters.sqlite.schema import (
 )
 from coding_study.application.ports import ProgressSchema
 from coding_study.domain.errors import UsageError
+from coding_study.domain.progress_migration import ProgressMigration
 
 UNREADABLE = "the progress database cannot be read"
 
 
 class SqliteProgressDatabase:
-    def __init__(self, path: Path) -> None:
+    """`ProgressDatabase`; `migrate` copies an older database into `.cs/backups` of `workspace`
+    first (default: the folder of the database)."""
+
+    def __init__(self, path: Path, workspace: Path | None = None) -> None:
         self._path = path
+        self._workspace = workspace if workspace is not None else path.parent
 
     def schema(self) -> ProgressSchema:
         """Opens the file for writing without creating it, since a write-ahead log database
@@ -34,12 +39,12 @@ class SqliteProgressDatabase:
         except sqlite3.Error as error:
             raise UsageError(f"{UNREADABLE}: {error}") from None
 
-    def migrate(self) -> None:
+    def migrate(self) -> ProgressMigration | None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         try:
             connection = sqlite3.connect(self._path)
             try:
-                migrate_locked(self._path, connection)
+                return migrate_locked(self._path, connection, self._workspace)
             finally:
                 connection.close()
         except sqlite3.Error as error:

@@ -12,7 +12,7 @@ KEPT = (
     "the marker .cs/workspace.toml and your IDE files",
     "your own problems in problems/",
     "your problem sets: sets.yaml",
-    "backups: progress-export.json",
+    "backups: progress-export.json and .cs/backups",
     "caches that hold no progress: .cs/build, .cs/cases, .cs/calibration, the index",
 )
 

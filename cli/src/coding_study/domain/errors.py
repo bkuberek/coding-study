@@ -73,6 +73,16 @@ class SandboxError(Exception):
     docs/specs/service-projects.md#failure-reporting."""
 
 
+class BackupError(Exception):
+    """progress.db could not be copied before a migration, so the migration did not start
+    (exit code 4)."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(
+            f"cannot back up progress.db before migrating it: {reason}; nothing changed"
+        )
+
+
 class RunnerProtocolError(Exception):
     """A runner that broke the protocol in docs/specs/runners.md (exit code 70)."""
 

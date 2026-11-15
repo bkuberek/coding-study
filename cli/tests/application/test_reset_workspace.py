@@ -40,6 +40,7 @@ KEPT_FILES = (
     "problems/.gitkeep",
     "problems/0900-mine/meta.yaml",
     "progress-export.json",
+    ".cs/backups/progress-schema-4-20261106T100000Z.db",
     "go.work",
 )
 RUN_FOLDERS = (".cs/runs/20261106-1/out.json", ".cs/runs/20261106-2/out.json")
@@ -310,6 +311,11 @@ def test_a_link_that_stays_in_the_workspace_is_removed_and_its_target_kept(envir
 
 
 SETS_FILE = "sets:\n  backend-loop:  # mine\n    problems:\n      - two-sum\n"
+
+
+def test_the_preview_says_the_backups_are_kept(environment):
+    kept = " ".join(reset_preview(environment, Quiet()).kept)
+    assert ".cs/backups" in kept
 
 
 def test_the_preview_says_sets_are_kept(environment):

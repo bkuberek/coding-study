@@ -22,6 +22,7 @@ from coding_study.adapters.locations import (
     WorkspaceError,
 )
 from coding_study.domain.errors import (
+    BackupError,
     ConfigError,
     ContentError,
     LanguageNotSetUpError,
@@ -61,6 +62,7 @@ ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {
     UnknownTopicError: ExitCode.USAGE_ERROR,
     ContentError: ExitCode.CONTENT_ERROR,
     ConfigError: ExitCode.ENVIRONMENT_ERROR,
+    BackupError: ExitCode.ENVIRONMENT_ERROR,
     LanguageNotSetUpError: ExitCode.ENVIRONMENT_ERROR,
     LanguageServerNotInstalledError: ExitCode.ENVIRONMENT_ERROR,
     RunnerStartError: ExitCode.ENVIRONMENT_ERROR,

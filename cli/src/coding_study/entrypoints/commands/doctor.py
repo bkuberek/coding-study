@@ -207,7 +207,7 @@ def _workspace(
         runner_process=SubprocessRunner(root / RUNS_DIRECTORY),
         commands=SubprocessCommandRunner(),
         project_links=FsProjectLinks(),
-        progress=SqliteProgressDatabase(root / _progress_db(config)),
+        progress=SqliteProgressDatabase(root / _progress_db(config), root),
         preferences=FsPreferencesStore(root),
         language_servers=language_servers,
         language_server_installer=language_servers,

@@ -483,17 +483,19 @@ def repair_workspace(workspace: PracticeWorkspace, notify: ProgressNotice) -> Sc
 
 
 def _migrate_progress(progress: ProgressDatabase, notify: ProgressNotice) -> None:
-    """Migrate an older progress.db now rather than on the next command that opens it; a newer
-    or unreadable one stays as it is, for the check to report."""
+    """Migrate an older progress.db now rather than on the next command that opens it, after the
+    copy that migration makes first; a newer or unreadable one stays as it is, for the check to
+    report. A copy that fails raises BackupError and stops the fix: the file is unchanged."""
     try:
         schema = progress.schema()
         if schema.found is None or schema.found >= schema.latest:
             return
-        progress.migrate()
+        migration = progress.migrate()
     except UsageError as error:
         notify(f"progress.db stays as it is: {error}")
         return
-    notify(f"migrated progress.db from schema {schema.found} to {schema.latest}")
+    if migration is not None:
+        notify(migration.notice)
 
 
 def fix_workspace(

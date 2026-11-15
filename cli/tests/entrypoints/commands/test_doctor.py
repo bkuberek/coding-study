@@ -342,10 +342,46 @@ def test_fix_migrates_an_older_progress_database(monkeypatch, tmp_path):
     stub_report(monkeypatch)
     monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
     lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
-    assert f"migrated progress.db from schema 4 to {latest_schema_version()}" in lines
+    (backup,) = (workspace / ".cs" / "backups").iterdir()
+    assert (
+        f"progress.db: backed up to .cs/backups/{backup.name}; "
+        f"migrated from schema 4 to {latest_schema_version()}"
+    ) in lines
     assert (
         SqliteProgressDatabase(workspace / "progress.db").schema().found == latest_schema_version()
     )
+
+
+def test_fix_stops_with_exit_4_when_the_backup_cannot_be_made(monkeypatch, tmp_path):
+    workspace = mark_workspace(tmp_path)
+    progress_database_at(workspace / "progress.db", 4)
+    (workspace / ".cs" / "backups").write_text("a file where the folder goes")
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    stub_report(monkeypatch)
+    result = runner.invoke(cli.app, ["doctor", "--fix"])
+    assert (result.exit_code, SqliteProgressDatabase(workspace / "progress.db").schema().found) == (
+        4,
+        4,
+    )
+    assert "error: cannot back up progress.db before migrating it: " in result.output
+    assert result.output.rstrip().endswith("; nothing changed")
+
+
+def test_fix_names_the_backups_folder_of_the_workspace_when_the_database_is_elsewhere(
+    monkeypatch, tmp_path
+):
+    workspace = mark_workspace(tmp_path)
+    (workspace / "data").mkdir()
+    progress_database_at(workspace / "data" / "progress.db", 4)
+    (workspace / "config.toml").write_text('progress_db = "data/progress.db"\n')
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    monkeypatch.setenv("CSTUDY_CONFIG", str(workspace / "config.toml"))
+    stub_report(monkeypatch)
+    monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
+    runner.invoke(cli.app, ["doctor", "--fix"])
+    assert [file.parent for file in workspace.rglob("progress-schema-4-*.db")] == [
+        workspace / ".cs" / "backups"
+    ]
 
 
 def test_doctor_environment_reads_the_progress_database_the_config_names(tmp_path):

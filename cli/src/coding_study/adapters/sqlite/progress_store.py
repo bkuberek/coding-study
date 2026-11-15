@@ -6,6 +6,7 @@ Numbered migrations in `migrations/` (`0001_init.sql`, ...) run in order on firs
 
 import json
 import sqlite3
+import sys
 from collections import defaultdict
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
@@ -95,11 +96,21 @@ WHERE status = 'passed' GROUP BY slug
 
 
 class SqliteProgressStore:
-    """`ProgressStore`; one short-lived connection per call."""
+    """`ProgressStore`; one short-lived connection per call.
 
-    def __init__(self, path: Path, mastered_interval_days: int = MASTERED_INTERVAL_DAYS) -> None:
+    The first call migrates the database. An older one is copied into `.cs/backups` of `workspace`
+    first (default: the folder of the database), and the copy is named on standard error; a newer
+    one is refused with UsageError."""
+
+    def __init__(
+        self,
+        path: Path,
+        mastered_interval_days: int = MASTERED_INTERVAL_DAYS,
+        workspace: Path | None = None,
+    ) -> None:
         self._path = path
         self._mastered_interval_days = mastered_interval_days
+        self._workspace = workspace if workspace is not None else path.parent
         self._migrated = False
 
     def add_attempt(self, attempt: NewAttempt) -> Attempt:
@@ -358,8 +369,10 @@ class SqliteProgressStore:
             connection.close()
 
     def _migrate_once(self, connection: sqlite3.Connection) -> None:
-        migrate_locked(self._path, connection)
+        migration = migrate_locked(self._path, connection, self._workspace)
         self._migrated = True
+        if migration is not None and migration.backup is not None:
+            print(migration.notice, file=sys.stderr)
 
 
 def _data_tables(connection: sqlite3.Connection) -> tuple[str, ...]:
