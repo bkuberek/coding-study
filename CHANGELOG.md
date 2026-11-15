@@ -2,6 +2,91 @@
 
 <!-- version list -->
 
+## v0.51.0 (2026-11-15)
+
+### Bug Fixes
+
+- Hold every exit code and environment variable in the contract snapshots
+  ([`0b4e8a0`](https://github.com/bkuberek/coding-study/commit/0b4e8a0c621b632bb5f505169b706be7239570a9))
+
+- Let your own problems shadow rubric problems and look up rubric kinds per folder
+  ([`e6d8b91`](https://github.com/bkuberek/coding-study/commit/e6d8b913a638da6055ea152bb3fa8b1d8b295138))
+
+- Make the rename advice for numbered problem folders complete and safe
+  ([`e0d2426`](https://github.com/bkuberek/coding-study/commit/e0d2426dd3846decf825a3898db25ba50c9ed639))
+
+- Refuse set entries that are not slugs and state where content IDs are not carried
+  ([`c0e73ba`](https://github.com/bkuberek/coding-study/commit/c0e73baf1c33ed51998e32ba23e87c7dd7ea9e81))
+
+- Restore progress.db from its backup when a migration script fails
+  ([`ad07f3b`](https://github.com/bkuberek/coding-study/commit/ad07f3b6d13bd4262516e01fa611f3cf2d2fc46b))
+
+### Documentation
+
+- Add the command reference, your own problems, IDE and debugging, and problem kinds pages
+  ([`baf7653`](https://github.com/bkuberek/coding-study/commit/baf765357797a06f55485bd42531df070a5e888e))
+
+- Add the upgrading page, the doctor row reference, errors by command and which Docker
+  ([`2835488`](https://github.com/bkuberek/coding-study/commit/283548883e8bc77b26b03d2e9b2902105c03489f))
+
+- Bring the normative docs in line with v0.51
+  ([`b0fa801`](https://github.com/bkuberek/coding-study/commit/b0fa801ca6f1dec8e7b744de5ca7abe8b92852bd))
+
+- Draft UPGRADING.md for 0.x to 1.0
+  ([`0f75c9a`](https://github.com/bkuberek/coding-study/commit/0f75c9a7eb06c2261bc76e3d11b83db38ef58112))
+
+- State the compatibility contract (ADR 0027)
+  ([`da82e74`](https://github.com/bkuberek/coding-study/commit/da82e74f0c6fa806dc10eb2c76122c74906728a7))
+
+### Features
+
+- Back up progress.db before migrating it and refuse a newer one
+  ([`8f3012c`](https://github.com/bkuberek/coding-study/commit/8f3012cd5bebe9a6bb791a1e0751c5131b602fd4))
+
+- Drop numeric problem ids
+  ([`df9971a`](https://github.com/bkuberek/coding-study/commit/df9971a96c09b2a47735fa35c7b4d76b36aa1560))
+
+- Give content canonical ids and show how each problem is checked
+  ([`2be3370`](https://github.com/bkuberek/coding-study/commit/2be337036f6698725295523920aa4cebfead241c))
+
+- Make system design and code review items rubric-checked problems
+  ([`4cf5a93`](https://github.com/bkuberek/coding-study/commit/4cf5a93fbf8767e8590a3a1a5bc2e8da0258d2b6))
+
+- Publish JSON Schemas for the content and progress documents
+  ([`cf54f91`](https://github.com/bkuberek/coding-study/commit/cf54f91c5f260ef84144dad33d6290a988766b7a))
+
+- Publish JSON Schemas for the stats, doctor and export documents
+  ([`332e12b`](https://github.com/bkuberek/coding-study/commit/332e12b6b04b992118940c3c56d3235dbb04de82))
+
+- Publish JSON Schemas for the test and submit documents
+  ([`a748bdc`](https://github.com/bkuberek/coding-study/commit/a748bdc2029888fc12c1ec8d48e981fa126ad7cf))
+
+- Warn on stderr when a deprecated flag, key or variable is used
+  ([`ed57f96`](https://github.com/bkuberek/coding-study/commit/ed57f967cff2ca3612df53214cdd2f17d3940c41))
+
+### Refactoring
+
+- Rename problem folders to their slugs
+  ([`fe17c2e`](https://github.com/bkuberek/coding-study/commit/fe17c2e98e23d51f3b2f1665b1415f81f82d0b83))
+
+### Testing
+
+- Find the problem row by its first column, and keep slugs to one line
+  ([`b893d88`](https://github.com/bkuberek/coding-study/commit/b893d885c73af1b98946d12bfcd4617c43e7491c))
+
+- Fix the slow and browser tests that assumed numbered folders or the old docs count
+  ([`d772527`](https://github.com/bkuberek/coding-study/commit/d772527b6b9f45a3fe4b1d45b16d80e510957b03))
+
+- Match Rust conformance and verify rows by slug
+  ([`8cf5802`](https://github.com/bkuberek/coding-study/commit/8cf58029a7a8087d95845a346c41f253feae5a52))
+
+- Read the deprecated flag's help without the styles a forced terminal adds
+  ([`c07eedf`](https://github.com/bkuberek/coding-study/commit/c07eedf03f04be5064c8f0d5ed13e4f6c3e767cc))
+
+- Snapshot the command line, exit codes, config keys, environment and marker
+  ([`ee53da7`](https://github.com/bkuberek/coding-study/commit/ee53da715140608363c3714f2fe7aa64b2ad98b2))
+
+
 ## v0.50.0 (2026-11-14)
 
 ### Bug Fixes
