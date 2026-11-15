@@ -16,7 +16,7 @@ To cover another document:
 
 import json
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import date, datetime, timedelta
@@ -33,6 +33,8 @@ from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.doctor import CheckResult, CheckStatus, DoctorReport
 from coding_study.application.environment import Environment
+from coding_study.application.http_grading_ports import StackClients, StackEndpoints
+from coding_study.application.ports import CaseListener, RunnerLaunch
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import (
@@ -45,13 +47,39 @@ from coding_study.domain.attempts import (
     RunRecord,
 )
 from coding_study.domain.bench_records import BenchRunRecord
+from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import Confidence, Verdict
 from coding_study.domain.content_ids import ContentType
+from coding_study.domain.docker_engine import EngineState, EngineStatus
+from coding_study.domain.http_grading import HttpResponse
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.progress_export import ProgressSnapshot, export_text
+from coding_study.domain.runs import (
+    CaseOutcome,
+    Crashed,
+    InvalidOutput,
+    NotRun,
+    Raised,
+    Returned,
+    RunCase,
+    RunJob,
+    RunReport,
+    RunRequest,
+    Stalled,
+    TimedOut,
+    UserError,
+)
+from coding_study.domain.sandbox import CommandOutcome, StackStartError, StartupFailure
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
+from coding_study.domain.suite_runs import (
+    AssertionFailed,
+    Comparison,
+    Passed,
+    Skipped,
+    SuiteTest,
+)
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import (
     docs,
@@ -66,18 +94,27 @@ from coding_study.entrypoints.commands import (
     stats,
     status,
 )
+from coding_study.entrypoints.commands import submit as submit_command
+from coding_study.entrypoints.commands import test as test_command
 from coding_study.entrypoints.shared import ExitCode
+from tests.application.http_grading_fakes import FakeApp, FakeMockControl
+from tests.bench_fakes import ScriptedBenchProcess, optimal_user
+from tests.concurrency_fakes import duplicating, queue, stalling
 from tests.content_id_checks import content_ids_in
 from tests.doc_builders import write_docs
+from tests.e2e import e2e_environment
 from tests.fakes import (
     NOW,
     FakeJdk,
+    FakeLanguageRunner,
     FakeStubGenerator,
     FakeToolchains,
+    ScriptedRunnerProcess,
     declare_jdk,
     jdk_of,
     make_environment,
     repository_root,
+    two_sum,
 )
 from tests.guide_builders import write_hashing, write_path
 from tests.helpers import (
@@ -90,11 +127,22 @@ from tests.helpers import (
     mark_workspace,
 )
 from tests.progress_fixtures import database_at_schema, read_rows
-from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.project_fakes import (
+    LEVEL_1_TEST,
+    PROJECT_SLUG,
+    TALLY_SLUG,
+    ScriptedProjectProcess,
+    project_environment,
+    stress_project_environment,
+    tally_answers,
+)
 from tests.sandbox_fakes import FakeSandbox
 from tests.service_problems import (
     CONFIG,
+    FOLDER,
+    make_content,
     meta_document,
+    write_cases,
     write_mock,
     write_problem,
 )
@@ -452,7 +500,18 @@ FIXTURES = REPOSITORY_ROOT / "cli" / "tests" / "fixtures"
 PRACTICE = FIXTURES / "practice" / "problems"
 PHASE4 = FIXTURES / "phase4" / "problems"
 TOOLCHAINS = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
-COMMANDS = (docs, history, learn, list_problems, next_problem, problem_sets, start, status)
+COMMANDS = (
+    docs,
+    history,
+    learn,
+    list_problems,
+    next_problem,
+    problem_sets,
+    start,
+    status,
+    submit_command,
+    test_command,
+)
 ENTRY_KINDS = {
     "function",
     "design",
@@ -1187,3 +1246,554 @@ def test_docs_reject_an_undocumented_field(user_docs):
     page = command_document("docs", "doctor")
     for path in ((), ("headings", 0)):
         assert_rejects_extra_field("docs-page", page, path)
+
+
+# cstudy test --json
+
+TWO_SUM = "two-sum"
+TWO_SUM_STUB = "python/practice/two_sum.py"
+STORE_STUB = "python/practice/level_store.py"
+HASH_MAP = PRACTICE / TWO_SUM / "solutions" / "hash-map.py"
+STORE_REFERENCE = PHASE4 / STORE / "solutions" / "hash-map.py"
+ERRORED = UserError("KeyError", "'ivy'", 'File "bank/bank.py", line 9')
+TEST_VARIANTS = ("single-file", "project", "service")
+
+
+def run_document(*arguments: str) -> Any:
+    """The document of `cstudy test --json` or `cstudy submit --json`, which ends with the exit
+    code it holds."""
+    result = runner.invoke(cli.app, [*arguments, "--json"])
+    document = json.loads(result.stdout)
+    assert result.exit_code == document["exit_code"], result.output
+    return document
+
+
+def variant_errors(variant: str, document: Any) -> list[str]:
+    """What is wrong with `document` as the `variant` of `test.schema.json`."""
+    defs = load_schema("test")["$defs"]
+    validator = Draft202012Validator({"$ref": f"#/$defs/{variant}", "$defs": defs})
+    return [
+        f"{'/'.join(str(step) for step in error.absolute_path) or '<document>'}: {error.message}"
+        for error in validator.iter_errors(document)
+    ]
+
+
+def assert_test_document(document: Any, variant: str) -> None:
+    """`document` is valid, and no variant but `variant` accepts it."""
+    assert variant_errors(variant, document) == []
+    assert_valid("test", document)
+    assert [other for other in TEST_VARIANTS if not variant_errors(other, document)] == [variant]
+    assert_ids(document, ContentType.PROBLEM)
+
+
+@pytest.fixture
+def solving(tmp_path, monkeypatch) -> Environment:
+    """Two Sum, with a time box, and the progressive Level Store, run by a real Python runner."""
+    root = repository_root(tmp_path, PRACTICE)
+    shutil.copytree(PHASE4, root / "problems", dirs_exist_ok=True)
+    environment = install(monkeypatch, e2e_environment(root))
+    start_attempt(environment, StartRequest(TWO_SUM, timer_s=1500))
+    start_attempt(environment, StartRequest(STORE))
+    return environment
+
+
+def test_a_passing_function_run(solving):
+    solving.workspace.write_text(TWO_SUM_STUB, HASH_MAP.read_text())
+    document = run_document("test", TWO_SUM)
+    assert_test_document(document, "single-file")
+    assert (document["outcome"], document["exit_code"]) == ("passed", 0)
+    assert document["timer"]["limit_s"] == 1500
+
+
+def test_a_failing_function_run(solving):
+    solving.workspace.write_text(TWO_SUM_STUB, "def two_sum(nums, target):\n    return [3, 3]\n")
+    document = run_document("test", TWO_SUM)
+    assert_test_document(document, "single-file")
+    failed = next(found for found in document["cases"] if found["status"] == "fail")
+    assert {"input", "expected", "actual"} <= set(failed)
+
+
+def test_a_function_run_with_an_exception(solving):
+    solving.workspace.write_text(
+        TWO_SUM_STUB, "def two_sum(nums, target):\n    raise KeyError(1)\n"
+    )
+    document = run_document("test", TWO_SUM)
+    assert_test_document(document, "single-file")
+    assert document["cases"][0]["error"]["type"] == "KeyError"
+
+
+def test_a_function_run_of_code_that_does_not_load(solving):
+    solving.workspace.write_text(TWO_SUM_STUB, "def two_sum(:\n")
+    document = run_document("test", TWO_SUM)
+    assert_test_document(document, "single-file")
+    assert (document["outcome"], document["cases"]) == ("load_failed", [])
+    assert document["load_error"]["type"]
+    assert document["diagnostics"]
+
+
+def test_a_function_run_with_oracle_inputs(solving):
+    solving.workspace.write_text(TWO_SUM_STUB, HASH_MAP.read_text())
+    document = run_document("test", TWO_SUM, "--stress", "3")
+    assert_test_document(document, "single-file")
+    assert [found["seed"] for found in document["oracle"]["inputs"]] == [1, 2, 3]
+
+
+def test_a_progressive_run_with_levels(solving):
+    solving.workspace.write_text(STORE_STUB, STORE_REFERENCE.read_text())
+    document = run_document("test", STORE)
+    assert_test_document(document, "single-file")
+    assert document["levels"]["ran_up_to"] == 1
+
+
+class CasesAndBench:
+    """Answers the cases with `cases` and benches with `optimal_user`."""
+
+    def __init__(self) -> None:
+        self.cases = ScriptedRunnerProcess(two_sum)
+        self.bench_process: ScriptedBenchProcess = optimal_user()
+
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
+        return self.cases.run(launch, request, listener)
+
+    def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport:
+        return self.bench_process.bench(launch, request)
+
+
+def scripted_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problems: Path, slug: str, process: Any
+) -> Environment:
+    """`slug` started in Python, its cases answered by `process`."""
+    toolchains = FakeToolchains(
+        {Language.PYTHON: FakeLanguageRunner()}, {Language.PYTHON: FakeStubGenerator()}
+    )
+    environment = make_environment(
+        repository_root(tmp_path, problems), toolchains=toolchains, runner_process=process
+    )
+    install(monkeypatch, environment)
+    start_attempt(environment, StartRequest(slug, Language.PYTHON))
+    return environment
+
+
+def yours_answers(outcome: CaseOutcome) -> Callable[[RunJob, RunCase], CaseOutcome]:
+    """`outcome` for every case of your code; a reference solution, whose job ID is the slug and
+    the approach, answers as ever."""
+
+    def answer(job: RunJob, case: RunCase) -> CaseOutcome:
+        return two_sum(job, case) if "/" in job.job_id else outcome
+
+    return answer
+
+
+def test_a_function_run_with_a_perf_check(tmp_path, monkeypatch):
+    scripted_environment(tmp_path, monkeypatch, PRACTICE, TWO_SUM, CasesAndBench())
+    document = run_document("test", TWO_SUM, "--perf")
+    assert_test_document(document, "single-file")
+    assert document["perf"]["verdict"] == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("outcome", "status"),
+    [
+        (Raised(ERRORED, 1000, stdout="printed\n"), "error"),
+        (InvalidOutput("not a list", 1000), "invalid"),
+        (TimedOut(500), "timeout"),
+        (Crashed(139, ("segfault",)), "error"),
+        (NotRun("the runner did not start"), "not_run"),
+    ],
+    ids=["raised", "invalid", "timed-out", "crashed", "not-run"],
+)
+def test_a_function_run_of_each_kind_of_outcome(tmp_path, monkeypatch, outcome, status):
+    scripted_environment(
+        tmp_path, monkeypatch, PRACTICE, TWO_SUM, ScriptedRunnerProcess(yours_answers(outcome))
+    )
+    document = run_document("test", TWO_SUM)
+    assert_test_document(document, "single-file")
+    assert document["cases"][0]["status"] == status
+
+
+def test_a_function_run_with_a_case_over_its_time_limit(tmp_path, monkeypatch):
+    def slow(job: RunJob, case: RunCase) -> CaseOutcome:
+        correct = two_sum(job, case)
+        return correct if "/" in job.job_id else Returned(correct.output, 400_000_000)
+
+    scripted_environment(tmp_path, monkeypatch, PRACTICE, TWO_SUM, ScriptedRunnerProcess(slow))
+    document = run_document("test", TWO_SUM, "--time-limit=10ms")
+    assert_test_document(document, "single-file")
+    assert document["cases"][0]["status"] == "tle"
+    assert document["cases"][0]["time_limit_basis"] is None
+
+
+def test_a_design_run_with_an_exception_in_an_operation(tmp_path, monkeypatch):
+    raising = Raised(ERRORED, 1000, op_index=1, partial_output=(None,))
+    scripted_environment(
+        tmp_path, monkeypatch, PRACTICE, "lru-cache", ScriptedRunnerProcess(yours_answers(raising))
+    )
+    document = run_document("test", "lru-cache")
+    assert_test_document(document, "single-file")
+    assert document["cases"][0]["op_index"] == 1
+    assert "ops" in document["cases"][0]["input"]
+
+
+@pytest.mark.parametrize(
+    ("answer", "status", "failures"),
+    [(queue, "pass", 0), (duplicating, "fail", 3), (stalling, "stalled", 3)],
+    ids=["passing", "failing", "stalling"],
+)
+def test_a_concurrent_run_with_stress(tmp_path, monkeypatch, answer, status, failures):
+    scripted_environment(
+        tmp_path,
+        monkeypatch,
+        CONCURRENCY_PROBLEMS,
+        "bounded-blocking-queue",
+        ScriptedRunnerProcess(answer),
+    )
+    document = run_document("test", "bounded-blocking-queue")
+    assert_test_document(document, "single-file")
+    assert {found["status"] for found in document["stress"]} == {status}
+    assert [len(found["failures"]) for found in document["stress"]] == [failures] * 2
+
+
+@pytest.fixture
+def project_process() -> ScriptedProjectProcess:
+    return ScriptedProjectProcess()
+
+
+@pytest.fixture
+def running_project(tmp_path, monkeypatch, project_process) -> Environment:
+    environment = project_environment(tmp_path, project_process)
+    install(monkeypatch, environment)
+    start_attempt(environment, StartRequest(PROJECT_SLUG))
+    return environment
+
+
+def test_a_passing_project_run(running_project):
+    document = run_document("test")
+    assert_test_document(document, "project")
+    assert document["outcome"] == "passed"
+
+
+def test_a_project_run_with_every_kind_of_test(running_project, project_process):
+    failed = AssertionFailed("assert -1 == 5", 1000, comparison=Comparison(5, -1), stdout="x\n")
+    project_process.tests = (
+        LEVEL_1_TEST,
+        SuiteTest("tests/test_level_1.py::test_ex2", failed),
+        SuiteTest("tests/test_overdraft.py::test_refuses", Passed(1000)),
+        SuiteTest("README.md::test_readme", Passed(1000)),
+        SuiteTest("tests/test_overdraft.py::test_later", Skipped("not yet", 0)),
+        SuiteTest("tests/test_level_1.py::test_ex3", Raised(ERRORED, 1000)),
+        SuiteTest("tests/test_level_1.py::test_ex4", Crashed(139, ("segfault",))),
+        SuiteTest("tests/test_level_1.py::test_ex5", TimedOut(5000)),
+    )
+    project_process.stopped_early = "the runner crashed"
+    document = run_document("test")
+    assert_test_document(document, "project")
+    assert document["outcome"] == "failed"
+    assert {found["origin"] for found in document["cases"]} == {"level", "yours", "starter"}
+    assert document["stopped_early"] == "the runner crashed"
+
+
+def test_a_project_run_of_a_suite_that_does_not_load(running_project, project_process):
+    project_process.tests = ()
+    project_process.suite_load_error = ERRORED
+    document = run_document("test")
+    assert_test_document(document, "project")
+    assert document["outcome"] == "load_failed"
+
+
+@pytest.fixture
+def engine() -> FakeSandbox:
+    return FakeSandbox(exec_outcome=CommandOutcome(0, "ok 1 - rooms\n"))
+
+
+@pytest.fixture
+def served(engine) -> FakeApp:
+    right = HttpResponse(200, {}, b'{"ok": true}', 5_000_000)
+    return FakeApp([], answers={"/a": right, "/b": right})
+
+
+@pytest.fixture
+def service(tmp_path, monkeypatch, engine, served) -> Environment:
+    """A service project with two levels and a visible and a hidden case on the first, through
+    a fake engine and fake HTTP clients."""
+    ok = {"status": 200, "body": {"ok": True}}
+
+    def case(case_id: str, level: int, path: str, **fields: object) -> dict[str, object]:
+        request = {"method": "GET", "path": path}
+        return {"id": case_id, "level": level, "request": request, "expected": ok, **fields}
+
+    root = make_content(tmp_path)
+    document = meta_document()
+    document["levels"] = [{"level": 1, "title": "One"}, {"level": 2, "title": "Two"}]
+    write_problem(root, document)
+    write_cases(
+        root,
+        [case("v1", 1, "/a", visible=True), case("h1", 1, "/a"), case("v2", 2, "/b", visible=True)],
+    )
+
+    def clients(_endpoints: StackEndpoints) -> StackClients:
+        return StackClients(served, FakeMockControl([]))
+
+    environment = install(
+        monkeypatch, make_environment(root, sandbox=engine, stack_clients=clients)
+    )
+    (root / FOLDER / "node_modules").mkdir(parents=True)
+    assert runner.invoke(cli.app, ["start", SERVICE_SLUG, "--no-open", "--yes"]).exit_code == 0
+    return environment
+
+
+def test_a_passing_service_run(service):
+    document = run_document("test", SERVICE_SLUG)
+    assert_test_document(document, "service")
+    assert document["outcome"] == "passed"
+    assert [found["id"] for found in document["tests"]] == ["commands.test"]
+
+
+def test_a_service_run_with_a_failing_case(service, served):
+    served.answers["/a"] = HttpResponse(500, {}, b"{}", 5_000_000)
+    document = run_document("test", SERVICE_SLUG)
+    assert_test_document(document, "service")
+    assert document["outcome"] == "failed"
+    assert document["cases"][0]["status"] == "fail"
+
+
+def test_a_service_run_with_a_failing_command(service, engine):
+    engine.exec_outcome = CommandOutcome(1, "not ok\n")
+    document = run_document("test", SERVICE_SLUG)
+    assert_test_document(document, "service")
+    assert document["tests"][0]["message"] == "exited with 1"
+
+
+def test_a_service_run_with_a_command_that_timed_out(service, engine):
+    engine.exec_outcome = CommandOutcome(1, "", timed_out=True)
+    document = run_document("test", SERVICE_SLUG)
+    assert_test_document(document, "service")
+    assert document["tests"][0]["status"] == "timeout"
+
+
+def test_a_service_run_whose_stack_does_not_start(service, engine):
+    engine.start_error = StackStartError(StartupFailure.APP_EXITED, "your app exited", "tail\n")
+    document = run_document("test", SERVICE_SLUG)
+    assert_test_document(document, "service")
+    assert (document["outcome"], document["tests"]) == ("load_failed", [])
+
+
+def test_a_service_run_without_docker(service, engine):
+    engine.engine = EngineState(EngineStatus.NOT_INSTALLED)
+    assert runner.invoke(cli.app, ["test", SERVICE_SLUG, "--json"]).exit_code == (
+        ExitCode.ENVIRONMENT_ERROR
+    )
+
+
+def test_a_function_run_rejects_an_undocumented_field(solving):
+    solving.workspace.write_text(TWO_SUM_STUB, "def two_sum(nums, target):\n    return [3, 3]\n")
+    document = run_document("test", TWO_SUM, "--stress", "2")
+    paths: tuple[tuple[str | int, ...], ...] = (
+        (),
+        ("timer",),
+        ("build",),
+        ("tally",),
+        ("cases", 0),
+        ("oracle",),
+        ("oracle", "inputs", 0),
+    )
+    for path in paths:
+        assert_rejects_extra_field("test", document, path)
+
+
+def test_a_progressive_run_rejects_an_undocumented_field(solving):
+    document = run_document("test", STORE)
+    assert_rejects_extra_field("test", document, ("levels",))
+
+
+def test_a_run_with_an_exception_rejects_an_undocumented_field(tmp_path, monkeypatch):
+    raised = Raised(ERRORED, 1000, op_index=1, partial_output=(None,))
+    scripted_environment(
+        tmp_path, monkeypatch, PRACTICE, "lru-cache", ScriptedRunnerProcess(yours_answers(raised))
+    )
+    document = run_document("test", "lru-cache")
+    assert_rejects_extra_field("test", document, ("cases", 0, "error"))
+
+
+def test_a_function_run_of_code_that_does_not_load_rejects_an_undocumented_field(solving):
+    solving.workspace.write_text(TWO_SUM_STUB, "def two_sum(:\n")
+    document = run_document("test", TWO_SUM)
+    for path in (("load_error",), ("diagnostics", 0)):
+        assert_rejects_extra_field("test", document, path)
+
+
+@pytest.mark.parametrize("answer", [duplicating, stalling], ids=["failing", "stalling"])
+def test_a_concurrent_run_rejects_an_undocumented_field(tmp_path, monkeypatch, answer):
+    scripted_environment(
+        tmp_path,
+        monkeypatch,
+        CONCURRENCY_PROBLEMS,
+        "bounded-blocking-queue",
+        ScriptedRunnerProcess(answer),
+    )
+    document = run_document("test", "bounded-blocking-queue")
+    for path in (("stress", 0), ("stress", 0, "failures", 0)):
+        assert_rejects_extra_field("test", document, path)
+
+
+def test_a_function_run_with_a_perf_check_rejects_an_undocumented_field(tmp_path, monkeypatch):
+    scripted_environment(tmp_path, monkeypatch, PRACTICE, TWO_SUM, CasesAndBench())
+    document = run_document("test", TWO_SUM, "--perf")
+    assert_rejects_extra_field("test", document, ("perf",))
+
+
+def test_a_project_run_rejects_an_undocumented_field(running_project, project_process):
+    project_process.tests = (
+        LEVEL_1_TEST,
+        SuiteTest("t::fail", AssertionFailed("assert", 1, comparison=Comparison(1, 2))),
+        SuiteTest("t::raise", Raised(ERRORED, 1)),
+    )
+    document = run_document("test")
+    for path in ((), ("levels",), ("build",), ("cases", 0), ("cases", 2, "error")):
+        assert_rejects_extra_field("test", document, path)
+
+
+def test_a_service_run_rejects_an_undocumented_field(service):
+    document = run_document("test", SERVICE_SLUG)
+    for path in ((), ("tests", 0), ("cases", 0), ("tally",)):
+        assert_rejects_extra_field("test", document, path)
+
+
+def test_a_run_of_no_variant_is_rejected(solving):
+    document = run_document("test", STORE)
+    document["stopped_early"] = None
+    assert schema_errors("test", document)
+    assert [variant for variant in TEST_VARIANTS if not variant_errors(variant, document)] == []
+
+
+# cstudy submit --json
+
+BANK_CASES = json.loads(
+    (PROJECT_PROBLEMS / PROJECT_SLUG / "tests.json").read_text(encoding="utf-8")
+)["cases"]
+BANK_EXPECTED = {case["id"]: case["expected"] for case in BANK_CASES}
+DEADLOCK = Stalled(
+    (), 7, op_index=2, reason="op 2 (deposit): deadlock at 0 ms", partial_output=(None, True)
+)
+
+
+def correct(job: RunJob, case: RunCase) -> CaseOutcome:
+    return Returned(BANK_EXPECTED[case.id], 1000)
+
+
+def wrong_on(*case_ids: str) -> Callable[[RunJob, RunCase], CaseOutcome]:
+    def answer(job: RunJob, case: RunCase) -> CaseOutcome:
+        return Returned(["wrong"], 1000) if case.id in case_ids else correct(job, case)
+
+    return answer
+
+
+@pytest.fixture
+def submitting(tmp_path, monkeypatch, project_process) -> Environment:
+    """A project attempt, timed, whose cases `project_process` answers correctly."""
+    project_process.answer = correct
+    environment = project_environment(tmp_path, project_process)
+    install(monkeypatch, environment)
+    start_attempt(environment, StartRequest(PROJECT_SLUG, timer_s=5400))
+    return environment
+
+
+def assert_submit_document(document: Any) -> None:
+    assert_valid("submit", document)
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_a_passing_submit(submitting):
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert (document["outcome"], document["exit_code"], document["mode"]) == ("passed", 0, "new")
+    assert document["timer"]["limit_s"] == 5400
+
+
+def test_a_failing_submit(submitting, project_process):
+    project_process.answer = wrong_on("h1")
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert document["outcome"] == "failed"
+
+
+def test_a_submit_of_code_that_does_not_load(submitting, project_process):
+    project_process.load_error = ERRORED
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert (document["outcome"], document["load_error"]["type"]) == ("load_failed", "KeyError")
+
+
+def test_a_submit_with_a_deadlocked_case(submitting, project_process):
+    project_process.answer = lambda job, case: DEADLOCK if case.id == "h2" else correct(job, case)
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert "stalled" in {found["status"] for found in document["cases"]}
+
+
+def test_a_mock_submit(submitting):
+    start_attempt(submitting, StartRequest(PROJECT_SLUG, fresh=True, mock=True))
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert document["mode"] == "mock"
+    assert all(found["visible"] for found in document["cases"])
+
+
+@pytest.fixture
+def stressed(tmp_path, monkeypatch) -> tuple[Environment, ScriptedProjectProcess]:
+    """A project attempt with stress cases, at its second level."""
+    process = ScriptedProjectProcess()
+    environment = stress_project_environment(tmp_path, process)
+    process.answer = tally_answers(environment.problems.load(TALLY_SLUG))
+    install(monkeypatch, environment)
+    start_attempt(environment, StartRequest(TALLY_SLUG))
+    attempt = find_attempt(environment, TALLY_SLUG)
+    environment.progress.update_attempt(replace(attempt, level_unlocked=2))
+    return environment, process
+
+
+def test_a_submit_with_stress_cases(stressed):
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert document["stress"]
+    assert {found["level"] for found in document["stress"]} <= {1, 2}
+
+
+def test_a_submit_with_a_racy_stress_case(stressed):
+    environment, process = stressed
+    process.answer = tally_answers(environment.problems.load(TALLY_SLUG), racy=True)
+    document = run_document("submit")
+    assert_submit_document(document)
+    assert document["outcome"] == "failed"
+    assert any(found["failures"] for found in document["stress"])
+
+
+def test_a_submit_of_a_service_project(service):
+    document = run_document("submit", SERVICE_SLUG)
+    assert_submit_document(document)
+    assert document["startup_s"] == 2.5
+
+
+def test_a_submit_rejects_an_undocumented_field(stressed):
+    environment, process = stressed
+    process.answer = tally_answers(environment.problems.load(TALLY_SLUG), racy=True)
+    document = run_document("submit")
+    paths: tuple[tuple[str | int, ...], ...] = (
+        (),
+        ("levels",),
+        ("level_tallies", 0),
+        ("cases", 0),
+        ("stress", 0),
+        ("tally",),
+    )
+    for path in paths:
+        assert_rejects_extra_field("submit", document, path)
+    racy = next(index for index, found in enumerate(document["stress"]) if found["failures"])
+    assert_rejects_extra_field("submit", document, ("stress", racy, "failures", 0))
+
+
+def test_a_submit_that_did_not_load_rejects_an_undocumented_field(submitting, project_process):
+    project_process.load_error = ERRORED
+    document = run_document("submit")
+    assert_rejects_extra_field("submit", document, ("load_error",))

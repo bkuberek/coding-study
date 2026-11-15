@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study test document",
+  "description": "`cstudy test --json`: one document per run. The variants differ in their required fields: `single-file` has `build` and `perf`, `project` has `stopped_early`, and `service` has `tests` and `startup_s`. Spec: docs/specs/cli.md#json-output",
+  "oneOf": [{ "$ref": "#/$defs/single-file" }, { "$ref": "#/$defs/project" }, { "$ref": "#/$defs/service" }],
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "problem_id": { "description": "The canonical ID, `problem/<slug>`", "type": "string", "pattern": "^problem/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+    "seconds": { "type": "number", "minimum": 0 },
+    "json": { "description": "Any JSON value" },
+    "case_status": { "enum": ["pass", "fail", "error", "timeout", "tle", "invalid", "stalled", "not_run"] },
+    "single-file": {
+      "description": "A run of a function, design, progressive or concurrent problem",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "language",
+        "attempt_id",
+        "outcome",
+        "exit_code",
+        "every_case",
+        "comparator",
+        "time_limit",
+        "timer",
+        "levels",
+        "build",
+        "load_error",
+        "diagnostics",
+        "cases",
+        "oracle",
+        "stress",
+        "tally",
+        "duration_s",
+        "perf"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/problem_id" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "language": { "$ref": "#/$defs/language" },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "outcome": { "description": "`build_failed` comes with `build.diagnostics`, `load_failed` with `load_error`; `cases` and `stress` are empty then", "enum": ["passed", "failed", "build_failed", "load_failed"] },
+        "exit_code": { "description": "0 when every graded case passed, 1 when one did not, 2 when the code did not load or build", "type": "integer", "minimum": 0 },
+        "every_case": { "description": "Whether the run graded every case: false with `--case`", "type": "boolean" },
+        "comparator": { "description": "The problem's comparator, such as `unordered`; null for the exact one", "type": ["string", "null"], "minLength": 1 },
+        "time_limit": { "description": "The time limit of the run, such as `5x` or `1500ms`; null when limits were off", "type": ["string", "null"], "minLength": 1 },
+        "timer": { "description": "The `--timer` time box, or null without one", "anyOf": [{ "$ref": "#/$defs/timer" }, { "type": "null" }] },
+        "levels": { "description": "A progressive problem's levels, or null", "anyOf": [{ "$ref": "#/$defs/levels" }, { "type": "null" }] },
+        "build": { "$ref": "#/$defs/build" },
+        "load_error": { "description": "Why the code did not load, or null", "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] },
+        "diagnostics": { "description": "The diagnostics of code that did not load or build", "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+        "cases": { "description": "Every case in run order, passing hidden ones included; oracle inputs are in `oracle`", "type": "array", "items": { "$ref": "#/$defs/case" } },
+        "oracle": { "description": "`--stress N` on a problem that is not concurrent, else null", "anyOf": [{ "$ref": "#/$defs/oracle" }, { "type": "null" }] },
+        "stress": { "description": "A concurrent problem's stress cases", "type": "array", "items": { "$ref": "#/$defs/stress" } },
+        "tally": { "$ref": "#/$defs/tally" },
+        "duration_s": { "$ref": "#/$defs/seconds" },
+        "perf": { "description": "`--perf`, else null", "anyOf": [{ "$ref": "#/$defs/perf" }, { "type": "null" }] }
+      }
+    },
+    "project": {
+      "description": "A run of a project problem's suite",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "language",
+        "attempt_id",
+        "outcome",
+        "exit_code",
+        "every_case",
+        "comparator",
+        "time_limit",
+        "timer",
+        "levels",
+        "build",
+        "load_error",
+        "diagnostics",
+        "cases",
+        "stopped_early",
+        "oracle",
+        "stress",
+        "tally",
+        "duration_s"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/problem_id" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "language": { "$ref": "#/$defs/language" },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "outcome": { "description": "`build_failed` comes with `build.diagnostics`, `load_failed` with `load_error`", "enum": ["passed", "failed", "build_failed", "load_failed"] },
+        "exit_code": { "description": "0 when every graded case passed, 1 when one did not, 2 when the code did not load or build", "type": "integer", "minimum": 0 },
+        "every_case": { "description": "Whether the run ran every test", "type": "boolean" },
+        "comparator": { "description": "Always null: a suite is the framework's verdict", "const": null },
+        "time_limit": { "description": "Always null", "const": null },
+        "timer": { "description": "The `--timer` time box, or null without one", "anyOf": [{ "$ref": "#/$defs/timer" }, { "type": "null" }] },
+        "levels": { "description": "The levels the run covered, or null", "anyOf": [{ "$ref": "#/$defs/levels" }, { "type": "null" }] },
+        "build": { "$ref": "#/$defs/build" },
+        "load_error": { "description": "Why the suite did not load, or null", "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] },
+        "diagnostics": { "description": "The diagnostics of code that did not load or type check", "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+        "cases": { "description": "Every test of the suite, in run order", "type": "array", "items": { "$ref": "#/$defs/suite_test" } },
+        "stopped_early": { "description": "Why the suite stopped before its last test; null when it ran through", "type": ["string", "null"] },
+        "oracle": { "description": "Always null", "const": null },
+        "stress": { "description": "Always empty", "type": "array", "maxItems": 0 },
+        "tally": { "$ref": "#/$defs/tally" },
+        "duration_s": { "$ref": "#/$defs/seconds" }
+      }
+    },
+    "service": {
+      "description": "A run of a service project's `commands.test` and visible cases",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "language",
+        "attempt_id",
+        "outcome",
+        "exit_code",
+        "levels",
+        "load_error",
+        "tests",
+        "cases",
+        "tally",
+        "startup_s",
+        "duration_s"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/problem_id" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "language": { "$ref": "#/$defs/language" },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "outcome": { "description": "`load_failed` when the stack did not become ready", "enum": ["passed", "failed", "load_failed"] },
+        "exit_code": { "description": "0 when every graded case passed, 1 when one did not, 2 when the code did not load or build", "type": "integer", "minimum": 0 },
+        "levels": { "description": "The levels of the attempt, or null", "anyOf": [{ "$ref": "#/$defs/levels" }, { "type": "null" }] },
+        "load_error": { "description": "Why the stack did not become ready, or null", "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] },
+        "tests": { "description": "`commands.test`; empty when the stack did not become ready", "type": "array", "items": { "$ref": "#/$defs/suite_test" } },
+        "cases": { "description": "The visible cases", "type": "array", "items": { "$ref": "#/$defs/leveled_case" } },
+        "tally": { "$ref": "#/$defs/tally" },
+        "startup_s": { "description": "The first clock: the stack's startup, which nothing counts", "$ref": "#/$defs/seconds" },
+        "duration_s": { "description": "The second clock: `commands.test` and the cases", "$ref": "#/$defs/seconds" }
+      }
+    },
+    "error": {
+      "description": "An exception of the code, or why it could not be loaded",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "message", "trace"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "message": { "type": "string" },
+        "trace": { "description": "Filtered to the frames of your code, at most 10 lines", "type": "string" }
+      }
+    },
+    "diagnostic": {
+      "description": "A problem a compiler, a type checker or the loader reported",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "severity",
+        "file",
+        "line",
+        "column",
+        "code",
+        "message"
+      ],
+      "properties": {
+        "source": { "enum": ["load", "typecheck", "build"] },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "file": { "description": "Relative to the project folder; null when the report names none", "type": ["string", "null"] },
+        "line": { "description": "From 1; null when the report names none", "type": ["integer", "null"], "minimum": 1 },
+        "column": { "description": "From 1; null when the report names none", "type": ["integer", "null"], "minimum": 1 },
+        "code": { "description": "The tool's name for the problem, such as `TS2322`", "type": ["string", "null"] },
+        "message": { "type": "string" }
+      }
+    },
+    "timer": {
+      "description": "The `--timer` time box",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elapsed_s", "limit_s"],
+      "properties": {
+        "elapsed_s": { "$ref": "#/$defs/count" },
+        "limit_s": { "$ref": "#/$defs/count" }
+      }
+    },
+    "levels": {
+      "description": "The levels of a progressive or project problem the run covered",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ran_up_to", "last", "unlocked", "newly_unlocked"],
+      "properties": {
+        "ran_up_to": { "description": "Levels 1 to this one ran", "type": "integer", "minimum": 1 },
+        "last": { "description": "The problem's levels", "type": "integer", "minimum": 1 },
+        "unlocked": { "description": "Levels 1 to this one are open", "type": "integer", "minimum": 1 },
+        "newly_unlocked": { "description": "Whether the run opened `unlocked`", "type": "boolean" }
+      }
+    },
+    "build": {
+      "description": "The build before the run; a project folder builds nothing",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seconds", "note", "diagnostics"],
+      "properties": {
+        "seconds": { "$ref": "#/$defs/seconds" },
+        "note": { "description": "Such as `gradle, warm`", "type": ["string", "null"] },
+        "diagnostics": { "description": "The compiler's or type checker's lines when the build failed", "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tally": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "passed", "failed", "errored", "timed_out", "tle"],
+      "properties": {
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "errored": { "$ref": "#/$defs/count" },
+        "timed_out": { "$ref": "#/$defs/count" },
+        "tle": { "$ref": "#/$defs/count" }
+      }
+    },
+    "case": {
+      "description": "A case the run judged; what did not pass adds what the report shows for it",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "visible", "generated", "status", "duration_ns"],
+      "properties": {
+        "id": { "description": "The case's ID in `tests.json`, or the ID of a generated case", "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "generated": { "type": "boolean" },
+        "status": { "$ref": "#/$defs/case_status" },
+        "duration_ns": { "description": "The runner's measurement of the call; null when the call did not finish", "type": ["integer", "null"], "minimum": 0 },
+        "input": { "description": "The `tests.json` encoding of the input: arguments by name, or `ops` and `args`, cut after the failing operation", "type": "object", "additionalProperties": false, "patternProperties": { "^": {} } },
+        "expected": { "description": "A wrong answer: the expected value", "$ref": "#/$defs/json" },
+        "actual": { "description": "A wrong answer: the value the code returned", "$ref": "#/$defs/json" },
+        "reason": { "description": "Why the output was rejected, why a case did not run or stalled; null for a wrong answer without a detail", "type": ["string", "null"] },
+        "error": { "description": "An exception of the code", "$ref": "#/$defs/error" },
+        "op_index": { "description": "The operation that raised or stalled", "type": ["integer", "null"], "minimum": 0 },
+        "partial_output": { "description": "What the operations before the exception returned", "type": "array", "items": { "$ref": "#/$defs/json" } },
+        "hang_guard_ms": { "description": "A case that timed out: the hang guard it exceeded", "type": "number", "minimum": 0 },
+        "exit_code": { "description": "A crash: the runner's exit code", "type": "integer" },
+        "stderr": { "description": "A crash: the tail of the runner's standard error", "type": "array", "items": { "type": "string" } },
+        "time_limit_ms": { "description": "A case that was too slow: the limit it exceeded", "type": "number", "minimum": 0 },
+        "time_limit_basis": { "description": "Why that limit; null for an absolute one", "type": ["string", "null"] },
+        "note": { "description": "The case's note", "type": "string" },
+        "stdout": { "description": "What the code printed", "type": "string" }
+      }
+    },
+    "leveled_case": {
+      "description": "A case with the level it belongs to",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "visible", "generated", "status", "duration_ns", "level"],
+      "properties": {
+        "id": { "description": "The case's ID in `tests.json`, or the ID of a generated case", "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "generated": { "type": "boolean" },
+        "status": { "$ref": "#/$defs/case_status" },
+        "duration_ns": { "description": "The runner's measurement of the call; null when the call did not finish", "type": ["integer", "null"], "minimum": 0 },
+        "input": { "description": "The `tests.json` encoding of the input: arguments by name, or `ops` and `args`, cut after the failing operation", "type": "object", "additionalProperties": false, "patternProperties": { "^": {} } },
+        "expected": { "description": "A wrong answer: the expected value", "$ref": "#/$defs/json" },
+        "actual": { "description": "A wrong answer: the value the code returned", "$ref": "#/$defs/json" },
+        "reason": { "description": "Why the output was rejected, why a case did not run or stalled; null for a wrong answer without a detail", "type": ["string", "null"] },
+        "error": { "description": "An exception of the code", "$ref": "#/$defs/error" },
+        "op_index": { "description": "The operation that raised or stalled", "type": ["integer", "null"], "minimum": 0 },
+        "partial_output": { "description": "What the operations before the exception returned", "type": "array", "items": { "$ref": "#/$defs/json" } },
+        "hang_guard_ms": { "description": "A case that timed out: the hang guard it exceeded", "type": "number", "minimum": 0 },
+        "exit_code": { "description": "A crash: the runner's exit code", "type": "integer" },
+        "stderr": { "description": "A crash: the tail of the runner's standard error", "type": "array", "items": { "type": "string" } },
+        "time_limit_ms": { "description": "A case that was too slow: the limit it exceeded", "type": "number", "minimum": 0 },
+        "time_limit_basis": { "description": "Why that limit; null for an absolute one", "type": ["string", "null"] },
+        "note": { "description": "The case's note", "type": "string" },
+        "stdout": { "description": "What the code printed", "type": "string" },
+        "level": { "description": "The level the case belongs to; null when it names none", "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "oracle_input": {
+      "description": "An input of the oracle: a case with the seed and size it was generated from",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "n",
+        "id",
+        "visible",
+        "generated",
+        "status",
+        "duration_ns"
+      ],
+      "properties": {
+        "seed": { "type": "integer" },
+        "n": { "description": "The input's size", "type": "integer", "minimum": 0 },
+        "id": { "description": "The case's ID in `tests.json`, or the ID of a generated case", "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "generated": { "type": "boolean" },
+        "status": { "$ref": "#/$defs/case_status" },
+        "duration_ns": { "description": "The runner's measurement of the call; null when the call did not finish", "type": ["integer", "null"], "minimum": 0 },
+        "input": { "description": "The `tests.json` encoding of the input: arguments by name, or `ops` and `args`, cut after the failing operation", "type": "object", "additionalProperties": false, "patternProperties": { "^": {} } },
+        "expected": { "description": "A wrong answer: the expected value", "$ref": "#/$defs/json" },
+        "actual": { "description": "A wrong answer: the value the code returned", "$ref": "#/$defs/json" },
+        "reason": { "description": "Why the output was rejected, why a case did not run or stalled; null for a wrong answer without a detail", "type": ["string", "null"] },
+        "error": { "description": "An exception of the code", "$ref": "#/$defs/error" },
+        "op_index": { "description": "The operation that raised or stalled", "type": ["integer", "null"], "minimum": 0 },
+        "partial_output": { "description": "What the operations before the exception returned", "type": "array", "items": { "$ref": "#/$defs/json" } },
+        "hang_guard_ms": { "description": "A case that timed out: the hang guard it exceeded", "type": "number", "minimum": 0 },
+        "exit_code": { "description": "A crash: the runner's exit code", "type": "integer" },
+        "stderr": { "description": "A crash: the tail of the runner's standard error", "type": "array", "items": { "type": "string" } },
+        "time_limit_ms": { "description": "A case that was too slow: the limit it exceeded", "type": "number", "minimum": 0 },
+        "time_limit_basis": { "description": "Why that limit; null for an absolute one", "type": ["string", "null"] },
+        "note": { "description": "The case's note", "type": "string" },
+        "stdout": { "description": "What the code printed", "type": "string" }
+      }
+    },
+    "stress": {
+      "description": "A concurrent problem's stress case",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "variant",
+        "status",
+        "runs",
+        "runs_passed",
+        "median_ms",
+        "failures"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "variant": { "description": "The thread kind of a JVM run, else the language's only model", "enum": ["platform", "virtual", "thread", "async"] },
+        "status": { "$ref": "#/$defs/case_status" },
+        "runs": { "$ref": "#/$defs/count" },
+        "runs_passed": { "$ref": "#/$defs/count" },
+        "median_ms": { "description": "Null without a run that finished", "type": ["number", "null"], "minimum": 0 },
+        "failures": { "description": "Every run that did not pass", "type": "array", "items": { "$ref": "#/$defs/stress_failure" } }
+      }
+    },
+    "stress_failure": {
+      "description": "A run of a stress case that did not pass",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "seed", "status", "reasons"],
+      "properties": {
+        "run": { "description": "From 0", "type": "integer", "minimum": 0 },
+        "seed": { "type": "integer" },
+        "status": { "$ref": "#/$defs/case_status" },
+        "reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "suite_test": {
+      "description": "A test of a project's suite, or `commands.test` of a service project",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "duration_ns", "origin", "level"],
+      "properties": {
+        "id": { "description": "The framework's ID of the test", "type": "string", "minLength": 1 },
+        "status": { "enum": ["pass", "fail", "error", "skip", "timeout"] },
+        "duration_ns": { "description": "Null for a test that did not finish", "type": ["integer", "null"], "minimum": 0 },
+        "origin": { "description": "Whose tests the file holds: the generated file of a level, the starter's or yours", "enum": ["level", "starter", "yours"] },
+        "level": { "description": "The level of a generated test file; null for any other file", "type": ["integer", "null"], "minimum": 1 },
+        "message": { "description": "What the framework reported", "type": "string" },
+        "expected": { "description": "A failed assertion that reports both sides: the expected value", "$ref": "#/$defs/json" },
+        "actual": { "description": "A failed assertion that reports both sides: the actual value", "$ref": "#/$defs/json" },
+        "error": { "description": "An exception of the code, or the crash of the runner", "$ref": "#/$defs/error" },
+        "stdout": { "description": "What the test printed", "type": "string" }
+      }
+    },
+    "oracle": {
+      "description": "`--stress N` on a problem that is not concurrent: the approach and every judged input",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approach", "inputs"],
+      "properties": {
+        "approach": { "description": "The approach that gives the expected values", "type": "string", "minLength": 1 },
+        "inputs": { "description": "In seed order", "type": "array", "items": { "$ref": "#/$defs/oracle_input" } }
+      }
+    },
+    "perf": {
+      "description": "`--perf`: the time verdict of a short bench after a full pass",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "confidence", "text", "warnings", "wrong_answer"],
+      "properties": {
+        "verdict": { "description": "Null after a wrong answer", "enum": ["optimal", "near-optimal", "suboptimal", "unknown", null] },
+        "confidence": { "description": "Null after a wrong answer", "enum": ["high", "medium", "low", null] },
+        "text": { "description": "The verdict line the report prints, or why there is none", "type": "string" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "wrong_answer": { "description": "The line that says which size answered wrongly; null otherwise", "type": ["string", "null"] }
+      }
+    }
+  }
+}

@@ -101,6 +101,8 @@ This section lists every published schema:
 | Learn path | [`cstudy learn --path <path> --json`](#cstudy-learn) | [`learn-path.schema.json`](../../schemas/cli/learn-path.schema.json) |
 | Docs list | [`cstudy docs --json`](#cstudy-docs) | [`docs-list.schema.json`](../../schemas/cli/docs-list.schema.json) |
 | Docs page | [`cstudy docs <topic> --json`](#cstudy-docs) | [`docs-page.schema.json`](../../schemas/cli/docs-page.schema.json) |
+| Test | [`cstudy test --json`](#json-output) | [`test.schema.json`](../../schemas/cli/test.schema.json), with the variants `single-file`, `project` and `service` |
+| Submit | [`cstudy submit --json`](#cstudy-submit) | [`submit.schema.json`](../../schemas/cli/submit.schema.json) |
 | Stats | [`cstudy stats --json`](#cstudy-stats) | [`stats.schema.json`](../../schemas/cli/stats.schema.json) |
 | Doctor | [`cstudy doctor --json`](#cstudy-doctor) | [`doctor.schema.json`](../../schemas/cli/doctor.schema.json) |
 | Progress export | [`cstudy export`](#cstudy-export) (the file) | [`export.schema.json`](../../schemas/cli/export.schema.json) |
@@ -625,7 +627,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 
 #### JSON output
 
-`cstudy test --json` prints one document per run and exits as the report would. Progress notices (`computing expected values ...`, `warming Gradle daemon ...`, `compiling the Go runner and standard library (first run)`, `compiling the Rust runner (first run)`) go to standard error; an error that stops the run before it starts (no attempt, unknown case) prints `error: ...` and no document.
+`cstudy test --json` prints one document per run and exits as the report would. Its schema, [`test.schema.json`](../../schemas/cli/test.schema.json), has three variants told apart by their required fields: `single-file` (function, design, progressive and concurrent problems; the document below) has `build` and `perf`, `project` ([project problems](#project-problems)) has `stopped_early`, and `service` ([service projects](service-projects.md#what-you-see)) has `tests` and `startup_s`. Progress notices (`computing expected values ...`, `warming Gradle daemon ...`, `compiling the Go runner and standard library (first run)`, `compiling the Rust runner (first run)`) go to standard error; an error that stops the run before it starts (no attempt, unknown case) prints `error: ...` and no document.
 
 ```json
 {
@@ -737,7 +739,7 @@ Once every stress case passes, the summary line is followed by `stress runs foun
 
 Exit 0 when every graded case passed, 1 when one did not, 2 when the code did not load (`load_error`: the expected module and class, or in Java and Kotlin the compiler's lines when the main sources do not compile; the test sources are not compiled for grading), 3, 4.
 
-`--json` prints one document in the style of [`cstudy test --json`](#json-output): `id`, `slug`, `language`, `attempt_id`, `mode`, `outcome` (`passed`, `failed` or `load_failed`), `exit_code`, `every_level` (whether it graded every unlocked level), `timer`, `levels` (`graded_up_to`, `last`, `unlocked`, `newly_unlocked`, and `methods_added`, the methods of a newly opened level in the language's names, else empty), `level_tallies` (per level: `level`, `total`, `passed`, `visible_total`, `visible_passed`, `hidden_total`, `hidden_passed`), `load_error`, `diagnostics` (the [diagnostics](#diagnostics) of code that did not load, else empty; a compile error is read into one diagnostic per error, as for `cstudy test`), `cases` (as in `cstudy test --json`, each with its `level`; a case on the virtual clock can be `stalled`, with `op_index` and `reason`; in a mock attempt hidden cases are left out and only `level_tallies` counts them), `stress` (the entries of `stress` in `cstudy test --json`, each with its `level`; empty for a project without stress cases, and in a mock attempt, which leaves them out), `tally` and `duration_s`. `level_tallies` and `tally` count each stress verdict as a hidden case.
+`--json` prints one document, described by [`submit.schema.json`](../../schemas/cli/submit.schema.json), in the style of [`cstudy test --json`](#json-output): `id`, `slug`, `language`, `attempt_id`, `mode`, `outcome` (`passed`, `failed` or `load_failed`), `exit_code`, `every_level` (whether it graded every unlocked level), `timer`, `levels` (`graded_up_to`, `last`, `unlocked`, `newly_unlocked`, and `methods_added`, the methods of a newly opened level in the language's names, else empty), `level_tallies` (per level: `level`, `total`, `passed`, `visible_total`, `visible_passed`, `hidden_total`, `hidden_passed`), `load_error`, `diagnostics` (the [diagnostics](#diagnostics) of code that did not load, else empty; a compile error is read into one diagnostic per error, as for `cstudy test`), `cases` (as in `cstudy test --json`, each with its `level`; a case on the virtual clock can be `stalled`, with `op_index` and `reason`; in a mock attempt hidden cases are left out and only `level_tallies` counts them), `stress` (the entries of `stress` in `cstudy test --json`, each with its `level`; empty for a project without stress cases, and in a mock attempt, which leaves them out), `tally` and `duration_s`. `level_tallies` and `tally` count each stress verdict as a hidden case.
 
 `--events` writes the submission as an [event stream](#event-stream) instead of the report.
 
