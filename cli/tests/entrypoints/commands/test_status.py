@@ -146,10 +146,23 @@ def test_without_an_attempt_in_progress_status_exits_3(tmp_path, monkeypatch):
 
 def test_json_describes_the_attempt(environment):
     found = json.loads(cs_status("--json").stdout)
-    described = ("slug", "kind", "track", "language", "attempt_id", "mode", "started_at", "next")
+    described = (
+        "id",
+        "slug",
+        "kind",
+        "checked_by",
+        "track",
+        "language",
+        "attempt_id",
+        "mode",
+        "started_at",
+        "next",
+    )
     assert {key: found[key] for key in described} == {
+        "id": f"problem/{PROJECT_SLUG}",
         "slug": PROJECT_SLUG,
         "kind": "project",
+        "checked_by": ["tests"],
         "track": "practical",
         "language": "python",
         "attempt_id": 1,

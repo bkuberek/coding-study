@@ -5,6 +5,19 @@
   "$defs": {
     "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "content_id": {
+      "description": "A piece of content's canonical ID, <type>/<slug> (docs/specs/compatibility.md#canonical-content-ids)",
+      "type": "string",
+      "pattern": "^(problem|guide|path|doc)/[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "checked_by": {
+      "description": "How a problem is checked, tests before rubric (docs/specs/compatibility.md#checked-by)",
+      "type": "array",
+      "items": { "enum": ["tests", "rubric"] },
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true
+    },
     "path": { "description": "Relative to the attempt's root, /-separated", "type": "string", "minLength": 1 },
     "level": { "type": ["integer", "null"], "minimum": 1 },
     "origin": {
@@ -238,9 +251,10 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["position", "slug", "level", "passed", "missing", "entry"],
+            "required": ["position", "id", "slug", "level", "passed", "missing", "entry"],
             "properties": {
               "position": { "type": "integer", "minimum": 1 },
+              "id": { "$ref": "#/$defs/content_id" },
               "slug": { "type": "string" },
               "level": { "description": "The entry's target level; null for every level", "type": ["integer", "null"], "minimum": 1 },
               "passed": { "description": "Done: a pass reached the target level, every level by default", "type": "boolean" },
@@ -302,7 +316,7 @@
         "theme": { "enum": ["system", "light", "dark"] },
         "code_intelligence": { "type": "boolean" },
         "autocomplete": { "type": "boolean" },
-        "problem_columns": { "description": "What the Problems view's table shows", "type": "array", "items": { "enum": ["problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] }, "uniqueItems": true }
+        "problem_columns": { "description": "What the Problems view's table shows", "type": "array", "items": { "enum": ["checked_by", "problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] }, "uniqueItems": true }
       }
     },
     "code_intelligence_languages": {
@@ -361,9 +375,11 @@
     "problem": {
       "description": "GET /api/v1/problems/{slug}: the problem's entry of cstudy list --json, which cli.md describes, with these fields added or replaced",
       "type": "object",
-      "required": ["slug", "jdk", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle", "guides"],
+      "required": ["id", "slug", "checked_by", "jdk", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle", "guides"],
       "properties": {
+        "id": { "$ref": "#/$defs/content_id" },
         "slug": { "type": "string" },
+        "checked_by": { "$ref": "#/$defs/checked_by" },
         "jdk": {
           "description": "The problem's effective JDK range, or null for a problem that lists neither Java nor Kotlin",
           "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/jdk_range" }]
@@ -408,8 +424,9 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["slug", "title", "read"],
+            "required": ["id", "slug", "title", "read"],
             "properties": {
+              "id": { "$ref": "#/$defs/content_id" },
               "slug": { "type": "string" },
               "title": { "type": "string" },
               "read": { "type": "boolean" }
@@ -422,8 +439,9 @@
     "guide": {
       "description": "GET /api/v1/guides/{slug}: cstudy learn <guide> --json, which cli.md describes, with the HTML the Guides view shows added. Each mermaid block is a <figure class=\"diagram\"> holding an <img> of its light and of its dark SVG drawing, served by GET /api/v1/guides/{slug}/diagrams/{n}-{light|dark}.svg, with accTitle as alt text and accDescr as the <figcaption>; without both drawings up to date, its text drawing in a <pre class=\"diagram-text\"> instead",
       "type": "object",
-      "required": ["slug", "markdown", "html"],
+      "required": ["id", "slug", "markdown", "html"],
       "properties": {
+        "id": { "$ref": "#/$defs/content_id" },
         "slug": { "type": "string" },
         "markdown": { "type": "string" },
         "html": { "type": "string" }
@@ -440,8 +458,9 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["slug", "title", "summary", "section", "order", "headings", "passages"],
+            "required": ["id", "slug", "title", "summary", "section", "order", "headings", "passages"],
             "properties": {
+              "id": { "$ref": "#/$defs/content_id" },
               "slug": { "type": "string" },
               "title": { "type": "string" },
               "summary": { "type": "string" },
@@ -470,8 +489,9 @@
       "description": "GET /api/v1/docs/{slug}: cstudy docs <topic> --json, which cli.md describes, with html, the page as the Docs view shows it: without its # title, each heading with the id doc-<its GitHub id>, a link to another page or heading as a route of the view (#/docs/<slug>/<id>), a web link opening elsewhere, any other link as its text",
       "type": "object",
       "additionalProperties": false,
-      "required": ["slug", "title", "summary", "section", "order", "headings", "markdown", "html"],
+      "required": ["id", "slug", "title", "summary", "section", "order", "headings", "markdown", "html"],
       "properties": {
+        "id": { "$ref": "#/$defs/content_id" },
         "slug": { "type": "string" },
         "title": { "type": "string" },
         "summary": { "type": "string" },
@@ -561,9 +581,10 @@
       "description": "POST /api/v1/attempts/{id}/abort: the attempt as cstudy abort leaves it, and the file or folder of the user's that stays",
       "type": "object",
       "additionalProperties": false,
-      "required": ["attempt_id", "slug", "language", "status", "kept"],
+      "required": ["attempt_id", "id", "slug", "language", "status", "kept"],
       "properties": {
         "attempt_id": { "type": "integer", "minimum": 1 },
+        "id": { "$ref": "#/$defs/content_id" },
         "slug": { "type": "string" },
         "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
         "status": { "const": "abandoned" },
@@ -574,8 +595,9 @@
       "description": "POST /api/v1/attempts/{id}/done: the values of the two lines cstudy done prints",
       "type": "object",
       "additionalProperties": false,
-      "required": ["slug", "language", "status", "levels_finished", "levels_passed", "levels_total", "solve_s", "rating", "grade", "caps", "hints_used", "next_review"],
+      "required": ["id", "slug", "language", "status", "levels_finished", "levels_passed", "levels_total", "solve_s", "rating", "grade", "caps", "hints_used", "next_review"],
       "properties": {
+        "id": { "$ref": "#/$defs/content_id" },
         "slug": { "type": "string" },
         "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
         "status": { "type": "string" },
@@ -603,8 +625,9 @@
       "description": "POST /api/v1/problems/{slug}/solution",
       "type": "object",
       "additionalProperties": false,
-      "required": ["slug", "kind", "language", "approaches", "marked_attempt_id", "markdown", "html"],
+      "required": ["id", "slug", "kind", "language", "approaches", "marked_attempt_id", "markdown", "html"],
       "properties": {
+        "id": { "$ref": "#/$defs/content_id" },
         "slug": { "type": "string" },
         "kind": { "type": "string" },
         "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
@@ -807,9 +830,10 @@
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["attempt_id", "slug", "title", "difficulty", "kind", "language"],
+                "required": ["attempt_id", "id", "slug", "title", "difficulty", "kind", "language"],
                 "properties": {
                   "attempt_id": { "type": "integer", "minimum": 1 },
+                  "id": { "$ref": "#/$defs/content_id" },
                   "slug": { "type": "string" },
                   "title": { "type": "string" },
                   "difficulty": { "enum": ["easy", "medium", "hard"] },
@@ -838,8 +862,9 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["slug", "title", "difficulty", "group", "reason", "attempt_id", "kind", "file", "statement"],
+            "required": ["id", "slug", "title", "difficulty", "group", "reason", "attempt_id", "kind", "file", "statement"],
             "properties": {
+              "id": { "$ref": "#/$defs/content_id" },
               "slug": { "type": "string" },
               "title": { "type": "string" },
               "difficulty": { "enum": ["easy", "medium", "hard"] },

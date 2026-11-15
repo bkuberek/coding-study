@@ -11,6 +11,7 @@ from coding_study.application.language_runs import CodeRun
 from coding_study.application.run_tests import OracleStress, RunTestsResult
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import FunctionInput, JsonValue, OperationSequence
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.judging import CaseStatus, CaseVerdict, Tally, outcome_summary
 from coding_study.domain.levels import LevelRun
 from coding_study.domain.runs import (
@@ -40,6 +41,7 @@ def run_document(
     verdicts = judgement.verdicts if judgement else ()
     oracle_ids = result.oracle.case_ids if result.oracle else frozenset[str]()
     return {
+        "id": content_id(ContentType.PROBLEM, result.meta.slug),
         "slug": result.meta.slug,
         "language": result.language.value,
         "attempt_id": result.attempt.id,

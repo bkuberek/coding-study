@@ -23,6 +23,8 @@ from coding_study.application.list_problems import (
 from coding_study.application.problem_sets import in_named_set, missing_slugs
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.checked_by import CheckedBy, checked_by_of
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
@@ -131,6 +133,10 @@ def list_command(
             "docker or a service's name keeps those that need it.",
         ),
     ] = None,
+    checked: Annotated[
+        CheckedBy | None,
+        typer.Option("--checked-by", help="Only problems checked this way: tests or rubric."),
+    ] = None,
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the table.")
     ] = False,
@@ -148,6 +154,7 @@ def list_command(
         labels,
         search=search,
         needs=needs,
+        checked_by=checked,
     )
     load = load_catalog_environment if set_name is None else load_environment
     environment = load(Path.cwd(), command_environ(context), Path.home())
@@ -253,11 +260,14 @@ def _in_order[Row](
 
 def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, JsonValue]:
     meta = problem.summary.meta
+    kind = entry_kind(meta.kind)
     return {
+        "id": content_id(ContentType.PROBLEM, meta.slug),
         "slug": meta.slug,
         "title": meta.title,
         "track": meta.track.value,
-        "kind": entry_kind(meta.kind).value,
+        "kind": kind.value,
+        "checked_by": checked_by_value(checked_by_of(kind, problem.summary.has_rubric)),
         "difficulty": meta.difficulty.value,
         "patterns": list(meta.patterns),
         **_label_fields(meta.labels),
@@ -271,6 +281,10 @@ def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, 
         "jdk": _jdk_range_value(meta),
         "requires": _requires_value(meta),
     }
+
+
+def checked_by_value(checked: tuple[CheckedBy, ...]) -> JsonValue:
+    return [how.value for how in checked]
 
 
 def _requires_value(meta: ProblemMeta) -> JsonValue:
@@ -308,10 +322,12 @@ def _jdk_range_value(meta: ProblemMeta) -> JsonValue:
 def item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue]:
     meta = item.meta
     return {
+        "id": content_id(ContentType.PROBLEM, meta.slug),
         "slug": meta.slug,
         "title": meta.title,
         "track": meta.track.value,
         "kind": meta.kind.value,
+        "checked_by": checked_by_value(checked_by_of(meta.kind, has_rubric=True)),
         "difficulty": meta.difficulty.value,
         "patterns": [],
         **_label_fields(meta.labels),

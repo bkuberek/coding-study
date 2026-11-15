@@ -9,9 +9,11 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
+from coding_study.domain.content_ids import ContentType
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import docs
 from coding_study.entrypoints.web.markdown import render_doc_markdown
+from tests.content_id_checks import content_ids_in
 from tests.doc_builders import write_docs
 from tests.fakes import make_environment
 from tests.web_server import session_client, web_app
@@ -63,6 +65,11 @@ def test_a_page_is_the_document_of_cstudy_docs_with_its_html(client, monkeypatch
         cli_document(monkeypatch, environment, "getting-started"),
         True,
     )
+
+
+def test_every_page_has_the_id_of_its_slug(client):
+    assert client.get(f"{DOCS}/getting-started").json()["id"] == "doc/getting-started"
+    assert {ContentType.DOC} == {kind for kind, _ in content_ids_in(client.get(DOCS).json())}
 
 
 def test_an_unknown_topic_is_not_found_with_the_clis_message(client):

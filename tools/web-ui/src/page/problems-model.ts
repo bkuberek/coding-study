@@ -40,10 +40,20 @@ export function countWords(shown: number, whole: number | null): string {
 }
 
 /** The columns the table can show, in its order (`domain/preferences.py` holds the same). */
-export const PROBLEM_COLUMNS = ["problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] as const;
+export const PROBLEM_COLUMNS = ["checked_by", "problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] as const;
 export type ProblemColumn = (typeof PROBLEM_COLUMNS)[number];
-export const DEFAULT_COLUMNS: readonly ProblemColumn[] = ["problem", "difficulty", "pattern", "status", "due", "languages", "sets"];
+export const DEFAULT_COLUMNS: readonly ProblemColumn[] = ["checked_by", "problem", "difficulty", "pattern", "status", "due", "languages", "sets"];
 const REQUIRED_COLUMNS: readonly ProblemColumn[] = ["problem", "status"];
+
+/** A column's name in the header and the columns menu: `checked_by` reads `checked by`. */
+export function columnLabel(column: ProblemColumn): string {
+  return column.replaceAll("_", " ");
+}
+
+/** What the Checked by column shows of `checked_by`: `tests`, `tests + rubric` or `rubric`. */
+export function checkedWords(checkedBy: readonly string[]): string {
+  return checkedBy.join(" + ");
+}
 
 export function canHide(column: ProblemColumn): boolean {
   return !REQUIRED_COLUMNS.includes(column);

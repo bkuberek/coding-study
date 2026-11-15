@@ -13,10 +13,12 @@ from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
 from coding_study.application.user_docs import doc_page
+from coding_study.domain.content_ids import ContentType
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.command_table import command_spec
 from coding_study.entrypoints.commands import docs
 from coding_study.entrypoints.shared import ExitCode
+from tests.content_id_checks import content_ids_in
 from tests.doc_builders import write_docs
 from tests.fakes import make_environment
 
@@ -81,6 +83,7 @@ def test_the_list_as_json_has_every_page_with_its_headings(environment: Environm
     assert (len(document["pages"]), document["pages"][1]) == (
         3,
         {
+            "id": "doc/doctor",
             "slug": "doctor",
             "title": "Check your setup",
             "summary": "What cstudy doctor checks.",
@@ -96,10 +99,20 @@ def test_the_list_as_json_has_every_page_with_its_headings(environment: Environm
 
 def test_a_page_as_json_adds_its_markdown(environment: Environment):
     document = json.loads(invoke("practice", "--json").output)
-    assert (document["slug"], document["markdown"].splitlines()[1]) == (
+    assert (document["id"], document["slug"], document["markdown"].splitlines()[1]) == (
+        "doc/practice",
         "practice",
         "# Work on a problem",
     )
+
+
+def test_every_page_of_the_list_has_the_id_of_its_slug(environment: Environment):
+    document = json.loads(invoke("--json").output)
+    assert content_ids_in(document) == [
+        (ContentType.DOC, "getting-started"),
+        (ContentType.DOC, "doctor"),
+        (ContentType.DOC, "practice"),
+    ]
 
 
 def test_an_unknown_topic_exits_3_with_the_nearest(environment: Environment):

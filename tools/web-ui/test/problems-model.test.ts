@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { activeFilters, canHide, counted, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
+import { activeFilters, canHide, checkedWords, columnLabel, counted, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
 
 const TWO_SUM = { slug: "two-sum", title: "Two Sum" };
 const LRU = { slug: "lru-cache", title: "LRU Cache" };
@@ -62,7 +62,7 @@ test("a column the page does not know is left out", () => {
 });
 
 test("ticking a column adds it in the table's order", () => {
-  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["problem", "difficulty", "pattern", "kind", "status", "due", "languages", "sets"]);
+  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["checked_by", "problem", "difficulty", "pattern", "kind", "status", "due", "languages", "sets"]);
 });
 
 test("unticking a column takes it out", () => {
@@ -70,7 +70,23 @@ test("unticking a column takes it out", () => {
 });
 
 test("problem and status cannot be hidden, and the others can", () => {
-  assert.deepEqual([canHide("problem"), canHide("status"), canHide("difficulty"), canHide("sets")], [false, false, true, true]);
+  assert.deepEqual([canHide("problem"), canHide("status"), canHide("difficulty"), canHide("sets"), canHide("checked_by")], [false, false, true, true, true]);
+});
+
+test("the Checked by column starts the table, where the ID column was", () => {
+  assert.deepEqual(DEFAULT_COLUMNS.slice(0, 2), ["checked_by", "problem"]);
+});
+
+test("a column reads as words, with no underscore", () => {
+  assert.deepEqual([columnLabel("checked_by"), columnLabel("problem")], ["checked by", "problem"]);
+});
+
+test("the Checked by column shows tests, tests + rubric or rubric", () => {
+  assert.deepEqual([checkedWords(["tests"]), checkedWords(["tests", "rubric"]), checkedWords(["rubric"])], ["tests", "tests + rubric", "rubric"]);
+});
+
+test("the checked filter is a chip like the others", () => {
+  assert.deepEqual(activeFilters({ checked: "rubric" }), [{ key: "checked", value: "rubric", words: "checked: rubric" }]);
 });
 
 test("a count of one has no plural", () => {

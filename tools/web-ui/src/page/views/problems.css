@@ -133,6 +133,14 @@ tr:hover > td > .problem-link {
   white-space: normal;
 }
 
+/* The narrowest column, so the table keeps the width its columns had: the header and `tests + rubric`
+   break at their spaces. */
+.problem-rows th[data-column="checked_by"],
+.problem-rows td[data-column="checked_by"] {
+  width: 1%;
+  white-space: normal;
+}
+
 /* A long name yields to the ellipsis here; the control says every set to a screen reader. */
 .problem-rows .set-control {
   display: inline-block;

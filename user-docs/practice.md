@@ -25,7 +25,7 @@ cstudy list --search anagram
 cstudy show two-sum             # print the statement, without hints
 ```
 
-`cstudy list` takes filters such as `--track`, `--pattern`, `--difficulty`, `--status`, `--lang`, `--domain`, `--role` and `--scope`, and `--json` for scripts. A problem's **slug**, such as `two-sum`, names it in every command. [Plan your practice](planning.md) covers `cstudy next` and sets.
+`cstudy list` takes filters such as `--track`, `--pattern`, `--difficulty`, `--status`, `--lang`, `--domain`, `--role` and `--scope`, `--checked-by tests` or `--checked-by rubric` for how a problem is checked, and `--json` for scripts. A problem's **slug**, such as `two-sum`, names it in every command; `--json` also gives it as an **id**, `problem/two-sum`, which is for scripts and never typed. [Plan your practice](planning.md) covers `cstudy next` and sets.
 
 ## Start
 

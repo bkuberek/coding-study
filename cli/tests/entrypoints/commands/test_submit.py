@@ -10,6 +10,7 @@ from coding_study.domain.problem import Language
 from coding_study.domain.runs import CaseOutcome, Returned, RunCase, RunJob, Stalled, UserError
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import submit as submit_command
+from coding_study.entrypoints.commands import test as test_command
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_PROBLEMS, PROJECT_PROBLEMS
@@ -204,7 +205,9 @@ def test_a_case_that_deadlocked_prints_its_input_up_to_the_operation_and_why(env
 
 def test_json_describes_the_submission(environment):
     found = document()
-    assert {key: found[key] for key in ("slug", "mode", "outcome", "exit_code", "every_level")} == {
+    described = ("id", "slug", "mode", "outcome", "exit_code", "every_level")
+    assert {key: found[key] for key in described} == {
+        "id": f"problem/{PROJECT_SLUG}",
         "slug": PROJECT_SLUG,
         "mode": "new",
         "outcome": "passed",
@@ -289,3 +292,10 @@ def test_the_document_lists_the_diagnostics_of_code_that_did_not_load(environmen
 
 def test_the_document_of_code_that_loaded_has_no_diagnostics(environment):
     assert document()["diagnostics"] == []
+
+
+def test_a_project_test_document_has_the_canonical_id(environment, monkeypatch):
+    monkeypatch.setattr(test_command, "load_environment", lambda *_: environment)
+    result = runner.invoke(cli.app, ["test", "--json"])
+    found = json.loads(result.stdout)
+    assert (found["id"], found["slug"]) == (f"problem/{PROJECT_SLUG}", PROJECT_SLUG)

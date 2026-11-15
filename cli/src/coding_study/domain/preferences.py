@@ -11,6 +11,7 @@ FORMAT_KEY = "format"
 THEME_KEY = "theme"
 COLUMNS_KEY = "problem_columns"
 PROBLEM_COLUMNS = (
+    "checked_by",
     "problem",
     "difficulty",
     "pattern",
@@ -25,6 +26,7 @@ PROBLEM_COLUMNS = (
 )
 """The columns the Problems view's table can show, in its order."""
 DEFAULT_PROBLEM_COLUMNS = (
+    "checked_by",
     "problem",
     "difficulty",
     "pattern",

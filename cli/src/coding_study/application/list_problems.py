@@ -7,6 +7,7 @@ from datetime import date
 
 from coding_study.application.environment import Environment
 from coding_study.domain.attempts import Attempt
+from coding_study.domain.checked_by import CheckedBy, checked_by_of
 from coding_study.domain.items import RUBRIC_KINDS, EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import fit_of, listing_reason
@@ -48,14 +49,17 @@ class ProblemFilter:
     """`--search`: a text the slug or the title holds, in any case."""
     needs: str | None = None
     """`--needs`: `none`, or `docker` or a service a problem needs."""
+    checked_by: CheckedBy | None = None
+    """`--checked-by`: problems checked this way (docs/specs/compatibility.md#checked-by)."""
 
     @property
     def lists_rubric_problems(self) -> bool:
         """Whether the kind leaves room for rubric problems, which `list_items` filters further. A
-        rubric problem needs nothing."""
-        return (self.kind is None or self.kind in RUBRIC_KINDS) and self.needs in (
-            None,
-            NEEDS_NOTHING,
+        rubric problem needs nothing and is checked by its rubric."""
+        return (
+            (self.kind is None or self.kind in RUBRIC_KINDS)
+            and self.needs in (None, NEEDS_NOTHING)
+            and self.checked_by in (None, CheckedBy.RUBRIC)
         )
 
     def matches(self, summary: ProblemSummary, status: ProblemStatus) -> bool:
@@ -72,6 +76,7 @@ class ProblemFilter:
             self.holds(meta.slug),
             self.finds(meta.slug, meta.title),
             self._needed(meta),
+            self._checked(summary),
         )
         return all(checks)
 
@@ -80,6 +85,12 @@ class ProblemFilter:
         if self.needs is None:
             return True
         return not markers if self.needs == NEEDS_NOTHING else self.needs in markers
+
+    def _checked(self, summary: ProblemSummary) -> bool:
+        if self.checked_by is None:
+            return True
+        kind = entry_kind(summary.meta.kind)
+        return self.checked_by in checked_by_of(kind, summary.has_rubric)
 
     def holds(self, slug: str) -> bool:
         return self.in_set is None or self.in_set.holds(slug)

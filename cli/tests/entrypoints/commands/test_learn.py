@@ -17,9 +17,11 @@ from coding_study.domain.concept_guides import (
     PathStep,
     StepProgress,
 )
+from coding_study.domain.content_ids import ContentType
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
 from coding_study.entrypoints.shared import ExitCode
+from tests.content_id_checks import content_ids_in
 from tests.fakes import NOW, make_environment
 from tests.guide_builders import write_guide, write_hashing
 
@@ -64,6 +66,7 @@ def test_the_list_as_json_has_no_hint(environment: Environment):
     document = json.loads(invoke("--json").output)
     assert (document["guides"][1], document["paths"]) == (
         {
+            "id": "guide/hash-maps",
             "slug": "hash-maps",
             "title": "Hash maps",
             "summary": "A short summary.",
@@ -76,6 +79,7 @@ def test_the_list_as_json_has_no_hint(environment: Environment):
         },
         [
             {
+                "id": "path/hashing",
                 "slug": "hashing",
                 "title": "Hashing",
                 "summary": "From hash functions on.",
@@ -214,7 +218,12 @@ def test_done_marks_the_guide_read_once(environment: Environment):
 
 def test_done_as_json(environment: Environment):
     document = json.loads(invoke("hash-maps", "--done", "--json").output)
-    assert document == {"slug": "hash-maps", "read_at": NOW.isoformat(), "already": False}
+    assert document == {
+        "id": "guide/hash-maps",
+        "slug": "hash-maps",
+        "read_at": NOW.isoformat(),
+        "already": False,
+    }
 
 
 @pytest.fixture
@@ -278,6 +287,26 @@ def test_a_path_shows_its_steps_and_the_next_command(environment: Environment):
     ]
 
 
+def test_a_guide_and_a_path_of_one_slug_have_two_ids(environment: Environment):
+    listing = json.loads(invoke("--json").output)
+    guide = json.loads(invoke("hash-maps", "--json").output)
+    path = json.loads(invoke("--path", "hashing", "--json").output)
+    assert content_ids_in(listing) == [
+        (ContentType.GUIDE, "hash-functions"),
+        (ContentType.GUIDE, "hash-maps"),
+        (ContentType.PATH, "hashing"),
+    ]
+    assert content_ids_in(guide) == [(ContentType.GUIDE, "hash-maps")]
+    assert content_ids_in(path) == [
+        (ContentType.PATH, "hashing"),
+        (ContentType.GUIDE, "hash-functions"),
+        (ContentType.GUIDE, "hash-functions"),
+        (ContentType.GUIDE, "hash-maps"),
+        (ContentType.PROBLEM, "two-sum"),
+        (ContentType.PROBLEM, "tamper-evident-ledger"),
+    ]
+
+
 def test_a_path_as_json(environment: Environment):
     document = json.loads(invoke("--path", "hashing", "--json").output)
     assert (document["done"], document["total"], document["next"], document["steps"][3]) == (
@@ -286,6 +315,7 @@ def test_a_path_as_json(environment: Environment):
         {
             "position": 1,
             "kind": "guide",
+            "id": "guide/hash-functions",
             "slug": "hash-functions",
             "title": "Hash functions",
             "level": None,
@@ -296,6 +326,7 @@ def test_a_path_as_json(environment: Environment):
         {
             "position": 4,
             "kind": "problem",
+            "id": "problem/tamper-evident-ledger",
             "slug": "tamper-evident-ledger",
             "title": "Tamper-Evident Ledger",
             "level": 2,

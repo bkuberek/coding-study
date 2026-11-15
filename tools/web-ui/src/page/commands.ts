@@ -29,11 +29,15 @@ export function startCommand(slug: string, language: string | null): string {
   return language === null ? `cstudy start ${slug}` : `cstudy start ${slug} --lang ${language}`;
 }
 
-/** Each filter is the flag of its key (`track`, `--track`), which a test holds to the real flags. */
+/** The flag of a filter whose key is shorter than it: the page's `checked` is `--checked-by`. */
+const FLAG_NAMES: Readonly<Record<string, string>> = { checked: "checked-by" };
+
+/** Each filter is the flag of its key (`track`, `--track`) or of its entry in `FLAG_NAMES`, which a
+ * test holds to the real flags. */
 function withFlags<Key extends string>(command: string, filters: Partial<Record<Key, string>>, keys: readonly Key[]): string {
   const flags = keys.flatMap((key) => {
     const value = filters[key];
-    return value ? [`--${key} ${quoted(value)}`] : [];
+    return value ? [`--${FLAG_NAMES[key] ?? key} ${quoted(value)}`] : [];
   });
   return [command, ...flags].join(" ");
 }

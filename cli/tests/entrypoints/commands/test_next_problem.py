@@ -177,15 +177,39 @@ def document(*arguments: str):
 def test_json_describes_a_new_pick(environment):
     assert document() == {
         "pick": "new",
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "title": "Two Sum",
         "kind": "function",
+        "checked_by": ["tests"],
         "difficulty": "easy",
         "group": "arrays-hashing",
         "reason": "weakest pattern: arrays-hashing (0.75)",
         "language": "python",
         "start": "cstudy start two-sum --lang python",
     }
+
+
+def test_json_says_a_problem_with_a_rubric_is_checked_by_tests_then_rubric(environment, tmp_path):
+    (tmp_path / "problems" / "two-sum" / "rubric.md").write_text("# Two Sum: Rubric\n")
+    assert document()["checked_by"] == ["tests", "rubric"]
+
+
+def test_json_says_a_rubric_problem_is_checked_by_its_rubric(
+    tmp_path, editor, monkeypatch, tmp_path_factory
+):
+    problems = copy_catalog_problems(
+        tmp_path_factory.mktemp("catalog"), (*FIRST_CATALOG, "url-shortener")
+    )
+    environment = e2e_environment(repository_root(tmp_path, problems), editor=editor)
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: environment)
+    found = document("--track", "system-design")
+    assert (found["id"], found["slug"], found["kind"], found["checked_by"]) == (
+        "problem/url-shortener",
+        "url-shortener",
+        "system-design",
+        ["rubric"],
+    )
 
 
 def test_json_describes_a_review(environment):
@@ -322,16 +346,20 @@ def test_json_describes_a_resume_with_its_attempt_and_the_others(environment):
     newest = open_attempt(environment, "lru-cache", hours_ago=1)
     assert document() == {
         "pick": "resume",
+        "id": "problem/lru-cache",
         "slug": "lru-cache",
         "title": "LRU Cache",
         "kind": "design",
+        "checked_by": ["tests"],
         "difficulty": "medium",
         "group": "linked-list",
         "reason": "attempt 2 in python, last used 2026-10-24",
         "language": "python",
         "start": "cstudy start lru-cache --lang python",
         "attempt_id": newest.id,
-        "also_open": [{"attempt_id": 1, "slug": "two-sum", "language": "python"}],
+        "also_open": [
+            {"attempt_id": 1, "id": "problem/two-sum", "slug": "two-sum", "language": "python"}
+        ],
     }
 
 
@@ -339,8 +367,10 @@ def test_json_of_a_new_pick_gains_no_field_with_an_attempt_forced_aside(environm
     open_attempt(environment, "two-sum")
     assert set(document("--new")) == {
         "pick",
+        "id",
         "slug",
         "title",
+        "checked_by",
         "kind",
         "difficulty",
         "group",

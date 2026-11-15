@@ -27,6 +27,7 @@ from coding_study.application.learn import (
 )
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.concept_guides import GuideLevel, GuideStatus, StepKind, StepProgress
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.errors import UsageError
 from coding_study.domain.guide_examples import TAB_ORDER
 from coding_study.entrypoints.commands.serve import run_server
@@ -304,6 +305,7 @@ def listing_document(listing: LearnListing) -> dict[str, JsonValue]:
         "guides": [_guide_fields(entry) for entry in listing.guides],
         "paths": [
             {
+                "id": content_id(ContentType.PATH, view.path.slug),
                 "slug": view.path.slug,
                 "title": view.path.title,
                 "summary": view.path.summary,
@@ -326,13 +328,19 @@ def guide_document(page: GuidePage) -> dict[str, JsonValue]:
 
 
 def marked_document(marked: MarkedRead) -> dict[str, JsonValue]:
-    return {"slug": marked.slug, "read_at": marked.read_at.isoformat(), "already": marked.already}
+    return {
+        "id": content_id(ContentType.GUIDE, marked.slug),
+        "slug": marked.slug,
+        "read_at": marked.read_at.isoformat(),
+        "already": marked.already,
+    }
 
 
 def path_document(view: PathView) -> dict[str, JsonValue]:
     steps = [_step_fields(position, step) for position, step in enumerate(view.steps, start=1)]
     following = next((fields for fields in steps if not fields["done"]), None)
     return {
+        "id": content_id(ContentType.PATH, view.path.slug),
         "slug": view.path.slug,
         "title": view.path.title,
         "summary": view.path.summary,
@@ -346,6 +354,7 @@ def path_document(view: PathView) -> dict[str, JsonValue]:
 def _guide_fields(entry: GuideEntry) -> dict[str, JsonValue]:
     meta = entry.meta
     return {
+        "id": content_id(ContentType.GUIDE, meta.slug),
         "slug": meta.slug,
         "title": meta.title,
         "summary": meta.summary,
@@ -362,6 +371,7 @@ def _step_fields(position: int, step: StepProgress) -> dict[str, JsonValue]:
     return {
         "position": position,
         "kind": step.step.kind.value,
+        "id": content_id(ContentType(step.step.kind.value), step.step.slug),
         "slug": step.step.slug,
         "title": step.title,
         "level": step.step.level,

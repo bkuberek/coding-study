@@ -27,6 +27,7 @@ from coding_study.application.problem_sets import (
     sets_with_standing,
 )
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.problem_sets import ProblemSet, SetStanding
 from coding_study.entrypoints.commands.list_problems import (
     NO_VALUE,
@@ -257,6 +258,7 @@ def _row_value(row: SetRow, listing: ListingContext) -> dict[str, JsonValue]:
             entry = None
     return {
         "position": row.position,
+        "id": content_id(ContentType.PROBLEM, row.slug),
         "slug": row.slug,
         "level": row.level,
         "passed": row.passed,

@@ -24,11 +24,13 @@ from coding_study.application.attempt_status import (
 )
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.items import RUBRIC_KINDS
 from coding_study.domain.level_passes import LevelMastery, LevelsPassed
 from coding_study.domain.levels import LevelProgress
 from coding_study.domain.service_project import MockScenarios
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
+from coding_study.entrypoints.commands.list_problems import checked_by_value
 from coding_study.entrypoints.commands.project_documents import level_tally_value
 from coding_study.entrypoints.commands.report_text import clock_text
 from coding_study.entrypoints.commands.run_document import timer_value
@@ -81,8 +83,10 @@ def status_document(found: AttemptStanding) -> dict[str, JsonValue]:
     latest = project.latest_submission if project else None
     run = found.last_test_run
     return {
+        "id": content_id(ContentType.PROBLEM, attempt.slug),
         "slug": attempt.slug,
         "kind": found.kind.value,
+        "checked_by": checked_by_value(found.checked_by),
         "track": found.track.value,
         "language": attempt.language.value if attempt.language else None,
         "attempt_id": attempt.id,

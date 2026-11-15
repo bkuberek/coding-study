@@ -10,6 +10,8 @@ from coding_study.application.next_problem import NextRequest, recommend
 from coding_study.application.problem_history import problem_history
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.domain.checked_by import CheckedBy
+from coding_study.domain.content_ids import ContentType
 from coding_study.domain.items import EntryKind
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import NextSource
@@ -18,6 +20,7 @@ from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.history import history_document
 from coding_study.entrypoints.commands.list_problems import list_document
 from coding_study.entrypoints.commands.next_problem import next_document
+from tests.content_id_checks import content_ids_in
 from tests.fakes import (
     FakeStubGenerator,
     FakeToolchains,
@@ -89,6 +92,8 @@ def test_a_started_problem_reads_in_progress_in_the_list(client, environment):
         ("domain=backend", ProblemFilter(labels=LabelFilter(domain="backend"))),
         ("role=platform", ProblemFilter(labels=LabelFilter(role="platform"))),
         ("scope=function", ProblemFilter(labels=LabelFilter(scope=Scope.FUNCTION))),
+        ("checked=rubric", ProblemFilter(checked_by=CheckedBy.RUBRIC)),
+        ("checked=tests", ProblemFilter(checked_by=CheckedBy.TESTS)),
         (
             "domain=backend&role=general&scope=function",
             ProblemFilter(labels=LabelFilter("backend", "general", Scope.FUNCTION)),
@@ -139,6 +144,41 @@ def test_a_problem_is_its_list_entry_with_its_details(client, environment):
         for key, value in entry.items()  # type: ignore[union-attr]
         if key != "languages"
     }
+
+
+def test_a_problem_has_its_canonical_id_and_how_it_is_checked(client):
+    two_sum = client.get("/api/v1/problems/two-sum").json()
+    rubric = client.get("/api/v1/problems/url-shortener").json()
+    assert (two_sum["id"], two_sum["checked_by"]) == ("problem/two-sum", ["tests"])
+    assert (rubric["id"], rubric["checked_by"]) == ("problem/url-shortener", ["rubric"])
+
+
+def test_the_problem_list_gives_each_entry_its_id_and_how_it_is_checked(client):
+    entries = client.get("/api/v1/problems").json()["entries"]
+    assert content_ids_in(entries) == [(ContentType.PROBLEM, entry["slug"]) for entry in entries]
+    assert {entry["slug"]: entry["checked_by"] for entry in entries} == {
+        "two-sum": ["tests"],
+        "lru-cache": ["tests"],
+        "url-shortener": ["rubric"],
+        "news-feed": ["rubric"],
+        "retry-wrapper": ["rubric"],
+    }
+
+
+def test_a_problem_with_a_rubric_is_checked_by_tests_then_rubric(client, tmp_path):
+    (tmp_path / "problems" / "lru-cache" / "rubric.md").write_text("# LRU Cache: Rubric\n")
+    assert client.get("/api/v1/problems/lru-cache").json()["checked_by"] == ["tests", "rubric"]
+    listed = client.get("/api/v1/problems?checked=rubric").json()["entries"]
+    assert [entry["slug"] for entry in listed] == [
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_an_unknown_checked_value_gets_422_usage(client):
+    assert error(client.get("/api/v1/problems?checked=ai-review")) == (422, "usage")
 
 
 def test_a_problem_adds_what_its_actions_accept(client):

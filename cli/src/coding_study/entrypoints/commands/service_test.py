@@ -26,6 +26,7 @@ from coding_study.application.service_lifecycle import (
 )
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import CaseVerdict
 from coding_study.domain.sandbox import StackStartError
@@ -103,6 +104,7 @@ def service_test_document(result: ServiceTestResult, exit_code: int) -> dict[str
     failure = result.failure
     levels = result.case_levels
     return {
+        "id": content_id(ContentType.PROBLEM, result.meta.slug),
         "slug": result.meta.slug,
         "language": autograded_language(attempt).value,
         "attempt_id": attempt.id,

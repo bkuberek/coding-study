@@ -3,6 +3,7 @@ import pytest
 from coding_study.domain.errors import UsageError
 from coding_study.domain.preferences import (
     DEFAULT_PROBLEM_COLUMNS,
+    PROBLEM_COLUMNS,
     Preferences,
     Theme,
     parse_preferences,
@@ -18,6 +19,7 @@ DEFAULT_DOCUMENT = {
     "code_intelligence": False,
     "autocomplete": False,
     "problem_columns": [
+        "checked_by",
         "problem",
         "difficulty",
         "pattern",
@@ -102,6 +104,14 @@ def test_a_document_without_columns_has_the_default_columns():
 def test_chosen_columns_parse():
     document = {"problem_columns": ["problem", "status", "sets"]}
     assert parse_preferences(document).problem_columns == ("problem", "status", "sets")
+
+
+def test_the_checked_by_column_starts_the_table_and_can_be_hidden_or_shown():
+    assert PROBLEM_COLUMNS[0] == DEFAULT_PROBLEM_COLUMNS[0] == "checked_by"
+    shown = {"problem_columns": ["checked_by", "problem", "status"]}
+    hidden = {"problem_columns": ["problem", "status"]}
+    assert parse_preferences(shown).problem_columns == ("checked_by", "problem", "status")
+    assert parse_preferences(hidden).problem_columns == ("problem", "status")
 
 
 def test_chosen_columns_round_trip():

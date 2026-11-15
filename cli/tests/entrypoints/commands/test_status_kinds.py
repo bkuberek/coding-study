@@ -115,8 +115,10 @@ def test_a_revealed_solution_is_graded_as_again(function):
 
 def test_json_describes_a_function_attempt(function):
     assert document() == {
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "kind": "function",
+        "checked_by": ["tests"],
         "track": "dsa",
         "language": "python",
         "attempt_id": 1,
@@ -262,10 +264,17 @@ def test_an_items_revealed_solution_keeps_its_grade(item):
     assert "solution   revealed" in lines()
 
 
+def test_json_says_a_problem_with_a_rubric_is_checked_by_tests_then_rubric(function, tmp_path):
+    (tmp_path / "problems" / "two-sum" / "rubric.md").write_text("# Two Sum: Rubric\n")
+    assert document()["checked_by"] == ["tests", "rubric"]
+
+
 def test_json_describes_an_item_attempt(item):
     assert document() == {
+        "id": "problem/url-shortener",
         "slug": "url-shortener",
         "kind": "system-design",
+        "checked_by": ["rubric"],
         "track": "system-design",
         "language": None,
         "attempt_id": 1,

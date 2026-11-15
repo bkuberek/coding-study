@@ -411,6 +411,14 @@
   "cstudy list": {
     "subcommands": []
   },
+  "cstudy list --checked-by": {
+    "choices": [
+      "tests",
+      "rubric"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy list --content": {
     "choices": [
       "draft",

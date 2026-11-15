@@ -21,6 +21,8 @@ Every problem also has three [labels](#labels) that are independent of the track
 
 Placement rule: every problem lives in `problems/<slug>/`, whatever checks it. Slugs are unique, because they are directory names and `progress.db` keys on the slug.
 
+How a problem is checked is not a field of `meta.yaml`. `checked_by` is derived: `tests` for every autograded kind, `rubric` for a folder with a `rubric.md`, so a `lld` problem is both and a `system-design` or `code-review` problem is `rubric` ([Checked by](compatibility.md#checked-by)). A problem is named in the JSON documents and the web API by its [canonical ID](compatibility.md#canonical-content-ids), `problem/<slug>`.
+
 ### Track notes
 
 | Track | Notes |

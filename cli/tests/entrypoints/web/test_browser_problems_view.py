@@ -647,7 +647,17 @@ def test_filtering_logs_no_problem(filter_row):
 COLUMNS_MENU = ".columns-menu"
 COLUMNS_SUMMARY = f"{COLUMNS_MENU} > summary"
 HEADERS = "table.problems thead th"
-DEFAULT_HEADERS = ["problem", "difficulty", "pattern", "status", "due", "languages", "sets"]
+DEFAULT_COLUMNS = [
+    "checked_by",
+    "problem",
+    "difficulty",
+    "pattern",
+    "status",
+    "due",
+    "languages",
+    "sets",
+]
+DEFAULT_HEADERS = ["checked by", *DEFAULT_COLUMNS[1:]]
 OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role"]
 PREFERENCES_FILE = ".cs/serve/preferences.json"
 NARROW = {"width": 390, "height": 844}
@@ -811,7 +821,7 @@ def test_the_table_shows_the_default_columns(columns):
 
 
 def test_the_menu_offers_every_column(columns):
-    assert set(columns.offered) == {*DEFAULT_HEADERS, *OPTIONAL_COLUMNS}
+    assert set(columns.offered) == {*DEFAULT_COLUMNS, *OPTIONAL_COLUMNS}
 
 
 def test_problem_and_status_cannot_be_hidden(columns):
@@ -879,7 +889,7 @@ def test_reset_shows_the_default_columns(columns):
 
 
 def test_reset_stores_the_default_columns(columns):
-    assert columns.stored_after_reset == DEFAULT_HEADERS
+    assert columns.stored_after_reset == DEFAULT_COLUMNS
 
 
 def test_the_default_columns_fit_a_window_too_wide_for_the_tables_box(columns):

@@ -14,6 +14,7 @@ from coding_study.adapters.environment_factory import load_catalog_environment
 from coding_study.application.environment import Environment
 from coding_study.application.user_docs import doc_page, docs_listing
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.errors import UsageError
 from coding_study.domain.user_docs import DocPage, in_sections
 from coding_study.entrypoints.commands.serve import run_server
@@ -107,6 +108,7 @@ def page_document(page: DocPage) -> dict[str, JsonValue]:
 
 def page_fields(page: DocPage) -> dict[str, JsonValue]:
     return {
+        "id": content_id(ContentType.DOC, page.slug),
         "slug": page.slug,
         "title": page.title,
         "summary": page.summary,

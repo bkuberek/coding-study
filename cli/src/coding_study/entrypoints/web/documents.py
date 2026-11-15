@@ -18,6 +18,7 @@ from coding_study.application.reveal_hint import HintsLocked, RevealedHint
 from coding_study.domain.about import About, Credit, Link
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, PATTERNS, Scope
@@ -93,7 +94,12 @@ def problem_document(
         for approach in details.approaches
     ]
     guide_links: list[JsonValue] = [
-        {"slug": guide.meta.slug, "title": guide.meta.title, "read": guide.read_at is not None}
+        {
+            "id": content_id(ContentType.GUIDE, guide.meta.slug),
+            "slug": guide.meta.slug,
+            "title": guide.meta.title,
+            "read": guide.read_at is not None,
+        }
         for guide in guides
     ]
     return {
@@ -171,6 +177,7 @@ def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
     assert attempt.ended_at is not None
     schedule = finished.schedule
     return {
+        "id": content_id(ContentType.PROBLEM, attempt.slug),
         "slug": attempt.slug,
         "language": attempt.language.value if attempt.language else None,
         "status": attempt.status.value,
@@ -203,6 +210,7 @@ def abort_document(aborted: Attempt) -> dict[str, JsonValue]:
     or folder of the user's that stays."""
     return {
         "attempt_id": aborted.id,
+        "id": content_id(ContentType.PROBLEM, aborted.slug),
         "slug": aborted.slug,
         "language": aborted.language.value if aborted.language else None,
         "status": aborted.status.value,
@@ -244,6 +252,7 @@ def running_mock_document(mock: CurrentMock | None) -> dict[str, JsonValue]:
 def _mock_problem_value(problem: MockProblem) -> JsonValue:
     candidate = problem.pick.candidate
     return {
+        "id": content_id(ContentType.PROBLEM, candidate.slug),
         "slug": candidate.slug,
         "title": problem.started.meta.title,
         "difficulty": candidate.difficulty.value,
@@ -260,6 +269,7 @@ def _mock_attempt_value(started: MockAttempt) -> JsonValue:
     attempt, meta = started.attempt, started.meta
     return {
         "attempt_id": attempt.id,
+        "id": content_id(ContentType.PROBLEM, attempt.slug),
         "slug": attempt.slug,
         "title": meta.title,
         "difficulty": meta.difficulty.value,

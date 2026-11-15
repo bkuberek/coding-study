@@ -194,7 +194,9 @@ def test_the_header_reads_in_progress_in_words_and_the_json_keeps_the_value(envi
 def test_json_describes_the_problem(environment):
     schedule(environment, date(2026, 10, 27))
     found = document("two-sum")
-    assert {key: found[key] for key in ("slug", "kind", "track", "status", "schedule")} == {
+    keys = ("id", "slug", "kind", "track", "status", "schedule")
+    assert {key: found[key] for key in keys} == {
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "kind": "function",
         "track": "dsa",
@@ -286,7 +288,11 @@ def test_json_gives_an_abandoned_attempt_no_solve_time(environment):
 def test_json_of_an_item_has_no_language(environment):
     environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
     found = document("url-shortener")
-    assert (found["kind"], found["attempts"][0]["language"]) == ("system-design", None)
+    assert (found["id"], found["kind"], found["attempts"][0]["language"]) == (
+        "problem/url-shortener",
+        "system-design",
+        None,
+    )
 
 
 # project problems

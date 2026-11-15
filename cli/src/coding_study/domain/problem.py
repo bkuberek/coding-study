@@ -262,3 +262,5 @@ class ProblemSummary:
     """Repository-relative, e.g. `problems/two-sum`."""
     reference_languages: tuple[Language, ...]
     """Languages with at least one reference file for a declared approach, in `Language` order."""
+    has_rubric: bool = False
+    """The folder has a `rubric.md`."""

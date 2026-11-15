@@ -9,9 +9,11 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
+from coding_study.domain.content_ids import ContentType
 from coding_study.domain.guide_markdown import mermaid_digest
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
+from tests.content_id_checks import content_ids_in
 from tests.fakes import NOW, make_environment
 from tests.guide_builders import DIAGRAM, write_guide, write_hashing
 from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, web_app
@@ -73,6 +75,16 @@ def test_a_guide_is_the_document_of_cstudy_learn_with_its_html(client, monkeypat
         cli_document(monkeypatch, environment, "hash-maps"),
         True,
     )
+
+
+def test_a_guide_and_a_path_have_their_own_ids(client):
+    assert client.get(f"{GUIDES}/hash-maps").json()["id"] == "guide/hash-maps"
+    assert client.get(f"{PATHS}/hashing").json()["id"] == "path/hashing"
+    assert content_ids_in(client.get(GUIDES).json()) == [
+        (ContentType.GUIDE, "hash-functions"),
+        (ContentType.GUIDE, "hash-maps"),
+        (ContentType.PATH, "hashing"),
+    ]
 
 
 def test_a_diagram_is_its_light_and_dark_drawing_with_alt_text_and_a_caption(client):
@@ -195,7 +207,12 @@ def test_marking_a_guide_read_answers_as_done_does(client, monkeypatch, environm
     first = mark(client, "hash-maps")
     assert (first.status_code, first.json(), mark(client, "hash-maps").json()["already"]) == (
         200,
-        {"slug": "hash-maps", "read_at": NOW.isoformat(), "already": False},
+        {
+            "id": "guide/hash-maps",
+            "slug": "hash-maps",
+            "read_at": NOW.isoformat(),
+            "already": False,
+        },
         True,
     )
 
@@ -232,8 +249,13 @@ def test_marking_an_unknown_guide_is_not_found(client):
 def test_a_problem_names_its_guides_with_their_titles_and_read_state(client):
     mark(client, "hash-functions")
     assert client.get("/api/v1/problems/two-sum").json()["guides"] == [
-        {"slug": "hash-maps", "title": "Hash maps", "read": False},
-        {"slug": "hash-functions", "title": "Hash functions", "read": True},
+        {"id": "guide/hash-maps", "slug": "hash-maps", "title": "Hash maps", "read": False},
+        {
+            "id": "guide/hash-functions",
+            "slug": "hash-functions",
+            "title": "Hash functions",
+            "read": True,
+        },
     ]
 
 

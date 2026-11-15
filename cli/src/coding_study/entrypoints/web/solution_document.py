@@ -13,6 +13,7 @@ from coding_study.application.reveal_solution import (
     SolutionView,
 )
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.items import REFERENCE_FILE, entry_kind
 from coding_study.domain.problem import Language
 from coding_study.domain.problem_files import RUBRIC_FILE
@@ -27,6 +28,7 @@ BACKTICK_RUNS = re.compile(r"`+")
 def solution_document(view: SolutionView, marked_attempt_id: int | None) -> dict[str, JsonValue]:
     meta = view.meta
     return {
+        "id": content_id(ContentType.PROBLEM, meta.slug),
         "slug": meta.slug,
         "kind": entry_kind(meta.kind).value,
         "language": view.language.value,
@@ -44,6 +46,7 @@ def item_solution_document(view: ItemSolutionView) -> dict[str, JsonValue]:
     for name, text in ((RUBRIC_FILE, view.rubric), (REFERENCE_FILE, view.reference)):
         blocks.append(text if text else _note(f"no {name}"))
     return {
+        "id": content_id(ContentType.PROBLEM, meta.slug),
         "slug": meta.slug,
         "kind": meta.kind.value,
         "language": None,

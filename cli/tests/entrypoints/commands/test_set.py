@@ -240,6 +240,7 @@ def test_show_json_holds_each_row_with_its_list_entry(environment, file):
         document["missing"],
         document["today"],
         (first["position"], first["slug"], first["level"], first["passed"], first["missing"]),
+        (first["id"], first["entry"]["id"], first["entry"]["checked_by"]),
         first["entry"]["status"],
         second,
     ) == (
@@ -249,9 +250,11 @@ def test_show_json_holds_each_row_with_its_list_entry(environment, file):
         ["gone"],
         NOW.date().isoformat(),
         (1, "two-sum", None, True, False),
+        ("problem/two-sum", "problem/two-sum", ["tests"]),
         "passed",
         {
             "position": 2,
+            "id": "problem/gone",
             "slug": "gone",
             "level": None,
             "passed": False,
@@ -395,9 +398,11 @@ def test_next_set_json_keeps_every_field_and_adds_the_set(environment):
     document = json.loads(runner.invoke(cli.app, ["next", "--set", LOOP, "--json"]).stdout)
     assert document == {
         "pick": "new",
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "title": "Two Sum",
         "kind": "function",
+        "checked_by": ["tests"],
         "difficulty": "easy",
         "group": "arrays-hashing",
         "reason": f"next in {LOOP}, 1 of 2",

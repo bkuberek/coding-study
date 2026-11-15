@@ -279,6 +279,7 @@ def test_submit_json_says_startup_apart_from_the_duration(environment):
 
     assert document["startup_s"] == 2.5
     assert document["duration_s"] < 2.5
+    assert (document["id"], document["slug"]) == (f"problem/{SLUG}", SLUG)
 
 
 def stop_with_ctrl_c() -> None:

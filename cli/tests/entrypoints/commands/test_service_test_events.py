@@ -229,6 +229,7 @@ def test_json_prints_the_document_with_the_two_clocks_apart(environment):
 
     assert document["startup_s"] == 2.5
     assert document["duration_s"] < 2.5
+    assert (document["id"], document["slug"]) == (f"problem/{SLUG}", SLUG)
 
 
 def test_json_keeps_progress_off_standard_output(environment):

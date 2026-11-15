@@ -19,6 +19,7 @@ from coding_study.application.resolve_target import ProblemTarget, resolve_probl
 from coding_study.domain.attempts import Attempt, AttemptStatus, Grade, RunRecord
 from coding_study.domain.bench_records import BenchRunSummary
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.items import EntryKind
 from coding_study.domain.level_passes import LevelMastery, status_text
 from coding_study.domain.problem import Language
@@ -100,6 +101,7 @@ def history_document(found: ProblemHistory) -> dict[str, JsonValue]:
     """`cstudy history --json`."""
     attempts: list[JsonValue] = [_attempt_value(past) for past in found.attempts]
     return {
+        "id": content_id(ContentType.PROBLEM, found.slug),
         "slug": found.slug,
         "kind": found.kind.value,
         "track": found.track.value,

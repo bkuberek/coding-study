@@ -9,9 +9,10 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 
 from coding_study.application.environment import Environment
-from coding_study.application.practice_catalog import practice_candidates
+from coding_study.application.practice_catalog import checked_by_slug, practice_candidates
 from coding_study.application.problem_sets import find_set, set_standing
 from coding_study.domain.attempts import Attempt
+from coding_study.domain.checked_by import CheckedBy
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk_fit import cannot_run_text
@@ -76,6 +77,7 @@ class Recommendation:
     pick: NextPick | SetPick | ResumePick
     title: str
     kind: EntryKind
+    checked_by: tuple[CheckedBy, ...]
     language: Language | None
     """The language `cstudy next --start` starts it in, which is the language of the attempt a
     resume picks up; None for a rubric problem."""
@@ -208,12 +210,15 @@ def recommend(environment: Environment, request: NextRequest) -> Recommendation 
     candidate = picked.candidate
     if not candidate.autograded:
         item = environment.items.load(candidate.slug)
-        return Recommendation(picked, item.title, item.kind, None, standing)
+        checked = checked_by_slug(environment, item.slug, item.kind)
+        return Recommendation(picked, item.title, item.kind, checked, None, standing)
     meta = environment.problems.load(candidate.slug).meta
     language = _problem_language(environment, meta, request.language)
     if resumed is not None:
         language = resumed.attempt.language or language
-    return Recommendation(picked, meta.title, entry_kind(meta.kind), language, standing)
+    kind = entry_kind(meta.kind)
+    checked = checked_by_slug(environment, meta.slug, kind)
+    return Recommendation(picked, meta.title, kind, checked, language, standing)
 
 
 def _resume(environment: Environment, selection: _Selection) -> ResumePick | None:

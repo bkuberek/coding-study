@@ -269,6 +269,7 @@ def passed(practice, python_attempt) -> Attempt:
 def test_done_answers_what_cstudy_done_prints(tmp_path, practice, passed):
     response = post(tmp_path, practice, finish(passed), {"rating": "ok", "notes": "tidy"})
     assert response.json() == {
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "language": "python",
         "status": "passed",

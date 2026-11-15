@@ -14,9 +14,11 @@ from datetime import datetime
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.level_passes import language_mastery, levels_passed
+from coding_study.application.practice_catalog import checked_by_slug
 from coding_study.application.project_manifest import folder_states
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt, AttemptMode, RunRecord, passed_every_case
+from coding_study.domain.checked_by import CheckedBy
 from coding_study.domain.code_intelligence import NoCodeIntelligence, no_code_intelligence
 from coding_study.domain.file_states import FolderFile, StarterChanges, starter_changes
 from coding_study.domain.hints import hint_level, problem_hints
@@ -74,6 +76,7 @@ class ProjectStanding:
 class AttemptStanding:
     attempt: Attempt
     kind: EntryKind
+    checked_by: tuple[CheckedBy, ...]
     track: Track
     statement: str
     hints: HintCount
@@ -134,6 +137,7 @@ def _item_status(environment: Environment, attempt: Attempt) -> AttemptStanding:
     return AttemptStanding(
         attempt=attempt,
         kind=meta.kind,
+        checked_by=checked_by_slug(environment, meta.slug, meta.kind),
         track=meta.track,
         statement=layout.statement_path(meta.slug),
         hints=HintCount(attempt.hints_used, NO_HINTS, None),
@@ -157,6 +161,7 @@ class _ProblemStatus:
         return AttemptStanding(
             attempt=self._attempt,
             kind=entry_kind(meta.kind),
+            checked_by=checked_by_slug(self._environment, meta.slug, entry_kind(meta.kind)),
             track=meta.track,
             statement=layout.statement_path(meta.slug),
             hints=self._hints(),

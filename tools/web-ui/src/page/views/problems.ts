@@ -17,7 +17,9 @@ import { needMarkers } from "../needs-model.ts";
 import {
   activeFilters,
   canHide,
+  checkedWords,
   choiceWords,
+  columnLabel,
   counted,
   countWords,
   DEFAULT_COLUMNS,
@@ -35,10 +37,11 @@ import type { AttemptRef, ListEntry, NextPick, ProblemDocument, ProblemList, Set
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
 const CONTENT = ["draft", "ready"];
+const CHECKED = ["tests", "rubric"];
 /** The filters the server answers; the search narrows the rows already here. */
 const LIST_FILTERS = FILTER_KEYS.filter((key) => key !== "search");
 const ROW_FILTERS = ["status", "difficulty", "domain", "lang"] as const;
-const MORE_FILTERS = ["track", "kind", "role", "scope", "pattern", "content", "set"] as const;
+const MORE_FILTERS = ["track", "kind", "checked", "role", "scope", "pattern", "content", "set"] as const;
 const SEARCH_FIELD = "filter-search";
 type ChoiceKey = Exclude<FilterKey, "search">;
 type Picked = Exclude<NextPick, { readonly pick: null }>;
@@ -67,6 +70,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     set: [],
     track: session.tracks,
     kind: session.kinds,
+    checked: CHECKED,
     lang: session.languages,
     difficulty: DIFFICULTIES,
     status: STATUSES,
@@ -379,7 +383,7 @@ function columnsMenu(context: PageContext, changed: () => void): HTMLDetailsElem
   return filterMenu(
     "columns-menu",
     ["columns"],
-    h("div", { role: "group", "aria-label": "The columns of the table" }, ...boxes.map((box) => h("label", { class: "column-choice", for: box.id }, box, " ", box.value))),
+    h("div", { role: "group", "aria-label": "The columns of the table" }, ...boxes.map((box) => h("label", { class: "column-choice", for: box.id }, box, " ", columnLabel(box.value as ProblemColumn)))),
     reset,
   );
 }
@@ -412,7 +416,7 @@ function listing(
     "table",
     { class: "problems problem-rows" },
     h("caption", { class: "sr-only" }, "Problems matching the filters"),
-    h("thead", {}, h("tr", {}, ...columns.map((name) => h("th", { scope: "col" }, name)))),
+    h("thead", {}, h("tr", {}, ...columns.map((name) => h("th", { scope: "col", "data-column": name }, columnLabel(name))))),
     body,
   );
   const none = empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
@@ -475,6 +479,7 @@ function labelsOf(labels: readonly string[]): string {
 
 /** Each column's cell of a row. */
 const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawing) => HTMLTableCellElement>> = {
+  checked_by: (entry) => h("td", { class: "quiet" }, checkedWords(entry.checked_by)),
   problem: (entry) =>
     h(
       "td",

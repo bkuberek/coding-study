@@ -85,6 +85,7 @@ def test_a_mock_answers_its_settings_and_shared_end(tmp_path, environment):
 def test_a_mock_problem_is_described_as_cstudy_mock_lists_it(tmp_path, environment):
     problem = post(tmp_path, environment, {}).json()["problems"][1]
     assert {key: value for key, value in problem.items() if key != "attempt_id"} == {
+        "id": "problem/lru-cache",
         "slug": "lru-cache",
         "title": "LRU Cache",
         "difficulty": "medium",
@@ -169,6 +170,7 @@ def test_a_mock_started_in_the_terminal_shows(tmp_path, environment):
         "attempts": [
             {
                 "attempt_id": ids["group-anagrams"],
+                "id": "problem/group-anagrams",
                 "slug": "group-anagrams",
                 "title": "Group Anagrams",
                 "difficulty": "medium",
@@ -177,6 +179,7 @@ def test_a_mock_started_in_the_terminal_shows(tmp_path, environment):
             },
             {
                 "attempt_id": ids["lru-cache"],
+                "id": "problem/lru-cache",
                 "slug": "lru-cache",
                 "title": "LRU Cache",
                 "difficulty": "medium",

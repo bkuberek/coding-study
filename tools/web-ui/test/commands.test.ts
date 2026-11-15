@@ -17,6 +17,14 @@ test("the list command names the label filters with their cstudy list flags", ()
   );
 });
 
+test("the list command names the checked filter with its flag, --checked-by", () => {
+  assert.equal(listCommand({ checked: "rubric", track: "lld" }), "cstudy list --track lld --checked-by rubric");
+});
+
+test("the next command leaves the checked filter out", () => {
+  assert.equal(nextCommand({ checked: "tests", track: "dsa" }), "cstudy next --track dsa");
+});
+
 test("the list command without filters is bare", () => {
   assert.equal(listCommand({}), "cstudy list");
 });

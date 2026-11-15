@@ -17,6 +17,7 @@ from coding_study.application.next_problem import (
 )
 from coding_study.application.start_attempt import StartRequest
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.errors import UsageError
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import (
@@ -30,6 +31,7 @@ from coding_study.domain.next_selection import (
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.problem_sets import SetStanding
 from coding_study.domain.taxonomy import Scope
+from coding_study.entrypoints.commands.list_problems import checked_by_value
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
@@ -163,9 +165,11 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
     language = recommendation.language
     document: dict[str, JsonValue] = {
         "pick": _pick_label(picked),
+        "id": content_id(ContentType.PROBLEM, candidate.slug),
         "slug": candidate.slug,
         "title": recommendation.title,
         "kind": recommendation.kind.value,
+        "checked_by": checked_by_value(recommendation.checked_by),
         "difficulty": candidate.difficulty.value,
         "group": candidate.group.name,
         "reason": pick_reason(picked),
@@ -181,6 +185,7 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
 def _open_value(attempt: OpenAttempt) -> JsonValue:
     return {
         "attempt_id": attempt.attempt_id,
+        "id": content_id(ContentType.PROBLEM, attempt.candidate.slug),
         "slug": attempt.candidate.slug,
         "language": attempt.language.value if attempt.language else None,
     }

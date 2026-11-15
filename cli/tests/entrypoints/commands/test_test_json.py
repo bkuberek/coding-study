@@ -54,7 +54,9 @@ def case(found: dict, case_id: str) -> dict:
 def test_json_names_the_problem_and_the_outcome(environment):
     solve(environment)
     found = document()
-    assert (found["slug"], found["language"], found["outcome"], found["exit_code"]) == (
+    keys = ("id", "slug", "language", "outcome", "exit_code")
+    assert tuple(found[key] for key in keys) == (
+        "problem/two-sum",
         "two-sum",
         "python",
         "passed",

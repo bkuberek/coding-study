@@ -39,6 +39,7 @@ from coding_study.domain.problem import (
     ProblemMeta,
     ProblemSummary,
 )
+from coding_study.domain.problem_files import RUBRIC_FILE
 from coding_study.domain.project import ProjectFiles, relative_path_issue
 from coding_study.domain.service_project import ServiceProject, service_of
 
@@ -123,7 +124,12 @@ class FsProblemRepository:
         if issues:
             raise ContentError(issues)
         meta = self._meta(directory, meta_document)
-        return ProblemSummary(meta, self._source(directory), _reference_languages(directory, meta))
+        return ProblemSummary(
+            meta,
+            self._source(directory),
+            _reference_languages(directory, meta),
+            (directory / RUBRIC_FILE).is_file(),
+        )
 
     def _refuse_rubric(self, directory: Path, meta_document: Any) -> None:
         """A workspace holds no rubric problems."""

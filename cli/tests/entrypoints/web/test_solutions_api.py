@@ -63,6 +63,10 @@ def test_without_an_attempt_the_solution_shows_at_once(tmp_path, practice):
     )
 
 
+def test_the_solution_names_its_problem_by_its_canonical_id(tmp_path, practice):
+    assert post(tmp_path, practice, {}).json()["id"] == "problem/two-sum"
+
+
 def test_the_default_approach_shows_its_code(tmp_path, practice):
     assert HASH_MAP_LINE in post(tmp_path, practice, {}).json()["markdown"]
 

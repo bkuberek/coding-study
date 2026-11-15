@@ -12,10 +12,12 @@ from typer.testing import CliRunner
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.problem_overlay import OverlayProblemRepository
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.content_ids import ContentType
 from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems
+from tests.content_id_checks import content_ids_in
 from tests.fakes import NOW, make_environment, repository_root
 from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 
@@ -120,10 +122,12 @@ def test_json_lists_problems_then_items(environment):
 
 def test_json_describes_a_problem(environment):
     assert entry("two-sum") == {
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "title": "Two Sum",
         "track": "dsa",
         "kind": "function",
+        "checked_by": ["tests"],
         "difficulty": "easy",
         "patterns": ["arrays-hashing"],
         "domains": ["algorithms"],
@@ -143,10 +147,12 @@ def test_json_describes_a_problem(environment):
 
 def test_json_describes_a_rubric_problem(environment):
     assert entry("url-shortener") == {
+        "id": "problem/url-shortener",
         "slug": "url-shortener",
         "title": "URL Shortener",
         "track": "system-design",
         "kind": "system-design",
+        "checked_by": ["rubric"],
         "difficulty": "medium",
         "patterns": [],
         "domains": ["backend"],
@@ -162,6 +168,70 @@ def test_json_describes_a_rubric_problem(environment):
         "jdk": None,
         "requires": None,
     }
+
+
+def test_json_gives_every_entry_its_canonical_id(environment):
+    found = content_ids_in(document())
+    assert found == [(ContentType.PROBLEM, entry["slug"]) for entry in document()["entries"]]
+    assert len(found) == 5
+
+
+@pytest.fixture
+def with_a_rubric(environment, tmp_path):
+    """lru-cache, a `design` problem, with a `rubric.md`, as the `lld` problems have one."""
+    (tmp_path / "problems" / "lru-cache" / "rubric.md").write_text("# LRU Cache: Rubric\n")
+
+
+def test_json_says_a_problem_without_a_rubric_is_checked_by_tests(environment):
+    assert entry("lru-cache")["checked_by"] == ["tests"]
+
+
+def test_json_says_a_problem_with_a_rubric_is_checked_by_tests_then_rubric(with_a_rubric):
+    assert entry("lru-cache")["checked_by"] == ["tests", "rubric"]
+
+
+def test_json_says_a_rubric_problem_is_checked_by_its_rubric(environment):
+    assert {
+        found["slug"]: found["checked_by"]
+        for found in document("--kind", "system-design")["entries"]
+    } == {"url-shortener": ["rubric"], "news-feed": ["rubric"]}
+
+
+def test_checked_by_tests_lists_the_problems_with_tests(with_a_rubric):
+    assert listed_slugs("--checked-by", "tests") == ["two-sum", "lru-cache"]
+
+
+def test_checked_by_rubric_lists_the_rubric_problems_and_the_ones_with_a_rubric(with_a_rubric):
+    assert listed_slugs("--checked-by", "rubric") == [
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_checked_by_rubric_without_a_rubric_in_a_problem_lists_the_rubric_problems_only(
+    environment,
+):
+    assert listed_slugs("--checked-by", "rubric") == ["url-shortener", "news-feed", "retry-wrapper"]
+
+
+def test_checked_by_combines_with_the_other_filters(with_a_rubric):
+    assert listed_slugs("--checked-by", "rubric", "--kind", "design") == ["lru-cache"]
+    assert listed_slugs("--checked-by", "tests", "--kind", "system-design") == []
+
+
+def test_json_applies_checked_by(with_a_rubric):
+    assert [found["slug"] for found in document("--checked-by", "rubric")["entries"]] == [
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_an_unknown_checked_by_is_a_usage_error(environment):
+    assert invoke("--checked-by", "ai-review").exit_code != 0
 
 
 def test_json_names_each_attempt_in_progress(environment):

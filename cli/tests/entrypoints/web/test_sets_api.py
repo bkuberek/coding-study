@@ -10,9 +10,11 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.content_ids import ContentType
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems, next_problem, problem_sets
+from tests.content_id_checks import content_ids_in
 from tests.fakes import NOW, make_environment, repository_root
 from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
 from tests.web_server import WRITE_HEADERS, session_client, web_app
@@ -90,6 +92,13 @@ def test_a_set_is_the_document_of_cstudy_set_show(client, file, environment, mon
     finish(environment, "two-sum")
     expected = cli_document(monkeypatch, environment, "set", "show", LOOP)
     assert client.get(f"{SETS}/{LOOP}").json() == expected
+
+
+def test_each_row_of_a_set_and_its_entry_have_the_id_of_their_problem(client, file):
+    rows = client.get(f"{SETS}/{LOOP}").json()["rows"]
+    assert content_ids_in(rows) == [
+        (ContentType.PROBLEM, slug) for row in rows for slug in (row["slug"], row["slug"])
+    ]
 
 
 def test_an_unknown_set_gets_404_naming_your_sets(client, file):

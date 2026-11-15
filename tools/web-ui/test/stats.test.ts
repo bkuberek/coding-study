@@ -19,10 +19,12 @@ const STATS: StatsDocument = {
 
 function entry(slug: string, status: string, due_on: string | null): ListEntry {
   return {
+    id: `problem/${slug}`,
     slug,
     title: slug,
     track: "dsa",
     kind: "function",
+    checked_by: ["tests"],
     difficulty: "easy",
     patterns: [],
     domains: ["algorithms"],

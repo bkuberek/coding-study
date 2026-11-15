@@ -17,6 +17,7 @@ from coding_study.application.problem_sets import in_named_set
 from coding_study.application.service_lifecycle import service_needs_of
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.checked_by import CheckedBy
 from coding_study.domain.errors import UnknownProblemError
 from coding_study.domain.items import EntryKind
 from coding_study.domain.labels import LabelFilter
@@ -45,6 +46,7 @@ async def problems(request: Request) -> Response:
         language=choice(query, "lang", Language),
         kind=choice(query, "kind", EntryKind),
         labels=_labels(query),
+        checked_by=choice(query, "checked", CheckedBy),
     )
     return JsonResponse(await in_workspace(request, _problems, problem_filter, _set_name(query)))
 

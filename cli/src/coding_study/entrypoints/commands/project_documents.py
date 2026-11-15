@@ -9,6 +9,7 @@ from coding_study.application.service_events import COMMAND_TEST_ID
 from coding_study.application.submit_project import SubmitResult
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.project_test_runs import SuiteOrigin, SuiteTestVerdict
 from coding_study.domain.runs import Crashed, Raised, TimedOut, UserError
 from coding_study.domain.submissions import LevelTally
@@ -39,6 +40,7 @@ def project_test_document(result: ProjectTestResult, exit_code: int) -> dict[str
     and no level opens from it."""
     load_error = result.load_error
     return {
+        "id": content_id(ContentType.PROBLEM, result.meta.slug),
         "slug": result.meta.slug,
         "language": result.language.value,
         "attempt_id": result.attempt.id,
@@ -135,6 +137,7 @@ def submit_document(result: SubmitResult, exit_code: int) -> dict[str, JsonValue
         if verdict.case.visible or not result.is_mock
     ]
     return {
+        "id": content_id(ContentType.PROBLEM, result.meta.slug),
         "slug": result.meta.slug,
         "language": result.language.value,
         "attempt_id": result.attempt.id,

@@ -80,6 +80,7 @@ def test_the_answer_names_the_attempt_and_the_file_that_stays(tmp_path, environm
     document = post(tmp_path, environment, attempt, confirm=True).json()
     assert document == {
         "attempt_id": attempt.id,
+        "id": "problem/two-sum",
         "slug": "two-sum",
         "language": "python",
         "status": "abandoned",

@@ -60,10 +60,14 @@ export interface AttemptRef {
 
 /** An entry of `cstudy list --json`. */
 export interface ListEntry {
+  /** The canonical ID, `problem/<slug>`. */
+  readonly id: string;
   readonly slug: string;
   readonly title: string;
   readonly track: string;
   readonly kind: string;
+  /** How it is checked: `tests`, `rubric`, or both in that order. */
+  readonly checked_by: readonly string[];
   readonly difficulty: string;
   readonly patterns: readonly string[];
   /** What the entry is about, and who it is for; both empty on a problem of your own that leaves them out. */
