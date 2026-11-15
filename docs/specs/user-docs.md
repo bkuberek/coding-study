@@ -70,13 +70,17 @@ Pages are listed by `order`. A section is listed where its first page is, and it
 | 40 | `workspace` | Your workspace | Start here |
 | 45 | `upgrading` | Upgrading cstudy | Start here |
 | 50 | `practice` | Work on a problem | Practise |
+| 55 | `problem-kinds` | Kinds of problems | Practise |
 | 60 | `levels` | Progressive levels and projects | Practise |
 | 70 | `service-projects` | Service projects and the dev stack | Practise |
+| 75 | `ide-and-debugging` | Your IDE and the debugger | Practise |
 | 80 | `guides` | Guides and learning paths | Practise |
 | 90 | `planning` | Plan your practice | Practise |
+| 95 | `own-problems` | Write your own problems | Practise |
 | 100 | `web-ui` | Practise in your browser | The web UI |
 | 110 | `editor` | The editor and code intelligence | The web UI |
 | 120 | `settings` | Settings and preferences | Settings and help |
+| 125 | `commands` | Command reference | Settings and help |
 | 130 | `troubleshooting` | Troubleshooting | Settings and help |
 
 The README stays short: what `cstudy` is, the install, the first steps, and a link to these pages. `cstudy` itself links to `toolchains.md` on GitHub from the fixes `cstudy doctor` prints, by the ids of its sections (`#go`), which therefore do not change.
@@ -138,6 +142,7 @@ The search matches each page's passages: its title with its summary and the text
 | D4 | No two pages share an `order`, and each section's pages follow one another |
 | D5 | Every link is an `https://` address, a page's file name or `#` and an id; the page exists, and so does the heading the id names |
 | D6 | Every `cstudy` command in a shell block, a terminal's prompt or fix line, or inline code is a command of `cstudy`, and each of its flags is one the command takes ([accuracy](#accuracy)) |
+| D7 | The `commands` page has a table row for every command and subcommand of `cstudy`, with the command, its flags and what it does, and each flag in a row's flags column is one that command takes. The fast tests run it, in `cli/tests/content/test_user_docs.py`; `cstudy verify` does not |
 
 ### Accuracy
 

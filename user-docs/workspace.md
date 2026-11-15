@@ -88,21 +88,8 @@ cstudy import          # restores progress-export.json into an empty progress.db
 
 ## Your IDE
 
-`cstudy init` writes project files for VS Code and IntelliJ IDEA: tasks that run `cstudy test` on the file you are editing, and debug configurations that attach to a run of `cstudy test --debug`. `cstudy ide` writes them again, for a workspace made before they existed or after you changed them:
-
-```bash
-cstudy ide             # both IDEs
-cstudy ide vscode      # or idea
-cstudy ide --force     # also overwrite the files you edited
-```
+`cstudy init` writes project files for VS Code and IntelliJ IDEA: tasks and run configurations for every `cstudy` action, and debug configurations that attach to a run of `cstudy test --debug`. `cstudy ide` writes them again, and keeps the files you edited. [Your IDE and the debugger](ide-and-debugging.md) covers what each file holds and how to debug a run.
 
 ## Your own problems
 
-`cstudy new` scaffolds a problem in the workspace's `problems/`, and it joins the catalog for every command:
-
-```bash
-cstudy new my-problem --from-template array
-cstudy verify my-problem
-```
-
-Templates include `array`, `tree`, `design`, `progressive` and `concurrent`. Writing the statement, the tests and the reference solutions is described in the [authoring guide](https://github.com/bkuberek/coding-study/blob/main/docs/specs/authoring.md).
+`cstudy new` scaffolds a problem in the workspace's `problems/`, and it joins the catalog for every command. [Write your own problems](own-problems.md) covers the templates, the files, the checks of `cstudy verify` and the way from draft to ready.

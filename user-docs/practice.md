@@ -7,7 +7,7 @@ order: 50
 
 # Work on a problem
 
-Each time you work on a problem is an **attempt**. You start it, write and test your code, and finish it with how it went; `cstudy` then schedules the problem's next review. The loop is the same in the terminal, your IDE and the web UI.
+Each time you work on a problem is an **attempt**. You start it, write and test your code, and finish it with how it went; `cstudy` then schedules the problem's next review. The loop is the same in the terminal, your IDE and the web UI, and the [command reference](commands.md) lists every flag.
 
 ```bash
 cstudy start two-sum --lang python
@@ -25,7 +25,7 @@ cstudy list --search anagram
 cstudy show two-sum             # print the statement, without hints
 ```
 
-`cstudy list` takes filters such as `--track`, `--pattern`, `--difficulty`, `--status`, `--lang`, `--domain`, `--role` and `--scope`, `--checked-by tests` or `--checked-by rubric` for how a problem is checked, and `--json` for scripts. A problem's **slug**, such as `two-sum`, names it in every command; `--json` also gives it as an **id**, `problem/two-sum`, which is for scripts and never typed. [Plan your practice](planning.md) covers `cstudy next` and sets.
+`cstudy list` takes filters such as `--track`, `--pattern`, `--difficulty`, `--status`, `--lang`, `--domain`, `--role` and `--scope`, `--checked-by tests` or `--checked-by rubric` for how a problem is checked, and `--json` for scripts. A problem's **slug**, such as `two-sum`, names it in every command; `--json` also gives it as an **id**, `problem/two-sum`, which is for scripts and never typed. [Kinds of problems](problem-kinds.md) explains the tracks, the kinds and the labels, and [plan your practice](planning.md) covers `cstudy next` and sets.
 
 ## Start
 
@@ -77,7 +77,7 @@ all passed. Next: cstudy done --rating easy|ok|hard
 | `--perf` | After every case passes, runs a short benchmark and prints its verdict |
 | `--typecheck` | TypeScript: also runs the type checker, since running TypeScript does not check types |
 | `--json` | One JSON document instead of the report, for scripts |
-| `--debug` | Waits for your IDE's debugger to attach, with time limits off |
+| `--debug` | Waits for your IDE's debugger to attach, with time limits off ([debug a run](ide-and-debugging.md#debug-a-run)) |
 
 ## Hints and solutions
 

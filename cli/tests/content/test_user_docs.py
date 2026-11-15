@@ -1,7 +1,10 @@
 """Every shipped user page passes the static checks of `cstudy verify` (docs/specs/user-docs.md),
 and every `cstudy` command it names, with each flag, is one the real command line has
 (docs/specs/user-docs.md#accuracy). A renamed command or flag fails here until the pages follow
-it."""
+it, and a new command until the command reference lists it (D7)."""
+
+import re
+from dataclasses import replace
 
 import pytest
 import typer.main
@@ -22,16 +25,27 @@ TOPICS = (
     "workspace",
     "upgrading",
     "practice",
+    "problem-kinds",
     "levels",
     "service-projects",
+    "ide-and-debugging",
     "guides",
     "planning",
+    "own-problems",
     "web-ui",
     "editor",
     "settings",
+    "commands",
     "troubleshooting",
 )
 """docs/specs/user-docs.md#topics, in order."""
+COMMANDS = "commands"
+"""The command reference: its tables have a row per command, with the command, its flags and
+what it does."""
+_COMMAND_ROW = re.compile(
+    r"^\| `(?P<command>cstudy [^`]*)` \| (?P<flags>[^|]*) \| (?:[^|\\]|\\.)* \|$", re.MULTILINE
+)
+_CODE_SPAN = re.compile(r"`([^`]+)`")
 
 
 def test_the_topics_are_those_of_the_spec_in_order():
@@ -62,3 +76,34 @@ def test_the_pages_name_commands_for_the_check_to_read():
         for mention in command_mentions(DOCS.load(slug).markdown)
     ]
     assert (len(mentions) > 100, any("cstudy docs" in text for text in mentions)) == (True, True)
+
+
+def test_the_command_reference_has_a_row_for_every_command_with_flags_it_takes():
+    """D7: every command and subcommand of `cstudy` has a row, and each flag in a row's Flags
+    column is one its command takes, so the reference stays complete as D6 keeps it true."""
+    page = DOCS.load(COMMANDS)
+    rows = [(row["command"], row["flags"]) for row in _COMMAND_ROW.finditer(page.markdown)]
+    listed = {path for command, _flags in rows for path in _command_paths(command)}
+    flags = "\n".join(
+        f"`{command} {flag}`" for command, cell in rows for flag in _CODE_SPAN.findall(cell)
+    )
+    issues = command_issues(page_file(COMMANDS), replace(page, markdown=flags), PROGRAM)
+    assert (sorted(_every_command() - listed), [str(issue) for issue in issues]) == ([], [])
+
+
+def _every_command() -> set[tuple[str, ...]]:
+    return {
+        path
+        for name, spec in PROGRAM.subcommands.items()
+        for path in ((name,), *((name, sub) for sub in spec.subcommands))
+    }
+
+
+def _command_paths(command: str) -> tuple[tuple[str, ...], ...]:
+    """`cstudy set add <name> <slug>...` names `set` and `set add`: the words that are no
+    placeholder, a group's first two."""
+    name, *rest = (word for word in command.split()[1:] if word[0] not in "-<[")
+    spec = PROGRAM.subcommands.get(name)
+    if spec is not None and spec.subcommands and rest:
+        return ((name,), (name, rest[0]))
+    return ((name,),)
