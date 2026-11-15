@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study next document",
+  "description": "`cstudy next --json`: what to work on, or why there is nothing to pick. Spec: docs/specs/cli.md#cstudy-next",
+  "oneOf": [{ "$ref": "#/$defs/nothing" }, { "$ref": "#/$defs/pick" }, { "$ref": "#/$defs/resume" }],
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "id": { "description": "The canonical ID, `problem/<slug>`", "type": "string", "pattern": "^problem/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+    "standing": {
+      "description": "How the set stands, under `--set`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "passed", "total", "finished"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "passed": { "$ref": "#/$defs/count" },
+        "total": { "description": "The entries the catalog has", "$ref": "#/$defs/count" },
+        "finished": { "description": "Whether every entry is passed", "type": "boolean" }
+      }
+    },
+    "nothing": {
+      "description": "Nothing to pick: `message` says why",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pick", "message"],
+      "properties": {
+        "pick": { "const": null },
+        "message": { "type": "string", "minLength": 1 },
+        "set": { "$ref": "#/$defs/standing" }
+      }
+    },
+    "pick": {
+      "description": "A problem to start: the next of a set, a review that is due, or a new one",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pick", "id", "slug", "title", "kind", "checked_by", "difficulty", "group", "reason", "language", "start"],
+      "properties": {
+        "pick": { "enum": ["new", "review"] },
+        "id": { "$ref": "#/$defs/id" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "minLength": 1 },
+        "kind": { "$ref": "#/$defs/kind" },
+        "checked_by": { "$ref": "#/$defs/checked_by" },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "group": { "description": "The pattern, or the track of a problem without patterns, the pick weighs", "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "language": { "description": "Null for a rubric problem", "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "start": { "description": "The command that starts it", "type": "string", "pattern": "^cstudy start " },
+        "set": { "$ref": "#/$defs/standing" }
+      }
+    },
+    "resume": {
+      "description": "An attempt in progress to take up again",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pick", "id", "slug", "title", "kind", "checked_by", "difficulty", "group", "reason", "language", "start", "attempt_id", "also_open"],
+      "properties": {
+        "pick": { "const": "resume" },
+        "id": { "$ref": "#/$defs/id" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "minLength": 1 },
+        "kind": { "$ref": "#/$defs/kind" },
+        "checked_by": { "$ref": "#/$defs/checked_by" },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "group": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "start": { "type": "string", "pattern": "^cstudy start " },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "also_open": {
+          "description": "The other attempts in progress",
+          "type": "array",
+          "items": { "$ref": "#/$defs/open_attempt" }
+        },
+        "set": { "$ref": "#/$defs/standing" }
+      }
+    },
+    "kind": {
+      "enum": ["function", "design", "progressive", "concurrent", "project", "system-design", "code-review"]
+    },
+    "checked_by": {
+      "description": "How the answer is checked: `tests`, `rubric` or both",
+      "type": "array",
+      "items": { "enum": ["tests", "rubric"] }
+    },
+    "open_attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "id", "slug", "language"],
+      "properties": {
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "id": { "$ref": "#/$defs/id" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] }
+      }
+    }
+  }
+}

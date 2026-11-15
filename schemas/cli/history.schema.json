@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study history document",
+  "description": "`cstudy history --json`: a problem's attempts, runs and review schedule. Spec: docs/specs/cli.md#cstudy-history",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "slug", "kind", "track", "status", "schedule", "levels", "attempts"],
+  "properties": {
+    "id": { "description": "The canonical ID, `problem/<slug>`", "type": "string", "pattern": "^problem/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "slug": { "$ref": "#/$defs/slug" },
+    "kind": {
+      "enum": ["function", "design", "progressive", "concurrent", "project", "system-design", "code-review"]
+    },
+    "track": {
+      "enum": ["dsa", "practical", "lld", "concurrency", "debugging", "system-design", "code-review", "behavioral"]
+    },
+    "status": { "enum": ["new", "in_progress", "attempted", "passed", "due", "mastered"] },
+    "schedule": {
+      "description": "The review schedule, or null while the problem has none",
+      "anyOf": [{ "$ref": "#/$defs/schedule" }, { "type": "null" }]
+    },
+    "levels": {
+      "description": "Null for a problem without levels",
+      "anyOf": [{ "$ref": "#/$defs/levels" }, { "type": "null" }]
+    },
+    "attempts": { "description": "Newest first", "type": "array", "items": { "$ref": "#/$defs/attempt" } }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "level": { "type": "integer", "minimum": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" },
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+    "grade": { "enum": ["again", "hard", "ok", "easy"] },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["due_on", "interval_days", "ease", "reps", "lapses", "last_grade"],
+      "properties": {
+        "due_on": { "$ref": "#/$defs/date" },
+        "interval_days": { "$ref": "#/$defs/count" },
+        "ease": { "type": "number" },
+        "reps": { "$ref": "#/$defs/count" },
+        "lapses": { "$ref": "#/$defs/count" },
+        "last_grade": { "$ref": "#/$defs/grade" }
+      }
+    },
+    "levels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last", "mastered", "languages"],
+      "properties": {
+        "last": { "description": "The problem's levels", "$ref": "#/$defs/level" },
+        "mastered": { "description": "The levels the problem is mastered through, in any language", "$ref": "#/$defs/count" },
+        "languages": { "type": "array", "items": { "$ref": "#/$defs/mastery" } }
+      }
+    },
+    "mastery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "best", "last_time", "try_level"],
+      "properties": {
+        "language": { "$ref": "#/$defs/language" },
+        "best": { "description": "The most levels a passed attempt passed; null before a pass", "type": ["integer", "null"], "minimum": 0 },
+        "last_time": { "description": "The levels the latest attempt that passed level 1 passed", "type": ["integer", "null"], "minimum": 0 },
+        "try_level": { "description": "The level to try after last time", "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt_id",
+        "language",
+        "mode",
+        "status",
+        "started_at",
+        "ended_at",
+        "solve_s",
+        "rating",
+        "grade",
+        "hints_used",
+        "solution_revealed",
+        "time_limit_s",
+        "level_unlocked",
+        "levels_finished",
+        "levels_passed",
+        "levels_total",
+        "test_runs",
+        "submissions",
+        "bench_runs"
+      ],
+      "properties": {
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "language": { "description": "Null for a rubric problem", "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "mode": { "enum": ["new", "review", "mock"] },
+        "status": { "enum": ["in_progress", "passed", "failed", "abandoned"] },
+        "started_at": { "$ref": "#/$defs/instant" },
+        "ended_at": { "anyOf": [{ "$ref": "#/$defs/instant" }, { "type": "null" }] },
+        "solve_s": { "description": "Seconds; null while in progress and once abandoned", "type": ["integer", "null"], "minimum": 0 },
+        "rating": { "enum": ["easy", "ok", "hard", null] },
+        "grade": { "anyOf": [{ "$ref": "#/$defs/grade" }, { "type": "null" }] },
+        "hints_used": { "$ref": "#/$defs/count" },
+        "solution_revealed": { "type": "boolean" },
+        "time_limit_s": { "type": ["integer", "null"], "minimum": 0 },
+        "level_unlocked": { "type": ["integer", "null"], "minimum": 1 },
+        "levels_finished": { "description": "Null before the attempt recorded the levels it finished", "type": ["integer", "null"], "minimum": 0 },
+        "levels_passed": { "description": "Null for a problem without levels", "type": ["integer", "null"], "minimum": 0 },
+        "levels_total": { "description": "Null for a problem without levels", "type": ["integer", "null"], "minimum": 1 },
+        "test_runs": { "type": "array", "items": { "$ref": "#/$defs/test_run" } },
+        "submissions": { "description": "A project's `cstudy submit` runs", "type": "array", "items": { "$ref": "#/$defs/submission" } },
+        "bench_runs": { "type": "array", "items": { "$ref": "#/$defs/bench_run" } }
+      }
+    },
+    "test_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ran_at", "total", "passed", "failed", "errored", "timed_out", "tle", "time_limit", "duration_ms"],
+      "properties": {
+        "ran_at": { "$ref": "#/$defs/instant" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "errored": { "$ref": "#/$defs/count" },
+        "timed_out": { "$ref": "#/$defs/count" },
+        "tle": { "$ref": "#/$defs/count" },
+        "time_limit": { "description": "The time limit the run applied, such as `5x` or `1500ms`; null when limits were off", "type": ["string", "null"], "minLength": 1 },
+        "duration_ms": { "$ref": "#/$defs/count" }
+      }
+    },
+    "submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submitted_at", "graded_up_to", "every_level", "levels", "total", "passed", "duration_ms"],
+      "properties": {
+        "submitted_at": { "$ref": "#/$defs/instant" },
+        "graded_up_to": { "description": "The last level the submission graded", "$ref": "#/$defs/level" },
+        "every_level": { "description": "Whether it graded every level", "type": "boolean" },
+        "levels": { "type": "array", "items": { "$ref": "#/$defs/level_tally" } },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "duration_ms": { "$ref": "#/$defs/count" }
+      }
+    },
+    "level_tally": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "total", "passed", "visible_total", "visible_passed", "hidden_total", "hidden_passed"],
+      "properties": {
+        "level": { "$ref": "#/$defs/level" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "visible_total": { "$ref": "#/$defs/count" },
+        "visible_passed": { "$ref": "#/$defs/count" },
+        "hidden_total": { "$ref": "#/$defs/count" },
+        "hidden_passed": { "$ref": "#/$defs/count" }
+      }
+    },
+    "bench_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ran_at", "verdict", "confidence", "ratio", "reference_id"],
+      "properties": {
+        "ran_at": { "$ref": "#/$defs/instant" },
+        "verdict": { "enum": ["optimal", "near-optimal", "suboptimal", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "ratio": { "type": ["number", "null"] },
+        "reference_id": { "type": ["string", "null"], "minLength": 1 }
+      }
+    }
+  }
+}

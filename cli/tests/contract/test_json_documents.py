@@ -15,9 +15,11 @@ To cover another document:
 """
 
 import json
+import shutil
 from collections.abc import Iterator
 from copy import deepcopy
-from datetime import timedelta
+from dataclasses import replace
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -25,22 +27,80 @@ import pytest
 from jsonschema import Draft202012Validator
 from typer.testing import CliRunner
 
+from coding_study.adapters.fs_problem_repository import FsProblemRepository
+from coding_study.adapters.problem_overlay import OverlayProblemRepository
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.doctor import CheckResult, CheckStatus, DoctorReport
+from coding_study.application.environment import Environment
+from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.application.start_item import ItemStartRequest, start_item_attempt
+from coding_study.domain.attempts import (
+    Attempt,
+    AttemptMode,
+    AttemptStatus,
+    Grade,
+    NewAttempt,
+    Rating,
+    RunRecord,
+)
+from coding_study.domain.bench_records import BenchRunRecord
+from coding_study.domain.bench_verdict import Confidence, Verdict
+from coding_study.domain.content_ids import ContentType
+from coding_study.domain.judging import Tally
+from coding_study.domain.problem import Language
 from coding_study.domain.progress_export import ProgressSnapshot, export_text
+from coding_study.domain.scheduling import ReviewState, ScheduleEntry
+from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from coding_study.entrypoints import cli
-from coding_study.entrypoints.commands import doctor, export, stats
+from coding_study.entrypoints.commands import (
+    docs,
+    doctor,
+    export,
+    history,
+    learn,
+    list_problems,
+    next_problem,
+    problem_sets,
+    start,
+    stats,
+    status,
+)
 from coding_study.entrypoints.shared import ExitCode
-from tests.fakes import NOW, make_environment, repository_root
+from tests.content_id_checks import content_ids_in
+from tests.doc_builders import write_docs
+from tests.fakes import (
+    NOW,
+    FakeJdk,
+    FakeStubGenerator,
+    FakeToolchains,
+    declare_jdk,
+    jdk_of,
+    make_environment,
+    repository_root,
+)
+from tests.guide_builders import write_hashing, write_path
 from tests.helpers import (
+    CONCURRENCY_PROBLEMS,
     FIRST_CATALOG,
     FIXTURE_RUBRIC_PROBLEMS,
+    PROJECT_PROBLEMS,
     REPOSITORY_ROOT,
     copy_catalog_problems,
     mark_workspace,
 )
 from tests.progress_fixtures import database_at_schema, read_rows
+from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.sandbox_fakes import FakeSandbox
+from tests.service_problems import (
+    CONFIG,
+    meta_document,
+    write_mock,
+    write_problem,
+)
+from tests.service_problems import (
+    SLUG as SERVICE_SLUG,
+)
 from tests.stats_fixture import fill_progress
 
 SCHEMA_DIRECTORY = REPOSITORY_ROOT / "schemas" / "cli"
@@ -135,6 +195,23 @@ def test_every_schema_object_is_closed(path):
         if subschema.get("additionalProperties") is not False
     ]
     assert open_objects == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    [path for path in SCHEMA_FILES if path.name != "export.schema.json"],
+    ids=lambda path: path.name,
+)
+def test_every_schema_object_that_names_content_requires_an_id(path):
+    """The export is exempt: its rows are database rows, and the table names the type."""
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    without_id = [
+        where
+        for where, subschema in schema_objects(schema)
+        if "slug" in subschema.get("properties", {})
+        and ("id" not in subschema["properties"] or "id" not in subschema.get("required", []))
+    ]
+    assert without_id == []
 
 
 def test_the_schema_directory_is_not_empty():
@@ -367,3 +444,746 @@ def test_export_rejects_another_version(content_root, tmp_path, monkeypatch):
     document = export_document(environment, tmp_path, monkeypatch)
     document["version"] = 2
     assert schema_errors("export", document)
+
+
+# The content and progress documents
+
+FIXTURES = REPOSITORY_ROOT / "cli" / "tests" / "fixtures"
+PRACTICE = FIXTURES / "practice" / "problems"
+PHASE4 = FIXTURES / "phase4" / "problems"
+TOOLCHAINS = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
+COMMANDS = (docs, history, learn, list_problems, next_problem, problem_sets, start, status)
+ENTRY_KINDS = {
+    "function",
+    "design",
+    "progressive",
+    "concurrent",
+    "project",
+    "system-design",
+    "code-review",
+}
+LOOP = "backend-loop"
+SETS = f"""\
+sets:
+  {LOOP}:
+    description: Before the 12th
+    problems:
+      - two-sum
+      - url-shortener
+      - {{slug: level-store, level: 2}}
+      - gone
+  warm-up:
+    problems: []
+"""
+STORE = "level-store"
+RUBRIC = "url-shortener"
+
+
+def install(monkeypatch: pytest.MonkeyPatch, environment: Environment) -> Environment:
+    """Makes `environment` the one every command of these documents loads."""
+    for module in COMMANDS:
+        for name in ("load_environment", "load_catalog_environment"):
+            if hasattr(module, name):
+                monkeypatch.setattr(module, name, lambda *_: environment)
+    return environment
+
+
+def command_document(*arguments: str) -> Any:
+    result = runner.invoke(cli.app, [*arguments, "--json"])
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+    return json.loads(result.stdout)
+
+
+def assert_ids(document: Any, *types: ContentType) -> None:
+    """Every object of `document` that names content carries its canonical ID, of these types."""
+    assert {content_type for content_type, _ in content_ids_in(document)} == set(types)
+
+
+def add_attempt(
+    environment: Environment,
+    slug: str,
+    language: Language,
+    started_at: datetime = NOW,
+    **fields: Any,
+) -> int:
+    """An attempt of `slug`, with `fields` changed."""
+    new = NewAttempt(slug, language, AttemptMode.NEW, started_at)
+    started = environment.progress.add_attempt(new)
+    environment.progress.update_attempt(replace(started, **fields))
+    return started.id
+
+
+def add_run(environment: Environment, attempt_id: int, passed: int, **fields: Any) -> None:
+    tally = Tally(total=4, passed=passed, failed=4 - passed)
+    environment.progress.add_test_run(RunRecord(attempt_id, NOW, "abc", tally, 10, **fields))
+
+
+def find_attempt(environment: Environment, slug: str) -> Attempt:
+    attempts = environment.progress.attempts(slug)
+    assert attempts
+    return attempts[-1]
+
+
+# cstudy list --json
+
+
+@pytest.fixture
+def every_kind(tmp_path, tmp_path_factory, monkeypatch) -> Environment:
+    """A problem of each kind, rubric problems, a service project and a problem of your own,
+    with JDK 26 selected."""
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
+    for problems in (PHASE4, CONCURRENCY_PROBLEMS, PROJECT_PROBLEMS):
+        shutil.copytree(problems, root / "problems", dirs_exist_ok=True)
+    write_problem(root)
+    declare_jdk(root, "two-sum", "{min: 24}")
+    yours = tmp_path_factory.mktemp("yours")
+    (yours / "problems").mkdir()
+    shutil.move(root / "problems" / "parking-lot", yours / "problems" / "parking-lot")
+    problems = OverlayProblemRepository(FsProblemRepository(root), yours)
+    return install(monkeypatch, make_environment(root, problems=problems, jdk=jdk_of(26)))
+
+
+def test_a_list_with_every_kind(every_kind):
+    document = command_document("list")
+    assert_valid("list", document)
+    entries = document["entries"]
+    assert {entry["kind"] for entry in entries} == ENTRY_KINDS
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_a_list_names_rubric_problems_and_your_own(every_kind):
+    entries = {entry["slug"]: entry for entry in command_document("list")["entries"]}
+    assert entries[RUBRIC]["checked_by"] == ["rubric"]
+    assert entries[RUBRIC]["requires"] is None
+    assert entries["parking-lot"]["source"] == "workspace"
+    assert entries["two-sum"]["checked_by"] == ["tests"]
+
+
+def test_a_list_holds_a_service_project_s_needs_and_a_jdk_range(every_kind):
+    entries = {entry["slug"]: entry for entry in command_document("list")["entries"]}
+    assert entries[SERVICE_SLUG]["requires"]["docker"] is True
+    assert entries["two-sum"]["jdk"] == {"min": 24, "max": 26}
+
+
+def test_a_list_of_progress(every_kind):
+    add_attempt(every_kind, "two-sum", Language.PYTHON)
+    add_attempt(every_kind, "lru-cache", Language.PYTHON, status=AttemptStatus.PASSED, ended_at=NOW)
+    state = ReviewState(ease=2.5, interval_days=3, reps=1, lapses=0)
+    due = ScheduleEntry("lru-cache", state, NOW.date(), Grade.OK, NOW)
+    every_kind.progress.save_schedule_entry(due)
+    document = command_document("list")
+    assert_valid("list", document)
+    entries = {entry["slug"]: entry for entry in document["entries"]}
+    assert entries["two-sum"]["status"] == "in_progress"
+    assert entries["two-sum"]["in_progress"] == [
+        {"attempt_id": 1, "language": "python", "mode": "new"}
+    ]
+    assert entries["lru-cache"]["due_on"] == NOW.date().isoformat()
+
+
+def test_a_list_without_a_selected_jdk(every_kind, monkeypatch):
+    install(monkeypatch, replace(every_kind, jdk=FakeJdk(None)))
+    document = command_document("list")
+    assert_valid("list", document)
+    assert document["selected_jdk"] is None
+
+
+def test_a_list_of_a_set(every_kind):
+    (every_kind.root / "sets.yaml").write_text(SETS)
+    document = command_document("list", "--set", LOOP)
+    assert_valid("list", document)
+    assert document["set"] == {"name": LOOP, "missing": ["gone"]}
+
+
+def test_list_rejects_an_undocumented_field(every_kind):
+    add_attempt(every_kind, "two-sum", Language.PYTHON)
+    document = command_document("list")
+    entries = document["entries"]
+    for path in ((), ("selected_jdk",), ("entries", 0)):
+        assert_rejects_extra_field("list", document, path)
+    for field in ("requires", "levels", "jdk"):
+        index = next(index for index, entry in enumerate(entries) if entry[field])
+        assert_rejects_extra_field("list", document, ("entries", index, field))
+    index = next(index for index, entry in enumerate(entries) if entry["in_progress"])
+    assert_rejects_extra_field("list", document, ("entries", index, "in_progress", 0))
+
+
+def test_list_of_a_set_rejects_an_undocumented_field(every_kind):
+    (every_kind.root / "sets.yaml").write_text(SETS)
+    assert_rejects_extra_field("list", command_document("list", "--set", LOOP), ("set",))
+
+
+def test_list_rejects_the_id_of_another_type(every_kind):
+    document = command_document("list")
+    document["entries"][0]["id"] = "guide/two-sum"
+    assert schema_errors("list", document)
+
+
+def test_list_rejects_a_kind_it_does_not_name(every_kind):
+    document = command_document("list")
+    document["entries"][0]["kind"] = "puzzle"
+    assert schema_errors("list", document)
+
+
+# cstudy next --json
+
+
+@pytest.fixture
+def practised(tmp_path, monkeypatch) -> Environment:
+    """The practice problems, the progressive problems and the rubric problems."""
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
+    shutil.copytree(PHASE4, root / "problems", dirs_exist_ok=True)
+    (root / "sets.yaml").write_text(SETS)
+    return install(monkeypatch, make_environment(root, toolchains=TOOLCHAINS))
+
+
+def test_next_with_a_new_problem_to_pick(practised):
+    document = command_document("next")
+    assert_valid("next", document)
+    assert document["pick"] == "new"
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_next_with_a_review_to_pick(practised):
+    add_attempt(practised, "two-sum", Language.PYTHON, status=AttemptStatus.PASSED, ended_at=NOW)
+    state = ReviewState(ease=2.5, interval_days=3, reps=1, lapses=0)
+    practised.progress.save_schedule_entry(
+        ScheduleEntry("two-sum", state, date(2026, 10, 20), Grade.OK, NOW)
+    )
+    document = command_document("next", "--review")
+    assert_valid("next", document)
+    assert document["pick"] == "review"
+
+
+def test_next_with_an_attempt_to_resume(practised):
+    add_attempt(practised, "two-sum", Language.PYTHON)
+    add_attempt(practised, STORE, Language.PYTHON)
+    document = command_document("next", "--track", "dsa", "--track", "practical")
+    assert_valid("next", document)
+    assert document["pick"] == "resume"
+    assert [other["slug"] for other in document["also_open"]] == ["two-sum"]
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_next_with_a_rubric_problem_to_pick(practised):
+    document = command_document("next", "--scope", "system")
+    assert_valid("next", document)
+    assert (document["kind"], document["checked_by"], document["language"]) == (
+        "system-design",
+        ["rubric"],
+        None,
+    )
+
+
+def test_next_in_a_set(practised):
+    document = command_document("next", "--set", LOOP)
+    assert_valid("next", document)
+    assert document["set"] == {"name": LOOP, "passed": 0, "total": 3, "finished": False}
+
+
+def test_next_with_nothing_to_pick(practised):
+    document = command_document("next", "--pattern", "tries")
+    assert_valid("next", document)
+    assert document["pick"] is None
+
+
+def test_next_in_an_empty_set_has_nothing_to_pick(practised):
+    document = command_document("next", "--set", "warm-up")
+    assert_valid("next", document)
+    assert (document["pick"], document["set"]["total"]) == (None, 0)
+
+
+def test_next_rejects_an_undocumented_field(practised):
+    pick = command_document("next", "--set", LOOP)
+    for path in ((), ("set",)):
+        assert_rejects_extra_field("next", pick, path)
+    nothing = command_document("next", "--set", "warm-up")
+    for path in ((), ("set",)):
+        assert_rejects_extra_field("next", nothing, path)
+    add_attempt(practised, "two-sum", Language.PYTHON)
+    add_attempt(practised, STORE, Language.PYTHON)
+    resume = command_document("next", "--track", "dsa", "--track", "practical")
+    for path in ((), ("also_open", 0)):
+        assert_rejects_extra_field("next", resume, path)
+
+
+def test_next_rejects_a_pick_without_its_fields(practised):
+    document = command_document("next")
+    del document["start"]
+    assert schema_errors("next", document)
+
+
+# cstudy status --json
+
+
+@pytest.fixture
+def attempted(practised) -> Environment:
+    """An autograded attempt with a test run, a progressive one with a time box and levels, and a
+    rubric one."""
+    start_attempt(practised, StartRequest("two-sum", Language.PYTHON))
+    start_attempt(practised, StartRequest(STORE, Language.PYTHON, timer_s=600))
+    start_item_attempt(practised, ItemStartRequest(RUBRIC))
+    add_run(practised, find_attempt(practised, "two-sum").id, passed=3)
+    add_run(practised, find_attempt(practised, STORE).id, passed=2, levels_passed=1)
+    return practised
+
+
+@pytest.fixture
+def project(tmp_path, monkeypatch) -> Environment:
+    """A project attempt that submitted twice."""
+    environment = project_environment(tmp_path, ScriptedProjectProcess())
+    start_attempt(environment, StartRequest(PROJECT_SLUG))
+    attempt_id = find_attempt(environment, PROJECT_SLUG).id
+    for minutes, passed in ((0, 1), (5, 2)):
+        tallies = (LevelTally(1, 1, passed, 2, passed),)
+        environment.progress.add_submission(
+            SubmissionRecord(
+                attempt_id=attempt_id,
+                submitted_at=NOW + timedelta(minutes=minutes),
+                code_hash="abc",
+                graded_up_to=1,
+                every_level=True,
+                levels=tallies,
+                tally=Tally(total=3, passed=passed + 1, failed=2 - passed),
+                duration_ms=300,
+            )
+        )
+    return install(monkeypatch, environment)
+
+
+def service_environment(tmp_path, monkeypatch, meta: dict[str, object]) -> Environment:
+    root = repository_root(tmp_path, PRACTICE)
+    write_problem(root, meta)
+    write_mock(root)
+    environment = make_environment(root, sandbox=FakeSandbox())
+    install(monkeypatch, environment)
+    result = runner.invoke(cli.app, ["start", SERVICE_SLUG, "--no-open", "--yes"])
+    assert result.exit_code == ExitCode.SUCCESS, result.output
+    return environment
+
+
+MOCKS = [{"name": "room-vendor", "config": CONFIG}]
+
+
+def test_status_of_an_autograded_attempt(attempted):
+    document = command_document("status", "two-sum")
+    assert_valid("status", document)
+    assert (document["kind"], document["last_test_run"]["passed"]) == ("function", 3)
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_status_of_an_attempt_with_hints_and_a_revealed_solution(attempted):
+    attempt = find_attempt(attempted, "two-sum")
+    attempted.progress.update_attempt(replace(attempt, hints_used=1, solution_revealed=True))
+    document = command_document("status", "two-sum")
+    assert_valid("status", document)
+    assert document["solution_revealed"] is True
+
+
+def test_status_of_a_progressive_attempt(attempted):
+    document = command_document("status", STORE)
+    assert_valid("status", document)
+    assert document["levels"]["passed"] == 1
+    assert document["timer"]["limit_s"] == 600
+
+
+def test_status_of_a_rubric_attempt(attempted):
+    document = command_document("status", RUBRIC)
+    assert_valid("status", document)
+    assert (document["checked_by"], document["language"]) == (["rubric"], None)
+    assert (document["last_test_run"], document["levels"]) == (None, None)
+
+
+def test_status_of_a_project_attempt(project):
+    document = command_document("status")
+    assert_valid("status", document)
+    assert document["kind"] == "project"
+    assert document["latest_submission"]["level_tallies"]
+    assert document["best_per_level"]
+    assert document["files"]["entries"]
+
+
+def test_status_of_a_service_project_in_typescript(tmp_path, monkeypatch):
+    service_environment(tmp_path, monkeypatch, meta_document(mocks=MOCKS))
+    document = command_document("status")
+    assert_valid("status", document)
+    assert document["service"] == {"mocks": [{"name": "room-vendor", "scenarios": ["outage"]}]}
+    assert document["no_code_intelligence"] is None
+
+
+def test_status_rejects_an_undocumented_field(attempted):
+    function = command_document("status", "two-sum")
+    for path in ((), ("hints",), ("last_test_run",)):
+        assert_rejects_extra_field("status", function, path)
+    progressive = command_document("status", STORE)
+    for path in (("levels",), ("timer",)):
+        assert_rejects_extra_field("status", progressive, path)
+
+
+def test_status_of_a_project_rejects_an_undocumented_field(project):
+    submitted = command_document("status")
+    for path in (
+        ("latest_submission",),
+        ("latest_submission", "level_tallies", 0),
+        ("best_per_level", 0),
+        ("files",),
+        ("files", "entries", 0),
+    ):
+        assert_rejects_extra_field("status", submitted, path)
+
+
+def test_status_of_a_service_project_rejects_an_undocumented_field(tmp_path, monkeypatch):
+    service_environment(tmp_path, monkeypatch, meta_document(mocks=MOCKS))
+    document = command_document("status")
+    for path in (("service",), ("service", "mocks", 0)):
+        assert_rejects_extra_field("status", document, path)
+
+
+# cstudy history --json
+
+
+def add_bench_run(environment: Environment, attempt_id: int) -> None:
+    environment.progress.add_bench_run(
+        BenchRunRecord(
+            attempt_id=attempt_id,
+            slug="two-sum",
+            language=Language.PYTHON,
+            ran_at=NOW,
+            code_hash="abc",
+            sizes=(100,),
+            series=(),
+            verdict=Verdict.OPTIMAL,
+            confidence=Confidence.MEDIUM,
+            reference_id="hash-map",
+            ratio=1.3,
+        )
+    )
+
+
+@pytest.fixture
+def lived(practised) -> Environment:
+    """A problem with an abandoned, a failed and a passed attempt, a bench run and a schedule; a
+    progressive problem with an attempt that passed through level 1; a rubric problem with an
+    attempt."""
+    week_ago = NOW - timedelta(days=7)
+    abandoned = add_attempt(
+        practised,
+        "two-sum",
+        Language.PYTHON,
+        status=AttemptStatus.ABANDONED,
+        started_at=week_ago,
+        ended_at=week_ago,
+    )
+    add_run(practised, abandoned, passed=0)
+    failed = add_attempt(
+        practised,
+        "two-sum",
+        Language.PYTHON,
+        status=AttemptStatus.FAILED,
+        started_at=week_ago,
+        ended_at=week_ago + timedelta(minutes=41),
+        grade=Grade.AGAIN,
+        hints_used=2,
+        solution_revealed=True,
+        time_limit_s=600,
+    )
+    add_run(practised, failed, passed=3, time_limit="5x")
+    passed = add_attempt(
+        practised,
+        "two-sum",
+        Language.KOTLIN,
+        status=AttemptStatus.PASSED,
+        ended_at=NOW + timedelta(minutes=18),
+        rating=Rating.OK,
+        grade=Grade.OK,
+    )
+    add_run(practised, passed, passed=4)
+    add_bench_run(practised, passed)
+    state = ReviewState(ease=2.5, interval_days=7, reps=2, lapses=0)
+    practised.progress.save_schedule_entry(
+        ScheduleEntry("two-sum", state, date(2026, 11, 1), Grade.OK, NOW)
+    )
+    add_attempt(
+        practised,
+        STORE,
+        Language.PYTHON,
+        status=AttemptStatus.PASSED,
+        ended_at=NOW + timedelta(minutes=30),
+        grade=Grade.OK,
+        level_unlocked=2,
+        levels_passed=1,
+        levels_total=2,
+    )
+    start_item_attempt(practised, ItemStartRequest(RUBRIC))
+    return practised
+
+
+def test_history_of_an_autograded_problem(lived):
+    document = command_document("history", "two-sum")
+    assert_valid("history", document)
+    assert [attempt["status"] for attempt in document["attempts"]] == [
+        "passed",
+        "failed",
+        "abandoned",
+    ]
+    assert document["schedule"]["due_on"] == "2026-11-01"
+    assert document["levels"] is None
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_history_of_a_progressive_problem(lived):
+    document = command_document("history", STORE)
+    assert_valid("history", document)
+    assert document["levels"]["languages"] == [
+        {"language": "python", "best": 1, "last_time": 1, "try_level": 2}
+    ]
+
+
+def test_history_of_a_rubric_problem(lived):
+    document = command_document("history", RUBRIC)
+    assert_valid("history", document)
+    assert document["attempts"][0]["language"] is None
+
+
+def test_history_of_a_problem_without_attempts(lived):
+    document = command_document("history", "parking-lot")
+    assert_valid("history", document)
+    assert (document["attempts"], document["schedule"]) == ([], None)
+
+
+def test_history_of_a_project(project):
+    document = command_document("history", PROJECT_SLUG)
+    assert_valid("history", document)
+    submissions = document["attempts"][0]["submissions"]
+    assert [found["passed"] for found in submissions] == [2, 3]
+    assert submissions[0]["levels"]
+
+
+def test_history_rejects_an_undocumented_field(lived):
+    document = command_document("history", "two-sum")
+    for path in (
+        (),
+        ("schedule",),
+        ("attempts", 0),
+        ("attempts", 1, "test_runs", 0),
+        ("attempts", 0, "bench_runs", 0),
+    ):
+        assert_rejects_extra_field("history", document, path)
+    progressive = command_document("history", STORE)
+    for path in (("levels",), ("levels", "languages", 0)):
+        assert_rejects_extra_field("history", progressive, path)
+
+
+def test_history_of_a_project_rejects_an_undocumented_field(project):
+    document = command_document("history", PROJECT_SLUG)
+    for path in (("attempts", 0, "submissions", 0), ("attempts", 0, "submissions", 0, "levels", 0)):
+        assert_rejects_extra_field("history", document, path)
+
+
+# cstudy set list --json, cstudy set show --json
+
+
+def test_the_sets_when_one_is_empty_and_one_is_filled(practised):
+    document = command_document("set", "list")
+    assert_valid("set-list", document)
+    empty, filled = sorted(document["sets"], key=lambda found: len(found["slugs"]))
+    assert (empty["slugs"], empty["levels"]) == ([], {})
+    assert (filled["missing"], filled["levels"]) == (["gone"], {STORE: 2})
+
+
+def test_no_sets(practised):
+    (practised.root / "sets.yaml").unlink()
+    document = command_document("set", "list")
+    assert_valid("set-list", document)
+    assert document["sets"] == []
+
+
+def test_a_filled_set(practised):
+    add_attempt(practised, "two-sum", Language.PYTHON, status=AttemptStatus.PASSED, ended_at=NOW)
+    document = command_document("set", "show", LOOP)
+    assert_valid("set-show", document)
+    assert [row["slug"] for row in document["rows"]] == ["two-sum", RUBRIC, STORE, "gone"]
+    assert [row["missing"] for row in document["rows"]] == [False, False, False, True]
+    assert document["rows"][3]["entry"] is None
+    assert_ids(document, ContentType.PROBLEM)
+
+
+def test_an_empty_set(practised):
+    document = command_document("set", "show", "warm-up")
+    assert_valid("set-show", document)
+    assert (document["rows"], document["total"]) == ([], 0)
+
+
+def test_set_list_rejects_an_undocumented_field(practised):
+    document = command_document("set", "list")
+    for path in ((), ("sets", 0)):
+        assert_rejects_extra_field("set-list", document, path)
+
+
+def test_set_list_rejects_a_target_for_a_name_that_is_not_a_slug(practised):
+    document = command_document("set", "list")
+    document["sets"][0]["levels"]["Not A Slug"] = 2
+    assert schema_errors("set-list", document)
+
+
+def test_set_show_rejects_an_undocumented_field(practised):
+    document = command_document("set", "show", LOOP)
+    for path in ((), ("rows", 0), ("rows", 0, "entry")):
+        assert_rejects_extra_field("set-show", document, path)
+    levelled = next(index for index, row in enumerate(document["rows"]) if row["entry"]["levels"])
+    assert_rejects_extra_field("set-show", document, ("rows", levelled, "entry", "levels"))
+
+
+# cstudy learn --json
+
+
+@pytest.fixture
+def guides(content_root: Path, monkeypatch) -> Environment:
+    """Two guides and two paths: one over a problem with a target level, one over a problem the
+    catalog lacks."""
+    write_hashing(content_root)
+    write_path(
+        content_root,
+        "extras",
+        ["guide: hash-functions", "problem: gone"],
+        title="Extras",
+        level="core",
+    )
+    return install(monkeypatch, make_environment(content_root))
+
+
+def test_the_guides_and_the_paths(guides):
+    document = command_document("learn")
+    assert_valid("learn-list", document)
+    assert [path["slug"] for path in document["paths"]] == ["hashing", "extras"]
+    assert_ids(document, ContentType.GUIDE, ContentType.PATH)
+
+
+def test_the_guides_and_the_paths_after_a_read(guides):
+    command_document("learn", "hash-functions", "--done")
+    document = command_document("learn")
+    assert_valid("learn-list", document)
+    assert [guide["read"] for guide in document["guides"]] == [True, False]
+
+
+def test_a_guide(guides):
+    document = command_document("learn", "hash-maps")
+    assert_valid("learn-guide", document)
+    assert (document["read"], document["prerequisites"], document["problems"]) == (
+        False,
+        ["hash-functions"],
+        ["two-sum"],
+    )
+    assert document["examples"]
+    assert_ids(document, ContentType.GUIDE)
+
+
+def test_a_guide_that_is_read(guides):
+    command_document("learn", "hash-maps", "--done")
+    document = command_document("learn", "hash-maps")
+    assert_valid("learn-guide", document)
+    assert document["read_at"] is not None
+
+
+def test_a_guide_marked_read(guides):
+    document = command_document("learn", "hash-functions", "--done")
+    assert_valid("learn-done", document)
+    assert document["already"] is False
+    assert_ids(document, ContentType.GUIDE)
+
+
+def test_a_guide_marked_read_again(guides):
+    command_document("learn", "hash-functions", "--done")
+    document = command_document("learn", "hash-functions", "--done")
+    assert_valid("learn-done", document)
+    assert document["already"] is True
+
+
+def test_a_path(guides):
+    document = command_document("learn", "--path", "hashing")
+    assert_valid("learn-path", document)
+    assert [step["kind"] for step in document["steps"]] == ["guide", "guide", "problem", "problem"]
+    assert document["steps"][3]["level"] == 2
+    assert document["next"] == document["steps"][0]
+    assert_ids(document, ContentType.PATH, ContentType.GUIDE, ContentType.PROBLEM)
+
+
+def test_a_path_with_progress(guides):
+    command_document("learn", "hash-functions", "--done")
+    add_attempt(guides, "two-sum", Language.PYTHON, status=AttemptStatus.PASSED, ended_at=NOW)
+    document = command_document("learn", "--path", "hashing")
+    assert_valid("learn-path", document)
+    assert [step["done"] for step in document["steps"]] == [True, False, True, False]
+
+
+def test_a_path_with_every_step_done(guides):
+    for slug in ("hash-functions", "hash-maps"):
+        command_document("learn", slug, "--done")
+    add_attempt(guides, "two-sum", Language.PYTHON, status=AttemptStatus.PASSED, ended_at=NOW)
+    add_attempt(
+        guides,
+        "tamper-evident-ledger",
+        Language.PYTHON,
+        status=AttemptStatus.PASSED,
+        ended_at=NOW,
+        levels_passed=2,
+    )
+    document = command_document("learn", "--path", "hashing")
+    assert_valid("learn-path", document)
+    assert (document["done"], document["next"]) == (4, None)
+
+
+def test_a_path_with_a_step_the_catalog_lacks(guides):
+    document = command_document("learn", "--path", "extras")
+    assert_valid("learn-path", document)
+    assert document["steps"][1]["status"] == "missing"
+
+
+def test_learn_rejects_an_undocumented_field(guides):
+    listing = command_document("learn")
+    for path in ((), ("guides", 0), ("paths", 0)):
+        assert_rejects_extra_field("learn-list", listing, path)
+    assert_rejects_extra_field("learn-guide", command_document("learn", "hash-maps"), ())
+    assert_rejects_extra_field("learn-done", command_document("learn", "hash-maps", "--done"), ())
+    path = command_document("learn", "--path", "hashing")
+    for where in ((), ("next",), ("steps", 0)):
+        assert_rejects_extra_field("learn-path", path, where)
+
+
+# cstudy docs --json
+
+
+@pytest.fixture
+def user_docs(content_root: Path, monkeypatch) -> Environment:
+    write_docs(content_root)
+    return install(monkeypatch, make_environment(content_root))
+
+
+def test_the_docs_list(user_docs):
+    document = command_document("docs")
+    assert_valid("docs-list", document)
+    assert [page["slug"] for page in document["pages"]] == ["getting-started", "doctor", "practice"]
+    assert_ids(document, ContentType.DOC)
+
+
+def test_the_docs_list_without_pages(content_root, monkeypatch):
+    install(monkeypatch, make_environment(content_root))
+    document = command_document("docs")
+    assert_valid("docs-list", document)
+    assert document["pages"] == []
+
+
+def test_a_docs_page(user_docs):
+    document = command_document("docs", "doctor")
+    assert_valid("docs-page", document)
+    assert [heading["level"] for heading in document["headings"]] == [2, 3]
+    assert_ids(document, ContentType.DOC)
+
+
+def test_docs_reject_an_undocumented_field(user_docs):
+    listing = command_document("docs")
+    for path in ((), ("pages", 1), ("pages", 1, "headings", 0)):
+        assert_rejects_extra_field("docs-list", listing, path)
+    page = command_document("docs", "doctor")
+    for path in ((), ("headings", 0)):
+        assert_rejects_extra_field("docs-page", page, path)

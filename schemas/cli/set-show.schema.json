@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study set show document",
+  "description": "`cstudy set show --json`: one set, row by row. Spec: docs/specs/cli.md#cstudy-set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description", "passed", "total", "missing", "today", "rows"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": ["string", "null"] },
+    "passed": { "description": "The entries passed", "$ref": "#/$defs/count" },
+    "total": { "description": "The entries the catalog has", "$ref": "#/$defs/count" },
+    "missing": {
+      "description": "The slugs of the set the catalog does not have",
+      "type": "array",
+      "items": { "$ref": "#/$defs/slug" }
+    },
+    "today": { "$ref": "#/$defs/date", "description": "The local date the statuses and due dates are read against" },
+    "rows": { "description": "In the set's order", "type": "array", "items": { "$ref": "#/$defs/row" } }
+  },
+  "$defs": {
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "level": { "type": "integer", "minimum": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "label": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "title",
+        "track",
+        "kind",
+        "checked_by",
+        "difficulty",
+        "patterns",
+        "domains",
+        "job_roles",
+        "scope",
+        "languages",
+        "content",
+        "source",
+        "status",
+        "levels",
+        "due_on",
+        "in_progress",
+        "jdk",
+        "requires"
+      ],
+      "properties": {
+        "id": { "description": "The canonical ID, `problem/<slug>`", "type": "string", "pattern": "^problem/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "minLength": 1 },
+        "track": {
+          "enum": ["dsa", "practical", "lld", "concurrency", "debugging", "system-design", "code-review", "behavioral"]
+        },
+        "kind": {
+          "enum": ["function", "design", "progressive", "concurrent", "project", "system-design", "code-review"]
+        },
+        "checked_by": {
+          "description": "How the answer is checked: `tests`, `rubric` or both",
+          "type": "array",
+          "items": { "enum": ["tests", "rubric"] }
+        },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "patterns": { "description": "Empty for a rubric problem", "type": "array", "items": { "$ref": "#/$defs/label" } },
+        "domains": { "type": "array", "items": { "$ref": "#/$defs/label" } },
+        "job_roles": { "type": "array", "items": { "$ref": "#/$defs/label" } },
+        "scope": {
+          "description": "How big the thing you work on is; null on a problem of your own that leaves it out",
+          "enum": ["function", "project", "system", null]
+        },
+        "languages": {
+          "description": "The languages with a reference solution; empty for a rubric problem",
+          "type": "array",
+          "items": { "$ref": "#/$defs/language" }
+        },
+        "content": { "description": "Whether the problem is finished", "enum": ["draft", "ready"] },
+        "source": { "description": "`workspace` for a problem of your own", "enum": ["catalog", "workspace"] },
+        "status": { "enum": ["new", "in_progress", "attempted", "passed", "due", "mastered"] },
+        "levels": {
+          "description": "Null for a problem without levels",
+          "anyOf": [{ "$ref": "#/$defs/levels" }, { "type": "null" }]
+        },
+        "due_on": {
+          "description": "The review date, or null when none is scheduled",
+          "anyOf": [{ "$ref": "#/$defs/date" }, { "type": "null" }]
+        },
+        "in_progress": { "type": "array", "items": { "$ref": "#/$defs/open_attempt" } },
+        "jdk": {
+          "description": "The JDK range a problem asks for, or null",
+          "anyOf": [{ "$ref": "#/$defs/jdk_range" }, { "type": "null" }]
+        },
+        "requires": {
+          "description": "What a service project depends on; null for any other problem",
+          "anyOf": [{ "$ref": "#/$defs/requires" }, { "type": "null" }]
+        }
+      }
+    },
+    "levels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last", "passed", "mastered"],
+      "properties": {
+        "last": { "description": "The problem's levels", "$ref": "#/$defs/level" },
+        "passed": { "description": "The levels passed", "$ref": "#/$defs/count" },
+        "mastered": { "description": "The levels mastered", "$ref": "#/$defs/count" }
+      }
+    },
+    "open_attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "language", "mode"],
+      "properties": {
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "language": { "description": "Null for a rubric problem", "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "mode": { "enum": ["new", "review", "mock"] }
+      }
+    },
+    "jdk_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["docker", "services", "mocks", "lock", "install_mb", "images_mb", "memory_mb"],
+      "properties": {
+        "docker": { "const": true },
+        "services": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "mocks": { "description": "The names of its mock servers", "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "lock": { "description": "The lock file the install reads, or null when it names none", "type": ["string", "null"], "minLength": 1 },
+        "install_mb": { "description": "Null when the manifest gives no figure", "type": ["integer", "null"], "minimum": 0 },
+        "images_mb": {
+          "description": "The size of each image, by name",
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": { "^.+$": { "$ref": "#/$defs/count" } }
+        },
+        "memory_mb": { "description": "Null when the manifest gives no figure", "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "id", "slug", "level", "passed", "missing", "entry"],
+      "properties": {
+        "position": { "description": "From 1", "type": "integer", "minimum": 1 },
+        "id": { "description": "The canonical ID of the problem, also when the catalog does not have it", "type": "string", "pattern": "^problem/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "level": { "description": "The level the problem is to be passed through; null without a target", "type": ["integer", "null"], "minimum": 1 },
+        "passed": { "type": "boolean" },
+        "missing": { "description": "Whether the catalog lacks the problem", "type": "boolean" },
+        "entry": {
+          "description": "The problem as `cstudy list --json` holds it; null while it is missing",
+          "anyOf": [{ "$ref": "#/$defs/entry" }, { "type": "null" }]
+        }
+      }
+    }
+  }
+}

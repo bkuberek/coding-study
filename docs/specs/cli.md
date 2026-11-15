@@ -89,6 +89,18 @@ This section lists every published schema:
 
 | Document | Command | Schema |
 |----------|---------|--------|
+| List | [`cstudy list --json`](#cstudy-list) | [`list.schema.json`](../../schemas/cli/list.schema.json) |
+| Next | [`cstudy next --json`](#cstudy-next) | [`next.schema.json`](../../schemas/cli/next.schema.json) |
+| Status | [`cstudy status --json`](#cstudy-status) | [`status.schema.json`](../../schemas/cli/status.schema.json) |
+| History | [`cstudy history --json`](#cstudy-history) | [`history.schema.json`](../../schemas/cli/history.schema.json) |
+| Set list | [`cstudy set list --json`](#cstudy-set) | [`set-list.schema.json`](../../schemas/cli/set-list.schema.json) |
+| Set show | [`cstudy set show --json`](#cstudy-set) | [`set-show.schema.json`](../../schemas/cli/set-show.schema.json) |
+| Learn list | [`cstudy learn --json`](#cstudy-learn) | [`learn-list.schema.json`](../../schemas/cli/learn-list.schema.json) |
+| Learn guide | [`cstudy learn <guide> --json`](#cstudy-learn) | [`learn-guide.schema.json`](../../schemas/cli/learn-guide.schema.json) |
+| Learn done | [`cstudy learn <guide> --done --json`](#cstudy-learn) | [`learn-done.schema.json`](../../schemas/cli/learn-done.schema.json) |
+| Learn path | [`cstudy learn --path <path> --json`](#cstudy-learn) | [`learn-path.schema.json`](../../schemas/cli/learn-path.schema.json) |
+| Docs list | [`cstudy docs --json`](#cstudy-docs) | [`docs-list.schema.json`](../../schemas/cli/docs-list.schema.json) |
+| Docs page | [`cstudy docs <topic> --json`](#cstudy-docs) | [`docs-page.schema.json`](../../schemas/cli/docs-page.schema.json) |
 | Stats | [`cstudy stats --json`](#cstudy-stats) | [`stats.schema.json`](../../schemas/cli/stats.schema.json) |
 | Doctor | [`cstudy doctor --json`](#cstudy-doctor) | [`doctor.schema.json`](../../schemas/cli/doctor.schema.json) |
 | Progress export | [`cstudy export`](#cstudy-export) (the file) | [`export.schema.json`](../../schemas/cli/export.schema.json) |

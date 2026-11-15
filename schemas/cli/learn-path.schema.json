@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study learn path document",
+  "description": "`cstudy learn <path> --json`: one learning path, step by step. Spec: docs/specs/cli.md#cstudy-learn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "slug", "title", "summary", "done", "total", "next", "steps"],
+  "properties": {
+    "id": { "description": "The canonical ID, `path/<slug>`", "type": "string", "pattern": "^path/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "slug": { "$ref": "#/$defs/slug" },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "done": { "description": "The steps done", "$ref": "#/$defs/count" },
+    "total": { "description": "The steps", "$ref": "#/$defs/count" },
+    "next": {
+      "description": "The first step not done, or null when every step is",
+      "anyOf": [{ "$ref": "#/$defs/step" }, { "type": "null" }]
+    },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "kind", "id", "slug", "title", "level", "done", "status", "level_passed"],
+      "properties": {
+        "position": { "description": "From 1", "type": "integer", "minimum": 1 },
+        "kind": { "enum": ["guide", "problem"] },
+        "id": { "description": "The canonical ID of the guide or the problem, `<kind>/<slug>`", "type": "string", "pattern": "^(guide|problem)/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+        "slug": { "$ref": "#/$defs/slug" },
+        "title": { "description": "The slug when the catalog lacks the step", "type": "string", "minLength": 1 },
+        "level": { "description": "A problem step's target level: done once it passes; null on a guide and on a problem that is done once it passes", "type": ["integer", "null"], "minimum": 1 },
+        "done": { "type": "boolean" },
+        "status": { "description": "As `cstudy learn --path` writes it: `read`, `not read`, `passed`, `level 2 passed`, `missing` or the problem's status", "type": "string", "minLength": 1 },
+        "level_passed": { "description": "The highest level of a problem step passed; null on a guide and on a problem without levels", "type": ["integer", "null"], "minimum": 0 }
+      }
+    }
+  }
+}

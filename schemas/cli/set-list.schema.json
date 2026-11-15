@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study set list document",
+  "description": "`cstudy set list --json`: every set, with how far you have come. Spec: docs/specs/cli.md#cstudy-set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sets"],
+  "properties": {
+    "sets": { "type": "array", "items": { "$ref": "#/$defs/set" } }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "passed", "total", "missing", "slugs", "levels"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": ["string", "null"] },
+        "passed": { "description": "The entries passed", "$ref": "#/$defs/count" },
+        "total": { "description": "The entries the catalog has", "$ref": "#/$defs/count" },
+        "missing": {
+          "description": "The slugs of the set the catalog does not have",
+          "type": "array",
+          "items": { "$ref": "#/$defs/slug" }
+        },
+        "slugs": { "description": "The slugs of the problems, in the set's order", "type": "array", "items": { "$ref": "#/$defs/slug" } },
+        "levels": {
+          "description": "The level a problem is to be passed through, by slug; a problem without a target has no key",
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": { "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": { "type": "integer", "minimum": 1 } }
+        }
+      }
+    }
+  }
+}

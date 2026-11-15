@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study docs page document",
+  "description": "`cstudy docs <topic> --json`: one page of the user docs. Spec: docs/specs/cli.md#cstudy-docs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "slug", "title", "summary", "section", "order", "headings", "markdown"],
+  "properties": {
+    "id": { "description": "The canonical ID, `doc/<slug>`", "type": "string", "pattern": "^doc/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "slug": { "description": "The file's name without `.md`", "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "section": { "type": "string", "minLength": 1 },
+    "order": { "description": "The page's place in its section", "type": "integer" },
+    "headings": { "description": "The `##` and `###` headings, in order", "type": "array", "items": { "$ref": "#/$defs/heading" } },
+    "markdown": { "description": "The page after its front matter", "type": "string" }
+  },
+  "$defs": {
+    "heading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "level"],
+      "properties": {
+        "id": { "description": "The anchor a deep link names, as GitHub spells it; not a content ID", "type": "string", "minLength": 1 },
+        "title": { "description": "The heading's text without Markdown's marks", "type": "string", "minLength": 1 },
+        "level": { "enum": [2, 3] }
+      }
+    }
+  }
+}

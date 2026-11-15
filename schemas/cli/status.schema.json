@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study status document",
+  "description": "`cstudy status --json`: where an attempt stands. Spec: docs/specs/cli.md#cstudy-status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "slug",
+    "kind",
+    "checked_by",
+    "track",
+    "language",
+    "attempt_id",
+    "mode",
+    "started_at",
+    "file",
+    "hints",
+    "solution_revealed",
+    "statement",
+    "levels",
+    "timer",
+    "last_test_run",
+    "latest_submission",
+    "best_per_level",
+    "files",
+    "no_code_intelligence",
+    "service",
+    "next"
+  ],
+  "properties": {
+    "id": { "description": "The canonical ID, `problem/<slug>`", "type": "string", "pattern": "^problem/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "slug": { "$ref": "#/$defs/slug" },
+    "kind": {
+      "enum": ["function", "design", "progressive", "concurrent", "project", "system-design", "code-review"]
+    },
+    "checked_by": {
+      "description": "How the answer is checked: `tests`, `rubric` or both",
+      "type": "array",
+      "items": { "enum": ["tests", "rubric"] }
+    },
+    "track": {
+      "enum": ["dsa", "practical", "lld", "concurrency", "debugging", "system-design", "code-review", "behavioral"]
+    },
+    "language": { "description": "Null for a rubric problem", "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+    "attempt_id": { "type": "integer", "minimum": 1 },
+    "mode": { "enum": ["new", "review", "mock"] },
+    "started_at": { "$ref": "#/$defs/instant" },
+    "file": {
+      "description": "The file `cstudy start` wrote: the stub, the project folder or the notes",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used", "total", "locked_until_level"],
+      "properties": {
+        "used": { "$ref": "#/$defs/count" },
+        "total": { "description": "The problem's hints; 0 for a rubric problem", "$ref": "#/$defs/count" },
+        "locked_until_level": {
+          "description": "The level a project problem's next hint opens with, while that level is locked",
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    },
+    "solution_revealed": { "type": "boolean" },
+    "statement": { "description": "The problem's statement, as `cstudy show` prints it", "type": "string" },
+    "levels": {
+      "description": "Null for a problem without levels",
+      "anyOf": [{ "$ref": "#/$defs/levels" }, { "type": "null" }]
+    },
+    "timer": {
+      "description": "The `--timer` time box, or null without one",
+      "anyOf": [{ "$ref": "#/$defs/timer" }, { "type": "null" }]
+    },
+    "last_test_run": {
+      "description": "The latest `cstudy test`, or null before one",
+      "anyOf": [{ "$ref": "#/$defs/test_run" }, { "type": "null" }]
+    },
+    "latest_submission": {
+      "description": "A project's latest `cstudy submit`, or null before one and for any other problem",
+      "anyOf": [{ "$ref": "#/$defs/submission" }, { "type": "null" }]
+    },
+    "best_per_level": {
+      "description": "The most passed cases of each level over a project's submissions; empty for any other problem",
+      "type": "array",
+      "items": { "$ref": "#/$defs/best_level" }
+    },
+    "files": {
+      "description": "A project's folder against its starter; null for any other problem",
+      "anyOf": [{ "$ref": "#/$defs/files" }, { "type": "null" }]
+    },
+    "no_code_intelligence": {
+      "description": "Why the attempt has no code intelligence whatever its language's server, or null when the server decides",
+      "enum": ["service_project", null]
+    },
+    "service": {
+      "description": "A service project's mock servers; null for any other problem",
+      "anyOf": [{ "$ref": "#/$defs/service" }, { "type": "null" }]
+    },
+    "next": { "description": "The command to run next", "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "level": { "type": "integer", "minimum": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+    "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" },
+    "levels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unlocked", "last", "titles", "opened_at", "passed", "best", "last_time", "try_level", "mastered"],
+      "properties": {
+        "unlocked": { "description": "Levels 1 to this one are open", "$ref": "#/$defs/level" },
+        "last": { "description": "The problem's levels", "$ref": "#/$defs/level" },
+        "titles": { "description": "The title of each open level", "type": "array", "items": { "type": "string" } },
+        "opened_at": {
+          "description": "When each open level opened, null where `cstudy` did not record it; empty for a progressive problem, which records none",
+          "type": "array",
+          "items": { "anyOf": [{ "$ref": "#/$defs/instant" }, { "type": "null" }] }
+        },
+        "passed": { "description": "The levels the latest run or submission passed", "$ref": "#/$defs/count" },
+        "best": { "description": "The most levels a passed attempt in this language passed; null before a pass", "type": ["integer", "null"], "minimum": 0 },
+        "last_time": { "description": "The levels the latest attempt that passed level 1 passed", "type": ["integer", "null"], "minimum": 0 },
+        "try_level": { "description": "The level to try after last time", "type": ["integer", "null"], "minimum": 1 },
+        "mastered": { "description": "The levels the problem is mastered through, in any language", "$ref": "#/$defs/count" }
+      }
+    },
+    "timer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elapsed_s", "limit_s"],
+      "properties": {
+        "elapsed_s": { "$ref": "#/$defs/count" },
+        "limit_s": { "$ref": "#/$defs/count" }
+      }
+    },
+    "test_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ran_at", "total", "passed", "predates_level"],
+      "properties": {
+        "ran_at": { "$ref": "#/$defs/instant" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "predates_level": {
+          "description": "The first level that opened after the run, which it did not cover; null when none did",
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    },
+    "submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submitted_at", "level_tallies"],
+      "properties": {
+        "submitted_at": { "$ref": "#/$defs/instant" },
+        "level_tallies": { "type": "array", "items": { "$ref": "#/$defs/level_tally" } }
+      }
+    },
+    "level_tally": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "total", "passed", "visible_total", "visible_passed", "hidden_total", "hidden_passed"],
+      "properties": {
+        "level": { "$ref": "#/$defs/level" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "visible_total": { "$ref": "#/$defs/count" },
+        "visible_passed": { "$ref": "#/$defs/count" },
+        "hidden_total": { "$ref": "#/$defs/count" },
+        "hidden_passed": { "$ref": "#/$defs/count" }
+      }
+    },
+    "best_level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "passed", "total"],
+      "properties": {
+        "level": { "$ref": "#/$defs/level" },
+        "passed": { "$ref": "#/$defs/count" },
+        "total": { "$ref": "#/$defs/count" }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changed", "added", "removed", "entries"],
+      "properties": {
+        "changed": { "description": "Starter files you changed", "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "added": { "description": "Files you added", "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "removed": { "description": "Starter files you removed", "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "entries": { "description": "Every file of the folder, in path order", "type": "array", "items": { "$ref": "#/$defs/file" } }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "origin", "level", "state"],
+      "properties": {
+        "path": { "description": "Relative to the folder", "type": "string", "minLength": 1 },
+        "origin": { "enum": ["starter", "level", "yours"] },
+        "level": { "description": "The level of a generated test file; null for any other file", "type": ["integer", "null"], "minimum": 1 },
+        "state": { "enum": ["unchanged", "modified", "added", "deleted"] }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mocks"],
+      "properties": {
+        "mocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "scenarios"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "scenarios": { "description": "The visible scenarios a dev stack may switch it to", "type": "array", "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

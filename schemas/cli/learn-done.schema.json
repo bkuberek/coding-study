@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study learn done document",
+  "description": "`cstudy learn <guide> --done --json`: a guide marked read. Spec: docs/specs/cli.md#cstudy-learn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "slug", "read_at", "already"],
+  "properties": {
+    "id": { "description": "The canonical ID, `guide/<slug>`", "type": "string", "pattern": "^guide/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "read_at": { "description": "When the guide was marked read", "$ref": "#/$defs/instant" },
+    "already": { "description": "Whether it had been marked before, so that nothing changed", "type": "boolean" }
+  },
+  "$defs": {
+    "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" }
+  }
+}
