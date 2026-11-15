@@ -26,6 +26,8 @@ cstudy --version
 
 Or `uv tool install git+https://github.com/bkuberek/coding-study` (or the same with `pipx install`). `cstudy` runs your code with each language's own toolchain, which you install yourself: uv and Python 3.13 are required, the others only for the languages you use ([install the language toolchains](user-docs/toolchains.md)).
 
+Upgrading from an earlier 0.x? [UPGRADING.md](UPGRADING.md) lists what changed on the way to 1.0 and what to do about each change.
+
 ## Quickstart
 
 ```bash
