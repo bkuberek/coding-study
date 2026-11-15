@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study progress export",
+  "description": "The file `cstudy export` writes and `cstudy import` reads. Any 1.x imports an export of any earlier 1.x, so a table or a column that a later schema added may be missing from an older export. Spec: docs/specs/cli.md#cstudy-export",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "schema_version", "exported_at", "tables"],
+  "properties": {
+    "format": { "const": "coding-study-progress" },
+    "version": { "description": "Changes only when the export changes incompatibly", "const": 1 },
+    "schema_version": {
+      "description": "The last migration applied to the database the rows came from",
+      "type": "integer",
+      "minimum": 1
+    },
+    "exported_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "tables": {
+      "description": "Every table of progress.db but `meta`, each as its rows in insertion order",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "attempts": { "type": "array", "items": { "$ref": "#/$defs/attempt" } },
+        "test_runs": { "type": "array", "items": { "$ref": "#/$defs/test_run" } },
+        "schedule": { "type": "array", "items": { "$ref": "#/$defs/schedule_entry" } },
+        "bench_runs": { "type": "array", "items": { "$ref": "#/$defs/bench_run" } },
+        "submissions": { "type": "array", "items": { "$ref": "#/$defs/submission" } },
+        "level_unlocks": { "type": "array", "items": { "$ref": "#/$defs/level_unlock" } },
+        "guide_reads": { "type": "array", "items": { "$ref": "#/$defs/guide_read" } }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "integer", "minimum": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "level": { "type": "integer", "minimum": 1 },
+    "text": { "type": "string" },
+    "optional_text": { "type": ["string", "null"] },
+    "optional_count": { "type": ["integer", "null"], "minimum": 0 },
+    "optional_level": { "type": ["integer", "null"], "minimum": 1 },
+    "number": { "type": "number" },
+    "optional_number": { "type": ["number", "null"] },
+    "attempt": {
+      "description": "A row of `attempts`; `levels_passed` and `levels_total` are in an export of schema 6 or later",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "lang",
+        "mode",
+        "status",
+        "started_at",
+        "ended_at",
+        "first_pass_at",
+        "time_limit_s",
+        "rating",
+        "grade",
+        "hints_used",
+        "solution_revealed",
+        "level_unlocked",
+        "stub_path",
+        "archive_path",
+        "notes"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "slug": { "$ref": "#/$defs/text" },
+        "lang": { "description": "Null when the problem is not autograded", "enum": ["python", "typescript", "java", "kotlin", "go", "rust", null] },
+        "mode": { "enum": ["new", "review", "mock"] },
+        "status": { "enum": ["in_progress", "passed", "failed", "abandoned"] },
+        "started_at": { "$ref": "#/$defs/text" },
+        "ended_at": { "$ref": "#/$defs/optional_text" },
+        "first_pass_at": { "$ref": "#/$defs/optional_text" },
+        "time_limit_s": { "$ref": "#/$defs/optional_count" },
+        "rating": { "enum": ["easy", "ok", "hard", null] },
+        "grade": { "type": ["integer", "null"], "minimum": 0, "maximum": 3 },
+        "hints_used": { "$ref": "#/$defs/count" },
+        "solution_revealed": { "$ref": "#/$defs/count" },
+        "level_unlocked": { "$ref": "#/$defs/optional_level" },
+        "stub_path": { "$ref": "#/$defs/optional_text" },
+        "archive_path": { "$ref": "#/$defs/optional_text" },
+        "notes": { "$ref": "#/$defs/optional_text" },
+        "levels_passed": { "$ref": "#/$defs/optional_count" },
+        "levels_total": { "$ref": "#/$defs/optional_count" }
+      }
+    },
+    "test_run": {
+      "description": "A row of `test_runs`; `levels_passed` is in an export of schema 6 or later",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "attempt_id",
+        "ran_at",
+        "code_hash",
+        "total",
+        "passed",
+        "failed",
+        "errored",
+        "timed_out",
+        "tle",
+        "time_limit",
+        "duration_ms"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "attempt_id": { "$ref": "#/$defs/id" },
+        "ran_at": { "$ref": "#/$defs/text" },
+        "code_hash": { "$ref": "#/$defs/text" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "errored": { "$ref": "#/$defs/count" },
+        "timed_out": { "$ref": "#/$defs/count" },
+        "tle": { "$ref": "#/$defs/count" },
+        "time_limit": { "description": "`5x`, `1500ms`, or null when off", "$ref": "#/$defs/optional_text" },
+        "duration_ms": { "$ref": "#/$defs/count" },
+        "levels_passed": { "$ref": "#/$defs/optional_count" }
+      }
+    },
+    "schedule_entry": {
+      "description": "A row of `schedule`; `levels` is in an export of schema 6 or later",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "ease", "interval_days", "reps", "lapses", "due_on", "last_grade", "updated_at"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/text" },
+        "ease": { "$ref": "#/$defs/number" },
+        "interval_days": { "$ref": "#/$defs/count" },
+        "reps": { "$ref": "#/$defs/count" },
+        "lapses": { "$ref": "#/$defs/count" },
+        "due_on": { "$ref": "#/$defs/text" },
+        "last_grade": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "updated_at": { "$ref": "#/$defs/text" },
+        "levels": { "description": "A JSON array as text, from level 2; null before", "$ref": "#/$defs/optional_text" }
+      }
+    },
+    "bench_run": {
+      "description": "A row of `bench_runs`; `sizes`, `results` and `env` hold JSON as text",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "attempt_id",
+        "slug",
+        "lang",
+        "ran_at",
+        "code_hash",
+        "sizes",
+        "results",
+        "user_time_band",
+        "user_mem_band",
+        "slope",
+        "r2",
+        "reference_id",
+        "ratio",
+        "verdict",
+        "confidence",
+        "env"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "attempt_id": { "description": "Null for a run of the references alone", "type": ["integer", "null"], "minimum": 1 },
+        "slug": { "$ref": "#/$defs/text" },
+        "lang": { "$ref": "#/$defs/text" },
+        "ran_at": { "$ref": "#/$defs/text" },
+        "code_hash": { "$ref": "#/$defs/optional_text" },
+        "sizes": { "$ref": "#/$defs/text" },
+        "results": { "$ref": "#/$defs/text" },
+        "user_time_band": { "$ref": "#/$defs/optional_text" },
+        "user_mem_band": { "$ref": "#/$defs/optional_text" },
+        "slope": { "$ref": "#/$defs/optional_number" },
+        "r2": { "$ref": "#/$defs/optional_number" },
+        "reference_id": { "$ref": "#/$defs/optional_text" },
+        "ratio": { "$ref": "#/$defs/optional_number" },
+        "verdict": { "enum": ["optimal", "near-optimal", "suboptimal", "unknown"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "env": { "$ref": "#/$defs/text" }
+      }
+    },
+    "submission": {
+      "description": "A row of `submissions`; `levels` holds JSON as text",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "attempt_id",
+        "submitted_at",
+        "code_hash",
+        "graded_up_to",
+        "every_level",
+        "levels",
+        "total",
+        "passed",
+        "failed",
+        "errored",
+        "timed_out",
+        "duration_ms"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "attempt_id": { "$ref": "#/$defs/id" },
+        "submitted_at": { "$ref": "#/$defs/text" },
+        "code_hash": { "$ref": "#/$defs/text" },
+        "graded_up_to": { "$ref": "#/$defs/level" },
+        "every_level": { "description": "1 when graded_up_to was the unlocked level, else 0", "enum": [0, 1] },
+        "levels": { "$ref": "#/$defs/text" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "errored": { "$ref": "#/$defs/count" },
+        "timed_out": { "$ref": "#/$defs/count" },
+        "duration_ms": { "$ref": "#/$defs/count" }
+      }
+    },
+    "level_unlock": {
+      "description": "A row of `level_unlocks`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "level", "unlocked_at"],
+      "properties": {
+        "attempt_id": { "$ref": "#/$defs/id" },
+        "level": { "$ref": "#/$defs/level" },
+        "unlocked_at": { "$ref": "#/$defs/text" }
+      }
+    },
+    "guide_read": {
+      "description": "A row of `guide_reads`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "read_at"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/text" },
+        "read_at": { "description": "The first time the guide was marked read", "$ref": "#/$defs/text" }
+      }
+    }
+  }
+}

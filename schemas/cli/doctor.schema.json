@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study doctor document",
+  "description": "`cstudy doctor --json`. Spec: docs/specs/cli.md#cstudy-doctor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workspace", "passed", "checks"],
+  "properties": {
+    "workspace": {
+      "description": "The workspace root, or null when there is none",
+      "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+    },
+    "passed": { "description": "False when any check is `fail`", "type": "boolean" },
+    "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "detail", "fix"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["ok", "warn", "fail"] },
+        "detail": { "description": "Empty when the check has nothing to add", "type": "string" },
+        "fix": { "description": "The hint that follows a row, or null", "type": ["string", "null"] }
+      }
+    }
+  }
+}

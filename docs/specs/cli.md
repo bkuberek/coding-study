@@ -70,13 +70,25 @@
 
 | Flag | Effect |
 |------|--------|
-| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next), [`set list` and `set show`](#cstudy-set) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet |
+| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next), [`set list` and `set show`](#cstudy-set), [`learn`](#cstudy-learn), [`docs`](#cstudy-docs) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet |
 | `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#cstudy-test) on every autograded problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
 | `--no-color` | Plain output (also when `NO_COLOR` is set or stdout is not a TTY) |
 | `-v`, `--verbose` | Planned, not implemented yet: show runner commands, build output and timings |
 | `--workspace PATH` | The workspace, before the command (`cstudy --workspace ~/ws start two-sum`); overrides `CSTUDY_WORKSPACE` |
 | `--content PATH` | The content root, before the command; overrides `CSTUDY_CONTENT`. Unrelated to `cstudy list --content`, which filters by content status |
+
+## JSON documents
+
+Each `--json` document, and the file [`cstudy export`](#cstudy-export) writes, has a JSON Schema in `schemas/cli/`, shipped in the package with the other schemas. The schemas close every object, so a field they do not name fails the contract tests; a program that reads a document still ignores the fields it does not know. The rules, and the tests that validate real output against each schema, are in [compatibility](compatibility.md#json-documents).
+
+This section lists every published schema:
+
+| Document | Command | Schema |
+|----------|---------|--------|
+| Stats | [`cstudy stats --json`](#cstudy-stats) | [`stats.schema.json`](../../schemas/cli/stats.schema.json) |
+| Doctor | [`cstudy doctor --json`](#cstudy-doctor) | [`doctor.schema.json`](../../schemas/cli/doctor.schema.json) |
+| Progress export | [`cstudy export`](#cstudy-export) (the file) | [`export.schema.json`](../../schemas/cli/export.schema.json) |
 
 ## Configuration
 
