@@ -119,8 +119,8 @@ def _cli(workspace: Path) -> tuple[str, list[str]]:
         )
         return done.stdout.splitlines()[1:]
 
-    row = next(line for line in listing() if f" {SLUG} " in line)
-    return row, [line.split()[1] for line in listing("--status", "in-progress")]
+    row = next(line for line in listing() if line.split()[:1] == [SLUG])
+    return row, [line.split()[0] for line in listing("--status", "in-progress")]
 
 
 def test_an_untouched_problem_reads_new(visit):

@@ -116,6 +116,10 @@ tr:hover > td > .problem-link {
   color: var(--ink-soft);
   font-size: var(--text-xs);
   font-weight: 400;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The title takes what the other columns leave, so they keep one line and a row its height. */
