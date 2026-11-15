@@ -64,7 +64,7 @@
 | 5 | Content error (schema or static check failure in problem files) |
 | 70 | Internal error (bug in `cstudy` or a runner protocol violation) |
 | 130 | Interrupted |
-| 143 | Terminated (SIGTERM) during an `--events` run |
+| 143 | Terminated (SIGTERM) during an `--events` run or `cstudy serve` |
 
 ## Global flags
 

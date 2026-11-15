@@ -54,6 +54,8 @@ class ExitCode(IntEnum):
     CONTENT_ERROR = 5
     INTERNAL_ERROR = 70
     INTERRUPTED = 130
+    TERMINATED = 143
+    """128 + SIGTERM, as a shell reports a process that SIGTERM ended."""
 
 
 ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {

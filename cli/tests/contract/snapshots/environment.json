@@ -1,0 +1,20 @@
+{
+  "CSTUDY_CONFIG": "public",
+  "CSTUDY_CONTENT": "public",
+  "CSTUDY_DATA_DIR": "problem_format",
+  "CSTUDY_EGRESS_HOSTS": "internal",
+  "CSTUDY_GO_DEBUG_LISTEN": "internal",
+  "CSTUDY_GO_DEBUG_PACKAGE": "internal",
+  "CSTUDY_GO_DELVE": "internal",
+  "CSTUDY_GRADED_LEVEL": "problem_format",
+  "CSTUDY_HIDDEN_DIRECTORIES": "internal",
+  "CSTUDY_MOCK_CONTROL_TOKEN": "problem_format",
+  "CSTUDY_MOCK_CONTROL_URL": "problem_format",
+  "CSTUDY_PROBLEM_DIR": "problem_format",
+  "CSTUDY_RESET_PHASE": "problem_format",
+  "CSTUDY_WORKSPACE": "public",
+  "EDITOR": "public",
+  "JAVA_HOME": "public",
+  "NO_COLOR": "public",
+  "VISUAL": "public"
+}

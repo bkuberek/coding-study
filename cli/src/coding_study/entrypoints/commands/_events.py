@@ -63,8 +63,6 @@ ERROR_OUTCOME = "error"
 INTERRUPTED_OUTCOME = "interrupted"
 LEVEL_PASSED = "pass"
 LEVEL_FAILED = "fail"
-TERMINATED_EXIT_CODE = 128 + signal.SIGTERM
-"""SIGTERM ends a run as SIGINT does, with the shell's exit code for it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,8 +97,8 @@ def write_events[R](run: Callable[[EventSink], R], summarize: Callable[[R], RunS
         stream.stop(INTERRUPTED_OUTCOME, ExitCode.INTERRUPTED, None)
         raise typer.Exit(ExitCode.INTERRUPTED) from None
     except _Terminated:
-        stream.stop(INTERRUPTED_OUTCOME, TERMINATED_EXIT_CODE, None)
-        raise typer.Exit(TERMINATED_EXIT_CODE) from None
+        stream.stop(INTERRUPTED_OUTCOME, ExitCode.TERMINATED, None)
+        raise typer.Exit(ExitCode.TERMINATED) from None
     summary = summarize(result)
     stream.finish(summary)
     return summary.exit_code

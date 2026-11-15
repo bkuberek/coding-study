@@ -1,0 +1,8 @@
+{
+  "file": ".cs/workspace.toml",
+  "key.created_with": "string",
+  "key.schema": "integer",
+  "licenses.<key>.name": "string",
+  "licenses.<key>.url": "string",
+  "schema_version": 1
+}

@@ -39,8 +39,6 @@ from coding_study.entrypoints.shared import (
 NAME = "serve"
 MAX_PORT = 65535
 LABEL_WIDTH = 11
-TERMINATED_EXIT_CODE = 143
-"""128 + SIGTERM, as a shell reports a process that SIGTERM ended."""
 OWNER_ONLY = 0o600
 
 
@@ -131,7 +129,7 @@ def run_server(context: typer.Context, *, port: int, open_browser: bool, view: s
         except KeyboardInterrupt:
             _stop(output, "Ctrl-C", ExitCode.INTERRUPTED)
         except server.Terminated:
-            _stop(output, "SIGTERM", TERMINATED_EXIT_CODE)
+            _stop(output, "SIGTERM", ExitCode.TERMINATED)
         finally:
             if redirect is not None:
                 redirect.unlink(missing_ok=True)

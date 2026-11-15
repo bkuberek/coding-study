@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Self, cast
 
 from coding_study.adapters.fs_study_guides import HOME_PREFIX
+from coding_study.domain import environment_variables
 from coding_study.domain.config import (
     BenchSettings,
     Config,
@@ -29,7 +30,7 @@ from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewIntervals
 from coding_study.domain.time_limits import TimeLimit, parse_time_limit
 
-CONFIG_PATH_VARIABLE = "CSTUDY_CONFIG"
+CONFIG_PATH_VARIABLE = environment_variables.CONFIG
 XDG_CONFIG_HOME_VARIABLE = "XDG_CONFIG_HOME"
 CONFIG_FILE = Path("coding-study") / "config.toml"
 

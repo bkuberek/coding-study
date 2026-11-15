@@ -1,0 +1,1220 @@
+{
+  "cstudy": {
+    "subcommands": [
+      "abort",
+      "about",
+      "bench",
+      "config",
+      "dev",
+      "docs",
+      "doctor",
+      "done",
+      "export",
+      "hint",
+      "history",
+      "ide",
+      "import",
+      "init",
+      "learn",
+      "list",
+      "mock",
+      "new",
+      "next",
+      "reset",
+      "serve",
+      "set",
+      "show",
+      "solution",
+      "start",
+      "stats",
+      "status",
+      "submit",
+      "test",
+      "verify"
+    ]
+  },
+  "cstudy --content": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy --no-color": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy --version": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy --workspace": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy abort": {
+    "subcommands": []
+  },
+  "cstudy abort --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy abort --yes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy about": {
+    "subcommands": []
+  },
+  "cstudy about --credits": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy about --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy about --licenses": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy bench": {
+    "subcommands": []
+  },
+  "cstudy bench --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy bench --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy bench --no-memory": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy bench --refs-only": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy bench --reps": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy bench --sizes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy config": {
+    "subcommands": [
+      "edit",
+      "path"
+    ]
+  },
+  "cstudy config --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy config edit": {
+    "subcommands": []
+  },
+  "cstudy config edit --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy config path": {
+    "subcommands": []
+  },
+  "cstudy config path --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev": {
+    "subcommands": []
+  },
+  "cstudy dev --debug": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --events": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --exec": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --network": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --no-run": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --reset-data": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy dev --scenario": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy docs": {
+    "subcommands": []
+  },
+  "cstudy docs --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy docs --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy docs --open": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy doctor": {
+    "subcommands": []
+  },
+  "cstudy doctor --accept-license": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy doctor --fix": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy doctor --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy doctor --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy done": {
+    "subcommands": []
+  },
+  "cstudy done --gave-up": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy done --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy done --notes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy done --rating": {
+    "choices": [
+      "easy",
+      "ok",
+      "hard"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy export": {
+    "subcommands": []
+  },
+  "cstudy export --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy export --out": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy hint": {
+    "subcommands": []
+  },
+  "cstudy hint --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy history": {
+    "subcommands": []
+  },
+  "cstudy history --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy history --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ide": {
+    "subcommands": []
+  },
+  "cstudy ide --force": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ide --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy import": {
+    "subcommands": []
+  },
+  "cstudy import --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy init": {
+    "subcommands": []
+  },
+  "cstudy init --force": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy init --git": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy init --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy init --ide": {
+    "choices": [
+      "vscode",
+      "idea"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy init --no-ide": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy learn": {
+    "subcommands": []
+  },
+  "cstudy learn --done": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy learn --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy learn --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy learn --lang": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy learn --level": {
+    "choices": [
+      "intro",
+      "core",
+      "advanced"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy learn --open": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy learn --path": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy learn --search": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy learn --status": {
+    "choices": [
+      "read",
+      "not_read"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list": {
+    "subcommands": []
+  },
+  "cstudy list --content": {
+    "choices": [
+      "draft",
+      "ready"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --difficulty": {
+    "choices": [
+      "easy",
+      "medium",
+      "hard"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --domain": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy list --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy list --kind": {
+    "choices": [
+      "function",
+      "design",
+      "progressive",
+      "concurrent",
+      "project",
+      "item"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --needs": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --pattern": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --role": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --scope": {
+    "choices": [
+      "function",
+      "project",
+      "system"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --search": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --set": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --status": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy list --track": {
+    "choices": [
+      "dsa",
+      "practical",
+      "lld",
+      "concurrency",
+      "debugging",
+      "system-design",
+      "code-review",
+      "behavioral"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy mock": {
+    "subcommands": []
+  },
+  "cstudy mock --count": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy mock --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy mock --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy mock --minutes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy mock --track": {
+    "choices": [
+      "dsa",
+      "practical",
+      "lld",
+      "concurrency",
+      "debugging",
+      "system-design",
+      "code-review",
+      "behavioral"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy new": {
+    "subcommands": []
+  },
+  "cstudy new --difficulty": {
+    "choices": [
+      "easy",
+      "medium",
+      "hard"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy new --from-template": {
+    "choices": [
+      "array",
+      "tree",
+      "design",
+      "progressive",
+      "concurrent",
+      "project-python",
+      "project-typescript",
+      "project-java",
+      "project-kotlin",
+      "project-go",
+      "project-rust",
+      "project-typescript-service",
+      "project-python-service",
+      "project-java-service",
+      "project-kotlin-service",
+      "project-go-service"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy new --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy new --pattern": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy new --stress": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy new --title": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy new --track": {
+    "choices": [
+      "dsa",
+      "practical",
+      "lld",
+      "concurrency",
+      "debugging",
+      "system-design",
+      "code-review",
+      "behavioral"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy new --virtual-clock": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy next": {
+    "subcommands": []
+  },
+  "cstudy next --difficulty": {
+    "choices": [
+      "easy",
+      "medium",
+      "hard"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --domain": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy next --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy next --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --new": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy next --pattern": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --review": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy next --role": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --scope": {
+    "choices": [
+      "function",
+      "project",
+      "system"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --set": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --start": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy next --track": {
+    "choices": [
+      "dsa",
+      "practical",
+      "lld",
+      "concurrency",
+      "debugging",
+      "system-design",
+      "code-review",
+      "behavioral"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy reset": {
+    "subcommands": []
+  },
+  "cstudy reset --archive": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy reset --files": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy reset --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy reset --yes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy serve": {
+    "subcommands": []
+  },
+  "cstudy serve --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy serve --open": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy serve --port": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy set": {
+    "subcommands": [
+      "add",
+      "create",
+      "delete",
+      "list",
+      "move",
+      "remove",
+      "rename",
+      "show"
+    ]
+  },
+  "cstudy set --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set add": {
+    "subcommands": []
+  },
+  "cstudy set add --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set add --level": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy set create": {
+    "subcommands": []
+  },
+  "cstudy set create --description": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy set create --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set delete": {
+    "subcommands": []
+  },
+  "cstudy set delete --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set delete --yes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set list": {
+    "subcommands": []
+  },
+  "cstudy set list --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set list --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set move": {
+    "subcommands": []
+  },
+  "cstudy set move --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set remove": {
+    "subcommands": []
+  },
+  "cstudy set remove --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set rename": {
+    "subcommands": []
+  },
+  "cstudy set rename --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set show": {
+    "subcommands": []
+  },
+  "cstudy set show --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy set show --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy show": {
+    "subcommands": []
+  },
+  "cstudy show --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy show --level": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy solution": {
+    "subcommands": []
+  },
+  "cstudy solution --all": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy solution --approach": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy solution --broken": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy solution --explanation-only": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy solution --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy solution --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy solution --yes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy start": {
+    "subcommands": []
+  },
+  "cstudy start --fresh": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy start --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy start --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy start --no-open": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy start --restore": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy start --timer": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy start --yes": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy stats": {
+    "subcommands": []
+  },
+  "cstudy stats --by": {
+    "choices": [
+      "pattern",
+      "track",
+      "lang",
+      "difficulty"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy stats --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy stats --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy stats --since": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy status": {
+    "subcommands": []
+  },
+  "cstudy status --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy status --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy submit": {
+    "subcommands": []
+  },
+  "cstudy submit --events": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy submit --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy submit --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy submit --level": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test": {
+    "subcommands": []
+  },
+  "cstudy test --all": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --case": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --debug": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --debug-connect": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --debug-port": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --events": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --level": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --no-time-limit": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --perf": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --seed": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --stress": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --time-limit": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy test --typecheck": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy test --watch": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify": {
+    "subcommands": []
+  },
+  "cstudy verify --changed": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --conformance": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --jobs": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy verify --ladder": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy verify --oracle": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --oracle-cases": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy verify --require-ready": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --static": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy verify --stress": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy verify --track": {
+    "choices": [
+      "dsa",
+      "practical",
+      "lld",
+      "concurrency",
+      "debugging",
+      "system-design",
+      "code-review",
+      "behavioral"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  }
+}

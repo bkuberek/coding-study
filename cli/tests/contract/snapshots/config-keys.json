@@ -1,0 +1,146 @@
+{
+  "bench.memory": {
+    "choices": [],
+    "default": true,
+    "kind": "boolean",
+    "reserved": false
+  },
+  "bench.reps": {
+    "choices": [],
+    "default": 7,
+    "kind": "integer",
+    "reserved": false
+  },
+  "default_lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "default": "python",
+    "kind": "choice",
+    "reserved": false
+  },
+  "done.auto_commit": {
+    "choices": [],
+    "default": false,
+    "kind": "boolean",
+    "reserved": true
+  },
+  "hang_guard.ms": {
+    "choices": [],
+    "default": null,
+    "kind": "integer",
+    "reserved": false
+  },
+  "next.tracks": {
+    "choices": [
+      "dsa",
+      "practical",
+      "lld",
+      "concurrency",
+      "debugging",
+      "system-design",
+      "code-review",
+      "behavioral"
+    ],
+    "default": [
+      "dsa"
+    ],
+    "kind": "choices",
+    "reserved": false
+  },
+  "open_on_start": {
+    "choices": [],
+    "default": true,
+    "kind": "boolean",
+    "reserved": false
+  },
+  "progress_db": {
+    "choices": [],
+    "default": "progress.db",
+    "kind": "text",
+    "reserved": false
+  },
+  "schedule.again_interval_days": {
+    "choices": [],
+    "default": 1,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.easy_first_interval_days": {
+    "choices": [],
+    "default": 5,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.easy_second_interval_days": {
+    "choices": [],
+    "default": 12,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.hard_first_interval_days": {
+    "choices": [],
+    "default": 2,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.mastered_interval_days": {
+    "choices": [],
+    "default": 21,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.max_interval_days": {
+    "choices": [],
+    "default": 180,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.ok_first_interval_days": {
+    "choices": [],
+    "default": 3,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.ok_second_interval_days": {
+    "choices": [],
+    "default": 7,
+    "kind": "integer",
+    "reserved": false
+  },
+  "schedule.penalize_suboptimal": {
+    "choices": [],
+    "default": true,
+    "kind": "boolean",
+    "reserved": false
+  },
+  "study_guides.root": {
+    "choices": [],
+    "default": null,
+    "kind": "text",
+    "reserved": false
+  },
+  "time_limit.enabled": {
+    "choices": [],
+    "default": false,
+    "kind": "boolean",
+    "reserved": false
+  },
+  "time_limit.floor_ms": {
+    "choices": [],
+    "default": 100,
+    "kind": "integer",
+    "reserved": false
+  },
+  "time_limit.value": {
+    "choices": [],
+    "default": null,
+    "kind": "text",
+    "reserved": false
+  }
+}

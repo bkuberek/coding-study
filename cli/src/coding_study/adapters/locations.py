@@ -17,9 +17,10 @@ from coding_study.adapters.workspace_marker import (
     has_marker,
     read_marker,
 )
+from coding_study.domain import environment_variables
 
-CONTENT_VARIABLE = "CSTUDY_CONTENT"
-WORKSPACE_VARIABLE = "CSTUDY_WORKSPACE"
+CONTENT_VARIABLE = environment_variables.CONTENT
+WORKSPACE_VARIABLE = environment_variables.WORKSPACE
 CONTENT_MARKERS = ("problems", "schemas")
 BUNDLED_CONTENT = "content"
 """The directory, inside the installed `coding_study` package, that the wheel bundles."""
