@@ -91,6 +91,11 @@ def test_a_set_with_nothing_under_it_is_empty():
         ({"sets": {"loop": {"problems": [1]}}}, "a slug"),
         ({"sets": {"loop": {"problems": [""]}}}, "a slug"),
         ({"sets": {"loop": {"problems": ["a", "a"]}}}, "twice"),
+        ({"sets": {"loop": {"problems": ["Two_Sum"]}}}, 'set loop: "Two_Sum" is not a slug'),
+        (
+            {"sets": {"loop": {"problems": [{"slug": "Two_Sum"}]}}},
+            'set loop: "Two_Sum" is not a slug',
+        ),
         ({"sets": {"loop": {"description": 2026}}}, "description"),
     ],
 )

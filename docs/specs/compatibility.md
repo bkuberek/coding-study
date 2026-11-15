@@ -124,8 +124,9 @@ A piece of content is named `<type>/<slug>`:
 | `<slug>` | Matches `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` |
 | Namespaces | One per type. Guide and path slugs stay their own namespaces, which the type keeps apart: `guide/hashing` and `path/hashing` are two IDs |
 | Stability | A released ID never changes, so neither does its slug |
-| In documents | Every object of a `--json` document or a web API response that names content by `slug` carries `id`, the canonical ID, beside it |
+| In documents | Every object of a `--json` document or a web API response that names content by `slug` carries `id`, the canonical ID, beside it, except where the next two rows say otherwise. A set row names its problem's ID even when that problem is missing |
 | In the progress export | Its rows are database rows and carry `slug` only. The type follows from the table: `attempts`, `schedule` and `bench_runs` name problems, and `guide_reads` names guides |
+| Events and job options | `--events` lines, the web UI's server-sent notifications and job options carry `slug` only: the notifications and job options are internal (web API), and events are versioned separately ([Surfaces](#surfaces)) |
 | Arguments | Commands take slugs, not IDs: `cstudy start two-sum`, `cstudy learn hashing` |
 
 `domain/content_ids.py` defines `ContentType`, `content_id(type, slug)` and `parse_content_id(text)`, which raises `ValueError` on text that does not match the grammar.

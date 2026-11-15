@@ -1115,7 +1115,7 @@ cstudy set rename <name> <new-name>
 cstudy set delete <name> [--yes]
 ```
 
-Your own named lists of problems, in the order you put them, so you study from a list without searching for it ([ADR 0023](../decisions/0023-problem-sets.md)). They live in [`sets.yaml`](installation-and-workspaces.md#layout) at the workspace root, which `cstudy` makes at the first write; you may edit it by hand and commit it. A problem can be in several sets. [`cstudy list --set`](#cstudy-list) and [`cstudy next --set`](#cstudy-next) use one, and the [Sets view](web-ui.md#sets-view) of the page shows the same rows in the same order. Every subcommand needs a workspace.
+Your own named lists of problems, in the order you put them, so you study from a list without searching for it ([ADR 0023](../decisions/0023-problem-sets.md)). They live in [`sets.yaml`](installation-and-workspaces.md#layout) at the workspace root, which `cstudy` makes at the first write; you may edit it by hand and commit it. An entry is a problem's slug, which matches the [slug grammar](compatibility.md#canonical-content-ids), alone or as `{slug: ..., level: ...}`. A problem can be in several sets. [`cstudy list --set`](#cstudy-list) and [`cstudy next --set`](#cstudy-next) use one, and the [Sets view](web-ui.md#sets-view) of the page shows the same rows in the same order. Every subcommand needs a workspace.
 
 | Subcommand | Does | Says |
 |------------|------|------|
@@ -1147,6 +1147,7 @@ next    cstudy next --set backend-loop
 | `add` of a slug that is in no catalog | `unknown problem "two-summ"; did you mean two-sum?`, exit 3, and none of the slugs is added |
 | `add --level` of a level the problem lacks, or of a problem without levels | `tamper-evident-ledger has levels 1 to 4`, or `two-sum has no levels; --level is for progressive and project problems`, exit 3, and nothing is added |
 | `move` outside the list, or of a slug not in it | `position 9 is outside backend-loop, which holds 3`, or `two-sum is not in backend-loop`, exit 3 |
+| An entry that is not a slug | `sets.yaml: set backend-loop: "Two_Sum" is not a slug`, exit 4 |
 | `sets.yaml` does not parse or is invalid | `sets.yaml: <what is wrong>`, exit 4, in every command that reads it. It is never overwritten; `cstudy list` and `cstudy next` without `--set` do not read it |
 | A change the writer can't make and keep the file as written | `sets.yaml: cstudy can't make this change and keep the file as you wrote it, so it wrote nothing; edit the file by hand`, exit 4 |
 | `sets.yaml` is a symbolic link | Read through it; a change is refused with `sets.yaml: it is a symbolic link, so cstudy won't write through it`, exit 4 |

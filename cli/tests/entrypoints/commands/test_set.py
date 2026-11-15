@@ -273,6 +273,18 @@ def test_a_file_that_does_not_parse_exits_4_naming_the_file(environment, file):
     )
 
 
+def test_an_entry_that_is_not_a_slug_exits_4_naming_the_set_and_the_entry(environment, file):
+    file.write_text(f"sets:\n  {LOOP}:\n    problems:\n      - Two_Sum\n")
+    result = invoke("show", LOOP)
+    assert (
+        result.exit_code,
+        f'sets.yaml: set {LOOP}: "Two_Sum" is not a slug' in result.output,
+    ) == (
+        ExitCode.ENVIRONMENT_ERROR,
+        True,
+    )
+
+
 def test_list_without_set_does_not_read_a_file_that_does_not_parse(environment, file):
     file.write_text("sets: [unclosed\n")
     assert runner.invoke(cli.app, ["list"]).exit_code == ExitCode.SUCCESS

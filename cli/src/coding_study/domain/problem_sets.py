@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 from typing import cast
 
 from coding_study.domain.errors import ConfigError, UsageError
+from coding_study.domain.problem import SLUG_PATTERN
 from coding_study.domain.scheduling import ProblemProgress
 
 SETS_FILE = "sets.yaml"
@@ -229,7 +230,7 @@ def _entries(
 def _entry(name: str, entry: object, issues: list[str]) -> tuple[str | None, int | None]:
     """A slug, or `{slug: ..., level: ...}`; (None, None) for an entry that is neither."""
     if not isinstance(entry, Mapping):
-        if isinstance(entry, str) and entry:
+        if isinstance(entry, str) and SLUG_PATTERN.fullmatch(entry):
             return entry, None
         issues.append(f'set {name}: "{entry}" is not a slug')
         return None, None
@@ -238,6 +239,9 @@ def _entry(name: str, entry: object, issues: list[str]) -> tuple[str | None, int
     slug = fields.get(SLUG_KEY)
     if not isinstance(slug, str) or not slug:
         issues.append(f'set {name}: an entry needs "{SLUG_KEY}", the slug of a problem')
+        return None, None
+    if not SLUG_PATTERN.fullmatch(slug):
+        issues.append(f'set {name}: "{slug}" is not a slug')
         return None, None
     level = fields.get(LEVEL_KEY)
     if level is None:
