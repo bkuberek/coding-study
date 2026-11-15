@@ -11,7 +11,9 @@ The binding manifest of every catalog problem: 210 DSA problems and 190 non-DSA 
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `problems/` |
 | `code-review` | 6 | `problems/` |
-| **Total** | **400** (384 checked by tests, 16 by a rubric) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write a rubric problem is in [authoring](authoring.md).
+| **Total** | **400** (384 checked by tests, 16 by a rubric) | |
+
+Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write a rubric problem is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 

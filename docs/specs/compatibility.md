@@ -55,7 +55,7 @@ Each snapshot is a JSON file in `cli/tests/contract/snapshots/`, written from th
 | Snapshot | Holds | Read from |
 |----------|-------|-----------|
 | `commands.json` | Every command and subcommand, and for each flag: its names, whether it takes a value, its choices when it is a choice, and `deprecated` | `command_spec` in `entrypoints/command_table.py` |
-| `exit-codes.json` | Each exit code by name: the [exit codes](cli.md#exit-codes) of `ExitCode` in `entrypoints/shared.py`, which gains `HANGUP = 129` and `TERMINATED = 143`, the exits of a run or a server that a signal stopped | `ExitCode` |
+| `exit-codes.json` | Each exit code by name: the [exit codes](cli.md#exit-codes) of `ExitCode` in `entrypoints/shared.py`, including `HANGUP = 129` and `TERMINATED = 143`, the exits of a run or a server that a signal stopped | `ExitCode` |
 | `config-keys.json` | Each key of `config.toml`: name, kind, default, choices and whether it is reserved | `domain/config_keys.py` and the parser's key names in `adapters/toml_config.py` |
 | `environment.json` | The variable names of each class of [Environment variables](#environment-variables) | `domain/environment_variables.py` |
 | `marker.json` | The marker's keys, `schema` and `created_with`, the shape of `[licenses.<key>]`, and `SCHEMA_VERSION` | `adapters/workspace_marker.py` |
@@ -85,7 +85,7 @@ One schema per document, in `schemas/cli/`, shipped in the wheel under `coding_s
 | Learn list | `cstudy learn --json` | `learn-list.schema.json` |
 | Learn guide | `cstudy learn <guide> --json` | `learn-guide.schema.json` |
 | Learn done | `cstudy learn <guide> --done --json` | `learn-done.schema.json` |
-| Learn path | `cstudy learn <path> --json` | `learn-path.schema.json` |
+| Learn path | `cstudy learn --path <path> --json` | `learn-path.schema.json` |
 | Docs list | `cstudy docs --json` | `docs-list.schema.json` |
 | Docs page | `cstudy docs <topic> --json` | `docs-page.schema.json` |
 | Test | `cstudy test --json` | `test.schema.json`, with the variants `single-file`, `project` and `service`, told apart by their required fields |
@@ -151,7 +151,7 @@ A piece of content is named `<type>/<slug>`:
 
 A folder of your workspace named `NNNN-<slug>`, as `cstudy new` wrote them before, is reported, not migrated, and so is a folder whose `meta.yaml` still has an `id:` line, which `cstudy new` wrote before problems lost their numeric id and which the schema no longer accepts. A directory of `problems/` whose name is not a valid slug is not loaded as a problem, and neither is one whose `meta.yaml` has `id`: `cstudy verify` (check S2) fails on it, and `cstudy doctor` warns on its workspace files row. Both say what to do, with paths from the root that holds the `problems/` directory (the workspace root for your own problems, the content root for the catalog's) and hidden directories and `__pycache__` left out:
 
-- A directory whose name is not a slug: rename it with `mv 'problems/<name>' problems/<slug>`, both paths quoted for the shell, where `<slug>` is the `slug` of its `meta.yaml`, or, when that cannot be read, the name without its leading `NNNN-`; then delete the `id:` line of its `meta.yaml`, when it has one.
+- A directory whose name is not a slug: rename it with `mv problems/<name> problems/<slug>`, each path quoted for the shell when it needs quoting (`'problems/0001 two sum'`), where `<slug>` is the `slug` of its `meta.yaml`, or, when that cannot be read, the name without its leading `NNNN-`; then delete the `id:` line of its `meta.yaml`, when it has one.
 - A directory already named by a slug whose `meta.yaml` has `id`: delete that `id:` line.
 - A directory whose slug is already the name of another directory of `problems/`, or of another directory that would be renamed to it: no `mv`; the advice says the slug is taken and asks for a free one.
 - A directory with no slug to take: the advice asks for one.

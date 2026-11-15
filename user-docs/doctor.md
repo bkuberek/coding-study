@@ -69,13 +69,13 @@ cstudy doctor --fix
 
 Go and Rust need no setup step: everything their runners use ships with `cstudy`. `--fix` needs a workspace, and exits 3 outside one. It needs the network the first time; after that, practice needs no network.
 
-Kotlin's language server comes under a license you accept first. `--fix` asks at a terminal, or you accept it up front:
+Kotlin's language server comes under a licence you accept first. `--fix` asks at a terminal, or you accept it up front:
 
 ```bash
 cstudy doctor --fix --accept-license kotlin-lsp
 ```
 
-The Health view of the web UI (`Alt+6`) shows the same rows, with a **Fix** button that runs `cstudy doctor --fix`. It never accepts a license for you.
+The Health view of the web UI (`Alt+6`) shows the same rows, with a **Fix** button that runs `cstudy doctor --fix`. It never accepts a licence for you.
 
 ## For scripts
 

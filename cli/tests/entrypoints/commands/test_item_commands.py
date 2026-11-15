@@ -71,7 +71,7 @@ def test_start_rejects_a_language(environment):
     result = invoke("start", "url-shortener", "--lang", "kotlin")
     assert (result.exit_code, result.stderr) == (
         ExitCode.USAGE_ERROR,
-        "error: url-shortener is not autograded; --lang applies to problems\n",
+        "error: url-shortener is not autograded; --lang applies to autograded problems\n",
     )
 
 

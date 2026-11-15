@@ -251,7 +251,7 @@ OPTIONAL_LANGUAGE_FILES = "go and rust files"
 OPTIONAL_PROJECTS = frozenset({GO_PROJECT, RUST_PROJECT})
 PYTHON_VENV_ARTIFACT = _WorkspaceArtifact(PYTHON_PROJECT, PYTHON_VENV, FIX_COMMAND)
 WORKSPACE_ARTIFACTS = (
-    _WorkspaceArtifact("jvm", "gradlew", "gradle wrapper (in jvm)"),
+    _WorkspaceArtifact("jvm", "gradlew", FIX_COMMAND),
     PYTHON_VENV_ARTIFACT,
     _WorkspaceArtifact("typescript", "node_modules", FIX_COMMAND),
 )

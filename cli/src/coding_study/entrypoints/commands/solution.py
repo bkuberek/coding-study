@@ -186,7 +186,8 @@ def _require_item_options(request: SolutionRequest) -> None:
     if has_problem_options:
         raise UsageError(
             f"{request.slug} is not autograded; "
-            "--lang, --approach, --all and --explanation-only apply to problems"
+            "--lang, --approach, --all, --explanation-only and --broken "
+            "apply to autograded problems"
         )
 
 

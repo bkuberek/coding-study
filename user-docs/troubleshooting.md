@@ -27,8 +27,8 @@ Every command ends with a code that says how it went, which scripts can read:
 | 4 | Something on your machine is missing: a toolchain, a JDK in range, a runner that did not start |
 | 5 | A content file is wrong: a problem, a guide or a page that fails its checks |
 | 70 | A bug in `cstudy`. Please report it |
-| 130 | You stopped it with `Ctrl+C` |
 | 129 | It was hung up (SIGHUP) during a `cstudy test --debug` run |
+| 130 | You stopped it with `Ctrl+C` |
 | 143 | It was stopped with SIGTERM: during a `cstudy test` or `cstudy submit` run with `--events`, during a `cstudy test --debug` run, or while `cstudy serve` runs |
 
 ## Commands
@@ -64,7 +64,7 @@ Each message below follows `error: ` in your terminal, word for word. Words in a
 | A command given a file | `no problem for <path>: none is named <name>` | The file's name matches no problem. Exit 3 | Check the file's name, or name the problem's slug |
 | A command given a file | `<path> is a <language> file but --lang <language> was given` | `--lang` says another language than the file. Exit 3 | Leave `--lang` out: the file says the language |
 | `cstudy start` | `<slug> is not available in <language>; use <languages>` | The problem has no version in that language. Exit 3 | Pass one of the languages it lists with `--lang` |
-| `cstudy start` | `<slug> is not autograded; --lang applies to problems` | A `system-design` or `code-review` problem has no language: you answer it in notes. Exit 3 | Leave `--lang` out |
+| `cstudy start` | `<slug> is not autograded; --lang applies to autograded problems` | A `system-design` or `code-review` problem has no language: you answer it in notes. Exit 3 | Leave `--lang` out |
 | `cstudy start` | `cstudy start <slug> would download what is listed: pass --yes to go on` | A service project needs downloads, and there is no terminal to ask you. Exit 3 | Read the list it printed, then run it again with `--yes` |
 | `cstudy start`, `cstudy test`, `cstudy submit`, `cstudy bench` | `<slug>` runs its `<language>` version on `<range>`; `<source>` selects JDK `<n>`, which cstudy does not support yet | Your JDK is newer than any `cstudy` supports. Exit 4, with a `fix:` line | Select a JDK in the range with `JAVA_HOME`, as the `fix:` says ([JDK](toolchains.md#jdk)) |
 | `cstudy start`, `cstudy test`, `cstudy submit`, `cstudy bench` | `<slug> runs its <language> version on <range>; <source> selects JDK <n>, which is newer than the problem supports` | The problem runs on JDKs up to a release below yours. Exit 4 | Select a JDK in the problem's range, as the `fix:` says |
@@ -89,7 +89,7 @@ Each message below follows `error: ` in your terminal, word for word. Words in a
 | `cstudy reset` | `type reset to confirm. This can't be undone.` | You typed something other than `reset`, so nothing was deleted. Exit 3 | Run `cstudy reset` again and type `reset`, or pass `--yes` in a script |
 | `cstudy import` | `progress.db already holds progress; import needs an empty database` | Import never mixes two histories. Exit 3 | To replace what is there: `cstudy export --out ~/before-import.json`, then `cstudy reset`, then `cstudy import` |
 | `cstudy import` | the export uses progress.db schema `<n>`, which is newer than this cstudy (`<m>`); update cstudy first | A newer `cstudy` wrote the export. Exit 3 | Upgrade `cstudy` ([upgrade cstudy](upgrading.md#upgrade-cstudy)) |
-| `cstudy solution` | `<slug> is not autograded; --lang, --approach, --all and --explanation-only apply to problems` | A `system-design` or `code-review` problem has one answer, with no language or approach. Exit 3 | Leave those flags out |
+| `cstudy solution` | `<slug> is not autograded; --lang, --approach, --all, --explanation-only and --broken apply to autograded problems` | A `system-design` or `code-review` problem has one answer, with no language or approach. Exit 3 | Leave those flags out |
 
 ## The web UI
 
@@ -102,7 +102,7 @@ Each message below follows `error: ` in your terminal, word for word. Words in a
 | `cstudy serve` exits 4, or `cstudy doctor` warns on `web ui assets` or `web server` | The page's files or the web server libraries are missing or damaged: reinstall `cstudy` with the command `cstudy doctor` prints, which names the install that runs; if it also warns on `installs`, keep one install first |
 | A language fails in the Health view | Install its toolchain ([toolchains](toolchains.md)), then use **Fix**, on its row or at the top of the view, which runs `cstudy doctor --fix` |
 | The dev stack panel says `cstudy dev` is already running in a process | A terminal holds the project's dev stack: stop it there with `Ctrl+C`, or use that one |
-| `Tab` skips buttons and links in Safari | Use `Option+Tab`, or turn on "Press Tab to highlight each item on a webpage" in Safari's Advanced settings |
+| `Tab` skips buttons and links | Your browser moves `Tab` between form fields only: turn on its setting that lets `Tab` reach every button and link |
 
 ## Code intelligence
 

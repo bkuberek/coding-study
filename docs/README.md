@@ -7,7 +7,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 1. [PRD](prd.md): why, for whom, requirements, success metrics, risks, open questions.
 2. [Architecture](architecture.md): components, hexagonal boundaries, data flows, repository layout, toolchain.
 3. Specs, in the order an implementer needs them (below).
-4. [Roadmap](roadmap.md): phases and exit criteria.
+4. [Roadmap](roadmap.md): the v1.0.0 definition, compatibility promise, release criteria and milestones, then the phases and their exit criteria.
 5. [Decisions](#decisions): the ADRs behind the major choices.
 
 ## Specs
@@ -19,8 +19,8 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [cli](specs/cli.md) | Every command, flag, output example, exit code; the config file | Building commands |
 | [progress-and-scheduling](specs/progress-and-scheduling.md) | SQLite schema, grades, SM-2 variant, weakness score, `cstudy next` | Building progress features |
 | [performance-analysis](specs/performance-analysis.md) | Optional time limits, size ladder, measurement, complexity classification, verdicts and confidence | Building `cstudy bench` or time limits |
-| [content](specs/content.md) | Tracks, pattern taxonomy and targets, batches, non-autograded items, copyright policy | Planning content |
-| [catalog](specs/catalog.md) | Binding manifest of every item: slugs, titles, patterns, difficulty, kind, batch, owner stream | Writing content in a stream, or adding to the catalog |
+| [content](specs/content.md) | Tracks, labels, pattern taxonomy and targets, batches, rubric-checked problems, copyright policy | Planning content |
+| [catalog](specs/catalog.md) | Binding manifest of every problem: slugs, titles, patterns, difficulty, kind, labels, batch, owner stream | Writing content in a stream, or adding to the catalog |
 | [service-projects](specs/service-projects.md) | Problems that run a real app in a Docker sandbox with lifecycle commands, built-in mock servers, HTTP grading and a dependency list shown before starting. Built through P8, with the first catalog problem in TypeScript and Python, and P10's backing services; parallel cases, the Web UI and code intelligence are planned | Working on ADR 0019's phases, or on a service project |
 | [versioning](specs/versioning.md) | Commit types and version bumps, the version workflow, `CHANGELOG.md`, `cstudy --version`, the GitHub release and the Homebrew tap | Committing, or changing how releases are versioned or published |
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
@@ -32,7 +32,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 
 ## User docs
 
-How to use `cstudy` lives in [`user-docs/`](../user-docs/), shipped with it and read with `cstudy docs` or in the web UI's Docs view ([user-docs](specs/user-docs.md)): getting started, the toolchains, `cstudy doctor`, the workspace, working on a problem, levels, service projects, guides, planning, the web UI, the editor, settings and troubleshooting.
+How to use `cstudy` lives in [`user-docs/`](../user-docs/), shipped with it and read with `cstudy docs` or in the web UI's Docs view ([user-docs](specs/user-docs.md)): getting started, the toolchains, `cstudy doctor`, the workspace, upgrading, working on a problem, the kinds of problems, levels, service projects, your IDE and the debugger, guides, planning, your own problems, the web UI, the editor, settings, the command reference and troubleshooting.
 
 ## Decisions
 
@@ -57,7 +57,7 @@ How to use `cstudy` lives in [`user-docs/`](../user-docs/), shipped with it and 
 | [0017](decisions/0017-async-project-problems.md) | Project problems grade asynchronous code on a virtual clock and concurrent code under stress: `async` methods, harness operations, stress cases with broken overlays, and Go 1.25 |
 | [0018](decisions/0018-editor-code-intelligence.md) | The page's editor gets code intelligence from local language servers behind a setting, and completion behind a second one: live diagnostics, hover documentation and go to definition over one WebSocket per tab and root |
 | [0019](decisions/0019-service-projects.md) | Service projects always run in a Docker sandbox, a real app against mock servers and optional backing services, graded over HTTP. Built through P8, the first catalog problem in TypeScript and Python, and P10's backing services; later phases are planned |
-| [0020](decisions/0020-catalog-labels.md) | Problems and items have three independent labels, domain, role and scope, with filters in `cstudy list`, `cstudy next` and the Problems view; the first seven security and AI/LLM problems, in Python and TypeScript |
+| [0020](decisions/0020-catalog-labels.md) | Problems and items have three independent labels, domain, role and scope, with filters in `cstudy list`, `cstudy next` and the Problems view; the first seven security and AI/LLM problems, in Python and TypeScript; amended by 0027, which makes the items rubric-checked problems |
 | [0021](decisions/0021-ai-reviewed-problems.md) | Planned, not built: an opt-in class of problems reviewed by a live LLM with your own key; "works on your own machine" replaces "works offline" |
 | [0022](decisions/0022-settings-and-reset.md) | The Settings view edits the whole `config.toml` with tomlkit, keeping the user's comments, from a description of each key held by the parser; `cstudy reset` and a Danger section delete progress after a preview and a typed word |
 | [0023](decisions/0023-problem-sets.md) | Problem sets are a file in the workspace, `sets.yaml`, changed by the lines a change needs; `cstudy set`, `--set` on `cstudy list` and `cstudy next`, which goes in the set's order, and a Sets view; the whole-bundle budget rises |

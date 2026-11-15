@@ -53,15 +53,20 @@ The user docs ship with `cstudy`: `cstudy docs` lists them in the terminal, `cst
 | [Getting started](user-docs/getting-started.md) | Install, your first workspace and problem, the main commands |
 | [Install the language toolchains](user-docs/toolchains.md) | uv and Python, Node.js and pnpm, a JDK, Go, Rust and Docker on macOS and Linux |
 | [Check your setup with cstudy doctor](user-docs/doctor.md) | Every check, and how `--fix` sets up a workspace |
-| [Your workspace](user-docs/workspace.md) | What the folder holds, version control, your IDE and your own problems |
+| [Your workspace](user-docs/workspace.md) | What the folder holds and version control |
+| [Upgrading cstudy](user-docs/upgrading.md) | Upgrading, what `cstudy doctor --fix` refreshes, and moving to a new machine |
 | [Work on a problem](user-docs/practice.md) | Start, test, hints, solutions, benchmarks and grades |
+| [Kinds of problems](user-docs/problem-kinds.md) | The tracks, the kinds, how each is checked, and the labels |
 | [Progressive levels and projects](user-docs/levels.md) | Problems that grow over levels, and `cstudy submit` |
 | [Service projects and the dev stack](user-docs/service-projects.md) | Apps in a Docker sandbox with mock servers, and `cstudy dev` |
+| [Your IDE and the debugger](user-docs/ide-and-debugging.md) | VS Code and IntelliJ IDEA files, and `cstudy test --debug` |
 | [Guides and learning paths](user-docs/guides.md) | Reading guides and following paths with `cstudy learn` |
 | [Plan your practice](user-docs/planning.md) | `cstudy next`, problem sets, mock interviews and statistics |
+| [Write your own problems](user-docs/own-problems.md) | `cstudy new`, checking a problem with `cstudy verify`, and making it ready |
 | [Practise in your browser](user-docs/web-ui.md) | `cstudy serve`: the views and the keyboard |
 | [The editor and code intelligence](user-docs/editor.md) | Live errors, hover documentation, go to definition and autocomplete |
 | [Settings and preferences](user-docs/settings.md) | `config.toml`, the preferences, backups and reset |
+| [Command reference](user-docs/commands.md) | Every command and its flags, and the exit codes |
 | [Troubleshooting](user-docs/troubleshooting.md) | What to do when something fails |
 
 To change `cstudy` itself: [the developer docs](docs/README.md) (the PRD, architecture, specs and decision records), the [CLI reference](docs/specs/cli.md), the [authoring guide](docs/specs/authoring.md) for problems of your own, [contributing](CONTRIBUTING.md), and the [changelog](CHANGELOG.md).

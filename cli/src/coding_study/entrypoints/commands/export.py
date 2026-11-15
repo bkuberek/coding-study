@@ -25,7 +25,7 @@ def export(
     out: Annotated[
         Path | None,
         typer.Option(
-            "--out", metavar="PATH", help=f"Default: {EXPORT_FILE} at the repository root."
+            "--out", metavar="PATH", help=f"Default: {EXPORT_FILE} at the workspace root."
         ),
     ] = None,
 ) -> None:

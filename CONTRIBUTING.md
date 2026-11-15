@@ -46,6 +46,8 @@ Run the CLI checks from `cli/`; its tool settings live there (`ruff.toml`, `pyri
 | JVM tests | `uv run pytest -q -m jvm` (the `slow` tests that drive Gradle, javac, kotlinc or a JVM runner on the JDK your shell selects) |
 | All tests | `uv run pytest -q` (the `slow` tests drive real Gradle, Node, tsc and a workspace venv in a temporary workspace) |
 
+The fast tests include the contract tests in `cli/tests/contract/`: a change of a command, flag, exit code, config key, environment variable or the workspace marker fails them until you write the snapshots again with `CSTUDY_WRITE_SNAPSHOTS=1 uv run pytest -q tests/contract` and commit them with the change, and a `--json` document must validate against its schema in `schemas/cli/` ([compatibility](docs/specs/compatibility.md#contract-tests)).
+
 CI runs on Linux for every push to a branch and every pull request ([versioning](docs/specs/versioning.md#what-the-workflow-does)). The fast checks are the first six rows, plus `cstudy verify --static`. The JVM job runs the JVM tests and `cstudy verify --conformance` for `--lang java` and for `--lang kotlin`, on JDK 21 and on JDK 26, the two ends of the supported range. Two more jobs run only when the `changes` job finds that the diff can affect them: the browser tests on Chromium, and the `sandbox` job, `pytest -m "docker and not docker_jvm and not docker_go"` on a real Docker engine. The real-engine JVM tests carry the `docker_jvm` marker and the real-engine Go tests the `docker_go` marker, each together with `docker`, and both stay a local gate so that the job fits its 15 minutes: `uv run pytest -q -m docker` is the full local run and includes them (about 20 minutes under load), and a new test that builds a JVM or Go project on a real engine takes the matching marker too. The other `slow` tests, and `cstudy verify` of a catalog service project over real stacks, stay a local gate. A test belongs to the JVM job when it carries the `jvm` marker, together with `slow`: mark a new test that drives the JVM the same way, and a row of a test over every language with `jvm_marked` from `cli/tests/toolchains.py`.
 
 Changes to content, runners or code generation also need `cstudy verify` (with `CSTUDY_WORKSPACE` set):
@@ -69,7 +71,7 @@ One build wants an exact JDK: `tools/ide-launcher/build.sh`, which rebuilds the 
 Problem statements, tests, hints and solutions must be original ([ADR 0004](docs/decisions/0004-original-problem-wording.md)); a LeetCode problem appears only as a link in `references.leetcode`.
 
 1. Scaffold the problem in the checkout: `uv run cstudy new <slug> --from-template array|tree|design|progressive|concurrent`. Run from a development checkout, `cstudy new` writes into the repository's `problems/`, not into the workspace named by `CSTUDY_WORKSPACE` (a follow-up to know about when you test with a scratch workspace).
-2. Follow the [authoring workflow](docs/specs/authoring.md#workflow): the statement in `problem.md`, the signature in `meta.yaml`, the cases in `tests.json`, a brute-force Python oracle, `generator.py`, the optimal approaches in Python, TypeScript, Java, and Kotlin, and `solutions/explanation.md`. The [problem format](docs/specs/problem-format.md) defines every file.
+2. Follow the [authoring workflow](docs/specs/authoring.md#workflow): the statement in `problem.md`, the signature in `meta.yaml`, the cases in `tests.json`, a brute-force Python oracle, `generator.py`, the optimal approaches in every language the problem lists, Go and Rust included, and `solutions/explanation.md`. The [problem format](docs/specs/problem-format.md) defines every file.
 3. Set `status: ready` once the problem passes the ready gate:
 
    ```bash
@@ -90,11 +92,13 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 
 Examples: `feat(cli): add cstudy stats --since`, `fix(runners): report a missing symbol as a load error`, `docs: clarify the workspace layout`. Once CI passes on a push to `main`, a GitHub workflow bumps `pyproject.toml`, updates `CHANGELOG.md`, and tags the release; a commit that fails CI is never released. Never edit the version by hand.
 
+A change of a public surface ([compatibility](docs/specs/compatibility.md#surfaces)) is also recorded in `UPGRADING.md`, and one that breaks it is a `feat!:` or `fix!:` commit with a `BREAKING CHANGE:` footer.
+
 Keep tests and docs in the same commit as the behavior they cover. Specs in `docs/specs/` are normative: when the code and a spec disagree, fix one of them in the same change.
 
 ## Issue forms
 
-Issues open through the forms in `.github/ISSUE_TEMPLATE/`; blank issues are off. The app links and `cstudy feedback` open a form prefilled through URL query parameters: `template=<file>.yml`, `title=`, and one parameter per field `id`. Labels come from each form, not the URL. The field ids are a contract with those links, so do not rename them.
+Issues open through the forms in `.github/ISSUE_TEMPLATE/`; blank issues are off. A link can open a form prefilled through URL query parameters: `template=<file>.yml`, `title=`, and one parameter per field `id`. Labels come from each form, not the URL. The field ids are a contract with such links, so do not rename them.
 
 | Form | Labels | Field ids |
 |------|--------|-----------|

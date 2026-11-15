@@ -10,13 +10,13 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | Python runner | `runners/python/` | Python | Packages `cs_runner` (runner) and `cs_support` (`ListNode`, `TreeNode`, `GraphNode`) |
 | TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
 | JVM runner | `runners/jvm/` | Java, compiled at release 21; Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin. The module `cs.coroutines`, in Kotlin, is the bridge to the coroutine test scheduler that grades Kotlin projects on the virtual clock |
-| Content | `problems/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
+| Content | `problems/`, `guides/`, `user-docs/` | YAML, JSON, Markdown, code | Problems, autograded and rubric-checked, with their tests, references, explanations and generators; concept guides and learning paths; the user docs |
 | Web UI | `cli/src/coding_study/entrypoints/web/`, sources in `tools/web-ui/` | Python (Starlette on uvicorn); TypeScript and CodeMirror 6, built and committed | `cstudy serve`: the local page, a second driving adapter ([below](#web-adapter), [web-ui](specs/web-ui.md)) |
-| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents |
-| Workspace templates | `cli/src/coding_study/adapters/workspace_template/` | 3 real projects | What `cstudy init` copies into a workspace |
-| Workspace | anywhere, outside this repository ([installation-and-workspaces](specs/installation-and-workspaces.md)) | 4 real projects | The user's code, notes and own problems, versioned on their own |
-| Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs |
-| Cache | `<workspace>/.cs/` | mixed | Index, generated cases, calibration, build scratch, runner runtime |
+| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents. `schemas/cli/` holds one schema per `--json` document and the progress export ([compatibility](specs/compatibility.md#json-documents)); `guide.schema.json`, `path.schema.json`, `user-doc.schema.json`, `sets.schema.json`, `mock.schema.json` and `dev-events.schema.json` describe the guides, the paths, the user docs' front matter, `sets.yaml`, the mock servers of service projects and `cstudy dev --events` |
+| Workspace templates | `cli/src/coding_study/adapters/workspace_template/` | 5 real projects | What `cstudy init` copies into a workspace |
+| Workspace | anywhere, outside this repository ([installation-and-workspaces](specs/installation-and-workspaces.md)) | 5 real projects | The user's code, notes and own problems, versioned on their own |
+| Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs, submissions, level unlocks, guide reads; backed up to `.cs/backups/` before each migration |
+| Cache | `<workspace>/.cs/` | mixed | Index, generated cases, calibration, build scratch, runner runtime, `progress.db` backups |
 
 ## Hexagonal boundaries
 
@@ -34,9 +34,10 @@ flowchart LR
   end
   subgraph Driven adapters
     FS[FsProblemRepository]
+    IT[FsItemRepository]
     DB[SqliteProgressStore]
-    RUN[SubprocessRunner + LanguageRunner x4]
-    GEN[Stub generators x4]
+    RUN[SubprocessRunner + LanguageRunner x5]
+    GEN[Stub generators x6]
     WS[WorkspaceFs]
     PY[ContentCodeLoader]
     ED[EditorOpener]
@@ -45,7 +46,7 @@ flowchart LR
   CLI --> UC --> D
   WEB --> UC
   WEB -->|child cstudy per run| CLI
-  UC --> FS & DB & RUN & GEN & WS & PY & ED & CLK
+  UC --> FS & IT & DB & RUN & GEN & WS & PY & ED & CLK
 ```
 
 Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/coding_study/application/ports.py`; adapters implement them; each command module in `entrypoints/commands/` wires them, and `entrypoints/cli.py` registers the commands. Shared pure rules live in the domain: `naming` (per-language symbol names), `layout` (stub, statement, archive and reference paths, run targets), `runs` (runner request and per-case outcomes) and `jdk` (the supported JDK range, a problem's effective range and whether the selected JDK can run it, [ADR 0016](decisions/0016-jdk-range.md)).
@@ -55,7 +56,9 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `ProblemRepository` | `FsProblemRepository` | Reads `problems/`, validates with JSON Schema, caches the validated `meta.yaml` documents in `.cs/index.json` ([index](#index-cache)) |
 | `ItemRepository` | `FsItemRepository` | Reads the rubric-checked problems of `problems/<slug>/`, the folders whose `kind` is `system-design` or `code-review`, and validates their `meta.yaml` with JSON Schema, through the same `.cs/index.json`; `FsProblemRepository` reads the other folders and treats these as absent |
 | `StudyGuides` | `FsStudyGuides` | Locates the user's own study guides under config `study_guides.root` for rubric problem statements ([study guides](specs/content.md#study-guides)) |
-| `ProgressStore` | `SqliteProgressStore` | Schema in [progress-and-scheduling](specs/progress-and-scheduling.md) |
+| `ProblemFiles` | `FsProblemFiles`, `OverlayProblemFiles` | The raw files of every folder of a `problems/` directory, keyed by slug, valid or not, for `cstudy verify`; `misnamed()` names the directories whose name is not a slug ([problem folders](specs/compatibility.md#problem-folders)) |
+| `ProgressStore` | `SqliteProgressStore` | Schema in [progress-and-scheduling](specs/progress-and-scheduling.md); the first use migrates an older database after a backup to `.cs/backups/` ([migrations](specs/compatibility.md#migrations)) |
+| `ProgressDatabase` | `SqliteProgressDatabase` | The `progress.db` file for `cstudy doctor`: its schema without migrating, and `--fix`'s migration with the same backup |
 | `LanguageRunner` | one per language (`adapters/languages/<python,typescript,jvm,go,rust>/`; the JVM adapter serves Java and Kotlin) | `prepare(scope, notify)` returns `Prepared` (launch command) or `BuildFailed`, building when needed; scope `BenchCode` prepares the user's code and the references for one bench process. Several `cstudy` processes may share a workspace: the JVM, Go and Rust adapters build under a file lock and launch from a private copy of the build output, which `RunnerProcess` removes when the run ends (`RunnerLaunch.scratch`). The JVM adapter copies its class output ([JVM build details](specs/runners.md#jvm-build-details)); Go and Rust share `adapters/languages/compiled_builds.py` (lock, write-on-change generated files, abandoned-run cleanup) and each run gets its own scratch directory `.cs/build/<lang>/run/<pid>-<random>/` holding a copy of the binary ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) |
 | `RunnerProcess` | `SubprocessRunner` (one for every language) | `run(launch, request) -> RunReport` and `bench(launch, request) -> BenchReport`: request file, event file, hang guard, restarts; protocol in [runners](specs/runners.md) |
 | `JdkSelector` | `EnvJdkSelector` | `selected() -> SelectedJdk \| None`: the JDK that `JAVA_HOME` names, else the JDK of the first `java` on `PATH`, with its version read from the `release` file in the JDK's home, so listing problems starts no JVM ([the selected JDK](specs/cli.md#the-selected-jdk)); `unusable_java_home() -> str \| None`: the `JAVA_HOME` as it is set when it holds no JDK, in which case nothing is selected (the selection does not fall back to `PATH`); `selected_home() -> Path \| None`: the selected JDK's home, which `doctor --fix` passes to Gradle. `Environment.jdk` holds it: the use cases that start, test, submit, bench, list, pick or verify a problem ask it and apply the domain's range rules (`domain/jdk_fit.py`); the JVM adapter builds and launches with the same JDK |
@@ -229,10 +232,13 @@ coding-study/
     typescript/             # runner.ts, support.ts
     jvm/                    # Gradle included build: support + runner (Java)
     conformance/            # fixture problems for every DSL type and error path, expectations.json
-  schemas/                  # meta, tests, conformance, events and web API JSON Schemas
+  schemas/                  # JSON Schemas: meta, tests, conformance, events, web API, guides, paths, user docs, sets, mocks
+  schemas/cli/              # one JSON Schema per --json document and the progress export
   tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
   tools/web-ui/             # sources, lockfile and build of the web UI front end (its bundle ships in entrypoints/web/static/)
   problems/<slug>/          # every problem: autograded (specs/problem-format.md) or rubric-checked (specs/content.md#rubric-checked-problems)
+  guides/                   # concept guides and learning paths (specs/guides.md)
+  user-docs/                # the user docs, read with `cstudy docs` (specs/user-docs.md)
 ```
 
 The repository holds no workspace. A workspace, created by `cstudy init` anywhere else, holds the practice projects, the project problems' folders in `projects/`, `notes/`, `.archive/`, `.statements/`, its own `problems/`, `.cs/` and `progress.db` ([layout](specs/installation-and-workspaces.md#layout)).
@@ -289,9 +295,10 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 | `.cs/calibration/<lang>/<slug>.json` | Reference per-case timings for time limits | Hash of reference file, tests, runtime version, machine id |
 | `.cs/build/<lang>/` | Materialized references for verify and bench; in Go and Rust also the generated build and its runner binaries ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) | Rebuilt on change |
 | `.cs/runs/<run_id>/` | Request and result files | Keep last 20 |
+| `.cs/backups/` | `progress.db` as it was before each migration, `<db stem>-schema-<N>-<UTC time>.db` ([migrations](specs/compatibility.md#migrations)) | Never: kept, never pruned, and kept by `cstudy reset` |
 | `.cs/serve/` | The web UI's `preferences.json`, and the redirect file `<port>.html` that `cstudy serve --open` writes ([web-ui](specs/web-ui.md#preferences)) | Preferences kept; the redirect file removed when the server stops |
 | `.cs/lsp/` | The web UI's language servers: `package.json` and `pnpm-lock.yaml` from cstudy's package data, and `node_modules/`; JDT LS in `jdtls/` and its data, per root and session, in `jdtls-data/`; the Kotlin LSP in `kotlin-lsp/` and its data in `kotlin-lsp-data/`; gopls in `bin/` ([layout](specs/installation-and-workspaces.md#layout)) | Rewritten and reinstalled by `cstudy doctor --fix` while the `code_intelligence` preference is on, when the shipped manifest differs |
-| `.cs/runtime/` | The runner runtime: a copy of the content's `runners/{python,typescript,jvm,go}` with its build output, and `stamp.json` | Digest of the copied sources; refreshed before the first runner of a command, by `cstudy init` and by `cstudy doctor --fix` |
+| `.cs/runtime/` | The runner runtime: a copy of the content's `runners/{python,typescript,jvm,go,rust}` with its build output, and `stamp.json` | Digest of the copied sources; refreshed before the first runner of a command, by `cstudy init` and by `cstudy doctor --fix` |
 
 ### Index cache
 

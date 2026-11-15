@@ -34,6 +34,25 @@ Kotlin's server, JetBrains' Kotlin LSP, comes under the JetBrains Free Plugin Li
 
 When it ends, stop what it may have left: `ps -Ao pid,ppid,etime,command | rg -i "basedpyright|typescript-language-server|jdtls|kotlin-lsp|gopls|rust-analyzer|uvicorn|cstudy serve|ms-playwright|GradleDaemon|KotlinCompileDaemon"`. The script stops the server and the browser, and the Gradle and Kotlin daemons that its own processes started (`cstudy doctor --fix`, the Health view, JDT LS and the Kotlin LSP start them): it looks at the processes below it every half second while it runs, notes the daemons it finds there, and stops those by PID at the end. A daemon that was running before, or that other work on this machine starts meanwhile, is never below the script, so it stays.
 
+## Check the size figures
+
+The user docs' editor page gives two rounded figures for Kotlin's server: it takes over 1 GB on disk, plus an index per folder, and uses around 2 GB of memory. Check them in each release-wheel run, by hand:
+
+1. Before the clean-up step, in the throwaway workspace that the prepare stage set up with `cstudy doctor --fix`, read the disk use:
+
+   ```bash
+   cd /tmp/showcase-work/ws
+   du -sh .cs/lsp/kotlin-lsp .cs/lsp/kotlin-lsp-data
+   ```
+
+2. While the showcase serves a Kotlin file (the `code-intelligence-kotlin-hover` shot), read the server's resident memory, in KiB:
+
+   ```bash
+   ps -o rss= -p "$(pgrep -f .cs/lsp/kotlin-lsp/ | head -n 1)"
+   ```
+
+Update `user-docs/editor.md` when the disk use of `.cs/lsp/kotlin-lsp` falls under 1 GB, or the memory leaves about 1.5 to 2.5 GB.
+
 ## What it makes
 
 Desktop images are 1440 by 900, the phone ones 390 wide at 2x. A name is `<name>-<theme>` for desktop and `<name>-<theme>-phone` for the phone, with `<theme>` `light` or `dark`.

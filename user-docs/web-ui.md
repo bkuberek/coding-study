@@ -40,7 +40,7 @@ stop       Ctrl-C
 | While it runs | The terminal prints one line per finished run or job, and nothing else |
 | Stop it | `Ctrl+C`. Runs in progress stop as Ctrl-C stops them in the terminal, and record nothing |
 
-The page is made for current versions of Chrome, Edge, Firefox and Safari. It loads everything from `cstudy serve` and needs no internet.
+The page works in any current browser. It loads everything from `cstudy serve` and needs no internet.
 
 ## The views
 
@@ -58,7 +58,7 @@ The top bar holds the views, the attempts in progress while one is open, and the
 | Health | `Alt+6` | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
 | Settings | `Alt+7` | This workspace's preferences, and your `config.toml`, which every workspace reads ([settings](settings.md)) |
 | Docs | `Alt+8` | These pages: every topic by section, a search over all of them, and a link to each heading. `cstudy docs` reads the same pages in the terminal |
-| About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the license, the website and project links, and the credits, with the full license texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
+| About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the licence, the website and project links, and the credits, with the full licence texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
 
 ## Edit and save
 
@@ -102,7 +102,7 @@ A [service project](service-projects.md) runs your app in a Docker sandbox, with
 | Run tests and Submit | `cstudy test` and `cstudy submit`, with progress as they go. The results panel's `stack` line follows the stack: `starting Docker`, `pulling images`, `installing dependencies`, `starting`, then `ready after 2.4 s, not counted`. The startup never counts toward a time limit or a result. `commands.test` is one test row, and the visible cases follow it. **Run options** offers only the level, for Submit |
 | Cancel | Stops the run, as for any run. `cstudy` takes the stack down before it exits, so the `stack` line ends on `down` |
 | The dev stack | The panel above the results starts `cstudy dev` only when you choose **Start dev stack**, since a stack holds memory. It shows the stack's stage, your app's address on this computer as a link (`http://127.0.0.1:<port>`), a scenario picker per mock server that switches it while the stack runs, and your app's last 200 lines. **Stop** takes the stack down and keeps its data; leaving the Attempt view or the page stops it too. If a terminal already runs `cstudy dev` for the project, the panel says so and starts no second one |
-| Code intelligence | For TypeScript, Python, Java, Kotlin and Go, the language server runs in a sandboxed container of its own, with no network, and reads the packages the install put in the project. Java's runs on the project's own image, so it needs no JDK 25 on your computer, and starts afresh with each session: its first errors take about 20 seconds. Go's gopls is built into the project's install cache by the install, about 40 MB, once code intelligence is on: turn it on, then run the tests once. Kotlin's needs the Linux build of the Kotlin language server, which `cstudy doctor --fix` fetches once you start a Kotlin service project (367.5 MB to download, 1.1 GB on disk), and the image `gradle:9.8.2-jdk25` (375 MB to download, 1.25 GB on disk), which you pull once yourself with the command the status bar names; its first errors take about half a minute. While Docker does not answer, or the container's image is missing, the status bar says so with **Restart**, and the editor works without it |
+| Code intelligence | For TypeScript, Python, Java, Kotlin and Go, the language server runs in a sandboxed container of its own, with no network, and reads the packages the install put in the project. Java's runs on the project's own image, so it needs no JDK 25 on your computer, and starts afresh with each session, so its first errors take a while. Go's gopls is built into the project's install cache by the install, once code intelligence is on: turn it on, then run the tests once. Kotlin's needs the Linux build of the Kotlin language server, which `cstudy doctor --fix` fetches once you start a Kotlin service project, a large download, and the image `gradle:9.8.2-jdk25`, also large, which you pull once yourself with the command the status bar names; its first errors take a while too. While Docker does not answer, or the container's image is missing, the status bar says so with **Restart**, and the editor works without it |
 
 The flags of `cstudy dev` that serve your own IDE, `--no-run`, `--debug`, `--reset-data` and `--exec`, stay in the terminal ([your own IDE](service-projects.md#your-own-ide-and-debugger)).
 

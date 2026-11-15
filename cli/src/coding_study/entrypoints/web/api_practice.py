@@ -130,7 +130,7 @@ def _seeded_rust_folder(started: StartedAttempt) -> bool:
 def _start_item(environment: Environment, request: StartRequest) -> Attempt:
     """A rubric problem takes no language: their answer is a notes file."""
     if request.language is not None:
-        raise UsageError(f"{request.slug} is not autograded; --lang applies to problems")
+        raise UsageError(f"{request.slug} is not autograded; --lang applies to autograded problems")
     item_request = ItemStartRequest(request.slug, request.fresh, request.timer_s)
     return start_item_attempt(environment, item_request).attempt
 

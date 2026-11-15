@@ -200,5 +200,5 @@ def test_an_item_with_a_language_gets_the_clis_refusal(tmp_path, practice):
         422,
         "usage",
         "url-shortener is not autograded; "
-        "--lang, --approach, --all and --explanation-only apply to problems",
+        "--lang, --approach, --all, --explanation-only and --broken apply to autograded problems",
     )

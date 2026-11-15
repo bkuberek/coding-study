@@ -173,7 +173,7 @@ A progressive or project problem passes through level N of M: N is the largest l
 | A run's `levels_passed` | The largest L such that the run ran and passed every case of levels 1 to L, a stress case once per variant; 0 when a case of level 1 did not pass or the code did not build. A run of `--level 2`, or a `--case` run naming every case of levels 1 and 2, counts for them; only a run that passes every unlocked level opens the next |
 | `cstudy done` | N at least 1: a rating, and the attempt is `passed`, graded by the [grade](#grade) steps with no level cap. N = 0: `--gave-up` only, grade 0, `failed`. It stores N and M as `levels_passed` and `levels_total` |
 | Mock | A `mock` attempt keeps the rules from before level passes. Progressive: a rating only when N = M. Project: a rating from N = 1, with the level cap of [project attempts](#project-attempts). Both: `passed` only when N = M. N and M are stored all the same |
-| Without levels | Function, design and concurrent problems, and items, store NULL in both columns and keep their rules |
+| Without levels | Function, design and concurrent problems, and rubric problems, store NULL in both columns and keep their rules |
 | Older rows | An attempt with `levels_passed` NULL that is `passed` passed every level (of the problem's levels now, as it stored no M); one that is `failed` recorded no levels |
 
 | Term | Over the finished attempts of one problem in one language |

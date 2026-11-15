@@ -118,6 +118,6 @@ cstudy learn --path getting-started    # a path's steps and the next one
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
 | `cstudy serve [--open]` | Serves the practice page on your computer |
 | `cstudy docs [<topic>]` | Reads these pages in the terminal |
-| `cstudy about` | Shows the version, the license, the links and the credits |
+| `cstudy about` | Shows the version, the licence, the links and the credits |
 
 Every command takes `--help`. `cstudy docs` lists every topic, and `cstudy docs <topic>` prints one, such as `cstudy docs practice`.

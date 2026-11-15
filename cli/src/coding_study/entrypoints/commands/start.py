@@ -264,7 +264,7 @@ def _project_lines(project: StartedProject) -> Iterator[Text]:
 def _start_item(environment: Environment, request: StartRequest) -> tuple[list[Text], OpenFiles]:
     """Rubric problems: the answer goes in a notes file, so there is no language."""
     if request.language is not None:
-        raise UsageError(f"{request.slug} is not autograded; --lang applies to problems")
+        raise UsageError(f"{request.slug} is not autograded; --lang applies to autograded problems")
     item_request = ItemStartRequest(request.slug, request.fresh, request.timer_s)
     started = start_item_attempt(environment, item_request)
     meta = started.meta

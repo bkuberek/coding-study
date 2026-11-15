@@ -22,9 +22,7 @@ def import_command(
     context: typer.Context,
     path: Annotated[
         Path | None,
-        typer.Argument(
-            help=f"A cstudy export file; default: {EXPORT_FILE} at the repository root."
-        ),
+        typer.Argument(help=f"A cstudy export file; default: {EXPORT_FILE} at the workspace root."),
     ] = None,
 ) -> None:
     """Restore a progress export into an empty progress.db."""

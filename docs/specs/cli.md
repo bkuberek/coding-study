@@ -638,6 +638,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
   "levels": null,
   "build": {"seconds": 1.8, "note": "gradle, warm", "diagnostics": []},
   "load_error": null,
+  "diagnostics": [],
   "cases": [
     {"id": "ex1", "visible": true, "generated": false, "status": "pass", "duration_ns": 40000},
     {"id": "h3", "visible": false, "generated": false, "status": "fail", "duration_ns": 31000,
@@ -649,7 +650,8 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
   "oracle": null,
   "stress": [],
   "tally": {"total": 14, "passed": 12, "failed": 1, "errored": 0, "timed_out": 0, "tle": 1},
-  "duration_s": 2.6
+  "duration_s": 2.6,
+  "perf": null
 }
 ```
 
@@ -1453,7 +1455,7 @@ Writes every `progress.db` table but `meta` as JSON (`submissions` and `level_un
 {
   "format": "coding-study-progress",
   "version": 1,
-  "schema_version": 3,
+  "schema_version": 7,
   "exported_at": "2026-10-24T10:00:00+00:00",
   "tables": {
     "attempts": [
@@ -1461,14 +1463,17 @@ Writes every `progress.db` table but `meta` as JSON (`submissions` and `level_un
     ],
     "test_runs": [],
     "schedule": [],
-    "bench_runs": []
+    "bench_runs": [],
+    "submissions": [],
+    "level_unlocks": [],
+    "guide_reads": []
   }
 }
 ```
 
 ```text
 $ cstudy export
-exported  attempts 6 · test_runs 4 · schedule 3 · bench_runs 3
+exported  attempts 6 · test_runs 4 · schedule 3 · bench_runs 3 · submissions 0 · level_unlocks 0 · guide_reads 0
 file      progress-export.json
 ```
 

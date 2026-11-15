@@ -103,7 +103,7 @@ It needs no workspace, except `--open`, which serves the page as `cstudy serve` 
 
 The web hint is one dim line, `Read in the web UI: cstudy docs <topic> --open`, with the topic's slug after a page and `<topic>` after the list. `--json` never prints it.
 
-`--json` of the list prints `{"pages": [...]}`, in order: each page `{"slug", "title", "summary", "section", "order", "headings"}`, where `headings` lists the page's `##` and `###` headings in order, each `{"id", "title", "level"}`, `level` 2 or 3. `--json` of a topic prints the same fields with `"markdown"`, the page as written after its front matter.
+`--json` of the list prints `{"pages": [...]}`, in order: each page `{"id", "slug", "title", "summary", "section", "order", "headings"}`, `id` its [canonical ID](compatibility.md#canonical-content-ids) `doc/<slug>`, and `headings` lists the page's `##` and `###` headings in order, each `{"id", "title", "level"}`, `level` 2 or 3. `--json` of a topic prints the same fields with `"markdown"`, the page as written after its front matter.
 
 | Case | Result |
 |------|--------|

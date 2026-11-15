@@ -93,32 +93,32 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 
 | Area | Met | Partly met | Not met |
 |------|----:|-----------:|--------:|
-| Compatibility and release engineering | 2 | 2 | 6 |
+| Compatibility and release engineering | 6 | 1 | 3 |
 | Product | 0 | 1 | 12 |
 | AI preview | 0 | 0 | 9 |
 | Content | 1 | 2 | 6 |
 | Platforms and install | 0 | 3 | 4 |
 | Reliability | 1 | 1 | 2 |
-| Docs | 1 | 1 | 1 |
+| Docs | 2 | 0 | 1 |
 | Accessibility | 2 | 1 | 1 |
 | Performance | 1 | 1 | 2 |
 | Security and sandbox | 0 | 2 | 3 |
 | Licensing | 3 | 3 | 0 |
 | Privacy and offline | 2 | 2 | 1 |
-| **Total (79)** | **13** | **19** | **47** |
+| **Total (79)** | **18** | **17** | **44** |
 
 #### Compatibility and release engineering
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| E1 | A compatibility spec and an ADR state the public, internal and preview surfaces, breaking changes, deprecation and the support window | Not met | v0.51 |
-| E2 | Contract tests: a snapshot of commands, flags and exit codes; a JSON Schema per `--json` document; snapshots of the config keys and the workspace marker | Partly met: the event and web API schemas are validated | v0.51 |
-| E3 | Canonical IDs `<type>/<slug>` for all content; numeric problem IDs and the ID column are gone and folders are `problems/<slug>`; the 16 items are problems of the kinds `system-design` and `code-review`, checked by a rubric; the Problems page has a Checked by column (tests, rubric, plus AI review) | Not met | v0.51 |
-| E4 | Every migration takes a backup first; upgrade tests migrate a fixture of each schema from 1.0 forward; export round trips keep every row | Partly met: one upgrade path is tested, and migrations run in place with no backup | v0.51 |
+| E1 | A compatibility spec and an ADR state the public, internal and preview surfaces, breaking changes, deprecation and the support window | Met: [compatibility](specs/compatibility.md) and [ADR 0027](decisions/0027-compatibility-contract.md), with a deprecation registry and a helper that warns on stderr only | v0.51 |
+| E2 | Contract tests: a snapshot of commands, flags and exit codes; a JSON Schema per `--json` document; snapshots of the config keys and the workspace marker | Met: `cli/tests/contract/` snapshots the commands, flags, exit codes, config keys, environment variables and marker, and validates real output against the 17 schemas of `schemas/cli/`, with a coverage test | v0.51 |
+| E3 | Canonical IDs `<type>/<slug>` for all content; numeric problem IDs and the ID column are gone and folders are `problems/<slug>`; the 16 items are problems of the kinds `system-design` and `code-review`, checked by a rubric; the Problems page has a Checked by column (tests, rubric, plus AI review) | Met: IDs, slug folders, rubric problems and Checked by with its filter in `cstudy list` and the page; the `ai-review` value is reserved for AI3 | v0.51 |
+| E4 | Every migration takes a backup first; upgrade tests migrate a fixture of each schema from 1.0 forward; export round trips keep every row | Met: a backup before each migration, restored when a script fails; `test_sqlite_upgrades.py` migrates a fixture of each schema 1 to 7 and round-trips its export | v0.51 |
 | E5 | Curated release notes for each minor release: highlights, upgrading, deprecations | Not met | v0.64 |
 | E6 | Release candidates are tagged without reaching the Homebrew tap, and only fixes land during the soak | Not met | v0.64 |
 | E7 | Rollback is documented and drilled once: install the previous version, then restore from the backup or an export | Not met | v0.64 |
-| E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Not met | v0.51 (draft), release candidates (final) |
+| E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Partly met: a draft covers the 0.51 changes, linked from the README and the docs index | v0.51 (draft), release candidates (final) |
 | E9 | 1.0.0 is cut deliberately with a major bump | Met: `semantic-release version --major` | v1.0.0 |
 | E10 | A release is cut only after CI passes on main: the Version workflow runs after CI, and a manual release checks CI first | Met | v0.50 |
 
@@ -217,7 +217,7 @@ The content must-haves:
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| D1 | The normative docs match what shipped | Partly met: the PRD's scope and platforms match this plan; the docs index and the progress spec lag | v0.51, then each milestone |
+| D1 | The normative docs match what shipped | Met: the specs, the architecture, the docs index, the PRD, the README and the user docs match v0.51 | v0.51, then each milestone |
 | D2 | In-app docs: `cstudy docs`, a Docs page, and a test that parses every command and flag the docs show against the real CLI | Met: the 13 pages of `user-docs/`, read with `cstudy docs` and the Docs page, and `tests/content/test_user_docs.py` | v0.50 |
 | D3 | A guide to the AI preview: keys, providers, what is sent, costs and caps | Not met | v0.62 |
 
@@ -278,7 +278,7 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 |-----------|----------|----------|
 | v0.49 | Guide paths on database internals, infrastructure as code and knowledge representation, with their review records (C3): 132 guides and 20 paths | Released |
 | v0.50 | Guides page search and filters; example tabs; in-app docs with `cstudy docs`, the Docs page and the parsed docs test (D2); hardening of load-sensitive tests (R1); releases only after CI (E10); the Valkey fixture (L6); A4 and PF4 for the new UI | Released |
-| v0.51 Compatibility contract | The compatibility spec and ADR (E1); canonical IDs `<type>/<slug>`, `problems/<slug>`, the 16 items as `system-design` and `code-review` problems checked by a rubric, and the Checked by column (E3); contract tests (E2); a backup before every migration, the upgrade test matrix and export round trips (E4); a deprecation helper; the docs pass (D1); a draft `UPGRADING.md` (E8) | Engineering |
+| v0.51 Compatibility contract | The compatibility spec and ADR 0027 (E1); contract tests: snapshots of the command line, exit codes, config keys, environment variables and workspace marker, and a JSON Schema for every `--json` document and the export (E2); canonical IDs `<type>/<slug>`, `problems/<slug>`, the 16 former items as `system-design` and `code-review` problems checked by a rubric, and the Checked by column (E3); a backup before every migration, the upgrade test matrix and export round trips (E4); a deprecation registry and its stderr warnings; the docs pass and the user pages for upgrading, the command reference, your own problems, the IDE and the debugger, and the kinds of problems (D1); a draft `UPGRADING.md` (E8) | Engineering |
 | v0.52 Learner profile | Languages, job roles and domains as default filters on every page, widened per page, through one shared filter component (P1); `cstudy init --lang`, `cstudy lang add`, and `doctor` and the IDE files scoped to the workspace's languages (P2); `job_roles` and `domains` on guides with their `verify` check (C9); A4 for the profile and filters | Engineering |
 | v0.53 Platforms | The support matrix and the toolchain-floor policy (PL1, PL6); version-pinned install docs (PL5); the shared smoke script and the first recorded macOS and Linux gates (PL2, PL3); the WSL2 guide (PL4); the fresh-eyes onboarding run (PL7); the issue forms, the page's feedback entries and `cstudy feedback` (P8) | Engineering |
 | v0.54 Content bar | Recorded oracle and ladder runs over the catalog, with the bands fixed (C1, C2); bench stability (P4); the `related` rule and the path-step check, with the existing gaps closed (C4, C5); review records (C3); the editor checks (P5); NFR timings (PF1 to PF3). The [Status](#status) table closes | Engineering, mostly overnight runs on an idle machine |

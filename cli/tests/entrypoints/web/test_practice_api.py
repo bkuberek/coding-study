@@ -152,7 +152,7 @@ def test_an_item_with_a_language_gets_the_clis_refusal(tmp_path, practice):
     response = post(tmp_path, practice, ATTEMPTS, {"slug": "url-shortener", "language": "python"})
     assert (error(response), message(response)) == (
         (422, "usage"),
-        "url-shortener is not autograded; --lang applies to problems",
+        "url-shortener is not autograded; --lang applies to autograded problems",
     )
 
 

@@ -211,7 +211,10 @@ def run_tests(
             metavar="N",
             min=1,
             max=MAX_PORT,
-            help="With --debug: the agent's port (python 5678, typescript 9229, java/kotlin 5005).",
+            help=(
+                "With --debug: the agent's port "
+                "(python 5678, typescript 9229, java/kotlin 5005, go 2345, rust 12345)."
+            ),
         ),
     ] = None,
     debug_connect: Annotated[

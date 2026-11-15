@@ -1230,7 +1230,7 @@ def test_debugpy_is_not_checked_before_the_venv_exists():
 def test_missing_gradle_wrapper_fails_with_how_to_generate_it():
     report = doctor(workspace=workspace_with(paths=COMPLETE_WORKSPACE - {"jvm/gradlew"}))
     result = check(report, "jvm/gradlew")
-    assert (result.status, result.fix) == (FAIL, "gradle wrapper (in jvm)")
+    assert (result.status, result.fix) == (FAIL, "cstudy doctor --fix")
 
 
 def test_every_core_language_runner_is_checked():

@@ -37,7 +37,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `cstudy test` | Run tests | `POST /api/v1/runs`, `command: test` | Child `cstudy test --events`: `stream_tests` (task U14) or `stream_project_tests` |
 | `cstudy submit` | Submit | `POST /api/v1/runs`, `command: submit` | Child `cstudy submit --events`: `stream_submission` |
 | `cstudy hint` | Hint button | `POST /api/v1/attempts/{id}/hints` | `reveal_hint` |
-| `cstudy solution` | Solution pane | `POST /api/v1/problems/{slug}/solution` | `show_solution`, `attempt_to_mark`, `mark_revealed`; items `reveal_item_solution` |
+| `cstudy solution` | Solution pane | `POST /api/v1/problems/{slug}/solution` | `show_solution`, `attempt_to_mark`, `mark_revealed`; rubric problems `reveal_item_solution` |
 | `cstudy done` | Done dialog | `POST /api/v1/attempts/{id}/done` | `complete_attempt` |
 | `cstudy abort` | Abort, with its question | `POST /api/v1/attempts/{id}/abort` | `abort_attempt` |
 | `cstudy mock` | Mock view | `POST /api/v1/mock`, `GET /api/v1/mock` | `start_mock`; the state from `running_mock`, as `require_no_running_mock` reads it |
@@ -1087,7 +1087,7 @@ sequenceDiagram
 ```
 
 ```json
-{"slug": "two-sum", "kind": "function", "language": "python", "approaches": ["hash-map"], "marked_attempt_id": 12, "markdown": "...", "html": "..."}
+{"id": "problem/two-sum", "slug": "two-sum", "kind": "function", "language": "python", "approaches": ["hash-map"], "marked_attempt_id": 12, "markdown": "...", "html": "..."}
 ```
 
 | Rule | Detail |
