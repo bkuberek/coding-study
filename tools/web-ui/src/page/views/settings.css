@@ -278,10 +278,13 @@ html:has(.settings-bar) {
 .profile-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 20px;
+  gap: 8px 20px;
 }
 
+/* A wrapped row keeps its checkbox 24 pixels clear of the next row's (WCAG 2.5.8): axe measures
+   from the center of a 13 pixel box to the edge of the next, so rows sit 32 pixels apart. */
 .profile-option {
+  min-height: 24px;
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
