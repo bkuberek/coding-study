@@ -7,6 +7,8 @@
 #   docker     -m docker, without the browser test files
 #
 # fast runs first and alone; slow-core, browser and docker then run together.
+# Each lane runs on pytest-xdist workers: fast -n 4, slow-core and browser
+# -n 2 --dist loadfile, docker serial.
 # See tools/gate/README.md.
 
 set -u
@@ -21,6 +23,7 @@ Lanes: fast, slow-core, browser, docker. Without lane names, all four run.
 Options:
   --logs DIR        write logs, JUnit XML and summary.log under DIR
                     (default: a new timestamped directory under ${TMPDIR:-/tmp})
+  --serial          run every lane without pytest-xdist workers
   --no-stop         run slow-core, browser and docker even when fast fails
   --collect-check   collect every lane and the full suite, and check that the lanes
                     are pairwise disjoint and together cover the suite; runs no tests
@@ -29,6 +32,9 @@ Options:
 Arguments after -- go to every lane's pytest command. A lane's own arguments
 come first, so a passed -k replaces the browser lane's engine filter.
 CS_LANE_ARGS_<LANE> (FAST, SLOW_CORE, BROWSER, DOCKER) adds arguments to one lane.
+CS_LANE_XDIST_<LANE> replaces that lane's xdist arguments (default: fast "-n 4",
+slow-core and browser "-n 2 --dist loadfile", docker none); set it empty to run
+the lane serially.
 EOF
 }
 
@@ -47,6 +53,7 @@ BROWSER_GLOB='tests/entrypoints/web/test_browser_*.py'
 
 LOGS=""
 NO_STOP=0
+SERIAL=0
 COLLECT_CHECK=0
 SELECTED=()
 PASS_ARGS=()
@@ -69,6 +76,10 @@ while [ $# -gt 0 ]; do
       ;;
     --no-stop)
       NO_STOP=1
+      shift
+      ;;
+    --serial)
+      SERIAL=1
       shift
       ;;
     --collect-check)
@@ -149,6 +160,21 @@ lane_selector() {
   esac
 }
 
+# Sets XDIST_ARGS to the pytest-xdist arguments of a lane.
+lane_xdist() {
+  local var default
+  XDIST_ARGS=()
+  [ "$SERIAL" -eq 0 ] || return 0
+  case $1 in
+    fast) default="-n 4" ;;
+    slow-core | browser) default="-n 2 --dist loadfile" ;;
+    *) default="" ;;
+  esac
+  var=CS_LANE_XDIST_$(printf '%s' "$1" | tr 'a-z-' 'A-Z_')
+  # shellcheck disable=SC2229  # $var names the variable on purpose
+  read -r -a XDIST_ARGS <<<"${!var-$default}"
+}
+
 # Prints the installed Playwright engines, one per line.
 installed_engines() {
   local root engine
@@ -187,6 +213,7 @@ run_lane() {
   local lane=$1 log=$LOGS/$1.log
   local start=$SECONDS basetemp rc=0 var result avail extra=() engine_args=()
   lane_selector "$lane"
+  lane_xdist "$lane"
 
   if [ "$lane" = fast ]; then
     basetemp=$FAST_BASETEMP
@@ -226,6 +253,7 @@ run_lane() {
     -o "cache_dir=.pytest_cache/$lane" \
     --durations=50 --durations-min=5 \
     --junitxml="$LOGS/$lane.xml" \
+    ${XDIST_ARGS[@]+"${XDIST_ARGS[@]}"} \
     ${engine_args[@]+"${engine_args[@]}"} \
     ${extra[@]+"${extra[@]}"} \
     ${PASS_ARGS[@]+"${PASS_ARGS[@]}"} \

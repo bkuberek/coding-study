@@ -24,10 +24,31 @@ tools/gate/lanes.sh fast -- -k test_user_docs   # arguments after -- go to every
 | Flag | Meaning |
 |------|---------|
 | `--logs DIR` | Write logs under `DIR`; the default is a new `cs-gate-logs-<timestamp>` directory under `${TMPDIR:-/tmp}` |
+| `--serial` | Run every lane without pytest-xdist workers |
 | `--no-stop` | Run `slow-core`, `browser` and `docker` even when `fast` fails |
 | `--collect-check` | Collect each lane and the full suite, and compare the node ids; runs no tests, exits non-zero on an overlap or a gap |
 | `-- ARGS` | Extra pytest arguments for every lane. A lane's own arguments come first, so a `-k` passed here replaces the browser lane's engine filter |
 | `CS_LANE_ARGS_<LANE>` | Environment variable with extra arguments for one lane (`FAST`, `SLOW_CORE`, `BROWSER`, `DOCKER`) |
+| `CS_LANE_XDIST_<LANE>` | Environment variable that replaces one lane's xdist arguments; set it empty to run that lane serially |
+
+## Parallel workers
+
+Each lane runs on pytest-xdist workers:
+
+| Lane | Default arguments | Why |
+|------|-------------------|-----|
+| `fast` | `-n 4` | Independent tests |
+| `slow-core` | `-n 2 --dist loadfile` | A module's shared workspace copy stays on one worker |
+| `browser` | `-n 2 --dist loadfile` | One module's browser and server stay on one worker |
+| `docker` | none | Serial |
+
+```bash
+tools/gate/lanes.sh --serial                          # no workers in any lane
+CS_LANE_XDIST_FAST="-n 8" tools/gate/lanes.sh fast   # another worker count for one lane
+CS_LANE_XDIST_SLOW_CORE= tools/gate/lanes.sh slow-core   # one lane serial
+```
+
+`--collect-check` never passes `-n`.
 
 Run `--collect-check` after adding a marker or moving a test file. It collects the suite once per lane in parallel and takes a few minutes.
 
