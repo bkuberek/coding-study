@@ -1,10 +1,12 @@
 import os
 import shutil
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters import docker_sandbox
+from tests import network_guard
 from tests.helpers import FIXTURE_PROBLEMS, SCHEMAS_DIRECTORY
 from tests.sandbox_fakes import DockerMissing
 from tests.workspaces import set_up_workspace
@@ -44,6 +46,26 @@ def no_real_docker(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPat
     """Only a test marked `docker` reaches a real engine; to any other, Docker is not installed."""
     if "docker" not in request.keywords:
         monkeypatch.setattr(docker_sandbox, "default_docker_runner", DockerMissing)
+
+
+network_guard.install()
+
+
+@pytest.fixture(autouse=True)
+def no_network(request: pytest.FixtureRequest) -> Iterator[None]:
+    """A test that is neither `slow` nor `network` may connect only to the loopback.
+
+    A test that swallows the refusal still fails at teardown, with what was refused.
+    """
+    if request.node.get_closest_marker("slow") or request.node.get_closest_marker("network"):
+        yield
+        return
+    network_guard.arm()
+    try:
+        yield
+    finally:
+        refused = network_guard.disarm()
+    assert not refused, "the test reached for the network:\n" + "\n".join(refused)
 
 
 @pytest.fixture
