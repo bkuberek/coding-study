@@ -9,8 +9,9 @@ from coding_study.adapters.environment_factory import (
     load_environment,
 )
 from coding_study.adapters.locations import WorkspaceError
+from coding_study.domain.ai import ApiKey, Provider
 from coding_study.domain.attempts import Grade
-from coding_study.domain.errors import ConfigError
+from coding_study.domain.errors import ConfigError, UsageError
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.helpers import SCHEMAS_DIRECTORY, mark_workspace
 
@@ -119,3 +120,25 @@ def test_conformance_environment_reads_the_conformance_fixtures(environ, content
     fixture.mkdir(parents=True)
     environment = conformance_environment(load_environment(tmp_path, environ, tmp_path))
     assert environment.files.slugs() == ("conformance-types",)
+
+
+def test_ai_off_gives_models_that_refuse_every_request(environ, tmp_path):
+    models = load_environment(tmp_path, environ, tmp_path).models
+    with pytest.raises(UsageError, match="AI is off"):
+        models.list_models(Provider.ANTHROPIC, ApiKey("k"), 5.0)
+
+
+def test_ai_on_opens_the_provider_adapters_at_the_first_request(environ, workspace, tmp_path):
+    """A `CSTUDY_AI_ENDPOINT` off the loopback is refused when the first request opens them, not
+    when the environment loads, so no other command reads the variable."""
+    config = workspace / "config.toml"
+    config.write_text("[ai]\nenabled = true\n")
+    environ = {
+        **environ,
+        "CSTUDY_CONFIG": str(config),
+        "CSTUDY_AI_ENDPOINT": "https://api.example.com",
+    }
+    models = load_environment(tmp_path, environ, tmp_path).models
+    with pytest.raises(ConfigError) as raised:
+        models.list_models(Provider.ANTHROPIC, ApiKey("k"), 5.0)
+    assert str(raised.value).startswith("CSTUDY_AI_ENDPOINT: expected http://127.0.0.1:<port>")

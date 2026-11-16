@@ -56,3 +56,23 @@ forbidden_modules =
     starlette
     uvicorn
     wsproto
+
+[importlinter:contract:network]
+name = Only adapters open sockets, TLS or HTTP
+type = forbidden
+source_modules =
+    coding_study.domain
+    coding_study.application
+forbidden_modules =
+    http
+    socket
+    ssl
+
+[importlinter:contract:ai-providers]
+name = Only the environment factory loads the AI provider adapters
+type = forbidden
+source_modules =
+    coding_study.entrypoints
+forbidden_modules =
+    coding_study.adapters.ai
+allow_indirect_imports = True

@@ -61,10 +61,14 @@ from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.adapters.workspace_marker import has_marker, read_marker
 from coding_study.adapters.yaml_problem_sets import YamlProblemSets
+from coding_study.application.ai_ports import LanguageModels
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
+from coding_study.domain.ai import ApiKey, Provider
+from coding_study.domain.ai_models import ModelReply, ModelRequest
 from coding_study.domain.config import Config
 from coding_study.domain.deprecations import DEPRECATIONS
+from coding_study.domain.errors import UsageError
 from coding_study.domain.layout import RUNS_DIRECTORY
 
 RUNNERS_DIRECTORY = "runners"
@@ -162,8 +166,49 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         preferences=FsPreferencesStore(workspace),
         ai_store=SqliteAiStore(workspace / config.progress_db, workspace),
         credentials=open_credentials(user.environ, user.home, workspace),
+        models=_language_models(config.ai.enabled, user.environ),
         workspace_languages=read_marker(workspace).languages if has_marker(workspace) else None,
     )
+
+
+AI_OFF = "AI is off: turn it on with ai.enabled = true (cstudy config edit) or in Settings"
+
+
+class NoLanguageModels:
+    """The port with `ai.enabled` false: it refuses every request, and nothing of
+    `coding_study.adapters.ai` is imported (docs/specs/ai.md#with-ai-off)."""
+
+    def complete(self, request: ModelRequest, key: ApiKey) -> ModelReply:
+        raise UsageError(AI_OFF)
+
+    def list_models(self, provider: Provider, key: ApiKey, deadline_s: float) -> tuple[str, ...]:
+        raise UsageError(AI_OFF)
+
+
+class _LoadedOnUse:
+    """The port with `ai.enabled` true: the provider adapters are imported at the first request,
+    so no command that sends nothing pays for them."""
+
+    def __init__(self, environ: Mapping[str, str]) -> None:
+        self._environ = environ
+        self._models: LanguageModels | None = None
+
+    def complete(self, request: ModelRequest, key: ApiKey) -> ModelReply:
+        return self._loaded().complete(request, key)
+
+    def list_models(self, provider: Provider, key: ApiKey, deadline_s: float) -> tuple[str, ...]:
+        return self._loaded().list_models(provider, key, deadline_s)
+
+    def _loaded(self) -> LanguageModels:
+        if self._models is None:
+            from coding_study.adapters.ai.models import open_language_models
+
+            self._models = open_language_models(self._environ)
+        return self._models
+
+
+def _language_models(enabled: bool, environ: Mapping[str, str]) -> LanguageModels:
+    return _LoadedOnUse(environ) if enabled else NoLanguageModels()
 
 
 def _new_problems(content: ContentRoot, workspace: Path) -> ProblemDestination:

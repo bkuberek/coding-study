@@ -451,3 +451,15 @@ def test_importing_the_cli_loads_no_web_server():
         [sys.executable, "-c", script], capture_output=True, text=True, check=True
     )
     assert finished.stdout == "[]\n"
+
+
+def test_importing_the_cli_loads_no_ai_provider_adapter():
+    """docs/specs/ai.md#architecture: only a request to a provider imports the AI adapters."""
+    script = (
+        "import sys, coding_study.entrypoints.cli; "
+        "print(sorted(m for m in sys.modules if m.startswith('coding_study.adapters.ai')))"
+    )
+    finished = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=True
+    )
+    assert finished.stdout == "[]\n"

@@ -25,5 +25,6 @@ INTERNAL = (
     "CSTUDY_GO_DELVE",
     "CSTUDY_GO_DEBUG_PACKAGE",
     "CSTUDY_HIDDEN_DIRECTORIES",
+    "CSTUDY_AI_ENDPOINT",
 )
 """Between `cstudy` and its own helpers; no promise."""

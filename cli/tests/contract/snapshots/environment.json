@@ -1,4 +1,5 @@
 {
+  "CSTUDY_AI_ENDPOINT": "internal",
   "CSTUDY_CONFIG": "public",
   "CSTUDY_CONTENT": "public",
   "CSTUDY_DATA_DIR": "problem_format",

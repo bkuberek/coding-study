@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from coding_study.application.ai_ports import AiStore, Credentials
+from coding_study.application.ai_ports import AiStore, Credentials, LanguageModels
 from coding_study.application.http_grading_ports import OpenStackClients
 from coding_study.application.ports import (
     CalibrationCache,
@@ -94,6 +94,8 @@ class Environment:
     """The AI tables of progress.db: reviews, requests and consents."""
     credentials: Credentials
     """`credentials.toml`, beside the config file: the AI providers' keys."""
+    models: LanguageModels
+    """Every request to an AI provider goes through this port (docs/specs/ai.md#architecture)."""
     workspace_languages: tuple[Language, ...] | None = None
     """The marker's `languages`, in the order a workspace lists them; None when the workspace chose
     none, so it has all six (docs/specs/installation-and-workspaces.md#workspace-languages)."""

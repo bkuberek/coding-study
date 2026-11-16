@@ -352,6 +352,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "preferences": FsPreferencesStore(root),
         "ai_store": SqliteAiStore(root / "progress.db"),
         "credentials": FakeCredentials(),
+        "models": ScriptedLanguageModels(),
     }
     parts.update(overrides)
     return Environment(**parts)  # type: ignore[arg-type]
