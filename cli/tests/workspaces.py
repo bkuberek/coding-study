@@ -3,9 +3,11 @@
 
 One workspace per session is set up the way a user's is, with the `cstudy init` scaffold and the
 `cstudy doctor --fix` steps. Modules that write practice files get a light copy of it: their own
-config files, JVM, Go and Rust projects, with the venv, `node_modules` and runner runtime linked.
+config files, JVM, Go and Rust projects, with the venv and runner runtime linked and `node_modules`
+hard-linked: pnpm refuses a `node_modules` that is a symlink.
 """
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -40,6 +42,16 @@ def set_up_workspace(root: Path) -> Path:
     return root
 
 
+def share_node_modules(source: Path, destination: Path) -> None:
+    """A real `node_modules` folder at `destination` with the files of `source`, hard-linked, or
+    copied when the two are on different file systems."""
+    try:
+        shutil.copytree(source, destination, symlinks=True, copy_function=os.link)
+    except OSError:
+        shutil.rmtree(destination, ignore_errors=True)
+        shutil.copytree(source, destination, symlinks=True)
+
+
 def workspace_like(practice: Path, destination: Path) -> Path:
     """A workspace at `destination` sharing `practice`'s toolchains and runner runtime."""
     mark_workspace(destination, TEST_VERSION)
@@ -51,9 +63,7 @@ def workspace_like(practice: Path, destination: Path) -> Path:
     typescript.mkdir()
     for name in TYPESCRIPT_PROJECT_FILES:
         shutil.copyfile(practice / "typescript" / name, typescript / name)
-    (typescript / "node_modules").symlink_to(
-        practice / "typescript" / "node_modules", target_is_directory=True
-    )
+    share_node_modules(practice / "typescript" / "node_modules", typescript / "node_modules")
     shutil.copytree(practice / "jvm", destination / "jvm", ignore=JVM_COPY_IGNORED, symlinks=True)
     for project in COMPILED_PROJECTS:
         shutil.copytree(practice / project, destination / project, ignore=COMPILED_COPY_IGNORED)

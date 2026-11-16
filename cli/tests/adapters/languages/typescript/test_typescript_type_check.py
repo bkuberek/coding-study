@@ -10,6 +10,7 @@ from coding_study.adapters.languages.typescript.runner import PnpmTypeChecker
 from coding_study.application.ports import ProbeResult
 from tests.helpers import REPOSITORY_ROOT
 from tests.stub_contract import GOLDEN_ROOT
+from tests.workspaces import share_node_modules
 
 SUPPORT_MODULE = REPOSITORY_ROOT / "runners" / "typescript" / "support.ts"
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
@@ -36,7 +37,7 @@ def mirror_project(directory: Path, installed: Path, practice_files: Mapping[str
     """A copy of the installed project whose practice/ holds only `practice_files`."""
     for name in ("package.json", "tsconfig.json"):
         shutil.copyfile(installed / name, directory / name)
-    (directory / "node_modules").symlink_to(installed / "node_modules")
+    share_node_modules(installed / "node_modules", directory / "node_modules")
     (directory / "support.ts").write_text(f'export * from "{SUPPORT_MODULE}";\n')
     practice = directory / "practice"
     practice.mkdir()

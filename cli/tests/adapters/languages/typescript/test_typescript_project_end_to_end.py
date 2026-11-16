@@ -37,6 +37,7 @@ from tests.helpers import (
     TYPESCRIPT_BANK_PROJECT,
     TYPESCRIPT_PROJECT_PROBLEMS,
 )
+from tests.workspaces import share_node_modules
 
 pytestmark = [
     pytest.mark.slow,
@@ -258,7 +259,9 @@ def checked_workspace(tmp_path_factory: pytest.TempPathFactory, practice_workspa
     typescript = workspace / "typescript"
     typescript.mkdir()
     shutil.copyfile(practice_workspace / "typescript" / "package.json", typescript / "package.json")
-    (typescript / "node_modules").symlink_to(practice_workspace / "typescript" / "node_modules")
+    share_node_modules(
+        practice_workspace / "typescript" / "node_modules", typescript / "node_modules"
+    )
     return workspace
 
 
