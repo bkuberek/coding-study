@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
-from coding_study.application.jdk_requirement import release_of_content, split_by_jdk
+from coding_study.application.jdk_requirement import release_of_content
 from coding_study.application.language_runs import reference_job_id
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.project_runs import GradingRun, SuiteRun, run_grading, run_suite
@@ -26,6 +26,7 @@ from coding_study.application.reference_runs import (
     per_language,
     shown,
 )
+from coding_study.application.toolchain_requirement import narrowed, split_by_toolchain
 from coding_study.application.verify_projects import (
     broken_build,
     last_level,
@@ -59,7 +60,11 @@ class ConformanceRequest:
     slugs: tuple[str, ...] = ()
     """Empty: every fixture."""
     language: Language | None = None
+    skip_languages: tuple[Language, ...] = ()
+    """`--skip-lang`: these languages are left out, as `--lang` leaves the others out."""
     jobs: int | None = None
+    require_ready: bool = False
+    """`--require-ready`: a language skipped for a missing toolchain or a JDK fails its fixture."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,12 +130,10 @@ class _Fixture:
         expectations = tuple(
             expectation for expectation in self._suite.expectations if expectation.slug == slug
         )
-        languages = [
-            language
-            for language in problem.meta.languages
-            if self._request.language in (None, language)
-        ]
-        split = split_by_jdk(self._environment, problem.meta, languages)
+        languages = narrowed(
+            problem.meta.languages, self._request.language, self._request.skip_languages
+        )
+        split = split_by_toolchain(self._environment, problem.meta, languages)
         run: _FixtureRun | _ProjectFixtureRun = (
             _ProjectFixtureRun(self._environment, problem, self._notify)
             if problem.meta.kind is ProblemKind.PROJECT
@@ -142,10 +145,19 @@ class _Fixture:
             self._request.jobs,
         )
         skipped = {
-            language: LanguageResult(language, skipped=split.reason) for language in split.skipped
+            language: LanguageResult(language, skipped=split.reasons[language])
+            for language in split.skipped
         }
         ordered = tuple((results | skipped)[language] for language in languages)
-        return FixtureVerification(directory, ordered)
+        needed = (
+            tuple(
+                f"not ready: {', '.join(skipped_languages)} skipped: {reason}"
+                for skipped_languages, reason in split.reason_groups()
+            )
+            if self._request.require_ready
+            else ()
+        )
+        return FixtureVerification(directory, ordered, needed)
 
 
 class _FixtureRun:

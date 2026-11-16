@@ -64,6 +64,10 @@ def verify(
     ] = False,
     track: Annotated[Track | None, typer.Option("--track", help="Only this track.")] = None,
     language: Annotated[Language | None, typer.Option("--lang", help="Only this language.")] = None,
+    skip_languages: Annotated[
+        list[Language] | None,
+        typer.Option("--skip-lang", help="Leave out this language; repeat for more."),
+    ] = None,
     static: Annotated[
         bool, typer.Option("--static", help="Schema and static checks only; no execution.")
     ] = False,
@@ -102,6 +106,9 @@ def verify(
     """Content quality gate."""
     if oracle_cases is not None and not oracle:
         raise UsageError("--oracle-cases needs --oracle")
+    skipped = tuple(dict.fromkeys(skip_languages or ()))
+    if language is not None and language in skipped:
+        raise UsageError(f"--lang {language} and --skip-lang {language} leave nothing to verify")
     if changed and (slugs or conformance):
         raise UsageError("--changed selects the problems itself; drop the slugs or --conformance")
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
@@ -115,12 +122,13 @@ def verify(
             output.print(f"no problems changed relative to {CHANGED_BASE}")
             raise typer.Exit(ExitCode.SUCCESS)
     if conformance:
-        request = ConformanceRequest(selected, language, jobs)
+        request = ConformanceRequest(selected, language, skipped, jobs, require_ready)
         raise typer.Exit(_conformance(environment, request, output))
     request = VerifyRequest(
         slugs=selected,
         track=track,
         language=language,
+        skip_languages=skipped,
         static_only=static,
         oracle_cases=(oracle_cases or DEFAULT_ORACLE_CASES) if oracle else None,
         require_ready=require_ready,

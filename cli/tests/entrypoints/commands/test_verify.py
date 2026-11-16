@@ -1,6 +1,6 @@
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -17,7 +17,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import verify
 from coding_study.entrypoints.shared import ExitCode
 from tests.e2e import e2e_environment
-from tests.fakes import FixedChangedFiles, make_environment, repository_root
+from tests.fakes import FixedChangedFiles, make_environment, repository_root, without
 from tests.helpers import REPOSITORY_ROOT
 
 runner = CliRunner()
@@ -208,6 +208,123 @@ def test_conformance_failures_exit_1(conformance_root):
             "  py identity: values: expected pass, got FAIL",
         ],
     )
+
+
+OTHER_LANGUAGES = ("--skip-lang", "java", "--skip-lang", "kotlin", "--skip-lang", "go")
+
+
+def lacking(monkeypatch, *programs: str) -> None:
+    """The machine has none of `programs`."""
+    load = verify.load_environment
+    monkeypatch.setattr(
+        verify, "load_environment", lambda *a: replace(load(*a), toolchain_check=without(*programs))
+    )
+
+
+def test_a_missing_toolchain_skips_its_language_and_the_others_run(conformance_root, monkeypatch):
+    lacking(monkeypatch, "node", "cargo")
+    result = invoke("--conformance", *OTHER_LANGUAGES)
+    assert (result.exit_code, result.report) == (
+        ExitCode.SUCCESS,
+        [
+            "conformance-function  py ok · ts skipped · rs skipped",
+            "  skipped  typescript: node was not found on PATH",
+            "  skipped  rust: cargo was not found on PATH",
+            "",
+            "result    0 failed · 1 passed",
+        ],
+    )
+
+
+def test_a_failure_still_fails_beside_a_skipped_language(conformance_root, monkeypatch):
+    lacking(monkeypatch, "cargo")
+    solution = conformance_root / "runners/conformance/conformance-function/solutions/identity.py"
+    solution.write_text("def echo_http_codes(a, b, c):\n    return []\n")
+    assert invoke("--conformance", *OTHER_LANGUAGES, "--skip-lang", "typescript").exit_code == (
+        ExitCode.FAILURES
+    )
+
+
+def test_the_ready_gate_counts_a_missing_toolchain_as_not_passed(conformance_root, monkeypatch):
+    lacking(monkeypatch, "cargo")
+    result = invoke(
+        "--conformance", *OTHER_LANGUAGES, "--skip-lang", "typescript", "--require-ready"
+    )
+    assert (result.exit_code, result.report[:3]) == (
+        ExitCode.FAILURES,
+        [
+            "conformance-function  py ok · rs skipped",
+            "  not ready: rust skipped: cargo was not found on PATH",
+            "  skipped  rust: cargo was not found on PATH",
+        ],
+    )
+
+
+def test_skip_lang_leaves_a_language_out_without_counting_it(conformance_root, monkeypatch):
+    lacking(monkeypatch, "cargo")
+    result = invoke(
+        "--conformance",
+        *OTHER_LANGUAGES,
+        "--skip-lang",
+        "typescript",
+        "--skip-lang",
+        "rust",
+        "--require-ready",
+    )
+    assert (result.exit_code, result.report) == (
+        ExitCode.SUCCESS,
+        ["conformance-function  py ok", "", "result    0 failed · 1 passed"],
+    )
+
+
+def test_the_content_gate_names_a_skipped_language_and_still_exits_0(environment, monkeypatch):
+    lacking(monkeypatch, "node")
+    result = invoke("two-sum", *OTHER_LANGUAGES, "--skip-lang", "rust")
+    assert (result.exit_code, result.report[:2]) == (
+        ExitCode.SUCCESS,
+        [
+            "two-sum           static ok · py 2/2 ok · ts skipped",
+            "  skipped  typescript: node was not found on PATH",
+        ],
+    )
+
+
+def test_the_content_gate_with_require_ready_exits_1_and_names_the_language(
+    environment, monkeypatch
+):
+    lacking(monkeypatch, "node")
+    result = invoke("two-sum", *OTHER_LANGUAGES, "--skip-lang", "rust", "--require-ready")
+    assert result.exit_code == ExitCode.FAILURES
+    assert "  not ready: typescript skipped: node was not found on PATH" in result.report
+
+
+def test_the_content_gate_does_not_name_a_language_that_skip_lang_left_out(
+    environment, monkeypatch
+):
+    lacking(monkeypatch, "node")
+    result = invoke("two-sum", *OTHER_LANGUAGES, "--skip-lang", "rust", "--skip-lang", "typescript")
+    assert (result.exit_code, result.report[0]) == (
+        ExitCode.SUCCESS,
+        "two-sum           static ok · py 2/2 ok",
+    )
+
+
+def test_skip_lang_leaves_the_language_out_of_the_coverage_line(environment):
+    result = invoke("--static", "two-sum", *OTHER_LANGUAGES, "--skip-lang", "rust")
+    assert "coverage  python 1/1 · typescript 0/1" in result.report
+
+
+def test_skip_lang_and_lang_for_one_language_are_a_usage_error(conformance_root):
+    result = invoke("--conformance", "--lang", "rust", "--skip-lang", "rust")
+    assert result.exit_code == ExitCode.USAGE_ERROR
+
+
+def test_skip_lang_with_another_language_than_lang_is_allowed(conformance_root):
+    assert invoke("--conformance", "--lang", "python", "--skip-lang", "rust").exit_code == 0
+
+
+def test_skip_lang_names_a_language(conformance_root):
+    assert invoke("--conformance", "--skip-lang", "cobol").exit_code == ExitCode.USAGE_ERROR
 
 
 PROJECT_DIRECTORY = "problems/bank-project-python"

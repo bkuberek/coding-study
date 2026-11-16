@@ -1202,6 +1202,18 @@
     "deprecated": false,
     "takes_value": false
   },
+  "cstudy verify --skip-lang": {
+    "choices": [
+      "python",
+      "typescript",
+      "java",
+      "kotlin",
+      "go",
+      "rust"
+    ],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy verify --static": {
     "choices": [],
     "deprecated": false,

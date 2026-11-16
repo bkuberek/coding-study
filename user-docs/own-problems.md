@@ -135,18 +135,21 @@ cstudy verify max-gap --oracle --ladder --require-ready
 | `--lang <language>` | Only that language |
 | `--track <track>` | Only the problems of that track |
 | `--jobs <n>` | How many language runners work at once; one per language without it. The runners of a concurrent problem still take turns for their stress cases |
+| `--skip-lang <language>` | Leaves that language out, as if the problem did not list it; repeat it for more. `--lang` and `--skip-lang` with the same language is an error |
 | `--stress <n>` | The runs of each stress case, for a concurrent problem or a project with stress cases; 10 without it |
 | `--changed` | The problems whose files changed from git's `main`, in a checkout of the `cstudy` source, for content you write there. It takes no slugs |
 
 Without slugs, `cstudy verify` checks every problem, the catalog's and yours.
+
+A language whose toolchain is not installed, such as Rust without `cargo`, is skipped, not fatal: its line says `rs skipped`, a `skipped` line gives the reason (`skipped  rust: cargo was not found on PATH`), and every other language is still checked. A skip does not fail the run, except under `--require-ready`, which counts the language as not passed. A language that you leave out with `--skip-lang` is not counted at all, so `cstudy verify --require-ready --skip-lang rust` passes on a machine without Rust when the other languages pass.
 
 ### Exit codes
 
 | Code | Means |
 |-----:|-------|
 | 0 | Every problem it checked passed, or `--changed` found no changed problem |
-| 1 | A problem failed a check beyond the static ones: a reference on a case, the oracle, the ladder, a stress case, or what `ready` needs with `--require-ready` |
-| 3 | The command was wrong: a slug that does not exist, or `--changed` with slugs or `--conformance` |
+| 1 | A problem failed a check beyond the static ones: a reference on a case, the oracle, the ladder, a stress case, or what `ready` needs with `--require-ready`, which also fails on a language skipped for a missing toolchain |
+| 3 | The command was wrong: a slug that does not exist, `--changed` with slugs or `--conformance`, or `--lang` and `--skip-lang` with the same language |
 | 4 | Something on your machine is missing, such as git, or a `main` branch to compare with for `--changed` |
 | 5 | Every problem that failed, failed its static checks: a file, the schema, a section, or a case that does not fit the signature |
 

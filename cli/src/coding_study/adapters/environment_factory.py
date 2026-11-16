@@ -37,6 +37,7 @@ from coding_study.adapters.locations import (
     find_workspace,
     workspace_directory,
 )
+from coding_study.adapters.path_toolchain_check import PathToolchainCheck
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.adapters.problem_overlay import (
     OverlayItemRepository,
@@ -137,6 +138,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         ),
         toolchains=workspace_toolchains(content.path, workspace, jdk),
         jdk=jdk,
+        toolchain_check=PathToolchainCheck(user.environ, workspace),
         runner_process=SubprocessRunner(workspace / RUNS_DIRECTORY),
         workspace=WorkspaceFs(workspace),
         content_code=ContentCodeLoader(content.path),

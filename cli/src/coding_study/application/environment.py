@@ -24,6 +24,7 @@ from coding_study.application.ports import (
     RunnerProcess,
     SandboxEngine,
     StudyGuides,
+    ToolchainCheck,
     Toolchains,
     UserDocs,
     Workspace,
@@ -56,6 +57,9 @@ class Environment:
     toolchains: Toolchains
     jdk: JdkSelector
     """The JDK that Java and Kotlin build and run with: the one the shell selects."""
+    toolchain_check: ToolchainCheck
+    """Whether the other languages' programs (`node`, `go`, `cargo`, the workspace's Python) are
+    there; `cstudy verify` skips a language without its program."""
     runner_process: RunnerProcess
     workspace: Workspace
     content_code: ContentCode

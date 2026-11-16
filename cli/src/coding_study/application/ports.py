@@ -632,6 +632,15 @@ class JdkSelector(Protocol):
         ...
 
 
+class ToolchainCheck(Protocol):
+    """Whether the program that builds and runs a language's code is there."""
+
+    def missing(self, language: Language) -> str | None:
+        """Why `language` cannot be built and run here, such as `cargo was not found on PATH`;
+        None when it can. Java and Kotlin are the JDK's (`JdkSelector`) and always None here."""
+        ...
+
+
 class MachineProbe(Protocol):
     def snapshot(self) -> MachineState:
         """CPU model, power source, load average and core count, right now."""

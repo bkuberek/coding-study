@@ -20,7 +20,6 @@ from enum import StrEnum
 from coding_study.application.case_materialization import CaseMaterializer
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
-from coding_study.application.jdk_requirement import JdkSplit, split_by_jdk
 from coding_study.application.language_runs import reference_job_id
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.reference_runs import (
@@ -33,6 +32,11 @@ from coding_study.application.reference_runs import (
 )
 from coding_study.application.sandbox import ensure_engine
 from coding_study.application.stress_judging import without_stress
+from coding_study.application.toolchain_requirement import (
+    ToolchainSplit,
+    narrowed,
+    split_by_toolchain,
+)
 from coding_study.application.user_docs import DocVerification, verify_user_docs
 from coding_study.application.verify_concurrency import ConcurrentVerifier
 from coding_study.application.verify_guides import GuideVerification, verify_guides
@@ -102,6 +106,8 @@ class VerifyRequest:
     track: Track | None = None
     language: Language | None = None
     """Only this language; None: every language a problem lists."""
+    skip_languages: tuple[Language, ...] = ()
+    """`--skip-lang`: these languages are left out, as `--lang` leaves the others out."""
     static_only: bool = False
     oracle_cases: int | None = None
     """`--oracle` with this many inputs; None skips the oracle cross-check."""
@@ -228,7 +234,7 @@ def verify_content(
             *map(_guide_row, guides),
             *map(_doc_row, docs),
         ),
-        _coverage(problems, request.language),
+        _coverage(problems, request),
     )
 
 
@@ -310,16 +316,21 @@ def verify_changed(
     with no problem selected, only those."""
     rows = misnamed_rows(environment, misnamed)
     if not request.slugs:
-        return VerifyReport(rows, _coverage((), request.language))
+        return VerifyReport(rows, _coverage((), request))
     report = verify_content(environment, request, notify)
     return VerifyReport((*report.problems, *rows), report.coverage)
 
 
+def selected_languages(request: VerifyRequest, listed: Sequence[Language]) -> list[Language]:
+    """`listed`, in its order, narrowed by `--lang` and without the `--skip-lang` languages."""
+    return narrowed(listed, request.language, request.skip_languages)
+
+
 def _coverage(
-    problems: Sequence[ProblemVerification], only: Language | None
+    problems: Sequence[ProblemVerification], request: VerifyRequest
 ) -> tuple[Coverage, ...]:
     loaded = [(problem, problem.meta) for problem in problems if problem.meta is not None]
-    languages = (only,) if only else ALL_LANGUAGES
+    languages = selected_languages(request, ALL_LANGUAGES)
     return tuple(
         Coverage(
             language,
@@ -355,9 +366,8 @@ class _ProblemVerifier:
             return ProblemVerification(directory, None, static_errors=issues)
         if self._request.track not in (None, problem.meta.track):
             return None
-        if problem.meta.kind is ProblemKind.PROJECT and self._request.language not in (
-            None,
-            *problem.meta.languages,
+        if problem.meta.kind is ProblemKind.PROJECT and not selected_languages(
+            self._request, problem.meta.languages
         ):
             return None
         content = problem_content(self._environment, slug, problem)
@@ -452,12 +462,8 @@ class _DynamicChecks:
         except ContentError as error:
             errors = (*self._errors, *(str(issue) for issue in error.issues))
             return replace(verification, dynamic_errors=errors)
-        languages = [
-            language
-            for language in self._meta.languages
-            if self._request.language in (None, language)
-        ]
-        split = split_by_jdk(self._environment, self._meta, languages)
+        languages = selected_languages(self._request, self._meta.languages)
+        split = split_by_toolchain(self._environment, self._meta, languages)
         if service_of(self._meta) is not None:
             return self._service_project(verification, split)
         if self._meta.kind is ProblemKind.PROJECT:
@@ -473,7 +479,7 @@ class _DynamicChecks:
             else None
         )
         results = tuple(
-            LanguageResult(language, skipped=split.reason)
+            LanguageResult(language, skipped=split.reasons[language])
             if language in split.skipped
             else runs[language][0]
             for language in languages
@@ -492,7 +498,7 @@ class _DynamicChecks:
         )
 
     def _service_project(
-        self, verification: ProblemVerification, split: JdkSplit
+        self, verification: ProblemVerification, split: ToolchainSplit
     ) -> ProblemVerification:
         """D1, D3, D9 and D11 over real stacks, or a skip that says why, as a JDK's does: no Docker
         says nothing about the problem, and the ready gate counts it as not passed."""
@@ -517,15 +523,21 @@ class _DynamicChecks:
         problems = tuple(
             f"{D11}: {problem}" for project in verified for problem in project.d11_problems
         )
+        skipped = tuple(
+            LanguageResult(language, skipped=split.reasons[language]) for language in split.skipped
+        )
         return replace(
             verification,
-            languages=tuple(project.language for project in verified),
+            languages=(*(project.language for project in verified), *skipped),
             suite=next((project.suite for project in verified), None),
             dynamic_errors=(*self._errors, *problems),
+            ready_errors=verification.ready_errors + self._skip_errors(split),
             skipped=self._generator_checks_requested(),
         )
 
-    def _project(self, verification: ProblemVerification, split: JdkSplit) -> ProblemVerification:
+    def _project(
+        self, verification: ProblemVerification, split: ToolchainSplit
+    ) -> ProblemVerification:
         """D1, D3, D9, and D6, D7 and D10 where they apply, in the project's one language; D2, D4
         and D5 do not apply."""
         projects = [
@@ -539,7 +551,7 @@ class _DynamicChecks:
             for language in split.runnable
         ]
         skipped = tuple(
-            LanguageResult(language, skipped=split.reason) for language in split.skipped
+            LanguageResult(language, skipped=split.reasons[language]) for language in split.skipped
         )
         results = tuple(project.language for project in projects)
         margin_errors = _deadline_margin_problems(results) if self._request.require_ready else ()
@@ -554,11 +566,14 @@ class _DynamicChecks:
             skipped=self._generator_checks_requested(),
         )
 
-    def _skip_errors(self, split: JdkSplit) -> tuple[str, ...]:
+    def _skip_errors(self, split: ToolchainSplit) -> tuple[str, ...]:
         """The ready gate counts a skipped language as not passed."""
-        if not (self._request.require_ready and split.skipped):
+        if not self._request.require_ready:
             return ()
-        return (f"{', '.join(split.skipped)} skipped: {split.reason}",)
+        return tuple(
+            f"{', '.join(languages)} skipped: {reason}"
+            for languages, reason in split.reason_groups()
+        )
 
     def _busy_machine_notes(
         self, results: Sequence[LanguageResult], margin_errors: Sequence[str]

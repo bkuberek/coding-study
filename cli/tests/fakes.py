@@ -113,6 +113,24 @@ class FakeJdk:
         return None if self.jdk is None else self.home
 
 
+@dataclass
+class FakeToolchainCheck:
+    """The `ToolchainCheck` of a test: every program is there unless a test names one missing."""
+
+    missing_reasons: dict[Language, str] = field(default_factory=dict)
+
+    def missing(self, language: Language) -> str | None:
+        return self.missing_reasons.get(language)
+
+
+def without(*programs: str) -> FakeToolchainCheck:
+    """A check that finds no program of the languages that run `programs`: `without("cargo")`."""
+    owners = {"node": Language.TYPESCRIPT, "go": Language.GO, "cargo": Language.RUST}
+    return FakeToolchainCheck(
+        {owners[program]: f"{program} was not found on PATH" for program in programs}
+    )
+
+
 def jdk_of(feature: int, source: JdkSource = JdkSource.JAVA_HOME) -> FakeJdk:
     """A selector that selects JDK `feature`."""
     return FakeJdk(SelectedJdk(f"{feature}.0.1", feature, source))
@@ -308,6 +326,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "progress": SqliteProgressStore(root / "progress.db"),
         "toolchains": FakeToolchains(),
         "jdk": FakeJdk(),
+        "toolchain_check": FakeToolchainCheck(),
         "runner_process": ScriptedRunnerProcess(lambda job, case: _unanswered(case)),
         "workspace": WorkspaceFs(root),
         "content_code": ContentCodeLoader(root),
