@@ -100,6 +100,23 @@ def record_license(directory: Path, key: str, name: str, url: str) -> None:
     path.write_text(tomlkit.dumps(document), encoding="utf-8")
 
 
+def write_languages(directory: Path, languages: tuple[Language, ...]) -> None:
+    """Sets the marker's `languages` to `languages`, in place of what it listed; its comments and
+    other keys stay as they were. Raises OSError, and MarkerError for a marker that does not
+    parse."""
+    # Imported here: only a command that changes the languages edits the marker.
+    import tomlkit
+    from tomlkit.exceptions import ParseError
+
+    path = directory / MARKER_FILE
+    try:
+        document = tomlkit.parse(path.read_text(encoding="utf-8"))
+    except ParseError as error:
+        raise MarkerError(f"{path}: {error}") from None
+    document[LANGUAGES_KEY] = [language.value for language in languages]
+    path.write_text(tomlkit.dumps(document), encoding="utf-8")
+
+
 def marker_text(marker: WorkspaceMarker) -> str:
     text = (
         "# coding-study workspace (docs/specs/installation-and-workspaces.md); "

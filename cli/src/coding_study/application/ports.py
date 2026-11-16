@@ -303,6 +303,21 @@ class WorkspaceSetup(Protocol):
         ...
 
 
+class WorkspaceLanguageStore(Protocol):
+    """The languages of one workspace: the marker's `languages` and the template files of each
+    language (docs/specs/installation-and-workspaces.md#workspace-languages)."""
+
+    def write_languages(self, languages: tuple[Language, ...]) -> None:
+        """Sets the marker's `languages`, keeping its comments and other keys. Raises
+        MarkerError for a marker that does not parse; it is never overwritten."""
+        ...
+
+    def write_language_files(self, languages: tuple[Language, ...]) -> ScaffoldOutcome:
+        """Creates the missing template files of `languages` only, never a shared file, and never
+        overwrites one; `kept` names those that were there."""
+        ...
+
+
 class StubGenerator(Protocol):
     """One per language (docs/specs/runners.md#stub-generation)."""
 

@@ -37,6 +37,10 @@ TEMPLATE_PATHS: Mapping[Language, tuple[str, ...]] = {
 }
 
 
+FILE_PATHS = frozenset({"go.work"})
+"""The template paths that are files; every other one is a folder."""
+
+
 def parse_language(text: str) -> Language:
     """Raises WorkspaceLanguageError for anything but one of the six language names."""
     try:
@@ -82,3 +86,31 @@ def template_includes(languages: Iterable[Language] | None, relative_path: str) 
     if not any(top in paths for paths in TEMPLATE_PATHS.values()):
         return True
     return any(top in TEMPLATE_PATHS[language] for language in languages)
+
+
+def owns_template(languages: Iterable[Language], relative_path: str) -> bool:
+    """Whether `relative_path` is a template file of one of `languages`: a shared file
+    (`README.md`, `notes/`) belongs to none of them."""
+    top = relative_path.partition("/")[0]
+    return any(top in TEMPLATE_PATHS[language] for language in languages)
+
+
+def folder_groups(languages: Iterable[Language]) -> tuple[tuple[str, ...], ...]:
+    """The template paths of `languages`, grouped as the languages share them: Java and Kotlin
+    give `jvm` once, Go gives `go` and `go.work` together. In workspace order."""
+    groups: list[tuple[str, ...]] = []
+    for language in ordered(languages):
+        if TEMPLATE_PATHS[language] not in groups:
+            groups.append(TEMPLATE_PATHS[language])
+    return tuple(groups)
+
+
+def sharing(paths: tuple[str, ...]) -> tuple[Language, ...]:
+    """The languages whose template is exactly `paths`: Java and Kotlin for `jvm`."""
+    return tuple(language for language in ALL_LANGUAGES if TEMPLATE_PATHS[language] == paths)
+
+
+def folder_text(paths: Iterable[str]) -> str:
+    """The paths as the output names them: `go/ and go.work`, `python/, go/ and go.work`."""
+    names = [path if path in FILE_PATHS else f"{path}/" for path in paths]
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"

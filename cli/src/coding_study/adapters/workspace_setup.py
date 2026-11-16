@@ -5,7 +5,7 @@ folders to the workspace venv."""
 
 import re
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -18,13 +18,14 @@ from coding_study.adapters.workspace_marker import (
     SCHEMA_VERSION,
     WorkspaceMarker,
     marker_text,
+    write_languages,
 )
 from coding_study.application.ports import ScaffoldOutcome
 from coding_study.domain.errors import VersionControlError
 from coding_study.domain.layout import PYTHON_PROJECT, PYTHON_VENV
 from coding_study.domain.problem import Language
 from coding_study.domain.project_checks import PYPROJECT_FILE
-from coding_study.domain.workspace_languages import template_includes
+from coding_study.domain.workspace_languages import owns_template, template_includes
 from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY, ToolchainLink, toolchain_link
 
 TEMPLATE_PACKAGE = "coding_study.adapters"
@@ -88,22 +89,13 @@ class FsWorkspaceSetup:
     def write_missing(
         self, root: Path, languages: tuple[Language, ...] | None = None
     ) -> ScaffoldOutcome:
-        written: list[str] = []
-        kept: list[str] = []
-        for relative, source in self._template_files(languages):
-            target = root / relative
-            if target.exists():
-                kept.append(relative)
-                continue
-            _write(target, source.read_bytes())
-            if relative in EXECUTABLE_FILES:
-                target.chmod(EXECUTABLE_MODE)
-            written.append(relative)
+        outcome = _write_files(root, self._template_files(languages))
+        written = list(outcome.written)
         if not (root / MARKER_FILE).exists():
             marker = marker_text(WorkspaceMarker(SCHEMA_VERSION, self._version, languages))
             _write(root / MARKER_FILE, marker.encode())
             written.append(MARKER_FILE)
-        return ScaffoldOutcome(tuple(written), tuple(kept))
+        return ScaffoldOutcome(tuple(written), outcome.kept)
 
     def runtime_current(self, root: Path) -> bool:
         return RunnerRuntime(self._runners, root).is_current()
@@ -125,8 +117,23 @@ class FsWorkspaceSetup:
         self, languages: tuple[Language, ...] | None
     ) -> list[tuple[str, Traversable]]:
         """The template's files for `languages` (None: every one), in path order."""
-        entries = (e for e in _walk(self._template, "") if template_includes(languages, e[0]))
-        return sorted(entries, key=lambda entry: entry[0])
+        return _template_files(self._template, lambda path: template_includes(languages, path))
+
+
+class FsWorkspaceLanguageStore:
+    """`WorkspaceLanguageStore` for the workspace at `root`: its marker and the template shipped
+    in `workspace_template/`."""
+
+    def __init__(self, root: Path, template: Traversable | None = None) -> None:
+        self._root = root
+        self._template = template or resources.files(TEMPLATE_PACKAGE) / TEMPLATE_DIRECTORY
+
+    def write_languages(self, languages: tuple[Language, ...]) -> None:
+        write_languages(self._root, languages)
+
+    def write_language_files(self, languages: tuple[Language, ...]) -> ScaffoldOutcome:
+        files = _template_files(self._template, lambda path: owns_template(languages, path))
+        return _write_files(self._root, files)
 
 
 class FsProjectLinks:
@@ -191,6 +198,31 @@ def _interpreter(script: Path) -> Path | None:
     trampoline = _TRAMPOLINE.match(lines[1]) if command == _SHELL and len(lines) > 1 else None
     found = Path(trampoline["interpreter"] if trampoline else command.partition(" ")[0])
     return found if found.name.startswith(_PYTHON_EXECUTABLE) else None
+
+
+def _template_files(
+    template: Traversable, wanted: Callable[[str], bool]
+) -> list[tuple[str, Traversable]]:
+    """The template's files whose path `wanted` accepts, in path order."""
+    return sorted(
+        (entry for entry in _walk(template, "") if wanted(entry[0])), key=lambda entry: entry[0]
+    )
+
+
+def _write_files(root: Path, files: list[tuple[str, Traversable]]) -> ScaffoldOutcome:
+    """Writes the files that `root` lacks; a file that is there stays as it is."""
+    written: list[str] = []
+    kept: list[str] = []
+    for relative, source in files:
+        target = root / relative
+        if target.exists():
+            kept.append(relative)
+            continue
+        _write(target, source.read_bytes())
+        if relative in EXECUTABLE_FILES:
+            target.chmod(EXECUTABLE_MODE)
+        written.append(relative)
+    return ScaffoldOutcome(tuple(written), tuple(kept))
 
 
 def _walk(directory: Traversable, prefix: str) -> Iterator[tuple[str, Traversable]]:

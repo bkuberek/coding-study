@@ -115,6 +115,19 @@ def link_rust_projects(
     return generate_ide_files(renderers, files, IdeRequest((Ide.VSCODE,)))
 
 
+def refresh_written_ides(
+    renderers: Mapping[Ide, IdeRenderer], files: GeneratedFiles
+) -> IdeReport | None:
+    """`cstudy lang`: the workspace's languages changed, so the files of each IDE whose files
+    cstudy wrote are generated again as `cstudy ide` does, under the same rewriting rule. None,
+    writing nothing, when it wrote the files of no IDE."""
+    manifest = files.manifest()
+    written = tuple(
+        ide for ide in Ide if any(path.startswith(f"{ide.directory}/") for path in manifest)
+    )
+    return generate_ide_files(renderers, files, IdeRequest(written)) if written else None
+
+
 def _apply(step: Step, files: GeneratedFiles) -> None:
     if step.content is not None:
         files.write(step.path, step.content)

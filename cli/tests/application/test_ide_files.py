@@ -7,7 +7,12 @@ import pytest
 
 from coding_study.adapters.ide.intellij import IntellijProject
 from coding_study.adapters.ide.vscode import VsCodeProject
-from coding_study.application.ide_files import IdeRequest, generate_ide_files, link_rust_projects
+from coding_study.application.ide_files import (
+    IdeRequest,
+    generate_ide_files,
+    link_rust_projects,
+    refresh_written_ides,
+)
 from coding_study.domain.ide import (
     NO_PROJECT_FOLDERS,
     Change,
@@ -260,6 +265,49 @@ def test_a_rust_start_writes_no_ide_file_where_cstudy_never_wrote_vscode_setting
     store = InMemoryFiles()
     written_by_cstudy(store, MISC, "x\n")
     assert (link_rust_projects(RUST_START, store), set(store.contents)) == (None, {MISC})
+
+
+# refreshing after `cstudy lang`
+
+NEW_TASKS = {
+    Ide.VSCODE: FakeRenderer(GeneratedFile(TASKS, "narrower\n")),
+    Ide.IDEA: RUST_START[Ide.IDEA],
+}
+
+
+def test_a_language_change_refreshes_the_ide_whose_files_cstudy_wrote():
+    store = InMemoryFiles()
+    written_by_cstudy(store, TASKS, "tasks\n")
+    report = refresh_written_ides(NEW_TASKS, store)
+    assert report is not None
+    assert (report.ides, changes(report), store.contents) == (
+        (Ide.VSCODE,),
+        {TASKS: Change.UPDATED},
+        {TASKS: "narrower\n"},
+    )
+
+
+def test_a_language_change_refreshes_every_ide_whose_files_cstudy_wrote():
+    store = InMemoryFiles()
+    written_by_cstudy(store, TASKS, "tasks\n")
+    written_by_cstudy(store, MISC, "misc\n")
+    report = refresh_written_ides(NEW_TASKS, store)
+    assert report is not None
+    assert report.ides == (Ide.VSCODE, Ide.IDEA)
+
+
+def test_a_language_change_writes_no_ide_file_where_cstudy_wrote_none():
+    store = InMemoryFiles()
+    assert (refresh_written_ides(NEW_TASKS, store), store.contents) == (None, {})
+
+
+def test_a_language_change_keeps_a_file_you_edited():
+    store = InMemoryFiles()
+    written_by_cstudy(store, TASKS, "tasks\n")
+    store.contents[TASKS] = "mine\n"
+    report = refresh_written_ides(NEW_TASKS, store)
+    assert report is not None
+    assert (changes(report), store.contents[TASKS]) == ({TASKS: Change.KEPT}, "mine\n")
 
 
 # the selected JDK

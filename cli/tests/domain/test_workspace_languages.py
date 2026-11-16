@@ -7,9 +7,13 @@ from coding_study.domain.workspace_languages import (
     TEMPLATE_PATHS,
     WorkspaceLanguageError,
     choose,
+    folder_groups,
+    folder_text,
     from_marker,
     ordered,
+    owns_template,
     parse_language,
+    sharing,
     template_includes,
     template_paths,
 )
@@ -119,3 +123,49 @@ def test_go_has_its_folder_and_go_work():
 
 def test_no_chosen_languages_means_every_file():
     assert all(template_includes(None, path) for path in ("rust/lib.rs", "go.work", "jvm/gradlew"))
+
+
+@pytest.mark.parametrize(
+    ("relative", "expected"),
+    [
+        ("go/go.mod", True),
+        ("go.work", True),
+        ("python/pyproject.toml", False),
+        ("README.md", False),
+        ("notes/.gitkeep", False),
+    ],
+)
+def test_go_owns_its_files_and_no_shared_one(relative, expected):
+    assert owns_template((Language.GO,), relative) is expected
+
+
+def test_the_jvm_languages_give_one_group_of_folders():
+    assert folder_groups((Language.KOTLIN, Language.JAVA, Language.GO)) == (
+        ("jvm",),
+        ("go", "go.work"),
+    )
+
+
+def test_folder_groups_come_in_workspace_order():
+    assert folder_groups((Language.RUST, Language.PYTHON)) == (("python",), ("rust",))
+
+
+def test_java_and_kotlin_share_their_folder():
+    assert sharing(("jvm",)) == (Language.JAVA, Language.KOTLIN)
+
+
+def test_go_alone_has_go_and_go_work():
+    assert sharing(("go", "go.work")) == (Language.GO,)
+
+
+@pytest.mark.parametrize(
+    ("paths", "text"),
+    [
+        (("rust",), "rust/"),
+        (("go", "go.work"), "go/ and go.work"),
+        (("python", "go", "go.work"), "python/, go/ and go.work"),
+        (("go.work",), "go.work"),
+    ],
+)
+def test_folders_are_named_as_the_output_says_them(paths, text):
+    assert folder_text(paths) == text

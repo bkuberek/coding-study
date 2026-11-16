@@ -87,6 +87,9 @@ cstudy --no-color list --track dsa
 | `cstudy init [<path>]` | `--git`, `--ide <ide>`, `--no-ide`, `--force` | Creates a workspace. `--git` runs `git init` there; `--ide` is `vscode` or `idea`, and repeats; `--no-ide` writes no IDE files; `--force` allows a workspace inside a checkout of the `cstudy` source ([create one](workspace.md#create-one)) |
 | `cstudy doctor` | `--fix`, `--json`, `--accept-license <server>` | Checks the toolchains, your configuration and the workspace. `--fix` sets up the workspace's projects and repairs what it can; `--accept-license kotlin-lsp`, with `--fix`, accepts that language server's license so that it downloads ([check your setup](doctor.md)) |
 | `cstudy ide [<ide>]` | `--force` | Writes or refreshes the IDE project files and the IntelliJ IDEA launcher: `vscode`, `idea`, or `all`, the default. `--force` also overwrites the files you edited ([your edits and cstudy ide](ide-and-debugging.md#your-edits-and-cstudy-ide)) |
+| `cstudy lang list` | - | Shows the workspace's languages and their folders |
+| `cstudy lang add <language>...` | - | Adds languages to the workspace: writes the folder files each one lacks, never overwriting one, and refreshes the IDE files `cstudy` wrote. `cstudy doctor --fix` then installs the toolchain files |
+| `cstudy lang remove <language>...` | - | Takes languages out of the workspace. Their folders, your practice files and your progress stay; a removed language stops being checked, generated for and offered. A workspace needs at least one language |
 | `cstudy config path` | - | Prints the path of your `config.toml` |
 | `cstudy config edit` | - | Opens your `config.toml` in `$VISUAL` or `$EDITOR`, and creates it when it is missing ([your configuration](settings.md#your-configuration)) |
 | `cstudy about` | `--credits`, `--licenses` | Shows the version, the license, the links and the credits. `--credits` lists the software `cstudy` uses; `--licenses` prints the full license texts |

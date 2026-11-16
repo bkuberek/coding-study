@@ -15,6 +15,7 @@
       "ide",
       "import",
       "init",
+      "lang",
       "learn",
       "list",
       "mock",
@@ -354,6 +355,42 @@
     "takes_value": true
   },
   "cstudy init --no-ide": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy lang": {
+    "subcommands": [
+      "add",
+      "list",
+      "remove"
+    ]
+  },
+  "cstudy lang --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy lang add": {
+    "subcommands": []
+  },
+  "cstudy lang add --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy lang list": {
+    "subcommands": []
+  },
+  "cstudy lang list --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy lang remove": {
+    "subcommands": []
+  },
+  "cstudy lang remove --help": {
     "choices": [],
     "deprecated": false,
     "takes_value": false

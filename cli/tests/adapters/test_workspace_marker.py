@@ -12,6 +12,7 @@ from coding_study.adapters.workspace_marker import (
     marker_text,
     read_marker,
     record_license,
+    write_languages,
 )
 from coding_study.domain.problem import Language
 
@@ -85,3 +86,38 @@ def test_recording_a_license_keeps_the_languages(tmp_path):
     write_marker(tmp_path, marker_text(WorkspaceMarker(1, "0.1.0", (Language.KOTLIN,))))
     record_license(tmp_path, "kotlin-lsp", "Name", "https://example.com/license")
     assert read_marker(tmp_path).languages == (Language.KOTLIN,)
+
+
+def test_writing_languages_adds_the_key_after_the_version_and_before_a_table(tmp_path):
+    write_marker(
+        tmp_path,
+        'schema = 1\ncreated_with = "0.1.0"\n\n[licenses.kotlin-lsp]\nname = "n"\nurl = "u"\n',
+    )
+    write_languages(tmp_path, (Language.PYTHON, Language.GO))
+    document = tomllib.loads((tmp_path / MARKER_FILE).read_text())
+    assert (document["languages"], document["licenses"]["kotlin-lsp"]["name"]) == (
+        ["python", "go"],
+        "n",
+    )
+
+
+def test_writing_languages_replaces_the_list_in_place_keeping_comments(tmp_path):
+    head = '# mine\nschema = 1\ncreated_with = "0.1.0"\n'
+    write_marker(tmp_path, f'{head}languages = ["python", "go"]  # two\nextra = 3\n')
+    write_languages(tmp_path, (Language.PYTHON,))
+    assert (tmp_path / MARKER_FILE).read_text() == (
+        f'{head}languages = ["python"]  # two\nextra = 3\n'
+    )
+
+
+def test_written_languages_read_back_in_workspace_order(tmp_path):
+    write_marker(tmp_path, 'schema = 1\ncreated_with = "0.1.0"\n')
+    write_languages(tmp_path, (Language.JAVA, Language.KOTLIN, Language.RUST))
+    assert read_marker(tmp_path).languages == (Language.JAVA, Language.KOTLIN, Language.RUST)
+
+
+def test_a_marker_that_does_not_parse_is_not_overwritten_by_writing_languages(tmp_path):
+    write_marker(tmp_path, "schema = 1\ncreated_with = \n")
+    with pytest.raises(MarkerError):
+        write_languages(tmp_path, (Language.PYTHON,))
+    assert (tmp_path / MARKER_FILE).read_text() == "schema = 1\ncreated_with = \n"
