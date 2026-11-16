@@ -61,12 +61,12 @@ from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.adapters.workspace_marker import has_marker, read_marker
 from coding_study.adapters.yaml_problem_sets import YamlProblemSets
-from coding_study.application.ai_ports import LanguageModels
+from coding_study.application.ai_ports import Credentials, LanguageModels
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
 from coding_study.domain.ai import AI_OFF, ApiKey, Provider
 from coding_study.domain.ai_models import ModelReply, ModelRequest
-from coding_study.domain.config import Config
+from coding_study.domain.config import AiSettings, Config
 from coding_study.domain.deprecations import DEPRECATIONS
 from coding_study.domain.errors import UsageError
 from coding_study.domain.layout import RUNS_DIRECTORY
@@ -89,6 +89,26 @@ def load_catalog_environment(cwd: Path, environ: Mapping[str, str], home: Path) 
         return load_environment(cwd, environ, home)
     content = find_content_root(environ)
     return _environment(content, catalog_cache_directory(environ, home), _user(environ, home))
+
+
+@dataclass(frozen=True, slots=True)
+class AiAccess:
+    """What a command that talks to a provider but reads no workspace needs."""
+
+    settings: AiSettings
+    credentials: Credentials
+    models: LanguageModels
+
+
+def load_ai_access(cwd: Path, environ: Mapping[str, str], home: Path) -> AiAccess:
+    """The AI settings, `credentials.toml` and the model port, with no workspace, so it works
+    before `cstudy init`. Raises ConfigError for a bad config."""
+    user = _user(environ, home)
+    return AiAccess(
+        user.config.ai,
+        open_credentials(environ, home, workspace_directory(cwd, environ)),
+        _language_models(user.config.ai.enabled, environ),
+    )
 
 
 def conformance_environment(environment: Environment) -> Environment:

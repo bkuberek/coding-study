@@ -187,17 +187,17 @@ def _requests(count: int) -> str:
 def _cost_text(counters: UsageCounters) -> str:
     if counters.cost_usd is None:
         return "cost unknown"
-    text = f"{_dollars(counters.cost_usd)} known"
+    text = f"{dollars(counters.cost_usd)} known"
     if counters.requests_without_cost:
         text += f", {_requests(counters.requests_without_cost)} without a reported cost"
     return text
 
 
 def _cost_cell(counters: UsageCounters) -> str:
-    return NO_VALUE if counters.cost_usd is None else _dollars(counters.cost_usd)
+    return NO_VALUE if counters.cost_usd is None else dollars(counters.cost_usd)
 
 
-def _dollars(amount: float) -> str:
+def dollars(amount: float) -> str:
     """`$0.00003`: up to six decimals, at least two."""
     digits = f"{amount:.{COST_DECIMALS}f}".rstrip("0")
     whole, _, fraction = digits.partition(".")

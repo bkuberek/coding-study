@@ -22,6 +22,7 @@ from coding_study.application.ai_usage import DEFAULT_DAYS, MAX_DAYS, MIN_DAYS, 
 from coding_study.application.environment import Environment
 from coding_study.domain.ai import Provider
 from coding_study.domain.ai_routing import task_spec
+from coding_study.entrypoints.commands.ai_check import check, models
 from coding_study.entrypoints.commands.ai_report import (
     shown_path,
     status_document,
@@ -42,6 +43,8 @@ def register(app: typer.Typer) -> None:
     add_command(group, usage, "usage")
     add_command(group, key, "key", _KeyCommand)
     add_command(group, consent, "consent")
+    add_command(group, models, "models")
+    add_command(group, check, "check")
     app.add_typer(group, name=NAME)
 
 

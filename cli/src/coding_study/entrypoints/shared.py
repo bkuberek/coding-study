@@ -203,6 +203,11 @@ def _usage_errors_exit_3() -> Generator[None]:
         raise
 
 
+def _exit_code_of(error: Exception) -> ExitCode:
+    """The code of the error's own class, else of its nearest base class in the table."""
+    return next(ERROR_EXIT_CODES[kind] for kind in type(error).__mro__ if kind in ERROR_EXIT_CODES)
+
+
 def _exit_codes_for_known_errors[**P](callback: Callable[P, None]) -> Callable[P, None]:
     @functools.wraps(callback)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
@@ -210,6 +215,6 @@ def _exit_codes_for_known_errors[**P](callback: Callable[P, None]) -> Callable[P
             callback(*args, **kwargs)
         except tuple(ERROR_EXIT_CODES) as error:
             print_error(error)
-            raise typer.Exit(ERROR_EXIT_CODES[type(error)]) from error
+            raise typer.Exit(_exit_code_of(error)) from error
 
     return wrapper

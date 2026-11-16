@@ -93,13 +93,23 @@
   },
   "cstudy ai": {
     "subcommands": [
+      "check",
       "consent",
       "key",
+      "models",
       "status",
       "usage"
     ]
   },
   "cstudy ai --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai check": {
+    "subcommands": []
+  },
+  "cstudy ai check --help": {
     "choices": [],
     "deprecated": false,
     "takes_value": false
@@ -131,6 +141,14 @@
     "takes_value": false
   },
   "cstudy ai key --remove": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai models": {
+    "subcommands": []
+  },
+  "cstudy ai models --help": {
     "choices": [],
     "deprecated": false,
     "takes_value": false

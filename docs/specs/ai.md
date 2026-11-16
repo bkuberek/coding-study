@@ -304,7 +304,7 @@ fast    openrouter:<model id>   ok · 1.4 s · 52 tokens · $0.00003
 strong  anthropic:<model id>    FAIL anthropic refused the key (401): set it again with cstudy ai key anthropic
 ```
 
-A model passes when it answers `{"ok": true}` in the schema. Each request is an `ai_calls` row with purpose `check`. Exit 0 when every model passed, 4 when one failed, 3 when refused before sending.
+A model passes when it answers `{"ok": true}` in the schema; any other reply fails as `invalid_reply`: `the model's reply did not follow the check format: it is not {"ok": true}`. A failing model does not stop the check of the next. A model whose [consent](#consent) question you answer no prints `not sent` and is not a failure. Each request is an `ai_calls` row with purpose `check`. Exit 0 when every model passed or was not sent, 4 when one failed, 3 when refused before sending.
 
 ## Records and progress
 

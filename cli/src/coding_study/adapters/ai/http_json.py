@@ -101,7 +101,7 @@ class JsonClient:
         """The JSON object the provider answers a POST of `body` with. `model_id` is the model the
         request names, which a 404, or a 400 that names it, is reported against. Raises
         ProviderError."""
-        data = json.dumps(body, ensure_ascii=False).encode()
+        data = json.dumps(body, ensure_ascii=False, default=_plain).encode()
         return self._send(provider, "POST", origin, path, data, headers, key, deadline_s, model_id)
 
     def _send(
@@ -189,6 +189,13 @@ def status_error(
         return _failed(key, ProviderErrorKind.MODEL, text)
     shown = " ".join(key.scrub(message).split())[:MESSAGE_CHARACTERS]
     return _failed(key, ProviderErrorKind.PROVIDER, f"{provider} failed ({status}): {shown}")
+
+
+def _plain(value: object) -> object:
+    """A read-only mapping, such as a task's schema, as the dict `json` writes."""
+    if isinstance(value, Mapping):
+        return dict(cast(Mapping[object, object], value))
+    raise TypeError(f"{type(value).__name__} is not JSON serializable")
 
 
 def _refused_key(provider: Provider, status: int, key: ApiKey) -> ProviderError:

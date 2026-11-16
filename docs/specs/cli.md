@@ -1815,7 +1815,7 @@ Prints the provider's model ids, one per line, sorted, as its list endpoint retu
 
 ### cstudy ai check
 
-Sends the [check](ai.md#the-check) to each model the routing names, after asking for consent where none is recorded: one line per model with its tier (none under fixed routing), the model, and `ok` with the time, the tokens and the known cost, or `FAIL` with the [error](ai.md#errors). Exit 0 when every model passed, 3 when refused before sending, 4 when one failed.
+Sends the [check](ai.md#the-check) to each model the routing names, after asking for consent where none is recorded: one line per model with its tier (none under fixed routing), the model, and `ok` with the time, the tokens and the known cost, or `FAIL` with the [error](ai.md#errors), or `not sent` for a model whose consent question you answered no. A model that fails does not stop the check of the next. Exit 0 when every model passed or was not sent, 3 when refused before sending, 4 when one failed.
 
 ### cstudy ai review
 
