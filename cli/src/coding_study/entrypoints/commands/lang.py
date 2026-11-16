@@ -221,7 +221,11 @@ def _confirmed(present: tuple[FolderPreview, ...]) -> bool:
     """Asks whether to delete `present`. Raises UsageError when there is no one to ask."""
     if not _is_terminal():
         raise UsageError(NEEDS_A_TERMINAL)
-    return typer.confirm(delete_question(present), default=False)
+    try:
+        return typer.confirm(delete_question(present), default=False)
+    except typer.Abort:
+        typer.echo()
+        return False
 
 
 def delete_question(present: tuple[FolderPreview, ...]) -> str:

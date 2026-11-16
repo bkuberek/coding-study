@@ -383,6 +383,17 @@ def test_any_answer_but_yes_changes_nothing(everything, at_a_terminal, answer):
     )
 
 
+def test_end_of_input_counts_as_no(everything, at_a_terminal):
+    with_rust_files(everything)
+    before = files_of(everything)
+    result = lang(everything, "remove", "rust", "--delete-folder", typed="")
+    assert (result.exit_code, lines(result)[-1], files_of(everything)) == (
+        0,
+        "not removed: nothing changed",
+        before,
+    )
+
+
 def test_yes_deletes_without_asking(everything):
     with_rust_files(everything)
     result = lang(everything, "remove", "rust", "--delete-folder", "--yes")
