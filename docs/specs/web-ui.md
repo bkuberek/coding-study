@@ -331,7 +331,7 @@ An [AI job](#jobs) that would send to a model without your [consent](ai.md#conse
     "terms": "Your anthropic account's terms apply to what it receives."}}}
 ```
 
-`models` holds each model of the request that has no consent: one for a review, up to two for the check. The same request with `"confirm": true` records a consent for each of them and starts the job.
+`models` holds each model of the request that has no consent: one for a review, up to two for the check, each with the `tier` of the routing that chose it (`null` under fixed routing). `sends` lists each item the request sends with its size in `bytes` (`null` for an item with none), as the [terminal's question](ai.md#consent) does, `input_tokens` and `output_tokens` are one request's estimate and its most, and `today` is what the cap has counted. The `message` of the check reads `The check sends a fixed test message to anthropic:<model id>. Send it?`. The same request with `"confirm": true` records a consent for each of them and starts the job.
 
 ## Runs
 
@@ -441,11 +441,11 @@ A job is a child `cstudy` command whose text report is relayed line by line: com
 | `bench` | `slug`, `language`, `sizes` (list of positive integers), `reps` (1 to 50), `refs_only`, `no_memory` | `cstudy bench --lang=<language> [--sizes=LIST] [--reps=N] [--refs-only] [--no-memory] -- <slug>` |
 | `ai_review` | `slug` (a rubric problem), `confirm` | `cstudy ai review -- <slug>` |
 | `ai_check` | `confirm` | `cstudy ai check` |
-| `ai_models` | `provider` | `cstudy ai models <provider>` |
+| `ai_models` | `provider` (`anthropic`, `google`, `openai` or `openrouter`) | `cstudy ai models <provider>` |
 
 | Rule | Detail |
 |------|--------|
-| AI jobs | Before the child starts, the server runs in-process each check of the command that sends nothing: AI on, the model and key the routing needs, the cap, and for `ai_review` the problem, its attempt, its notes and the mock lock, each refusal 422 `usage` with the CLI's message, so a job never starts only to fail. A model without consent gets 409 `confirmation_required` with the [consent document](#ai-preview); with `confirm`, the server records the consents it named and starts the child, which finds them and asks nothing. The child sends; the server never does. Cancel stops the child as for every job, and the child stores the request as interrupted. An AI job takes the one job slot like any other. The page reads a review back from [`GET /api/v1/problems/{slug}/ai-reviews`](#ai-preview) once its job ends with exit 0, and the model ids of `ai_models` from its job's lines |
+| AI jobs | Before the child starts, the server runs in-process each check of the command that sends nothing: AI on, the model and key the routing needs, the cap, and for `ai_review` the problem, its attempt, its notes and the mock lock, each refusal 422 `usage` with the CLI's message (a slug no problem has is 404 `not_found`), so a job never starts only to fail. A model without consent gets 409 `confirmation_required` with the [consent document](#ai-preview); with `confirm`, the server records the consents it named and starts the child, which finds them and asks nothing. The child sends; the server never does. Cancel stops the child as for every job, and the child stores the request as interrupted. An AI job takes the one job slot like any other. The page reads a review back from [`GET /api/v1/problems/{slug}/ai-reviews`](#ai-preview) once its job ends with exit 0, and the model ids of `ai_models` from its job's lines |
 | Confirmation | `doctor_fix` without `confirm` gets 409 with `Run cstudy doctor --fix? It writes missing workspace files, refreshes the runner runtime, migrates progress.db, and runs uv sync, pnpm install and the Gradle warm-up, which may need the network.` |
 | Verify scope | A catalog problem gets 422: `the page verifies your own problems; run cstudy verify in a content checkout for catalog problems`; a slug no problem has gets 404 `not_found` |
 | Slot | One job at a time in the server: a second gets 409 `conflict` with the job's id. `doctor_fix` also waits for no run: with a run in progress it gets 409 |

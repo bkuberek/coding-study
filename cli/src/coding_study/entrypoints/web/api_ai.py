@@ -1,4 +1,4 @@
-"""The AI preview's endpoints: status, usage, the keys and the consents
+"""The AI preview's endpoints: status, usage, the keys, the consents and the stored reviews
 (docs/specs/web-ui.md#ai-preview). They run in-process and send nothing. A key arrives in the body
 of a `PUT` and goes to `credentials.toml`; no response, error or log line holds it."""
 
@@ -8,12 +8,15 @@ from starlette.routing import BaseRoute, Route
 
 from coding_study.application.ai_consent import parse_model, parse_purpose, revoke
 from coding_study.application.ai_keys import parse_provider, remove_key, save_key
+from coding_study.application.ai_review import dismiss_review, list_reviews
 from coding_study.application.ai_status import ai_status
 from coding_study.application.ai_usage import DEFAULT_DAYS, MAX_DAYS, MIN_DAYS, usage_report
 from coding_study.application.environment import Environment
 from coding_study.domain.ai import AiTask, ModelRef, Provider
+from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.entrypoints.commands.ai_report import status_document, usage_document
+from coding_study.entrypoints.commands.ai_review_report import list_document, review_document
 from coding_study.entrypoints.web.bodies import Body, object_body, required_text
 from coding_study.entrypoints.web.context import in_workspace
 from coding_study.entrypoints.web.errors import ApiError, ErrorCode
@@ -54,6 +57,17 @@ async def delete_consent(request: Request) -> Response:
     return JsonResponse({"revoked": revoked})
 
 
+async def get_reviews(request: Request) -> Response:
+    listing = await in_workspace(request, list_reviews, request.path_params["slug"])
+    return JsonResponse(list_document(listing))
+
+
+async def post_dismiss(request: Request) -> Response:
+    await object_body(request)
+    document = await in_workspace(request, _dismissed, request.path_params["review_id"])
+    return JsonResponse(document)
+
+
 def ai_routes() -> list[BaseRoute]:
     return [
         Route("/api/v1/ai/status", get_status, methods=["GET"]),
@@ -61,6 +75,8 @@ def ai_routes() -> list[BaseRoute]:
         Route("/api/v1/ai/keys/{provider}", put_key, methods=["PUT"]),
         Route("/api/v1/ai/keys/{provider}", delete_key, methods=["DELETE"]),
         Route("/api/v1/ai/consents", delete_consent, methods=["DELETE"]),
+        Route("/api/v1/problems/{slug}/ai-reviews", get_reviews, methods=["GET"]),
+        Route("/api/v1/ai-reviews/{review_id:int}/dismiss", post_dismiss, methods=["POST"]),
     ]
 
 
@@ -74,6 +90,14 @@ def _remove_key(environment: Environment, provider: Provider) -> None:
 
 def _revoke(environment: Environment, model: ModelRef, purpose: AiTask) -> bool:
     return revoke(environment, model, purpose)
+
+
+def _dismissed(environment: Environment, review_id: int) -> dict[str, JsonValue]:
+    """The review's document once dismissed, as `cstudy ai review --show` prints it; dismissing
+    it again changes nothing. An id no review has is not found."""
+    if environment.ai_store.review(review_id) is None:
+        raise ApiError(ErrorCode.NOT_FOUND, f"no AI review {review_id}")
+    return review_document(dismiss_review(environment, review_id).review)
 
 
 def _provider(request: Request) -> Provider:

@@ -23,8 +23,10 @@ from coding_study.application.attempt_changes import WatchedFolder, workspace_sn
 from coding_study.application.environment import Environment
 from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
-from coding_study.domain.ai import AiTask, Provider
+from coding_study.application.start_item import ItemStartRequest, start_item_attempt
+from coding_study.domain.ai import AiTask, ModelRef, Provider, Routing
 from coding_study.domain.ai_records import Consent
+from coding_study.domain.config import AiSettings, Config
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.web.notifications import Notifications, WorkspaceWatch
@@ -82,6 +84,7 @@ DOCUMENTS = (
     "config",
     "ai_key",
     "ai_consent_revoked",
+    "ai_consent",
     "reset_preview",
     "reset_done",
     "sets",
@@ -184,6 +187,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _guides(tmp_path_factory.mktemp("guides"), record)
     _docs(tmp_path_factory.mktemp("docs"), record)
     _ai(tmp_path_factory.mktemp("ai"), record)
+    _ai_jobs(tmp_path_factory.mktemp("ai_jobs"), record)
     return record.documents
 
 
@@ -206,6 +210,41 @@ def _ai(root: Path, record: Recorder) -> None:
             "DELETE", "/api/v1/ai/consents", json=consent, headers=WRITE_HEADERS
         )
         record("ai_consent_revoked", revoke)
+
+
+def _ai_jobs(root: Path, record: Recorder) -> None:
+    """A review, a check and a model list as jobs: the consent each asks for, a confirmed review
+    and the lines of its job, and a refusal."""
+    problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_RUBRIC_PROBLEMS)
+    settings = AiSettings(
+        enabled=True,
+        routing=Routing.AUTO,
+        fast=ModelRef(Provider.OPENROUTER, "vendor/model"),
+        strong=ModelRef(Provider.ANTHROPIC, "claude-x"),
+    )
+    keys = {Provider.ANTHROPIC: "sk-a", Provider.OPENROUTER: "sk-o", Provider.GOOGLE: "sk-g"}
+    environment = make_environment(
+        workspace, config=Config(ai=settings), credentials=FakeCredentials(keys)
+    )
+    start_item_attempt(environment, ItemStartRequest("url-shortener"))
+    environment.workspace.write_text("notes/system-design/url-shortener.md", "Redirects.\n")
+    script = Script(root / "script.json")
+    script.play({"out": "reviewing"}, {"exit": 0})
+    jobs = "/api/v1/jobs"
+    review = {"command": "ai_review", "slug": "url-shortener"}
+    app = web_app(root, environment, script.child, Children(QUICK))
+    with session_client(app) as client:
+        for body in (review, {"command": "ai_check"}):
+            asked = record("error", client.post(jobs, json=body, headers=WRITE_HEADERS))
+            record.documents["ai_consent"].append(asked.json()["error"]["consent"])
+        refused = {**review, "slug": "two-sum"}
+        record("error", client.post(jobs, json=refused, headers=WRITE_HEADERS))
+        for body in ({**review, "confirm": True}, {"command": "ai_models", "provider": "google"}):
+            started = record("child_started", client.post(jobs, json=body, headers=WRITE_HEADERS))
+            path = f"{jobs}/{started.json()['id']}"
+            record.stream(client.get(f"{path}/events").text)
+            record("job", client.get(path))
 
 
 def _languages(root: Path, record: Recorder) -> None:

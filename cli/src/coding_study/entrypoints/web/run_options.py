@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import cast
 
+from coding_study.application.ai_keys import parse_provider
 from coding_study.application.run_checks import RunCheck, RunCommand, RunSubject
+from coding_study.domain.ai import Provider
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language, ProblemKind
@@ -39,6 +41,9 @@ class JobCommand(StrEnum):
     DOCTOR_FIX = "doctor_fix"
     VERIFY = "verify"
     BENCH = "bench"
+    AI_REVIEW = "ai_review"
+    AI_CHECK = "ai_check"
+    AI_MODELS = "ai_models"
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,9 +97,13 @@ class JobOptions:
     """How the server names the job when it ends: `doctor --fix`."""
     document: dict[str, JsonValue]
     confirmed: bool = False
-    """`doctor_fix`: the user answered its question."""
+    """`doctor_fix`, `ai_review`, `ai_check`: the user answered the question."""
     slugs: tuple[str, ...] = ()
     """`verify`: the problems, which must be the workspace's own."""
+    slug: str | None = None
+    """`ai_review`: the rubric problem."""
+    provider: Provider | None = None
+    """`ai_models`: the provider whose models are listed."""
 
 
 def run_options(document: object) -> RunOptions:
@@ -187,10 +196,49 @@ def _bench(document: object) -> JobOptions:
     )
 
 
+def _ai_review(document: object) -> JobOptions:
+    fields = _Fields(document, ("command", "slug", "confirm"))
+    slug = fields.text("slug")
+    return JobOptions(
+        JobCommand.AI_REVIEW,
+        ("ai", "review", END_OF_OPTIONS, slug),
+        f"ai review {slug}",
+        {"slug": slug},
+        confirmed=bool(fields.boolean("confirm")),
+        slug=slug,
+    )
+
+
+def _ai_check(document: object) -> JobOptions:
+    fields = _Fields(document, ("command", "confirm"))
+    return JobOptions(
+        JobCommand.AI_CHECK,
+        ("ai", "check"),
+        "ai check",
+        {},
+        confirmed=bool(fields.boolean("confirm")),
+    )
+
+
+def _ai_models(document: object) -> JobOptions:
+    fields = _Fields(document, ("command", "provider"))
+    provider = parse_provider(fields.text("provider"))
+    return JobOptions(
+        JobCommand.AI_MODELS,
+        ("ai", "models", provider.value),
+        f"ai models {provider}",
+        {"provider": provider.value},
+        provider=provider,
+    )
+
+
 _JOB_PARSERS: Mapping[JobCommand, Callable[[object], JobOptions]] = {
     JobCommand.DOCTOR_FIX: _doctor_fix,
     JobCommand.VERIFY: _verify,
     JobCommand.BENCH: _bench,
+    JobCommand.AI_REVIEW: _ai_review,
+    JobCommand.AI_CHECK: _ai_check,
+    JobCommand.AI_MODELS: _ai_models,
 }
 
 

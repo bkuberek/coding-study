@@ -24,6 +24,7 @@ from coding_study.application.run_checks import (
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import ProblemKind
+from coding_study.entrypoints.web.ai_jobs import check_ai_job
 from coding_study.entrypoints.web.context import in_workspace, server_state
 from coding_study.entrypoints.web.errors import ApiError, ErrorCode
 from coding_study.entrypoints.web.queries import positive_integer
@@ -143,6 +144,7 @@ def _checked_run(environment: Environment, check: RunCheck) -> tuple[RunSubject,
 
 def _checked_job(environment: Environment, options: JobOptions) -> Path:
     check_verify_scope(environment, options.slugs)
+    check_ai_job(environment, options)
     return environment.root
 
 

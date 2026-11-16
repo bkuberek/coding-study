@@ -15,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ExceptionHandler
 
+from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import (
     FIX_PREFIX,
     AttemptEndedError,
@@ -104,12 +105,13 @@ class ApiError(Exception):
     """A refusal no use case raises, such as a child `cstudy` that failed or ran too long."""
 
     def __init__(
-        self, code: ErrorCode, message: str, details: Mapping[str, str] | None = None
+        self, code: ErrorCode, message: str, details: Mapping[str, JsonValue] | None = None
     ) -> None:
         super().__init__(message)
         self.code = code
         self.details = dict(details or {})
-        """Fields the error document adds, such as `run`, the id of the run holding a slot."""
+        """Fields the error document adds, such as `run`, the id of the run holding a slot, or
+        `consent`, the document of a job that needs consent."""
 
 
 def error_status(code: ErrorCode) -> int:
@@ -120,17 +122,27 @@ def error_response(
     code: ErrorCode,
     message: str,
     headers: Mapping[str, str] | None = None,
-    details: Mapping[str, str] | None = None,
+    details: Mapping[str, JsonValue] | None = None,
 ) -> JsonResponse:
-    error = {"code": code.value, "message": message, "fix": None, **(details or {})}
+    error: dict[str, JsonValue] = {
+        "code": code.value,
+        "message": message,
+        "fix": None,
+        **(details or {}),
+    }
     return JsonResponse({"error": error}, status_code=error_status(code), headers=headers)
 
 
 def domain_error_code(error: Exception) -> ErrorCode:
     """The code of the exit code the CLI gives `error`, but `not_found` for an unknown problem,
-    attempt or file and `attempt_ended` for an attempt no longer in progress."""
-    code = _LOOKUP_ERRORS.get(type(error))
-    return code if code is not None else _EXIT_CODE_ERRORS[ERROR_EXIT_CODES[type(error)]]
+    attempt or file and `attempt_ended` for an attempt no longer in progress. An error of a
+    class with none of its own has the code of its nearest base class that has one."""
+    for kind in type(error).__mro__:
+        if kind in _LOOKUP_ERRORS:
+            return _LOOKUP_ERRORS[kind]
+        if kind in ERROR_EXIT_CODES:
+            return _EXIT_CODE_ERRORS[ERROR_EXIT_CODES[kind]]
+    raise KeyError(type(error))
 
 
 def exit_code_error(exit_code: int) -> ErrorCode:
@@ -193,7 +205,7 @@ def refusal(error: Exception) -> Response | None:
     no exception handler can answer; None for an error that is a bug."""
     if isinstance(error, ApiError):
         return _api_response(error)
-    if type(error) in ERROR_EXIT_CODES or type(error) in _LOOKUP_ERRORS:
+    if any(kind in ERROR_EXIT_CODES or kind in _LOOKUP_ERRORS for kind in type(error).__mro__):
         return _domain_response(error)
     return None
 

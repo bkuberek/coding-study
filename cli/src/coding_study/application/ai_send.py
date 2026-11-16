@@ -131,6 +131,20 @@ def consent_question(
     )
 
 
+def cap_checked_question(
+    environment: Environment, target: Target, payload: AiPayload
+) -> ConsentQuestion:
+    """The consent question of a request the daily token cap lets through; the cap's refusal is
+    a UsageError. Nothing is sent or recorded."""
+    spec = task_spec(payload.task)
+    question = consent_question(environment, target, payload)
+    estimate = estimate_tokens(payload.text, spec.max_output_tokens)
+    refusal = cap_refusal(payload.task, question.today_tokens, estimate, question.cap)
+    if refusal is not None:
+        raise UsageError(refusal)
+    return question
+
+
 def send(
     environment: Environment, target: Target, payload: AiPayload, asker: ConsentAsker
 ) -> Sent | NotSent:
@@ -149,10 +163,7 @@ def send(
     key = environment.credentials.key(target.model.provider)
     assert key is not None, "available_targets found a key for every provider"
     estimate = estimate_tokens(payload.text, spec.max_output_tokens)
-    question = consent_question(environment, target, payload)
-    refusal = cap_refusal(task, question.today_tokens, estimate, question.cap)
-    if refusal is not None:
-        raise UsageError(refusal)
+    question = cap_checked_question(environment, target, payload)
     provider, model_id = target.model.provider, target.model.model_id
     if environment.ai_store.consent(provider, model_id, task) is None:
         if not asker.ask(question):

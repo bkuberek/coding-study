@@ -7,8 +7,9 @@ from http.cookies import SimpleCookie
 import pytest
 from starlette.types import Message, Receive, Scope, Send
 
-from coding_study.domain.ai import AiTask, ApiKey, Provider
-from coding_study.domain.ai_records import Consent
+from coding_study.domain.ai import AiTask, ApiKey, ModelRef, Provider
+from coding_study.domain.ai_records import Consent, ReviewItem, ReviewRecord, Verdict
+from coding_study.domain.config import AiSettings, Config
 from coding_study.entrypoints.web.security import (
     BODY_LIMIT,
     IMPORT_BODY_LIMIT,
@@ -664,7 +665,7 @@ def test_a_set_write_without_the_csrf_token_gets_403(app, sets_file, method, pat
     )
 
 
-# The writes of the AI preview: the keys and the consents
+# The writes of the AI preview: the keys, the consents, the AI jobs and a review's dismissal
 
 
 KEPT_KEY = "sk-kept-0123456789"
@@ -676,6 +677,25 @@ AI_WRITES = (
         "/api/v1/ai/consents",
         {"provider": "anthropic", "model": "claude-x", "purpose": "review"},
     ),
+    ("POST", "/api/v1/jobs", {"command": "ai_check", "confirm": True}),
+    ("POST", "/api/v1/jobs", {"command": "ai_review", "slug": "url-shortener", "confirm": True}),
+    ("POST", "/api/v1/jobs", {"command": "ai_models", "provider": "anthropic"}),
+    ("POST", "/api/v1/ai-reviews/1/dismiss", {}),
+)
+STORED_REVIEW = ReviewRecord(
+    attempt_id=1,
+    created_at=NOW,
+    provider=Provider.ANTHROPIC,
+    model="claude-x",
+    prompt_version="review-1",
+    rubric_sha256="0" * 64,
+    notes_sha256="1" * 64,
+    items=(ReviewItem(1, "Area", "Criterion", Verdict.MET, (), ""),),
+    summary="A summary.",
+    quotes_dropped=0,
+    input_tokens=None,
+    output_tokens=None,
+    cost_usd=None,
 )
 
 
@@ -684,12 +704,22 @@ def ai_state(tmp_path):
     credentials = FakeCredentials({Provider.ANTHROPIC: KEPT_KEY})
     store = FakeAiStore()
     store.grant_consent(Consent(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, NOW))
-    environment = web_workspace(tmp_path, credentials=credentials, ai_store=store)
+    store.add_review(STORED_REVIEW, "url-shortener")
+    settings = AiSettings(enabled=True, model=ModelRef(Provider.ANTHROPIC, "claude-x"))
+    environment = web_workspace(
+        tmp_path, config=Config(ai=settings), credentials=credentials, ai_store=store
+    )
     return web_app(tmp_path, environment), credentials, store
 
 
 def ai_unchanged(credentials, store) -> bool:
-    return credentials.keys == {Provider.ANTHROPIC: ApiKey(KEPT_KEY)} and len(store.consents()) == 1
+    review = store.review(1)
+    return (
+        credentials.keys == {Provider.ANTHROPIC: ApiKey(KEPT_KEY)}
+        and len(store.consents()) == 1
+        and review is not None
+        and review.dismissed_at is None
+    )
 
 
 @pytest.mark.parametrize(("method", "path", "body"), AI_WRITES)
@@ -744,7 +774,9 @@ def test_an_ai_write_without_the_csrf_token_gets_403(ai_state, method, path, bod
     )
 
 
-@pytest.mark.parametrize("path", ["/api/v1/ai/status", "/api/v1/ai/usage"])
+@pytest.mark.parametrize(
+    "path", ["/api/v1/ai/status", "/api/v1/ai/usage", "/api/v1/problems/url-shortener/ai-reviews"]
+)
 def test_an_ai_read_without_the_cookie_gets_401(ai_state, path):
     app, _, _ = ai_state
     with anonymous_client(app) as client:

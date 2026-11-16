@@ -3,6 +3,7 @@
 import pytest
 
 from coding_study.adapters.locations import WorkspaceError
+from coding_study.domain.ai_routing import TaskRefusedError
 from coding_study.domain.errors import (
     ConfigError,
     ContentError,
@@ -99,6 +100,13 @@ def test_a_bug_gets_500_internal_without_a_traceback(tmp_path):
 )
 def test_a_domain_error_gets_the_code_of_its_exit_code(error, code):
     assert domain_error_code(error) is code
+
+
+def test_an_error_of_a_subclass_gets_the_code_of_its_nearest_base_class(tmp_path):
+    refused = TaskRefusedError("ai.model is not set: choose one", "model not set")
+    assert domain_error_code(refused) is ErrorCode.USAGE
+    response = session_error(tmp_path, refused)
+    assert (response.status_code, response.json()["error"]["code"]) == (422, "usage")
 
 
 @pytest.mark.parametrize(
