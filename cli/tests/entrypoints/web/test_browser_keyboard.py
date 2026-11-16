@@ -6,6 +6,14 @@ the editor's name and the way out of it, Alt-Shift-click adding a cursor while C
 Ctrl-click do not and Alt-drag still selects a rectangle, the live region that announces a run's
 start and summary, and Escape in the results panel cancelling a run after its question.
 
+The learner profile's controls, on a workspace with a profile: the profile chip of the Problems,
+Guides and Mock views reached by Tab with a visible focus, Enter and Space widening with the focus
+on its neighbor, `edit profile` after it landing on the Profile heading of Settings, the checkbox
+groups operated with Space and Tab, the last language's note read through `aria-describedby`, and
+the removal dialog: Keep the folder has the focus, Tab stays inside, Escape cancels and gives the
+focus back to Save, the delete's second confirmation is reached with Tab and Enter, and a refused
+delete is disabled with its reason tied to it.
+
 WebKit moves the focus to links and buttons with Option-Tab, as Safari does unless its setting
 "Press Tab to highlight each item" is on, so the steps press Alt+Tab there.
 """
@@ -19,7 +27,9 @@ from typing import Any
 
 import pytest
 
+from coding_study.domain.problem import Language
 from tests.browsers import launched
+from tests.profile_workspace import profiled_workspace, with_attempt_in_progress
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -370,3 +380,356 @@ def test_escape_in_the_results_asks_before_cancelling_a_run(keys):
 
 def test_escape_in_the_results_cancels_the_run_once_confirmed(keys):
     assert keys.cancelled == "interrupted"
+
+
+PROFILE_TABS = 14
+CHIP = "chip-profile"
+SEARCH = "#filter-search"
+COMMAND = ".command-text"
+MOCK_COMMAND = "form.mock-form .cmd"
+SAVE = ".settings-bar button[type=submit]"
+RESET = ".settings-bar button:has-text('Reset')"
+STATUS = ".settings-bar p[role=status]"
+SHEET = "dialog.sheet[open]"
+ROLE = "#config-profile-job_roles"
+LANGUAGE = "#profile-lang-"
+SLUG = "two-sum"
+SHOWN_ALL = "cstudy list --widen all"
+LISTED = ".listing:not([aria-busy]) table.problems tbody tr"
+GUIDES = "ul.guide-list > li, ul.path-cards > li"
+
+
+@dataclass
+class ProfileKeys:
+    """What the keyboard did to the profile's controls, view by view."""
+
+    problems_chip: dict[str, Any] = field(default_factory=dict[str, Any])
+    problems_next_stop: dict[str, Any] = field(default_factory=dict[str, Any])
+    enter_command: str = ""
+    enter_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    enter_chip_count: int = -1
+    space_command: str = ""
+    space_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    edit_hash: str = ""
+    edit_focus: str = ""
+    guides_chip: dict[str, Any] = field(default_factory=dict[str, Any])
+    guides_command: str = ""
+    guides_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    mock_chip: dict[str, Any] = field(default_factory=dict[str, Any])
+    mock_command: str = ""
+    mock_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    first_role: dict[str, Any] = field(default_factory=dict[str, Any])
+    roles_before: list[bool] = field(default_factory=list[bool])
+    roles_after_space: list[bool] = field(default_factory=list[bool])
+    second_role_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    changes_after_toggles: str = ""
+    python_disabled: bool = False
+    python_described_by: str = ""
+    python_note: str = ""
+    save_dialog: dict[str, Any] = field(default_factory=dict[str, Any])
+    dialog_title: str = ""
+    focus_outside_removal: list[str] = field(default_factory=list[str])
+    escape_dialogs: int = -1
+    escape_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    escape_status: str = ""
+    delete_stop: dict[str, Any] = field(default_factory=dict[str, Any])
+    second_step_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    confirm_stop: dict[str, Any] = field(default_factory=dict[str, Any])
+    confirm_enabled: bool = False
+    back_stop: dict[str, Any] = field(default_factory=dict[str, Any])
+    first_step_again: dict[str, Any] = field(default_factory=dict[str, Any])
+    refused_delete_disabled: bool = False
+    refused_reason: str = ""
+    refused_described_by: str = ""
+    refused_back: dict[str, Any] = field(default_factory=dict[str, Any])
+    refused_stops: list[str] = field(default_factory=list[str])
+    refused_escape_dialogs: int = -1
+
+
+@pytest.fixture(scope="module")
+def profile_server(
+    engine: str, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[RunningServer]:
+    workspace = profiled_workspace(tmp_path_factory.mktemp(f"keys-profile-{engine}"))
+    with running_server(workspace) as running:
+        yield running
+
+
+@pytest.fixture(scope="module")
+def refused_server(
+    engine: str, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[RunningServer]:
+    base = profiled_workspace(tmp_path_factory.mktemp(f"keys-refused-{engine}"))
+    with running_server(with_attempt_in_progress(base, SLUG, Language.GO)) as running:
+        yield running
+
+
+def _press_tab_to(page: Any, tab: str, wanted: str, limit: int = PROFILE_TABS) -> None:
+    """Tabs until the element with the id `wanted` has the focus; fails after `limit` stops."""
+    for _ in range(limit):
+        page.keyboard.press(tab)
+        if page.evaluate("document.activeElement?.id") == wanted:
+            return
+    raise AssertionError(f"Tab did not reach #{wanted} in {limit} stops")
+
+
+def _command_is(page: Any, command: str, where: str = COMMAND) -> None:
+    page.wait_for_function(
+        "([where, expected]) => document.querySelector(where)?.textContent === expected",
+        arg=[where, command],
+    )
+
+
+def _on_the_chip(page: Any, tab: str, route: str, ready: str, start: str) -> dict[str, Any]:
+    """Opens `route`, puts the focus on `start` and Tabs to the profile chip."""
+    page.evaluate("route => { location.hash = route }", route)
+    page.wait_for_selector(ready)
+    page.wait_for_selector(f"#{CHIP}")
+    page.focus(start)
+    _press_tab_to(page, tab, CHIP)
+    return _focus(page)
+
+
+def _chips_by_the_keyboard(page: Any, tab: str, shift_tab: str, found: ProfileKeys) -> None:
+    found.problems_chip = _on_the_chip(page, tab, "#/", LISTED, SEARCH)
+    page.keyboard.press(tab)
+    found.problems_next_stop = _focus(page)
+    page.keyboard.press(shift_tab)
+    page.keyboard.press("Enter")
+    _command_is(page, SHOWN_ALL)
+    found.enter_command = page.locator(COMMAND).inner_text()
+    found.enter_focus = _focus(page)
+    found.enter_chip_count = page.locator(f"#{CHIP}").count()
+    # Space does what Enter does, from a fresh route with the profile back.
+    page.evaluate("location.hash = '#/'")
+    page.wait_for_selector(f"#{CHIP}")
+    page.focus(f"#{CHIP}")
+    page.keyboard.press("Space")
+    _command_is(page, SHOWN_ALL)
+    found.space_command = page.locator(COMMAND).inner_text()
+    found.space_focus = _focus(page)
+    # `edit profile` follows the chip and lands on the Profile heading.
+    page.evaluate("location.hash = '#/'")
+    page.wait_for_selector(f"#{CHIP}")
+    page.focus(f"#{CHIP}")
+    page.keyboard.press(tab)
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#profile-heading:focus")
+    found.edit_hash = page.evaluate("location.hash")
+    found.edit_focus = page.evaluate("document.activeElement?.id")
+    found.guides_chip = _on_the_chip(page, tab, "#/guides", GUIDES, SEARCH)
+    page.keyboard.press("Enter")
+    _command_is(page, "cstudy learn --widen all")
+    found.guides_command = page.locator(COMMAND).inner_text()
+    found.guides_focus = _focus(page)
+    found.mock_chip = _on_the_chip(page, tab, "#/mock", "form.mock-form", "main")
+    page.keyboard.press("Space")
+    _command_is(page, "cstudy mock --widen all", MOCK_COMMAND)
+    found.mock_command = page.locator(MOCK_COMMAND).inner_text()
+    found.mock_focus = _focus(page)
+
+
+def _checkbox_groups(page: Any, tab: str, found: ProfileKeys) -> None:
+    page.evaluate("location.hash = '#/settings/profile'")
+    page.wait_for_selector("#profile-heading:focus")
+    roles = page.locator(f"{ROLE} input[type=checkbox]")
+    first, second = roles.nth(0), roles.nth(1)
+    first.focus()
+    found.first_role = _focus(page)
+    found.roles_before = [first.is_checked(), second.is_checked()]
+    page.keyboard.press("Space")
+    page.keyboard.press(tab)
+    found.second_role_focus = _focus(page)
+    page.keyboard.press("Space")
+    found.roles_after_space = [first.is_checked(), second.is_checked()]
+    found.changes_after_toggles = page.locator(".settings-count").inner_text()
+    page.click(RESET)
+    page.wait_for_selector(f"{ROLE}-backend:checked")
+    # Unchecking go leaves python the last language: disabled, its note tied to it.
+    page.focus(f"{LANGUAGE}go")
+    page.keyboard.press("Space")
+    found.python_disabled = page.is_disabled(f"{LANGUAGE}python")
+    found.python_described_by = page.get_attribute(f"{LANGUAGE}python", "aria-describedby") or ""
+    note = page.locator(f"#{found.python_described_by}") if found.python_described_by else None
+    found.python_note = note.inner_text() if note else ""
+
+
+def _removal_dialog(page: Any, tab: str, shift_tab: str, found: ProfileKeys) -> None:
+    page.focus(SAVE)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(SHEET)
+    found.save_dialog = _focus(page)
+    found.dialog_title = page.locator(f"{SHEET} h2").inner_text()
+    for _ in range(DIALOG_TABS):
+        page.keyboard.press(tab)
+        focus = page.evaluate(FOCUS)
+        if focus is not None and not focus["inDialog"]:
+            found.focus_outside_removal.append(f"{focus['role']} {focus['name'][:30]}")
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SHEET, state="detached")
+    page.wait_for_selector(f"{STATUS}:has-text('not saved')")
+    found.escape_dialogs = page.locator(SHEET).count()
+    found.escape_focus = _focus(page)
+    found.escape_status = page.locator(STATUS).inner_text()
+    # The second confirmation: Delete the folder, then Back, then the delete itself.
+    page.keyboard.press("Enter")
+    page.wait_for_selector(SHEET)
+    page.keyboard.press(shift_tab)
+    found.delete_stop = _focus(page)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{SHEET} .removal-goes")
+    found.second_step_focus = _focus(page)
+    page.keyboard.press(tab)
+    found.confirm_stop = _focus(page)
+    found.confirm_enabled = page.is_enabled(f"{SHEET} button.danger")
+    page.keyboard.press(shift_tab)
+    found.back_stop = _focus(page)
+    page.keyboard.press("Enter")
+    found.first_step_again = _focus(page)
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SHEET, state="detached")
+    page.click(RESET)
+
+
+def _refused_removal(page: Any, tab: str, shift_tab: str, found: ProfileKeys) -> None:
+    page.evaluate("location.hash = '#/settings/profile'")
+    page.wait_for_selector(f"{LANGUAGE}go")
+    page.focus(f"{LANGUAGE}go")
+    page.keyboard.press("Space")
+    page.focus(SAVE)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(SHEET)
+    page.keyboard.press(shift_tab)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{SHEET} #removal-blocked")
+    found.refused_delete_disabled = page.is_disabled(f"{SHEET} button.danger")
+    found.refused_reason = " ".join(page.locator(f"{SHEET} #removal-blocked").inner_text().split())
+    found.refused_described_by = (
+        page.get_attribute(f"{SHEET} button.danger", "aria-describedby") or ""
+    )
+    found.refused_back = _focus(page)
+    for _ in range(3):
+        page.keyboard.press(tab)
+        found.refused_stops.append(_focus(page)["name"])
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SHEET, state="detached")
+    found.refused_escape_dialogs = page.locator(SHEET).count()
+
+
+@pytest.fixture(scope="module")
+def profile_keys(
+    engine: str, profile_server: RunningServer, refused_server: RunningServer
+) -> ProfileKeys:
+    found = ProfileKeys()
+    tab = "Alt+Tab" if engine == "webkit" else "Tab"
+    shift_tab = "Alt+Shift+Tab" if engine == "webkit" else "Shift+Tab"
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.set_default_timeout(WAIT_MS)
+        page.goto(profile_server.login_url)
+        page.wait_for_selector(LISTED)
+        _chips_by_the_keyboard(page, tab, shift_tab, found)
+        _checkbox_groups(page, tab, found)
+        _removal_dialog(page, tab, shift_tab, found)
+        page.goto(refused_server.login_url)
+        page.wait_for_selector(LISTED)
+        _refused_removal(page, tab, shift_tab, found)
+        browser.close()
+    return found
+
+
+def test_tab_reaches_the_profile_chip_with_a_visible_focus_and_its_name(profile_keys):
+    for chip in (profile_keys.problems_chip, profile_keys.guides_chip, profile_keys.mock_chip):
+        assert chip["id"] == CHIP
+        assert chip["visible"]
+        assert chip["name"].startswith("Show all ")
+
+
+def test_edit_profile_is_the_next_stop_after_the_chip_with_a_visible_focus(profile_keys):
+    assert profile_keys.problems_next_stop["name"] == "edit profile"
+    assert profile_keys.problems_next_stop["visible"]
+
+
+def test_enter_on_the_chip_widens_and_the_focus_goes_to_its_neighbor(profile_keys):
+    assert profile_keys.enter_command == SHOWN_ALL
+    assert profile_keys.enter_focus["id"] == "chip-widen-lang"
+    assert profile_keys.enter_focus["visible"]
+    assert profile_keys.enter_chip_count == 0
+
+
+def test_space_on_the_chip_widens_too(profile_keys):
+    assert profile_keys.space_command == SHOWN_ALL
+    assert profile_keys.space_focus["id"] == "chip-widen-lang"
+
+
+def test_edit_profile_by_the_keyboard_lands_on_the_profile_heading(profile_keys):
+    assert profile_keys.edit_hash == "#/settings/profile"
+    assert profile_keys.edit_focus == "profile-heading"
+
+
+def test_the_guides_and_mock_chips_widen_by_the_keyboard_with_the_focus_on_a_neighbor(
+    profile_keys,
+):
+    assert profile_keys.guides_command == "cstudy learn --widen all"
+    assert profile_keys.mock_command == "cstudy mock --widen all"
+    for focus in (profile_keys.guides_focus, profile_keys.mock_focus):
+        assert focus["id"].startswith("chip-widen-")
+        assert focus["visible"]
+
+
+def test_a_checkbox_group_is_operated_with_space_and_tab(profile_keys):
+    assert profile_keys.first_role["role"] == "input"
+    assert profile_keys.first_role["visible"]
+    assert profile_keys.second_role_focus["role"] == "input"
+    assert profile_keys.second_role_focus["visible"]
+    assert profile_keys.roles_after_space == [not state for state in profile_keys.roles_before]
+    assert profile_keys.changes_after_toggles == "1 change"
+
+
+def test_the_last_language_is_disabled_and_its_note_is_tied_to_it(profile_keys):
+    assert profile_keys.python_disabled
+    assert profile_keys.python_note == "a workspace needs at least one language"
+
+
+def test_a_save_that_removes_a_language_opens_a_dialog_with_the_focus_on_keep(profile_keys):
+    assert profile_keys.dialog_title == "Remove go from this workspace"
+    assert profile_keys.save_dialog["name"] == "Keep the folder"
+    assert profile_keys.save_dialog["inDialog"]
+    assert profile_keys.save_dialog["visible"]
+
+
+def test_tab_keeps_the_focus_in_the_removal_dialog(profile_keys):
+    assert profile_keys.focus_outside_removal == []
+
+
+def test_escape_cancels_the_removal_and_gives_the_focus_back_to_save(profile_keys):
+    assert profile_keys.escape_dialogs == 0
+    assert profile_keys.escape_focus["name"] == "Save"
+    assert profile_keys.escape_status == "not saved"
+
+
+def test_the_delete_and_its_second_confirmation_are_reached_by_the_keyboard(profile_keys):
+    assert profile_keys.delete_stop["name"] == "Delete the folder…"
+    assert profile_keys.second_step_focus["name"] == "Back"
+    assert profile_keys.confirm_stop["name"] == "Delete go/ and go.work"
+    assert profile_keys.confirm_stop["visible"]
+    assert profile_keys.confirm_enabled
+
+
+def test_back_returns_to_the_first_step_with_the_focus_on_keep(profile_keys):
+    assert profile_keys.back_stop["name"] == "Back"
+    assert profile_keys.first_step_again["name"] == "Keep the folder"
+
+
+def test_a_refused_delete_is_disabled_with_its_reason_tied_to_it(profile_keys):
+    assert profile_keys.refused_delete_disabled
+    assert profile_keys.refused_reason.startswith("cannot delete go/ and go.work: attempt ")
+    assert profile_keys.refused_described_by == "removal-blocked"
+
+
+def test_tab_skips_a_disabled_delete_and_stays_in_the_dialog(profile_keys):
+    assert profile_keys.refused_back["name"] == "Back"
+    assert "Cancel" in profile_keys.refused_stops
+    assert not any(name.startswith("Delete go") for name in profile_keys.refused_stops)
+    assert profile_keys.refused_escape_dialogs == 0

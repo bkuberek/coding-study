@@ -29,6 +29,8 @@ import pytest
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.domain.preferences import Preferences, preferences_document
+from coding_study.domain.problem import Language
+from coding_study.domain.taxonomy import PROFILE_JOB_ROLES
 from tests.browsers import launched, refusing_starts
 from tests.helpers import mark_workspace, selecting_jdk
 from tests.intelligence_lab import SERVES as CAPABLE
@@ -38,6 +40,7 @@ from tests.language_server_scripts import (
     install_fake_basedpyright,
     notification,
 )
+from tests.profile_workspace import profiled_workspace, with_attempt_in_progress
 from tests.serve_page import opened_page
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
@@ -679,3 +682,177 @@ def test_a_view_a_jdk_that_cannot_run_java_changes_has_no_accessibility_violatio
     jdk_violations, view
 ):
     assert jdk_violations[view] == []
+
+
+PROFILE_VIEWS = (
+    "problems with the profile chip",
+    "problems with a widened dimension",
+    "problems with more open and the profile chip",
+    "guides with the profile chip",
+    "guides with a widened dimension",
+    "mock with the profile chip",
+    "start dialog with a disabled language",
+    "settings profile section",
+    "settings profile with the choose at least one message",
+    "removal dialog, the choice",
+    "removal dialog, the delete preview",
+)
+REFUSED_VIEWS = ("removal dialog, the refusal",)
+CHIP = "#chip-profile"
+LISTED = ".listing:not([aria-busy]) table.problems tbody tr"
+GUIDES = "ul.guide-list > li, ul.path-cards > li"
+PROFILE_ROLE = "#config-profile-job_roles"
+PROFILE_LANGUAGE = "#profile-lang-"
+SETTINGS_BAR = ".settings-bar"
+BUSY_SLUG = "two-sum"
+
+
+@pytest.fixture(scope="module")
+def profiled_server(
+    engine: str, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[RunningServer]:
+    """A workspace of python and go, whose profile is the backend role and two domains."""
+    workspace = profiled_workspace(tmp_path_factory.mktemp(f"axe-profile-{engine}"))
+    with running_server(workspace) as running:
+        yield running
+
+
+@pytest.fixture(scope="module")
+def refused_server(
+    engine: str, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[RunningServer]:
+    """The same, with an attempt in go in progress: the page cannot delete go's folder."""
+    base = profiled_workspace(tmp_path_factory.mktemp(f"axe-refused-{engine}"))
+    workspace = with_attempt_in_progress(base, BUSY_SLUG, Language.GO)
+    with running_server(workspace) as running:
+        yield running
+
+
+def _tour_of(
+    engine: str,
+    server: RunningServer,
+    tour: Callable[[Any], Iterator[tuple[str, Callable[[], None]]]],
+) -> dict[str, list[str]]:
+    found: dict[str, list[str]] = {}
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = browser.new_page(viewport={"width": WIDTHS[0], "height": HEIGHT})
+        page.set_default_timeout(WAIT_MS)
+        page.goto(server.login_url)
+        page.wait_for_selector(LISTED)
+        for view, show in tour(page):
+            show()
+            found[view] = _checked(page)
+            page.set_viewport_size({"width": WIDTHS[0], "height": HEIGHT})
+        browser.close()
+    return found
+
+
+@pytest.fixture(scope="module")
+def profile_violations(engine: str, profiled_server: RunningServer) -> dict[str, list[str]]:
+    """The violations of the profile's controls, in each view they are drawn in."""
+    return _tour_of(engine, profiled_server, _profile_tour)
+
+
+@pytest.fixture(scope="module")
+def refused_violations(engine: str, refused_server: RunningServer) -> dict[str, list[str]]:
+    """The violations of the removal dialog's refusal."""
+    return _tour_of(engine, refused_server, _refused_tour)
+
+
+def _profile_tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
+    yield PROFILE_VIEWS[0], lambda: _chip_view(page, "#/", LISTED)
+    yield PROFILE_VIEWS[1], lambda: _widened_chip_view(page, "#/?widen=lang", LISTED)
+    yield PROFILE_VIEWS[2], lambda: _more_with_chip(page)
+    yield PROFILE_VIEWS[3], lambda: _chip_view(page, "#/guides", GUIDES)
+    yield PROFILE_VIEWS[4], lambda: _widened_chip_view(page, "#/guides?widen=role", GUIDES)
+    yield PROFILE_VIEWS[5], lambda: _chip_view(page, "#/mock", ".mock-form")
+    yield PROFILE_VIEWS[6], lambda: _start_dialog_with_disabled_language(page)
+    yield PROFILE_VIEWS[7], lambda: _profile_section(page)
+    yield PROFILE_VIEWS[8], lambda: _choose_at_least_one(page)
+    yield PROFILE_VIEWS[9], lambda: _removal_choice(page)
+    yield PROFILE_VIEWS[10], lambda: _removal_preview(page)
+
+
+def _refused_tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
+    yield REFUSED_VIEWS[0], lambda: _removal_refusal(page)
+
+
+def _chip_view(page: Any, route: str, listed: str) -> None:
+    """A view with the profile hiding rows, the chip drawn in its filter line."""
+    _open(page, route, listed)
+    page.wait_for_selector(CHIP)
+
+
+def _widened_chip_view(page: Any, route: str, listed: str) -> None:
+    """A view with one dimension widened: its chip, and the profile chip for the others."""
+    _open(page, route, listed)
+    page.wait_for_selector(".filter-summary .filter-chip[id^=chip-widen-]")
+    page.wait_for_selector(CHIP)
+
+
+def _more_with_chip(page: Any) -> None:
+    _chip_view(page, "#/", LISTED)
+    page.click(".filter-more > summary")
+    page.wait_for_selector(".filter-more .filter-panel")
+
+
+def _start_dialog_with_disabled_language(page: Any) -> None:
+    _open(page, f"#/problems/{BUSY_SLUG}", ".practice-actions button.primary")
+    page.click(".practice-actions button.primary")
+    page.wait_for_selector(f"{SHEET} #start-language option:disabled", state="attached")
+
+
+def _profile_section(page: Any) -> None:
+    _open(page, "#/settings/profile", f"{PROFILE_LANGUAGE}python")
+    page.wait_for_selector(f"{PROFILE_ROLE}-backend")
+
+
+def _choose_at_least_one(page: Any) -> None:
+    """Every role unchecked and Save pressed: the message beside the group, nothing written."""
+    _profile_section(page)
+    for role in PROFILE_JOB_ROLES:
+        page.uncheck(f"{PROFILE_ROLE}-{role}")
+    page.click(f"{SETTINGS_BAR} button[type=submit]")
+    page.wait_for_selector(f"{PROFILE_ROLE}-error")
+    page.wait_for_function(
+        "id => document.getElementById(id)?.offsetParent !== null",
+        arg="config-profile-job_roles-error",
+    )
+
+
+def _removal_choice(page: Any) -> None:
+    """The first step of a removal of go: keep the folder, delete it, or cancel."""
+    page.click(f"{SETTINGS_BAR} button:has-text('Reset')")
+    page.wait_for_selector(f"{PROFILE_ROLE}-backend:checked")
+    page.uncheck(f"{PROFILE_LANGUAGE}go")
+    page.click(f"{SETTINGS_BAR} button[type=submit]")
+    page.wait_for_selector(f"{SHEET} button:has-text('Keep the folder')")
+
+
+def _removal_preview(page: Any) -> None:
+    """The second step: what goes, what stays and why, and the delete's second confirmation."""
+    page.click(f"{SHEET} button:has-text('Delete the folder…')")
+    page.wait_for_selector(f"{SHEET} .removal-goes")
+    page.wait_for_selector(f"{SHEET} button.danger:not([disabled])")
+
+
+def _removal_refusal(page: Any) -> None:
+    """The second step of a removal of go with an attempt in progress in it: the delete is
+    disabled and the CLI's reason is tied to it."""
+    _open(page, "#/settings/profile", f"{PROFILE_LANGUAGE}go")
+    page.uncheck(f"{PROFILE_LANGUAGE}go")
+    page.click(f"{SETTINGS_BAR} button[type=submit]")
+    page.click(f"{SHEET} button:has-text('Delete the folder…')")
+    page.wait_for_selector(f"{SHEET} #removal-blocked")
+    page.wait_for_selector(f"{SHEET} button.danger[disabled]")
+
+
+@pytest.mark.parametrize("view", PROFILE_VIEWS)
+def test_the_profile_chip_and_controls_have_no_accessibility_violation(profile_violations, view):
+    assert profile_violations[view] == []
+
+
+@pytest.mark.parametrize("view", REFUSED_VIEWS)
+def test_the_removal_dialog_refusal_has_no_accessibility_violation(refused_violations, view):
+    assert refused_violations[view] == []

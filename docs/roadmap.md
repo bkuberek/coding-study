@@ -218,7 +218,7 @@ The content must-haves:
 |----|-----------|--------|-----------|
 | A1 | axe-core finds no WCAG 2.2 A or AA violation on any view or dialog, in light and dark, at 1440 and 390 pixels, in Chromium, Firefox and WebKit | Met locally; CI runs Chromium | Kept in every milestone, run again for v1.0.0 |
 | A2 | The keyboard-only journey passes | Met | |
-| A4 | Every new view and control (Guides search, example tabs, the Docs page, the profile filters, the shell command and the grading phases of troubleshooting problems, the AI drawer) is covered by A1 and A2 | Partly met: covered as each lands; the profile filters are not covered until their page controls and browser tests land | Each milestone |
+| A4 | Every new view and control (Guides search, example tabs, the Docs page, the profile filters, the shell command and the grading phases of troubleshooting problems, the AI drawer) is covered by A1 and A2 | Partly met: covered as each lands; the profile filters are covered (the Problems, Guides and Mock views with the profile chip, the Start dialog, the Settings Profile section and the removal dialog, by axe and by the keyboard), the rest when its page controls and browser tests land | Each milestone |
 
 #### Performance
 
