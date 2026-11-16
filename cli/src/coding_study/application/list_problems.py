@@ -127,20 +127,6 @@ class ProblemFilter:
 
 
 @dataclass(frozen=True, slots=True)
-class ProfileEffect:
-    """What the learner profile did to a listing: `shown` rows of the `total` that `--widen all`
-    would show with the same other filters."""
-
-    narrowed: NarrowedValues
-    shown: int
-    total: int
-
-    @property
-    def hidden(self) -> int:
-        return self.total - self.shown
-
-
-@dataclass(frozen=True, slots=True)
 class ListedProblem:
     summary: ProblemSummary
     status: ProblemStatus

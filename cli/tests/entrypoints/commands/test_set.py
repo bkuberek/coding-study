@@ -405,6 +405,9 @@ def test_next_set_keeps_the_message_of_a_filter_that_left_nothing(environment):
     ).output.strip() == ("nothing due and no new problems in scope")
 
 
+UNPROFILED = {"languages": None, "job_roles": None, "domains": None, "hidden": {"problems": 0}}
+
+
 def test_next_set_json_keeps_every_field_and_adds_the_set(environment):
     looped("two-sum", "lru-cache")
     document = json.loads(runner.invoke(cli.app, ["next", "--set", LOOP, "--json"]).stdout)
@@ -421,6 +424,7 @@ def test_next_set_json_keeps_every_field_and_adds_the_set(environment):
         "language": "python",
         "start": "cstudy start two-sum --lang python",
         "set": {"name": LOOP, "passed": 0, "total": 2, "finished": False},
+        "profile": UNPROFILED,
     }
 
 
@@ -431,6 +435,7 @@ def test_next_set_json_says_when_the_set_is_finished(environment):
         "pick": None,
         "message": f"{LOOP} is finished: 1 of 1 passed",
         "set": {"name": LOOP, "passed": 1, "total": 1, "finished": True},
+        "profile": UNPROFILED,
     }
 
 

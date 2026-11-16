@@ -31,6 +31,10 @@ ALL_DIMENSIONS = tuple(Dimension)
 GUIDE_DIMENSIONS = (Dimension.JOB_ROLES, Dimension.DOMAINS)
 """A guide teaches in every language, so `cstudy learn` applies two dimensions."""
 
+PICK_DIMENSIONS = (Dimension.JOB_ROLES, Dimension.DOMAINS)
+"""`cstudy next` and `cstudy mock` start a pick in a workspace language, so their languages are
+always the workspace's and `--widen` names roles and domains."""
+
 _EVERY_VALUE: dict[Dimension, tuple[str, ...]] = {
     Dimension.LANGUAGES: tuple(ALL_LANGUAGES),
     Dimension.JOB_ROLES: PROFILE_JOB_ROLES,
@@ -63,17 +67,21 @@ class Widening:
 NO_WIDENING = Widening()
 
 
-def widening_from(values: Iterable[str]) -> Widening:
-    """The widening of `--widen` values: `lang`, `role`, `domain` or `all`. Any other raises
-    ValueError."""
+def widening_from(
+    values: Iterable[str], widenable: Collection[Dimension] = ALL_DIMENSIONS
+) -> Widening:
+    """The widening of `--widen` values: `lang`, `role`, `domain` or `all`, of those that name a
+    dimension of `widenable` (the three, for `cstudy list`; roles and domains for the commands
+    whose languages are the workspace's). Any other raises ValueError."""
+    names = [name for name, dimension in WIDEN_DIMENSIONS.items() if dimension in widenable]
     dimensions: set[Dimension] = set()
     for value in values:
         if value == WIDEN_ALL:
             dimensions.update(Dimension)
-        elif value in WIDEN_DIMENSIONS:
+        elif value in names:
             dimensions.add(WIDEN_DIMENSIONS[value])
         else:
-            raise ValueError(f'unknown widening "{value}"; use lang, role, domain or all')
+            raise ValueError(f'unknown widening "{value}"; use {", ".join(names)} or {WIDEN_ALL}')
     return Widening(frozenset(dimensions))
 
 
@@ -187,6 +195,24 @@ def learner_profile(
         domains=settings.domains,
         languages_chosen=True,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileEffect:
+    """What the learner profile did to a listing or a pick's scope: `shown` entries of the `total`
+    that `--widen all` would show with the same other filters."""
+
+    narrowed: NarrowedValues
+    shown: int
+    total: int
+
+    @property
+    def hidden(self) -> int:
+        return self.total - self.shown
+
+
+NO_PROFILE_EFFECT = ProfileEffect(NarrowedValues(), 0, 0)
+"""A run the profile narrowed nothing in: no count is taken."""
 
 
 class ProfileLineKind(StrEnum):

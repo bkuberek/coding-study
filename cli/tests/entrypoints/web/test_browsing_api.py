@@ -365,10 +365,14 @@ def test_an_unknown_domain_on_the_next_pick_gets_422_usage(client):
     assert error(client.get("/api/v1/next?domain=chess")) == (422, "usage")
 
 
+UNPROFILED = {"languages": None, "job_roles": None, "domains": None, "hidden": {"problems": 0}}
+
+
 def test_nothing_to_pick_is_the_clis_message(client):
     assert client.get("/api/v1/next?track=practical").json() == {
         "pick": None,
         "message": "nothing due and no new problems in scope",
+        "profile": UNPROFILED,
     }
 
 
@@ -392,6 +396,7 @@ def test_the_next_pick_says_which_jdk_ran_out_of_problems(tmp_path):
         "pick": None,
         "message": "nothing to pick: JDK 27 (JAVA_HOME) cannot run java problems; "
         "cstudy supports JDK 21 to 26",
+        "profile": UNPROFILED,
     }
 
 

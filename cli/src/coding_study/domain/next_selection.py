@@ -5,7 +5,7 @@ the flags, never on the order the rows arrive in. Every ordering below ends in a
 """
 
 from collections import defaultdict
-from collections.abc import Collection, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from enum import StrEnum
@@ -28,7 +28,16 @@ from coding_study.domain.problem import (
     Track,
 )
 from coding_study.domain.problem_sets import ProblemSet, target_reached
+from coding_study.domain.profile import (
+    NO_PROFILE_EFFECT,
+    NO_WIDENING,
+    NarrowedValues,
+    Profile,
+    ProfileEffect,
+    Widening,
+)
 from coding_study.domain.scheduling import ProblemProgress
+from coding_study.domain.service_project import service_of
 from coding_study.domain.weakness import GradedAttempt, Group, GroupHistory, group_of
 
 _DIFFICULTY_ORDER = tuple(Difficulty)
@@ -55,6 +64,8 @@ class Candidate:
     """The JDK range the problem declares for its Java and Kotlin."""
     project: bool = False
     """A project problem, which starts in its own language, not in `--lang`."""
+    service: bool = False
+    """A service project, which runs in Docker and uses no language folder."""
     labels: Labels = field(default_factory=Labels)
     levels: int | None = None
     """A progressive or project problem's last level; None for anything else."""
@@ -64,12 +75,6 @@ class Candidate:
     @property
     def group(self) -> Group:
         return group_of(self.track, self.patterns)
-
-    def start_language(self, chosen: Language) -> Language | None:
-        """The language `cstudy next --start` starts it in; None for a rubric problem."""
-        if not self.autograded:
-            return None
-        return self.languages[0] if self.project and self.languages else chosen
 
     def sort_key(self) -> tuple[int, int, str]:
         """Difficulty, curriculum order, slug."""
@@ -88,6 +93,7 @@ def candidate_of(meta: ProblemMeta, progress: ProblemProgress) -> Candidate:
         progress=progress,
         jdk=meta.jdk,
         project=meta.kind is ProblemKind.PROJECT,
+        service=service_of(meta) is not None,
         labels=meta.labels,
         levels=_last_level(meta),
     )
@@ -113,23 +119,68 @@ def item_candidate_of(meta: ItemMeta, progress: ProblemProgress) -> Candidate:
 
 
 @dataclass(frozen=True, slots=True)
+class Starting:
+    """The language `cstudy next`, `cstudy mock` and `cstudy start` start a pick in, and whether
+    a workspace language can start it (docs/specs/cli.md#the-workspaces-languages)."""
+
+    default: Language
+    """The default language: `--lang`, else `default_lang` while it is a workspace language, else
+    the first of them."""
+    workspace: Collection[Language] | None = None
+    """The workspace's languages; None is a workspace that has not chosen them: all six."""
+    requested: Language | None = None
+    """`--lang`."""
+
+    def language_of(self, candidate: Candidate) -> Language | None:
+        """`--lang`, else the default language when the problem lists it, else the first of the
+        workspace's languages it lists; a project problem starts in its own language. None for a
+        rubric problem, and for a problem no workspace language can start."""
+        if not candidate.autograded:
+            return None
+        if candidate.project and candidate.languages:
+            return candidate.languages[0]
+        if self.requested is not None:
+            return self.requested if self.requested in candidate.languages else None
+        if self.default in candidate.languages:
+            return self.default
+        return next(
+            (
+                language
+                for language in Language
+                if language in candidate.languages and self._lists(language)
+            ),
+            None,
+        )
+
+    def starts(self, candidate: Candidate) -> bool:
+        """Whether a new attempt of `candidate` can start: a rubric problem needs no language and
+        a service project runs in Docker; any other project needs its language in the workspace."""
+        if not candidate.autograded or candidate.service:
+            return True
+        language = self.language_of(candidate)
+        return language is not None and self._lists(language)
+
+    def _lists(self, language: Language) -> bool:
+        return self.workspace is None or language in self.workspace
+
+
+@dataclass(frozen=True, slots=True)
 class JdkScope:
-    """The selected JDK, and the language `cstudy start` starts a problem in (`--lang`, else
-    `default_lang`): a problem whose Java or Kotlin that JDK cannot run is out of scope, so the
-    pick is never one that `cstudy start` would refuse."""
+    """The selected JDK, and where a pick starts: a problem whose Java or Kotlin that JDK cannot
+    run is out of scope, so the pick is never one that `cstudy start` would refuse."""
 
     selected: SelectedJdk | None
-    language: Language
+    starting: Starting
 
     def admits(self, candidate: Candidate) -> bool:
-        language = candidate.start_language(self.language)
+        language = self.starting.language_of(candidate)
         if language not in JVM_LANGUAGES:
             return True
         return fit_of(self.selected, None, candidate.jdk).runs
 
     def blocked_language(self, candidate: Candidate) -> Language | None:
         """The Java or Kotlin that `candidate` would start in, when the JDK cannot run it."""
-        language = candidate.start_language(self.language)
+        language = self.starting.language_of(candidate)
         return language if language is not None and not self.admits(candidate) else None
 
 
@@ -145,6 +196,14 @@ class NextScope:
     """None: the selected JDK does not narrow the scope."""
     labels: LabelFilter = field(default_factory=LabelFilter)
     """`--domain`, `--role` and `--scope`; every problem carries labels."""
+    starting: Starting | None = None
+    """Only problems a workspace language can start; None: any problem may."""
+    profile: Profile | None = None
+    """The learner profile that narrows the scope; None applies none, as under `--set`
+    (docs/specs/cli.md#the-learner-profile)."""
+    widening: Widening = NO_WIDENING
+    """The dimensions the profile is dropped in: `--widen`, and each explicit `--lang`, `--role` or
+    `--domain`."""
 
     def includes(self, candidate: Candidate) -> bool:
         checks = (
@@ -154,9 +213,26 @@ class NextScope:
             self.difficulty in (None, candidate.difficulty),
             self._offers_language(candidate),
             self.labels.matches(candidate.labels),
+            self.starting is None or self.starting.starts(candidate),
+            self._in_profile(candidate),
             self.jdk is None or self.jdk.admits(candidate),
         )
         return all(checks)
+
+    def narrowed(self) -> NarrowedValues:
+        """The profile values that narrow this scope; none without a profile."""
+        if self.profile is None:
+            return NarrowedValues()
+        return self.profile.narrowed(widening=self.widening)
+
+    def without_profile(self) -> "NextScope":
+        """The same scope as `--widen all` would leave it."""
+        return replace(self, profile=None)
+
+    def _in_profile(self, candidate: Candidate) -> bool:
+        return self.profile is None or self.profile.matches(
+            candidate.labels, candidate.languages, widening=self.widening
+        )
 
     def blocked_languages(self, candidates: Iterable[Candidate]) -> tuple[Language, ...]:
         """The Java and Kotlin that `candidates` would start in, had the scope not left them out
@@ -225,6 +301,15 @@ class SetPick:
 type NextPick = ReviewPick | NewPick
 
 
+def profile_effect(scope: NextScope, counted: Callable[[NextScope], int]) -> ProfileEffect:
+    """How many of the problems `counted` finds in `scope` the learner profile leaves, of those it
+    finds without it; no count while the profile narrows nothing in this run."""
+    narrowed = scope.narrowed()
+    if narrowed.is_empty:
+        return NO_PROFILE_EFFECT
+    return ProfileEffect(narrowed, counted(scope), counted(scope.without_profile()))
+
+
 @dataclass(frozen=True, slots=True)
 class OpenAttempt:
     """An attempt in progress, with the problem it works on."""
@@ -254,7 +339,9 @@ class ResumePick:
 
 def pick_resume(attempts: Iterable[OpenAttempt], scope: NextScope) -> ResumePick | None:
     """The attempt in progress used most recently among those in `scope`; a tie goes to the later
-    attempt. None when none is in progress there."""
+    attempt. None when none is in progress there. An attempt resumes in its own language, so no
+    workspace language has to start the problem."""
+    scope = replace(scope, starting=None)
     in_scope = [attempt for attempt in attempts if scope.includes(attempt.candidate)]
     ranked = sorted(
         in_scope, key=lambda attempt: (attempt.used_at, attempt.attempt_id), reverse=True

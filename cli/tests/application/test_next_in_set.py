@@ -25,6 +25,7 @@ from coding_study.domain.next_selection import (
     SetPick,
 )
 from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.profile import Profile
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, jdk_of, make_environment, repository_root
 from tests.helpers import FIRST_CATALOG, FIXTURE_RUBRIC_PROBLEMS, copy_catalog_problems
@@ -313,3 +314,10 @@ def test_a_recommendation_in_a_set_has_its_standing(environment):
     standing = recommended(environment).set_standing
     assert standing is not None
     assert (standing.name, standing.passed, standing.total) == (LOOP, 1, 2)
+
+
+def test_a_set_ignores_the_learner_profile(environment):
+    in_order(environment, "two-sum", "lru-cache")
+    security = Profile(domains=("security",))
+    assert picked_slug(environment, profile=security) == picked_slug(environment) == "two-sum"
+    assert recommended(environment, profile=security).profile.hidden == 0

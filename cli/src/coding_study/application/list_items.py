@@ -8,13 +8,9 @@ from dataclasses import dataclass
 from datetime import date
 
 from coding_study.application.environment import Environment
-from coding_study.application.list_problems import (
-    ListedProblem,
-    ProblemFilter,
-    ProfileEffect,
-    list_problems,
-)
+from coding_study.application.list_problems import ListedProblem, ProblemFilter, list_problems
 from coding_study.domain.items import ItemMeta, is_rubric_track
+from coding_study.domain.profile import ProfileEffect
 from coding_study.domain.scheduling import ProblemProgress, ProblemStatus
 
 

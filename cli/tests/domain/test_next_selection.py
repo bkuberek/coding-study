@@ -16,11 +16,24 @@ from coding_study.domain.next_selection import (
     NextQuery,
     NextScope,
     NextSource,
+    OpenAttempt,
     ReviewPick,
+    Starting,
     item_candidate_of,
     pick_next,
+    pick_resume,
+    profile_effect,
 )
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
+from coding_study.domain.profile import (
+    NO_PROFILE_EFFECT,
+    NO_WIDENING,
+    Dimension,
+    NarrowedValues,
+    Profile,
+    ProfileEffect,
+    Widening,
+)
 from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
 from coding_study.domain.taxonomy import Scope
 from coding_study.domain.weakness import GradedAttempt, Group
@@ -463,7 +476,7 @@ def test_repeated_picks_agree(source):
 
 
 def jdk_selected(feature: int, language: Language = Language.JAVA) -> JdkScope:
-    return JdkScope(SelectedJdk(f"{feature}.0.1", feature, JdkSource.JAVA_HOME), language)
+    return JdkScope(SelectedJdk(f"{feature}.0.1", feature, JdkSource.JAVA_HOME), Starting(language))
 
 
 def in_scope(scope: NextScope, *candidates: Candidate) -> list[str]:
@@ -489,11 +502,11 @@ def test_a_java_problem_is_out_of_scope_on_a_jdk_outside_the_range(feature):
 
 
 def test_every_java_problem_is_out_of_scope_without_a_jdk():
-    assert in_scope(with_jdk(JdkScope(None, Language.KOTLIN)), candidate("two-sum")) == []
+    assert in_scope(with_jdk(JdkScope(None, Starting(Language.KOTLIN))), candidate("two-sum")) == []
 
 
 def test_the_other_languages_do_not_need_the_jdk():
-    scope = with_jdk(JdkScope(None, Language.PYTHON))
+    scope = with_jdk(JdkScope(None, Starting(Language.PYTHON)))
     assert in_scope(scope, candidate("two-sum")) == ["two-sum"]
 
 
@@ -520,7 +533,7 @@ def test_a_project_problem_in_python_needs_no_jdk_whatever_language_starts_the_o
 
 
 def test_an_item_is_in_scope_whatever_the_jdk():
-    scope = NextScope(frozenset({Track.SYSTEM_DESIGN}), jdk=JdkScope(None, Language.JAVA))
+    scope = NextScope(frozenset({Track.SYSTEM_DESIGN}), jdk=JdkScope(None, Starting(Language.JAVA)))
     assert in_scope(scope, item("url-shortener")) == ["url-shortener"]
 
 
@@ -540,3 +553,180 @@ def test_the_scope_names_nothing_the_jdk_took_out_when_it_took_none():
 def test_a_problem_out_of_scope_for_another_reason_is_not_blamed_on_the_jdk():
     scope = NextScope(frozenset({Track.PRACTICAL}), jdk=jdk_selected(27))
     assert scope.blocked_languages([candidate("two-sum")]) == ()
+
+
+# Where a pick starts (docs/specs/cli.md#the-workspaces-languages)
+
+PY_GO = (Language.PYTHON, Language.GO)
+GO_ONLY = candidate("go-only", languages=(Language.GO,))
+ANY_LANGUAGE = candidate("two-sum")
+
+
+def test_a_pick_starts_in_the_default_language_when_it_lists_it():
+    starting = Starting(Language.GO, PY_GO)
+    assert starting.language_of(candidate("two-sum")) is Language.GO
+
+
+def test_a_pick_starts_in_the_first_workspace_language_it_lists_when_it_lacks_the_default():
+    lists = candidate("two-sum", languages=(Language.GO, Language.KOTLIN, Language.RUST))
+    assert Starting(Language.PYTHON, (Language.PYTHON, Language.KOTLIN, Language.GO)).language_of(
+        lists
+    ) is (Language.KOTLIN)
+
+
+def test_a_pick_starts_only_in_a_language_of_the_workspace():
+    lists = candidate("two-sum", languages=(Language.JAVA, Language.GO))
+    assert Starting(Language.PYTHON, PY_GO).language_of(lists) is Language.GO
+
+
+def test_no_workspace_language_can_start_a_problem_that_lists_none_of_them():
+    starting = Starting(Language.PYTHON, PY_GO)
+    candidate_in_java = candidate("two-sum", languages=(Language.JAVA,))
+    assert starting.language_of(candidate_in_java) is None
+    assert not starting.starts(candidate_in_java)
+
+
+def test_a_workspace_that_chose_no_languages_starts_in_any_language_a_problem_lists():
+    starting = Starting(Language.PYTHON)
+    assert starting.language_of(GO_ONLY) is Language.GO
+    assert starting.starts(GO_ONLY)
+
+
+def test_lang_starts_the_problem_in_it():
+    assert Starting(Language.GO, PY_GO, Language.GO).language_of(ANY_LANGUAGE) is Language.GO
+
+
+def test_lang_leaves_out_a_problem_that_does_not_list_it():
+    starting = Starting(Language.PYTHON, PY_GO, Language.PYTHON)
+    assert starting.language_of(GO_ONLY) is None
+
+
+def test_a_project_problem_starts_in_its_own_language_whatever_lang_says():
+    project = candidate("bank", languages=(Language.RUST,), project=True)
+    assert Starting(Language.PYTHON, PY_GO, Language.GO).language_of(project) is Language.RUST
+
+
+def test_a_rubric_problem_needs_no_language():
+    starting = Starting(Language.PYTHON, (Language.GO,))
+    assert starting.language_of(item("url-shortener")) is None
+    assert starting.starts(item("url-shortener"))
+
+
+def test_a_project_problem_starts_only_in_a_language_of_the_workspace():
+    project = candidate("bank", languages=(Language.RUST,), project=True)
+    assert not Starting(Language.PYTHON, PY_GO).starts(project)
+    assert Starting(Language.PYTHON, (Language.RUST,)).starts(project)
+
+
+def test_a_service_project_starts_whatever_the_workspaces_languages():
+    service = candidate("shop", languages=(Language.RUST,), project=True, service=True)
+    assert Starting(Language.PYTHON, PY_GO).starts(service)
+
+
+def test_the_scope_leaves_out_a_problem_no_workspace_language_can_start():
+    scope = NextScope(
+        frozenset({Track.DSA}), starting=Starting(Language.PYTHON, (Language.PYTHON,))
+    )
+    assert in_scope(scope, ANY_LANGUAGE, GO_ONLY) == ["two-sum"]
+
+
+def test_the_scope_without_a_starting_rule_leaves_out_no_problem():
+    assert in_scope(DSA_ONLY, ANY_LANGUAGE, GO_ONLY) == ["two-sum", "go-only"]
+
+
+def test_the_selected_jdk_judges_a_problem_in_the_language_it_starts_in():
+    java_only = candidate("java-only", languages=(Language.JAVA,))
+    scope = with_jdk(JdkScope(None, Starting(Language.PYTHON, (Language.PYTHON, Language.JAVA))))
+    assert in_scope(scope, java_only, ANY_LANGUAGE) == ["two-sum"]
+
+
+def test_an_attempt_in_progress_resumes_though_no_workspace_language_starts_its_problem():
+    scope = NextScope(
+        frozenset({Track.DSA}), starting=Starting(Language.PYTHON, (Language.PYTHON,))
+    )
+    now = datetime(2026, 10, 24, 9, tzinfo=UTC)
+    open_attempt = OpenAttempt(GO_ONLY, 1, Language.GO, now, TODAY)
+    assert not scope.includes(GO_ONLY)
+    resumed = pick_resume([open_attempt], scope)
+    assert resumed is not None
+    assert resumed.candidate.slug == "go-only"
+
+
+# The learner profile (docs/specs/cli.md#the-learner-profile)
+
+BACKEND = candidate("backend-one", labels=Labels(domains=("backend",), job_roles=("backend",)))
+SECURITY = candidate("security-one", labels=Labels(domains=("security",), job_roles=("platform",)))
+GENERAL = candidate("general-one", labels=Labels(domains=("algorithms",), job_roles=("general",)))
+UNLABELED = candidate("unlabeled")
+
+
+def profiled(profile: Profile | None, widening: Widening = NO_WIDENING) -> NextScope:
+    return NextScope(frozenset({Track.DSA}), profile=profile, widening=widening)
+
+
+def test_a_domain_profile_keeps_the_problems_that_list_one_of_its_domains_and_the_unlabeled():
+    scope = profiled(Profile(domains=("backend",)))
+    assert in_scope(scope, BACKEND, SECURITY, GENERAL, UNLABELED) == ["backend-one", "unlabeled"]
+
+
+def test_a_role_profile_keeps_general_problems():
+    scope = profiled(Profile(job_roles=("backend",)))
+    assert in_scope(scope, BACKEND, SECURITY, GENERAL) == ["backend-one", "general-one"]
+
+
+def test_a_language_profile_keeps_a_rubric_problem_and_the_problems_with_a_reference_in_it():
+    scope = NextScope(
+        frozenset({Track.DSA, Track.SYSTEM_DESIGN}),
+        profile=Profile(languages=(Language.PYTHON,), languages_chosen=True),
+    )
+    assert in_scope(scope, ANY_LANGUAGE, GO_ONLY, item("url-shortener")) == [
+        "two-sum",
+        "url-shortener",
+    ]
+
+
+def test_a_widened_dimension_drops_the_profile_in_it():
+    widening = Widening(frozenset({Dimension.DOMAINS}))
+    scope = profiled(Profile(domains=("backend",), job_roles=("backend",)), widening)
+    assert in_scope(scope, BACKEND, SECURITY, GENERAL) == ["backend-one", "general-one"]
+
+
+def test_the_profile_narrows_what_an_attempt_in_progress_may_resume():
+    scope = profiled(Profile(domains=("backend",)))
+    now = datetime(2026, 10, 24, 9, tzinfo=UTC)
+    attempts = [OpenAttempt(SECURITY, 1, Language.PYTHON, now, TODAY)]
+    assert pick_resume(attempts, scope) is None
+    assert pick_resume(attempts, scope.without_profile()) is not None
+
+
+def test_the_profile_picks_only_inside_itself():
+    scope = profiled(Profile(domains=("security",)))
+    assert picked_slug(BACKEND, SECURITY, scope=scope) == "security-one"
+
+
+def test_a_scope_narrows_the_values_its_profile_and_widening_leave():
+    profile = Profile(domains=("backend",))
+    assert profiled(None).narrowed().is_empty
+    assert profiled(profile).narrowed() == NarrowedValues(domains=("backend",))
+    assert profiled(profile, Widening(frozenset({Dimension.DOMAINS}))).narrowed().is_empty
+
+
+def test_without_the_profile_is_the_scope_widen_all_leaves():
+    scope = profiled(Profile(domains=("backend",)))
+    assert scope.without_profile() == profiled(None)
+
+
+def counting(*candidates: Candidate):
+    return lambda scope: len([found for found in candidates if scope.includes(found)])
+
+
+def test_the_effect_counts_what_the_profile_left_of_what_widening_all_leaves():
+    scope = profiled(Profile(domains=("backend",)))
+    effect = profile_effect(scope, counting(BACKEND, SECURITY, GENERAL, UNLABELED))
+    assert effect == ProfileEffect(NarrowedValues(domains=("backend",)), 2, 4)
+    assert effect.hidden == 2
+
+
+def test_the_effect_counts_nothing_while_the_profile_narrows_nothing():
+    assert profile_effect(profiled(Profile()), counting(BACKEND)) == NO_PROFILE_EFFECT
+    assert profile_effect(profiled(None), counting(BACKEND)) == NO_PROFILE_EFFECT

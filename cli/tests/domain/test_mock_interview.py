@@ -1,9 +1,11 @@
 from datetime import UTC, date, datetime, timedelta
 
 from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus
-from coding_study.domain.mock_interview import pick_mock, running_mock
-from coding_study.domain.next_selection import Candidate, NextQuery, NextScope
+from coding_study.domain.labels import Labels
+from coding_study.domain.mock_interview import new_in_scope, pick_mock, running_mock
+from coding_study.domain.next_selection import Candidate, NextQuery, NextScope, Starting
 from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.profile import Profile
 from coding_study.domain.scheduling import ProblemProgress
 
 TODAY = date(2026, 10, 24)
@@ -113,3 +115,33 @@ def test_a_mock_runs_until_its_last_problem_is_done():
 def test_other_attempts_do_not_make_a_mock():
     attempt = Attempt(1, "a", Language.PYTHON, AttemptMode.NEW, AttemptStatus.IN_PROGRESS, NOW)
     assert running_mock((attempt,), NOW) is None
+
+
+def test_mock_picks_only_problems_a_workspace_language_can_start():
+    go_only = problem("go-only", languages=(Language.GO,))
+    scope = NextScope(
+        frozenset({Track.DSA}), starting=Starting(Language.PYTHON, (Language.PYTHON,))
+    )
+    query = NextQuery(scope, TODAY)
+    picks = pick_mock((go_only, problem("both", "stack")), (), query, 2)
+    assert [pick.candidate.slug for pick in picks] == ["both"]
+
+
+def test_mock_picks_inside_the_learner_profile():
+    backend = problem("backend-one", labels=Labels(domains=("backend",)))
+    security = problem("security-one", "stack", labels=Labels(domains=("security",)))
+    scope = NextScope(frozenset({Track.DSA}), profile=Profile(domains=("security",)))
+    picks = pick_mock((backend, security), (), NextQuery(scope, TODAY), 2)
+    assert [pick.candidate.slug for pick in picks] == ["security-one"]
+
+
+def test_the_new_problems_in_scope_are_the_medium_and_hard_ones_without_an_attempt():
+    candidates = (
+        problem("easy", difficulty=Difficulty.EASY),
+        problem("medium"),
+        problem("hard", difficulty=Difficulty.HARD),
+        problem("open", progress=IN_PROGRESS),
+        problem("outside-the-profile", "stack", labels=Labels(domains=("security",))),
+    )
+    scope = NextScope(frozenset({Track.DSA}), profile=Profile(domains=("backend",)))
+    assert [found.slug for found in new_in_scope(candidates, scope)] == ["medium", "hard"]

@@ -6,7 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
-from coding_study.domain.config import Config
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from coding_study.entrypoints import cli
@@ -197,6 +197,15 @@ def test_command_is_registered():
     assert "next" in {command.name for command in cli.app.registered_commands}
 
 
+UNPROFILED = {
+    "languages": None,
+    "job_roles": None,
+    "domains": None,
+    "hidden": {"problems": 0},
+}
+"""`profile` of a run the profile narrowed nothing in."""
+
+
 def document(*arguments: str):
     return json.loads(invoke("--json", *arguments).stdout)
 
@@ -214,6 +223,7 @@ def test_json_describes_a_new_pick(environment):
         "reason": "weakest pattern: arrays-hashing (0.75)",
         "language": "python",
         "start": "cstudy start two-sum --lang python",
+        "profile": UNPROFILED,
     }
 
 
@@ -257,6 +267,7 @@ def test_json_with_nothing_to_pick_says_so(environment):
     assert document("--track", "practical") == {
         "pick": None,
         "message": "nothing due and no new problems in scope",
+        "profile": UNPROFILED,
     }
 
 
@@ -295,6 +306,7 @@ def test_the_json_message_says_so_too(environment, monkeypatch):
     assert document("--lang", "java") == {
         "pick": None,
         "message": f"nothing to pick: {JDK_27_REASON}",
+        "profile": UNPROFILED,
     }
 
 
@@ -387,12 +399,14 @@ def test_json_describes_a_resume_with_its_attempt_and_the_others(environment):
         "also_open": [
             {"attempt_id": 1, "id": "problem/two-sum", "slug": "two-sum", "language": "python"}
         ],
+        "profile": UNPROFILED,
     }
 
 
 def test_json_of_a_new_pick_gains_no_field_with_an_attempt_forced_aside(environment):
     open_attempt(environment, "two-sum")
     assert set(document("--new")) == {
+        "profile",
         "pick",
         "id",
         "slug",
@@ -405,3 +419,131 @@ def test_json_of_a_new_pick_gains_no_field_with_an_attempt_forced_aside(environm
         "language",
         "start",
     }
+
+
+# The learner profile (docs/specs/cli.md#the-learner-profile)
+
+BACKEND_LINE = (
+    "filtered by your profile: picked from 1 of 3 problems · domains backend · "
+    "--widen all picks from all 3"
+)
+
+
+def use_profile(monkeypatch, environment, **changes) -> None:
+    profiled = replace(environment, **changes)
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: profiled)
+
+
+def label_lru_cache_backend(environment) -> None:
+    meta = environment.root / "problems/lru-cache/meta.yaml"
+    meta.write_text(meta.read_text().replace("domains: [algorithms]", "domains: [backend]"))
+
+
+@pytest.fixture
+def backend_profile(environment, monkeypatch):
+    label_lru_cache_backend(environment)
+    use_profile(
+        monkeypatch, environment, config=Config(profile=ProfileSettings(domains=("backend",)))
+    )
+
+
+def test_the_profile_narrows_the_pick_and_the_report_ends_with_its_line(backend_profile):
+    assert invoke().output.splitlines() == [
+        "new     lru-cache  (medium · linked-list)  weakest pattern: linked-list (0.75)",
+        "start   cstudy start lru-cache --lang python",
+        BACKEND_LINE,
+    ]
+
+
+def test_the_profile_line_is_dim_on_a_terminal_and_goes_to_standard_output(backend_profile):
+    result = runner.invoke(cli.app, ["next"], env={"FORCE_COLOR": "1"})
+    assert result.stdout.splitlines()[-1] == f"\x1b[2m{BACKEND_LINE}\x1b[0m"
+    assert "filtered by" not in result.stderr
+
+
+def test_widen_all_picks_from_every_problem_and_prints_no_line(backend_profile):
+    assert invoke("--widen", "all").output.splitlines() == [
+        "new     two-sum  (easy · arrays-hashing)  weakest pattern: arrays-hashing (0.75)",
+        "start   cstudy start two-sum --lang python",
+    ]
+
+
+def test_widen_domain_drops_the_domains_of_the_profile(backend_profile):
+    assert invoke("--widen", "domain").output == invoke("--widen", "all").output
+
+
+def test_widen_role_keeps_the_domains_of_the_profile(backend_profile):
+    assert BACKEND_LINE in invoke("--widen", "role").output
+
+
+def test_a_domain_given_replaces_the_profiles_domains(backend_profile):
+    result = invoke("--domain", "algorithms", "--track", "dsa")
+    assert result.output.splitlines()[0].startswith("new     two-sum")
+    assert "filtered by" not in result.output
+
+
+@pytest.mark.parametrize("value", ["lang", "everything"])
+def test_widen_takes_only_role_domain_and_all(environment, value):
+    result = invoke("--widen", value)
+    assert result.exit_code == ExitCode.USAGE_ERROR
+    assert f'unknown widening "{value}"; use role, domain or all' in result.stderr
+
+
+def test_the_profile_that_left_nothing_says_so_and_prints_no_line(environment, monkeypatch):
+    config = Config(profile=ProfileSettings(job_roles=("backend",), domains=("security",)))
+    use_profile(monkeypatch, environment, config=config)
+    assert invoke().output == (
+        "nothing to pick in your profile (roles backend and general, domains security); "
+        "widen with cstudy next --widen all\n"
+    )
+
+
+def test_a_scope_that_holds_nothing_without_the_profile_keeps_the_usual_message_and_the_line(
+    backend_profile,
+):
+    assert invoke("--track", "practical").output.splitlines() == [
+        "nothing due and no new problems in scope",
+    ]
+
+
+def test_json_holds_the_profile_and_what_it_hid(backend_profile):
+    assert document()["profile"] == {
+        "languages": None,
+        "job_roles": None,
+        "domains": ["backend"],
+        "hidden": {"problems": 2},
+    }
+
+
+def test_json_prints_no_line_and_holds_zero_hidden_without_a_narrowing_profile(environment):
+    result = invoke("--json")
+    assert "filtered by" not in result.stdout
+    assert json.loads(result.stdout)["profile"] == UNPROFILED
+
+
+def test_json_with_nothing_to_pick_in_the_profile_says_so(environment, monkeypatch):
+    use_profile(
+        monkeypatch, environment, config=Config(profile=ProfileSettings(domains=("security",)))
+    )
+    found = document()
+    assert found["pick"] is None
+    assert found["message"] == (
+        "nothing to pick in your profile (domains security); widen with cstudy next --widen all"
+    )
+    assert found["profile"]["hidden"] == {"problems": 3}
+
+
+def test_the_workspace_languages_narrow_and_start_the_pick(environment, monkeypatch):
+    meta = environment.root / "problems/two-sum/meta.yaml"
+    meta.write_text(
+        meta.read_text().replace("estimate_minutes:", "languages: [kotlin, go]\nestimate_minutes:")
+    )
+    use_profile(monkeypatch, environment, workspace_languages=(Language.PYTHON, Language.KOTLIN))
+    assert invoke().output.splitlines() == [
+        "new     two-sum  (easy · arrays-hashing)  weakest pattern: arrays-hashing (0.75)",
+        "start   cstudy start two-sum --lang kotlin",
+    ]
+
+
+def test_the_profile_line_ends_a_start_report_too(backend_profile):
+    assert invoke("--start").output.splitlines()[-1] == BACKEND_LINE

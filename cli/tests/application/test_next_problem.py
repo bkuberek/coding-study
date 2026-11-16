@@ -20,6 +20,7 @@ from coding_study.domain.judging import Tally
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import NewPick, NextSource, ResumePick, ReviewPick
 from coding_study.domain.problem import Language, Track
+from coding_study.domain.profile import NO_PROFILE_EFFECT, Dimension, Profile, Widening
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment
 from tests.fakes import repository_root as copy_repository
@@ -315,3 +316,139 @@ def test_a_recommendation_starts_in_the_default_language_when_the_workspace_list
         config=Config(default_lang=Language.GO),
     )
     assert described(recommend(narrowed, NextRequest()))[2] is Language.GO
+
+
+def edit_meta(environment, slug: str, old: str, new: str) -> None:
+    meta = environment.root / "problems" / slug / "meta.yaml"
+    text = meta.read_text()
+    assert old in text
+    meta.write_text(text.replace(old, new, 1))
+
+
+def list_languages(environment, slug: str, languages: str) -> None:
+    edit_meta(
+        environment, slug, "estimate_minutes:", f"languages: [{languages}]\nestimate_minutes:"
+    )
+
+
+def test_a_recommendation_starts_in_the_first_workspace_language_the_problem_lists(environment):
+    list_languages(environment, "two-sum", "go, kotlin")
+    workspace = replace(
+        environment, workspace_languages=(Language.PYTHON, Language.GO, Language.KOTLIN)
+    )
+    found = recommended(workspace)
+    assert (found.pick.candidate.slug, found.language) == ("two-sum", Language.KOTLIN)
+
+
+def test_a_recommendation_starts_in_the_default_language_when_the_problem_lists_it(environment):
+    list_languages(environment, "two-sum", "go, python")
+    assert recommended(environment).language is Language.PYTHON
+
+
+def test_a_problem_no_workspace_language_can_start_is_not_picked(environment):
+    list_languages(environment, "two-sum", "go")
+    only_python = replace(environment, workspace_languages=(Language.PYTHON,))
+    assert picked(only_python) == "lru-cache"
+    assert (
+        picked(replace(environment, workspace_languages=(Language.PYTHON, Language.GO)))
+        == "two-sum"
+    )
+
+
+def test_a_rubric_problem_is_picked_in_any_workspace(tmp_path, problems):
+    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_RUBRIC_PROBLEMS))
+    only_go = replace(environment, workspace_languages=(Language.GO,))
+    assert picked(only_go, tracks=(Track.SYSTEM_DESIGN,)) == "url-shortener"
+
+
+def test_an_attempt_in_progress_resumes_though_no_workspace_language_starts_the_problem(
+    environment,
+):
+    list_languages(environment, "two-sum", "go")
+    open_attempt(environment, "two-sum", Language.GO)
+    only_python = replace(environment, workspace_languages=(Language.PYTHON,))
+    found = recommended(only_python)
+    assert isinstance(found.pick, ResumePick)
+    assert found.language is Language.GO
+
+
+def backend_lru_cache(environment) -> None:
+    edit_meta(environment, "lru-cache", "domains: [algorithms]", "domains: [backend]")
+
+
+BACKEND = Profile(domains=("backend",))
+
+
+def test_the_profile_narrows_the_pick_and_counts_what_it_left(environment):
+    backend_lru_cache(environment)
+    found = recommended(environment, profile=BACKEND)
+    assert found.pick.candidate.slug == "lru-cache"
+    assert (found.profile.shown, found.profile.total) == (1, 3)
+    assert found.profile.narrowed.domains == ("backend",)
+
+
+def test_no_profile_is_no_narrowing_and_no_count(environment):
+    assert recommended(environment).profile == NO_PROFILE_EFFECT
+    assert recommended(environment, profile=Profile()).profile == NO_PROFILE_EFFECT
+
+
+def test_widening_drops_the_profile_in_that_dimension(environment):
+    backend_lru_cache(environment)
+    widened = Widening(frozenset({Dimension.DOMAINS}))
+    found = recommended(environment, profile=BACKEND, widening=widened)
+    assert (found.pick.candidate.slug, found.profile) == ("two-sum", NO_PROFILE_EFFECT)
+
+
+def test_the_profile_is_what_left_nothing_when_widening_it_picks_something(environment):
+    found = recommend(environment, NextRequest(profile=Profile(domains=("security",))))
+    assert isinstance(found, NothingToPick)
+    assert found.profile_left_nothing
+    assert (found.profile.shown, found.profile.total) == (0, 3)
+
+
+def test_the_profile_is_not_what_left_nothing_when_the_scope_holds_nothing_without_it(environment):
+    request = NextRequest(tracks=(Track.PRACTICAL,), profile=BACKEND)
+    found = recommend(environment, request)
+    assert isinstance(found, NothingToPick)
+    assert not found.profile_left_nothing
+    assert found.profile.narrowed.domains == ("backend",)
+
+
+def test_an_attempt_in_progress_outside_the_profile_is_not_resumed(environment):
+    backend_lru_cache(environment)
+    open_attempt(environment, "two-sum")
+    found = recommended(environment, profile=BACKEND)
+    assert isinstance(found.pick, NewPick)
+    assert found.pick.candidate.slug == "lru-cache"
+
+
+def test_a_resume_in_the_profile_leaves_its_effect_to_the_scope(environment):
+    backend_lru_cache(environment)
+    open_attempt(environment, "lru-cache")
+    found = recommended(environment, profile=BACKEND)
+    assert isinstance(found.pick, ResumePick)
+    assert (found.profile.shown, found.profile.total) == (1, 3)
+
+
+def test_a_role_profile_keeps_the_general_problems(environment):
+    assert picked(environment, profile=Profile(job_roles=("platform",))) == "two-sum"
+
+
+def test_a_language_profile_hides_a_problem_without_a_reference_in_its_languages(environment):
+    list_languages(environment, "two-sum", "python")
+    profile = Profile(languages=(Language.GO,), languages_chosen=True)
+    workspace = replace(environment, workspace_languages=(Language.PYTHON, Language.GO))
+    assert picked(workspace, profile=profile) == "lru-cache"
+    widened = Widening(frozenset({Dimension.LANGUAGES}))
+    request = {"profile": profile, "widening": widened, "language": Language.PYTHON}
+    assert picked(workspace, **request) == "two-sum"
+
+
+def test_a_label_filter_replaces_the_profile_in_its_dimension(environment):
+    backend_lru_cache(environment)
+    labels = LabelFilter(domain="algorithms")
+    widened = Widening(frozenset({Dimension.DOMAINS}))
+    request = NextRequest(labels=labels, profile=BACKEND, widening=widened)
+    result = next_problem(environment, request)
+    assert result is not None
+    assert result.candidate.slug == "two-sum"

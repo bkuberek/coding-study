@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.console import Console
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
@@ -30,8 +31,20 @@ from coding_study.domain.next_selection import (
 )
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.problem_sets import SetStanding
+from coding_study.domain.profile import (
+    PICK_DIMENSIONS,
+    Counted,
+    ProfileEffect,
+    ProfileLineKind,
+    learner_profile,
+    profile_line,
+)
 from coding_study.domain.taxonomy import Scope
-from coding_study.entrypoints.commands.list_problems import checked_by_value
+from coding_study.entrypoints.commands.list_problems import (
+    checked_by_value,
+    explicit_widening,
+    profile_value,
+)
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
@@ -40,6 +53,7 @@ LABEL_WIDTH = 8
 NOTHING_TO_PICK = "nothing due and no new problems in scope"
 NOTHING_FOR_THE_JDK = "nothing to pick: "
 """Before the reason the selected JDK gives, when it left nothing to pick."""
+PROBLEMS_NOUN = "problems"
 REVIEW_PICK = "review"
 NEW_PICK = "new"
 RESUME_PICK = "resume"
@@ -81,6 +95,14 @@ def next_command(
     scope: Annotated[
         Scope | None, typer.Option("--scope", help="Only this scope: function, project or system.")
     ] = None,
+    widen: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--widen",
+            metavar="role|domain|all",
+            help="Ignore your learner profile in this dimension for this run; repeatable.",
+        ),
+    ] = None,
     new: Annotated[bool, typer.Option("--new", help="Skip reviews.")] = False,
     review: Annotated[bool, typer.Option("--review", help="Skip new problems.")] = False,
     start: Annotated[bool, typer.Option("--start", help="Run cstudy start on the pick.")] = False,
@@ -91,6 +113,8 @@ def next_command(
     """Pick what to practice."""
     if as_json and start:
         raise UsageError("--json excludes --start")
+    widening = explicit_widening(widen or (), language, role, domain, PICK_DIMENSIONS)
+    environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     request = NextRequest(
         tuple(tracks or ()),
         pattern,
@@ -99,8 +123,9 @@ def next_command(
         next_source(new, review),
         LabelFilter(domain, role, scope),
         set_name,
+        learner_profile(environment.config.profile, environment.workspace_languages),
+        widening,
     )
-    environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     recommendation = recommend(environment, request)
     if as_json:
         typer.echo(json.dumps(next_document(recommendation), indent=2))
@@ -108,6 +133,7 @@ def next_command(
     output = console(context)
     if isinstance(recommendation, NothingToPick):
         output.print(nothing_message(recommendation))
+        _print_profile_line(output, recommendation)
         return
     output.print(_pick_line(recommendation.pick))
     slug = recommendation.pick.candidate.slug
@@ -117,17 +143,34 @@ def next_command(
             output.print(_line("also", _also_open(recommendation.pick.others)))
     if recommendation.set_standing is not None:
         output.print(_line("set", _standing_text(recommendation.set_standing)))
-    if not start:
+    if start:
+        files = start_and_report(output, environment, StartRequest(slug, recommendation.language))
+        if environment.config.open_on_start:
+            open_in_editor(output, environment, files)
+    _print_profile_line(output, recommendation)
+
+
+def _print_profile_line(output: Console, found: Recommendation | NothingToPick) -> None:
+    """The dim line that ends the report while the profile hid a problem from the scope; the
+    message says it instead when the profile is what left nothing."""
+    if isinstance(found, NothingToPick) and found.profile_left_nothing:
         return
-    files = start_and_report(output, environment, StartRequest(slug, recommendation.language))
-    if environment.config.open_on_start:
-        open_in_editor(output, environment, files)
+    line = profile_line(ProfileLineKind.PICKS, [_counted(found.profile)], found.profile.narrowed)
+    if line is not None:
+        output.print(Text(line, style="dim"))
+
+
+def _counted(effect: ProfileEffect) -> Counted:
+    return Counted(effect.shown, effect.total, PROBLEMS_NOUN)
 
 
 def nothing_message(nothing: NothingToPick) -> str:
-    """Why there is no pick: the selected JDK's reason, how a set stands, else the scope's."""
+    """Why there is no pick: the selected JDK's reason, the profile, how a set stands, else the
+    scope's."""
     if nothing.jdk_reason is not None:
         return f"{NOTHING_FOR_THE_JDK}{nothing.jdk_reason}"
+    if nothing.profile_left_nothing:
+        return profile_nothing_message("nothing to pick", "next", nothing.profile)
     standing = nothing.set_standing
     if standing is None or (standing.total > 0 and not standing.finished):
         return NOTHING_TO_PICK
@@ -137,6 +180,13 @@ def nothing_message(nothing: NothingToPick) -> str:
     if standing.missing:
         return f"nothing in {name} is in the catalog: see cstudy set show {name}"
     return f"{name} is empty: add problems with cstudy set add {name} <slug>"
+
+
+def profile_nothing_message(nothing: str, command: str, effect: ProfileEffect) -> str:
+    """`nothing to pick in your profile (roles backend and general); widen with cstudy next
+    --widen all`: what there is none of, the dimensions that narrowed, and how to widen them."""
+    narrowed = ", ".join(effect.narrowed.phrases())
+    return f"{nothing} in your profile ({narrowed}); widen with cstudy {command} --widen all"
 
 
 def _standing_text(standing: SetStanding) -> str:
@@ -158,8 +208,10 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
     """`cstudy next --json`."""
     standing = recommendation.set_standing
     in_set: dict[str, JsonValue] = {} if standing is None else {"set": _standing_value(standing)}
+    profile = profile_value(recommendation.profile)
     if isinstance(recommendation, NothingToPick):
-        return {"pick": None, "message": nothing_message(recommendation), **in_set}
+        message = nothing_message(recommendation)
+        return {"pick": None, "message": message, **in_set, "profile": profile}
     picked = recommendation.pick
     candidate = picked.candidate
     language = recommendation.language
@@ -179,7 +231,7 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
     if isinstance(picked, ResumePick):
         also_open: list[JsonValue] = [_open_value(other) for other in picked.others]
         document |= {"attempt_id": picked.attempt.attempt_id, "also_open": also_open}
-    return document | in_set
+    return document | in_set | {"profile": profile}
 
 
 def _open_value(attempt: OpenAttempt) -> JsonValue:

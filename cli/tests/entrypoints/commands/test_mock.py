@@ -12,7 +12,7 @@ from coding_study.application.complete_attempt import DoneRequest, complete_atte
 from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import AttemptMode
-from coding_study.domain.config import Config
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import hint, mock, solution
@@ -225,3 +225,130 @@ def test_a_finished_problem_keeps_the_lock_while_another_runs(environment):
 
 def test_command_is_registered():
     assert "mock" in {command.name for command in cli.app.registered_commands}
+
+
+# The learner profile (docs/specs/cli.md#cstudy-mock)
+
+BACKEND_LINE = (
+    "filtered by your profile: picked from 1 of 3 new medium and hard problems · "
+    "domains backend · --widen all picks from all 3"
+)
+
+
+def edit_meta(environment, slug: str, old: str, new: str) -> None:
+    meta = environment.root / "problems" / slug / "meta.yaml"
+    meta.write_text(meta.read_text().replace(old, new, 1))
+
+
+def use_profile(monkeypatch, environment, **changes) -> None:
+    profiled = replace(environment, **changes)
+    monkeypatch.setattr(mock, "load_environment", lambda *_: profiled)
+
+
+@pytest.fixture
+def backend_profile(environment, monkeypatch):
+    edit_meta(environment, "lru-cache", "domains: [algorithms]", "domains: [backend]")
+    use_profile(
+        monkeypatch, environment, config=Config(profile=ProfileSettings(domains=("backend",)))
+    )
+
+
+def test_the_profile_narrows_the_picks_and_the_report_ends_with_its_line(
+    environment, backend_profile
+):
+    result = invoke("mock")
+    assert started(environment) == ["lru-cache"]
+    assert (
+        result.output.splitlines()[0]
+        == "mock interview · 1 of 2 problems · 45 min shared timer · python"
+    )
+    assert result.output.splitlines()[-1] == BACKEND_LINE
+
+
+def test_the_profile_line_is_dim_on_a_terminal_and_goes_to_standard_output(backend_profile):
+    result = runner.invoke(cli.app, ["mock"], env={"FORCE_COLOR": "1"})
+    assert result.stdout.splitlines()[-1] == f"\x1b[2m{BACKEND_LINE}\x1b[0m"
+    assert "filtered by" not in result.stderr
+
+
+def test_widen_all_picks_from_every_problem_and_prints_no_line(environment, backend_profile):
+    result = invoke("mock", "--widen", "all")
+    assert started(environment) == ["group-anagrams", "lru-cache"]
+    assert "filtered by" not in result.output
+
+
+def test_widen_role_keeps_the_domains_of_the_profile(environment, backend_profile):
+    assert BACKEND_LINE in invoke("mock", "--widen", "role").output
+    assert started(environment) == ["lru-cache"]
+
+
+@pytest.mark.parametrize("value", ["lang", "everything"])
+def test_widen_takes_only_role_domain_and_all(environment, value):
+    result = invoke("mock", "--widen", value)
+    assert (result.exit_code, started(environment)) == (ExitCode.USAGE_ERROR, [])
+    assert f'unknown widening "{value}"; use role, domain or all' in result.stderr
+
+
+def test_a_profile_that_left_nothing_says_so_and_prints_no_line(environment, monkeypatch):
+    config = Config(profile=ProfileSettings(domains=("security",)))
+    use_profile(monkeypatch, environment, config=config)
+    result = invoke("mock")
+    assert (result.exit_code, started(environment)) == (0, [])
+    assert result.output == (
+        "no new medium or hard problems in your profile (domains security); "
+        "widen with cstudy mock --widen all\n"
+    )
+
+
+def test_domain_picks_the_problems_that_list_it_without_widening_the_tracks(environment):
+    edit_meta(environment, "lru-cache", "domains: [algorithms]", "domains: [backend]")
+    invoke("mock", "--domain", "backend")
+    assert started(environment) == ["lru-cache"]
+
+
+def test_role_picks_the_problems_that_list_it_and_not_general_ones(environment):
+    edit_meta(environment, "lru-cache", "job_roles: [general]", "job_roles: [platform]")
+    invoke("mock", "--role", "platform")
+    assert started(environment) == ["lru-cache"]
+
+
+def test_a_domain_given_replaces_the_profiles_domains(environment, monkeypatch):
+    config = Config(profile=ProfileSettings(domains=("security",)))
+    use_profile(monkeypatch, environment, config=config)
+    result = invoke("mock", "--domain", "algorithms")
+    assert started(environment) == ["group-anagrams", "lru-cache"]
+    assert "filtered by" not in result.output
+
+
+@pytest.mark.parametrize("flag", ["--domain", "--role"])
+def test_a_label_outside_its_list_is_a_usage_error(environment, flag):
+    result = invoke("mock", flag, "no-such-label")
+    assert (result.exit_code, started(environment)) == (ExitCode.USAGE_ERROR, [])
+
+
+def test_a_problem_that_lacks_the_default_language_starts_in_one_it_lists(environment):
+    edit_meta(
+        environment, "group-anagrams", "estimate_minutes:", "languages: [go]\nestimate_minutes:"
+    )
+    lines = invoke("mock").output.splitlines()
+    assert lines[0] == "mock interview · 2 problems · 45 min shared timer · go, python"
+    languages = {a.slug: a.language for a in environment.progress.attempts_in_progress()}
+    assert languages == {"group-anagrams": Language.GO, "lru-cache": Language.PYTHON}
+
+
+def test_lang_picks_only_the_problems_that_list_it(environment):
+    edit_meta(
+        environment, "group-anagrams", "estimate_minutes:", "languages: [go]\nestimate_minutes:"
+    )
+    lines = invoke("mock", "--lang", "python").output.splitlines()
+    assert started(environment) == ["first-missing-positive", "lru-cache"]
+    assert lines[0] == "mock interview · 2 problems · 45 min shared timer · python"
+
+
+def test_a_problem_no_workspace_language_can_start_is_not_picked(environment, monkeypatch):
+    edit_meta(
+        environment, "group-anagrams", "estimate_minutes:", "languages: [go]\nestimate_minutes:"
+    )
+    use_profile(monkeypatch, environment, workspace_languages=(Language.PYTHON,))
+    invoke("mock")
+    assert started(environment) == ["first-missing-positive", "lru-cache"]

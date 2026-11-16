@@ -9,6 +9,7 @@ from coding_study.domain.problem import ALL_LANGUAGES, Language
 from coding_study.domain.profile import (
     ALL_DIMENSIONS,
     GUIDE_DIMENSIONS,
+    PICK_DIMENSIONS,
     Counted,
     Dimension,
     NarrowedValues,
@@ -155,6 +156,28 @@ def test_widen_values_name_one_dimension_or_all_three(values, dimensions):
 def test_an_unknown_widen_value_is_refused():
     with pytest.raises(ValueError, match='unknown widening "everything"'):
         widening_from(["everything"])
+
+
+@pytest.mark.parametrize(
+    ("values", "dimensions"),
+    [
+        (["role"], {Dimension.JOB_ROLES}),
+        (["role", "domain"], {Dimension.JOB_ROLES, Dimension.DOMAINS}),
+        (["all"], set(ALL_DIMENSIONS)),
+    ],
+)
+def test_picks_take_role_domain_and_all(values, dimensions):
+    assert widening_from(values, PICK_DIMENSIONS).dimensions == dimensions
+
+
+def test_picks_refuse_lang_and_name_what_they_take():
+    with pytest.raises(ValueError, match='unknown widening "lang"; use role, domain or all'):
+        widening_from(["lang"], PICK_DIMENSIONS)
+
+
+def test_the_widen_values_of_list_name_the_three_dimensions():
+    with pytest.raises(ValueError, match="use lang, role, domain or all"):
+        widening_from(["nothing"])
 
 
 def test_narrowed_values_are_those_of_the_dimensions_that_narrowed_this_run():

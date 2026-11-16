@@ -28,21 +28,22 @@ from coding_study.domain.next_selection import (
     OpenAttempt,
     ResumePick,
     SetPick,
+    Starting,
     pick_in_set,
     pick_next,
     pick_resume,
+    profile_effect,
 )
 from coding_study.domain.precedence import resolve_language
-from coding_study.domain.problem import (
-    ContentStatus,
-    Difficulty,
-    Language,
-    ProblemKind,
-    ProblemMeta,
-    Track,
-)
+from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
 from coding_study.domain.problem_sets import ProblemSet, SetStanding
-from coding_study.domain.project import project_language
+from coding_study.domain.profile import (
+    NO_PROFILE_EFFECT,
+    NO_WIDENING,
+    Profile,
+    ProfileEffect,
+    Widening,
+)
 from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, PATTERNS
 from coding_study.domain.weakness import GradedAttempt
 
@@ -58,6 +59,11 @@ class NextRequest:
     labels: LabelFilter = field(default_factory=LabelFilter)
     set_name: str | None = None
     """`--set`: pick from this set, in its order."""
+    profile: Profile | None = None
+    """The learner profile that narrows the scope; None applies none. A set ignores it."""
+    widening: Widening = NO_WIDENING
+    """The dimensions the profile is dropped in: `--widen`, and each explicit `--lang`, `--role` or
+    `--domain`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +75,10 @@ class NothingToPick:
     the scope itself holds nothing to pick."""
     set_standing: SetStanding | None = None
     """How the set stands, under `--set`."""
+    profile: ProfileEffect = NO_PROFILE_EFFECT
+    """What the learner profile did to the scope."""
+    profile_left_nothing: bool = False
+    """The profile is what left nothing: without it there is a pick."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +94,8 @@ class Recommendation:
     resume picks up; None for a rubric problem."""
     set_standing: SetStanding | None = None
     """How the set stands, under `--set`."""
+    profile: ProfileEffect = NO_PROFILE_EFFECT
+    """What the learner profile did to the scope."""
 
 
 def next_source(new: bool, review: bool) -> NextSource:
@@ -127,13 +139,17 @@ def _selection(environment: Environment, request: NextRequest) -> _Selection:
     if request.language is not None:
         require_workspace_language(environment, request.language)
     clock = environment.clock
+    starting = starting_of(environment, request.language)
     scope = NextScope(
         tracks=frozenset(_tracks_in_scope(environment, request)),
         pattern=request.pattern,
         difficulty=request.difficulty,
         language=request.language,
-        jdk=jdk_scope(environment, request.language),
+        jdk=jdk_scope(environment, starting),
         labels=request.labels,
+        starting=starting,
+        profile=None if request.set_name is not None else request.profile,
+        widening=request.widening,
     )
     query = NextQuery(scope, clock.local_date(clock.now()), request.source)
     candidates = practice_candidates(environment, scope.tracks)
@@ -161,7 +177,12 @@ def _with_chosen_ready(
 def _reject_unknown_values(request: NextRequest) -> None:
     if request.pattern is not None and request.pattern not in PATTERNS:
         raise UsageError(f'unknown pattern "{request.pattern}"; see docs/specs/content.md')
-    domain, role = request.labels.domain, request.labels.role
+    reject_unknown_labels(request.labels)
+
+
+def reject_unknown_labels(labels: LabelFilter) -> None:
+    """Raises UsageError for a domain or job role outside its list."""
+    domain, role = labels.domain, labels.role
     if domain is not None and domain not in DOMAINS:
         raise UsageError(f'unknown domain "{domain}"; use one of {", ".join(DOMAINS)}')
     if role is not None and role not in JOB_ROLES:
@@ -179,10 +200,21 @@ def _tracks_in_scope(environment: Environment, request: NextRequest) -> Sequence
     return environment.config.next.tracks
 
 
-def jdk_scope(environment: Environment, requested: Language | None) -> JdkScope:
-    """The selected JDK and the language that `cstudy start` would start a problem in."""
-    language = resolve_language(requested, environment.config, environment.workspace_languages)
-    return JdkScope(environment.jdk.selected(), language)
+def starting_of(environment: Environment, requested: Language | None) -> Starting:
+    """Where a pick starts: `--lang`, else the default language (`default_lang` while it is a
+    workspace language), else the first workspace language the problem lists."""
+    default = resolve_language(requested, environment.config, environment.workspace_languages)
+    return Starting(default, environment.workspace_languages, requested)
+
+
+def jdk_scope(environment: Environment, starting: Starting) -> JdkScope:
+    """The selected JDK and where a pick starts."""
+    return JdkScope(environment.jdk.selected(), starting)
+
+
+def count_in_scope(candidates: Sequence[Candidate], scope: NextScope) -> int:
+    """How many of `candidates` the scope includes."""
+    return sum(1 for candidate in candidates if scope.includes(candidate))
 
 
 def jdk_reason(
@@ -205,27 +237,41 @@ def recommend(environment: Environment, request: NextRequest) -> Recommendation 
     (`--new` and `--review` force theirs), with its title, kind and start language; or why there
     is none."""
     selection = _selection(environment, request)
+    scope = selection.query.scope
     in_set = selection.in_set
     standing = None if in_set is None else set_standing(environment, in_set)
-    resumed = _resume(environment, selection) if request.source is NextSource.ANY else None
+    effect = profile_effect(scope, lambda counted: count_in_scope(selection.candidates, counted))
+    resumed = _resume(environment, selection, scope) if request.source is NextSource.ANY else None
     picked = resumed or selection.pick()
     if picked is None:
-        return NothingToPick(_nothing_because_of_the_jdk(environment, selection), standing)
+        without_profile = not effect.narrowed.is_empty and _picks(
+            environment, selection, request, scope.without_profile()
+        )
+        reason = _nothing_because_of_the_jdk(environment, selection)
+        return NothingToPick(reason, standing, effect, without_profile)
     candidate = picked.candidate
     if not candidate.autograded:
         item = environment.items.load(candidate.slug)
         checked = checked_by_slug(environment, item.slug, item.kind)
-        return Recommendation(picked, item.title, item.kind, checked, None, standing)
+        return Recommendation(picked, item.title, item.kind, checked, None, standing, effect)
     meta = environment.problems.load(candidate.slug).meta
-    language = _problem_language(environment, meta, request.language)
-    if resumed is not None:
-        language = resumed.attempt.language or language
+    starting = starting_of(environment, request.language)
+    language = resumed.attempt.language if resumed is not None else None
+    language = language or starting.language_of(candidate) or starting.default
     kind = entry_kind(meta.kind)
     checked = checked_by_slug(environment, meta.slug, kind)
-    return Recommendation(picked, meta.title, kind, checked, language, standing)
+    return Recommendation(picked, meta.title, kind, checked, language, standing, effect)
 
 
-def _resume(environment: Environment, selection: _Selection) -> ResumePick | None:
+def _picks(
+    environment: Environment, selection: _Selection, request: NextRequest, scope: NextScope
+) -> bool:
+    """Whether `scope` holds something to pick: an attempt to resume, or a pick."""
+    resumes = request.source is NextSource.ANY and _resume(environment, selection, scope)
+    return bool(resumes) or selection.pick_in(scope) is not None
+
+
+def _resume(environment: Environment, selection: _Selection, scope: NextScope) -> ResumePick | None:
     """The attempt in progress used most recently, among those whose problem is in scope."""
     by_slug = {candidate.slug: candidate for candidate in selection.candidates}
     open_attempts = [
@@ -233,7 +279,7 @@ def _resume(environment: Environment, selection: _Selection) -> ResumePick | Non
         for attempt in environment.progress.attempts_in_progress()
         if attempt.slug in by_slug and selection.holds(attempt.slug)
     ]
-    return pick_resume(open_attempts, selection.query.scope)
+    return pick_resume(open_attempts, scope)
 
 
 def _open_attempt(environment: Environment, attempt: Attempt, candidate: Candidate) -> OpenAttempt:
@@ -273,18 +319,8 @@ def _graded(environment: Environment, attempt: Attempt) -> GradedAttempt | None:
 def start_language(
     environment: Environment, candidate: Candidate, requested: Language | None
 ) -> Language | None:
-    """The language `cstudy next --start` starts `candidate` in: a project problem's own, `--lang`
-    or the default language (`default_lang` while it is a workspace language) for another problem,
-    and none for a rubric problem."""
-    if not candidate.autograded:
-        return None
-    meta = environment.problems.load(candidate.slug).meta
-    return _problem_language(environment, meta, requested)
-
-
-def _problem_language(
-    environment: Environment, meta: ProblemMeta, requested: Language | None
-) -> Language:
-    if meta.kind is ProblemKind.PROJECT:
-        return project_language(meta)
-    return resolve_language(requested, environment.config, environment.workspace_languages)
+    """The language `cstudy next --start` starts `candidate` in: `--lang`, else the default
+    language (`default_lang` while it is a workspace language) when the problem lists it, else the
+    first workspace language it lists; a project problem's own language. None for a rubric problem
+    and for a problem no workspace language can start."""
+    return starting_of(environment, requested).language_of(candidate)

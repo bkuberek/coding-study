@@ -1,7 +1,7 @@
 """`cstudy list` (docs/specs/cli.md#cstudy-list)."""
 
 import json
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
@@ -18,7 +18,6 @@ from coding_study.application.list_problems import (
     ListedProblem,
     ListingContext,
     ProblemFilter,
-    ProfileEffect,
     jdk_note,
     listing_context,
 )
@@ -42,8 +41,10 @@ from coding_study.domain.problem import (
     Track,
 )
 from coding_study.domain.profile import (
+    ALL_DIMENSIONS,
     Counted,
     Dimension,
+    ProfileEffect,
     ProfileLineKind,
     Widening,
     learner_profile,
@@ -162,7 +163,7 @@ def list_command(
     ] = False,
 ) -> None:
     """Browse problems with filters."""
-    widening = _widening(widen or (), language, role, domain)
+    widening = explicit_widening(widen or (), language, role, domain)
     labels = LabelFilter(domain, role, scope)
     problem_filter = ProblemFilter(
         track,
@@ -291,13 +292,17 @@ def _profile_line(effect: ProfileEffect) -> str | None:
     return profile_line(ProfileLineKind.SHOWS, counts, effect.narrowed)
 
 
-def _widening(
-    values: Sequence[str], language: Language | None, role: str | None, domain: str | None
+def explicit_widening(
+    values: Sequence[str],
+    language: Language | None,
+    role: str | None,
+    domain: str | None,
+    widenable: Collection[Dimension] = ALL_DIMENSIONS,
 ) -> Widening:
     """`--widen`, plus the dimension of each explicit filter, which replaces the profile there.
-    Raises UsageError for a value that is none of lang, role, domain and all."""
+    Raises UsageError for a value that is none of those `widenable` names and `all`."""
     try:
-        widening = widening_from(values)
+        widening = widening_from(values, widenable)
     except ValueError as error:
         raise UsageError(str(error)) from None
     explicit = (

@@ -609,6 +609,11 @@
     "deprecated": false,
     "takes_value": true
   },
+  "cstudy mock --domain": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy mock --help": {
     "choices": [],
     "deprecated": false,
@@ -631,6 +636,11 @@
     "deprecated": false,
     "takes_value": true
   },
+  "cstudy mock --role": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy mock --track": {
     "choices": [
       "dsa",
@@ -642,6 +652,11 @@
       "code-review",
       "behavioral"
     ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy mock --widen": {
+    "choices": [],
     "deprecated": false,
     "takes_value": true
   },
@@ -807,6 +822,11 @@
       "code-review",
       "behavioral"
     ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy next --widen": {
+    "choices": [],
     "deprecated": false,
     "takes_value": true
   },

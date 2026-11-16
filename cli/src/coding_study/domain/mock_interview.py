@@ -11,7 +11,14 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus
-from coding_study.domain.next_selection import Candidate, NewPick, NextQuery, NextSource, pick_next
+from coding_study.domain.next_selection import (
+    Candidate,
+    NewPick,
+    NextQuery,
+    NextScope,
+    NextSource,
+    pick_next,
+)
 from coding_study.domain.problem import Difficulty
 from coding_study.domain.weakness import GradedAttempt
 
@@ -48,6 +55,19 @@ def pick_mock(
             break
         picks.append(pick)
     return tuple(picks)
+
+
+def new_in_scope(candidates: Sequence[Candidate], scope: NextScope) -> list[Candidate]:
+    """The new medium and hard problems the picks come from: those of `scope` without an attempt
+    in progress or a finished one."""
+    return [
+        candidate
+        for candidate in candidates
+        if candidate.difficulty in MOCK_DIFFICULTIES
+        and scope.includes(candidate)
+        and not candidate.progress.in_progress
+        and candidate.progress.is_new
+    ]
 
 
 def _without(pool: Sequence[Candidate], slugs: set[str]) -> list[Candidate]:

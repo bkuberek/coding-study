@@ -787,6 +787,30 @@ def test_next_rejects_an_undocumented_field(practised):
         assert_rejects_extra_field("next", resume, path)
 
 
+def test_next_under_a_narrowed_profile(practised, monkeypatch):
+    narrowed = replace(
+        practised,
+        config=Config(profile=ProfileSettings(job_roles=("backend",), domains=("security",))),
+        workspace_languages=(Language.PYTHON, Language.GO),
+    )
+    install(monkeypatch, narrowed)
+    nothing = command_document("next", "--track", "dsa")
+    pick = command_document("next", "--widen", "domain", "--widen", "role")
+    for document in (nothing, pick):
+        assert_valid("next", document)
+        assert document["profile"]["languages"] == ["python", "go"]
+    assert nothing["pick"] is None
+    assert (nothing["profile"]["job_roles"], nothing["profile"]["domains"]) == (
+        ["backend"],
+        ["security"],
+    )
+    assert nothing["profile"]["hidden"]["problems"] > 0
+    assert (pick["profile"]["job_roles"], pick["profile"]["domains"]) == (None, None)
+    for document in (nothing, pick):
+        for path in (("profile",), ("profile", "hidden")):
+            assert_rejects_extra_field("next", document, path)
+
+
 def test_next_rejects_a_pick_without_its_fields(practised):
     document = command_document("next")
     del document["start"]
