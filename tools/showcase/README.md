@@ -73,6 +73,7 @@ Desktop images are 1440 by 900, the phone ones 390 wide at 2x. A name is `<name>
 | `web-ui-history` | A past attempt's code, open read-only from the Problem view's history |
 | `web-ui-health` | The Health view, with the code intelligence rows |
 | `web-ui-settings` | Settings, with both toggles and the state of each language |
+| `web-ui-settings-code-intelligence` | Settings scrolled to the Code intelligence block, with each language server and its version |
 | `web-ui-mock` | A mock in progress |
 
 Two animations, in the light theme at desktop width unless `--video-theme` says otherwise, each as `<name>.gif`, `<name>.mp4` and `<name>-poster.png` (the first frame):

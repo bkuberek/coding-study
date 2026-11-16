@@ -53,6 +53,7 @@ SHOTS = (
     "web-ui-history",
     "web-ui-health",
     "web-ui-settings",
+    "web-ui-settings-code-intelligence",
 )
 """The screenshots of the `shots` stage, in the order they are taken; `--shots` picks some."""
 WAIT_MS = 60_000
@@ -907,16 +908,31 @@ def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
         page.close()
 
     if app.wants("web-ui-settings"):
-        page = app.page(context, "/settings")
-        page.wait_for_selector("text=basedpyright 1.")
-        page.wait_for_selector("text=typescript-language-server")
-        page.wait_for_selector("text=jdtls 1.")
-        page.wait_for_selector("text=/kotlin-lsp \\d/")
-        page.wait_for_selector("text=gopls 0.")
-        page.wait_for_selector("text=rust-analyzer 1.")
-        page.wait_for_timeout(300)
+        page = settings_page(app, context)
         app.screenshot(page, "web-ui-settings", variant, redact=True)
         page.close()
+
+    if app.wants("web-ui-settings-code-intelligence"):
+        page = settings_page(app, context)
+        page.locator("fieldset", has=page.locator("legend", has_text="code intelligence")).evaluate(
+            "element => element.scrollIntoView({block: 'start'})"
+        )
+        page.wait_for_timeout(300)
+        app.screenshot(page, "web-ui-settings-code-intelligence", variant, redact=True)
+        page.close()
+
+
+def settings_page(app: Showcase, context: BrowserContext) -> Page:
+    """The Settings view, once every language server's line shows its version."""
+    page = app.page(context, "/settings")
+    page.wait_for_selector("text=basedpyright 1.")
+    page.wait_for_selector("text=typescript-language-server")
+    page.wait_for_selector("text=jdtls 1.")
+    page.wait_for_selector("text=/kotlin-lsp \\d/")
+    page.wait_for_selector("text=gopls 0.")
+    page.wait_for_selector("text=rust-analyzer 1.")
+    page.wait_for_timeout(300)
+    return page
 
 
 def tall(page: Page, variant: Variant) -> None:
