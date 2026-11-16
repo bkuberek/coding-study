@@ -4,13 +4,15 @@
   "description": "`cstudy learn <guide> --json`: one guide. Spec: docs/specs/cli.md#cstudy-learn",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "slug", "title", "summary", "level", "prerequisites", "related", "problems", "read", "read_at", "markdown", "examples"],
+  "required": ["id", "slug", "title", "summary", "level", "domains", "job_roles", "prerequisites", "related", "problems", "read", "read_at", "markdown", "examples"],
   "properties": {
     "id": { "description": "The canonical ID, `guide/<slug>`", "type": "string", "pattern": "^guide/[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
     "slug": { "$ref": "#/$defs/slug" },
     "title": { "type": "string", "minLength": 1 },
     "summary": { "type": "string" },
     "level": { "$ref": "#/$defs/level" },
+    "domains": { "description": "What the guide is about", "type": "array", "items": { "$ref": "#/$defs/label" } },
+    "job_roles": { "description": "Who the guide is for, `general` for any engineer", "type": "array", "items": { "$ref": "#/$defs/label" } },
     "prerequisites": { "description": "The slugs of the guides to read first", "type": "array", "items": { "$ref": "#/$defs/slug" } },
     "related": { "description": "The slugs of related guides", "type": "array", "items": { "$ref": "#/$defs/slug" } },
     "problems": { "description": "The slugs of the problems that practice it", "type": "array", "items": { "$ref": "#/$defs/slug" } },
@@ -21,6 +23,7 @@
   },
   "$defs": {
     "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "label": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
     "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" },
     "level": { "enum": ["intro", "core", "advanced"] }
   }

@@ -61,6 +61,8 @@ def write_guide(
     title: str,
     *,
     level: str = "intro",
+    domains: tuple[str, ...] = (),
+    job_roles: tuple[str, ...] = (),
     prerequisites: tuple[str, ...] = (),
     problems: tuple[str, ...] = (),
     markdown: str | None = None,
@@ -72,6 +74,10 @@ def write_guide(
     for name, (_language, code) in VARIANTS.items() if variants else ():
         (folder / name).write_text(code)
     lines = [f"title: {title}", "summary: A short summary.", f"level: {level}"]
+    if domains:
+        lines.append(f"domains: [{', '.join(domains)}]")
+    if job_roles:
+        lines.append(f"job_roles: [{', '.join(job_roles)}]")
     if prerequisites:
         lines.append(f"prerequisites: [{', '.join(prerequisites)}]")
     if problems:

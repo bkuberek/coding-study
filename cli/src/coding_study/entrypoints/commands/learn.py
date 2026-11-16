@@ -359,6 +359,8 @@ def _guide_fields(entry: GuideEntry) -> dict[str, JsonValue]:
         "title": meta.title,
         "summary": meta.summary,
         "level": meta.level.value,
+        "domains": list(meta.domains),
+        "job_roles": list(meta.job_roles),
         "prerequisites": list(meta.prerequisites),
         "related": list(meta.related),
         "problems": list(meta.problems),

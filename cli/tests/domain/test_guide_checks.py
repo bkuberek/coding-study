@@ -7,6 +7,7 @@ from coding_study.domain.concept_guides import GuideLevel, GuideMeta, LearningPa
 from coding_study.domain.guide_checks import (
     CatalogFacts,
     GuideContent,
+    guide_label_warnings,
     guide_static_checks,
     guide_static_warnings,
     path_static_checks,
@@ -376,6 +377,56 @@ def test_g11_says_nothing_of_an_example_in_one_language_or_of_a_complete_one():
     complete = [name for name in VARIANT_CODE if not name.endswith((".sh", ".js", ".mjs"))]
     assert messages(guide_static_warnings(content())) == []
     assert messages(guide_static_warnings(with_variants(*complete))) == []
+
+
+PROBLEM_DOMAINS = {"two-sum": ("algorithms",), "ledger": ("backend", "data")}
+
+
+def labeled(*domains: str, problems: tuple[str, ...] = ("two-sum",)) -> GuideContent:
+    return content(meta=replace(META, domains=domains, problems=problems))
+
+
+def test_g12_warns_of_domains_no_problem_of_the_guide_has():
+    found = guide_label_warnings(labeled("systems"), PROBLEM_DOMAINS)
+    assert messages(found) == [
+        "guides/hash-maps/meta.yaml: domains: domains [systems] are on none of its problems "
+        "(algorithms); see the labeling rule in guides.md#labels"
+    ]
+
+
+def test_g12_lists_the_domains_of_every_problem_in_taxonomy_order():
+    found = guide_label_warnings(
+        labeled("systems", "security", problems=("ledger", "two-sum")), PROBLEM_DOMAINS
+    )
+    assert messages(found) == [
+        "guides/hash-maps/meta.yaml: domains: domains [systems, security] are on none of its "
+        "problems (algorithms, backend, data); see the labeling rule in guides.md#labels"
+    ]
+
+
+def test_g12_is_satisfied_by_one_shared_domain_with_any_problem():
+    assert guide_label_warnings(labeled("systems", "algorithms"), PROBLEM_DOMAINS) == ()
+    assert (
+        guide_label_warnings(labeled("data", problems=("two-sum", "ledger")), PROBLEM_DOMAINS) == ()
+    )
+
+
+@pytest.mark.parametrize(
+    ("meta_domains", "meta_problems", "known"),
+    [
+        ((), ("two-sum",), PROBLEM_DOMAINS),
+        (("systems",), (), PROBLEM_DOMAINS),
+        (("systems",), ("gone",), PROBLEM_DOMAINS),
+        (("systems",), ("two-sum",), {}),
+    ],
+    ids=["no domains", "no problems", "problem not found", "no problem has domains"],
+)
+def test_g12_says_nothing_without_domains_or_problems_to_compare(
+    meta_domains: tuple[str, ...],
+    meta_problems: tuple[str, ...],
+    known: Mapping[str, tuple[str, ...]],
+):
+    assert guide_label_warnings(labeled(*meta_domains, problems=meta_problems), known) == ()
 
 
 @pytest.mark.parametrize(

@@ -287,7 +287,7 @@ The shipped paths name these levels, from what each teaches: `intro` for "Gettin
 
 ## Static checks
 
-`cstudy verify` runs these after the problems' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure. A warning, G11's, shows under its guide's line and fails nothing.
+`cstudy verify` runs these after the problems' checks, with or without `--static`, when it verifies the whole catalog: no slugs, no `--changed` and no `--track`. Each guide and each path is one line of its report (`hash-functions  static ok`), and a failure fails the run with exit 5 like a problem's static failure. A warning, G11's or G12's, shows under its guide's line and fails nothing.
 
 ### Guides
 

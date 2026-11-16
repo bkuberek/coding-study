@@ -17,6 +17,20 @@
       "description": "intro: the first idea of a topic; core: what working engineers use daily; advanced: designs and guarantees beyond the basics",
       "enum": ["intro", "core", "advanced"]
     },
+    "domains": {
+      "description": "What the guide is about, from the closed list problems use (docs/specs/guides.md#labels)",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/domain" }
+    },
+    "job_roles": {
+      "description": "Who the guide is for; general is any software engineer (docs/specs/guides.md#labels)",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/job_role" }
+    },
     "prerequisites": {
       "description": "Guides to read first; they form no cycle (check G5)",
       "type": "array",
@@ -41,6 +55,18 @@
     }
   },
   "$defs": {
-    "slug": { "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" }
+    "slug": { "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "domain": {
+      "enum": [
+        "algorithms", "backend", "security", "identity", "ai-llm", "fintech",
+        "data", "infrastructure", "systems", "software-design", "frontend"
+      ]
+    },
+    "job_role": {
+      "enum": [
+        "general", "backend", "platform", "security-engineer", "ai-engineer", "ml-engineer",
+        "data-engineer", "frontend"
+      ]
+    }
   }
 }

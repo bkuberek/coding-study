@@ -60,6 +60,10 @@ class GuideMeta:
     title: str
     summary: str
     level: GuideLevel
+    domains: tuple[str, ...] = ()
+    """What the guide is about (docs/specs/guides.md#labels)."""
+    job_roles: tuple[str, ...] = ()
+    """Who it is for, `general` for any engineer."""
     prerequisites: tuple[str, ...] = ()
     related: tuple[str, ...] = ()
     problems: tuple[str, ...] = ()

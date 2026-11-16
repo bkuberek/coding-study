@@ -105,6 +105,35 @@ def test_an_example_missing_variants_is_a_warning_that_fails_nothing(content_roo
     )
 
 
+def test_g12_a_domain_no_problem_has_is_a_warning_that_fails_nothing(content_root: Path):
+    write_guide(
+        content_root,
+        "hash-maps",
+        "Hash maps",
+        domains=("systems",),
+        job_roles=("general",),
+        problems=("two-sum",),
+    )
+    report = verify_content(make_environment(content_root), VerifyRequest(static_only=True), print)
+    guide = next(row for row in report.problems if row.directory == "guides/hash-maps")
+    assert (guide.passed, guide.static_errors, guide.warnings) == (
+        True,
+        (),
+        (
+            "guides/hash-maps/meta.yaml: domains: domains [systems] are on none of its problems "
+            "(algorithms); see the labeling rule in guides.md#labels",
+        ),
+    )
+
+
+def test_g12_a_guide_that_shares_a_domain_with_its_problems_has_no_warning(content_root: Path):
+    write_guide(
+        content_root, "hash-maps", "Hash maps", domains=("algorithms",), problems=("two-sum",)
+    )
+    (found,) = verify_guides(make_environment(content_root), PROBLEMS)
+    assert found == GuideVerification("guides/hash-maps")
+
+
 def test_s25_a_problem_names_guides_that_exist(content_root: Path):
     write_hashing(content_root)
     meta = content_root / "problems" / "two-sum" / "meta.yaml"

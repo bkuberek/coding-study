@@ -1,5 +1,5 @@
-"""The static checks of concept guides (G2 to G10, and G11's warnings) and learning paths (P1 to
-P5), as docs/specs/guides.md#static-checks lists them. G1, the schema of `meta.yaml`, is the
+"""The static checks of concept guides (G2 to G10, and the warnings G11 and G12) and learning paths
+(P1 to P5), as docs/specs/guides.md#static-checks lists them. G1, the schema of `meta.yaml`, is the
 adapter's.
 """
 
@@ -41,6 +41,7 @@ from coding_study.domain.guide_markdown import (
     svg_file,
 )
 from coding_study.domain.markdown import MarkdownDocument
+from coding_study.domain.taxonomy import DOMAINS
 
 GUIDE_SECTIONS = (
     "The idea",
@@ -121,6 +122,32 @@ def guide_static_warnings(content: GuideContent) -> tuple[ContentIssue, ...]:
                 f"line {group.start + 1}",
             )
     return tuple(issues.found)
+
+
+def guide_label_warnings(
+    content: GuideContent, problem_domains: Mapping[str, Sequence[str]]
+) -> tuple[ContentIssue, ...]:
+    """G12: a guide that names problems and shares no domain with any of them
+    (docs/specs/guides.md#labels). `problem_domains` holds the domains of each problem that
+    loaded, by slug; a guide none of whose problems is there, or that has no domains, is left to
+    G1 and G4."""
+    meta = content.meta
+    problems = {domain for slug in meta.problems for domain in problem_domains.get(slug, ())}
+    if not meta.domains or not problems or problems.intersection(meta.domains):
+        return ()
+    issues = _Issues(content.directory)
+    issues.add(
+        GUIDE_META_FILE,
+        f"domains [{', '.join(meta.domains)}] are on none of its problems "
+        f"({', '.join(sorted(problems, key=_domain_rank))}); "
+        "see the labeling rule in guides.md#labels",
+        "domains",
+    )
+    return tuple(issues.found)
+
+
+def _domain_rank(domain: str) -> int:
+    return DOMAINS.index(domain) if domain in DOMAINS else len(DOMAINS)
 
 
 def path_static_checks(

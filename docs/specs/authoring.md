@@ -352,7 +352,7 @@ System design and code review problems (`problems/<slug>/`, format in [content](
 
 ## Guides and paths
 
-[Concept guides and learning paths](guides.md) run no code in `cstudy verify`: it applies their static checks, G1 to G10 and P1 to P5, with G11's warnings, when it verifies the whole catalog, and they do not count towards the coverage report. Their examples run in a content test instead ([examples](guides.md#examples)). [Writing a guide](guides.md#writing-a-guide) lists the steps.
+[Concept guides and learning paths](guides.md) run no code in `cstudy verify`: it applies their static checks, G1 to G10 and P1 to P5, with the warnings G11 and G12, when it verifies the whole catalog, and they do not count towards the coverage report. Their examples run in a content test instead ([examples](guides.md#examples)). [Writing a guide](guides.md#writing-a-guide) lists the steps.
 
 The [user docs](user-docs.md) run no code either: `cstudy verify` applies their static checks, D1 to D6, after the guides', when it verifies the whole catalog, D6 checking every `cstudy` command and flag a page names against the command line ([accuracy](user-docs.md#accuracy)).
 

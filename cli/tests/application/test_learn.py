@@ -67,6 +67,19 @@ def test_the_list_puts_the_guides_of_paths_first_in_path_order(environment: Envi
     ]
 
 
+def test_the_listing_and_a_guide_page_carry_the_guides_labels(
+    environment: Environment, content_root: Path
+):
+    write_guide(content_root, "labeled", "Labeled", domains=("data",), job_roles=("data-engineer",))
+    listed = next(
+        entry.meta for entry in learn_listing(environment).guides if entry.meta.slug == "labeled"
+    )
+    page = guide_page(environment, "labeled").entry.meta
+    assert [(meta.domains, meta.job_roles) for meta in (listed, page)] == [
+        (("data",), ("data-engineer",))
+    ] * 2
+
+
 def test_the_list_orders_the_paths_from_introductory_to_advanced(
     environment: Environment, content_root: Path
 ):

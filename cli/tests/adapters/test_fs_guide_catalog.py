@@ -31,6 +31,42 @@ def test_a_guide_loads_its_meta_with_its_folder_as_slug(content_root: Path):
     )
 
 
+def test_a_guide_loads_its_domains_and_job_roles(content_root: Path):
+    write_guide(
+        content_root,
+        "hash-maps",
+        "Hash maps",
+        domains=("algorithms", "backend"),
+        job_roles=("general",),
+    )
+    meta = FsGuideCatalog(content_root).load("hash-maps")
+    assert (meta.domains, meta.job_roles) == (("algorithms", "backend"), ("general",))
+
+
+def test_a_guide_without_labels_has_none_yet(content_root: Path):
+    write_guide(content_root, "hash-maps", "Hash maps")
+    meta = FsGuideCatalog(content_root).load("hash-maps")
+    assert (meta.domains, meta.job_roles) == ((), ())
+
+
+@pytest.mark.parametrize(
+    ("domains", "job_roles", "location"),
+    [
+        (("physics",), (), "domains[0]"),
+        (("algorithms", "algorithms"), (), "domains"),
+        ((), ("wizard",), "job_roles[0]"),
+        ((), ("backend", "backend"), "job_roles"),
+    ],
+)
+def test_a_label_outside_its_list_or_listed_twice_is_a_content_error(
+    content_root: Path, domains: tuple[str, ...], job_roles: tuple[str, ...], location: str
+):
+    write_guide(content_root, "broken", "Broken", domains=domains, job_roles=job_roles)
+    with pytest.raises(ContentError) as error:
+        FsGuideCatalog(content_root).load("broken")
+    assert str(error.value).startswith(f"guides/broken/meta.yaml: {location}: ")
+
+
 def test_a_shell_guide_says_so_in_its_meta(content_root: Path):
     folder = write_guide(content_root, "using-the-terminal", "Using the terminal")
     with (folder / "meta.yaml").open("a") as meta:

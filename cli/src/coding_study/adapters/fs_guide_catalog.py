@@ -60,6 +60,8 @@ class FsGuideCatalog:
             title=document["title"],
             summary=document["summary"],
             level=GuideLevel(document["level"]),
+            domains=tuple(document.get("domains", ())),
+            job_roles=tuple(document.get("job_roles", ())),
             prerequisites=tuple(document.get("prerequisites", ())),
             related=tuple(document.get("related", ())),
             problems=tuple(document.get("problems", ())),

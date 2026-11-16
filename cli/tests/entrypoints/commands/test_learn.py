@@ -71,6 +71,8 @@ def test_the_list_as_json_has_no_hint(environment: Environment):
             "title": "Hash maps",
             "summary": "A short summary.",
             "level": "intro",
+            "domains": [],
+            "job_roles": [],
             "prerequisites": ["hash-functions"],
             "related": [],
             "problems": ["two-sum"],
@@ -207,6 +209,29 @@ def test_a_guide_as_json_holds_its_markdown_and_examples(environment: Environmen
         document["markdown"].startswith("# Hash maps"),
         [Path(name).name for name in document["examples"]],
     ) == (True, ["hello.py"])
+
+
+def test_the_labels_of_a_guide_are_in_the_list_and_the_guide_as_json(
+    environment: Environment, content_root: Path
+):
+    write_guide(
+        content_root,
+        "labeled",
+        "Labeled",
+        domains=("algorithms", "backend"),
+        job_roles=("general",),
+    )
+    listing = json.loads(invoke("--json").output)
+    guide = json.loads(invoke("labeled", "--json").output)
+    labeled = next(entry for entry in listing["guides"] if entry["slug"] == "labeled")
+    assert [(found["domains"], found["job_roles"]) for found in (labeled, guide)] == [
+        (["algorithms", "backend"], ["general"])
+    ] * 2
+
+
+def test_a_guide_without_labels_has_empty_lists_in_the_json(environment: Environment):
+    document = json.loads(invoke("hash-maps", "--json").output)
+    assert (document["domains"], document["job_roles"]) == ([], [])
 
 
 def test_done_marks_the_guide_read_once(environment: Environment):

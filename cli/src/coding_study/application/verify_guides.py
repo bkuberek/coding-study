@@ -1,7 +1,7 @@
 """`cstudy verify` on concept guides and learning paths (docs/specs/guides.md#static-checks):
-static checks only, G1 to G11 and P1 to P5, one result per guide and per path."""
+static checks only, G1 to G12 and P1 to P5, one result per guide and per path."""
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass
 
 from coding_study.application.environment import Environment
@@ -10,6 +10,7 @@ from coding_study.domain.errors import ContentError
 from coding_study.domain.guide_checks import (
     CatalogFacts,
     GuideContent,
+    guide_label_warnings,
     guide_static_checks,
     guide_static_warnings,
     path_static_checks,
@@ -22,7 +23,7 @@ class GuideVerification:
     """A guide's folder or a path's file, repository-relative."""
     static_errors: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
-    """G11's, which fail nothing."""
+    """G11's and G12's, which fail nothing."""
 
 
 def verify_guides(
@@ -44,10 +45,11 @@ def verify_guides(
         except ContentError as error:
             paths[slug] = tuple(str(issue) for issue in error.issues)
     facts = CatalogFacts(guides, _problem_levels(environment, problem_slugs, paths))
+    domains = _problem_domains(environment, guides.values())
     results = [
         GuideVerification(catalog.guide_directory(slug), failures[slug])
         if slug in failures
-        else _verify_guide(environment, guides[slug], facts)
+        else _verify_guide(environment, guides[slug], facts, domains)
         for slug in catalog.slugs()
     ]
     for slug, path in paths.items():
@@ -61,7 +63,10 @@ def verify_guides(
 
 
 def _verify_guide(
-    environment: Environment, meta: GuideMeta, facts: CatalogFacts
+    environment: Environment,
+    meta: GuideMeta,
+    facts: CatalogFacts,
+    problem_domains: Mapping[str, tuple[str, ...]],
 ) -> GuideVerification:
     catalog = environment.guides
     directory = catalog.guide_directory(meta.slug)
@@ -74,8 +79,25 @@ def _verify_guide(
         diagrams=catalog.diagrams(meta.slug),
     )
     issues = guide_static_checks(content, facts)
-    warnings = guide_static_warnings(content)
+    warnings = (*guide_static_warnings(content), *guide_label_warnings(content, problem_domains))
     return GuideVerification(directory, tuple(map(str, issues)), warnings=tuple(map(str, warnings)))
+
+
+def _problem_domains(
+    environment: Environment, guides: Iterable[GuideMeta]
+) -> dict[str, tuple[str, ...]]:
+    """The domains of every problem, rubric ones too, for G12; none when a problem does not load:
+    its own line reports why. Read only when a guide names a problem."""
+    if not any(guide.problems for guide in guides):
+        return {}
+    try:
+        summaries = environment.problems.list_summaries()
+        items = environment.items.list_items()
+    except ContentError:
+        return {}
+    labels = [(summary.meta.slug, summary.meta.labels) for summary in summaries]
+    labels.extend((item.slug, item.labels) for item in items)
+    return {slug: found.domains for slug, found in labels}
 
 
 def _problem_levels(
