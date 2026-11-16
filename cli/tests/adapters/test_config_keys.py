@@ -126,3 +126,62 @@ def test_uncommenting_every_key_of_the_template_keeps_the_schedule():
     ]
     config = config_from_mapping(tomllib.loads("\n".join(lines)), SOURCE)
     assert config.schedule == Config().schedule
+
+
+AI_KEYS = [
+    "ai.enabled",
+    "ai.routing",
+    "ai.model",
+    "ai.fast",
+    "ai.strong",
+    "ai.daily_token_cap",
+]
+
+
+def test_the_ai_table_has_six_keys_in_the_order_of_the_file_after_the_study_guides():
+    names = [key.name for key in CONFIG_KEYS]
+    assert names[-len(AI_KEYS) - 1 :] == ["study_guides.root", *AI_KEYS]
+
+
+def test_only_the_ai_keys_are_preview():
+    assert [key.name for key in CONFIG_KEYS if key.preview] == AI_KEYS
+
+
+def test_the_ai_keys_share_one_section_with_the_titles_of_the_spec():
+    assert [(KEY_TITLES[name].section, KEY_TITLES[name].label) for name in AI_KEYS] == [
+        ("ai", "Turn on AI (preview)"),
+        ("ai", "Routing"),
+        ("ai", "Model"),
+        ("ai", "Fast tier"),
+        ("ai", "Strong tier"),
+        ("ai", "Daily token cap"),
+    ]
+
+
+def test_the_ai_keys_have_the_kinds_and_defaults_of_the_spec():
+    shapes = {name: (BY_NAME[name].kind, BY_NAME[name].default) for name in AI_KEYS}
+    assert shapes == {
+        "ai.enabled": (KeyKind.BOOLEAN, False),
+        "ai.routing": (KeyKind.CHOICE, "fixed"),
+        "ai.model": (KeyKind.TEXT, None),
+        "ai.fast": (KeyKind.TEXT, None),
+        "ai.strong": (KeyKind.TEXT, None),
+        "ai.daily_token_cap": (KeyKind.INTEGER, 500_000),
+    }
+    assert BY_NAME["ai.routing"].choices == ("fixed", "auto")
+
+
+@pytest.mark.parametrize("name", ["ai.model", "ai.fast", "ai.strong"])
+def test_a_model_key_shows_an_example_with_a_provider_and_has_no_default(name):
+    key = BY_NAME[name]
+    assert key.default is None
+    assert str(key.example).split(":")[0] in {"anthropic", "google", "openai", "openrouter"}
+
+
+def test_the_template_lists_the_ai_table_with_its_defaults_and_examples():
+    template = config_template()
+    assert "[ai]" in template
+    assert "# enabled = false" in template
+    assert '# routing = "fixed"' in template
+    assert '# model = "anthropic:' in template
+    assert "# daily_token_cap = 500000" in template

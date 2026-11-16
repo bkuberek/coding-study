@@ -29,6 +29,10 @@ CHANGED_TEXTS = {
     "progress_db": "other.db",
     "time_limit.value": "3x",
     "study_guides.root": "~/guides",
+    "ai.routing": "auto",
+    "ai.model": "openai:gpt-x",
+    "ai.fast": "openrouter:vendor/model",
+    "ai.strong": "anthropic:claude-x",
 }
 
 
@@ -249,3 +253,39 @@ def test_each_key_reaches_a_fresh_environment_without_a_restart(tmp_path, real_e
     before = fresh().config
     TomlConfigFile(Path(environ["CSTUDY_CONFIG"])).apply({key.name: changed_value(key)})
     assert fresh().config != before
+
+
+def test_a_key_says_whether_it_is_a_preview(app):
+    with session_client(app) as client:
+        keys = by_name(client.get(CONFIG).json())
+    previews = [name for name, key in keys.items() if key["preview"]]
+    assert previews == [
+        "ai.enabled",
+        "ai.routing",
+        "ai.model",
+        "ai.fast",
+        "ai.strong",
+        "ai.daily_token_cap",
+    ]
+    assert all(key["preview"] is False for name, key in keys.items() if name not in previews)
+
+
+def test_the_ai_keys_show_their_section_and_defaults(app):
+    with session_client(app) as client:
+        keys = by_name(client.get(CONFIG).json())
+    assert (keys["ai.enabled"]["section"], keys["ai.enabled"]["default"]) == ("ai", False)
+    assert (keys["ai.routing"]["default"], keys["ai.routing"]["choices"]) == (
+        "fixed",
+        ["fixed", "auto"],
+    )
+    assert (keys["ai.model"]["default"], keys["ai.model"]["value"]) == (None, None)
+    assert keys["ai.daily_token_cap"]["value"] == 500_000
+
+
+def test_saving_an_ai_model_writes_it_and_a_bad_one_gets_422_naming_the_key(app, file):
+    with session_client(app) as client:
+        assert post(client, {"ai.model": "anthropic:claude-x"}).status_code == 200
+        refused = post(client, {"ai.fast": "gemini:x"})
+    assert tomllib.loads(file.read_text())["ai"] == {"model": "anthropic:claude-x"}
+    assert refused.status_code == 422
+    assert "ai.fast" in refused.text

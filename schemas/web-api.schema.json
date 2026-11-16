@@ -168,7 +168,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "label", "section", "kind", "value", "default", "set", "help", "applies", "choices", "example", "reserved"],
+            "required": ["name", "label", "section", "kind", "value", "default", "set", "help", "applies", "choices", "example", "reserved", "preview"],
             "properties": {
               "name": { "description": "Dotted: schedule.max_interval_days", "type": "string" },
               "label": { "description": "What Settings calls the key, with the name beside it", "type": "string" },
@@ -181,7 +181,8 @@
               "applies": { "description": "When a change takes effect, in words", "type": "string" },
               "choices": { "type": "array", "items": { "type": "string" } },
               "example": { "description": "What a key without a default may hold" },
-              "reserved": { "description": "Accepted in the file, refused here, does nothing yet", "type": "boolean" }
+              "reserved": { "description": "Accepted in the file, refused here, does nothing yet", "type": "boolean" },
+              "preview": { "description": "A preview key: its name and meaning may change in a minor release", "type": "boolean" }
             }
           }
         }

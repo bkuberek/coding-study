@@ -41,6 +41,9 @@ from coding_study.application.ports import (
     Unpacked,
     VersionPrinted,
 )
+from coding_study.domain.ai import AiTask, ApiKey, Provider
+from coding_study.domain.ai_models import ModelReply, ModelRequest, ProviderError
+from coding_study.domain.ai_records import Consent, ModelCall, ReviewRecord
 from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.cases import FunctionInput
 from coding_study.domain.code_intelligence import (
@@ -492,3 +495,118 @@ INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
     "gopls": VersionPrinted("golang.org/x/tools/gopls v0.24.0\n"),
     "rust-analyzer": VersionPrinted("rust-analyzer 1.91.0 (f8297e35 2025-10-28)\n"),
 }
+
+
+class FakeCredentials:
+    """`credentials.toml` in memory, as `Credentials` describes it."""
+
+    def __init__(
+        self, keys: Mapping[Provider, str] | None = None, issue: str | None = None
+    ) -> None:
+        self.keys = {provider: ApiKey(text) for provider, text in (keys or {}).items()}
+        self.problem = issue
+        self.location = "/fake/config/credentials.toml"
+
+    def issue(self) -> str | None:
+        return self.problem
+
+    def keys_set(self) -> frozenset[Provider]:
+        return frozenset(self.keys)
+
+    def key(self, provider: Provider) -> ApiKey | None:
+        return self.keys.get(provider)
+
+    def save_key(self, provider: Provider, key: ApiKey) -> None:
+        self.keys[provider] = key
+
+    def remove_key(self, provider: Provider) -> bool:
+        return self.keys.pop(provider, None) is not None
+
+
+class FakeAiStore:
+    """The AI tables in memory, as `AiStore` describes them."""
+
+    def __init__(self) -> None:
+        self.granted: dict[tuple[Provider, str, AiTask], Consent] = {}
+        self.calls: list[ModelCall] = []
+        self.reviews: dict[int, ReviewRecord] = {}
+        self.review_slugs: dict[int, str] = {}
+        """The problem of each review's attempt, which the real store joins from `attempts`."""
+
+    def consent(self, provider: Provider, model: str, purpose: AiTask) -> Consent | None:
+        return self.granted.get((provider, model, purpose))
+
+    def consents(self) -> tuple[Consent, ...]:
+        return tuple(sorted(self.granted.values(), key=lambda c: (c.provider, c.model, c.purpose)))
+
+    def grant_consent(self, consent: Consent) -> None:
+        self.granted.setdefault((consent.provider, consent.model, consent.purpose), consent)
+
+    def revoke_consent(self, provider: Provider, model: str, purpose: AiTask) -> bool:
+        return self.granted.pop((provider, model, purpose), None) is not None
+
+    def record_call(self, call: ModelCall) -> None:
+        self.calls.append(call)
+
+    def calls_between(self, first: date, last: date) -> tuple[ModelCall, ...]:
+        found = [call for call in self.calls if first <= call.local_day <= last]
+        return tuple(sorted(found, key=lambda call: call.started_at))
+
+    def add_review(self, record: ReviewRecord, slug: str = "") -> int:
+        review_id = max(self.reviews, default=0) + 1
+        self.reviews[review_id] = replace(record, id=review_id)
+        self.review_slugs[review_id] = slug
+        return review_id
+
+    def review(self, review_id: int) -> ReviewRecord | None:
+        return self.reviews.get(review_id)
+
+    def reviews_of_problem(self, slug: str) -> tuple[ReviewRecord, ...]:
+        ids = [review_id for review_id, held in self.review_slugs.items() if held == slug]
+        return self._newest_first(ids)
+
+    def reviews_of_attempt(self, attempt_id: int) -> tuple[ReviewRecord, ...]:
+        ids = [i for i, record in self.reviews.items() if record.attempt_id == attempt_id]
+        return self._newest_first(ids)
+
+    def dismiss_review(self, review_id: int, at: datetime) -> bool:
+        record = self.reviews[review_id]
+        if record.dismissed_at is not None:
+            return False
+        self.reviews[review_id] = replace(record, dismissed_at=at)
+        return True
+
+    def _newest_first(self, ids: Sequence[int]) -> tuple[ReviewRecord, ...]:
+        return tuple(self.reviews[i] for i in sorted(ids, reverse=True))
+
+
+class ScriptedLanguageModels:
+    """`LanguageModels` that answers from a queue: a reply is returned and a ProviderError raised,
+    in order. Every request is kept, with the key that came with it."""
+
+    def __init__(self, *answers: ModelReply | ProviderError) -> None:
+        self.answers = list(answers)
+        self.requests: list[ModelRequest] = []
+        self.keys: list[ApiKey] = []
+        self.listings: dict[Provider, tuple[str, ...] | ProviderError] = {}
+        self.listed: list[Provider] = []
+
+    def queue(self, *answers: ModelReply | ProviderError) -> None:
+        self.answers.extend(answers)
+
+    def complete(self, request: ModelRequest, key: ApiKey) -> ModelReply:
+        self.requests.append(request)
+        self.keys.append(key)
+        if not self.answers:
+            raise AssertionError(f"no scripted answer for the request to {request.model}")
+        answer = self.answers.pop(0)
+        if isinstance(answer, ProviderError):
+            raise answer
+        return answer
+
+    def list_models(self, provider: Provider, key: ApiKey, deadline_s: float) -> tuple[str, ...]:
+        self.listed.append(provider)
+        listing = self.listings.get(provider, ())
+        if isinstance(listing, ProviderError):
+            raise listing
+        return listing

@@ -14,7 +14,9 @@ from typing import Any, Self, cast
 
 from coding_study.adapters.fs_study_guides import HOME_PREFIX
 from coding_study.domain import environment_variables
+from coding_study.domain.ai import MODEL_SHAPE, ModelRef, Provider, Routing
 from coding_study.domain.config import (
+    AiSettings,
     BenchSettings,
     Config,
     DoneSettings,
@@ -163,6 +165,7 @@ def _config(top: "_TableReader") -> Config:
         schedule=_schedule_settings(top.table("schedule")),
         done=_done_settings(top.table("done")),
         study_guides=_study_guide_settings(top.table("study_guides")),
+        ai=_ai_settings(top.table("ai")),
     )
 
 
@@ -227,6 +230,17 @@ def _done_settings(table: "_TableReader") -> DoneSettings:
 
 def _study_guide_settings(table: "_TableReader") -> StudyGuideSettings:
     return StudyGuideSettings(root=table.read(_STUDY_GUIDES_ROOT))
+
+
+def _ai_settings(table: "_TableReader") -> AiSettings:
+    return AiSettings(
+        enabled=table.read(_AI_ENABLED),
+        routing=table.read(_AI_ROUTING),
+        model=table.read(_AI_MODEL),
+        fast=table.read(_AI_FAST),
+        strong=table.read(_AI_STRONG),
+        daily_token_cap=table.read(_AI_DAILY_TOKEN_CAP),
+    )
 
 
 class _TableReader:
@@ -349,6 +363,20 @@ def _job_roles(value: object) -> tuple[str, ...]:
 
 def _domains(value: object) -> tuple[str, ...]:
     return _profile_values(value, "domain", DOMAINS)
+
+
+def _routing(value: object) -> Routing:
+    if isinstance(value, str) and value in Routing:
+        return Routing(value)
+    raise ValueError(f"expected one of {', '.join(Routing)}")
+
+
+def _model_ref(value: object) -> ModelRef:
+    """`<provider>:<model id>`, by shape only: an unset model is the AI task's to refuse
+    (docs/specs/ai.md#settings)."""
+    if not isinstance(value, str):
+        raise ValueError(MODEL_SHAPE)
+    return ModelRef.parse(value)
 
 
 def _time_limit(value: object) -> TimeLimit:
@@ -590,6 +618,87 @@ _STUDY_GUIDES_ROOT = _Key(
     _DEFAULTS.study_guides.root,
     _directory,
 )
+_NEXT_AI_REQUEST = "at the next AI request"
+_AI_ENABLED = _Key(
+    ConfigKey(
+        "ai.enabled",
+        KeyKind.BOOLEAN,
+        _DEFAULTS.ai.enabled,
+        "Turn on the AI preview. Off, nothing leaves this machine. On, nothing is sent until you "
+        "run an AI command or press an AI button, and agree to send. Your provider keys are in "
+        "credentials.toml, not here.",
+        f"{_NEXT_COMMAND}; an open page after a reload, since the session holds it",
+        preview=True,
+    ),
+    _DEFAULTS.ai.enabled,
+    _boolean,
+)
+_AI_ROUTING = _Key(
+    ConfigKey(
+        "ai.routing",
+        KeyKind.CHOICE,
+        _DEFAULTS.ai.routing.value,
+        "fixed: every AI task uses ai.model. auto: each task uses its tier, ai.fast or ai.strong.",
+        _NEXT_AI_REQUEST,
+        tuple(Routing),
+        preview=True,
+    ),
+    _DEFAULTS.ai.routing,
+    _routing,
+)
+_AI_MODEL = _Key(
+    ConfigKey(
+        "ai.model",
+        KeyKind.TEXT,
+        None,
+        "The model of fixed routing, as provider:model-id, from "
+        f"{', '.join(Provider)}. cstudy ai models <provider> lists the ids.",
+        _NEXT_AI_REQUEST,
+        example="anthropic:<model-id>",
+        preview=True,
+    ),
+    _DEFAULTS.ai.model,
+    _model_ref,
+)
+_AI_FAST = _Key(
+    ConfigKey(
+        "ai.fast",
+        KeyKind.TEXT,
+        None,
+        "Auto routing's fast tier, as provider:model-id.",
+        _NEXT_AI_REQUEST,
+        example="openrouter:<model-id>",
+        preview=True,
+    ),
+    _DEFAULTS.ai.fast,
+    _model_ref,
+)
+_AI_STRONG = _Key(
+    ConfigKey(
+        "ai.strong",
+        KeyKind.TEXT,
+        None,
+        "Auto routing's strong tier, as provider:model-id. AI review uses it.",
+        _NEXT_AI_REQUEST,
+        example="openai:<model-id>",
+        preview=True,
+    ),
+    _DEFAULTS.ai.strong,
+    _model_ref,
+)
+_AI_DAILY_TOKEN_CAP = _Key(
+    ConfigKey(
+        "ai.daily_token_cap",
+        KeyKind.INTEGER,
+        _DEFAULTS.ai.daily_token_cap,
+        "Input and output tokens per local day, every AI task together, in this workspace. A "
+        "request that would pass it is refused before anything is sent.",
+        _NEXT_AI_REQUEST,
+        preview=True,
+    ),
+    _DEFAULTS.ai.daily_token_cap,
+    _positive_int,
+)
 _KEYS: tuple[_Key[Any], ...] = (
     _DEFAULT_LANG,
     _OPEN_ON_START,
@@ -614,6 +723,12 @@ _KEYS: tuple[_Key[Any], ...] = (
     _MASTERED_INTERVAL,
     _AUTO_COMMIT,
     _STUDY_GUIDES_ROOT,
+    _AI_ENABLED,
+    _AI_ROUTING,
+    _AI_MODEL,
+    _AI_FAST,
+    _AI_STRONG,
+    _AI_DAILY_TOKEN_CAP,
 )
 CONFIG_KEYS = tuple(key.description for key in _KEYS)
 """Every key, in the order of the file: what the Settings view draws and `cstudy config edit`'s

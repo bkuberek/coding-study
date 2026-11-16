@@ -82,6 +82,7 @@ def config_keys() -> Surface:
             "default": key.default,
             "choices": list(key.choices),
             "reserved": key.reserved,
+            "preview": key.preview,
         }
         for key in CONFIG_KEYS
     }

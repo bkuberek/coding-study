@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from coding_study.domain.ai import ModelRef, Routing
 from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import (
     DEFAULT_REVIEW_INTERVALS,
@@ -15,6 +16,7 @@ DEFAULT_PROGRESS_DB = "progress.db"
 DEFAULT_TIME_LIMIT_FLOOR_MS = 100
 DEFAULT_BENCH_REPS = 7
 DEFAULT_MAX_INTERVAL_DAYS = 180
+DEFAULT_DAILY_TOKEN_CAP = 500_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +72,19 @@ class StudyGuideSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class AiSettings:
+    """The `[ai]` table, a preview (docs/specs/ai.md#settings). Off, nothing is ever sent."""
+
+    enabled: bool = False
+    routing: Routing = Routing.FIXED
+    model: ModelRef | None = None
+    """Fixed routing's model. An unset model refuses only the task that needs it."""
+    fast: ModelRef | None = None
+    strong: ModelRef | None = None
+    daily_token_cap: int = DEFAULT_DAILY_TOKEN_CAP
+
+
+@dataclass(frozen=True, slots=True)
 class Config:
     default_lang: Language = Language.PYTHON
     open_on_start: bool = True
@@ -82,3 +97,4 @@ class Config:
     schedule: ScheduleSettings = ScheduleSettings()
     done: DoneSettings = DoneSettings()
     study_guides: StudyGuideSettings = StudyGuideSettings()
+    ai: AiSettings = AiSettings()

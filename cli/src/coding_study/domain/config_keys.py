@@ -35,6 +35,9 @@ class ConfigKey:
     """What a key without a default may hold."""
     reserved: bool = False
     """Accepted in the file, and does nothing yet."""
+    preview: bool = False
+    """A preview key: its name and meaning may change in a minor release
+    (docs/specs/compatibility.md#surfaces)."""
 
     @property
     def table(self) -> str:
@@ -60,6 +63,7 @@ _PROFILE = "profile"
 _RUNS = "runs"
 _BENCHMARKS = "benchmarks"
 _SCHEDULE = "review schedule"
+_AI = "ai"
 KEY_TITLES = {
     "default_lang": KeyTitle("Default language", _GENERAL),
     "open_on_start": KeyTitle("Open my editor on start", _GENERAL),
@@ -84,6 +88,12 @@ KEY_TITLES = {
     "schedule.easy_first_interval_days": KeyTitle("After a first easy, in days", _SCHEDULE),
     "schedule.easy_second_interval_days": KeyTitle("After a second easy, in days", _SCHEDULE),
     "schedule.mastered_interval_days": KeyTitle("Mastered from, in days", _SCHEDULE),
+    "ai.enabled": KeyTitle("Turn on AI (preview)", _AI),
+    "ai.routing": KeyTitle("Routing", _AI),
+    "ai.model": KeyTitle("Model", _AI),
+    "ai.fast": KeyTitle("Fast tier", _AI),
+    "ai.strong": KeyTitle("Strong tier", _AI),
+    "ai.daily_token_cap": KeyTitle("Daily token cap", _AI),
 }
 """By key name. A test holds it equal to the keys the parser reads."""
 

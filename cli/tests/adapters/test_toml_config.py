@@ -3,7 +3,9 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.toml_config import TomlConfigSource, config_path
+from coding_study.domain.ai import ModelRef, Provider, Routing
 from coding_study.domain.config import (
+    AiSettings,
     BenchSettings,
     Config,
     DoneSettings,
@@ -55,6 +57,14 @@ auto_commit = true
 
 [study_guides]
 root = "~/study-guides"
+
+[ai]
+enabled = true
+routing = "auto"
+model = "anthropic:claude-x"
+fast = "openrouter:vendor/model:variant"
+strong = "openai:gpt-x"
+daily_token_cap = 120000
 """
 
 
@@ -117,6 +127,14 @@ def test_every_key_is_read(tmp_path):
         schedule=ScheduleSettings(penalize_suboptimal=False, max_interval_days=90),
         done=DoneSettings(auto_commit=True),
         study_guides=StudyGuideSettings(root="~/study-guides"),
+        ai=AiSettings(
+            enabled=True,
+            routing=Routing.AUTO,
+            model=ModelRef(Provider.ANTHROPIC, "claude-x"),
+            fast=ModelRef(Provider.OPENROUTER, "vendor/model:variant"),
+            strong=ModelRef(Provider.OPENAI, "gpt-x"),
+            daily_token_cap=120_000,
+        ),
     )
 
 
@@ -184,6 +202,26 @@ def test_every_key_is_read(tmp_path):
             'study_guides.root: expected an absolute path or one starting with "~/"',
         ),
         ('[study_guides]\nroot = ""', "study_guides.root: expected an absolute path"),
+        ('[ai]\nenabled = "yes"', "ai.enabled: expected true or false"),
+        ('[ai]\nrouting = "random"', "ai.routing: expected one of fixed, auto"),
+        ("[ai]\nrouting = true", "ai.routing: expected one of fixed, auto"),
+        (
+            '[ai]\nmodel = "claude-x"',
+            "ai.model: expected provider:model, such as anthropic:<model id>",
+        ),
+        ("[ai]\nmodel = 5", "ai.model: expected provider:model, such as anthropic:<model id>"),
+        (
+            '[ai]\nfast = "gemini:x"',
+            'ai.fast: unknown provider "gemini"; use one of anthropic, google, openai, openrouter',
+        ),
+        ('[ai]\nstrong = "openai:"', 'ai.strong: no model id after "openai:"'),
+        ('[ai]\nmodel = "openai:two words"', "ai.model: a model id has no spaces"),
+        ("[ai]\ndaily_token_cap = 0", "ai.daily_token_cap: expected a positive integer"),
+        ("[ai]\ndaily_token_cap = -5", "ai.daily_token_cap: expected a positive integer"),
+        ("[ai]\ndaily_token_cap = 1.5", "ai.daily_token_cap: expected a positive integer"),
+        ("[ai]\ndaily_token_cap = true", "ai.daily_token_cap: expected a positive integer"),
+        ("[ai]\nprovider = 3", "ai.provider: unknown key"),
+        ("ai = true", "ai: expected a table"),
         ('colour = "auto"', "colour: unknown key"),
         ("[bench]\nwarmup = 3", "bench.warmup: unknown key"),
         ("bench = 3", "bench: expected a table"),
@@ -253,3 +291,37 @@ def test_without_a_profile_table_the_profile_holds_every_role_and_domain(tmp_pat
 def test_a_profile_table_with_one_key_leaves_the_other_at_every_value(tmp_path):
     profile = write_config(tmp_path, '[profile]\ndomains = ["security"]').load().profile
     assert profile == ProfileSettings(domains=("security",))
+
+
+def test_without_an_ai_table_the_preview_is_off_and_fixed_with_no_model(tmp_path):
+    ai = write_config(tmp_path, "").load().ai
+    assert (ai.enabled, ai.routing, ai.model, ai.fast, ai.strong) == (
+        False,
+        Routing.FIXED,
+        None,
+        None,
+        None,
+    )
+    assert ai.daily_token_cap == 500_000
+
+
+def test_an_ai_table_with_one_key_leaves_the_others_at_their_defaults(tmp_path):
+    ai = write_config(tmp_path, "[ai]\nenabled = true").load().ai
+    assert ai == AiSettings(enabled=True)
+
+
+def test_an_unset_model_is_no_error_even_with_the_preview_on_under_auto_routing(tmp_path):
+    ai = write_config(tmp_path, '[ai]\nenabled = true\nrouting = "auto"').load().ai
+    assert (ai.enabled, ai.routing, ai.strong) == (True, Routing.AUTO, None)
+
+
+def test_a_model_id_may_hold_colons_and_slashes(tmp_path):
+    ai = write_config(tmp_path, '[ai]\nmodel = "openrouter:vendor/model:variant"').load().ai
+    assert ai.model == ModelRef(Provider.OPENROUTER, "vendor/model:variant")
+
+
+def test_every_ai_issue_is_collected_with_the_other_keys(tmp_path):
+    text = '[ai]\nmodel = "x"\nfast = "gemini:y"\ndaily_token_cap = 0\n[bench]\nreps = 0'
+    with pytest.raises(ConfigError) as raised:
+        write_config(tmp_path, text).load()
+    assert len(raised.value.issues) == 4

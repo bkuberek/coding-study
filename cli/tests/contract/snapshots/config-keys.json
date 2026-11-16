@@ -1,14 +1,61 @@
 {
+  "ai.daily_token_cap": {
+    "choices": [],
+    "default": 500000,
+    "kind": "integer",
+    "preview": true,
+    "reserved": false
+  },
+  "ai.enabled": {
+    "choices": [],
+    "default": false,
+    "kind": "boolean",
+    "preview": true,
+    "reserved": false
+  },
+  "ai.fast": {
+    "choices": [],
+    "default": null,
+    "kind": "text",
+    "preview": true,
+    "reserved": false
+  },
+  "ai.model": {
+    "choices": [],
+    "default": null,
+    "kind": "text",
+    "preview": true,
+    "reserved": false
+  },
+  "ai.routing": {
+    "choices": [
+      "fixed",
+      "auto"
+    ],
+    "default": "fixed",
+    "kind": "choice",
+    "preview": true,
+    "reserved": false
+  },
+  "ai.strong": {
+    "choices": [],
+    "default": null,
+    "kind": "text",
+    "preview": true,
+    "reserved": false
+  },
   "bench.memory": {
     "choices": [],
     "default": true,
     "kind": "boolean",
+    "preview": false,
     "reserved": false
   },
   "bench.reps": {
     "choices": [],
     "default": 7,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "default_lang": {
@@ -22,18 +69,21 @@
     ],
     "default": "python",
     "kind": "choice",
+    "preview": false,
     "reserved": false
   },
   "done.auto_commit": {
     "choices": [],
     "default": false,
     "kind": "boolean",
+    "preview": false,
     "reserved": true
   },
   "hang_guard.ms": {
     "choices": [],
     "default": null,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "next.tracks": {
@@ -51,12 +101,14 @@
       "dsa"
     ],
     "kind": "choices",
+    "preview": false,
     "reserved": false
   },
   "open_on_start": {
     "choices": [],
     "default": true,
     "kind": "boolean",
+    "preview": false,
     "reserved": false
   },
   "profile.domains": {
@@ -87,6 +139,7 @@
       "frontend"
     ],
     "kind": "choices",
+    "preview": false,
     "reserved": false
   },
   "profile.job_roles": {
@@ -109,90 +162,105 @@
       "frontend"
     ],
     "kind": "choices",
+    "preview": false,
     "reserved": false
   },
   "progress_db": {
     "choices": [],
     "default": "progress.db",
     "kind": "text",
+    "preview": false,
     "reserved": false
   },
   "schedule.again_interval_days": {
     "choices": [],
     "default": 1,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.easy_first_interval_days": {
     "choices": [],
     "default": 5,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.easy_second_interval_days": {
     "choices": [],
     "default": 12,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.hard_first_interval_days": {
     "choices": [],
     "default": 2,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.mastered_interval_days": {
     "choices": [],
     "default": 21,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.max_interval_days": {
     "choices": [],
     "default": 180,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.ok_first_interval_days": {
     "choices": [],
     "default": 3,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.ok_second_interval_days": {
     "choices": [],
     "default": 7,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "schedule.penalize_suboptimal": {
     "choices": [],
     "default": true,
     "kind": "boolean",
+    "preview": false,
     "reserved": false
   },
   "study_guides.root": {
     "choices": [],
     "default": null,
     "kind": "text",
+    "preview": false,
     "reserved": false
   },
   "time_limit.enabled": {
     "choices": [],
     "default": false,
     "kind": "boolean",
+    "preview": false,
     "reserved": false
   },
   "time_limit.floor_ms": {
     "choices": [],
     "default": 100,
     "kind": "integer",
+    "preview": false,
     "reserved": false
   },
   "time_limit.value": {
     "choices": [],
     "default": null,
     "kind": "text",
+    "preview": false,
     "reserved": false
   }
 }

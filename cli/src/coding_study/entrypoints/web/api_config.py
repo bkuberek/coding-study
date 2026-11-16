@@ -75,6 +75,7 @@ def _key_document(state: ConfigKeyState) -> dict[str, object]:
         "choices": list(key.choices),
         "example": key.example,
         "reserved": key.reserved,
+        "preview": key.preview,
     }
 
 
