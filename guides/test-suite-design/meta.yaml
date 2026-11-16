@@ -2,6 +2,8 @@
 title: "Designing a test suite: levels, contract tests and golden files"
 summary: Unit, integration and end-to-end tests trade speed for realism; the test pyramid and when it does not hold, contract tests that keep doubles honest, golden files for large outputs, and suites that stay fast and trusted.
 level: advanced
+domains: [software-design]
+job_roles: [general]
 prerequisites: [stubs-spies-mocks-and-fakes, deterministic-tests]
 related: [coverage-and-mutation-testing, stateful-and-model-based-testing]
 problems: [eval-release-gate]

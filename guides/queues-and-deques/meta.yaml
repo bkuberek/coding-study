@@ -2,6 +2,8 @@
 title: Queues and deques
 summary: First in, first out. Build a queue from two stacks at amortized O(1), see how ring buffers and linked blocks avoid shifting, and keep a window's minimum with a deque.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [stacks]
 related: [monotonic-stacks]
 problems: [sliding-window-maximum]

@@ -2,6 +2,8 @@
 title: Monotonic stacks
 summary: For every item, the first later item that beats it, in one pass. Why the stack stays in order by itself, and why each item is pushed and popped only once.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [stacks]
 related: [queues-and-deques, evaluating-expressions]
 problems: [price-after-rebate, daily-temperatures, stock-span, car-fleet, remove-k-digits, sum-of-subarray-minimums, trapping-rain-water, largest-rectangle-histogram, maximal-rectangle]

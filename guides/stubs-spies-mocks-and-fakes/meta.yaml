@@ -2,6 +2,8 @@
 title: "Test doubles: stubs, spies, mocks and fakes"
 summary: Replace a slow, unpredictable or dangerous dependency with a stand-in the test controls; dummies, stubs, spies, mocks and fakes, what each answers, unittest.mock, and how doubles make tests fragile.
 level: core
+domains: [software-design]
+job_roles: [general]
 prerequisites: [what-a-test-checks]
 related: [deterministic-tests, test-suite-design]
 problems: [test-doubles]

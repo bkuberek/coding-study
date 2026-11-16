@@ -2,5 +2,7 @@
 title: Entity resolution and record linkage
 summary: Find the records that describe one real-world thing; clean them, block to avoid comparing every pair, weigh each field's agreement with Fellegi and Sunter's m and u probabilities, decide with two thresholds, and group with care.
 level: core
+domains: [data, backend]
+job_roles: [data-engineer, backend]
 related: [union-find, canonical-keys, rdf-triples]
 problems: [entity-resolution]

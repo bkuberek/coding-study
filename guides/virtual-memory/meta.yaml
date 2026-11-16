@@ -2,6 +2,8 @@
 title: Virtual memory, paging and page replacement
 summary: How every process gets its own address space; pages, frames and page tables, the TLB, page faults and demand paging; and which page to evict when memory is full, from FIFO, LRU and the clock to Belady's anomaly and the working set.
 level: core
+domains: [systems]
+job_roles: [backend, platform]
 prerequisites: [processes-and-system-calls]
 related: [memory-allocation, cpu-scheduling]
 problems: [lru-cache, virtual-memory-sim]

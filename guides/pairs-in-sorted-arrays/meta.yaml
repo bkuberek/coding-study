@@ -2,6 +2,8 @@
 title: Pairs in a sorted array
 summary: Why two pointers closing in from both ends of a sorted array can skip almost every pair, how to prove it, and how sorting first turns pair and triple questions into short scans.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [two-pointers]
 related: [hash-maps-and-sets, variable-size-windows]
 problems: [two-sum-sorted, three-sum, container-with-most-water, trapping-rain-water]

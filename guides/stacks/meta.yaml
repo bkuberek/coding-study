@@ -2,5 +2,7 @@
 title: Stacks
 summary: Last in, first out. Match things that open and close, take back the last edit, and keep your own stack where recursion would run out.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 related: [evaluating-expressions, queues-and-deques, monotonic-stacks]
 problems: [valid-parentheses, generate-parentheses, min-stack, min-remove-to-balance, decode-string, valid-parenthesis-string]

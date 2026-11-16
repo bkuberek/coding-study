@@ -2,6 +2,8 @@
 title: Tree traversals
 summary: Visit every node of a tree in pre-order, in-order, post-order or level order, recursively or with your own stack and queue, and what each walk costs in memory.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [trees]
 related: [recursion-on-trees, binary-search-trees]
 problems: [invert-binary-tree, level-order-traversal, right-side-view, org-chart-outline]

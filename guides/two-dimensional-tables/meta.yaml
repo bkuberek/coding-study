@@ -2,6 +2,8 @@
 title: Two-dimensional tables
 summary: When one number cannot name what is left to solve, the table gets rows and columns. Grids, two sequences and a position with a choice; what a cell means, the order to fill it, and reading the answer back.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [one-dimensional-tables]
 related: [choosing-states]
 problems: [minimum-path-sum, unique-paths, longest-common-subsequence, line-diff-and-merge, maximal-square, edit-distance, interleaving-string, regex-matching]

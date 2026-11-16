@@ -2,5 +2,7 @@
 title: Using the terminal
 summary: What a terminal and a shell are, how the shell finds a command, moving around and reading files, pipes, environment variables, config files, and how to read an error.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 related: [package-managers, your-first-problem]
 shell: true

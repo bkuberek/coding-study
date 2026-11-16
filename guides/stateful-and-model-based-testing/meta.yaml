@@ -2,6 +2,8 @@
 title: Stateful and model-based testing
 summary: Test an object whose answers depend on its history by running random sequences of commands on it and on a simple model, comparing every answer, respecting preconditions, and shrinking a failing sequence to the few commands that matter.
 level: advanced
+domains: [software-design]
+job_roles: [general]
 prerequisites: [property-based-testing]
 related: [deterministic-tests, test-suite-design]
 problems: [property-test-runner]

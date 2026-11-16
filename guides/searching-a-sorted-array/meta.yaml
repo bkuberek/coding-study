@@ -2,5 +2,7 @@
 title: Searching a sorted array
 summary: How comparing with the middle element halves the search, the invariant that makes it correct, half-open against closed intervals, and why the midpoint is lo + (hi - lo) / 2.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 related: [lower-and-upper-bounds, binary-search-mistakes]
 problems: [binary-search]

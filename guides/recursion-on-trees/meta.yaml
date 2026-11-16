@@ -2,6 +2,8 @@
 title: "Recursion on trees: values up, state down"
 summary: Write a tree function by trusting the answers of the subtrees. Values travel up as return values, state travels down as arguments, and most tree problems use one or both.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [tree-traversals]
 related: [binary-search-trees]
 problems:

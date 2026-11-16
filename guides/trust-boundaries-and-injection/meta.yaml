@@ -2,5 +2,7 @@
 title: Trust boundaries and injection
 summary: Where untrusted data enters a program, why text that reaches an interpreter can turn into commands, and the defenses that keep data as data, from bound parameters and argument lists to allowlists.
 level: intro
+domains: [security]
+job_roles: [security-engineer, backend]
 related: [output-encoding, threat-modeling, llm-application-security]
 problems: [memory-write-sanitizer, sql-guard, fix-the-flaws-typescript]

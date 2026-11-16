@@ -2,6 +2,8 @@
 title: Bottom-up tables in one dimension
 summary: Turn a recursion into a loop that fills a table. State the subproblem in one sentence, write the recurrence, fill in an order that has every answer ready, then keep only what the next step reads.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [memoization]
 related: [two-dimensional-tables]
 problems: [house-robber, coin-change, longest-increasing-subsequence, decode-ways, min-cost-tickets]
