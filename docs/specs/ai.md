@@ -97,7 +97,7 @@ A provider failure exits 4 and is stored as a failed request ([usage](#usage-and
 
 | Kind | When | Message |
 |------|------|---------|
-| `auth` | 401 or 403 | `anthropic refused the key (401): set it again with cstudy ai key anthropic` |
+| `auth` | 401 or 403, or a google 400 whose error carries `API_KEY_INVALID` | `anthropic refused the key (401): set it again with cstudy ai key anthropic` |
 | `rate_limit` | 429 | `openai is limiting this key's requests (429): try again later` |
 | `model` | 404, or a 400 that names the model or the structured output | `google has no model <model id>, or it cannot answer in a JSON schema: see cstudy ai models google` |
 | `refused` | The provider declined to answer | `anthropic declined to answer this request` |

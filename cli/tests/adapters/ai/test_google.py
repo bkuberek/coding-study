@@ -200,6 +200,12 @@ def test_a_reply_without_usage_reports_none(provider, models):
             "google refused the key (403): set it again with cstudy ai key google",
         ),
         (
+            "error_400_api_key_invalid",
+            400,
+            ProviderErrorKind.AUTH,
+            "google refused the key (400): set it again with cstudy ai key google",
+        ),
+        (
             "error_404",
             404,
             ProviderErrorKind.MODEL,

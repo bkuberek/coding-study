@@ -141,6 +141,8 @@ class JsonClient:
                 raise _failed(key, ProviderErrorKind.INVALID_REPLY, message)
             return parsed
         text = body.decode("utf-8", errors="replace")
+        if provider is Provider.GOOGLE and status == 400 and _invalid_key(parsed):
+            raise _refused_key(provider, status, key)
         raise status_error(provider, status, _message(parsed, text), key, model_id)
 
     def _exchange(self, request: urllib.request.Request, link: "_Deadline") -> tuple[int, bytes]:
@@ -173,8 +175,7 @@ def status_error(
     """The error for an HTTP status that is not a success (docs/specs/ai.md#errors). `message` is
     the provider's own text, which this shortens and scrubs of the key."""
     if status in (401, 403):
-        text = f"{provider} refused the key ({status}): set it again with cstudy ai key {provider}"
-        return _failed(key, ProviderErrorKind.AUTH, text)
+        return _refused_key(provider, status, key)
     if status == 429:
         text = f"{provider} is limiting this key's requests (429): try again later"
         return _failed(key, ProviderErrorKind.RATE_LIMIT, text)
@@ -188,6 +189,23 @@ def status_error(
         return _failed(key, ProviderErrorKind.MODEL, text)
     shown = " ".join(key.scrub(message).split())[:MESSAGE_CHARACTERS]
     return _failed(key, ProviderErrorKind.PROVIDER, f"{provider} failed ({status}): {shown}")
+
+
+def _refused_key(provider: Provider, status: int, key: ApiKey) -> ProviderError:
+    text = f"{provider} refused the key ({status}): set it again with cstudy ai key {provider}"
+    return _failed(key, ProviderErrorKind.AUTH, text)
+
+
+def _invalid_key(parsed: JsonObject | None) -> bool:
+    """Whether a Google error document gives `API_KEY_INVALID` as a detail's reason."""
+    error = parsed.get("error") if parsed is not None else None
+    details = cast("JsonObject", error).get("details") if isinstance(error, dict) else None
+    if not isinstance(details, list):
+        return False
+    return any(
+        isinstance(detail, dict) and cast("JsonObject", detail).get("reason") == "API_KEY_INVALID"
+        for detail in cast("list[object]", details)
+    )
 
 
 def _names_model(message: str, model_id: str) -> bool:
