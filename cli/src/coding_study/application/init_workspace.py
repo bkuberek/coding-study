@@ -9,6 +9,7 @@ from pathlib import Path
 
 from coding_study.application.ports import ScaffoldOutcome, WorkspaceSetup
 from coding_study.domain.errors import UsageError
+from coding_study.domain.problem import Language
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,12 +19,15 @@ class InitRequest:
     """Run `git init` in the new workspace."""
     force: bool = False
     """Allow a workspace inside a content checkout."""
+    languages: tuple[Language, ...] | None = None
+    """The workspace's languages, in workspace order; None chooses none, so it has all six."""
 
 
 @dataclass(frozen=True, slots=True)
 class InitializedWorkspace:
     root: Path
     files: ScaffoldOutcome
+    languages: tuple[Language, ...] | None = None
 
 
 def init_workspace(setup: WorkspaceSetup, request: InitRequest) -> InitializedWorkspace:
@@ -32,11 +36,11 @@ def init_workspace(setup: WorkspaceSetup, request: InitRequest) -> InitializedWo
     _refuse_nested_workspace(setup, target)
     if not request.force:
         _refuse_checkout(setup, target)
-    files = setup.write_missing(target)
+    files = setup.write_missing(target, request.languages)
     setup.refresh_runtime(target)
     if request.git:
         setup.init_git(target)
-    return InitializedWorkspace(target, files)
+    return InitializedWorkspace(target, files, request.languages)
 
 
 def _refuse_nested_workspace(setup: WorkspaceSetup, target: Path) -> None:

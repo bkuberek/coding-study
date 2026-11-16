@@ -20,13 +20,14 @@ from coding_study.adapters.workspace_marker import (
 from coding_study.domain import environment_variables
 from coding_study.domain.deprecations import DEPRECATIONS, Deprecation, is_deprecated_flag
 from coding_study.domain.doc_checks import CommandSpec
+from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.command_table import command_spec
 from coding_study.entrypoints.shared import ExitCode
 from tests.contract.snapshot_files import Surface
 
 PROGRAM = "cstudy"
-TOML_TYPES: dict[type, str] = {str: "string", int: "integer", bool: "boolean"}
+TOML_TYPES: dict[type, str] = {str: "string", int: "integer", bool: "boolean", list: "array"}
 LICENSE_KEY = "<key>"
 """The name of the table `[licenses.<key>]` stands for."""
 
@@ -96,11 +97,12 @@ def environment() -> Surface:
 
 
 def marker(directory: Path) -> Surface:
-    """The marker as `cstudy` writes it, with one accepted license, read back from the file:
-    its keys and their types, the keys of a license, and the schema version."""
+    """The marker as `cstudy` writes it, with chosen languages and one accepted license, read back
+    from the file: its keys and their types, the keys of a license, and the schema version."""
     (directory / MARKER_FILE).parent.mkdir(parents=True, exist_ok=True)
     (directory / MARKER_FILE).write_text(
-        marker_text(WorkspaceMarker(SCHEMA_VERSION, "0.0.0")), encoding="utf-8"
+        marker_text(WorkspaceMarker(SCHEMA_VERSION, "0.0.0", (Language.PYTHON, Language.GO))),
+        encoding="utf-8",
     )
     record_license(directory, LICENSE_KEY, "Name", "https://example.com/license")
     document = tomllib.loads((directory / MARKER_FILE).read_text(encoding="utf-8"))

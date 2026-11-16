@@ -190,7 +190,7 @@ def test_init_installs_the_intellij_launcher(target):
 
 
 def test_init_reports_the_ide_files(target):
-    assert "ide      vscode, idea" in init(str(target)).output
+    assert "ide        vscode, idea" in init(str(target)).output
 
 
 @pytest.mark.parametrize("directory", [".vscode", ".idea"])
@@ -230,3 +230,107 @@ def test_init_names_an_ide_file_it_kept(target):
 def test_the_workspace_tracks_the_ide_manifest(target):
     init(str(target))
     assert "!/.cs/ide.json" in (target / ".gitignore").read_text().splitlines()
+
+
+LANGUAGE_FOLDERS = ("python", "typescript", "jvm", "go", "rust")
+UNKNOWN = 'unknown language "golang"; use python, typescript, java, kotlin, go or rust'
+
+
+def folders(root: Path) -> list[str]:
+    return [name for name in (*LANGUAGE_FOLDERS, "go.work") if (root / name).exists()]
+
+
+def test_without_lang_the_marker_lists_no_languages(target):
+    init(str(target))
+    assert "languages" not in tomllib.loads((target / ".cs" / "workspace.toml").read_text())
+
+
+def test_without_lang_every_language_folder_exists(target):
+    init(str(target))
+    assert folders(target) == [*LANGUAGE_FOLDERS, "go.work"]
+
+
+def test_without_lang_the_output_says_all_six(target):
+    assert "languages  all six" in init(str(target)).output
+
+
+def test_lang_writes_that_languages_folder_and_the_shared_files_only(target):
+    init(str(target), "--lang", "python")
+    assert (folders(target), (target / "notes").is_dir(), (target / "README.md").is_file()) == (
+        ["python"],
+        True,
+        True,
+    )
+
+
+def test_lang_records_the_languages_in_the_marker(target):
+    init(str(target), "--lang", "python")
+    marker = tomllib.loads((target / ".cs" / "workspace.toml").read_text())
+    assert marker["languages"] == ["python"]
+
+
+def test_lang_repeats_and_keeps_workspace_order_each_once(target):
+    init(str(target), "--lang", "rust", "--lang", "go", "--lang", "python", "--lang", "go")
+    marker = tomllib.loads((target / ".cs" / "workspace.toml").read_text())
+    assert (marker["languages"], folders(target)) == (
+        ["python", "go", "rust"],
+        ["python", "go", "rust", "go.work"],
+    )
+
+
+@pytest.mark.parametrize("language", ["java", "kotlin"])
+def test_either_jvm_language_writes_the_whole_jvm_folder(target, language):
+    init(str(target), "--lang", language)
+    assert ((target / "jvm" / "java").is_dir(), (target / "jvm" / "kotlin").is_dir()) == (
+        True,
+        True,
+    )
+
+
+def test_go_writes_go_work(target):
+    init(str(target), "--lang", "go")
+    assert folders(target) == ["go", "go.work"]
+
+
+def test_the_output_names_the_chosen_languages(target):
+    assert "languages  python, go" in init(str(target), "--lang", "go", "--lang", "python").output
+
+
+def test_an_unknown_language_exits_3_with_the_spec_text(target):
+    result = init(str(target), "--lang", "golang")
+    assert (result.exit_code, UNKNOWN in result.stderr) == (ExitCode.USAGE_ERROR, True)
+
+
+def test_an_unknown_language_writes_nothing(target):
+    init(str(target), "--lang", "python", "--lang", "golang")
+    assert not target.exists()
+
+
+def test_a_chosen_workspace_is_a_workspace(target):
+    init(str(target), "--lang", "go")
+    assert runner.invoke(cli.app, ["--workspace", str(target), "stats"]).exit_code == 0
+
+
+def test_the_start_line_names_lang_when_the_default_language_is_not_chosen(target):
+    output = init(str(target), "--lang", "go", "--lang", "rust").output
+    assert "cstudy start two-sum --lang go " in output
+
+
+def test_the_start_line_keeps_the_default_language_when_it_is_chosen(target):
+    output = init(str(target), "--lang", "rust", "--lang", "python").output
+    assert "cstudy start two-sum     # your first problem" in output
+
+
+def test_the_start_line_follows_the_configured_default_language(target, tmp_path, monkeypatch):
+    config = tmp_path / "config.toml"
+    config.write_text('default_lang = "rust"\n')
+    monkeypatch.setenv("CSTUDY_CONFIG", str(config))
+    output = init(str(target), "--lang", "rust", "--lang", "go").output
+    assert "cstudy start two-sum     # your first problem" in output
+
+
+def test_a_directory_with_files_keeps_them_when_it_chooses_languages(target):
+    target.mkdir()
+    (target / "README.md").write_text("my notes\n")
+    init(str(target), "--lang", "python")
+    assert (target / "README.md").read_text() == "my notes\n"

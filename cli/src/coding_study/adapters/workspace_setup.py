@@ -24,6 +24,7 @@ from coding_study.domain.errors import VersionControlError
 from coding_study.domain.layout import PYTHON_PROJECT, PYTHON_VENV
 from coding_study.domain.problem import Language
 from coding_study.domain.project_checks import PYPROJECT_FILE
+from coding_study.domain.workspace_languages import template_includes
 from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY, ToolchainLink, toolchain_link
 
 TEMPLATE_PACKAGE = "coding_study.adapters"
@@ -78,14 +79,18 @@ class FsWorkspaceSetup:
     def checkout_at_or_above(self, directory: Path) -> Path | None:
         return enclosing_content_checkout(directory)
 
-    def missing_files(self, root: Path) -> tuple[str, ...]:
-        expected = (*(relative for relative, _ in self._template_files()), MARKER_FILE)
+    def missing_files(
+        self, root: Path, languages: tuple[Language, ...] | None = None
+    ) -> tuple[str, ...]:
+        expected = (*(relative for relative, _ in self._template_files(languages)), MARKER_FILE)
         return tuple(relative for relative in expected if not (root / relative).exists())
 
-    def write_missing(self, root: Path) -> ScaffoldOutcome:
+    def write_missing(
+        self, root: Path, languages: tuple[Language, ...] | None = None
+    ) -> ScaffoldOutcome:
         written: list[str] = []
         kept: list[str] = []
-        for relative, source in self._template_files():
+        for relative, source in self._template_files(languages):
             target = root / relative
             if target.exists():
                 kept.append(relative)
@@ -95,7 +100,7 @@ class FsWorkspaceSetup:
                 target.chmod(EXECUTABLE_MODE)
             written.append(relative)
         if not (root / MARKER_FILE).exists():
-            marker = marker_text(WorkspaceMarker(SCHEMA_VERSION, self._version))
+            marker = marker_text(WorkspaceMarker(SCHEMA_VERSION, self._version, languages))
             _write(root / MARKER_FILE, marker.encode())
             written.append(MARKER_FILE)
         return ScaffoldOutcome(tuple(written), tuple(kept))
@@ -116,8 +121,12 @@ class FsWorkspaceSetup:
         if completed.returncode != 0:
             raise VersionControlError(f"git init failed: {completed.stderr.strip()}")
 
-    def _template_files(self) -> list[tuple[str, Traversable]]:
-        return sorted(_walk(self._template, ""), key=lambda entry: entry[0])
+    def _template_files(
+        self, languages: tuple[Language, ...] | None
+    ) -> list[tuple[str, Traversable]]:
+        """The template's files for `languages` (None: every one), in path order."""
+        entries = (e for e in _walk(self._template, "") if template_includes(languages, e[0]))
+        return sorted(entries, key=lambda entry: entry[0])
 
 
 class FsProjectLinks:

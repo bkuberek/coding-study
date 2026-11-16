@@ -253,10 +253,14 @@ class FakeSetup:
     def checkout_at_or_above(self, directory: Path) -> Path | None:
         return None
 
-    def missing_files(self, root: Path) -> tuple[str, ...]:
+    def missing_files(
+        self, root: Path, languages: tuple[Language, ...] | None = None
+    ) -> tuple[str, ...]:
         return self.missing
 
-    def write_missing(self, root: Path) -> ScaffoldOutcome:
+    def write_missing(
+        self, root: Path, languages: tuple[Language, ...] | None = None
+    ) -> ScaffoldOutcome:
         return ScaffoldOutcome(self.missing, ())
 
     def runtime_current(self, root: Path) -> bool:

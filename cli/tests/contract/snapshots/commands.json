@@ -348,6 +348,11 @@
     "deprecated": false,
     "takes_value": true
   },
+  "cstudy init --lang": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy init --no-ide": {
     "choices": [],
     "deprecated": false,

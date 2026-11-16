@@ -7,11 +7,15 @@ from importlib import metadata
 from pathlib import Path
 from typing import cast
 
+from coding_study.domain.problem import Language
+from coding_study.domain.workspace_languages import WorkspaceLanguageError, from_marker
+
 MARKER_FILE = ".cs/workspace.toml"
 SCHEMA_VERSION = 1
 """The workspace layout this `cstudy` reads and writes."""
 DISTRIBUTION = "coding-study"
 UNKNOWN_VERSION = "unknown"
+LANGUAGES_KEY = "languages"
 LICENSES_TABLE = "licenses"
 """The licenses you accepted for the servers whose vendor asks for it, by their key."""
 
@@ -24,6 +28,8 @@ class MarkerError(ValueError):
 class WorkspaceMarker:
     schema: int
     created_with: str
+    languages: tuple[Language, ...] | None = None
+    """The workspace's languages; None when it chose none and has all six."""
 
 
 def tool_version() -> str:
@@ -39,7 +45,8 @@ def has_marker(directory: Path) -> bool:
 
 
 def read_marker(directory: Path) -> WorkspaceMarker:
-    """Raises MarkerError when the marker is missing, not TOML, or lacks its keys."""
+    """Raises MarkerError when the marker is missing, not TOML, lacks its keys, or lists languages
+    that no workspace has."""
     path = directory / MARKER_FILE
     try:
         document = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -48,7 +55,13 @@ def read_marker(directory: Path) -> WorkspaceMarker:
     schema, created_with = document.get("schema"), document.get("created_with")
     if not isinstance(schema, int) or isinstance(schema, bool) or not isinstance(created_with, str):
         raise MarkerError(f"{path}: needs an integer schema and a created_with string")
-    return WorkspaceMarker(schema, created_with)
+    languages = None
+    if LANGUAGES_KEY in document:
+        try:
+            languages = from_marker(document[LANGUAGES_KEY])
+        except WorkspaceLanguageError as error:
+            raise MarkerError(f"{path}: {LANGUAGES_KEY}: {error}") from None
+    return WorkspaceMarker(schema, created_with, languages)
 
 
 def accepted_license(directory: Path, key: str) -> tuple[str, str] | None:
@@ -88,9 +101,13 @@ def record_license(directory: Path, key: str, name: str, url: str) -> None:
 
 
 def marker_text(marker: WorkspaceMarker) -> str:
-    return (
+    text = (
         "# coding-study workspace (docs/specs/installation-and-workspaces.md); "
         "keep it in version control.\n"
         f"schema = {marker.schema}\n"
         f'created_with = "{marker.created_with}"\n'
     )
+    if marker.languages is not None:
+        names = ", ".join(f'"{language.value}"' for language in marker.languages)
+        text += f"{LANGUAGES_KEY} = [{names}]\n"
+    return text

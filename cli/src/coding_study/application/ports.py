@@ -278,12 +278,18 @@ class WorkspaceSetup(Protocol):
         """The nearest content checkout (problems/ and schemas/) at or above `directory`."""
         ...
 
-    def missing_files(self, root: Path) -> tuple[str, ...]:
-        """Template files, and the marker, that `root` lacks."""
+    def missing_files(
+        self, root: Path, languages: tuple[Language, ...] | None = None
+    ) -> tuple[str, ...]:
+        """Template files, and the marker, that `root` lacks. `languages` limits the template to
+        those languages' files and the shared ones; None is every language."""
         ...
 
-    def write_missing(self, root: Path) -> ScaffoldOutcome:
-        """Create `root` and every missing template file and the marker; never overwrite."""
+    def write_missing(
+        self, root: Path, languages: tuple[Language, ...] | None = None
+    ) -> ScaffoldOutcome:
+        """Create `root` and every missing template file of `languages` (None: every language)
+        and the marker; never overwrite. A marker it creates lists `languages` when given."""
         ...
 
     def runtime_current(self, root: Path) -> bool: ...

@@ -21,6 +21,7 @@ KNOWN_TABLES = {
     "REFERENCE_LABELS",
     "RESERVED_WORDS",
     "SOURCE_EXTENSIONS",
+    "TEMPLATE_PATHS",
     "WARMUPS",
 }
 """Tables that exist today; the scan must find at least these, so it cannot pass by finding none."""

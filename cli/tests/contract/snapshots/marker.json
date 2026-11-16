@@ -1,6 +1,7 @@
 {
   "file": ".cs/workspace.toml",
   "key.created_with": "string",
+  "key.languages": "array",
   "key.schema": "integer",
   "licenses.<key>.name": "string",
   "licenses.<key>.url": "string",
