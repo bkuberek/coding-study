@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters import subprocess_runner
+from coding_study.adapters.run_directories import KEPT_RUNS
 from coding_study.adapters.runner_protocol import encode_request
 from coding_study.adapters.subprocess_runner import (
-    KEPT_RUNS,
     MAX_RESTARTS,
     SubprocessRunner,
     _kill_group,
@@ -42,6 +42,7 @@ from coding_study.domain.runs import (
 from coding_study.domain.signature import FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import Scalar, ScalarType
 from tests.process_table import DyingCstudy, kill_all, left_running
+from tests.run_folders import ended_pid, run_folder, running_process
 from tests.waits import GENEROUS_WAIT_S
 
 FAKE_RUNNER = Path(__file__).resolve().parents[1] / "fixtures" / "fake_runner.py"
@@ -327,11 +328,25 @@ def test_writes_the_request_into_the_run_directory(runner, runs_directory):
     assert json.loads(request_file.read_text()) == encode_request(request)
 
 
-def test_keeps_only_the_most_recent_runs(runner, runs_directory):
+def test_keeps_only_the_most_recent_runs_of_the_process(runner, runs_directory):
     for index in range(KEPT_RUNS + 5):
-        (runs_directory / f"00000000-0000{index:02d}").mkdir(parents=True)
+        run_folder(runs_directory, os.getpid(), number=index)
     run(runner)
     assert len(list(runs_directory.iterdir())) == KEPT_RUNS
+
+
+def test_a_long_run_of_another_process_outlasts_the_runs_of_this_one(runner, runs_directory):
+    """Two `cstudy` processes on one workspace: this one's newest runs push the other's out of
+    the newest `KEPT_RUNS` of the folder, and it is still running."""
+    ended = run_folder(runs_directory, ended_pid(), number=0)
+    with running_process() as other:
+        long_run = run_folder(runs_directory, other, number=1)
+        for index in range(KEPT_RUNS + 5):
+            run_folder(runs_directory, os.getpid(), number=10 + index)
+        run(runner)
+        assert long_run.is_dir()
+        assert len(list(runs_directory.iterdir())) == KEPT_RUNS + 1
+    assert not ended.exists()
 
 
 # A launch's scratch directory (a private copy of the build output) goes when the run ends.

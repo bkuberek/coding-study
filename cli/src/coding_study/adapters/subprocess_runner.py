@@ -41,12 +41,10 @@ import json
 import os
 import signal
 import subprocess
-import tempfile
 import time
 from collections import deque
 from contextlib import ExitStack
 from dataclasses import dataclass, replace
-from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 from typing import IO, Protocol, TypeGuard
@@ -55,6 +53,7 @@ from coding_study.adapters.bench_progress import BenchProgress
 from coding_study.adapters.debug_process import DebugOutput, terminated_like_interrupt
 from coding_study.adapters.process_environment import inherited_environment
 from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
+from coding_study.adapters.run_directories import RunDirectories
 from coding_study.adapters.runner_protocol import (
     Bye,
     CaseResult,
@@ -114,7 +113,6 @@ from coding_study.domain.suite_runs import (
 )
 
 MAX_RESTARTS = 3
-KEPT_RUNS = 20
 STDERR_TAIL_LINES = 20
 BAD_REQUEST_EXIT_CODE = 2
 RESTART_EXIT_CODE = 3
@@ -138,7 +136,8 @@ DEBUG_NOT_RESTARTED = "the runner ended during the debug session; it is not rest
 
 
 class SubprocessRunner:
-    """`RunnerProcess` for every language; one directory per run under `runs_directory`.
+    """`RunnerProcess` for every language; one directory per run under `runs_directory`, which
+    other `cstudy` processes of the workspace share (`RunDirectories`).
 
     A launch's `scratch` directory is removed when its run ends, whether it completes, fails or is
     interrupted."""
@@ -149,7 +148,7 @@ class SubprocessRunner:
         idle_limit_ms: int = DEFAULT_HANG_GUARD_MS,
         connect_patience_seconds: float = CONNECT_PATIENCE_SECONDS,
     ) -> None:
-        self._runs_directory = runs_directory
+        self._runs = RunDirectories(runs_directory)
         self._limits = _Limits(idle_limit_ms, connect_patience_seconds)
 
     def run(
@@ -184,7 +183,7 @@ class SubprocessRunner:
                 rmtree(launch.scratch, ignore_errors=True)
 
     def _attempt_until_done(self, launch: RunnerLaunch, progress: "_Progress") -> bool:
-        run_directory = self._new_run_directory()
+        run_directory = self._runs.create()
         allowed_crashes = 0 if launch.debug else MAX_RESTARTS
         attempt = crashes = 0
         while True:
@@ -196,18 +195,6 @@ class SubprocessRunner:
             crashes += 0 if progress.restart_requested else 1
             if crashes > allowed_crashes:
                 return False
-
-    def _new_run_directory(self) -> Path:
-        self._runs_directory.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        directory = Path(tempfile.mkdtemp(prefix=f"{stamp}-", dir=self._runs_directory))
-        self._remove_old_runs()
-        return directory
-
-    def _remove_old_runs(self) -> None:
-        runs = sorted(path for path in self._runs_directory.iterdir() if path.is_dir())
-        for old_run in runs[:-KEPT_RUNS]:
-            rmtree(old_run, ignore_errors=True)
 
 
 def _not_restarted_reason(launch: RunnerLaunch) -> str:
