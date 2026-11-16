@@ -38,9 +38,9 @@ It exits 0 when no row is `FAIL`, and 4 otherwise, so a script can stop on it.
 
 | Group | Rows |
 |-------|------|
-| Toolchains | Python 3.13 and uv; Node.js 24 or newer and pnpm; the JDK your shell selects, which must be 21 to 26; Go 1.25 or newer, `rustc` 1.80 or newer and `cargo`, which only warn; the debuggers of Go and Rust, which only warn |
+| Toolchains | Python 3.13 and uv; Node.js 24 or newer and pnpm; the JDK your shell selects, which must be 21 to 26; Go 1.25 or newer, `rustc` 1.80 or newer and `cargo`, which only warn; the debuggers of Go and Rust, which only warn. In a workspace that lists its languages, only theirs, each required ([rows by language](#rows-by-language)) |
 | `cstudy` itself | Your `config.toml`, the content that ships with `cstudy`, and the `installs` row: every `cstudy` on your `PATH`, with the one that runs first |
-| The workspace | Its files, `progress.db`, the Gradle wrapper, the Python project's virtual environment with `pytest` and `debugpy`, `node_modules`, and that the runner of each core language answers |
+| The workspace | Its files, its languages, `progress.db`, the Gradle wrapper, the Python project's virtual environment with `pytest` and `debugpy`, `node_modules`, and that the runner of each core language answers |
 | The web UI | `web ui assets` and `web server`, which only warn, since the terminal does not need them |
 | Docker | `docker` and `docker leftovers`, which only warn, since only service projects need Docker |
 | Code intelligence | While it is on in the web UI's Settings, one row per language for its language server ([the editor](editor.md#turn-them-on)) |
@@ -48,6 +48,30 @@ It exits 0 when no row is `FAIL`, and 4 otherwise, so a script can stop on it.
 Outside a workspace it checks only the toolchains, your configuration, the content and the installs.
 
 The `java` row names the JDK and where it came from: `JAVA_HOME`, or the first `java` on your `PATH`. A JDK above 26 fails as not supported yet, and one below 21 as too old; the fix names JDK 25, the one to install ([JDK](toolchains.md#jdk)).
+
+## Rows by language
+
+A workspace made with `cstudy init --lang`, or narrowed with `cstudy lang remove`, lists its languages ([choose its languages](workspace.md#choose-its-languages)). `cstudy doctor` then checks those languages only: the rows of the others are left out, and `--fix` runs none of their steps. A workspace that lists none, and `cstudy doctor` outside a workspace, check all six, with Go and Rust optional.
+
+| Rows | Shown for | When the toolchain is missing or too old |
+|------|-----------|------------------------------------------|
+| `python`, `uv` | `python` | `FAIL` |
+| `node`, `pnpm` | `typescript`; also `python` while code intelligence is on, since pnpm installs its language server | `FAIL` |
+| `java`, `gradle` | `java` or `kotlin` | `FAIL` for `java`; `WARN` for `gradle` |
+| `go` | `go` | `FAIL`: you chose Go, so it is required |
+| `rustc`, `cargo` | `rust` | `FAIL`: you chose Rust, so it is required |
+| `dlv` | `go` | `WARN`: only `cstudy test --debug` needs it |
+| `debugserver` (macOS), `lldb-server` (Linux) | `rust` | `WARN`: only `cstudy test --debug` needs it |
+
+The workspace rows, the runners and the code intelligence rows follow the same rule, and `workspace files` covers the files of your languages and the shared ones, failing for any that is missing. A `languages` row names the languages:
+
+```text
+ok    languages python, go
+ok    languages python, go (cstudy start uses python: default_lang typescript is not one of them)
+ok    languages all six (none chosen; cstudy lang remove narrows them)
+```
+
+It is always `ok`: a `default_lang` outside your languages only means that `cstudy start` uses the first of them.
 
 ## Set up and repair with --fix
 
@@ -59,7 +83,7 @@ cstudy doctor --fix
 
 | Step | Does |
 |------|------|
-| Template files | Writes any file the workspace lacks, such as the `go/` and `rust/` projects of a workspace made by an older `cstudy`. It never overwrites a file |
+| Template files | Writes any file the workspace lacks, of its languages and the shared ones, such as the `go/` and `rust/` projects of a workspace made by an older `cstudy`. It never overwrites a file, and never writes the folder of a language the workspace does not list |
 | Runners and progress | Refreshes the runners in `.cs/runtime/`, and migrates an older `progress.db` to the current schema |
 | Python | `uv sync` in `python/`, and adds `pytest` when it is missing |
 | TypeScript | `pnpm install` in `typescript/` |
@@ -67,7 +91,7 @@ cstudy doctor --fix
 | Docker | Starts a stopped engine, and removes what a service project left behind, by its labels only |
 | Language servers | While code intelligence is on, installs them into `.cs/lsp/` ([the editor](editor.md#turn-them-on)). With it off it installs none and says so |
 
-Go and Rust need no setup step: everything their runners use ships with `cstudy`. `--fix` needs a workspace, and exits 3 outside one. It needs the network the first time; after that, practice needs no network.
+In a workspace that lists its languages, `--fix` runs only their steps: `uv sync` with Python, `pnpm install` with TypeScript, the Gradle build with Java or Kotlin. Go and Rust need no setup step: everything their runners use ships with `cstudy`. `--fix` needs a workspace, and exits 3 outside one. It needs the network the first time; after that, practice needs no network.
 
 Kotlin's language server comes under a license you accept first. `--fix` asks at a terminal, or you accept it up front:
 
@@ -114,9 +138,9 @@ Every row is `ok` when its check passes. This table says when each one is not, a
 | `pnpm` | `FAIL` | pnpm is missing | Install pnpm ([Node.js and pnpm](toolchains.md#nodejs-and-pnpm)) |
 | `java` | `FAIL` | No JDK is found, `JAVA_HOME` holds no JDK, or the selected JDK is older than 21 or newer than 26 | Select a JDK 21 to 26 with `JAVA_HOME`, or install JDK 25 ([JDK](toolchains.md#jdk)) |
 | `gradle` | `WARN` | No Gradle of your own. Only regenerating the Gradle wrapper needs one: the workspace's wrapper downloads its own | `brew install gradle`, or nothing |
-| `go` | `WARN` | Go is missing, or older than 1.25. Only `--lang go` needs it | Install Go 1.25 or newer ([Go](toolchains.md#go)) |
-| `rustc` | `WARN` | Rust is missing, or older than 1.80. Only `--lang rust` needs it | Install Rust 1.80 or newer with rustup ([Rust](toolchains.md#rust)) |
-| `cargo` | `WARN` | cargo is missing | Install Rust with rustup ([Rust](toolchains.md#rust)) |
+| `go` | `WARN` or `FAIL` | Go is missing, or older than 1.25. `FAIL` when the workspace lists Go; otherwise `WARN`, since only `--lang go` needs it | Install Go 1.25 or newer ([Go](toolchains.md#go)) |
+| `rustc` | `WARN` or `FAIL` | Rust is missing, or older than 1.80. `FAIL` when the workspace lists Rust; otherwise `WARN`, since only `--lang rust` needs it | Install Rust 1.80 or newer with rustup ([Rust](toolchains.md#rust)) |
+| `cargo` | `WARN` or `FAIL` | cargo is missing. `FAIL` when the workspace lists Rust | Install Rust with rustup ([Rust](toolchains.md#rust)) |
 | `dlv` | `WARN` | Delve is missing or prints no version, or your Go is older than the Go this Delve debugs. Only `cstudy test --debug` with Go needs it | `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`, or install the Go the row names ([Go](toolchains.md#go)) |
 | `debugserver` (macOS), `lldb-server` (Linux) | `WARN` | Rust's debug server is not found. Only `cstudy test --debug` with Rust needs it | On macOS `xcode-select --install`; on Linux your distribution's `lldb` package ([Rust](toolchains.md#rust)) |
 | `docker` | `WARN` | Docker is installed and not running, Docker refuses you, or Docker is missing or has no Compose v2. Only service projects need it | Not running: `cstudy doctor --fix` starts it. Refused: the step the row names, such as joining the `docker` group. Missing: install it ([which Docker](toolchains.md#which-docker)) |
@@ -125,8 +149,9 @@ Every row is `ok` when its check passes. This table says when each one is not, a
 | `content` | `FAIL` | The problems and runners that ship with `cstudy` are not found | Reinstall `cstudy`. If you set `CSTUDY_CONTENT` or pass `--content`, it must name a folder with `problems/` and `schemas/` |
 | `installs` | `WARN` | More than one `cstudy` is on your `PATH`, and only the first runs | Keep one: the fix names the command that removes each other copy ([several installs](#several-installs)) |
 | `workspace` | `WARN` or `FAIL` | `WARN`: no workspace here. `FAIL`: its marker, `.cs/workspace.toml`, does not read, or a newer `cstudy` wrote it | `WARN`: `cstudy init`, or run inside your workspace. `FAIL`: repair the file the row names, or upgrade `cstudy` ([older workspaces](upgrading.md#older-workspaces)) |
-| `workspace files` | `FAIL` or `WARN` | `FAIL`: a template file is missing. `WARN`: a folder of your `problems/` loads as no problem, because its name is not a slug or its `meta.yaml` has an `id:` line | `FAIL`: `cstudy doctor --fix`. `WARN`: the `mv` to run and the line to delete, which the row names |
-| `go and rust files` | `WARN` | `go.work`, or files of `go/` and `rust/`, are missing, as in a workspace made before Go and Rust | `cstudy doctor --fix` |
+| `languages` | always `ok` | It names the workspace's languages, or says it has all six. A marker whose `languages` does not read fails the `workspace` row instead | `cstudy lang add` and `cstudy lang remove` change them ([choose its languages](workspace.md#choose-its-languages)) |
+| `workspace files` | `FAIL` or `WARN` | `FAIL`: a template file of the workspace's languages, or a shared one, is missing. `WARN`: a folder of your `problems/` loads as no problem, because its name is not a slug or its `meta.yaml` has an `id:` line | `FAIL`: `cstudy doctor --fix`. `WARN`: the `mv` to run and the line to delete, which the row names |
+| `go and rust files` | `WARN` | `go.work`, or files of `go/` and `rust/`, are missing, as in a workspace made before Go and Rust. Only in a workspace that has not chosen its languages: a chosen Go or Rust is part of `workspace files` | `cstudy doctor --fix` |
 | `projects` | `WARN` | There is no `projects/` folder, as in a workspace made before project problems | `cstudy doctor --fix` |
 | `runner runtime` | `FAIL` | `.cs/runtime/` is missing, or older than the content | `cstudy doctor --fix` |
 | `progress database` | `WARN` or `FAIL` | `WARN`: an older schema, which migrates on next use. `FAIL`: a newer schema than this `cstudy` reads, or a file that is not a progress database | `WARN`: `cstudy doctor --fix` migrates it now. `FAIL`: upgrade `cstudy` ([older workspaces](upgrading.md#older-workspaces)) |

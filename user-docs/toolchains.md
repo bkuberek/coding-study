@@ -14,12 +14,12 @@ order: 20
 | [uv and Python](#python-and-uv) | uv (any version; 0.10 or newer recommended), Python 3.13 found by `uv python find 3.13` | Required: `cstudy` and the Python practice project |
 | [Node.js and pnpm](#nodejs-and-pnpm) | Node 24 or newer, any pnpm (9 or newer recommended) | TypeScript |
 | [JDK](#jdk) | 21 to 26 (25 recommended); 27 and newer are not supported yet | Java and Kotlin |
-| [Go](#go) | Go 1.25 or newer; Delve (`dlv`, any version that debugs your Go) for `--debug` | Optional: `--lang go` |
-| [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup; LLDB's `debugserver` (macOS) or `lldb-server` (Linux) for `--debug` | Optional: `--lang rust` |
+| [Go](#go) | Go 1.25 or newer; Delve (`dlv`, any version that debugs your Go) for `--debug` | `--lang go`: optional, unless your workspace lists Go |
+| [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup; LLDB's `debugserver` (macOS) or `lldb-server` (Linux) for `--debug` | `--lang rust`: optional, unless your workspace lists Rust |
 | [Docker](#docker) | A running engine and compose v2 | Optional: service projects only. Every other problem runs natively and never asks it anything |
 | [git](#git) | Any | Optional: versioning your workspace |
 
-You need only the toolchains of the languages you practice. `cstudy doctor` still reports a missing one as `FAIL`, and exits 4, when you do not use that language, except Go and Rust: problems have Go and Rust references, but their toolchains are optional, so a missing or too old one is a `WARN` ("needed for `--lang go`") and the exit code stays 0. Their debuggers, Delve and Rust's debug server, are `WARN`s too: only `cstudy test --debug` needs them.
+You need only the toolchains of the languages you practice. Create your workspace with those languages, as `cstudy init --lang python --lang go` does, or narrow it later with `cstudy lang remove`, and `cstudy doctor` checks only their toolchains, each of them required, Go and Rust included ([rows by language](doctor.md#rows-by-language)). A workspace with all six languages, which `cstudy init` makes without `--lang`, still has `cstudy doctor` report a missing toolchain as `FAIL`, and exit 4, when you do not use that language, except Go and Rust: problems have Go and Rust references, but their toolchains are optional there, so a missing or too old one is a `WARN` ("needed for `--lang go`") and the exit code stays 0. Their debuggers, Delve and Rust's debug server, are `WARN`s in every workspace: only `cstudy test --debug` needs them.
 
 On Linux, the installs below were checked on Ubuntu 24.04 (arm64), where the system packages they need are:
 
@@ -266,7 +266,7 @@ Two things to expect. A variable you set only for your own commands, such as `PY
 
 ## Check everything
 
-Run `cstudy doctor` to check the toolchains. In a workspace, `cstudy doctor --fix` then sets up each project: `uv sync` in `python/`, `pnpm install` in `typescript/`, and a first Gradle build in `jvm/`. It also writes the template files a workspace from an older `cstudy` lacks, such as the `go/` and `rust/` projects, which `cstudy doctor` reports as a `WARN` until then. Go and Rust need no setup command.
+Run `cstudy doctor` to check the toolchains. In a workspace, `cstudy doctor --fix` then sets up the project of each of its languages: `uv sync` in `python/`, `pnpm install` in `typescript/`, and a first Gradle build in `jvm/`. It also writes the template files a workspace from an older `cstudy` lacks, such as the `go/` and `rust/` projects, which `cstudy doctor` reports as a `WARN` until then. Go and Rust need no setup command. After `cstudy lang add`, run `cstudy doctor --fix` to set up the new language.
 
 ```bash
 cstudy doctor

@@ -1,6 +1,6 @@
 ---
 title: Guides and learning paths
-summary: Short guides that teach an idea before you practice it, paths that put guides and problems in order, and how to read them in the terminal or the web UI.
+summary: Short guides that teach an idea before you practice it, paths that put guides and problems in order, how to read them in the terminal or the web UI, and how to filter them by domain and role.
 section: Practice
 order: 80
 ---
@@ -22,7 +22,7 @@ cstudy learn hash-functions --done     # mark it read
 cstudy learn hash-maps-and-sets --lang go   # the examples in Go, where they have it
 ```
 
-`--search` keeps the guides and paths whose title, summary or slug holds every word, `--level` those at one level (`intro`, `core` or `advanced`), and `--status read` or `--status not_read` those you have read or not; they combine.
+`--search` keeps the guides and paths whose title, summary or slug holds every word, `--level` those at one level (`intro`, `core` or `advanced`), and `--status read` or `--status not_read` those you have read or not; they combine, with each other and with your learner profile ([domains and roles](#domains-and-roles)).
 
 `cstudy learn <guide>` prints the guide, each diagram as a drawing in text. On a terminal it is formatted; piped to a file or another program, it is the guide's Markdown as written. Some examples come in several languages. The terminal prints each in one: the one `--lang` names, else bash in a guide about the shell, else your `default_lang`, else Python, where the example has it, and names the others with the command that shows one. Printing a guide does not mark it read: `--done` does, and it needs a workspace, since it records your progress. Reading needs none.
 
@@ -60,12 +60,30 @@ cstudy learn --path hashing --open
 
 | Where | What you see |
 |-------|--------------|
-| The list | Each path with its progress, `3 of 22 steps done`, then every guide with its level and whether you have read it |
+| The list | Each path with its progress, `3 of 22 steps done`, then every guide with its level and whether you have read it, narrowed by a search and by domain, role, level, path and status |
 | A guide | The guide with its diagrams drawn in the page's light or dark theme, its code highlighted, what to read first, the problems that practice it and what to read next. **Mark as read** at the end records it, as `cstudy learn <guide> --done` does |
 | A path | Each step in order, with a check once it is done. **Read** opens a guide and **Start** a problem's page. `next:` names the first step not done |
 | A problem | Under **read first**, the guides that teach what it practices |
 
 Each diagram is a picture that ships with `cstudy`, in the page's colors, and switches with the theme. Nothing is fetched from the internet. Under it, a caption says what it shows, and a screen reader reads the diagram's title with it.
+
+## Domains and roles
+
+Every guide lists the domains it is about and the job roles it is for, from the same lists as the problems ([labels](problem-kinds.md#labels)); `general` marks what any engineer uses. The list of `cstudy learn` narrows by them:
+
+```bash
+cstudy learn --domain security        # the guides and paths on security
+cstudy learn --role platform          # those for the platform role
+cstudy learn --widen all              # every guide and path, whatever your profile
+```
+
+A path matches when one of its steps, a guide or a problem, does. By default the list keeps the roles and domains of your [learner profile](settings.md#your-learner-profile), and a guide labeled `general` shows for every role. `--domain` and `--role` replace the profile's domains or roles for one run; `--widen role`, `--widen domain` and `--widen all` drop them. While the profile hides some guides or paths, the list ends with one dim line:
+
+```text
+filtered by your profile: 40 of 132 guides, 9 of 20 paths · domains security · --widen all shows them all
+```
+
+The profile and these flags apply to the list only: a guide or a path you name shows whatever your profile says, and `--domain`, `--role` or `--widen` with a guide or `--path` exits 3. In the web UI, the Guides view has **domain** and **role** lists that work the same way ([filters and your profile](web-ui.md#filters-and-your-profile)).
 
 ## Your reading progress
 

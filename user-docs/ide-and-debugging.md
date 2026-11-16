@@ -7,7 +7,7 @@ order: 75
 
 # Your IDE and the debugger
 
-`cstudy init` writes project files for VS Code and IntelliJ IDEA, so that the workspace root opens with every `cstudy` action ready to run and debug. Open the workspace root, not one language's folder. `cstudy` stays the judge: the IDE runs `cstudy` commands, and its debugger attaches to the run that `cstudy test --debug` starts.
+`cstudy init` writes project files for VS Code and IntelliJ IDEA, so that the workspace root opens with every `cstudy` action ready to run and debug, for the workspace's languages ([files by language](#files-by-language)). Open the workspace root, not one language's folder. `cstudy` stays the judge: the IDE runs `cstudy` commands, and its debugger attaches to the run that `cstudy test --debug` starts.
 
 Each action comes in two forms. **Current file** runs on the solution file in the editor, as `cstudy test <file>` does; **active attempt** runs on the attempt you used last, as `cstudy test` does.
 
@@ -58,6 +58,21 @@ To debug Java or Kotlin, set a breakpoint, then **Debug**, not Run, **Debug curr
 | After you switch JDKs | Run `cstudy ide idea`: it updates the project JDK while `misc.xml` is as `cstudy` wrote it, and keeps it, saying so, once you or IntelliJ IDEA changed it |
 
 Go and Rust run from the same run configurations; open the workspace root with the Go or Rust plugin. `cstudy` writes no IntelliJ IDEA project files or debug configurations for Go and Rust, and none for Python and TypeScript, whose debugging needs the Python plugin, or IntelliJ IDEA Ultimate for Node. Debug those languages in VS Code, or with any debugger that attaches to the [debug port](#debug-ports).
+
+## Files by language
+
+The files cover the workspace's [languages](workspace.md#choose-its-languages). A workspace with all six gets everything above; one that lists its languages gets only their parts:
+
+| File | Holds |
+|------|-------|
+| `.vscode/settings.json` | The Python interpreter with `python`, TypeScript with `typescript`, the Gradle import with `java` or `kotlin`, the Go tools with `go`, and rust-analyzer with `rust`. The folders it leaves out of searches and file watching, always |
+| `.vscode/extensions.json` | The extensions of those languages |
+| `.vscode/launch.json` | The debug configurations of those languages that VS Code debugs; no file for a workspace whose only language is Kotlin |
+| `.vscode/tasks.json` | Every action, with the `--typecheck` tasks only with `typescript`, and the `--debug` tasks only with a language VS Code debugs |
+| `.idea/misc.xml`, `.idea/gradle.xml` | Only with `java` or `kotlin` |
+| `.idea/runConfigurations/` | Every action, with the `--typecheck` ones only with `typescript`, and the `cstudy: debug` folder and `cstudy test --debug --debug-connect` only with `java` or `kotlin` |
+
+`cstudy lang add` and `cstudy lang remove` refresh the files of each IDE whose files `cstudy` wrote. A file written for a language you removed is deleted while it is as `cstudy` wrote it, and kept once you edited it ([your edits and cstudy ide](#your-edits-and-cstudy-ide)).
 
 ## Other editors
 

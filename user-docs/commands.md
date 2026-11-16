@@ -1,6 +1,6 @@
 ---
 title: Command reference
-summary: Every cstudy command with its flags, by group, then the global flags, the exit codes, the environment variables, the configuration keys and how the JDK is selected.
+summary: Every cstudy command with its flags, by group, then the learner profile's flags, the exit codes, the environment variables, the configuration keys and how the JDK is selected.
 section: Settings and help
 order: 125
 ---
@@ -19,6 +19,7 @@ In the tables, words in angle brackets are what you type. `<slug>` is a problem'
 | `<difficulty>` | `easy`, `medium`, `hard` |
 | `<scope>` | `function`, `project`, `system` |
 | `<domain>`, `<role>` | A label value ([labels](problem-kinds.md#labels)) |
+| `<dimension>` | A part of your [learner profile](#the-learner-profile): `lang`, `role`, `domain`, or `all` of them |
 
 ## Global flags
 
@@ -33,7 +34,7 @@ cstudy --no-color list --track dsa
 |------|------|
 | `--workspace <path>` | Uses this workspace, instead of `CSTUDY_WORKSPACE`, the nearest workspace above the current folder, or the current folder ([how cstudy finds it](workspace.md#how-cstudy-finds-it)) |
 | `--content <path>` | Reads the problems and runners from this checkout of the `cstudy` source, instead of `CSTUDY_CONTENT` or the content `cstudy` ships with |
-| `--no-color` | Plain output. `NO_COLOR`, or output to a pipe or a file, does the same |
+| `--no-color` | No colors; dim and bold stay. `NO_COLOR` does the same, and output to a pipe or a file is plain text |
 | `--version` | Prints the version and exits |
 | `--help` | Lists the commands. After a command, it describes that command |
 
@@ -58,12 +59,12 @@ cstudy --no-color list --track dsa
 
 | Command | Flags | Does |
 |---------|-------|------|
-| `cstudy next` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--lang <language>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--new`, `--review`, `--start`, `--json` | Picks what to practice: an open attempt, a due review, or a new problem. `--track` repeats; `--new` skips reviews, `--review` skips new problems; `--start` starts the pick ([what to do next](planning.md#what-to-do-next)) |
-| `cstudy list` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--status <status>`, `--content <status>`, `--lang <language>`, `--kind <kind>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--search <text>`, `--needs <what>`, `--checked-by <how>`, `--json` | Lists problems. `--status` is `new`, `in_progress`, `attempted`, `passed`, `due` or `mastered`; `--content` is `draft` or `ready`; `--lang` keeps problems with a reference in that language; `--search` matches the slug or the title; `--needs none` keeps problems that need only the language's toolchain, and `--needs docker` those that need Docker; `--checked-by` is `tests` or `rubric` |
+| `cstudy next` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--lang <language>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--widen <dimension>`, `--new`, `--review`, `--start`, `--json` | Picks what to practice: an open attempt, a due review, or a new problem. `--track` repeats; `--lang` is one of the workspace's languages; `--widen` drops your learner profile's `role`, `domain` or `all` for this run ([the learner profile](#the-learner-profile)); `--new` skips reviews, `--review` skips new problems; `--start` starts the pick ([what to do next](planning.md#what-to-do-next)) |
+| `cstudy list` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--status <status>`, `--content <status>`, `--lang <language>`, `--kind <kind>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--search <text>`, `--needs <what>`, `--checked-by <how>`, `--widen <dimension>`, `--json` | Lists problems, within your learner profile. `--status` is `new`, `in_progress`, `attempted`, `passed`, `due` or `mastered`; `--content` is `draft` or `ready`; `--lang` keeps problems with a reference in that language; `--search` matches the slug or the title; `--needs none` keeps problems that need only the language's toolchain, and `--needs docker` those that need Docker; `--checked-by` is `tests` or `rubric`; `--widen` drops the profile's `lang`, `role`, `domain` or `all` for this run ([the learner profile](#the-learner-profile)) |
 | `cstudy show <slug>` | `--level <n>` | Prints the statement, never the hints. `--level` shows levels 1 to n of the open ones |
 | `cstudy history <slug>` | `--json` | Shows every attempt, run and review of a problem, and when it comes back |
 | `cstudy stats` | `--by <group>`, `--since <date>`, `--json` | Summarizes your progress, by `pattern`, `track`, `lang` or `difficulty`; `--since` takes a date, `2026-10-01` ([your progress](planning.md#your-progress)) |
-| `cstudy mock` | `--minutes <n>`, `--count <n>`, `--track <track>`, `--lang <language>` | Runs a timed mock interview: a few problems under one timer, with hints and solutions locked until it ends ([mock interviews](planning.md#mock-interviews)) |
+| `cstudy mock` | `--minutes <n>`, `--count <n>`, `--track <track>`, `--lang <language>`, `--domain <domain>`, `--role <role>`, `--widen <dimension>` | Runs a timed mock interview: a few problems under one timer, with hints and solutions locked until it ends. `--lang` is one of the workspace's languages; `--domain` and `--role` keep the problems that list them; `--widen` drops your learner profile's `role`, `domain` or `all` for this mock ([mock interviews](planning.md#mock-interviews)) |
 | `cstudy set list` | `--json` | Lists your sets, each with how many of its problems you passed ([problem sets](planning.md#problem-sets)) |
 | `cstudy set show <name>` | `--json` | Shows a set's problems, in its order |
 | `cstudy set create <name>` | `--description <text>` | Creates an empty set, named by a slug such as `backend-loop` |
@@ -77,17 +78,17 @@ cstudy --no-color list --track dsa
 
 | Command | Flags | Does |
 |---------|-------|------|
-| `cstudy learn [<guide>]` | `--path <path>`, `--done`, `--search <text>`, `--level <level>`, `--status <status>`, `--open`, `--json`, `--lang <language>` | Lists the concept guides and learning paths, or prints a guide. `--path` shows a path's steps; `--done` marks the guide read; `--search` matches every word; `--level` is `intro`, `core` or `advanced`; `--status` is `read` or `not_read`; `--lang` picks the language of a guide's examples; `--open` opens it in the web UI ([guides](guides.md#in-the-terminal)) |
+| `cstudy learn [<guide>]` | `--path <path>`, `--done`, `--search <text>`, `--level <level>`, `--status <status>`, `--domain <domain>`, `--role <role>`, `--widen <dimension>`, `--open`, `--json`, `--lang <language>` | Lists the concept guides and learning paths, within your learner profile, or prints a guide. `--path` shows a path's steps; `--done` marks the guide read; `--search` matches every word; `--level` is `intro`, `core` or `advanced`; `--status` is `read` or `not_read`; `--domain` and `--role` keep the guides and paths with that label, and `--widen` drops the profile's `role`, `domain` or `all`, in the list only ([domains and roles](guides.md#domains-and-roles)); `--lang` picks the language of a guide's examples; `--open` opens it in the web UI ([guides](guides.md#in-the-terminal)) |
 | `cstudy docs [<topic>]` | `--open`, `--json` | Lists these pages, or prints one, such as `cstudy docs commands`. `--open` opens it in the web UI |
 
 ## Workspace and setup
 
 | Command | Flags | Does |
 |---------|-------|------|
-| `cstudy init [<path>]` | `--git`, `--ide <ide>`, `--no-ide`, `--force` | Creates a workspace. `--git` runs `git init` there; `--ide` is `vscode` or `idea`, and repeats; `--no-ide` writes no IDE files; `--force` allows a workspace inside a checkout of the `cstudy` source ([create one](workspace.md#create-one)) |
+| `cstudy init [<path>]` | `--git`, `--lang <language>`, `--ide <ide>`, `--no-ide`, `--force` | Creates a workspace. `--git` runs `git init` there; `--lang` names a language of the workspace, and repeats, so it gets only those languages' folders; without it, the workspace has all six ([choose its languages](workspace.md#choose-its-languages)); `--ide` is `vscode` or `idea`, and repeats; `--no-ide` writes no IDE files; `--force` allows a workspace inside a checkout of the `cstudy` source ([create one](workspace.md#create-one)) |
 | `cstudy doctor` | `--fix`, `--json`, `--accept-license <server>` | Checks the toolchains, your configuration and the workspace. `--fix` sets up the workspace's projects and repairs what it can; `--accept-license kotlin-lsp`, with `--fix`, accepts that language server's license so that it downloads ([check your setup](doctor.md)) |
 | `cstudy ide [<ide>]` | `--force` | Writes or refreshes the IDE project files and the IntelliJ IDEA launcher: `vscode`, `idea`, or `all`, the default. `--force` also overwrites the files you edited ([your edits and cstudy ide](ide-and-debugging.md#your-edits-and-cstudy-ide)) |
-| `cstudy lang list` | - | Shows the workspace's languages and their folders |
+| `cstudy lang list` | - | Shows the workspace's languages and their folders ([choose its languages](workspace.md#choose-its-languages)) |
 | `cstudy lang add <language>...` | - | Adds languages to the workspace: writes the folder files each one lacks, never overwriting one, and refreshes the IDE files `cstudy` wrote. `cstudy doctor --fix` then installs the toolchain files |
 | `cstudy lang remove <language>...` | `--delete-folder`, `--yes` | Takes languages out of the workspace. Their folders, your practice files and your progress stay; a removed language stops being checked, generated for and offered. `--delete-folder` also deletes each language's folder, after a preview and a question; `--yes` does not ask. It refuses while an attempt in a removed language is in progress, and the folders cannot be recovered. A workspace needs at least one language |
 | `cstudy config path` | - | Prints the path of your `config.toml` |
@@ -114,6 +115,25 @@ cstudy --no-color list --track dsa
 | Command | Flags | Does |
 |---------|-------|------|
 | `cstudy serve` | `--port <port>`, `--open` | Serves the web UI on 127.0.0.1 until `Ctrl+C`, on a free port unless `--port` names one. `--open` opens the page in your default browser ([start the server](web-ui.md#start-the-server)) |
+
+## The learner profile
+
+`cstudy list`, `cstudy next`, `cstudy mock` and `cstudy learn` apply your [learner profile](settings.md#your-learner-profile) by default: the workspace's languages, and the job roles and domains of `config.toml`. A command can widen it for one run; nothing on the command line changes it.
+
+| Flag | Does |
+|------|------|
+| `--widen <dimension>` | Drops the profile in that part for this run, and repeats. `cstudy list` takes `lang`, `role`, `domain` and `all`; `cstudy next`, `cstudy mock` and `cstudy learn` take `role`, `domain` and `all` |
+| `--role`, `--domain` | Replace the profile's roles or domains with this one, which may lie outside it. `--role backend` keeps the entries that list `backend`, without `general` |
+| `--lang` | In `cstudy list`, `cstudy next` and `cstudy mock`, replaces the profile's languages. `cstudy next` and `cstudy mock` take only the workspace's languages |
+| `--set` | A set ignores the profile: it holds what you put in it |
+
+While the profile hides at least one entry, the output ends with one dim line, on standard output:
+
+```text
+filtered by your profile: 120 of 400 problems · languages python, go · --widen all shows all 400
+```
+
+`--json` prints no line. The documents of `cstudy list --json`, `cstudy next --json` and `cstudy learn --json` hold `profile`: `languages`, `job_roles` and `domains`, each the profile's values that narrowed the list, or null when that part narrowed nothing, and `hidden`, the entries the profile left out, `{"problems": 280}` in `cstudy list` and `cstudy next`, and `{"guides": 92, "paths": 11}` in `cstudy learn`.
 
 ## Exit codes
 
@@ -145,7 +165,7 @@ Every command ends with a code that says how it went, which scripts can read:
 | `CSTUDY_CONFIG` | Another `config.toml` than the usual one ([your configuration](settings.md#your-configuration)) |
 | `XDG_CONFIG_HOME` | The folder that holds `coding-study/config.toml`; `~/.config` when it is not set |
 | `XDG_CACHE_HOME` | The folder of the catalog cache that `cstudy list` and `cstudy show` keep outside a workspace, `coding-study/catalog`; `~/.cache` when it is not set |
-| `NO_COLOR` | Plain output, as `--no-color` gives |
+| `NO_COLOR` | No colors, as `--no-color` gives |
 | `VISUAL`, `EDITOR` | The editor that `cstudy start` and `cstudy mock` open while `open_on_start` is on, and that `cstudy config edit` opens. `VISUAL` comes first; with neither set, the command says to set one |
 | `MANPAGER`, `PAGER` | The pager that `cstudy solution` shows its text in on a terminal, in that order; with neither set, the system's pager, such as `less` |
 | `JAVA_HOME` | The JDK that runs Java and Kotlin ([the selected JDK](#the-selected-jdk)) |
@@ -167,10 +187,12 @@ Every key of `config.toml`, in the order of the file. A dotted key is a key of a
 
 | Key | Default | Does |
 |-----|---------|------|
-| `default_lang` | `"python"` | The language of `cstudy start`, `cstudy next` and `cstudy mock` when you give no `--lang` |
+| `default_lang` | `"python"` | The language of `cstudy start`, `cstudy next` and `cstudy mock` when you give no `--lang`, while it is one of the workspace's languages; otherwise the first of them |
 | `open_on_start` | `true` | Opens `$VISUAL` or `$EDITOR` on `cstudy start` |
 | `progress_db` | `"progress.db"` | The progress database, relative to the workspace root. Changing it moves no data ([change progress_db](settings.md#change-progress_db)) |
 | `next.tracks` | `["dsa"]` | The tracks `cstudy next` and `cstudy mock` pick from when you give no `--track` |
+| `profile.job_roles` | every role | The job roles of your [learner profile](settings.md#job-roles-and-domains), such as `["backend", "platform"]`. Not `general`: what any engineer uses always shows |
+| `profile.domains` | every domain | The domains of your learner profile, such as `["backend", "security"]` |
 | `time_limit.enabled` | `false` | Applies time limits to every run, as `cstudy test --time-limit` does to one |
 | `time_limit.value` | not set | The limit: a factor of the reference, such as `"5x"`, or a duration, such as `"1500ms"`. Not set, the problem's suggested limit applies, else `5x` |
 | `time_limit.floor_ms` | `100` | A limit by factor never goes below this many milliseconds. A duration is used as it is |

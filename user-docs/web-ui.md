@@ -48,17 +48,33 @@ The top bar holds the views, the attempts in progress while one is open, and the
 
 | View | Opens with | Shows |
 |------|------------|-------|
-| Problems | `Alt+1` | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem) with a **Start…** or **Resume** button, a search by title or slug that narrows as you type (`/` focuses it), one slim row of the filters of `cstudy list` (status, difficulty, domain and language, and under **more** track, kind, checked, role, scope, pattern, content status and set), a removable chip per active filter with a live count and **clear**, and every problem with its status (`in progress` while you have an attempt open) and due date. Each row has a button to add the problem to a set. The first column, **checked by**, says how the problem is checked: `tests`, `tests + rubric` or `rubric`. The `columns` menu chooses what the table shows, and adds its kind, scope, domain and role |
-| Problem | A click on a row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over. For a problem with levels, it also shows your best level in each language and, when you stopped below the last level, the level to try next. A problem whose reviews keep reaching level 2 of 4 reads *mastered through level 2 of 4*: each level is mastered on its own reviews, so a level you have just reached starts over |
+| Problems | `Alt+1` | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem) with a **Start…** or **Resume** button, a search by title or slug that narrows as you type (`/` focuses it), one slim row of the filters of `cstudy list` (status, difficulty, domain and language, and under **more** track, kind, checked, role, scope, pattern, content status and set), a removable chip per active filter with a live count and **clear**, and every problem within your [learner profile](#filters-and-your-profile) with its status (`in progress` while you have an attempt open) and due date. Each row has a button to add the problem to a set. The first column, **checked by**, says how the problem is checked: `tests`, `tests + rubric` or `rubric`. The `columns` menu chooses what the table shows, and adds its kind, scope, domain and role |
+| Problem | A click on a row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over. For a problem with levels, it also shows your best level in each language and, when you stopped below the last level, the level to try next. A problem whose reviews keep reaching level 2 of 4 reads *mastered through level 2 of 4*: each level is mastered on its own reviews, so a level you have just reached starts over. The **Start…** dialog offers the workspace's languages: another language of the problem shows disabled, with `not in this workspace: cstudy lang add rust` beside it, except in a service project, which runs in Docker |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Sets | `Alt+2` | [Your own lists of problems](planning.md#problem-sets), with passed of total; one open shows its pick and its rows, to start, resume or reorder |
 | Guides | `Alt+3` | [Short readings that teach an idea](guides.md) before you practice it, and the paths that order them with problems, with how far you have come |
-| Mock | `Alt+4` | The start form, or the running mock's countdown and problems |
+| Mock | `Alt+4` | The start form, with the workspace's languages and the profile chip, or the running mock's countdown and problems |
 | Progress | `Alt+5` | `cstudy stats`, the reviews due, export and import |
 | Health | `Alt+6` | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
-| Settings | `Alt+7` | This workspace's preferences, and your `config.toml`, which every workspace reads ([settings](settings.md)) |
+| Settings | `Alt+7` | Your learner profile, this workspace's preferences, and your `config.toml`, which every workspace reads ([settings](settings.md)) |
 | Docs | `Alt+8` | These pages: every topic by section, a search over all of them, and a link to each heading. `cstudy docs` reads the same pages in the terminal |
 | About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the license, the website and project links, and the credits, with the full license texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
+
+## Filters and your profile
+
+The Problems and Guides views filter through the same row: a search that narrows as you type, then a few lists, with the less used ones of the Problems view under **more**. Every filter is kept in the page's address, so a reload and Back keep it, and the command line above the view shows the `cstudy list` or `cstudy learn` command that lists the same rows.
+
+Your [learner profile](settings.md#your-learner-profile) narrows the Problems, Guides and Mock views by default, as it narrows the commands. While it narrows the languages, the roles or the domains, that list starts on `your profile`. Choose `any` to widen it for this view, as `--widen` does, or a value to filter by that value alone. Neither changes the profile.
+
+While the profile hides some rows, the line under the filters starts with a quiet chip that counts what shows and names the values that narrowed it:
+
+| View | The chip |
+|------|----------|
+| Problems | `120 of 400 · your profile: python, go · backend ×` |
+| Guides | `40 of 132 guides · 9 of 20 paths · your profile: security ×` |
+| Mock | `30 of 95 · your profile: backend ×`, the new medium and hard problems a mock picks from |
+
+Its counts are those of the command's last line, without the search. The chip is a button, reached with `Tab` like every chip: choosing it widens every part it names, as `--widen` does; on the Mock view, it widens the next mock only. **edit profile**, after it, opens the profile in Settings ([the Profile section](settings.md#the-profile-section)). Then come a removable chip per filter, how many rows show of the whole list, and **clear**, which empties the filters and the widening, so the profile applies again. While the profile hides nothing, there is no chip.
 
 ## Edit and save
 
@@ -135,7 +151,7 @@ An open set lists its rows in order with their status and a **Start…** or **Re
 
 ## Learn with guides
 
-Open **Guides** (`Alt+3`) to read the [guides and learning paths](guides.md): each path with its level and progress, from the introductory ones to the advanced, then every guide with its level and whether you have read it. Type in the search (`/` jumps there) to find guides and paths by title, summary or slug, and narrow them by level, by path, which lists that path's guides in its order, and by what you have read; a reload or Back from a guide keeps them, and **clear** empties them. A guide shows its diagrams in the page's theme, its code highlighted, what to read first, the problems that practice it and what to read next, and **Mark as read** at its end. An example in several languages shows as tabs, starting on your `default_lang` (bash in a guide about the shell); choosing a tab switches every example that has that language, and the choice holds for the guides you read until the page reloads. A path shows each step in order, with a check once it is done. The page is the best place to read guides, since it draws the diagrams.
+Open **Guides** (`Alt+3`) to read the [guides and learning paths](guides.md): each path with its level and progress, from the introductory ones to the advanced, then every guide with its level and whether you have read it. Type in the search (`/` jumps there) to find guides and paths by title, summary or slug, and narrow them by domain and job role, within your [learner profile](#filters-and-your-profile), by level, by path, which lists that path's guides in its order, and by what you have read; a reload or Back from a guide keeps them, and **clear** empties them. A guide shows its diagrams in the page's theme, its code highlighted, what to read first, the problems that practice it and what to read next, and **Mark as read** at its end. An example in several languages shows as tabs, starting on your `default_lang` (bash in a guide about the shell); choosing a tab switches every example that has that language, and the choice holds for the guides you read until the page reloads. A path shows each step in order, with a check once it is done. The page is the best place to read guides, since it draws the diagrams.
 
 ## Read the docs
 
@@ -143,7 +159,7 @@ Open **Docs** (`Alt+8`) for these pages. The list shows every topic by section, 
 
 ## Mock interviews
 
-The Mock view starts a mock as `cstudy mock` does: new medium and hard problems, a shared timer, and hints and solutions locked until the timer ends or every problem is done. Each problem opens as an ordinary attempt. A mock started in the terminal shows in the page too.
+The Mock view starts a mock as `cstudy mock` does: new medium and hard problems, a shared timer, and hints and solutions locked until the timer ends or every problem is done. Each problem opens as an ordinary attempt. A mock started in the terminal shows in the page too. Its language list holds the workspace's languages, and its picks stay within your learner profile: the profile chip shows while the profile hides some of them, and removing it widens this mock ([filters and your profile](#filters-and-your-profile)).
 
 ## Keyboard
 

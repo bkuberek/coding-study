@@ -37,7 +37,7 @@ After an upgrade, run `cstudy doctor --fix` in your workspace. [Upgrading cstudy
 
 ## Install the language toolchains
 
-`cstudy` runs your code with the real toolchain of each language, which you install yourself. uv and Python 3.13 are required. Node.js and pnpm (TypeScript), a JDK (Java and Kotlin), Go and Rust are needed only for the languages you practice. [Install the language toolchains](toolchains.md) has the steps for macOS and Linux.
+`cstudy` runs your code with the real toolchain of each language, which you install yourself. uv and Python 3.13 are required. Node.js and pnpm (TypeScript), a JDK (Java and Kotlin), Go and Rust are needed only for the languages you practice: create your workspace with those languages, and `cstudy doctor` checks only their toolchains. [Install the language toolchains](toolchains.md) has the steps for macOS and Linux.
 
 ## Create your workspace
 
@@ -49,7 +49,13 @@ cd ~/cstudy-workspace
 cstudy doctor --fix                    # uv sync, pnpm install, Gradle warm-up, runner checks
 ```
 
-`cstudy doctor` checks each tool and prints a fix for anything missing ([check your setup](doctor.md)). A missing Node.js, pnpm or JDK shows as `FAIL` and a missing Go or Rust as `WARN`; the other languages still work. [Your workspace](workspace.md) explains what is in the folder.
+This workspace has all six languages. To practice only some, name each with `--lang`, and the workspace gets only their folders:
+
+```bash
+cstudy init ~/cstudy-workspace --lang python   # repeat --lang for each language
+```
+
+`cstudy doctor` checks each tool and prints a fix for anything missing ([check your setup](doctor.md)). In a workspace with all six languages, a missing Node.js, pnpm or JDK shows as `FAIL` and a missing Go or Rust as `WARN`; the other languages still work. In one that names its languages, only their toolchains are checked, and each is required. `cstudy lang add` and `cstudy lang remove` change the languages later ([choose its languages](workspace.md#choose-its-languages)). [Your workspace](workspace.md) explains what is in the folder.
 
 ## Solve your first problem
 
@@ -103,7 +109,8 @@ cstudy learn --path getting-started    # a path's steps and the next one
 
 | Command | Does |
 |---------|------|
-| `cstudy init [PATH]` | Creates a workspace |
+| `cstudy init [PATH] [--lang L]` | Creates a workspace, with all six languages or those you name |
+| `cstudy lang list`, `cstudy lang add <language>` | Shows the workspace's languages; adds one |
 | `cstudy doctor [--fix]` | Checks the toolchains and the workspace; `--fix` sets up the projects |
 | `cstudy next` | Picks what to practice: an attempt you have open, a due review, or a new problem |
 | `cstudy start <slug> [--lang L]` | Writes the stub, renders the statement, opens your editor, begins an attempt |
@@ -112,7 +119,7 @@ cstudy learn --path getting-started    # a path's steps and the next one
 | `cstudy solution <slug>` | Shows the reference solutions with their explanation |
 | `cstudy done --rating easy\|ok\|hard` | Finishes the attempt and schedules the review |
 | `cstudy bench` | Measures how your solution grows with the input, beside the reference approaches |
-| `cstudy list`, `cstudy show <slug>` | Browses the catalog; prints a statement |
+| `cstudy list`, `cstudy show <slug>` | Browses the catalog, within your [learner profile](settings.md#your-learner-profile); prints a statement |
 | `cstudy learn [<guide>] [--path P]` | Reads the concept guides and follows a learning path |
 | `cstudy set create <name>` | Makes a named list of problems to study from ([plan your practice](planning.md)) |
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |

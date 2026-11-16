@@ -1,6 +1,6 @@
 ---
 title: Upgrading cstudy
-summary: Upgrade cstudy, bring your workspace up to date with cstudy doctor --fix, keep your own files, and move a workspace to a new machine.
+summary: Upgrade cstudy, bring your workspace up to date with cstudy doctor --fix, keep your own files, choose your languages and profile when you want, and move a workspace to a new machine.
 section: Start here
 order: 45
 ---
@@ -57,7 +57,7 @@ In a workspace, `cstudy doctor --fix` does this, then checks again:
 | What | `--fix` |
 |------|---------|
 | The runner runtime | Brings `.cs/runtime/` in line with the new content. It belongs to `cstudy`, not to you |
-| Template files | Writes each file the workspace lacks, such as the project of a language added since you made the workspace. It never overwrites a file |
+| Template files | Writes each file the workspace lacks, such as the project of a language added since you made the workspace. It never overwrites a file, and writes only the folders of the workspace's languages |
 | `progress.db` | Migrates an older database to the current schema, after copying it to `.cs/backups/` |
 | The projects | Runs each project's setup again: `uv sync`, `pnpm install` and the Gradle warm-up ([set up and repair](doctor.md#set-up-and-repair-with---fix)) |
 | Language servers | Installs or updates them, only while code intelligence is on ([the editor](editor.md#turn-them-on)) |
@@ -102,6 +102,23 @@ error: progress.db uses schema <n>, newer than the <m> this cstudy reads: upgrad
 ```
 
 `cstudy doctor` shows the same as a `FAIL` on its `workspace` or `progress database` row. Upgrade `cstudy` to the version that wrote them, or a newer one ([upgrade cstudy](#upgrade-cstudy)). `cstudy` never moves a database back to an older schema.
+
+## Languages and the learner profile
+
+Nothing changes until you choose. A workspace keeps all six languages until you narrow them, and a [learner profile](settings.md#your-learner-profile) you never set filters nothing, so after an upgrade every list, pick and `cstudy doctor` row is what it was.
+
+To practice fewer languages, remove the others, then check the workspace again:
+
+```bash
+cstudy lang remove java kotlin rust   # their folders stay on disk
+cstudy doctor
+```
+
+From then on `cstudy doctor` checks only the languages you kept, and requires each of them, Go and Rust included ([choose its languages](workspace.md#choose-its-languages)). Your roles and domains are two keys of `config.toml`, or the **profile** section of Settings ([job roles and domains](settings.md#job-roles-and-domains)).
+
+Once your profile hides something, `cstudy list`, `cstudy next`, `cstudy mock` and `cstudy learn` end their output with a line that starts with `filtered by your profile:`. A script that reads their text can drop that line, or read `--json`, which never prints it.
+
+The languages are kept in the workspace's marker, `.cs/workspace.toml`. A `cstudy` older than the one that added them ignores them: its `cstudy doctor` reports the folders of the languages you removed as missing, and its `cstudy doctor --fix` writes them back.
 
 ## Move to a new machine
 

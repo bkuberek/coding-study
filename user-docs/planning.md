@@ -28,11 +28,14 @@ start   cstudy start merge-intervals --lang kotlin
 
 It prints the command that starts the pick; `--start` runs it for you.
 
+The pick stays within your [learner profile](settings.md#your-learner-profile): a new problem comes from your roles and domains, and starts in one of the workspace's languages. While the profile hides some problems, `cstudy next` ends with one dim line, such as `filtered by your profile: picked from 52 of 125 problems · roles backend and general · --widen all picks from all 125`. When the profile leaves nothing to pick, it says so and names `cstudy next --widen all`.
+
 | Flag | Does |
 |------|------|
 | `--track T` | Only this track; repeat it for several. Without it, the tracks of `next.tracks` in your [configuration](settings.md#your-configuration), `dsa` unless you change it |
-| `--pattern`, `--difficulty`, `--domain`, `--role`, `--scope` | Narrow the pick, as the same filters of `cstudy list` do |
-| `--lang L` | Only problems in this language, which `--start` then uses |
+| `--pattern`, `--difficulty`, `--domain`, `--role`, `--scope` | Narrow the pick, as the same filters of `cstudy list` do. `--domain` and `--role` replace your profile's |
+| `--widen D` | Drops your profile's roles (`role`), domains (`domain`) or both (`all`) for this pick; repeat it for several |
+| `--lang L` | Only problems in this language, one of the workspace's, which `--start` then uses |
 | `--new`, `--review` | Only new problems, or only reviews |
 | `--set NAME` | From one of your [sets](#problem-sets), in its order |
 | `--start` | Start the pick |
@@ -50,7 +53,7 @@ cstudy list --set backend-loop           # every entry, in order, with its statu
 cstudy set list                          # your sets, with passed of total
 ```
 
-`cstudy next --set` picks an attempt you have open in the set first, then the first entry you have not passed, then a due review from the set.
+`cstudy next --set` picks an attempt you have open in the set first, then the first entry you have not passed, then a due review from the set. A set ignores your learner profile: it holds what you put in it.
 
 | Command | Does |
 |---------|------|
@@ -79,12 +82,16 @@ cstudy mock --count 3 --minutes 60 --lang java
 
 Each problem opens as an ordinary attempt. Until the timer ends or every problem is done, `cstudy hint` and `cstudy solution` are locked. Finishing a problem over the timer caps its grade at `hard`, and a problem with levels passes only with every level. The Mock view of the web UI (`Alt+4`) starts the same mock and shows its countdown.
 
+The picks stay within your [learner profile](settings.md#your-learner-profile), and `cstudy mock` ends with a dim line while the profile hides some of the problems they come from (`filtered by your profile: picked from 30 of 95 new medium and hard problems · domains security · --widen all picks from all 95`). When the profile leaves none, it says so and names `cstudy mock --widen all`.
+
 | Flag | Does |
 |------|------|
 | `--minutes` | The shared timer, 45 by default |
 | `--count` | How many problems, 2 by default |
 | `--track` | Only this track; repeat it for several |
-| `--lang` | The language, `default_lang` by default |
+| `--lang` | The language, one of the workspace's: `default_lang` by default, or the first of the workspace's languages when `default_lang` is not one of them |
+| `--domain`, `--role` | Only problems that list this domain or role, instead of your profile's |
+| `--widen` | Drops your profile's roles (`role`), domains (`domain`) or both (`all`) for this mock; repeat it for several |
 
 ## Your progress
 
@@ -104,7 +111,7 @@ reviews   1 due today · 1 overdue
 bench     4 benched · 2 optimal · 1 near-optimal · 1 suboptimal · 0 unknown
 ```
 
-The weakness column is what `cstudy next` reads to pick a new problem: the higher it is, the sooner that area comes up. The Progress view of the web UI (`Alt+5`) shows the same numbers, with the reviews due.
+The weakness column is what `cstudy next` reads to pick a new problem: the higher it is, the sooner that area comes up. `cstudy stats` counts everything you did, whatever your learner profile. The Progress view of the web UI (`Alt+5`) shows the same numbers, with the reviews due.
 
 ## How reviews are scheduled
 

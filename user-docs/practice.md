@@ -27,6 +27,14 @@ cstudy show two-sum             # print the statement, without hints
 
 `cstudy list` takes filters such as `--track`, `--pattern`, `--difficulty`, `--status`, `--lang`, `--domain`, `--role` and `--scope`, `--checked-by tests` or `--checked-by rubric` for how a problem is checked, and `--json` for scripts. A problem's **slug**, such as `two-sum`, names it in every command; `--json` also gives it as an **id**, `problem/two-sum`, which is for scripts and never typed. [Kinds of problems](problem-kinds.md) explains the tracks, the kinds and the labels, and [plan your practice](planning.md) covers `cstudy next` and sets.
 
+Your [learner profile](settings.md#your-learner-profile) narrows `cstudy list` and `cstudy next` by default: the workspace's languages, and the job roles and domains you chose. A profile you never set filters nothing. While it hides some problems, the list ends with one dim line that says how many show and how to see the rest:
+
+```text
+filtered by your profile: 82 of 400 problems · languages python, go · roles backend and general · domains security, backend · --widen all shows all 400
+```
+
+`--widen role`, `--widen domain` or `--widen all` drop the profile in that part for one run, and `cstudy list --widen lang` drops its languages; an explicit `--lang`, `--role` or `--domain` replaces it there.
+
 ## Start
 
 ```bash
@@ -46,12 +54,12 @@ next       cstudy test --watch
 
 | Flag | Does |
 |------|------|
-| `--lang` | The language; without it, `default_lang` from your [configuration](settings.md#your-configuration), Python unless you change it |
+| `--lang` | The language, one of the workspace's; without it, `default_lang` from your [configuration](settings.md#your-configuration), Python unless you change it, or the first of the workspace's languages when `default_lang` is not one of them. Another language is refused, with the `cstudy lang add` command that adds it, except for a service project ([choose its languages](workspace.md#choose-its-languages)) |
 | `--timer` | A time box, such as `25m` or `1h`. `cstudy test` shows the time left, and finishing over it caps the grade at `hard` |
 | `--fresh` | Moves your earlier file to `.archive/` and writes a new stub |
 | `--no-open` | Does not open your editor |
 
-Starting a problem you already have open in that language resumes it. A review always starts from a new stub, and the earlier file moves to `.archive/`, where the web UI's history reads it. Nothing is ever deleted.
+Starting a problem you already have open in that language resumes it, even in a language the workspace no longer lists. A review always starts from a new stub, and the earlier file moves to `.archive/`, where the web UI's history reads it. Nothing is ever deleted.
 
 Most commands that take a slug can take your solution file instead, or nothing at all for the attempt you used last: `cstudy test`, `cstudy hint` and `cstudy done` act on it.
 
