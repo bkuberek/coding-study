@@ -8,6 +8,7 @@ from coding_study.domain.scheduling import (
     MASTERED_INTERVAL_DAYS,
     ReviewIntervals,
 )
+from coding_study.domain.taxonomy import DOMAINS, PROFILE_JOB_ROLES
 from coding_study.domain.time_limits import TimeLimit
 
 DEFAULT_PROGRESS_DB = "progress.db"
@@ -19,6 +20,15 @@ DEFAULT_MAX_INTERVAL_DAYS = 180
 @dataclass(frozen=True, slots=True)
 class NextSettings:
     tracks: tuple[Track, ...] = (Track.DSA,)
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileSettings:
+    """The learner profile's roles and domains (docs/specs/cli.md#the-learner-profile); its
+    languages are the workspace's. Each defaults to every value the catalog has now."""
+
+    job_roles: tuple[str, ...] = PROFILE_JOB_ROLES
+    domains: tuple[str, ...] = DOMAINS
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +75,7 @@ class Config:
     open_on_start: bool = True
     progress_db: str = DEFAULT_PROGRESS_DB
     next: NextSettings = NextSettings()
+    profile: ProfileSettings = ProfileSettings()
     time_limit: TimeLimitSettings = TimeLimitSettings()
     hang_guard: HangGuardSettings = HangGuardSettings()
     bench: BenchSettings = BenchSettings()

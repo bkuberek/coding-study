@@ -56,6 +56,7 @@ class KeyTitle:
 
 
 _GENERAL = "general"
+_PROFILE = "profile"
 _RUNS = "runs"
 _BENCHMARKS = "benchmarks"
 _SCHEDULE = "review schedule"
@@ -66,6 +67,8 @@ KEY_TITLES = {
     "next.tracks": KeyTitle("Tracks to pick from", _GENERAL),
     "done.auto_commit": KeyTitle("Commit on done", _GENERAL),
     "study_guides.root": KeyTitle("Study guides folder", _GENERAL),
+    "profile.job_roles": KeyTitle("Job roles", _PROFILE),
+    "profile.domains": KeyTitle("Domains", _PROFILE),
     "time_limit.enabled": KeyTitle("Apply time limits", _RUNS),
     "time_limit.value": KeyTitle("Time limit", _RUNS),
     "time_limit.floor_ms": KeyTitle("Lowest time limit, in ms", _RUNS),

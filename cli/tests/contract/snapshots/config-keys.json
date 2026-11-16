@@ -59,6 +59,58 @@
     "kind": "boolean",
     "reserved": false
   },
+  "profile.domains": {
+    "choices": [
+      "algorithms",
+      "backend",
+      "security",
+      "identity",
+      "ai-llm",
+      "fintech",
+      "data",
+      "infrastructure",
+      "systems",
+      "software-design",
+      "frontend"
+    ],
+    "default": [
+      "algorithms",
+      "backend",
+      "security",
+      "identity",
+      "ai-llm",
+      "fintech",
+      "data",
+      "infrastructure",
+      "systems",
+      "software-design",
+      "frontend"
+    ],
+    "kind": "choices",
+    "reserved": false
+  },
+  "profile.job_roles": {
+    "choices": [
+      "backend",
+      "platform",
+      "security-engineer",
+      "ai-engineer",
+      "ml-engineer",
+      "data-engineer",
+      "frontend"
+    ],
+    "default": [
+      "backend",
+      "platform",
+      "security-engineer",
+      "ai-engineer",
+      "ml-engineer",
+      "data-engineer",
+      "frontend"
+    ],
+    "kind": "choices",
+    "reserved": false
+  },
   "progress_db": {
     "choices": [],
     "default": "progress.db",

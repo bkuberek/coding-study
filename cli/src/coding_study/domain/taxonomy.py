@@ -61,6 +61,9 @@ JOB_ROLES = (
     "frontend",
 )
 """Who a problem is for; a problem has one or more. `general` is any software engineer."""
+ANY_ROLE = "general"
+PROFILE_JOB_ROLES = tuple(role for role in JOB_ROLES if role != ANY_ROLE)
+"""The roles a learner profile can name: an entry for any engineer suits every one of them."""
 
 
 class Scope(StrEnum):

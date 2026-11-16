@@ -9,6 +9,7 @@ from coding_study.domain.config import (
     DoneSettings,
     HangGuardSettings,
     NextSettings,
+    ProfileSettings,
     ScheduleSettings,
     StudyGuideSettings,
     TimeLimitSettings,
@@ -28,6 +29,10 @@ progress_db = "data/progress.db"
 
 [next]
 tracks = ["dsa", "system-design"]
+
+[profile]
+job_roles = ["backend", "platform"]
+domains = ["security", "identity"]
 
 [time_limit]
 enabled = true
@@ -103,6 +108,9 @@ def test_every_key_is_read(tmp_path):
         open_on_start=False,
         progress_db="data/progress.db",
         next=NextSettings(tracks=(Track.DSA, Track.SYSTEM_DESIGN)),
+        profile=ProfileSettings(
+            job_roles=("backend", "platform"), domains=("security", "identity")
+        ),
         time_limit=TimeLimitSettings(enabled=True, value=FactorTimeLimit(3), floor_ms=50),
         hang_guard=HangGuardSettings(ms=5000),
         bench=BenchSettings(reps=9, memory=False),
@@ -123,6 +131,28 @@ def test_every_key_is_read(tmp_path):
         ("progress_db = 5", "progress_db: expected a non-empty string"),
         ('[next]\ntracks = "dsa"', "next.tracks: expected a list of track ids"),
         ('[next]\ntracks = ["chess"]', 'next.tracks: unknown track "chess"'),
+        ('[profile]\njob_roles = "backend"', "profile.job_roles: expected a list of roles"),
+        (
+            "[profile]\njob_roles = []",
+            "profile.job_roles: expected at least one role; leave the key",
+        ),
+        (
+            '[profile]\njob_roles = ["backend", "general"]',
+            'profile.job_roles: "general" always shows: list the roles you prepare for',
+        ),
+        ('[profile]\njob_roles = ["chef"]', 'profile.job_roles: unknown role "chef"; use one of'),
+        (
+            '[profile]\njob_roles = ["backend", "backend"]',
+            'profile.job_roles: "backend" is listed twice',
+        ),
+        ("[profile]\ndomains = 3", "profile.domains: expected a list of domains"),
+        ("[profile]\ndomains = []", "profile.domains: expected at least one domain; leave the key"),
+        (
+            '[profile]\ndomains = ["fintek"]',
+            'profile.domains: unknown domain "fintek"; use one of algorithms, backend, security,',
+        ),
+        ("[profile]\ndomains = [1]", 'profile.domains: unknown domain "1"; use one of'),
+        ("[profile]\nlanguages = []", "profile.languages: unknown key"),
         ('[time_limit]\nvalue = "fast"', 'time_limit.value: invalid time limit "fast"'),
         ("[time_limit]\nfloor_ms = 0", "time_limit.floor_ms: expected a positive integer"),
         ("[hang_guard]\nms = -1", "hang_guard.ms: expected a positive integer"),
@@ -211,3 +241,15 @@ def test_a_low_maximum_with_the_default_mastered_threshold_still_loads(tmp_path)
 def test_a_mastered_threshold_equal_to_the_maximum_is_reachable(tmp_path):
     text = "[schedule]\nmax_interval_days = 30\nmastered_interval_days = 30\n"
     assert write_config(tmp_path, text).load().schedule.mastered_interval_days == 30
+
+
+def test_without_a_profile_table_the_profile_holds_every_role_and_domain(tmp_path):
+    profile = write_config(tmp_path, 'default_lang = "go"').load().profile
+    assert profile == ProfileSettings()
+    assert "general" not in profile.job_roles
+    assert len(profile.domains) == 11
+
+
+def test_a_profile_table_with_one_key_leaves_the_other_at_every_value(tmp_path):
+    profile = write_config(tmp_path, '[profile]\ndomains = ["security"]').load().profile
+    assert profile == ProfileSettings(domains=("security",))

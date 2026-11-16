@@ -24,6 +24,7 @@ CHANGED_VALUES: dict[KeyKind, object] = {
     KeyKind.CHOICE: "kotlin",
     KeyKind.CHOICES: ["lld"],
 }
+CHANGED_LISTS = {"profile.job_roles": ["backend"], "profile.domains": ["security"]}
 CHANGED_TEXTS = {
     "progress_db": "other.db",
     "time_limit.value": "3x",
@@ -228,6 +229,8 @@ def test_a_real_server_s_environment_reads_a_saved_value_on_its_next_call(tmp_pa
 
 
 def changed_value(key: ConfigKey) -> object:
+    if key.name in CHANGED_LISTS:
+        return CHANGED_LISTS[key.name]
     if key.name in CHANGED_TEXTS:
         return CHANGED_TEXTS[key.name]
     if key.kind is KeyKind.BOOLEAN:

@@ -4,6 +4,8 @@ Sources: docs/specs/cli.md#configuration, performance-analysis.md#precedence and
 runners.md#hang-guard-and-restarts.
 """
 
+from collections.abc import Collection
+
 from coding_study.domain.config import Config
 from coding_study.domain.problem import Language
 from coding_study.domain.time_limits import DEFAULT_TIME_LIMIT, TimeLimit
@@ -16,8 +18,19 @@ def first_set[T](*candidates: T | None, default: T) -> T:
     return next((candidate for candidate in candidates if candidate is not None), default)
 
 
-def resolve_language(flag: Language | None, config: Config) -> Language:
-    return first_set(flag, default=config.default_lang)
+def resolve_language(
+    flag: Language | None, config: Config, workspace_languages: Collection[Language] | None = None
+) -> Language:
+    """`--lang`, else `default_lang` when it is one of the workspace's languages, else the first
+    of them in the order of `Language`. None is a workspace that has not chosen its languages: all
+    six (docs/specs/cli.md#the-workspaces-languages)."""
+    if flag is not None or workspace_languages is None:
+        return first_set(flag, default=config.default_lang)
+    if config.default_lang in workspace_languages:
+        return config.default_lang
+    return next(
+        (language for language in Language if language in workspace_languages), config.default_lang
+    )
 
 
 def time_limits_enabled(flag: bool | None, config: Config) -> bool:

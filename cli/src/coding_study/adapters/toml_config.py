@@ -20,6 +20,7 @@ from coding_study.domain.config import (
     DoneSettings,
     HangGuardSettings,
     NextSettings,
+    ProfileSettings,
     ScheduleSettings,
     StudyGuideSettings,
     TimeLimitSettings,
@@ -29,6 +30,7 @@ from coding_study.domain.deprecations import DeprecatedSurface, Deprecation
 from coding_study.domain.errors import ConfigError
 from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewIntervals
+from coding_study.domain.taxonomy import ANY_ROLE, DOMAINS, PROFILE_JOB_ROLES
 from coding_study.domain.time_limits import TimeLimit, parse_time_limit
 
 CONFIG_PATH_VARIABLE = environment_variables.CONFIG
@@ -154,6 +156,7 @@ def _config(top: "_TableReader") -> Config:
         open_on_start=top.read(_OPEN_ON_START),
         progress_db=top.read(_PROGRESS_DB),
         next=_next_settings(top.table("next")),
+        profile=_profile_settings(top.table("profile")),
         time_limit=_time_limit_settings(top.table("time_limit")),
         hang_guard=_hang_guard_settings(top.table("hang_guard")),
         bench=_bench_settings(top.table("bench")),
@@ -165,6 +168,10 @@ def _config(top: "_TableReader") -> Config:
 
 def _next_settings(table: "_TableReader") -> NextSettings:
     return NextSettings(tracks=table.read(_TRACKS))
+
+
+def _profile_settings(table: "_TableReader") -> ProfileSettings:
+    return ProfileSettings(job_roles=table.read(_JOB_ROLES), domains=table.read(_DOMAINS))
 
 
 def _time_limit_settings(table: "_TableReader") -> TimeLimitSettings:
@@ -315,6 +322,35 @@ def _track(value: object) -> Track:
     raise ValueError(f'unknown track "{value}"')
 
 
+def _profile_values(value: object, kind: str, vocabulary: tuple[str, ...]) -> tuple[str, ...]:
+    """A non-empty list of `vocabulary` values, each once (cli.md#the-learner-profile)."""
+    if not isinstance(value, list):
+        raise ValueError(f"expected a list of {kind}s")
+    items = cast(list[object], value)
+    if not items:
+        raise ValueError(f"expected at least one {kind}; leave the key out for every {kind}")
+    for position, item in enumerate(items):
+        if item not in vocabulary:
+            raise ValueError(f'unknown {kind} "{item}"; use one of {", ".join(vocabulary)}')
+        if item in items[:position]:
+            raise ValueError(f'"{item}" is listed twice')
+    return tuple(cast(list[str], items))
+
+
+def _lists_any_role(value: object) -> bool:
+    return isinstance(value, list) and ANY_ROLE in cast(list[object], value)
+
+
+def _job_roles(value: object) -> tuple[str, ...]:
+    if _lists_any_role(value):
+        raise ValueError(f'"{ANY_ROLE}" always shows: list the roles you prepare for')
+    return _profile_values(value, "role", PROFILE_JOB_ROLES)
+
+
+def _domains(value: object) -> tuple[str, ...]:
+    return _profile_values(value, "domain", DOMAINS)
+
+
 def _time_limit(value: object) -> TimeLimit:
     if not isinstance(value, str):
         raise ValueError('expected a string such as "5x" or "1500ms"')
@@ -381,6 +417,32 @@ _TRACKS = _Key(
     ),
     _DEFAULTS.next.tracks,
     _tracks,
+)
+_JOB_ROLES = _Key(
+    ConfigKey(
+        "profile.job_roles",
+        KeyKind.CHOICES,
+        list(_DEFAULTS.profile.job_roles),
+        "The job roles you prepare for. Lists show the entries for these roles and the ones for "
+        "any engineer. Leave the key out for every role.",
+        f"{_NEXT_COMMAND}; an open page after a reload",
+        PROFILE_JOB_ROLES,
+    ),
+    _DEFAULTS.profile.job_roles,
+    _job_roles,
+)
+_DOMAINS = _Key(
+    ConfigKey(
+        "profile.domains",
+        KeyKind.CHOICES,
+        list(_DEFAULTS.profile.domains),
+        "The domains you study. Lists show the entries about these domains. Leave the key out "
+        "for every domain.",
+        f"{_NEXT_COMMAND}; an open page after a reload",
+        DOMAINS,
+    ),
+    _DEFAULTS.profile.domains,
+    _domains,
 )
 _TIME_LIMIT_ENABLED = _Key(
     ConfigKey(
@@ -533,6 +595,8 @@ _KEYS: tuple[_Key[Any], ...] = (
     _OPEN_ON_START,
     _PROGRESS_DB,
     _TRACKS,
+    _JOB_ROLES,
+    _DOMAINS,
     _TIME_LIMIT_ENABLED,
     _TIME_LIMIT_VALUE,
     _TIME_LIMIT_FLOOR,

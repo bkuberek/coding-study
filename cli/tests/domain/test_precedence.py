@@ -47,6 +47,31 @@ def test_language_built_in_default_is_python():
     assert resolve_language(None, Config()) == Language.PYTHON
 
 
+def test_language_of_a_workspace_that_has_not_chosen_its_languages_is_the_config_default():
+    assert resolve_language(None, Config(default_lang=Language.RUST), None) == Language.RUST
+
+
+def test_language_is_the_config_default_when_the_workspace_lists_it():
+    languages = (Language.PYTHON, Language.GO)
+    assert resolve_language(None, Config(default_lang=Language.GO), languages) == Language.GO
+
+
+def test_language_is_the_first_of_the_workspace_when_the_default_is_not_one_of_them():
+    languages = (Language.GO, Language.KOTLIN, Language.TYPESCRIPT)
+    config = Config(default_lang=Language.PYTHON)
+    assert resolve_language(None, config, languages) == Language.TYPESCRIPT
+
+
+def test_the_first_language_follows_the_language_order_whatever_the_collection_order():
+    languages = frozenset({Language.RUST, Language.JAVA})
+    assert resolve_language(None, Config(default_lang=Language.GO), languages) == Language.JAVA
+
+
+def test_a_language_flag_beats_the_workspace_languages():
+    flag = resolve_language(Language.RUST, Config(), (Language.PYTHON,))
+    assert flag == Language.RUST
+
+
 def test_time_limits_are_off_by_default():
     assert time_limits_enabled(None, Config()) is False
 

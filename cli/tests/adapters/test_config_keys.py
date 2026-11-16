@@ -15,6 +15,7 @@ from coding_study.adapters.toml_config import (
 )
 from coding_study.domain.config import Config
 from coding_study.domain.config_keys import KEY_TITLES, ConfigKey, KeyKind
+from coding_study.domain.taxonomy import DOMAINS
 
 SOURCE = "test"
 KEY_LINE = re.compile(r"^# \w+ = ")
@@ -74,6 +75,30 @@ def test_a_choice_names_every_allowed_value():
 def test_the_tracks_are_a_list_of_choices():
     key = BY_NAME["next.tracks"]
     assert (key.kind, key.default) == (KeyKind.CHOICES, ["dsa"])
+
+
+def test_the_profile_keys_are_lists_of_every_value_but_general_for_roles():
+    roles, domains = BY_NAME["profile.job_roles"], BY_NAME["profile.domains"]
+    assert (roles.kind, domains.kind) == (KeyKind.CHOICES, KeyKind.CHOICES)
+    assert list(roles.choices) == roles.default
+    assert list(domains.choices) == domains.default
+    assert "general" not in roles.choices
+    assert domains.choices == DOMAINS
+
+
+def test_the_profile_keys_share_one_section_with_their_own_labels():
+    titles = [KEY_TITLES["profile.job_roles"], KEY_TITLES["profile.domains"]]
+    assert [(title.section, title.label) for title in titles] == [
+        ("profile", "Job roles"),
+        ("profile", "Domains"),
+    ]
+
+
+def test_the_template_shows_the_profile_keys_at_their_defaults():
+    template = config_template()
+    assert "[profile]" in template
+    assert '# job_roles = ["backend", "platform", ' in template
+    assert '# domains = ["algorithms", "backend", ' in template
 
 
 def test_only_auto_commit_is_reserved():
