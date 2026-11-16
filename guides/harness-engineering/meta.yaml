@@ -2,6 +2,8 @@
 title: Harness engineering
 summary: The loop around an agent and the environment it works in, from permission gates, budgets and compaction to sessions, subagents and completion checks that do not take the model's word for it.
 level: advanced
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend]
 prerequisites: [tools-and-mcp, agent-memory]
 related: [evaluating-llm-applications, agents-and-workflows, tracing-agent-runs]
 problems: [tool-calling-agent-loop-typescript, loop-controller, tool-permission-gate, context-compaction, agent-job-workers]

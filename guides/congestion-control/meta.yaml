@@ -2,6 +2,8 @@
 title: Congestion control
 summary: Why a sender must slow down for the network as well as for its receiver; congestion collapse, the congestion window, slow start and congestion avoidance, fast retransmit and fast recovery, and how flows come to share a link.
 level: advanced
+domains: [systems]
+job_roles: [backend, platform]
 prerequisites: [reliable-transport]
 related: [retries-and-idempotency, network-layers]
 problems: [reliable-transport-sim]

@@ -2,6 +2,8 @@
 title: Learn Python first
 summary: What to learn in Python before your first cstudy problem, where to learn it for free from the official documentation, and how to check your Python toolchain with cstudy doctor.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [using-the-terminal]
 related: [package-managers]
 problems: [debug-mutable-default-argument]

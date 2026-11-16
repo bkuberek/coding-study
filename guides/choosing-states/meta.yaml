@@ -2,6 +2,8 @@
 title: "Choosing the state: take or skip, intervals, and greedy"
 summary: Find a state that holds everything the rest of the problem depends on. Take-or-skip over items with a budget, stretches of a row, and how to tell when a greedy rule is enough.
 level: advanced
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [two-dimensional-tables]
 related: [backtracking, memoization]
 problems: [partition-equal-subset-sum, coin-change-ways, target-sum, jump-game, job-scheduling-max-profit, burst-balloons]

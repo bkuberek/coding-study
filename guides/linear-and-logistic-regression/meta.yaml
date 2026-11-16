@@ -2,6 +2,8 @@
 title: Linear and logistic regression
 summary: The two models under most of machine learning, a weighted sum of the features and a probability made from it, and the losses that measure them, mean squared error and log loss.
 level: intro
+domains: [ai-llm]
+job_roles: [ml-engineer]
 prerequisites: [data-splits-and-leakage]
 related: [gradient-descent, classifier-metrics]
 problems: [gradient-descent-models]

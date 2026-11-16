@@ -2,6 +2,8 @@
 title: "Backtracking: choose, explore, undo"
 summary: Search every arrangement by making one choice at a time, undoing it on the way back, and cutting off a branch as soon as it can no longer succeed.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [recursion]
 related: [memoization, choosing-states]
 problems: [lamp-patterns, subsets, permutations, combination-sum, word-search, n-queens]

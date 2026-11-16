@@ -2,6 +2,8 @@
 title: "Intervals: sorting, merging and choosing"
 summary: How to write an interval and test two for overlap, why sorting by start finds what runs together and sorting by end chooses the most, and a proof that the earliest end is safe.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [greedy-choices]
 related: [sweep-lines, greedy-traps]
 problems: [can-attend-meetings, merge-intervals, insert-interval, interval-list-intersections, coverage-gaps, non-overlapping-intervals, range-module]

@@ -2,6 +2,8 @@
 title: "DNS: names, resolution and caching"
 summary: How a name becomes an address; the tree of names, zones and delegation, records and their TTLs, the walk from the root through referrals, the message on the wire, and caching of answers and of names that do not exist.
 level: core
+domains: [systems]
+job_roles: [backend, platform]
 prerequisites: [network-layers]
 related: [retries-and-idempotency, http-messages]
 problems: [dns-resolver-sim]

@@ -2,6 +2,8 @@
 title: Cryptographic hashes and integrity
 summary: How a cryptographic hash differs from a table hash, why ambiguous encodings collide, and how hash chains and Merkle proofs make data tamper-evident.
 level: advanced
+domains: [backend, security]
+job_roles: [backend, security-engineer]
 prerequisites: [hash-functions]
 related: [canonical-keys, hash-maps-and-sets]
 problems: [tamper-evident-ledger, content-addressed-store, grounded-memory-store]

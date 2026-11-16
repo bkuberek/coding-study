@@ -2,6 +2,8 @@
 title: Designing with hash maps
 summary: Pair a hash map with a linked list, an array or a sorted history, so that every operation of a design reaches its data in O(1).
 level: advanced
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [hash-maps-and-sets]
 related: [prefix-sums-with-hash-maps]
 problems: [lru-cache, randomized-set, time-based-kv-store]

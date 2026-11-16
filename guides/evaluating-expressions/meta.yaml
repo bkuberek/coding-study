@@ -2,6 +2,8 @@
 title: Evaluating expressions
 summary: Evaluate infix and postfix expressions in one pass with stacks, and see why precedence, associativity and operand order are rules about when an operator may pop.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [stacks]
 related: [monotonic-stacks]
 problems: [evaluate-rpn, basic-calculator, tiny-interpreter, regex-engine]

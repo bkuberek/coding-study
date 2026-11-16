@@ -2,6 +2,8 @@
 title: Learn Rust first
 summary: What to learn in Rust before your first cstudy problem, where to learn it for free from the official documentation, and how to check rustc and cargo with cstudy doctor.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [using-the-terminal]
 related: [package-managers]
 problems: [debug-unsigned-underflow]

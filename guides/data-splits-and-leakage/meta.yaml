@@ -2,5 +2,7 @@
 title: Data, features, splits and leakage
 summary: What a model learns from, why it is measured on examples it never saw, how to split the data into training, validation and test parts, and how information leaks across the split.
 level: intro
+domains: [ai-llm]
+job_roles: [ml-engineer]
 related: [cross-validation, evaluation-pitfalls, data-quality-and-contracts]
 problems: [gradient-descent-models]

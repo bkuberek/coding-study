@@ -2,5 +2,7 @@
 title: Learn Kotlin first
 summary: What to learn in Kotlin before your first cstudy problem, where to learn it for free from the official documentation, and how to check your JDK with cstudy doctor.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [using-the-terminal]
 related: [package-managers, learn-java-first]

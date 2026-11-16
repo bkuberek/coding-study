@@ -2,5 +2,7 @@
 title: Dimensional modeling and slowly changing dimensions
 summary: Facts and dimensions in a star schema, the grain and surrogate keys, and how type 1 and type 2 changes decide whether a report shows history as it was or as it is now.
 level: core
+domains: [data]
+job_roles: [data-engineer]
 related: [data-quality-and-contracts, event-time-and-windows, table-formats-and-snapshots]
 problems: [effective-dated-history, scd-type2-dimension]

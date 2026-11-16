@@ -2,6 +2,8 @@
 title: Depth-first search
 summary: Follow one path as deep as it goes before backing up, with recursion or a stack of your own; find connected components, and cycles with three colors, within each language's stack limits.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [graph-representations]
 related: [breadth-first-search, topological-order, union-find]
 problems: [flood-fill, number-of-islands, max-area-of-island, surrounded-regions, pacific-atlantic-water-flow, bipartite-graph, contractor-exposure-rollup, referral-rewards]

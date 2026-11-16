@@ -2,6 +2,8 @@
 title: Learn TypeScript first
 summary: What to learn in JavaScript and TypeScript before your first cstudy problem, where to learn it for free from the official documentation, and how to check Node.js and pnpm with cstudy doctor.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [using-the-terminal]
 related: [package-managers]
 problems: [debug-falsy-plan-update]

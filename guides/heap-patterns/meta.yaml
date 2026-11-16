@@ -2,6 +2,8 @@
 title: "Heap patterns: top k and two heaps"
 summary: Keep the best k of a stream in a heap of size k, with the weakest kept item on top, and split a collection between two heaps to keep its middle in reach.
 level: advanced
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [heaps]
 related: [counting-and-frequency, binary-search-trees]
 problems:

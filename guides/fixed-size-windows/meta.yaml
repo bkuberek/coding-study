@@ -2,6 +2,8 @@
 title: Fixed-size sliding windows
 summary: Slide a window of k consecutive values along an array and update its summary in O(1) per step, by adding the value that enters and removing the one that leaves.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [two-pointers]
 related: [variable-size-windows, prefix-sums-with-hash-maps, counting-and-frequency]
 problems: [max-average-fixed-window, permutation-in-string, chunking-with-overlap, sliding-window-maximum]

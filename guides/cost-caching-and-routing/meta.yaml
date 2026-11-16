@@ -2,6 +2,8 @@
 title: "Cost: caching, routing and output limits"
 summary: Where the cost of a model call comes from, and how prompt caching, response and semantic caches, routing between small and large models, output limits and budgets cut it without making answers worse.
 level: advanced
+domains: [ai-llm, backend]
+job_roles: [ai-engineer, backend]
 prerequisites: [tokens-and-sampling, evaluating-llm-applications]
 related: [embeddings-and-vector-search, harness-engineering]
 problems: [llm-gateway-typescript, cache-and-router]

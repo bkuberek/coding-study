@@ -2,6 +2,8 @@
 title: Cross-validation and choosing a model
 summary: How k-fold cross-validation measures a model on every example without a separate validation set, which folds to use for rare classes, groups and time, and why the score of the chosen model is optimistic until it is measured again.
 level: core
+domains: [ai-llm]
+job_roles: [ml-engineer]
 prerequisites: [overfitting-and-regularization]
 related: [data-splits-and-leakage, evaluation-pitfalls]
 problems: [gradient-descent-models]

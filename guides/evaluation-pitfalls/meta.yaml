@@ -2,6 +2,8 @@
 title: "Evaluation pitfalls: when a good score is wrong"
 summary: The ways a model's measured score misleads, from leakage and a reused test set to noise, base rates, averages that hide groups and data that drifts, with the checks that catch each one.
 level: advanced
+domains: [ai-llm]
+job_roles: [ml-engineer, ai-engineer]
 prerequisites: [cross-validation, classifier-metrics]
 related: [data-splits-and-leakage, evaluating-llm-applications, data-quality-and-contracts]
 problems: [classification-metrics, calibration-metrics, gradient-descent-models]

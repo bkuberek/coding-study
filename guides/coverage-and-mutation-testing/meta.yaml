@@ -2,5 +2,7 @@
 title: Coverage and mutation testing
 summary: Coverage says which code your tests ran, not whether they checked it; line and branch coverage measured with sys.settrace, mutation testing that plants small bugs to see which tests notice, equivalent mutants, and what studies found.
 level: advanced
+domains: [software-design]
+job_roles: [general]
 prerequisites: [what-a-test-checks]
 related: [property-based-testing, test-suite-design]

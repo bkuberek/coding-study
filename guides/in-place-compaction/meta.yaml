@@ -2,6 +2,8 @@
 title: In-place compaction
 summary: A reader and a writer walk the same array, so that the values you keep end up at its front, in order, in one pass and without a second array.
 level: core
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [two-pointers]
 related: [pairs-in-sorted-arrays, fixed-size-windows]
 problems: [move-zeroes, sort-colors]
