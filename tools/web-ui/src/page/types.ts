@@ -21,8 +21,9 @@ export interface Session {
   readonly patterns: readonly string[];
   /** The JDK `cstudy` selects in the server's environment, or null when none is found. */
   readonly selected_jdk: SelectedJdk | null;
-  /** The learner profile, the default filter of the Problems, Guides and Mock views. */
-  readonly profile: LearnerProfile;
+  /** The learner profile, the default filter of the Problems, Guides and Mock views; Settings
+   * reads it again after a save (`PageContext.refreshProfile`). */
+  profile: LearnerProfile;
 }
 
 /** `profile` of `GET /api/v1/session` (docs/specs/web-ui.md#session-and-preferences). */

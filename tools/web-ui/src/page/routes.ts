@@ -86,6 +86,22 @@ export const setHash = (name: string): string => `${SETS_HASH}/${encodeURICompon
 export const GUIDES_HASH = "#/guides";
 /** Settings, where `edit profile` leads. */
 export const SETTINGS_HASH = "#/settings";
+
+/** How long after `edit profile` the Settings view still lands on its Profile section. */
+const PROFILE_REQUEST_MS = 2000;
+let profileRequestedAt = Number.NEGATIVE_INFINITY;
+
+/** Called by `edit profile`: the Settings view that opens next puts the focus on its Profile section. */
+export function requestProfileFocus(now = Date.now()): void {
+  profileRequestedAt = now;
+}
+
+/** Whether `edit profile` led here, once: a click that opened Settings elsewhere has expired. */
+export function takeProfileFocus(now = Date.now()): boolean {
+  const requested = now - profileRequestedAt <= PROFILE_REQUEST_MS;
+  profileRequestedAt = Number.NEGATIVE_INFINITY;
+  return requested;
+}
 /** The Guides view with its search and filters, each in the query while it holds a value. */
 export function guidesHash(filters: GuideFilters): string {
   const text = queryText(filters, GUIDE_FILTER_KEYS);

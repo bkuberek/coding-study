@@ -37,6 +37,9 @@ REPS = "#config-bench-reps"
 MEMORY = "#config-bench-memory"
 TRACKS = "#config-next-tracks"
 RESERVED = "#config-done-auto_commit"
+PROFILE_KEYS = "profile."
+PROFILE_SECTION = "profile"
+# The Profile section draws these as checkboxes, not in the config form's column.
 PROGRESS_DB = "#config-progress_db"
 SHEET = "dialog.sheet[open]"
 QUESTION = f"{SHEET} .question"
@@ -173,11 +176,15 @@ def _a_new_database_path_asks_first(
 
 
 def test_the_form_shows_every_key_of_the_file_by_its_name(seen):
-    assert sorted(seen.names) == sorted(key.name for key in CONFIG_KEYS)
+    assert sorted(seen.names) == sorted(
+        key.name for key in CONFIG_KEYS if not key.name.startswith(PROFILE_KEYS)
+    )
 
 
 def test_each_key_has_a_friendly_label(seen):
-    assert sorted(seen.labels) == sorted(title.label for title in KEY_TITLES.values())
+    assert sorted(seen.labels) == sorted(
+        title.label for title in KEY_TITLES.values() if title.section != PROFILE_SECTION
+    )
 
 
 def test_related_keys_share_a_section(seen):
@@ -197,7 +204,7 @@ def test_a_review_interval_says_dates_already_set_do_not_move(seen):
 
 
 def test_the_page_tells_the_workspace_from_every_workspace(seen):
-    assert seen.headings[:2] == ["THIS WORKSPACE", "ALL YOUR WORKSPACES"]
+    assert seen.headings[:3] == ["profile", "THIS WORKSPACE", "ALL YOUR WORKSPACES"]
 
 
 def test_the_reserved_key_cannot_be_changed(seen):

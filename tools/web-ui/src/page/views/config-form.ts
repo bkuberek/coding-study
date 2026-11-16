@@ -12,6 +12,13 @@ import { confirmLazily } from "../lazy.ts";
 import { failure, loading, showFailure } from "../states.ts";
 
 const CONFIG = "/api/v1/config";
+/** The section of `profile.job_roles` and `profile.domains`, which the Profile section draws. */
+const PROFILE_SECTION = "profile";
+/** What each profile key says under its legend (docs/specs/web-ui.md#settings-view). */
+const PROFILE_NOTES: Readonly<Record<string, string>> = {
+  "profile.job_roles": "Problems for any engineer (general) always show.",
+  "profile.domains": "Keep algorithms for the data structures and algorithms problems.",
+};
 
 interface Field {
   readonly row: HTMLElement;
@@ -22,6 +29,8 @@ interface Field {
 
 export interface ConfigStage {
   readonly element: HTMLElement;
+  /** The profile's keys, as groups of checkboxes, for the Profile section to place. */
+  readonly profile: HTMLElement;
   /** What differs from the file, by each key's name, as `POST /api/v1/config` takes it. */
   changes(): Record<string, ConfigValue>;
   /** Marks the rows of what differs. */
@@ -35,6 +44,7 @@ export interface ConfigStage {
 
 export function configStage(context: PageContext): ConfigStage {
   const element = h("div", {}, loading("reading config.toml…"));
+  const profile = h("div", { class: "profile-config" }, loading("reading config.toml…"));
   let shown: ConfigDocument | null = null;
   let fields: ReadonlyMap<ConfigKey, Field> = new Map();
   const show = (found: ConfigDocument) => {
@@ -45,19 +55,27 @@ export function configStage(context: PageContext): ConfigStage {
     element.replaceChildren(
       h("p", { class: "quiet" }, "Stored in ", h("code", {}, found.path), found.exists ? "" : ", made when you save", ", for every workspace; ", command("cstudy config edit"), " opens it."),
       ...found.issues.map((issue) => failure(new Error(issue))),
-      ...sectionsOf(found.keys).map(([section, keys]) =>
-        h("fieldset", { class: "config-section", disabled: !found.writable }, h("legend", {}, section), ...keys.map((key) => drawn.get(key)?.row)),
-      ),
+      ...sectionsOf(found.keys)
+        .filter(([section]) => section !== PROFILE_SECTION)
+        .map(([section, keys]) =>
+          h("fieldset", { class: "config-section", disabled: !found.writable }, h("legend", {}, section), ...keys.map((key) => drawn.get(key)?.row)),
+        ),
     );
+    profile.replaceChildren(...found.keys.filter((key) => key.section === PROFILE_SECTION).flatMap((key) => drawn.get(key)?.row ?? []));
+    for (const group of profile.querySelectorAll("fieldset")) group.disabled = !found.writable;
     if (focused) document.getElementById(focused)?.focus();
   };
   const changes = () => changedKeys([...fields].map(([key, { read, drawn }]) => [key, read(), drawn] as const));
   context.api
     .get<ConfigDocument>(CONFIG)
     .then(show)
-    .catch((error: unknown) => showFailure(element, error));
+    .catch((error: unknown) => {
+      showFailure(element, error);
+      showFailure(profile, error);
+    });
   return {
     element,
+    profile,
     changes,
     mark() {
       const changed = changes();
@@ -85,8 +103,28 @@ function savedNote(document: ConfigDocument): string {
 }
 
 function fieldOf(key: ConfigKey): Field {
+  if (key.section === PROFILE_SECTION) return profileField(key);
   const [control, read] = controlOf(key);
   return { row: rowOf(key, control), read, drawn: read() };
+}
+
+/** A profile key as a group of checkboxes, one per choice, with where it is stored and its note.
+ * Unchecking every box stages a list the parser refuses, which a Save refuses by the key's name. */
+function profileField(key: ConfigKey): Field {
+  const id = idOf(key);
+  const held = [key.value].flat();
+  const boxes = key.choices.map((choice) => h("input", { type: "checkbox", id: `${id}-${choice}`, value: choice, checked: held.includes(choice) }));
+  const note = PROFILE_NOTES[key.name];
+  const row = h(
+    "fieldset",
+    { class: "profile-group", id },
+    h("legend", {}, key.label),
+    h("p", { class: "quiet" }, "all your workspaces: config.toml · ", h("code", { class: "config-name" }, key.name)),
+    note === undefined ? null : h("p", { class: "quiet" }, note),
+    h("div", { class: "profile-options" }, ...boxes.map((box) => h("div", { class: "profile-option" }, box, h("label", { for: box.id }, box.value)))),
+  );
+  const read = () => boxes.filter((box) => box.checked).map((box) => box.value);
+  return { row, read, drawn: read() };
 }
 
 function rowOf(key: ConfigKey, control: HTMLElement): HTMLElement {

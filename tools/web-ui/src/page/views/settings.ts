@@ -10,10 +10,12 @@ import { h } from "../dom.ts";
 import { languageRow } from "../intelligence-status.ts";
 import { messageOf } from "../states.ts";
 import { trackUnsaved } from "../save.ts";
-import { changesText, type SaveLine, saveLines, type StoreOutcome } from "../settings-model.ts";
+import { takeProfileFocus } from "../routes.ts";
+import { changesText, lineParts, type SaveLine, saveLines, type StoreOutcome } from "../settings-model.ts";
 import { THEMES } from "../shell.ts";
 import type { LanguageStates, Preferences, Theme } from "../types.ts";
 import { configStage } from "./config-form.ts";
+import { languagesStage } from "./profile-section.ts";
 import { dangerSection } from "./reset-dialog.ts";
 
 type Switch = "vim" | "run_on_save" | "typecheck" | "code_intelligence" | "autocomplete";
@@ -60,15 +62,18 @@ export function settingsView(context: PageContext): Cleanup {
   shell.setStatus({ mode: "SETTINGS", where: PREFERENCES_FILE });
   const preferences = preferencesStage(context);
   const config = configStage(context);
+  const languages = languagesStage(context);
   const title = h("h1", { id: "settings-heading", tabindex: "-1" }, "settings");
+  const profileHeading = h("h2", { id: "profile-heading", tabindex: "-1" }, "profile");
   const count = h("span", { class: "settings-count" });
   const undo = h("button", { type: "button", class: "button", title: "Undo every unsaved change" }, "Reset");
   const save = h("button", { type: "submit", class: "button primary" }, "Save");
   const status = h("p", { class: "quiet settings-status", role: "status" });
   let saving = false;
-  const unsaved = () => Object.keys(preferences.changes()).length + Object.keys(config.changes()).length;
+  const unsaved = () => Object.keys(preferences.changes()).length + Object.keys(config.changes()).length + languages.count();
   const refresh = () => {
     preferences.sync();
+    languages.sync();
     config.mark();
     const changes = unsaved();
     count.textContent = changesText(changes);
@@ -78,7 +83,11 @@ export function settingsView(context: PageContext): Cleanup {
     save.disabled = saving || changes === 0;
   };
   const say = (lines: readonly SaveLine[]) => {
-    status.replaceChildren(...lines.map(({ text, failed }) => h("span", { class: failed ? "failed" : null }, text)));
+    status.replaceChildren(
+      ...lines.map((line) =>
+        h("span", { class: line.failed ? "failed" : null }, ...lineParts(line).map((part) => (part.href === undefined ? part.text : h("a", { href: part.href }, part.text)))),
+      ),
+    );
   };
   /** A Save or a Reset can disable, hide or draw again the control that held the focus. */
   const settle = (lines: readonly SaveLine[]) => {
@@ -102,8 +111,18 @@ export function settingsView(context: PageContext): Cleanup {
           return;
         }
         configOutcome = { saved: note };
+        // The roles and domains are the profile's, which the views drawn next start from.
+        await context.refreshProfile().catch(() => undefined);
       } catch (error) {
         configOutcome = { error: messageOf(error) };
+      }
+    }
+    let languagesOutcome: StoreOutcome = null;
+    if (languages.count() > 0) {
+      try {
+        languagesOutcome = await languages.save({ deleteFolders: false });
+      } catch (error) {
+        languagesOutcome = { error: messageOf(error) };
       }
     }
     let preferencesOutcome: StoreOutcome = null;
@@ -116,10 +135,11 @@ export function settingsView(context: PageContext): Cleanup {
         preferencesOutcome = { error: messageOf(error) };
       }
     }
-    settle(saveLines(configOutcome, preferencesOutcome));
+    settle(saveLines(configOutcome, languagesOutcome, preferencesOutcome));
   };
   undo.addEventListener("click", () => {
     preferences.undo();
+    languages.undo();
     config.undo();
     settle([{ text: "changes undone", failed: false }]);
   });
@@ -127,6 +147,13 @@ export function settingsView(context: PageContext): Cleanup {
     "form",
     { class: "settings-form" },
     h("header", { class: "view-head settings-bar" }, title, count, h("span", { class: "spacer" }), undo, save, status),
+    h(
+      "section",
+      { class: "settings-profile", "aria-labelledby": "profile-heading" },
+      profileHeading,
+      h("p", { class: "quiet" }, "The default filter of the Problems, Guides and Mock views, each of which can widen it without changing it."),
+      h("div", { class: "profile-groups" }, languages.element, config.profile),
+    ),
     h(
       "div",
       { class: "settings-columns" },
@@ -152,6 +179,13 @@ export function settingsView(context: PageContext): Cleanup {
   });
   shell.main.replaceChildren(h("section", { class: "settings", "aria-labelledby": "settings-heading" }, form));
   refresh();
+  // The profile the page holds may be older than the marker, which `cstudy lang` writes too.
+  void context.refreshProfile().then(() => {
+    languages.follow();
+    refresh();
+  }, () => undefined);
+  // The app focuses the view's main element once this returns; `edit profile` wants the section.
+  if (takeProfileFocus()) window.setTimeout(() => profileHeading.focus(), 0);
   const stopFollowing = context.onPreferences((stored) => {
     preferences.follow(stored);
     refresh();

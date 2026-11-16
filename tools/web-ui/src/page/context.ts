@@ -23,6 +23,9 @@ export interface PageContext {
   preferences(): Preferences;
   /** Stores a change of preferences and tells every listener. */
   savePreferences(change: Partial<Omit<Preferences, "format">>): Promise<void>;
+  /** Reads the learner profile again, after Settings changed the workspace's languages or the
+   * config's roles and domains, so the views drawn after it use the new one. */
+  refreshProfile(): Promise<void>;
   /** Calls the listener after each change; the function returned removes it. */
   onPreferences(listener: PreferencesListener): () => void;
 }

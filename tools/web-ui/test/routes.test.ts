@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ABOUT_HASH, attemptHash, GUIDES_HASH, guideHash, guidesHash, parseRoute, pathHash, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
+import { ABOUT_HASH, attemptHash, GUIDES_HASH, guideHash, guidesHash, parseRoute, pathHash, problemHash, problemsHash, requestProfileFocus, setHash, SETS_HASH, takeProfileFocus } from "../src/page/routes.ts";
 
 test("the guides view and a guide and a path have routes of their own", () => {
   assert.deepEqual(
@@ -151,4 +151,13 @@ test("the guides view keeps its domain, role and widening in the query, a guide 
     filters: { domain: "security", role: "backend", widen: "role", level: "core" },
   });
   assert.equal(guidesHash({ search: "hash", level: "advanced", widen: "role", domain: "security" }), "#/guides?domain=security&widen=role&level=advanced&search=hash");
+});
+
+test("edit profile asks Settings for its Profile section once, and only soon after", () => {
+  assert.equal(takeProfileFocus(1_000), false);
+  requestProfileFocus(1_000);
+  assert.equal(takeProfileFocus(1_500), true);
+  assert.equal(takeProfileFocus(1_600), false);
+  requestProfileFocus(1_000);
+  assert.equal(takeProfileFocus(9_000), false);
 });
