@@ -84,3 +84,19 @@ def test_a_problem_no_workspace_language_can_start_has_no_start_language(tmp_pat
         repository_root(tmp_path, FIXTURE_PROBLEMS), workspace_languages=(Language.PYTHON,)
     )
     assert start_language(environment, replace(TWO_SUM, languages=(Language.GO,)), None) is None
+
+
+def test_a_workspace_that_chose_no_languages_does_not_start_a_problem_without_the_default(tmp_path):
+    environment = make_environment(repository_root(tmp_path, FIXTURE_PROBLEMS))
+    go_only = replace(TWO_SUM, languages=(Language.GO,))
+    assert environment.workspace_languages is None
+    assert start_language(environment, go_only, None) is None
+
+
+def test_a_workspace_that_chose_go_and_python_starts_a_go_only_problem_in_go(tmp_path):
+    environment = make_environment(
+        repository_root(tmp_path, FIXTURE_PROBLEMS),
+        workspace_languages=(Language.PYTHON, Language.GO),
+    )
+    go_only = replace(TWO_SUM, languages=(Language.GO,))
+    assert start_language(environment, go_only, None) is Language.GO

@@ -127,14 +127,16 @@ class Starting:
     """The default language: `--lang`, else `default_lang` while it is a workspace language, else
     the first of them."""
     workspace: Collection[Language] | None = None
-    """The workspace's languages; None is a workspace that has not chosen them: all six."""
+    """The workspace's languages; None is a workspace that has not chosen them, which picks and
+    starts in the default language only, as before workspaces chose languages."""
     requested: Language | None = None
     """`--lang`."""
 
     def language_of(self, candidate: Candidate) -> Language | None:
         """`--lang`, else the default language when the problem lists it, else the first of the
-        workspace's languages it lists; a project problem starts in its own language. None for a
-        rubric problem, and for a problem no workspace language can start."""
+        workspace's languages it lists (a workspace that chose none has only the default); a project
+        problem starts in its own language. None for a rubric problem, and for a problem no
+        workspace language can start."""
         if not candidate.autograded:
             return None
         if candidate.project and candidate.languages:
@@ -143,6 +145,8 @@ class Starting:
             return self.requested if self.requested in candidate.languages else None
         if self.default in candidate.languages:
             return self.default
+        if self.workspace is None:
+            return None
         return next(
             (
                 language

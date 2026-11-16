@@ -586,10 +586,24 @@ def test_no_workspace_language_can_start_a_problem_that_lists_none_of_them():
     assert not starting.starts(candidate_in_java)
 
 
-def test_a_workspace_that_chose_no_languages_starts_in_any_language_a_problem_lists():
+def test_a_workspace_that_chose_no_languages_starts_only_in_the_default_language():
     starting = Starting(Language.PYTHON)
+    assert starting.language_of(GO_ONLY) is None
+    assert not starting.starts(GO_ONLY)
+    assert starting.language_of(ANY_LANGUAGE) is Language.PYTHON
+    assert starting.starts(ANY_LANGUAGE)
+
+
+def test_the_scope_of_an_unchosen_workspace_leaves_out_a_problem_without_the_default():
+    scope = NextScope(frozenset({Track.DSA}), starting=Starting(Language.PYTHON))
+    assert in_scope(scope, ANY_LANGUAGE, GO_ONLY) == ["two-sum"]
+
+
+def test_a_workspace_that_chose_go_and_python_picks_and_starts_a_go_only_problem():
+    starting = Starting(Language.PYTHON, PY_GO)
+    scope = NextScope(frozenset({Track.DSA}), starting=starting)
+    assert in_scope(scope, ANY_LANGUAGE, GO_ONLY) == ["two-sum", "go-only"]
     assert starting.language_of(GO_ONLY) is Language.GO
-    assert starting.starts(GO_ONLY)
 
 
 def test_lang_starts_the_problem_in_it():

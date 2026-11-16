@@ -326,10 +326,11 @@ def test_a_label_outside_its_list_is_a_usage_error(environment, flag):
     assert (result.exit_code, started(environment)) == (ExitCode.USAGE_ERROR, [])
 
 
-def test_a_problem_that_lacks_the_default_language_starts_in_one_it_lists(environment):
+def test_a_problem_that_lacks_the_default_language_starts_in_one_it_lists(environment, monkeypatch):
     edit_meta(
         environment, "group-anagrams", "estimate_minutes:", "languages: [go]\nestimate_minutes:"
     )
+    use_profile(monkeypatch, environment, workspace_languages=(Language.PYTHON, Language.GO))
     lines = invoke("mock").output.splitlines()
     assert lines[0] == "mock interview · 2 problems · 45 min shared timer · go, python"
     languages = {a.slug: a.language for a in environment.progress.attempts_in_progress()}

@@ -82,6 +82,7 @@ def test_a_session_does_not_when_the_scope_holds_nothing_without_the_profile(env
 
 
 def test_a_session_starts_each_problem_in_its_language(environment):
+    environment = replace(environment, workspace_languages=(Language.PYTHON, Language.GO))
     meta = environment.root / "problems/group-anagrams/meta.yaml"
     meta.write_text(
         meta.read_text().replace("estimate_minutes:", "languages: [go]\nestimate_minutes:")
