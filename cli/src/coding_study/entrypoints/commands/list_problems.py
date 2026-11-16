@@ -148,7 +148,9 @@ def list_command(
     ] = None,
     checked: Annotated[
         CheckedBy | None,
-        typer.Option("--checked-by", help="Only problems checked this way: tests or rubric."),
+        typer.Option(
+            "--checked-by", help="Only problems checked this way: tests, rubric or ai-review."
+        ),
     ] = None,
     widen: Annotated[
         list[str] | None,

@@ -481,7 +481,8 @@
   "cstudy list --checked-by": {
     "choices": [
       "tests",
-      "rubric"
+      "rubric",
+      "ai-review"
     ],
     "deprecated": false,
     "takes_value": true

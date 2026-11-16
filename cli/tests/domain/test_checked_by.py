@@ -20,9 +20,9 @@ def test_an_autograded_problem_with_a_rubric_is_checked_by_tests_then_rubric(kin
 
 @pytest.mark.parametrize("kind", RUBRIC_KINDS)
 @pytest.mark.parametrize("has_rubric", [True, False])
-def test_a_rubric_kind_is_checked_by_its_rubric_only(kind, has_rubric):
-    assert checked_by_of(kind, has_rubric) == (CheckedBy.RUBRIC,)
+def test_a_rubric_kind_is_checked_by_its_rubric_then_ai_review(kind, has_rubric):
+    assert checked_by_of(kind, has_rubric) == (CheckedBy.RUBRIC, CheckedBy.AI_REVIEW)
 
 
-def test_the_values_are_tests_and_rubric():
-    assert [how.value for how in CheckedBy] == ["tests", "rubric"]
+def test_the_values_are_tests_rubric_and_ai_review():
+    assert [how.value for how in CheckedBy] == ["tests", "rubric", "ai-review"]

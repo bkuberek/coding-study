@@ -159,7 +159,7 @@ def test_json_describes_a_rubric_problem(environment):
         "title": "URL Shortener",
         "track": "system-design",
         "kind": "system-design",
-        "checked_by": ["rubric"],
+        "checked_by": ["rubric", "ai-review"],
         "difficulty": "medium",
         "patterns": [],
         "domains": ["backend"],
@@ -201,7 +201,7 @@ def test_json_says_a_rubric_problem_is_checked_by_its_rubric(environment):
     assert {
         found["slug"]: found["checked_by"]
         for found in document("--kind", "system-design")["entries"]
-    } == {"url-shortener": ["rubric"], "news-feed": ["rubric"]}
+    } == {"url-shortener": ["rubric", "ai-review"], "news-feed": ["rubric", "ai-review"]}
 
 
 def test_checked_by_tests_lists_the_problems_with_tests(with_a_rubric):
@@ -223,6 +223,14 @@ def test_checked_by_rubric_without_a_rubric_in_a_problem_lists_the_rubric_proble
     assert listed_slugs("--checked-by", "rubric") == ["url-shortener", "news-feed", "retry-wrapper"]
 
 
+def test_checked_by_ai_review_lists_the_rubric_problems_only(with_a_rubric):
+    assert listed_slugs("--checked-by", "ai-review") == [
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
 def test_checked_by_combines_with_the_other_filters(with_a_rubric):
     assert listed_slugs("--checked-by", "rubric", "--kind", "design") == ["lru-cache"]
     assert listed_slugs("--checked-by", "tests", "--kind", "system-design") == []
@@ -238,7 +246,7 @@ def test_json_applies_checked_by(with_a_rubric):
 
 
 def test_an_unknown_checked_by_is_a_usage_error(environment):
-    assert invoke("--checked-by", "ai-review").exit_code != 0
+    assert invoke("--checked-by", "oracle").exit_code != 0
 
 
 def test_json_names_each_attempt_in_progress(environment):

@@ -245,7 +245,7 @@ def test_json_says_a_rubric_problem_is_checked_by_its_rubric(
         "problem/url-shortener",
         "url-shortener",
         "system-design",
-        ["rubric"],
+        ["rubric", "ai-review"],
     )
 
 

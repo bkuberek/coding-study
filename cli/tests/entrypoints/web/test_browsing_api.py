@@ -101,6 +101,7 @@ def test_a_started_problem_reads_in_progress_in_the_list(client, environment):
         ("scope=function", ProblemFilter(labels=LabelFilter(scope=Scope.FUNCTION))),
         ("checked=rubric", ProblemFilter(checked_by=CheckedBy.RUBRIC)),
         ("checked=tests", ProblemFilter(checked_by=CheckedBy.TESTS)),
+        ("checked=ai-review", ProblemFilter(checked_by=CheckedBy.AI_REVIEW)),
         (
             "domain=backend&role=general&scope=function",
             ProblemFilter(labels=LabelFilter("backend", "general", Scope.FUNCTION)),
@@ -157,7 +158,10 @@ def test_a_problem_has_its_canonical_id_and_how_it_is_checked(client):
     two_sum = client.get("/api/v1/problems/two-sum").json()
     rubric = client.get("/api/v1/problems/url-shortener").json()
     assert (two_sum["id"], two_sum["checked_by"]) == ("problem/two-sum", ["tests"])
-    assert (rubric["id"], rubric["checked_by"]) == ("problem/url-shortener", ["rubric"])
+    assert (rubric["id"], rubric["checked_by"]) == (
+        "problem/url-shortener",
+        ["rubric", "ai-review"],
+    )
 
 
 def test_the_problem_list_gives_each_entry_its_id_and_how_it_is_checked(client):
@@ -166,9 +170,9 @@ def test_the_problem_list_gives_each_entry_its_id_and_how_it_is_checked(client):
     assert {entry["slug"]: entry["checked_by"] for entry in entries} == {
         "two-sum": ["tests"],
         "lru-cache": ["tests"],
-        "url-shortener": ["rubric"],
-        "news-feed": ["rubric"],
-        "retry-wrapper": ["rubric"],
+        "url-shortener": ["rubric", "ai-review"],
+        "news-feed": ["rubric", "ai-review"],
+        "retry-wrapper": ["rubric", "ai-review"],
     }
 
 
@@ -184,8 +188,14 @@ def test_a_problem_with_a_rubric_is_checked_by_tests_then_rubric(client, tmp_pat
     ]
 
 
+def test_checked_ai_review_lists_the_rubric_problems_only(client, tmp_path):
+    (tmp_path / "problems" / "lru-cache" / "rubric.md").write_text("# LRU Cache: Rubric\n")
+    listed = client.get("/api/v1/problems?checked=ai-review").json()["entries"]
+    assert [entry["slug"] for entry in listed] == ["url-shortener", "news-feed", "retry-wrapper"]
+
+
 def test_an_unknown_checked_value_gets_422_usage(client):
-    assert error(client.get("/api/v1/problems?checked=ai-review")) == (422, "usage")
+    assert error(client.get("/api/v1/problems?checked=oracle")) == (422, "usage")
 
 
 def test_a_problem_adds_what_its_actions_accept(client):

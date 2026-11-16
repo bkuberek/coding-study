@@ -613,7 +613,7 @@ def test_a_list_with_every_kind(every_kind):
 
 def test_a_list_names_rubric_problems_and_your_own(every_kind):
     entries = {entry["slug"]: entry for entry in command_document("list")["entries"]}
-    assert entries[RUBRIC]["checked_by"] == ["rubric"]
+    assert entries[RUBRIC]["checked_by"] == ["rubric", "ai-review"]
     assert entries[RUBRIC]["requires"] is None
     assert entries["parking-lot"]["source"] == "workspace"
     assert entries["two-sum"]["checked_by"] == ["tests"]
@@ -750,7 +750,7 @@ def test_next_with_a_rubric_problem_to_pick(practised):
     assert_valid("next", document)
     assert (document["kind"], document["checked_by"], document["language"]) == (
         "system-design",
-        ["rubric"],
+        ["rubric", "ai-review"],
         None,
     )
 
@@ -894,7 +894,7 @@ def test_status_of_a_progressive_attempt(attempted):
 def test_status_of_a_rubric_attempt(attempted):
     document = command_document("status", RUBRIC)
     assert_valid("status", document)
-    assert (document["checked_by"], document["language"]) == (["rubric"], None)
+    assert (document["checked_by"], document["language"]) == (["rubric", "ai-review"], None)
     assert (document["last_test_run"], document["levels"]) == (None, None)
 
 

@@ -274,7 +274,7 @@ def test_json_describes_an_item_attempt(item):
         "id": "problem/url-shortener",
         "slug": "url-shortener",
         "kind": "system-design",
-        "checked_by": ["rubric"],
+        "checked_by": ["rubric", "ai-review"],
         "track": "system-design",
         "language": None,
         "attempt_id": 1,

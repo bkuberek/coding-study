@@ -66,7 +66,7 @@ class ProblemFilter:
         return (
             (self.kind is None or self.kind in RUBRIC_KINDS)
             and self.needs in (None, NEEDS_NOTHING)
-            and self.checked_by in (None, CheckedBy.RUBRIC)
+            and self.checked_by in (None, CheckedBy.RUBRIC, CheckedBy.AI_REVIEW)
         )
 
     def matches(self, summary: ProblemSummary, status: ProblemStatus) -> bool:
