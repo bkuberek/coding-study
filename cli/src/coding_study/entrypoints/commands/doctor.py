@@ -37,11 +37,13 @@ from coding_study.adapters.subprocess_tool_probe import (
     SubprocessToolProbe,
 )
 from coding_study.adapters.toml_config import TomlConfigSource, config_path
+from coding_study.adapters.toml_credentials import git_tree_of, open_credentials
 from coding_study.adapters.toolchains import RegistryToolchains
 from coding_study.adapters.workspace_marker import has_marker, read_marker, tool_version
 from coding_study.adapters.workspace_setup import FsProjectLinks, FsWorkspaceSetup
 from coding_study.application.code_intelligence import ACCEPT_LICENSE_OPTION
 from coding_study.application.doctor import (
+    AiProbe,
     CheckResult,
     CheckStatus,
     ContentLocation,
@@ -174,7 +176,13 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
         web=InstalledWebUi(STATIC_DIRECTORY),
         installs=PathCstudyInstalls(environ, home, Path(sys.prefix), version),
         sandbox=DockerSandbox(runs_directory=_runs_directory(workspace)),
+        ai=_ai_probe(cwd, environ, home),
     )
+
+
+def _ai_probe(cwd: Path, environ: Mapping[str, str], home: Path) -> AiProbe:
+    credentials = open_credentials(environ, home, workspace_directory(cwd, environ))
+    return AiProbe(credentials, Path(credentials.location).exists, git_tree_of)
 
 
 def _runs_directory(workspace: PracticeWorkspace | NotFound) -> Path | None:

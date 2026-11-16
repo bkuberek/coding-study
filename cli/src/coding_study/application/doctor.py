@@ -14,6 +14,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
 
+from coding_study.application.ai_ports import Credentials
 from coding_study.application.code_intelligence import (
     LanguageServerState,
     ServerStatus,
@@ -70,6 +71,7 @@ from coding_study.application.ports import (
 )
 from coding_study.application.preferences import read_preferences
 from coding_study.application.sandbox import current_leftovers, ensure_engine, sweep_leftovers
+from coding_study.domain.ai import Provider, Routing
 from coding_study.domain.code_intelligence import (
     LANGUAGE_SERVERS,
     LSP_BIN,
@@ -82,7 +84,7 @@ from coding_study.domain.code_intelligence import (
     License,
     warm_up_succeeded,
 )
-from coding_study.domain.config import Config
+from coding_study.domain.config import AiSettings, Config
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
     DELVE_VERSION,
@@ -225,6 +227,18 @@ class PracticeWorkspace:
 
 
 @dataclass(frozen=True, slots=True)
+class AiProbe:
+    """What the `ai` row reads (docs/specs/ai.md#cstudy-doctor): `credentials.toml` and where it
+    lies. It never reaches a provider."""
+
+    credentials: Credentials
+    file_exists: Callable[[], bool]
+    """Whether `credentials.toml` is there, whether or not it loads."""
+    git_tree_of: Callable[[Path], Path | None]
+    """The Git working tree that holds a path, if any."""
+
+
+@dataclass(frozen=True, slots=True)
 class DoctorEnvironment:
     tools: ToolProbe
     jdk: JdkSelector
@@ -241,6 +255,8 @@ class DoctorEnvironment:
     """The `cstudy` installs on PATH, for the `installs` row and the reinstall hint."""
     sandbox: SandboxEngine
     """The container engine of service projects, for the `docker` and `docker leftovers` rows."""
+    ai: AiProbe | None = None
+    """The AI preview's credentials, for the `ai` row; without it there is no row."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -824,6 +840,7 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         ),
         *_docker_rows(environment.sandbox),
         _config(environment.config),
+        *_ai_rows(environment),
         _content(environment.content),
         _installs(installs),
         *_workspace(environment, installs, notify),
@@ -1112,6 +1129,117 @@ def _config(source: ConfigSource) -> CheckResult:
             "config", CheckStatus.FAIL, f"{source.location}: {'; '.join(error.issues)}"
         )
     return CheckResult("config", CheckStatus.OK, source.location)
+
+
+AI_CHECK = "ai"
+AI_SEPARATOR = " · "
+SET_AI_MODEL = "set ai.model in Settings or with cstudy config edit"
+
+
+def _ai_rows(environment: DoctorEnvironment) -> list[CheckResult]:
+    """The `ai` row, only while `ai.enabled` is true or `credentials.toml` exists. It reads the
+    config and the file, never a provider, and is never `fail`: only the AI preview needs it. A
+    config that does not load is the `config` row's to report, so the defaults stand here."""
+    probe = environment.ai
+    if probe is None:
+        return []
+    try:
+        settings = environment.config.load().ai
+    except ConfigError:
+        settings = AiSettings()
+    present = probe.file_exists()
+    if not settings.enabled and not present:
+        return []
+    issue = probe.credentials.issue()
+    keys: frozenset[Provider] = frozenset()
+    if issue is None:
+        keys = probe.credentials.keys_set()
+    details = [_ai_state(settings)]
+    problems: list[tuple[str, str | None]] = []
+    if issue is not None:
+        problems.append((issue, _credentials_fix(issue, probe)))
+    else:
+        details.append(f"keys {', '.join(sorted(keys))}" if keys else "no keys")
+        if present:
+            problems += _in_git_tree(probe)
+    if settings.enabled:
+        problems += _ai_task_problems(settings, keys, known=issue is None)
+    if not problems:
+        return [CheckResult(AI_CHECK, CheckStatus.OK, AI_SEPARATOR.join(details))]
+    detail = AI_SEPARATOR.join([*details, "; ".join(text for text, _ in problems)])
+    fixes = [fix for _, fix in problems if fix is not None]
+    return [CheckResult(AI_CHECK, CheckStatus.WARN, detail, "; ".join(fixes) or None)]
+
+
+def _ai_state(settings: AiSettings) -> str:
+    if not settings.enabled:
+        return "off"
+    if settings.routing is Routing.FIXED:
+        model = "" if settings.model is None else f" {settings.model}"
+        return f"on{AI_SEPARATOR}fixed{model}"
+    tiers = [
+        f"{tier} {model}"
+        for tier, model in (("fast", settings.fast), ("strong", settings.strong))
+        if model is not None
+    ]
+    return AI_SEPARATOR.join(["on", "auto", *([", ".join(tiers)] if tiers else [])])
+
+
+def _credentials_fix(issue: str, probe: AiProbe) -> str | None:
+    """The issue of a file inside the workspace names its own remedy."""
+    if "would be inside this workspace" in issue:
+        return None
+    return f"correct or delete {probe.credentials.location}"
+
+
+def _in_git_tree(probe: AiProbe) -> list[tuple[str, str | None]]:
+    tree = probe.git_tree_of(Path(probe.credentials.location))
+    if tree is None:
+        return []
+    return [
+        (
+            f"credentials.toml lies in a Git working tree ({tree})",
+            f"add it to {tree}/.gitignore, or keep the config outside the repository",
+        )
+    ]
+
+
+def _ai_task_problems(
+    settings: AiSettings, keys: frozenset[Provider], *, known: bool
+) -> list[tuple[str, str | None]]:
+    """What stops a task of the routing from running: its model unset, or its provider without a
+    key (`known` is false when the file's keys could not be read, so no key is missing)."""
+    if settings.routing is Routing.FIXED:
+        models = [("ai.model", "the model of fixed routing", settings.model, SET_AI_MODEL)]
+    else:
+        models = [
+            (
+                "ai.fast",
+                "the fast tier",
+                settings.fast,
+                "set ai.fast in Settings or with cstudy config edit",
+            ),
+            (
+                "ai.strong",
+                "the strong tier",
+                settings.strong,
+                "set ai.strong in Settings or with cstudy config edit",
+            ),
+        ]
+    problems: list[tuple[str, str | None]] = []
+    seen: set[Provider] = set()
+    for key, role, model, fix in models:
+        if model is None:
+            problems.append((f"{key} is not set", fix))
+        elif known and model.provider not in keys and model.provider not in seen:
+            seen.add(model.provider)
+            problems.append(
+                (
+                    f"no key for {model.provider}, which {role} uses",
+                    f"cstudy ai key {model.provider}",
+                )
+            )
+    return problems
 
 
 def _content(content: ContentLocation | NotFound) -> CheckResult:

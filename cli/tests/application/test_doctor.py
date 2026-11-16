@@ -8,6 +8,7 @@ from coding_study.application.doctor import (
     HANDSHAKE_META,
     JVM_FIX,
     JVM_PROJECT_WARMUPS,
+    AiProbe,
     CheckResult,
     CheckStatus,
     ContentLocation,
@@ -42,8 +43,9 @@ from coding_study.application.ports import (
     WebUiAssets,
     WebUiInstall,
 )
+from coding_study.domain.ai import ApiKey, ModelRef, Provider, Routing
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
-from coding_study.domain.config import Config
+from coding_study.domain.config import AiSettings, Config
 from coding_study.domain.docker_engine import DockerGroup, EngineState, EngineStatus
 from coding_study.domain.errors import (
     BackupError,
@@ -403,6 +405,7 @@ def doctor(
     jdk: FakeJdk | None = None,
     installs: FakeInstalls | None = None,
     sandbox: FakeSandbox | None = None,
+    ai: AiProbe | None = None,
 ) -> DoctorReport:
     return run_doctor(
         DoctorEnvironment(
@@ -416,6 +419,7 @@ def doctor(
             web=web or FakeWebUi(),
             installs=installs or FakeInstalls(),
             sandbox=sandbox or FakeSandbox(),
+            ai=ai,
         ),
         lambda _line: None,
     )
@@ -1989,3 +1993,157 @@ def test_doctor_fix_says_when_the_engine_will_not_start_and_goes_on():
     fix_sandbox(engine, lines.append)
 
     assert any("did not start" in line for line in lines)
+
+
+@dataclass
+class FakeCredentials:
+    keys: frozenset[Provider] = frozenset()
+    problem: str | None = None
+    location: str = "/home/user/.config/coding-study/credentials.toml"
+
+    def issue(self) -> str | None:
+        return self.problem
+
+    def keys_set(self) -> frozenset[Provider]:
+        return self.keys
+
+    def key(self, provider: Provider) -> ApiKey | None:
+        raise AssertionError("cstudy doctor never reads a key")
+
+    def save_key(self, provider: Provider, key: ApiKey) -> None:
+        raise AssertionError("cstudy doctor never writes a key")
+
+    def remove_key(self, provider: Provider) -> bool:
+        raise AssertionError("cstudy doctor never writes a key")
+
+
+@dataclass
+class AiConfigSource(FakeConfigSource):
+    settings: AiSettings = field(default_factory=AiSettings)
+
+    def load(self) -> Config:
+        return Config(ai=self.settings)
+
+
+def ai_row(
+    settings: AiSettings | None = None,
+    *,
+    credentials: FakeCredentials | None = None,
+    file: bool = True,
+    tree: Path | None = None,
+) -> CheckResult | None:
+    probe = AiProbe(credentials or FakeCredentials(), lambda: file, lambda _path: tree)
+    report = doctor(config=AiConfigSource(settings=settings or AiSettings()), ai=probe)
+    return next((result for result in report.results if result.name == "ai"), None)
+
+
+CLAUDE = ModelRef(Provider.ANTHROPIC, "claude-x")
+ROUTER = ModelRef(Provider.OPENROUTER, "vendor/model")
+
+
+def test_ai_off_without_a_file_has_no_row():
+    assert ai_row(file=False) is None
+
+
+def test_no_probe_has_no_row():
+    assert all(result.name != "ai" for result in doctor().results)
+
+
+def test_ai_off_with_a_file_shows_the_keys():
+    row = ai_row(credentials=FakeCredentials(frozenset({Provider.OPENROUTER, Provider.ANTHROPIC})))
+    assert row == CheckResult("ai", CheckStatus.OK, "off · keys anthropic, openrouter")
+
+
+def test_ai_on_fixed_shows_the_model_and_the_keys():
+    settings = AiSettings(enabled=True, model=CLAUDE)
+    row = ai_row(settings, credentials=FakeCredentials(frozenset({Provider.ANTHROPIC})))
+    assert row == CheckResult(
+        "ai", CheckStatus.OK, "on · fixed anthropic:claude-x · keys anthropic"
+    )
+
+
+def test_ai_on_auto_shows_both_tiers():
+    settings = AiSettings(enabled=True, routing=Routing.AUTO, fast=CLAUDE, strong=ROUTER)
+    keys = frozenset({Provider.ANTHROPIC, Provider.OPENROUTER})
+    row = ai_row(settings, credentials=FakeCredentials(keys), file=True)
+    assert row == CheckResult(
+        "ai",
+        CheckStatus.OK,
+        "on · auto · fast anthropic:claude-x, strong openrouter:vendor/model"
+        " · keys anthropic, openrouter",
+    )
+
+
+def test_ai_on_without_a_file_still_shows_a_row():
+    row = ai_row(AiSettings(enabled=True, model=CLAUDE), file=False)
+    assert row is not None
+    assert row.status is CheckStatus.WARN
+    assert row.fix == "cstudy ai key anthropic"
+
+
+def test_fixed_routing_without_a_model_warns():
+    row = ai_row(AiSettings(enabled=True), credentials=FakeCredentials())
+    assert row is not None
+    assert (row.status, row.fix) == (
+        CheckStatus.WARN,
+        "set ai.model in Settings or with cstudy config edit",
+    )
+    assert "ai.model is not set" in row.detail
+
+
+def test_auto_routing_without_the_strong_tier_warns():
+    settings = AiSettings(enabled=True, routing=Routing.AUTO, fast=CLAUDE)
+    row = ai_row(settings, credentials=FakeCredentials(frozenset({Provider.ANTHROPIC})))
+    assert row is not None
+    assert row.status is CheckStatus.WARN
+    assert "ai.strong is not set" in row.detail
+    assert row.fix == "set ai.strong in Settings or with cstudy config edit"
+
+
+def test_a_provider_without_a_key_names_the_tier_and_the_command():
+    settings = AiSettings(enabled=True, routing=Routing.AUTO, fast=CLAUDE, strong=ROUTER)
+    row = ai_row(settings, credentials=FakeCredentials(frozenset({Provider.ANTHROPIC})))
+    assert row is not None
+    assert row.status is CheckStatus.WARN
+    assert "no key for openrouter, which the strong tier uses" in row.detail
+    assert row.fix == "cstudy ai key openrouter"
+
+
+def test_a_credentials_file_that_does_not_load_warns():
+    problem = 'credentials.toml: unknown provider "antropic"'
+    row = ai_row(credentials=FakeCredentials(problem=problem))
+    assert row is not None
+    assert row.status is CheckStatus.WARN
+    assert problem in row.detail
+    assert row.fix == "correct or delete /home/user/.config/coding-study/credentials.toml"
+
+
+def test_a_credentials_file_inside_the_workspace_warns_without_a_second_fix():
+    problem = (
+        "credentials.toml would be inside this workspace (/ws/credentials.toml): keys never go"
+    )
+    row = ai_row(credentials=FakeCredentials(problem=problem))
+    assert row is not None
+    assert (row.status, row.fix) == (CheckStatus.WARN, None)
+
+
+def test_a_credentials_file_in_a_git_tree_warns_with_the_gitignore_fix():
+    row = ai_row(credentials=FakeCredentials(), tree=Path("/home/user/repo"))
+    assert row is not None
+    assert row.status is CheckStatus.WARN
+    assert (
+        row.fix == "add it to /home/user/repo/.gitignore, or keep the config outside the repository"
+    )
+
+
+def test_the_ai_row_never_fails():
+    settings = AiSettings(enabled=True)
+    row = ai_row(settings, credentials=FakeCredentials(problem="credentials.toml: broken"))
+    assert row is not None
+    assert row.status is not CheckStatus.FAIL
+
+
+def test_an_invalid_config_leaves_the_ai_row_to_the_defaults():
+    probe = AiProbe(FakeCredentials(), lambda: False, lambda _path: None)
+    report = doctor(config=FakeConfigSource(issues=("bad",)), ai=probe)
+    assert all(result.name != "ai" for result in report.results)

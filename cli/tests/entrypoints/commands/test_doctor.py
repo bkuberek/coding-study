@@ -466,3 +466,42 @@ def test_doctor_environment_reads_the_default_progress_database_when_the_config_
     environment = doctor.doctor_environment(tmp_path, {"CSTUDY_CONFIG": str(config)}, tmp_path)
     assert isinstance(environment.workspace, PracticeWorkspace)
     assert environment.workspace.progress.schema().found == 4
+
+
+def test_the_ai_probe_reads_the_credentials_beside_the_config(monkeypatch, tmp_path):
+    config = tmp_path / "config" / "config.toml"
+    monkeypatch.delenv("CSTUDY_WORKSPACE", raising=False)
+    environment = doctor.doctor_environment(
+        tmp_path, {"CSTUDY_CONFIG": str(config)}, tmp_path / "home"
+    )
+    probe = environment.ai
+    assert probe is not None
+    assert probe.credentials.location == str(config.with_name("credentials.toml"))
+    assert not probe.file_exists()
+    config.parent.mkdir()
+    config.with_name("credentials.toml").write_text('[anthropic]\napi_key = "sk-sentinel"\n')
+    assert probe.file_exists()
+
+
+def test_the_ai_probe_finds_the_git_tree_of_the_credentials_file(tmp_path):
+    (tmp_path / "repo" / ".git").mkdir(parents=True)
+    environment = doctor.doctor_environment(
+        tmp_path, {"CSTUDY_CONFIG": str(tmp_path / "repo" / "config.toml")}, tmp_path / "home"
+    )
+    assert environment.ai is not None
+    tree = environment.ai.git_tree_of(Path(environment.ai.credentials.location))
+    assert tree == (tmp_path / "repo").resolve()
+
+
+def test_with_ai_off_and_no_credentials_the_output_has_no_ai_row(monkeypatch, tmp_path):
+    workspace = mark_workspace(tmp_path / "ws")
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    monkeypatch.setenv("CSTUDY_CONFIG", str(tmp_path / "config" / "config.toml"))
+    environment = doctor.doctor_environment(
+        tmp_path,
+        {"CSTUDY_WORKSPACE": str(workspace), "CSTUDY_CONFIG": str(tmp_path / "c.toml")},
+        tmp_path / "home",
+    )
+    names = [result.name for result in doctor.run_doctor(environment, lambda _line: None).results]
+    assert "ai" not in names
+    assert names.index("config") + 1 == names.index("content")
