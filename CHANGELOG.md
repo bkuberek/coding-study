@@ -2,6 +2,78 @@
 
 <!-- version list -->
 
+## v0.52.0 (2026-11-16)
+
+### Bug Fixes
+
+- Count a Kotlin LSP warm-up that finished as passed
+  ([`8dac9ea`](https://github.com/bkuberek/coding-study/commit/8dac9ead8039459370871408906527114948d2b0))
+
+- Judge a service project by its Docker toolchains, not the host's
+  ([`c4f8053`](https://github.com/bkuberek/coding-study/commit/c4f8053d3bc93599f20c57a8aed084262126125c))
+
+- Keep a run directory while the process that made it is alive
+  ([`e5d1a74`](https://github.com/bkuberek/coding-study/commit/e5d1a74e82da6d94f26bd738fc6fa5f10b73f563))
+
+- Retry a runner that the system reports busy, and fail only its problem when it cannot start
+  ([`23c939c`](https://github.com/bkuberek/coding-study/commit/23c939ca977980fa14e64a56fd701b848fc611fb))
+
+- Use American spelling in messages and the web UI
+  ([`5f87aca`](https://github.com/bkuberek/coding-study/commit/5f87acae538c7e32757132a942fe9d377ef6772e))
+
+### Build System
+
+- Run the browser gate lane alone, then slow-core and docker together
+  ([`78b5783`](https://github.com/bkuberek/coding-study/commit/78b57833329c0d3f59a4d46893c3b7c14f3cd1cf))
+
+- Run the gate lanes on parallel pytest workers
+  ([`a908cbd`](https://github.com/bkuberek/coding-study/commit/a908cbdeb50eccf569d63cf9f93c3f1b21da4074))
+
+- Run the test suite as four disjoint gate lanes
+  ([`5066b2c`](https://github.com/bkuberek/coding-study/commit/5066b2c08d824d5a1c0d63f7eb93f002d1286856))
+
+### Chores
+
+- **showcase**: Retake the Problems view with its Checked by column, for cstudy 0.51
+  ([`d7554ea`](https://github.com/bkuberek/coding-study/commit/d7554ea7f67fa36d278ee207a939370bd44c9e1c))
+
+### Documentation
+
+- Document environment variables, config keys, problem authoring and other editors
+  ([`0d449aa`](https://github.com/bkuberek/coding-study/commit/0d449aa88307b947bf89c595b6d500bcd3fd0fce))
+
+- Use American spelling in problem statements
+  ([`95c1405`](https://github.com/bkuberek/coding-study/commit/95c14059a6d7316b3716051fb4734814dd68663a))
+
+- Use American spelling in the guides
+  ([`4da815b`](https://github.com/bkuberek/coding-study/commit/4da815bcdaf660b4ee6b06d9f2d633ae479988f9))
+
+- Use American spelling in the user docs, README and specs
+  ([`36c60ce`](https://github.com/bkuberek/coding-study/commit/36c60ce6c4e750ff8e85677dce41bf5fd4623e07))
+
+### Features
+
+- Verify the other languages when one toolchain is missing, and add --skip-lang
+  ([`3b6c284`](https://github.com/bkuberek/coding-study/commit/3b6c284070b0b6d7ad4751e2424625516e7e0464))
+
+### Testing
+
+- Give each copied workspace a real node_modules
+  ([`f99b5e0`](https://github.com/bkuberek/coding-study/commit/f99b5e0f87cde056378ffce60f17ee8dd7faa0d8))
+
+- Give the buggy-stub verification the machine's PATH and JAVA_HOME
+  ([`a052a1b`](https://github.com/bkuberek/coding-study/commit/a052a1b4c1f39c1eb68b365d73bb5e105883d43e))
+
+- Keep only failed tests' temp directories
+  ([`d3bf3d3`](https://github.com/bkuberek/coding-study/commit/d3bf3d35f06fce335d5a758eebc0f8b8f5a0702e))
+
+- Remove the copied node_modules folder in the sidecar fixture
+  ([`fde2a89`](https://github.com/bkuberek/coding-study/commit/fde2a891ee4c8d826d6e9d91f1853cd92cc86e65))
+
+- Skip the Rust rows when cargo is missing
+  ([`0baff32`](https://github.com/bkuberek/coding-study/commit/0baff32647fca8db1712e9d9781dc2cb1120ea9f))
+
+
 ## v0.51.0 (2026-11-15)
 
 ### Bug Fixes
