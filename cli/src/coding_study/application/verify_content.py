@@ -27,6 +27,7 @@ from coding_study.application.reference_runs import (
     LanguageResult,
     LanguageVerifier,
     approaches_in,
+    failed_to_start,
     per_language,
     shown,
 )
@@ -472,6 +473,7 @@ class _DynamicChecks:
             split.runnable,
             lambda language: self._language(language, cases, oracle_cases, comparator),
             self._request.jobs,
+            lambda language, error: (failed_to_start(language, error), None),
         )
         oracle = (
             self._oracle(runs, oracle_cases, comparator)

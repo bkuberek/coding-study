@@ -23,6 +23,7 @@ from coding_study.application.reference_runs import (
     LanguageResult,
     LanguageVerifier,
     approaches_in,
+    failed_to_start,
     per_language,
     shown,
 )
@@ -143,6 +144,7 @@ class _Fixture:
             split.runnable,
             lambda language: run.language(language, expectations),
             self._request.jobs,
+            failed_to_start,
         )
         skipped = {
             language: LanguageResult(language, skipped=split.reasons[language])

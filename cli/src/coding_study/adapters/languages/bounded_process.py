@@ -13,6 +13,7 @@ from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from pathlib import Path
 
+from coding_study.adapters.busy_binary import start_when_not_busy
 from coding_study.adapters.process_environment import inherited_environment
 from coding_study.domain.errors import RunnerStartError
 
@@ -56,15 +57,18 @@ class BoundedProcess:
         environment: Mapping[str, str] | None,
         stderr: int,
     ) -> "subprocess.CompletedProcess[bytes]":
-        with subprocess.Popen(
-            command,
-            cwd=cwd,
-            env=inherited_environment() if environment is None else dict(environment),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=stderr,
-            start_new_session=True,
-        ) as process:
+        started = start_when_not_busy(
+            lambda: subprocess.Popen(
+                command,
+                cwd=cwd,
+                env=inherited_environment() if environment is None else dict(environment),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=stderr,
+                start_new_session=True,
+            )
+        )
+        with started as process:
             try:
                 output, errors = process.communicate(timeout=self._timeout_seconds)
             except subprocess.TimeoutExpired:

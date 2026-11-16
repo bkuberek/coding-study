@@ -12,6 +12,7 @@ from coding_study.application.starter_helpers import append_helper
 from coding_study.domain import layout
 from coding_study.domain.buggy_stubs import BUGGY_STUB_APPROACH_ID, buggy_file
 from coding_study.domain.comparators import Comparator
+from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.judging import CaseStatus, RunnableCase, judge, outcome_summary
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.problem_files import SOLUTIONS_DIRECTORY
@@ -97,13 +98,29 @@ def approaches_in(
 
 
 def per_language[T](
-    languages: Sequence[Language], work: Callable[[Language], T], jobs: int | None
+    languages: Sequence[Language],
+    work: Callable[[Language], T],
+    jobs: int | None,
+    not_started: Callable[[Language, RunnerStartError], T],
 ) -> dict[Language, T]:
-    """`work` for every language, at most `jobs` at a time (default: all at once)."""
+    """`work` for every language, at most `jobs` at a time (default: all at once). A language
+    whose runner cannot start gets `not_started` instead, and the others go on."""
+
+    def guarded(language: Language) -> T:
+        try:
+            return work(language)
+        except RunnerStartError as error:
+            return not_started(language, error)
+
     if not languages:
         return {}
     with ThreadPoolExecutor(max_workers=jobs or len(languages)) as executor:
-        return dict(zip(languages, executor.map(work, languages), strict=True))
+        return dict(zip(languages, executor.map(guarded, languages), strict=True))
+
+
+def failed_to_start(language: Language, error: RunnerStartError) -> LanguageResult:
+    """The language's failure when its runner cannot start: the problem fails, the run goes on."""
+    return LanguageResult(language, problems=(str(error),))
 
 
 class LanguageVerifier:

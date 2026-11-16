@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from coding_study.adapters.busy_binary import start_when_not_busy
 from coding_study.adapters.debug_process import terminated_like_interrupt
 from coding_study.adapters.languages.rust.libtest import (
     LIBTEST_ERROR,
@@ -296,14 +297,16 @@ def _start(
     command: Sequence[str], cwd: Path, *, stdout: object, stderr: object
 ) -> "subprocess.Popen[bytes]":
     try:
-        return subprocess.Popen(
-            list(command),
-            cwd=cwd,
-            env=_test_environment(inherited_environment()),
-            stdin=subprocess.DEVNULL,
-            stdout=stdout,  # type: ignore[arg-type]
-            stderr=stderr,  # type: ignore[arg-type]
-            start_new_session=True,
+        return start_when_not_busy(
+            lambda: subprocess.Popen(
+                list(command),
+                cwd=cwd,
+                env=_test_environment(inherited_environment()),
+                stdin=subprocess.DEVNULL,
+                stdout=stdout,  # type: ignore[arg-type]
+                stderr=stderr,  # type: ignore[arg-type]
+                start_new_session=True,
+            )
         )
     except OSError as error:
         raise RunnerStartError(f"cannot run {command[0]}: {error.strerror or error}") from error

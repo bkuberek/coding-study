@@ -148,7 +148,7 @@ A language whose toolchain is not installed, such as Rust without `cargo`, is sk
 | Code | Means |
 |-----:|-------|
 | 0 | Every problem it checked passed, or `--changed` found no changed problem |
-| 1 | A problem failed a check beyond the static ones: a reference on a case, the oracle, the ladder, a stress case, or what `ready` needs with `--require-ready`, which also fails on a language skipped for a missing toolchain |
+| 1 | A problem failed a check beyond the static ones: a reference on a case, the oracle, the ladder, a stress case, or what `ready` needs with `--require-ready`, which also fails on a language skipped for a missing toolchain, or a reference runner that fails to start, which fails that problem and does not stop the run |
 | 3 | The command was wrong: a slug that does not exist, `--changed` with slugs or `--conformance`, or `--lang` and `--skip-lang` with the same language |
 | 4 | Something on your machine is missing, such as git, or a `main` branch to compare with for `--changed` |
 | 5 | Every problem that failed, failed its static checks: a file, the schema, a section, or a case that does not fit the signature |

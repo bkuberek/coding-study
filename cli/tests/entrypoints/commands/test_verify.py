@@ -8,10 +8,15 @@ from typer.testing import CliRunner
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.application.case_materialization import EXPECTED_VALUES_NOTICE
-from coding_study.application.reference_runs import ApproachResult, LanguageResult
+from coding_study.application.reference_runs import (
+    ApproachResult,
+    LanguageResult,
+    LanguageVerifier,
+)
 from coding_study.application.verify_content import Coverage, ProblemVerification, VerifyReport
 from coding_study.application.verify_projects import SuiteCheck
 from coding_study.domain.clock_determinism import DeterminismVerdict
+from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import verify
@@ -102,6 +107,30 @@ def test_failing_reference_exits_1(environment):
             "  py brute-force: ex1 FAIL: expected [1, 2], got [2, 2]",
         ],
     )
+
+
+def runner_that_cannot_start_for(monkeypatch, slug: str) -> None:
+    stub_problem = LanguageVerifier.stub_problem
+
+    def start(self, sample):
+        if self._meta.slug == slug:
+            raise RunnerStartError("cannot start runner py: Text file busy")
+        return stub_problem(self, sample)
+
+    monkeypatch.setattr(LanguageVerifier, "stub_problem", start)
+
+
+def test_a_runner_that_cannot_start_fails_its_problem_and_the_run_goes_on(environment, monkeypatch):
+    runner_that_cannot_start_for(monkeypatch, "two-sum")
+    result = invoke("--lang", "python")
+    assert (result.exit_code, result.report[2:4]) == (
+        ExitCode.FAILURES,
+        [
+            "two-sum           static ok · py FAIL",
+            "  py cannot start runner py: Text file busy",
+        ],
+    )
+    assert result.report[0].startswith("lru-cache         static ok · py 1/1 ok")
 
 
 def test_require_ready_lists_what_is_missing(environment):
@@ -459,5 +488,17 @@ def test_the_ready_gate_lists_a_skip_as_not_ready(reported):
             "bank-project-...  static ok · java skipped · kt skipped · not ready",
             f"  skipped  java, kotlin: {SKIP_REASON}",
             f"  not ready: java, kotlin skipped: {SKIP_REASON}",
+        ],
+    )
+
+
+def test_a_runner_that_cannot_start_fails_its_fixture_in_conformance(conformance_root, monkeypatch):
+    runner_that_cannot_start_for(monkeypatch, "conformance-function")
+    result = invoke("--conformance", "--lang", "python")
+    assert (result.exit_code, result.report[:2]) == (
+        ExitCode.FAILURES,
+        [
+            "conformance-function  py FAIL",
+            "  py cannot start runner py: Text file busy",
         ],
     )

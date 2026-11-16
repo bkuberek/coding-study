@@ -50,6 +50,7 @@ from shutil import rmtree
 from typing import IO, Protocol, TypeGuard
 
 from coding_study.adapters.bench_progress import BenchProgress
+from coding_study.adapters.busy_binary import start_when_not_busy
 from coding_study.adapters.debug_process import DebugOutput, terminated_like_interrupt
 from coding_study.adapters.process_environment import inherited_environment
 from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
@@ -737,14 +738,16 @@ class _Attempt:
     def _start(self, stdout: IO[bytes] | int, stderr: IO[bytes]) -> subprocess.Popen[bytes]:
         arguments = ["--request", str(self._files.request), "--out", str(self._files.events)]
         try:
-            process = subprocess.Popen(
-                [*self._launch.command, *arguments],
-                cwd=self._launch.cwd,
-                env=_environment(self._launch),
-                stdin=subprocess.DEVNULL,
-                stdout=stdout,
-                stderr=stderr,
-                start_new_session=True,
+            process = start_when_not_busy(
+                lambda: subprocess.Popen(
+                    [*self._launch.command, *arguments],
+                    cwd=self._launch.cwd,
+                    env=_environment(self._launch),
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout,
+                    stderr=stderr,
+                    start_new_session=True,
+                )
             )
         except OSError as error:
             raise RunnerStartError(
