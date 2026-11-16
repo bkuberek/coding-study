@@ -17,6 +17,7 @@ from coding_study.adapters.fs_study_guides import FsStudyGuides
 from coding_study.adapters.fs_user_docs import FsUserDocs
 from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.sqlite.ai_rows import SqliteAiStore
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.adapters.yaml_problem_sets import YamlProblemSets
@@ -349,6 +350,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "stack_clients": open_stack_clients,
         "problem_sets": YamlProblemSets(WorkspaceFs(root)),
         "preferences": FsPreferencesStore(root),
+        "ai_store": SqliteAiStore(root / "progress.db"),
     }
     parts.update(overrides)
     return Environment(**parts)  # type: ignore[arg-type]

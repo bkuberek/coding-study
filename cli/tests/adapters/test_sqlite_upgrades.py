@@ -17,10 +17,13 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.sqlite import schema
+from coding_study.adapters.sqlite.ai_rows import SqliteAiStore
 from coding_study.adapters.sqlite.progress_database import SqliteProgressDatabase
-from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
+from coding_study.adapters.sqlite.progress_store import MACHINE_TABLES, SqliteProgressStore
 from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.progress_backup import export_progress, import_progress
+from coding_study.domain.ai import AiTask, Provider
+from coding_study.domain.ai_records import Consent
 from coding_study.domain.attempts import AttemptMode, AttemptStatus
 from coding_study.domain.errors import BackupError, MigrationError, UsageError
 from coding_study.domain.progress_export import ProgressSnapshot, export_text
@@ -42,6 +45,7 @@ LATEST = latest_schema_version()
 SCHEMAS = range(1, LATEST + 1)
 OLDER = range(1, LATEST)
 FIRST_WITH_LEVELS = 6
+AI_MIGRATION = 8
 STORE = "store"
 DATABASE = "database"
 
@@ -205,12 +209,28 @@ def test_every_row_survives_and_new_columns_are_null(upgrade):
     assert survives(upgrade.before, read_rows(upgrade.path))
 
 
+def test_the_ai_tables_are_there_and_empty(upgrade):
+    rows = read_rows(upgrade.path)
+    assert [rows[table] for table in ("ai_reviews", "ai_calls", "ai_consents")] == [[], [], []]
+
+
 def test_one_line_says_where_the_copy_went_and_what_was_migrated(upgrade):
     (backup,) = upgrade.backups
     assert upgrade.notice == [
         f"progress.db: backed up to .cs/backups/{backup.name}; "
         f"migrated from schema {upgrade.number} to {LATEST}"
     ]
+
+
+def test_the_ai_script_runs_again_over_the_tables_it_made(tmp_path):
+    path = database_at_schema(tmp_path / "progress.db", LATEST)
+    script = next(text for number, text in schema._migrations() if number == AI_MIGRATION)
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.executescript(script)
+    assert (
+        read_rows(path)["ai_reviews"]
+        == read_rows(database_at_schema(tmp_path / "again.db", LATEST))["ai_reviews"]
+    )
 
 
 def test_the_database_returns_the_migration_it_made(tmp_path):
@@ -541,12 +561,59 @@ def test_an_export_of_a_migrated_database_imports_and_exports_the_same_document(
     )
 
 
+def exported_rows(rows: Rows) -> Rows:
+    """`rows` without the tables an export leaves out."""
+    return {table: held for table, held in rows.items() if table not in MACHINE_TABLES}
+
+
 @pytest.mark.parametrize("number", SCHEMAS)
 def test_an_export_built_at_each_schema_imports_into_the_latest(content_root, number):
-    rows = read_rows(database_at_schema(content_root / "fixture" / "progress.db", number))
+    rows = exported_rows(
+        read_rows(database_at_schema(content_root / "fixture" / "progress.db", number))
+    )
     export = export_text(
         ProgressSnapshot(number, {table: tuple(held) for table, held in rows.items()}), NOW
     )
     latest = content_root / "latest" / "progress.db"
     import_progress(make_environment(content_root, progress=SqliteProgressStore(latest)), export)
-    assert survives(rows, read_rows(latest))
+    assert survives(rows, exported_rows(read_rows(latest)))
+
+
+def test_the_export_of_the_latest_schema_holds_the_reviews_and_leaves_out_requests_and_consents(
+    content_root,
+):
+    fixture = database_at_schema(content_root / "fixture" / "progress.db", LATEST)
+    tables = json.loads(
+        export_progress(make_environment(content_root, progress=SqliteProgressStore(fixture))).text
+    )["tables"]
+    assert "ai_reviews" in tables
+    assert MACHINE_TABLES.isdisjoint(tables)
+    assert tables["ai_reviews"] == read_rows(fixture)["ai_reviews"]
+
+
+def test_an_import_restores_the_reviews_and_leaves_the_requests_and_consents_as_they_were(
+    content_root,
+):
+    source = database_at_schema(content_root / "fixture" / "progress.db", LATEST)
+    export = export_progress(
+        make_environment(content_root, progress=SqliteProgressStore(source))
+    ).text
+    target = content_root / "latest" / "progress.db"
+    store = SqliteAiStore(target)
+    store.grant_consent(Consent(Provider.GOOGLE, "model-z", AiTask.CHECK, NOW))
+    kept = read_rows(target)
+    import_progress(make_environment(content_root, progress=SqliteProgressStore(target)), export)
+    after = read_rows(target)
+    assert after["ai_reviews"] == read_rows(source)["ai_reviews"]
+    assert (after["ai_calls"], after["ai_consents"]) == (kept["ai_calls"], kept["ai_consents"])
+
+
+def test_an_import_neither_reads_nor_checks_the_requests_and_consents_of_an_export(content_root):
+    rows = read_rows(database_at_schema(content_root / "fixture" / "progress.db", LATEST))
+    odd = {"ai_calls": ({"not_a_column": 1},), "ai_consents": ({"granted_at": object()},)}
+    snapshot = ProgressSnapshot(
+        LATEST, {**{t: tuple(h) for t, h in exported_rows(rows).items()}, **odd}
+    )  # type: ignore[dict-item]
+    target = content_root / "latest" / "progress.db"
+    SqliteProgressStore(target).restore(snapshot)
+    assert read_rows(target)["ai_calls"] == []

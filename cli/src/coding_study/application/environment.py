@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from coding_study.application.ai_ports import AiStore
 from coding_study.application.http_grading_ports import OpenStackClients
 from coding_study.application.ports import (
     CalibrationCache,
@@ -89,6 +90,8 @@ class Environment:
     preferences: PreferencesStore
     """The web UI's preferences: a service project's install builds the server its sidecar runs,
     if that server is not the one of `.cs/lsp/`, only while `code_intelligence` is on."""
+    ai_store: AiStore
+    """The AI tables of progress.db: reviews, requests and consents."""
     workspace_languages: tuple[Language, ...] | None = None
     """The marker's `languages`, in the order a workspace lists them; None when the workspace chose
     none, so it has all six (docs/specs/installation-and-workspaces.md#workspace-languages)."""

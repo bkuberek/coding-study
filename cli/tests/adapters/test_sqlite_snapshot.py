@@ -23,6 +23,7 @@ TABLES = (
     "submissions",
     "level_unlocks",
     "guide_reads",
+    "ai_reviews",
 )
 NEWER = latest_schema_version() + 1
 
@@ -57,6 +58,7 @@ def test_a_snapshot_holds_every_row(filled):
         "submissions": 0,
         "level_unlocks": 0,
         "guide_reads": 0,
+        "ai_reviews": 0,
     }
 
 

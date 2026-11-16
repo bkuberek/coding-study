@@ -1,15 +1,26 @@
 """`cstudy reset` (docs/specs/cli.md#cstudy-reset): what goes, what stays and what refuses."""
 
 import shutil
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from coding_study.application.reset_workspace import ResetRequest, reset_preview, reset_workspace
+from coding_study.domain.ai import AiTask, Provider
+from coding_study.domain.ai_records import (
+    CallOutcome,
+    Consent,
+    ModelCall,
+    ReviewItem,
+    ReviewRecord,
+    Verdict,
+)
+from coding_study.domain.attempts import AttemptMode, NewAttempt
 from coding_study.domain.errors import ResetNotConfirmedError, UsageError, WorkspaceBusyError
 from coding_study.domain.reset import RESET_WORD, ResetPreview
-from tests.fakes import make_environment
+from tests.fakes import NOW, make_environment
 from tests.helpers import SCHEMAS_DIRECTORY
 from tests.stats_fixture import fill_progress
 
@@ -84,6 +95,54 @@ def root(tmp_path: Path) -> Path:
     return root
 
 
+def fill_ai(environment) -> None:
+    """Two reviews of an attempt at `url-shortener`, three requests and a consent."""
+    attempt = environment.progress.add_attempt(
+        NewAttempt("url-shortener", None, AttemptMode.NEW, NOW)
+    )
+    store = environment.ai_store
+    item = ReviewItem(1, "Scope", "States the goal", Verdict.MET, ("quote",), "")
+    for minutes in (0, 5):
+        store.add_review(
+            ReviewRecord(
+                attempt_id=attempt.id,
+                created_at=NOW + timedelta(minutes=minutes),
+                provider=Provider.GOOGLE,
+                model="model-a",
+                prompt_version="review-1",
+                rubric_sha256="a" * 64,
+                notes_sha256="b" * 64,
+                items=(item,),
+                summary="Covered.",
+                quotes_dropped=0,
+                input_tokens=None,
+                output_tokens=None,
+                cost_usd=None,
+            )
+        )
+    for minutes in range(3):
+        started = NOW + timedelta(minutes=minutes)
+        store.record_call(
+            ModelCall(
+                purpose=AiTask.REVIEW,
+                provider=Provider.GOOGLE,
+                model="model-a",
+                tier=None,
+                attempt_id=attempt.id,
+                local_day=started.date(),
+                started_at=started,
+                ended_at=started + timedelta(seconds=2),
+                outcome=CallOutcome.OK,
+                error=None,
+                input_tokens=10,
+                output_tokens=5,
+                counted_tokens=15,
+                cost_usd=None,
+            )
+        )
+    store.grant_consent(Consent(Provider.GOOGLE, "model-a", AiTask.REVIEW, NOW))
+
+
 @pytest.fixture
 def environment(root: Path):
     environment = make_environment(root)
@@ -125,6 +184,29 @@ def test_the_preview_counts_the_progress_by_table(environment):
 
 def test_the_preview_counts_the_bench_runs(environment):
     assert counts(reset_preview(environment, Quiet()), None)["bench runs"] == 3
+
+
+def test_the_preview_leaves_out_the_ai_tables_when_they_are_empty(environment):
+    assert (
+        not {"AI reviews", "AI requests", "AI consents"}
+        & counts(reset_preview(environment, Quiet()), None).keys()
+    )
+
+
+def test_the_preview_counts_the_ai_reviews_requests_and_consents_when_there_are_any(environment):
+    fill_ai(environment)
+    found = counts(reset_preview(environment, Quiet()), None)
+    assert (found["AI reviews"], found["AI requests"], found["AI consents"]) == (2, 3, 1)
+
+
+def test_the_preview_lists_only_the_ai_tables_that_hold_rows(environment):
+    environment.ai_store.grant_consent(Consent(Provider.OPENAI, "model-a", AiTask.CHECK, NOW))
+    found = counts(reset_preview(environment, Quiet()), None)
+    assert (found["AI consents"], "AI reviews" in found, "AI requests" in found) == (
+        1,
+        False,
+        False,
+    )
 
 
 def test_the_preview_counts_the_run_folders_and_statements(environment):
@@ -171,6 +253,26 @@ def test_a_workspace_without_progress_previews_zeros(root):
 def test_a_reset_empties_every_table_of_progress(environment):
     reset(environment)
     assert set(environment.progress.snapshot().row_counts().values()) == {0}
+
+
+def test_a_reset_empties_the_ai_reviews_requests_and_consents(environment):
+    fill_ai(environment)
+    reset(environment)
+    store = environment.ai_store
+    assert store.reviews_of_problem("url-shortener") == ()
+    assert store.calls_between(date.min, date.max) == ()
+    assert store.consents() == ()
+    assert (
+        counts(reset_preview(environment, Quiet()), None)
+        .keys()
+        .isdisjoint({"AI reviews", "AI requests", "AI consents"})
+    )
+
+
+def test_a_reset_that_deletes_ai_rows_says_how_many(environment):
+    fill_ai(environment)
+    preview = reset(environment)
+    assert counts(preview, None)["AI requests"] == 3
 
 
 def test_a_reset_deletes_an_open_attempt(environment):

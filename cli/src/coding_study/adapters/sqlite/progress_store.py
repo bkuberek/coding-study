@@ -6,16 +6,15 @@ Numbered migrations in `migrations/` (`0001_init.sql`, ...) run in order on firs
 
 import json
 import sqlite3
-import sys
 from collections import defaultdict
-from collections.abc import Callable, Generator, Mapping
-from contextlib import contextmanager
+from collections.abc import Callable, Mapping
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 from coding_study.adapters.sqlite import bench_rows, submission_rows
-from coding_study.adapters.sqlite.schema import migrate_locked, schema_version
+from coding_study.adapters.sqlite.progress_connection import ProgressConnection
+from coding_study.adapters.sqlite.schema import schema_version
 from coding_study.domain.attempts import (
     Attempt,
     AttemptMode,
@@ -50,8 +49,14 @@ TABLE_ORDER = (
     "submissions",
     "level_unlocks",
     "guide_reads",
+    "ai_reviews",
+    "ai_calls",
+    "ai_consents",
 )
-"""Snapshot and restore order: attempts before the rows that reference them."""
+"""Table order: attempts before the rows that reference them."""
+MACHINE_TABLES = frozenset({"ai_calls", "ai_consents"})
+"""This machine's state: an export leaves them out and an import neither reads nor checks them
+(docs/specs/ai.md#records-and-progress); a reset empties them."""
 
 _LATEST_FIRST = "ORDER BY started_at DESC, id DESC LIMIT 1"
 _ATTEMPT_UPDATE = """
@@ -108,10 +113,8 @@ class SqliteProgressStore:
         mastered_interval_days: int = MASTERED_INTERVAL_DAYS,
         workspace: Path | None = None,
     ) -> None:
-        self._path = path
         self._mastered_interval_days = mastered_interval_days
-        self._workspace = workspace if workspace is not None else path.parent
-        self._migrated = False
+        self._connection = ProgressConnection(path, workspace)
 
     def add_attempt(self, attempt: NewAttempt) -> Attempt:
         with self._connection() as connection:
@@ -304,14 +307,14 @@ class SqliteProgressStore:
                         dict(row)
                         for row in connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid')
                     )
-                    for table in _data_tables(connection)
+                    for table in _exported_tables(connection)
                 },
             )
 
     def restore(self, snapshot: ProgressSnapshot) -> None:
         with self._connection() as connection:
             _require_restorable(connection, snapshot)
-            for table in _data_tables(connection):
+            for table in _exported_tables(connection):
                 columns = _columns(connection, table)
                 for number, row in enumerate(snapshot.tables.get(table, ()), start=1):
                     _insert_row(connection, table, columns, number, row)
@@ -354,26 +357,6 @@ class SqliteProgressStore:
             ).fetchone()
         return _attempt(row) if row is not None else None
 
-    @contextmanager
-    def _connection(self) -> Generator[sqlite3.Connection]:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self._path)
-        connection.row_factory = sqlite3.Row
-        try:
-            connection.execute("PRAGMA foreign_keys = ON")
-            if not self._migrated:
-                self._migrate_once(connection)
-            with connection:
-                yield connection
-        finally:
-            connection.close()
-
-    def _migrate_once(self, connection: sqlite3.Connection) -> None:
-        migration = migrate_locked(self._path, connection, self._workspace)
-        self._migrated = True
-        if migration is not None and migration.backup is not None:
-            print(migration.notice, file=sys.stderr)
-
 
 def _data_tables(connection: sqlite3.Connection) -> tuple[str, ...]:
     """Every table but `meta`, parents before the tables that reference them."""
@@ -383,6 +366,11 @@ def _data_tables(connection: sqlite3.Connection) -> tuple[str, ...]:
     names = {row["name"] for row in rows} - {META_TABLE}
     known = [name for name in TABLE_ORDER if name in names]
     return (*known, *sorted(names - set(known)))
+
+
+def _exported_tables(connection: sqlite3.Connection) -> tuple[str, ...]:
+    """The data tables a snapshot holds and a restore fills: all but `MACHINE_TABLES`."""
+    return tuple(table for table in _data_tables(connection) if table not in MACHINE_TABLES)
 
 
 def _columns(connection: sqlite3.Connection, table: str) -> frozenset[str]:
@@ -401,7 +389,8 @@ def _require_restorable(connection: sqlite3.Connection, snapshot: ProgressSnapsh
     unknown = next((table for table in snapshot.tables if table not in tables), None)
     if unknown is not None:
         raise UsageError(f'unknown table "{unknown}" in the export')
-    if any(connection.execute(f'SELECT 1 FROM "{table}" LIMIT 1').fetchone() for table in tables):
+    held = _exported_tables(connection)
+    if any(connection.execute(f'SELECT 1 FROM "{table}" LIMIT 1').fetchone() for table in held):
         raise UsageError("progress.db already holds progress; import needs an empty database")
 
 

@@ -29,7 +29,7 @@ from typer.testing import CliRunner
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.problem_overlay import OverlayProblemRepository
-from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
+from coding_study.adapters.sqlite.progress_store import MACHINE_TABLES, SqliteProgressStore
 from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.doctor import CheckResult, CheckStatus, DoctorReport
 from coding_study.application.environment import Environment
@@ -165,6 +165,7 @@ EXPORT_TABLES = (
     "submissions",
     "level_unlocks",
     "guide_reads",
+    "ai_reviews",
 )
 UNDOCUMENTED = "undocumented_field"
 
@@ -463,8 +464,9 @@ def test_an_export_of_the_fixture_at_each_schema_after_it_migrates(
 def test_an_export_built_at_each_schema(content_root, number):
     database = database_at_schema(content_root / "built" / "progress.db", number)
     rows = read_rows(database)
+    exported = {table: tuple(held) for table, held in rows.items() if table not in MACHINE_TABLES}
     text = export_text(
-        ProgressSnapshot(number, {table: tuple(held) for table, held in rows.items()}),
+        ProgressSnapshot(number, exported),
         NOW + timedelta(hours=1),
     )
     document = json.loads(text)

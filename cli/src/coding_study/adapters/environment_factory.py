@@ -45,6 +45,7 @@ from coding_study.adapters.problem_overlay import (
     OverlayProblemRepository,
 )
 from coding_study.adapters.runner_runtime import RunnerRuntime
+from coding_study.adapters.sqlite.ai_rows import SqliteAiStore
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.adapters.subprocess_tool_probe import (
@@ -158,6 +159,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         stack_clients=open_stack_clients,
         problem_sets=YamlProblemSets(WorkspaceFs(workspace)),
         preferences=FsPreferencesStore(workspace),
+        ai_store=SqliteAiStore(workspace / config.progress_db, workspace),
         workspace_languages=read_marker(workspace).languages if has_marker(workspace) else None,
     )
 

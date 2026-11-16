@@ -7,6 +7,7 @@ next reset finds and deletes, and a database that is whole.
 """
 
 from dataclasses import dataclass, replace
+from datetime import date
 
 from coding_study.application.environment import Environment
 from coding_study.application.ports import RunActivity, Workspace
@@ -43,7 +44,13 @@ TABLE_LABELS = (
     ("submissions", "submissions"),
     ("level_unlocks", "level unlocks"),
     ("guide_reads", "guides read"),
+    ("ai_reviews", "AI reviews"),
+    ("ai_calls", "AI requests"),
+    ("ai_consents", "AI consents"),
 )
+SHOWN_WHEN_PRESENT = frozenset({"ai_reviews", "ai_calls", "ai_consents"})
+"""Tables the preview lists only when they hold rows (docs/specs/ai.md#records-and-progress)."""
+ALL_DAYS = (date.min, date.max)
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,8 +96,12 @@ def _selected(preview: ResetPreview, request: ResetRequest) -> ResetPreview:
 
 def _groups(environment: Environment) -> tuple[ResetGroup, ...]:
     workspace = environment.workspace
-    rows = environment.progress.snapshot().row_counts()
-    tables = (ResetEntry(label, rows.get(table, 0)) for table, label in TABLE_LABELS)
+    rows = _row_counts(environment)
+    tables = (
+        ResetEntry(label, rows.get(table, 0))
+        for table, label in TABLE_LABELS
+        if table not in SHOWN_WHEN_PRESENT or rows.get(table, 0) > 0
+    )
     return (
         ResetGroup(
             None,
@@ -116,6 +127,15 @@ def _groups(environment: Environment) -> tuple[ResetGroup, ...]:
             (ResetEntry("archived attempts", _archived_attempts(workspace)),),
         ),
     )
+
+
+def _row_counts(environment: Environment) -> dict[str, int]:
+    """The snapshot's tables, and the two AI tables that an export leaves out."""
+    return {
+        **environment.progress.snapshot().row_counts(),
+        "ai_calls": len(environment.ai_store.calls_between(*ALL_DAYS)),
+        "ai_consents": len(environment.ai_store.consents()),
+    }
 
 
 def _practice_directories() -> tuple[str, ...]:
