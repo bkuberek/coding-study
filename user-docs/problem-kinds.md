@@ -1,6 +1,6 @@
 ---
 title: Kinds of problems
-summary: The tracks, the kinds of problem and how each is checked, the labels that filter them, and what concurrency and debugging problems ask of you.
+summary: The tracks, the kinds of problem and how each is checked, why any approach that passes counts, how a signature reads in each language, the labels, and what concurrency and debugging problems ask of you.
 section: Practise
 order: 55
 ---
@@ -54,6 +54,48 @@ The first five run your code in a language you choose from those the problem lis
 | AI review | Planned: an optional review of a rubric answer. It is not available yet | None yet |
 
 `cstudy list --checked-by tests` and `--checked-by rubric` filter by it, and the web UI's Problems view has a Checked by column, `tests`, `tests + rubric` or `rubric`, with a filter. In the `--json` output of `cstudy list`, `cstudy next` and `cstudy status`, `checked_by` lists the values.
+
+## Any approach that passes
+
+Correctness is behavioral. `cstudy` sends each case's input to your code, takes what your code returns, and compares that with the expected value. Your code never sees the expected values, and nothing reads, parses or diffs your code, or compares it with a reference solution. So any approach that passes the tests passes: a loop or recursion, a library call or your own data structure. A result whose order does not matter is compared without its order, and where a problem has several right answers, a checker validates yours instead of comparing it with one value.
+
+| Not part of passing | Where it counts |
+|---------------------|-----------------|
+| Speed | Time limits are off unless you turn them on, with `cstudy test --time-limit` or in your [configuration](commands.md#configuration-keys) |
+| How your time grows | `cstudy bench` gives a verdict; with the default settings, a `suboptimal` verdict at medium or high confidence caps the grade at `hard` ([measure your solution](practice.md#measure-your-solution)) |
+| Style | Never checked: what has to match is the function or class that the starter declares, which the cases call |
+
+## One signature in every language
+
+A problem states its function or class once, and `cstudy start` writes your starter from it in the language you chose, with the names in that language's style:
+
+| Canonical | Python | TypeScript | Java | Kotlin | Go | Rust |
+|-----------|--------|------------|------|--------|----|------|
+| Function `twoSum` | `two_sum` | `twoSum` | `Solution.twoSum` | `Solution.twoSum` | `twoSum` | `two_sum` |
+| Class `LRUCache` | `LRUCache` | `LRUCache` | `LRUCache` | `LRUCache` | `LRUCache` | `LRUCache` |
+| Its constructor | `LRUCache(...)` | `new LRUCache(...)` | `new LRUCache(...)` | `LRUCache(...)` | `NewLRUCache(...)` | `LRUCache::new(...)` |
+| Method `getRandom` | `get_random` | `getRandom` | `getRandom` | `getRandom` | `GetRandom` | `get_random` |
+
+Python takes a function at module level, and Java and Kotlin a method of `class Solution`. The types map the same way in every problem:
+
+| Type | Python | TypeScript | Java | Kotlin | Go | Rust |
+|------|--------|------------|------|--------|----|------|
+| `int` | `int` | `number` | `int` | `Int` | `int` | `i32` |
+| `long` | `int` | `number` | `long` | `Long` | `int64` | `i64` |
+| `double` | `float` | `number` | `double` | `Double` | `float64` | `f64` |
+| `string` | `str` | `string` | `String` | `String` | `string` | `String` |
+| `int[]` | `list[int]` | `number[]` | `int[]` | `IntArray` | `[]int` | `Vec<i32>` |
+| `list<string>` | `list[str]` | `string[]` | `List<String>` | `List<String>` | `[]string` | `Vec<String>` |
+| `decimal` | `Decimal` | `Decimal` | `BigDecimal` | `BigDecimal` | `decimal.Decimal` | `Decimal` |
+| `date` | `date` | `IsoDate` | `LocalDate` | `LocalDate` | `time.Time` | `NaiveDate` |
+| `TreeNode` | `TreeNode \| None` | `TreeNode \| null` | `TreeNode` | `TreeNode?` | `*TreeNode` | `Option<Rc<RefCell<TreeNode>>>` |
+| No result | `None` | `void` | `void` | `Unit` | none | `()` |
+
+| Rule | Detail |
+|------|--------|
+| The same cases | Every language runs the same cases, so a `long` stays within what a TypeScript `number` holds exactly, and no expected value depends on integer overflow |
+| Money and days | `decimal` is exact base-10 arithmetic and `date` a calendar day; both travel as text, never as floating-point numbers |
+| Exact types in Go and Rust | Keep the types of the starter. Another type, such as `[]int64` for `int[]` in Go or `&[i32]` in Rust, does not load: the run ends with exit 2 |
 
 ## Labels
 
@@ -132,5 +174,18 @@ With tasks on one event loop, a seed repeats the same schedule, so a failing run
 A problem of the `debugging` track starts from code that looks right and has a bug. `cstudy start` writes that code as your file, instead of an empty stub. At least one case fails in every language, while the visible examples may pass, so you first find the input that breaks it, then fix the code until `cstudy test` passes.
 
 Some bugs belong to one language, such as integer overflow, mutable default arguments or boxed equality, so the problem lists only the languages that have them; Go and Rust have bugs of their own. `cstudy solution` shows the fixed code, and the explanation names the bug and the general trap behind it.
+
+Every language has debugging problems:
+
+| Languages | Problems such as |
+|-----------|------------------|
+| Python, TypeScript, Java and Kotlin | `debug-binary-search-bounds`, `debug-recursion-base-case`, `debug-sort-comparator` |
+| TypeScript | `debug-falsy-plan-update`, `debug-stale-closure-callbacks`, `debug-invoice-total-cents` |
+| Python | `debug-mutable-default-argument` |
+| Java and Kotlin | `debug-boxed-equality`, `debug-running-total-overflow` |
+| Go | `debug-append-aliasing`, `debug-nil-map-write`, `debug-shadowed-variable` |
+| Rust | `debug-char-boundary`, `debug-float-ordering`, `debug-unsigned-underflow` |
+
+`cstudy list --track debugging --lang go` lists those you can work on in one language. A project of the `practical` track can start from buggy code too, such as `debug-async-batch-typescript`.
 
 To step through any problem's code with your IDE's debugger, see [debug a run](ide-and-debugging.md#debug-a-run).

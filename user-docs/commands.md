@@ -1,6 +1,6 @@
 ---
 title: Command reference
-summary: Every cstudy command with its flags, by group, then the global flags, the exit codes and how the JDK is selected.
+summary: Every cstudy command with its flags, by group, then the global flags, the exit codes, the environment variables, the configuration keys and how the JDK is selected.
 section: Settings and help
 order: 125
 ---
@@ -131,6 +131,61 @@ Every command ends with a code that says how it went, which scripts can read:
 
 [Troubleshooting](troubleshooting.md#errors-by-command) lists the messages behind them, command by command.
 
+## Environment variables
+
+`cstudy` reads these variables. A flag, where one exists, wins over its variable.
+
+| Variable | `cstudy` reads it for |
+|----------|-----------------------|
+| `CSTUDY_WORKSPACE` | The workspace, when you give no `--workspace` ([how cstudy finds it](workspace.md#how-cstudy-finds-it)). `cstudy init` without a path creates the workspace there |
+| `CSTUDY_CONTENT` | A checkout of the `cstudy` source to read the problems and runners from, when you give no `--content` |
+| `CSTUDY_CONFIG` | Another `config.toml` than the usual one ([your configuration](settings.md#your-configuration)) |
+| `XDG_CONFIG_HOME` | The folder that holds `coding-study/config.toml`; `~/.config` when it is not set |
+| `XDG_CACHE_HOME` | The folder of the catalog cache that `cstudy list` and `cstudy show` keep outside a workspace, `coding-study/catalog`; `~/.cache` when it is not set |
+| `NO_COLOR` | Plain output, as `--no-color` gives |
+| `VISUAL`, `EDITOR` | The editor that `cstudy start` and `cstudy mock` open while `open_on_start` is on, and that `cstudy config edit` opens. `VISUAL` comes first; with neither set, the command says to set one |
+| `MANPAGER`, `PAGER` | The pager that `cstudy solution` shows its text in on a terminal, in that order; with neither set, the system's pager, such as `less` |
+| `JAVA_HOME` | The JDK that runs Java and Kotlin ([the selected JDK](#the-selected-jdk)) |
+| `PATH` | The toolchains, the first `java` when `JAVA_HOME` is not set, and the copies of `cstudy` that the `installs` row of `cstudy doctor` lists |
+| `GRADLE_USER_HOME` | Gradle's home, `~/.gradle` when it is not set, where `cstudy` looks for a Gradle daemon that already runs, to decide whether to say that a build starts one |
+| `GOBIN`, `GOPATH` | Delve, for a Go debug run, when it is not on `PATH`: in `GOBIN`, then in `bin` of the first `GOPATH` entry, `~/go/bin` when neither is set |
+| `LLDB_DEBUGSERVER_PATH` | On macOS, the `debugserver` of a Rust debug run, tried before `PATH` and the developer directory |
+| `DEVELOPER_DIR` | On macOS, the Xcode or Command Line Tools to take `debugserver` from, instead of the one `xcode-select -p` names |
+| `XDG_RUNTIME_DIR` | On Linux, where rootless Docker keeps its socket, which tells rootless Docker from a system engine ([Docker](toolchains.md#docker)) |
+| `DOCKER_HOST`, `DOCKER_CONTEXT`, `DOCKER_CONFIG`, `DOCKER_CERT_PATH`, `DOCKER_TLS_VERIFY` | Which Docker engine the Docker client talks to, for service projects. Only the Docker client gets them, never a container |
+| `XDG_DATA_HOME`, `UV_TOOL_DIR`, `PIPX_HOME` | Where uv and pipx keep the tools they install, so that `cstudy doctor` can say how each copy of `cstudy` on your `PATH` was installed |
+| `CSTUDY_EXECUTABLE` | The `cstudy` that the IntelliJ IDEA launcher runs, before it looks on `PATH` ([IntelliJ IDEA](ide-and-debugging.md#intellij-idea)) |
+
+The code that `cstudy` runs, with its builds, installs and language servers, starts with only part of your environment ([your environment](toolchains.md#your-environment)). `cstudy` also fixes some settings of its own Go and Rust builds, whatever your shell says ([Go](toolchains.md#go), [Rust](toolchains.md#rust)).
+
+## Configuration keys
+
+Every key of `config.toml`, in the order of the file. A dotted key is a key of a table: `schedule.max_interval_days` is `max_interval_days` under `[schedule]`. A key you leave out has its default. [Your configuration](settings.md#your-configuration) says where the file is, how to edit it and when a change applies.
+
+| Key | Default | Does |
+|-----|---------|------|
+| `default_lang` | `"python"` | The language of `cstudy start`, `cstudy next` and `cstudy mock` when you give no `--lang` |
+| `open_on_start` | `true` | Opens `$VISUAL` or `$EDITOR` on `cstudy start` |
+| `progress_db` | `"progress.db"` | The progress database, relative to the workspace root. Changing it moves no data ([change progress_db](settings.md#change-progress_db)) |
+| `next.tracks` | `["dsa"]` | The tracks `cstudy next` and `cstudy mock` pick from when you give no `--track` |
+| `time_limit.enabled` | `false` | Applies time limits to every run, as `cstudy test --time-limit` does to one |
+| `time_limit.value` | not set | The limit: a factor of the reference, such as `"5x"`, or a duration, such as `"1500ms"`. Not set, the problem's suggested limit applies, else `5x` |
+| `time_limit.floor_ms` | `100` | A limit by factor never goes below this many milliseconds. A duration is used as it is |
+| `hang_guard.ms` | not set | Stops a case that runs this many milliseconds. Not set, the case's or the problem's own value applies, then `10000` |
+| `bench.reps` | `7` | Timed repetitions per size in `cstudy bench` |
+| `bench.memory` | `true` | Measures memory as well as time in `cstudy bench` |
+| `schedule.penalize_suboptimal` | `true` | A `suboptimal` benchmark verdict caps the grade at `hard` |
+| `schedule.max_interval_days` | `180` | No review is scheduled further away than this |
+| `schedule.again_interval_days` | `1` | Days to the next review after an `again` |
+| `schedule.hard_first_interval_days` | `2` | Days after a first review graded `hard` |
+| `schedule.ok_first_interval_days` | `3` | Days after a first review graded `ok` |
+| `schedule.ok_second_interval_days` | `7` | Days after a second review graded `ok` |
+| `schedule.easy_first_interval_days` | `5` | Days after a first review graded `easy` |
+| `schedule.easy_second_interval_days` | `12` | Days after a second review graded `easy` |
+| `schedule.mastered_interval_days` | `21` | A problem counts as mastered from this review interval on, with a grade of `ok` or `easy` |
+| `done.auto_commit` | `false` | Reserved: it does nothing yet |
+| `study_guides.root` | not set | The folder of your study guides, an absolute path or one that starts with `~/` ([point to your study guides](settings.md#point-to-your-study-guides)) |
+
 ## The selected JDK
 
 Java and Kotlin run on one JDK: the one your shell selects. That is the JDK that `JAVA_HOME` names, or, when `JAVA_HOME` is not set, the JDK of the first `java` on your `PATH`, as the Gradle wrapper chooses. A `JAVA_HOME` that holds no JDK selects nothing: `cstudy` does not look on your `PATH` then, and never searches for other JDKs.
@@ -140,6 +195,9 @@ Java and Kotlin run on one JDK: the one your shell selects. That is the JDK that
 | Range | `cstudy` supports JDK 21 to 26. A problem can need a newer JDK than 21, and its statement says so |
 | Outside the range | `cstudy start`, `cstudy test`, `cstudy submit` and `cstudy bench` refuse a Java or Kotlin version of a problem before they write or build anything, and exit 4 with the fix. Commands that run no code, and the other languages, are unaffected |
 | `cstudy list` | Lists every problem, and marks `java!` and `kt!` in the references column where the JDK cannot run a problem, with one line under the table that says why |
+| `cstudy verify` | Skips the Java and Kotlin of a problem whose range does not hold the JDK, with a `skipped` line that names the range and the JDK. `--require-ready` counts a skip as not passed |
+| `cstudy next`, `cstudy mock` | Never pick a problem that the JDK cannot run in the language you practice. When that leaves nothing, they say so |
+| `cstudy show` | Names the problem's own JDK range in its statement, when it has one |
 | `cstudy doctor` | Shows the JDK and where it came from: `java 25.0.5 (JAVA_HOME)` |
 | Everything Java and Kotlin | Gradle, the compilers and the runner all use the selected JDK, so switching it, with `JAVA_HOME` or a version manager, switches every command |
 

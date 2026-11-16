@@ -1,6 +1,6 @@
 ---
 title: Your IDE and the debugger
-summary: The VS Code and IntelliJ IDEA files cstudy writes, how cstudy ide keeps your edits, and how to debug a run with cstudy test --debug.
+summary: The VS Code and IntelliJ IDEA files cstudy writes, other editors with cstudy test --watch, how cstudy ide keeps your edits, how to debug a run with cstudy test --debug, and common editor problems.
 section: Practise
 order: 75
 ---
@@ -58,6 +58,29 @@ To debug Java or Kotlin, set a breakpoint, then **Debug**, not Run, **Debug curr
 | After you switch JDKs | Run `cstudy ide idea`: it updates the project JDK while `misc.xml` is as `cstudy` wrote it, and keeps it, saying so, once you or IntelliJ IDEA changed it |
 
 Go and Rust run from the same run configurations; open the workspace root with the Go or Rust plugin. `cstudy` writes no IntelliJ IDEA project files or debug configurations for Go and Rust, and none for Python and TypeScript, whose debugging needs the Python plugin, or IntelliJ IDEA Ultimate for Node. Debug those languages in VS Code, or with any debugger that attaches to the [debug port](#debug-ports).
+
+## Other editors
+
+`cstudy` writes project files only for VS Code and IntelliJ IDEA, and any other editor works too: each language's folder of the workspace is an ordinary project that its language server finds.
+
+| Language | Point your editor at |
+|----------|----------------------|
+| Python | The interpreter `python/.venv/bin/python`, which `cstudy doctor --fix` creates |
+| TypeScript | The TypeScript of `typescript/node_modules`, which `cstudy doctor --fix` installs |
+| Java, Kotlin | The Gradle build in `jvm/`, on a JDK 21 to 26 |
+| Go | The workspace root, whose `go.work` names `go/`; run the Go tools with `GOTOOLCHAIN=local`, as `cstudy` does |
+| Rust | `rust/Cargo.toml`, or open `rust/` itself |
+
+In Neovim, or another editor in a terminal, keep `cstudy test --watch` running in a split or a second terminal:
+
+```bash
+cstudy start two-sum --no-open    # write the files without opening an editor
+cstudy test --watch               # run now, then after every save
+```
+
+`cstudy test --watch` runs the cases at once, then again each time you save your solution: for Java and Kotlin, any file of the problem's package, and for a project, any file of its folder apart from dependencies, caches and build output. It clears the screen before each run, reports a compile error and keeps watching, and ends with `Ctrl+C`. A save that changes nothing runs nothing, and an editor that saves by writing a new file and renaming it over the old one is seen like any other. A service project's `cstudy test` takes no flags, so it has no `--watch`.
+
+With `EDITOR=nvim`, `cstudy start` opens your solution and the statement in Neovim itself, unless you pass `--no-open` or set `open_on_start = false` ([configuration keys](commands.md#configuration-keys)). To debug, start `cstudy test --debug` in the terminal and attach your editor's debugger to the [debug port](#debug-ports).
 
 ## Your edits and cstudy ide
 
@@ -131,3 +154,21 @@ The debugger listens on 127.0.0.1 only, never on another interface.
 | Rust | `debugserver` on macOS, `lldb-server` on Linux | 12345 | no |
 
 The IDE configurations use these ports. If you pass another with `--debug-port`, attach to that port instead. When something already listens on the port, the run stops with exit 4: `cannot debug python: port 5678 on 127.0.0.1 is already in use; stop the other debug session or choose another port with --debug-port`.
+
+## Common editor problems
+
+| You see | Do |
+|---------|----|
+| rust-analyzer reports an outdated toolchain, or flags standard macros such as `todo!` and `vec!` | Run `rustup update`: the editor's rust-analyzer needs a recent stable toolchain |
+| rust-analyzer cannot show the standard library | Run `rustup component add rust-src` ([Rust](toolchains.md#rust)) |
+| VS Code shows no Rust errors at all, in a workspace an older `cstudy` set up | Remove `"rust-analyzer.check.extraArgs": ["--keep-going"]` from `.vscode/settings.json`, or run `cstudy ide --force` |
+| Python imports do not resolve, or no Python interpreter is selected | Run `cstudy doctor --fix`, which creates `python/.venv`, then select `python/.venv/bin/python` as the interpreter if your editor has not |
+| TypeScript cannot find the workspace's packages | Run `cstudy doctor --fix`, which installs `typescript/node_modules` |
+| Go files show no errors, or say they are outside a module | Open the workspace root, whose `go.work` names `go/` |
+| Your editor's `go` downloads a Go toolchain | Run the Go tools with `GOTOOLCHAIN=local`. The workspace's VS Code files do, and `cstudy ide` adds them to an older workspace |
+| The Java extension finds no JDK | Give it a JDK 21 to 26, through `JAVA_HOME` or its own setting |
+| IntelliJ IDEA names a missing SDK, or the wrong one after you switched JDKs | Accept its prompt, or add a JDK of that release under that name; after a switch, run `cstudy ide idea` |
+| Kotlin breakpoints never stop in VS Code | VS Code's Java debugger does not stop in Kotlin: debug Kotlin in IntelliJ IDEA |
+| A current-file action says `open a solution file in the editor first` | Click into your solution file, then run the action again |
+| The IntelliJ IDEA launcher finds no `cstudy` | Set `CSTUDY_EXECUTABLE` to the path of `cstudy` |
+| A setting that a newer `cstudy` writes is missing from your IDE files | `cstudy ide` keeps the files you edited, and says so: copy the new keys in by hand, or run `cstudy ide --force` |

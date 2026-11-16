@@ -1,6 +1,6 @@
 ---
 title: Write your own problems
-summary: Scaffold a problem of your own with cstudy new, check it with cstudy verify, take it from draft to ready, and fix folders from older versions.
+summary: Scaffold a problem of your own with cstudy new, check it with cstudy verify, take it from draft to ready, step by step, and fix folders from older versions.
 section: Practise
 order: 95
 ---
@@ -43,6 +43,43 @@ The slug names the problem in every command and never changes: your progress is 
 
 `cstudy new` refuses, with exit 3, a slug that the catalog or your own problems already use, and an invalid slug, track, pattern or title.
 
+| Variant | Templates |
+|---------|-----------|
+| `--virtual-clock` | `project-go`, `project-python`, `project-typescript`, `project-kotlin` and `project-rust`. Java has no virtual clock |
+| `--stress` | Every `project-*` template but the service ones. `project-typescript` takes it only with `--virtual-clock`, since its methods are asynchronous |
+
+### Cases on the virtual clock
+
+A project on the virtual clock (`project.clock: virtual` in `meta.yaml`) grades code that sleeps, sets timers, times out and retries, without waiting: time moves only when every task of your code waits. A method marked `async: true` returns the language's awaitable, in Python, TypeScript, Kotlin and Rust. Besides your methods, a case's `ops` in `tests.json` can hold four harness operations, which begin with `@`:
+
+| Operation | Arguments | Expected value | Does |
+|-----------|-----------|----------------|------|
+| `@advance` | `[ms]` | `null` | Moves the clock forward by `ms` milliseconds, firing each timer due on the way |
+| `@spawn` | `[task, method, ...arguments]` | `null` | Starts a call without waiting for it, as the task named `task`. Outside Go the method is `async: true` |
+| `@join` | `[task]` | The method's result | Waits for a task that `@spawn` started; the clock moves while every task waits |
+| `@now` | `[]` | An integer | The virtual milliseconds since the case started |
+
+The variant's second example uses all four:
+
+```json
+{"id": "ex2", "visible": true, "level": 2,
+ "note": "a wait that a put ends, then a wait that times out",
+ "ops": ["Mailbox", "@spawn", "@advance", "put", "@join", "@now", "waitFor", "@now"],
+ "args": [[], ["w1", "waitFor", "a", 5000], [1000], ["a", "x"], ["w1"], [], ["b", 2000], []],
+ "expected": [null, null, null, "", "x", 1000, "", 3000]}
+```
+
+| Rule | Detail |
+|------|--------|
+| Tasks | Each task name is unique in its case, and every task that `@spawn` starts is joined with `@join` |
+| Methods | `@spawn` calls a method of the case's level or below, with that method's arguments |
+| Ties | No expected value may depend on the order of events due at the same instant: the languages do not keep that order |
+| Durations | An expected time is a duration from the start of the case, as `@now` reads it, never a reading of a clock |
+| Deadlocks | A case that waits while nothing can run ends at once as `stalled`, with the operation and the virtual time |
+| The check | `cstudy verify` runs every case several times and reports `clock 10/10`, the fewest runs that agreed on every output; a case whose outputs differ between runs is listed under `clock:` |
+
+A stress case runs on the real clock, so in a project on the virtual clock its steps call only methods that wait on no timer.
+
 ## The files
 
 ```text
@@ -67,6 +104,15 @@ problems/max-gap/
 | `buggy/` | A debugging problem's starting code, one file per language, with the bug in it |
 | `rubric.md` | An `lld` problem's design criteria and reference design |
 
+### More fields of meta.yaml
+
+Two optional fields of `meta.yaml` are worth knowing when you write a problem:
+
+| Field | Does |
+|-------|------|
+| `jdk` | The JDK releases that the problem's Java and Kotlin code runs on: `jdk: {min: 24}` for code that needs a feature of JDK 24, `jdk: {max: 23}` for a problem that does not hold above JDK 23, or both. A bound you leave out is that of the range `cstudy` supports, 21 to 26, so leave `jdk` out unless the code needs it. `min` is above 21 and at most 26; `max` is at least the minimum and is never 26 itself, so that the problem follows the range when it grows. Only for a problem that lists `java` or `kotlin`. `cstudy verify` builds the references at the release `min` names, and the commands treat a JDK outside the range as [the selected JDK](commands.md#the-selected-jdk) says |
+| `summary` | One sentence of 1 to 240 characters that the comment at the top of a new starter file shows, instead of the opening of the statement. Write one when that opening reads badly there, or gives away the approach. It says what the problem asks, never how to solve it |
+
 ## Check it
 
 `cstudy verify` checks a problem the way the catalog's are checked. Run it after each step, starting with the quickest check:
@@ -85,8 +131,24 @@ cstudy verify max-gap --oracle --ladder --require-ready
 | `--oracle` | Every approach against the oracle, a simple approach marked `oracle: true`, on inputs from `generator.py`. Without `generator.py` it says `oracle n/a` |
 | `--ladder` | Each reference at growing input sizes, against the time class `meta.yaml` declares. Without `generator.py` it says `ladder n/a` |
 | `--require-ready` | Fails the problem unless its `status` is `ready` and it meets what `ready` needs |
+| `--oracle-cases <n>` | How many random inputs `--oracle` checks; 200 without it |
 | `--lang <language>` | Only that language |
-| `--stress <n>` | A concurrent problem's stress cases, run n times each |
+| `--track <track>` | Only the problems of that track |
+| `--jobs <n>` | How many language runners work at once; one per language without it. The runners of a concurrent problem still take turns for their stress cases |
+| `--stress <n>` | The runs of each stress case, for a concurrent problem or a project with stress cases; 10 without it |
+| `--changed` | The problems whose files changed from git's `main`, in a checkout of the `cstudy` source, for content you write there. It takes no slugs |
+
+Without slugs, `cstudy verify` checks every problem, the catalog's and yours.
+
+### Exit codes
+
+| Code | Means |
+|-----:|-------|
+| 0 | Every problem it checked passed, or `--changed` found no changed problem |
+| 1 | A problem failed a check beyond the static ones: a reference on a case, the oracle, the ladder, a stress case, or what `ready` needs with `--require-ready` |
+| 3 | The command was wrong: a slug that does not exist, or `--changed` with slugs or `--conformance` |
+| 4 | Something on your machine is missing, such as git, or a `main` branch to compare with for `--changed` |
+| 5 | Every problem that failed, failed its static checks: a file, the schema, a section, or a case that does not fit the signature |
 
 ## From draft to ready
 
@@ -95,6 +157,40 @@ A draft is a problem you can practise: `cstudy start`, `cstudy test` and the res
 A problem is ready when it is complete: an optimal reference in every language it lists, enough visible and hidden cases, an explanation of every approach, and, for a `dsa` problem, a slower approach, an oracle and `generator.py`. Set `status: ready` in its `meta.yaml`, then run `cstudy verify <slug> --oracle --ladder --require-ready`. When it passes, the problem is ready, and `cstudy next` can pick it.
 
 You can keep a problem a draft as long as you like, with references in only some languages. Time limits by factor, such as `--time-limit=5x`, need an optimal reference in the language you test.
+
+### What ready needs
+
+`cstudy verify --require-ready` fails a problem until it meets every row that applies to it:
+
+| Problem | `ready` needs |
+|---------|---------------|
+| Every problem | `status: ready`, every check of `cstudy verify` passing, an `optimal` approach with a reference in every language of `languages`, and a reference of every approach in each of its languages |
+| Function, design, progressive and project | At least 2 visible cases and 8 hidden hand-written ones |
+| The `dsa` track | At least 2 approaches, a slower one or another optimal technique; an approach marked `oracle: true` in Python; `generator.py`; and a `generate` case at the largest size of the ladder, which any problem with `generator.py` needs too |
+| Progressive | At least 2 levels, each with at least 1 visible case and 2 hidden hand-written ones |
+| Project | The progressive rules, with at least 2 visible cases per level, and the project's own test suite passing. On the virtual clock, every case gives the same outputs in every run. With stress cases, at least 2 of them and a broken overlay, each overlay caught |
+| Service project | The project rules, checked on a running Docker: without one, `--require-ready` counts the problem as not passed |
+| Concurrent | At least 2 visible and 4 hidden sequential cases, at least 2 stress cases, a broken reference in every language it lists, each caught by its stress cases, and the slowest correct run of each stress case within a quarter of its deadline |
+| Java and Kotlin | The selected JDK in the problem's range: a language skipped for its JDK counts as not passed |
+
+### Step by step
+
+`cstudy new` prints these steps for every template but the project ones, each with the check to run after it:
+
+| Step | Do | Then run |
+|-----:|----|----------|
+| 1 | `cstudy new max-gap --from-template array` | |
+| 2 | Write `problem.md`: the statement, input, output and constraints, in your own words | `cstudy verify max-gap --static` |
+| 3 | Set `signature` and `comparator` in `meta.yaml`, and fit the labels to the problem | `cstudy verify max-gap --static` |
+| 4 | Add visible examples to `tests.json`, with their explanations in `problem.md`, then hidden edge cases | `cstudy verify max-gap --static` |
+| 5 | Write the brute-force approach in Python, with `oracle: true` | `cstudy verify max-gap` |
+| 6 | Write `generator.py`, with its `validate` | `cstudy verify max-gap --oracle` |
+| 7 | Write the optimal approaches: Python first, then the other languages of `languages` | `cstudy verify max-gap --oracle` |
+| 8 | Write `solutions/explanation.md`, one section per approach | `cstudy verify max-gap --static` |
+| 9 | Add the `perf` block, and `generate` cases at the largest size of the ladder | `cstudy verify max-gap --ladder` |
+| 10 | Set `status: ready` | `cstudy verify max-gap --oracle --ladder --require-ready` |
+
+A project template prints a shorter list of its own: the statement and the cases, the starter, the reference overlay level by level, then the explanation and `status: ready`, checked with `cstudy verify <slug> --require-ready`. With `--virtual-clock` it adds a step to make every case give the same outputs in every run, and with `--stress` a step to write the broken overlays and tune the stress cases until each overlay is caught.
 
 ## Labels
 

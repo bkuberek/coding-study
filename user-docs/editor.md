@@ -163,8 +163,8 @@ rustup component add rust-analyzer
 
 Until you do, the status bar says `no code intelligence for Rust: rust-analyzer is not installed · Health`, and `cstudy doctor` names the command. Any `rust-analyzer` on your `PATH` whose `--version` runs is used, whichever version it is.
 
-- **Two kinds of errors.** rust-analyzer's own, such as a syntax error, show as you type. The compiler's, from `cargo check`, such as an unknown name or a type error, show once the project is loaded and after each save, with unused variables faded. `cargo check` runs offline, into `target/rust-analyzer/`, so it never waits for your IDE's.
+- **Two kinds of errors.** rust-analyzer's own, such as a syntax error, show as you type. The compiler's, from `cargo check`, such as an unknown name or a type error, show once the project is loaded and after each save, with unused variables faded. `cargo check` runs without the network, into `target/rust-analyzer/`, so it never waits for your IDE's.
 - **The first load.** rust-analyzer loads your project first, which takes longer the first time; the page asks for its errors again until it is ready.
-- **The standard library opens from `.cs/lsp/rust-library/`.** A Cmd-click on `Vec` or `len` opens the toolchain's source through links cstudy makes there, so rust-analyzer reads it offline whatever the workspace's vendored crates say.
+- **The standard library opens from `.cs/lsp/rust-library/`.** A Cmd-click on `Vec` or `len` opens the toolchain's source through links cstudy makes there, so rust-analyzer reads it without the network, whatever the workspace's vendored crates say.
 - **It runs your build scripts.** Like `cargo test`, rust-analyzer runs build scripts and procedural macros of the code you open.
 

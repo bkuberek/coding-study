@@ -157,7 +157,7 @@ Check it:
 go version   # go version go1.25.0 or newer
 ```
 
-Nothing else is needed: the runner uses the standard library, and the one module a solution may import, `github.com/shopspring/decimal` for `decimal`, ships with `cstudy` and is reached through a `replace` in `go/go.mod`. So `cstudy` never downloads a module, gopls finds the package offline, and `cstudy doctor --fix` has no Go step.
+Nothing else is needed: the runner uses the standard library, and the one module a solution may import, `github.com/shopspring/decimal` for `decimal`, ships with `cstudy` and is reached through a `replace` in `go/go.mod`. So `cstudy` never downloads a module, gopls finds the package without the network, and `cstudy doctor --fix` has no Go step.
 
 - **`GOTOOLCHAIN=local`**: since Go 1.21 the `go` command downloads the toolchain a `go.mod` asks for, and `go/go.mod` says `go 1.24`. `cstudy` builds with `GOTOOLCHAIN=local` and never downloads one, so with an older Go it stops with an error instead. Export `GOTOOLCHAIN=local` in your shell as well if you want your own `go` commands, and your editor, to behave the same way.
 - **Your Go settings**: `cstudy` pins its own build environment (`GOENV=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`, and your `GOOS`, `GOARCH` and `GOWORK` removed), so `go env -w` values and shell variables never change how it builds. They still apply to the `go` commands you run yourself. The Go build cache is kept, so the standard library compiles once per machine.
@@ -250,7 +250,7 @@ An engine without Compose v2 counts as no Docker: `cstudy doctor` shows the `doc
 
 Access to Docker is effectively root: whoever can use the engine can act as root on the machine. On Linux that includes everyone in the `docker` group. `cstudy` cannot reduce that, and never mounts Docker's socket into a container.
 
-Rootless Docker and SELinux are not tested.
+`cstudy` recognizes rootless Docker by the address the Docker client talks to, which `DOCKER_HOST` or the current context sets: `docker.sock` in `$XDG_RUNTIME_DIR` or in `/run/user/<uid>`. When that engine is stopped, `cstudy` starts it with `systemctl --user start docker`, which needs no root, and if that fails it shows the command for you to run.
 
 ## git
 
@@ -260,7 +260,7 @@ git is optional: `cstudy init --git` runs `git init` in the new workspace, and `
 
 `cstudy` runs your code, its tests and the tools beside them (the builds, `uv sync`, `pnpm install`, the language servers of the web page) with part of your shell's environment, not all of it. A token, key or password you exported, such as an API key or a cloud secret, does not reach them, so a solution or a dependency cannot read it from the environment. It can still read your files, so keep credentials out of the workspace: `cstudy` runs your code as you and has no sandbox.
 
-What passes is what the toolchains need to find themselves and the network: `PATH`, `HOME`, your locale, terminal and temporary-directory variables, `JAVA_HOME` and `SDKMAN_*`, `GRADLE_USER_HOME` and `GRADLE_OPTS`, `GOPATH`, `GOCACHE`, `GOMODCACHE` and `GOROOT`, `CARGO_HOME` and `RUSTUP_*`, `VIRTUAL_ENV`, `NODE_OPTIONS`, `PNPM_HOME`, uv's cache, interpreter and offline settings, and your proxy and CA-certificate variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` and the like), so `cstudy doctor --fix` keeps working behind a company network. A proxy URL passes as you wrote it, credentials included. Of uv's and Node's own variables, only their settings pass: `UV_PUBLISH_TOKEN`, the passwords of `UV_INDEX_*` and `NODE_AUTH_TOKEN` stay out.
+What passes is what the toolchains need to find themselves and the network: `PATH`, `HOME`, your locale, terminal and temporary-directory variables, `JAVA_HOME` and `SDKMAN_*`, `GRADLE_USER_HOME` and `GRADLE_OPTS`, `GOPATH`, `GOCACHE`, `GOMODCACHE` and `GOROOT`, `CARGO_HOME` and `RUSTUP_*`, `VIRTUAL_ENV`, `NODE_OPTIONS`, `PNPM_HOME`, uv's settings for its cache, its interpreters and the network, and your proxy and CA-certificate variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` and the like), so `cstudy doctor --fix` keeps working behind a company network. A proxy URL passes as you wrote it, credentials included. Of uv's and Node's own variables, only their settings pass: `UV_PUBLISH_TOKEN`, the passwords of `UV_INDEX_*` and `NODE_AUTH_TOKEN` stay out.
 
 Two things to expect. A variable you set only for your own commands, such as `PYTHONPATH`, `NODE_ENV` or `RUST_BACKTRACE`, does not reach the ones `cstudy` runs, and neither do a private registry's credentials, so an install that needs one fails with the tool's own message; run that install yourself in the project folder. Tools that a version manager (pyenv, asdf, mise) selects are found through `PATH`, so keep its shims or the selected version's directory there.
 

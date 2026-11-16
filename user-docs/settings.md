@@ -40,7 +40,7 @@ The keys you are most likely to change:
 | `schedule.max_interval_days` | `180` | No review is scheduled further away than this |
 | `schedule.mastered_interval_days` | `21` | A problem counts as mastered from this review interval on |
 
-The `[schedule]` table also holds the first intervals of each rating (`ok_first_interval_days`, `easy_first_interval_days` and the like). A new interval applies to reviews scheduled from then on: dates already set do not move. The Settings view lists every key, with its name in the file, its value, its default and when a change applies.
+The `[schedule]` table also holds the first intervals of each rating (`ok_first_interval_days`, `easy_first_interval_days` and the like). A new interval applies to reviews scheduled from then on: dates already set do not move. The Settings view lists every key, with its name in the file, its value, its default and when a change applies, and [configuration keys](commands.md#configuration-keys) lists every key with its default.
 
 A change applies at the next command. The web UI reads the file for each request, so it needs no restart, except after a change to `progress_db`: restart `cstudy serve` then.
 
