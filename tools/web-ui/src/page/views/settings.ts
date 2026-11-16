@@ -89,13 +89,15 @@ export function settingsView(context: PageContext, section: "profile" | null = n
       ),
     );
   };
-  /** A Save or a Reset can disable, hide or draw again the control that held the focus. */
+  /** A Save or a Reset can disable, hide or draw again the control that held the focus: it goes
+   * back to Save while changes stay staged (a dialog that Save opened gave it up, as the question
+   * of a Cancel does), else to the title. */
   const settle = (lines: readonly SaveLine[]) => {
     saving = false;
     say(lines);
     refresh();
     const active = document.activeElement;
-    if (active === null || active === document.body || active.matches(":disabled, [hidden]")) title.focus({ preventScroll: true });
+    if (active === null || active === document.body || active.matches(":disabled, [hidden]")) (save.disabled ? title : save).focus({ preventScroll: true });
   };
   const saveAll = async () => {
     // A group of roles or domains with no box is refused here, before any store is written.
