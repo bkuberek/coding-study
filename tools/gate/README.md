@@ -1,4 +1,8 @@
-# Test gate lanes
+# Release gate scripts
+
+The release gate has two halves: `lanes.sh` runs the pytest suite, and `verify.sh` runs `cstudy verify` over the catalog content. Both run every check once, in concurrent parts, and write one summary line per part.
+
+## Test lanes
 
 `lanes.sh` runs the whole pytest suite as four disjoint lanes, so that every test runs exactly once and the slow lanes can run side by side.
 
@@ -11,7 +15,7 @@
 
 Lanes run in this order: `fast` alone, then `browser` alone, then `slow-core` and `docker` together. `browser` runs alone because Docker's network changes cancel Chromium's requests (`net::ERR_NETWORK_CHANGED`). A failed lane skips the later ones unless `--no-stop` is given.
 
-## Run
+### Run
 
 ```bash
 tools/gate/lanes.sh                       # all four lanes
@@ -31,7 +35,7 @@ tools/gate/lanes.sh fast -- -k test_user_docs   # arguments after -- go to every
 | `CS_LANE_ARGS_<LANE>` | Environment variable with extra arguments for one lane (`FAST`, `SLOW_CORE`, `BROWSER`, `DOCKER`) |
 | `CS_LANE_XDIST_<LANE>` | Environment variable that replaces one lane's xdist arguments; set it empty to run that lane serially |
 
-## Parallel workers
+### Parallel workers
 
 Each lane runs on pytest-xdist workers:
 
@@ -52,7 +56,7 @@ CS_LANE_XDIST_SLOW_CORE= tools/gate/lanes.sh slow-core   # one lane serial
 
 Run `--collect-check` after adding a marker or moving a test file. It collects the suite once per lane in parallel and takes a few minutes.
 
-## Output
+### Output
 
 Everything goes under the logs directory; the repository gets only `cli/.pytest_cache/<lane>/` (ignored).
 
@@ -67,3 +71,34 @@ Everything goes under the logs directory; the repository gets only `cli/.pytest_
 The script exits non-zero when any lane failed. Each lane has its own `--basetemp` and its own pytest cache directory. A lane that passes deletes its temporary directory; a failed lane keeps it and `summary.log` names the path. The `fast` lane refuses to start when `/dev/shm` has under 4 GB free. When some Playwright engines are not installed, `summary.log` lists the ones skipped.
 
 The script runs `uv sync --locked --group browser` once and every lane through `uv run --no-sync`: a plain `uv run` would sync the environment back to the default groups and uninstall `browser` under a running browser lane.
+
+## Content verify
+
+`verify.sh` runs the content half of the gate: `cstudy verify --require-ready` over every problem, `cstudy verify --conformance --require-ready` and both tracks. One `cstudy verify` process over the whole catalog is too slow, so the problems are split into groups that run as concurrent processes on one workspace. That is safe because every process writes its run folders under its own name.
+
+| Part | Runs |
+|------|------|
+| `static` | `cstudy verify --static`, first and alone; a failure skips the rest unless `--no-stop` is given |
+| `ordinary` | every problem that is not a service project |
+| `services-a`, `services-b` | the service projects with backing services, in two halves |
+| `services-other` | the other service projects |
+| `conformance`, `track-system-design`, `track-code-review` | one after the other, beside the four groups above |
+
+A service project is a problem whose `meta.yaml` has `grading: http` under `project:`; it has backing services when its directory also has a `services/` folder. The script reads those two facts from the files, so a new service project lands in the right group without an edit.
+
+```bash
+export CSTUDY_WORKSPACE=~/cstudy-dev-workspace
+tools/gate/verify.sh                                 # all parts
+tools/gate/verify.sh --workspace ~/cstudy-gate --fresh   # create the workspace first
+tools/gate/verify.sh --list                          # print each group with its slug count; runs nothing
+```
+
+| Flag | Meaning |
+|------|---------|
+| `--workspace DIR` | The workspace to verify in; the default is `$CSTUDY_WORKSPACE` |
+| `--fresh` | Run `cstudy init DIR --no-ide` and `cstudy doctor --fix` first |
+| `--logs DIR` | Write logs under `DIR`; the default is a new `cs-verify-logs-<timestamp>` directory under `${TMPDIR:-/tmp}` |
+| `--no-stop` | Run the later parts even when `static` fails |
+| `--list` | Print the groups and exit |
+
+`summary.log` has one line per part: name, exit code, wall time and cstudy's final `result` line; `<part>.log` holds the full output. The script exits non-zero when any part failed. Every call is `uv run --no-sync cstudy`, because a plain `uv run` would sync the environment back to the default groups.

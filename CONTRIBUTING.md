@@ -46,7 +46,7 @@ Run the CLI checks from `cli/`; its tool settings live there (`ruff.toml`, `pyri
 | JVM tests | `uv run pytest -q -m jvm` (the `slow` tests that drive Gradle, javac, kotlinc or a JVM runner on the JDK your shell selects) |
 | All tests | `uv run pytest -q` (the `slow` tests drive real Gradle, Node, tsc and a workspace venv in a temporary workspace) |
 
-To run the whole suite as four disjoint lanes (fast, slow-core, browser, docker), each test once, with logs, JUnit XML and a one-line summary per lane, use `tools/gate/lanes.sh` ([README](tools/gate/README.md)).
+To run the whole suite as four disjoint lanes (fast, slow-core, browser, docker), each test once, with logs, JUnit XML and a one-line summary per lane, use `tools/gate/lanes.sh` ([README](tools/gate/README.md)). The content half, `cstudy verify` over the whole catalog as concurrent groups, is `tools/gate/verify.sh`.
 
 The fast tests include the contract tests in `cli/tests/contract/`: a change of a command, flag, exit code, config key, environment variable or the workspace marker fails them until you write the snapshots again with `CSTUDY_WRITE_SNAPSHOTS=1 uv run pytest -q tests/contract` and commit them with the change, and a `--json` document must validate against its schema in `schemas/cli/` ([compatibility](docs/specs/compatibility.md#contract-tests)).
 
