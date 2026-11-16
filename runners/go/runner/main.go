@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -76,7 +77,7 @@ func run(l *loader, argv []string, stderr io.Writer) int {
 		return exitBadRequest
 	}
 	if suite := suiteJob(req); suite != nil {
-		if !runSuiteJob(suite, events, stderr) {
+		if !runSuiteJob(suite, filepath.Dir(*outPath), events, stderr) {
 			return exitTestCrashed
 		}
 	} else if req.Mode == modeBench {

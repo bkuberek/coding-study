@@ -405,6 +405,21 @@ func TestAnExcludedFileDoesNotRun(t *testing.T) {
 	}
 }
 
+func TestTheOverlayIsWrittenInTheGivenDirectory(t *testing.T) {
+	directory := t.TempDir()
+	request := &suiteRequest{root: t.TempDir(), exclude: map[string]bool{"level_2_test.go": true}}
+	overlay, err := request.overlay(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(overlay) != directory {
+		t.Errorf("overlay %s is not in %s", overlay, directory)
+	}
+	if _, err := os.Stat(overlay); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestASuiteWithoutAModuleIsALoadError(t *testing.T) {
 	_, events, _ := runSuite(t, t.TempDir(), "")
 	if events[2]["event"] != "load_error" {

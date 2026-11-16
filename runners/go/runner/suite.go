@@ -287,9 +287,10 @@ func namesPattern(names []string) string {
 	return "^(" + strings.Join(quoted, "|") + ")$"
 }
 
-// overlay writes the go command's overlay that removes the excluded files, and returns its path;
-// "" when nothing is excluded.
-func (r *suiteRequest) overlay() (string, error) {
+// overlay writes the go command's overlay that removes the excluded files into directory, and
+// returns its path; "" when nothing is excluded. The directory is the attempt's run folder, which
+// cstudy sweeps, so a runner that is killed mid-job leaves no file behind outside it.
+func (r *suiteRequest) overlay(directory string) (string, error) {
 	if len(r.exclude) == 0 {
 		return "", nil
 	}
@@ -301,7 +302,7 @@ func (r *suiteRequest) overlay() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	file, err := os.CreateTemp("", "cs-go-suite-overlay-*.json")
+	file, err := os.CreateTemp(directory, "suite-overlay-*.json")
 	if err != nil {
 		return "", err
 	}
@@ -311,8 +312,9 @@ func (r *suiteRequest) overlay() (string, error) {
 }
 
 // runSuiteJob reports every test of the project (docs/specs/runners.md#go-project-jobs). It
-// returns false when a test never ended: the runner then exits without bye.
-func runSuiteJob(j *job, events *writer, stderr io.Writer) bool {
+// returns false when a test never ended: the runner then exits without bye. scratch is the folder
+// for the job's temporary files.
+func runSuiteJob(j *job, scratch string, events *writer, stderr io.Writer) bool {
 	events.jobStart(j.JobID)
 	tests, err := scanProject(j.Root, excluded(j.Exclude))
 	if err != nil {
@@ -322,7 +324,7 @@ func runSuiteJob(j *job, events *writer, stderr io.Writer) bool {
 	}
 	request := readSuiteRequest(j, tests)
 	translator := newTranslator(j.JobID, j.Root, events, tests, j.Skip)
-	overlay, err := request.overlay()
+	overlay, err := request.overlay(scratch)
 	if overlay != "" {
 		defer os.Remove(overlay)
 	}
