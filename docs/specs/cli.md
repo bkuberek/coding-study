@@ -317,7 +317,7 @@ In a workspace whose marker lists its [languages](installation-and-workspaces.md
 | Rows | Shown for | Status when the toolchain is missing or too old, in a workspace that lists its languages |
 |------|-----------|--------------------------------------------------------------------------------------------|
 | `python`, `uv` | `python` | `FAIL` |
-| `node`, `pnpm` | `typescript` | `FAIL` |
+| `node`, `pnpm` | `typescript`, or, with the `code_intelligence` preference on, a language whose server installs through `.cs/lsp/` (`python` or `typescript`) | `FAIL` |
 | `java`, `gradle` | `java` or `kotlin` | `FAIL` for `java`; `WARN` for `gradle`, as above |
 | `go` | `go` | `FAIL`: the learner chose Go, so it is not optional here |
 | `rustc`, `cargo` | `rust` | `FAIL`, as for Go |

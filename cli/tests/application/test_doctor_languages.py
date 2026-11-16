@@ -516,3 +516,26 @@ def test_the_note_about_skipped_servers_counts_the_chosen_languages_only():
         return any("skipped the language servers" in line for line in lines)
 
     assert (noted(PYTHON), noted(RUST)) == (True, False)
+
+
+# Node and pnpm for a language server that installs through .cs/lsp/
+
+
+def test_a_python_only_workspace_with_code_intelligence_on_shows_node_and_pnpm():
+    workspace = workspace_with(preferences=CODE_INTELLIGENCE_ON, languages=(PYTHON,))
+    assert {"node", "pnpm"} <= names(doctor(workspace=workspace))
+
+
+def test_a_python_only_workspace_with_code_intelligence_off_shows_no_node_or_pnpm():
+    assert not {"node", "pnpm"} & names(in_workspace(PYTHON))
+
+
+def test_a_workspace_without_a_node_served_language_shows_no_node_with_code_intelligence_on():
+    workspace = workspace_with(preferences=CODE_INTELLIGENCE_ON, languages=(GO,))
+    assert not {"node", "pnpm"} & names(doctor(workspace=workspace))
+
+
+def test_a_missing_pnpm_fails_a_python_only_workspace_with_code_intelligence_on():
+    tools = without(("pnpm", "--version"))
+    workspace = workspace_with(preferences=CODE_INTELLIGENCE_ON, languages=(PYTHON,))
+    assert check(doctor(tools=tools, workspace=workspace), "pnpm").status is FAIL

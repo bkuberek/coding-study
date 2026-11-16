@@ -777,10 +777,7 @@ def _language_server_plan(workspace: PracticeWorkspace) -> list[tuple[FixStep, P
     of them is a Node server, the downloads, the Go builds and the fetches of the others."""
     root, languages = workspace.files.root, workspace.languages
     plan: list[tuple[FixStep, Path]] = []
-    if any(
-        server.version_script is not None and _covers(languages, server.language)
-        for server in LANGUAGE_SERVERS
-    ):
+    if _has_node_server(languages):
         plan.append((LANGUAGE_SERVERS_FIX, root / LSP_DIRECTORY))
     plan += [
         (step, root / step.project)
@@ -798,6 +795,15 @@ def _language_server_plan(workspace: PracticeWorkspace) -> list[tuple[FixStep, P
     return plan
 
 
+def _has_node_server(languages: tuple[Language, ...] | None) -> bool:
+    """Whether a language of the workspace has a server that installs through the pnpm project
+    in `.cs/lsp/`."""
+    return any(
+        server.version_script is not None and _covers(languages, server.language)
+        for server in LANGUAGE_SERVERS
+    )
+
+
 def _code_intelligence_on(workspace: PracticeWorkspace) -> bool:
     return read_preferences(workspace.preferences).code_intelligence
 
@@ -811,8 +817,11 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
     installs = environment.installs.scan()
     workspace = environment.workspace
     languages = None if isinstance(workspace, NotFound) else workspace.languages
+    served = not isinstance(workspace, NotFound) and _code_intelligence_on(workspace)
     results = [
-        *_toolchain_rows(tools, environment.jdk, environment.debug_servers, languages),
+        *_toolchain_rows(
+            tools, environment.jdk, environment.debug_servers, languages, node_served=served
+        ),
         *_docker_rows(environment.sandbox),
         _config(environment.config),
         _content(environment.content),
@@ -827,14 +836,18 @@ def _toolchain_rows(
     jdk: JdkSelector,
     debug_servers: DebugServers,
     languages: tuple[Language, ...] | None,
+    *,
+    node_served: bool = False,
 ) -> list[CheckResult]:
     """The toolchains of the workspace's languages (docs/specs/cli.md#rows-by-language): a
-    chosen Go or Rust is required, so its rows fail; without a choice, Go and Rust are optional."""
+    chosen Go or Rust is required, so its rows fail; without a choice, Go and Rust are optional.
+    `node_served` is code intelligence on: Node and pnpm then also serve a language whose server
+    installs through `.cs/lsp/`."""
     chosen = languages is not None
     rows: list[CheckResult] = []
     if _covers(languages, Language.PYTHON):
         rows += [_python(tools), _present_tool(tools, "uv", INSTALL_UV)]
-    if _covers(languages, Language.TYPESCRIPT):
+    if _covers(languages, Language.TYPESCRIPT) or (node_served and _has_node_server(languages)):
         rows += [_node(tools), _present_tool(tools, "pnpm", INSTALL_PNPM)]
     if _covers(languages, *JVM_LANGUAGES):
         rows += [_java(jdk), _gradle(tools)]
