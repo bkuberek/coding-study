@@ -130,7 +130,7 @@ Linear and general: the same map answers "how often does each value occur?", whi
 
 ### Intuition
 
-Pair each copy of the majority value with a different value and cancel the pair. Because the majority value fills more than half of the positions, it runs out of opponents before it runs out of copies, so something of it always survives. The vote performs this cancelling on the fly with one candidate and one counter.
+Pair each copy of the majority value with a different value and cancel the pair. Because the majority value fills more than half of the positions, it runs out of opponents before it runs out of copies, so something of it always survives. The vote performs this canceling on the fly with one candidate and one counter.
 
 ### Algorithm
 

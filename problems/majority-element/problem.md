@@ -54,7 +54,7 @@ If you sort the array, which position is always covered by the majority value, w
 
 ### Hint 3
 
-Pair up each occurrence of the majority value with a different value and cancel both. Since the majority value fills more than half of the positions, can all of its copies be cancelled?
+Pair up each occurrence of the majority value with a different value and cancel both. Since the majority value fills more than half of the positions, can all of its copies be canceled?
 
 ### Hint 4
 

@@ -61,7 +61,7 @@ Windows: a segment goes out only when its last byte is at most `una + min(window
 
 ### Trade-offs
 
-- Holding early bytes in a map by position is simple and handles any overlap. A real receiver keeps a list of byte ranges, merging neighbours, so memory grows with the number of gaps rather than the number of bytes.
+- Holding early bytes in a map by position is simple and handles any overlap. A real receiver keeps a list of byte ranges, merging neighbors, so memory grows with the number of gaps rather than the number of bytes.
 - Retransmitting only the oldest segment on a timeout, as RFC 6298 says, recovers one loss per backed-off timeout. RFC 5681 describes recovery after a timeout as slow start from one segment, and notes that slow-start-based recovery can cause spurious retransmissions; the selective acknowledgement (SACK) option it cites lets a receiver say exactly which ranges arrived.
 - Timing one segment per round trip is what RFC 6298 calls the traditional way. With the TCP timestamp option, RFC 6298 notes, every ACK can give a sample, including the ACK of a retransmitted segment, since the timestamp says which copy it answers.
 - Counting bytes in congestion avoidance needs one more variable than adding `MSS * MSS / cwnd` per ACK, which RFC 5681 also allows. Counting is robust against a receiver that splits its ACKs, and against delayed ACKs that would otherwise slow growth.

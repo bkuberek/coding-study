@@ -46,7 +46,7 @@ A read-write lock only pays off when read sections are long or reads vastly outn
 
 - Signalling only one waiter with a single shared condition can wake a reader when only a writer may proceed; use two conditions, or `notifyAll` with `while` loops.
 - `releaseWrite` must wake all waiting readers, not one, or the remaining readers sleep although they may enter.
-- A writer that is interrupted (or cancelled) while waiting must undo its `waitingWriters` increment and wake the readers it was holding back.
+- A writer that is interrupted (or canceled) while waiting must undo its `waitingWriters` increment and wake the readers it was holding back.
 - Read holds are not owned by a thread here; library locks such as `ReentrantReadWriteLock` require the releasing thread to be the acquiring one, and support reentrancy, which this lock does not.
 
 ### Language notes

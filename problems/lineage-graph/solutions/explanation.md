@@ -4,7 +4,7 @@
 
 | Approach | Role | Time | Space | Use when |
 |----------|------|------|-------|----------|
-| adjacency-walks | optimal | O(V + E + A log A) per validation or walk, V columns, E edges, A answers; O(S (V + E)) per exposure report of S labelled sources | O(V + E) | default answer; one breadth-first search with a rule for which edges it follows serves every query |
+| adjacency-walks | optimal | O(V + E + A log A) per validation or walk, V columns, E edges, A answers; O(S (V + E)) per exposure report of S labeled sources | O(V + E) | default answer; one breadth-first search with a rule for which edges it follows serves every query |
 
 Here `V` is the number of column names in the graph, declared or only referenced, `E` the number of edges, `A` the size of an answer and `S` the number of columns tagged with the label asked for.
 
@@ -43,7 +43,7 @@ Kosaraju's algorithm is correct because the component of the column that finishe
 
 ### Complexity
 
-- Time: O(V + E + A log A) per validation or walk, V columns, E edges, A answers; O(S (V + E)) per exposure report of S labelled sources — each search visits every column and edge at most once and the answer is then sorted; Kosaraju's two passes are linear; an exposure report runs one search per tagged source.
+- Time: O(V + E + A log A) per validation or walk, V columns, E edges, A answers; O(S (V + E)) per exposure report of S labeled sources — each search visits every column and edge at most once and the answer is then sorted; Kosaraju's two passes are linear; an exposure report runs one search per tagged source.
 - Space: O(V + E) — the two adjacency maps hold every edge twice, and a search keeps a queue and a distance map over the columns.
 
 ### Trade-offs

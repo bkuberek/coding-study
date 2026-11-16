@@ -139,7 +139,7 @@ Each wrong approach below was run as a one-line change on the reference, through
 
 - **Reading the header as milliseconds.** Caught by `ex7`, `h30` and `h39`.
 - **Capping the vendor's number.** Caught by `ex7` and `h31`.
-- **Honouring it on any status that retries, or on a 429 alone.** Caught by `h37` and `h33`.
+- **Honoring it on any status that retries, or on a 429 alone.** Caught by `h37` and `h33`.
 - **`Number(value)` to parse it.** `-1` and `1.5` and `""` all come out as numbers. Caught by `h36`.
 - **Waiting in this call only.** The rest of the client walks into the limit. Caught by `h38`, `h40` and `h41`.
 - **Holding new calls only.** A call already retrying is the worst offender, and it then ignores the header. Caught by `ex7` and `h40`.

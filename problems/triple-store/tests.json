@@ -808,7 +808,7 @@
   {
    "id": "h4",
    "level": 1,
-   "note": "removing one triple leaves its neighbours, and the wildcard is not a term",
+   "note": "removing one triple leaves its neighbors, and the wildcard is not a term",
    "ops": [
     "TripleStore",
     "add",

@@ -17,7 +17,7 @@ Here `V` is the number of declared modules, `I` the number of imports, and `R` t
 | 3 | Contracts | a map from contract name to its list of `(from, to)` pairs; `check` walks once per `from` name |
 | 4 | Ignores, exceptions, modes, baseline | per contract a mode, a set of ignores and a map of exceptions; one current version; one baseline set |
 
-The early choice that keeps the later levels small is to keep the imports *as written* and resolve them lazily. A first version that resolves each import when its module is declared answers the examples where modules come in order, and then fails as soon as an import names a module declared later, or a longer module appears that should now win. Keeping the text and caching the resolved graph until the next `addModule` costs one rebuild per change. The other choice is to sort each module's targets once: every walk then visits neighbours in name order, which is what makes the first chain found the smallest one, at every level.
+The early choice that keeps the later levels small is to keep the imports *as written* and resolve them lazily. A first version that resolves each import when its module is declared answers the examples where modules come in order, and then fails as soon as an import names a module declared later, or a longer module appears that should now win. Keeping the text and caching the resolved graph until the next `addModule` costs one rebuild per change. The other choice is to sort each module's targets once: every walk then visits neighbors in name order, which is what makes the first chain found the smallest one, at every level.
 
 ## Approach: ordered-walks (Resolved import lists with breadth-first walks in name order and two-pass components)
 
@@ -65,7 +65,7 @@ Ignores and modes: an ignore removes imports from the graph that one contract wa
 - Transitive dependencies are sorted by distance first, and the distance counts from the nearest covered module.
 - Components, not cycles, are reported: overlapping cycles form one entry.
 - The shortest cycle is not the first cycle a depth-first search finds, and building the chain backwards from the end with the smallest module at each step does not give the smallest list: the comparison starts at the front.
-- Layers forbid every lower-to-higher pair, not only neighbours, and allow every higher-to-lower import. Independence is checked in both directions, a forbidden import in one.
+- Layers forbid every lower-to-higher pair, not only neighbors, and allow every higher-to-lower import. Independence is checked in both directions, a forbidden import in one.
 - A chain may start at any module of `from`: walking from the first member and through the others gives a longer chain.
 - An ignore covers names, so it skips every import between the modules they cover; it belongs to one contract. Skipping imports must happen during the walk, or a second, longer chain stays hidden.
 - Versions compare as numbers (`1.9` before `1.10`) with missing parts as zero (`3` equals `3.0`), and an exception is expired at its own version. `allow` with an equal version written differently changes nothing.

@@ -84,4 +84,4 @@ Make a table with the same shape as the grid, where cell `(r, c)` holds the chea
 
 ### Hint 4
 
-For any cell with both neighbours, `table[r][c] = grid[r][c] + min(table[r - 1][c], table[r][c - 1])`. In the first row only the left neighbour exists, and in the first column only the one above. The answer is the bottom-right cell of the table.
+For any cell with both neighbors, `table[r][c] = grid[r][c] + min(table[r - 1][c], table[r][c - 1])`. In the first row only the left neighbor exists, and in the first column only the one above. The answer is the bottom-right cell of the table.

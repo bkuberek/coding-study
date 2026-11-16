@@ -3139,7 +3139,7 @@
     {
       "id": "h17",
       "level": 4,
-      "note": "cancel stops a pending timer once; a fired one-shot and an unknown id cannot be cancelled",
+      "note": "cancel stops a pending timer once; a fired one-shot and an unknown id cannot be canceled",
       "ops": [
         "Doubles",
         "addStub",

@@ -185,7 +185,7 @@ A pass over every pair is slow when a chain is long. Give each new sentence to a
 
 ### Hint 5
 
-For `inconsistencies`, collect for every class the set of its instances, normalise each `owl:disjointWith` triple to a pair in sorted order, and intersect the two sets. Collect the rows in a set, so that a pair stated twice appears once, and sort at the end.
+For `inconsistencies`, collect for every class the set of its instances, normalize each `owl:disjointWith` triple to a pair in sorted order, and intersect the two sets. Collect the rows in a set, so that a pair stated twice appears once, and sort at the end.
 
 ### Hint 6
 

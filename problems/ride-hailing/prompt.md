@@ -9,7 +9,7 @@ Design the core of a ride-hailing service: riders request a ride, the system fin
 - Online drivers send their location every 4 seconds.
 - A rider enters pickup and destination and sees a price and an estimated pickup time before confirming. The price includes surge pricing when demand outstrips supply.
 - On confirmation the system offers the trip to a suitable nearby driver, who has 10 seconds to accept; if they decline or time out, the next driver gets the offer.
-- Trips move through requested, driver assigned, driver arrived, in progress, completed, or cancelled by either side; both apps show the other party's live location.
+- Trips move through requested, driver assigned, driver arrived, in progress, completed, or canceled by either side; both apps show the other party's live location.
 - When the trip completes, the payment service is asked to charge the rider.
 
 ## Non-functional requirements

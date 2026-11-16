@@ -60,7 +60,7 @@ This is the smallest change that makes the shipped code correct, so it is what a
 ### Prevention
 
 - Allocate 2-D structures with a per-row factory: `[[-1] * cols for _ in range(rows)]`, `Array.from({ length: rows }, () => ...)`, `new int[rows][cols]`, `Array(rows) { IntArray(cols) { -1 } }`.
-- Add one test with at least two rows that must differ, and one test whose answer depends on a frozen snapshot (fire travelling right or down, as in `h7`).
+- Add one test with at least two rows that must differ, and one test whose answer depends on a frozen snapshot (fire traveling right or down, as in `h7`).
 - Linters help. Pylint has no rule for `[[x] * n] * m`, but code review checklists should. In TypeScript, `fill` with an object argument is worth a lint rule. In Java, prefer `int[][]` allocated in one `new` expression.
 - Treat inputs as read-only: make a defensive deep copy, or pass immutable views (`tuple` rows, `ReadonlyArray`) so that an accidental write fails loudly.
 

@@ -17,7 +17,7 @@ Here `a` is the number of accounts, `h` the number of balance changes of one acc
 | 3 | Transfers booked with their own delay, cancellable | `bank/scheduler.py`: `ScheduledTransfer` with a `pending` flag, and `TransferScheduler`, a min-heap keyed by `(due, number)`; `Bank._settle` at the start of every public method |
 | 4 | Merges and balances at a past time | `BalanceHistory` on every `Account`, `merged_away_at`, and `Accounts.merge` with a `merged_into` link that `holder_of` follows |
 
-The starter's `Bank` keeps a plain `dict[str, Account]`, which is all level 1 needs. The reference moves that dict into `Accounts` once merges arrive, because "which account holds this id now" becomes a question of its own, asked by both cancelling and running transfers. Nothing earlier is rewritten when a level opens: each level adds a field, a class or a module, and the earlier methods gain one line, the call to `_settle`.
+The starter's `Bank` keeps a plain `dict[str, Account]`, which is all level 1 needs. The reference moves that dict into `Accounts` once merges arrive, because "which account holds this id now" becomes a question of its own, asked by both canceling and running transfers. Nothing earlier is rewritten when a level opens: each level adds a field, a class or a module, and the earlier methods gain one line, the call to `_settle`.
 
 Time advances in exactly one place. Every public method starts with `_settle(timestamp)`, which runs the scheduled transfers that fell due since the previous call, so every method, read-only ones such as `top_spenders` and `get_balance` included, sees the bank as it is at `timestamp`.
 
@@ -27,9 +27,9 @@ Time advances in exactly one place. Every public method starts with `_settle(tim
 
 The bank is a registry of account objects, and each account owns its numbers: balance, total sent, lifetime and history. The only thing that happens without a call asking for it is a scheduled transfer, which runs on its own clock. Ordering those transfers by due time, with the booking number as a tie-break, gives exactly the order a real clock would run them in, and draining every transfer due by `timestamp` before each call keeps the ledger as if that clock existed.
 
-Cancelling does not touch the heap. A heap can only remove its top cheaply, so a cancel clears the transfer's `pending` flag, and the scheduler drops a transfer that is no longer pending when it reaches the top. This is lazy deletion: a cancelled entry costs one extra pop later instead of a search now.
+Canceling does not touch the heap. A heap can only remove its top cheaply, so a cancel clears the transfer's `pending` flag, and the scheduler drops a transfer that is no longer pending when it reaches the top. This is lazy deletion: a canceled entry costs one extra pop later instead of a search now.
 
-Merges do not rewrite anything either. A merge records where the absorbed id went, and a booked transfer finds its current source and target by following those records when it runs or is cancelled.
+Merges do not rewrite anything either. A merge records where the absorbed id went, and a booked transfer finds its current source and target by following those records when it runs or is canceled.
 
 ### Algorithm
 
@@ -53,23 +53,23 @@ Dependencies point one way: `bank` uses `accounts`, `scheduler` and `models`, `a
 
 ### Correctness
 
-Invariant: after `_settle(t)`, every transfer with `due <= t` has run, been skipped or been dropped as cancelled, in `(due, number)` order, and none with `due > t` has. The heap returns its entries in that order, and `take_due` stops at the first entry that is not due yet, so no due transfer is left behind and none runs early. Booking numbers are unique, so the order is total, and it matches the rule that transfers due at the same time run in booking order. A transfer is never due at the time of the call that books it, because `delay >= 1`. `take_due` returns the whole batch before any of it runs, which changes nothing: running a transfer never books or cancels another.
+Invariant: after `_settle(t)`, every transfer with `due <= t` has run, been skipped or been dropped as canceled, in `(due, number)` order, and none with `due > t` has. The heap returns its entries in that order, and `take_due` stops at the first entry that is not due yet, so no due transfer is left behind and none runs early. Booking numbers are unique, so the order is total, and it matches the rule that transfers due at the same time run in booking order. A transfer is never due at the time of the call that books it, because `delay >= 1`. `take_due` returns the whole batch before any of it runs, which changes nothing: running a transfer never books or cancels another.
 
 Each history entry is written at the time of its change: the call's timestamp, or the due time for a scheduled transfer. A transfer due at `d` runs during the first call at or after `d`, no earlier call had a timestamp at or after `d`, and the transfers that run before it in the same `_settle` are due no later than `d`. The history therefore stays in time order and a floor search finds the balance at any moment. When several changes share a time (two transfers due at `t` and the call at `t`), `bisect_right` lands after all of them, so the search returns the balance after the last one.
 
-`pending` is cleared exactly once: by a cancel, or by `take_due` when the transfer is handed out to run or be skipped. So a transfer runs at most once, a skipped one is never retried, and a cancel succeeds only while the transfer has neither run nor been skipped nor been cancelled.
+`pending` is cleared exactly once: by a cancel, or by `take_due` when the transfer is handed out to run or be skipped. So a transfer runs at most once, a skipped one is never retried, and a cancel succeeds only while the transfer has neither run nor been skipped nor been canceled.
 
 `merged_into` forms chains that end at an open account, because only open accounts absorb others and an absorbed id never comes back. Following the chain from a transfer's original source or target finds the account that holds it now, which is what rewriting every pending transfer at merge time would have stored. When both ends lead to the same account, `can_send` rejects the transfer as a self-transfer, so it is skipped. In `cancel_transfer`, the holder of the source is always open, so comparing its id with `account_id` also rejects a missing or merged-away `account_id`.
 
 ### Complexity
 
-- Time: O(log p) per scheduled transfer; O(1) per balance change; O(log h) per historical read; O(a log a) per ranking — each transfer is pushed on the heap once and popped once, whether it runs, is skipped or was cancelled, and `_settle` does no other work per call. A balance change appends to two lists; `get_balance` is one `bisect_right`; `top_spenders` sorts the open accounts. Merge chains are followed in time proportional to their length, which is at most the number of merges.
-- Space: O(a + h + p) — one object per account, one history entry per balance change, and one record and at most one heap entry per scheduled transfer, cancelled ones included until they reach the top.
+- Time: O(log p) per scheduled transfer; O(1) per balance change; O(log h) per historical read; O(a log a) per ranking — each transfer is pushed on the heap once and popped once, whether it runs, is skipped or was canceled, and `_settle` does no other work per call. A balance change appends to two lists; `get_balance` is one `bisect_right`; `top_spenders` sorts the open accounts. Merge chains are followed in time proportional to their length, which is at most the number of merges.
+- Space: O(a + h + p) — one object per account, one history entry per balance change, and one record and at most one heap entry per scheduled transfer, canceled ones included until they reach the top.
 
 ### Trade-offs
 
-- A list kept sorted by `(due, number)` would also work: inserting costs O(p) for the shift, running the earliest transfer is a pop from one end, and a cancel can remove the entry after a binary search. The heap makes booking and running O(log p) each and leaves cancelled entries in place; with 1000 calls either is fast, but only the heap keeps booking logarithmic as the number of pending transfers grows.
-- Removing a cancelled transfer from the heap right away needs an indexed heap that tracks each entry's position, or a balanced tree keyed by `(due, number)`. Lazy deletion keeps `heapq` and costs only the memory of the cancelled entries until they surface.
+- A list kept sorted by `(due, number)` would also work: inserting costs O(p) for the shift, running the earliest transfer is a pop from one end, and a cancel can remove the entry after a binary search. The heap makes booking and running O(log p) each and leaves canceled entries in place; with 1000 calls either is fast, but only the heap keeps booking logarithmic as the number of pending transfers grows.
+- Removing a canceled transfer from the heap right away needs an indexed heap that tracks each entry's position, or a balanced tree keyed by `(due, number)`. Lazy deletion keeps `heapq` and costs only the memory of the canceled entries until they surface.
 - Rewriting every pending transfer at merge time, as the statement describes it, needs a scan of all pending transfers or an index from account to its pending transfers, kept up to date on every booking, run and cancel. The `merged_into` link gives the same answers with one map entry per merge. Path compression in `holder_of`, pointing every id on a chain straight at its end, would make long chains cheap; with at most 1000 calls it is not worth the extra writes.
 - Sorting all accounts in `top_spenders` is O(a log a). `heapq.nsmallest(n, accounts, key=...)` makes it O(a log n), and an ordered structure keyed by `(-outgoing, account_id)`, updated on every transfer, makes queries O(n) at the price of O(log a) per transfer.
 - One module would do: the single-file reference of Scheduled Transfers Bank passes every case of this problem in 155 lines, against about 280 here across four modules. The split costs imports, docstrings and a few delegating methods, and pays back when a level opens: level 3 is a new module plus one `_settle` line in each existing method, and level 4 adds `BalanceHistory` and an account's lifetime to `models.py` and the merge bookkeeping to `accounts.py`, while `Bank` only gains its two new methods.
@@ -80,7 +80,7 @@ Each history entry is written at the time of its change: the call's timestamp, o
 - A FIFO queue in booking order is wrong: a transfer booked later with a shorter delay must run first, and the order decides which of two transfers the source can still afford.
 - Ties on the due time go in booking order. A heap of `(due, transfer)` alone is not stable and, in Python, compares the transfer objects on a tie and fails, so the booking number has to be part of the key.
 - Record a scheduled transfer at its due time, not at the time of the call that ran it, or `get_balance` between the two is wrong.
-- Check funds when the transfer runs, not when it is booked. A skipped transfer stays skipped, even if the source receives money later, and it cannot be cancelled afterwards.
+- Check funds when the transfer runs, not when it is booked. A skipped transfer stays skipped, even if the source receives money later, and it cannot be canceled afterwards.
 - Only the current source may cancel. The target cannot, and after a merge the merged-away id cannot either, while the account that absorbed it can.
 - A transfer pending between two accounts that are then merged becomes a self-transfer; it must be skipped, and it must not add to `outgoing`.
 - Transfer numbers count only successful bookings, across the whole bank.

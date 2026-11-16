@@ -29,7 +29,7 @@ The seven nodes form two full groups of three, `11 12 13` and `14 15 16`, and a 
 
 <!-- case: ex2 -->
 
-With `k = 2`, neighbouring nodes swap places: the length is a multiple of 2, so there is no leftover.
+With `k = 2`, neighboring nodes swap places: the length is a multiple of 2, so there is no leftover.
 
 ## Constraints
 

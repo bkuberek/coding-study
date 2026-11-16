@@ -7,7 +7,7 @@
     {"id": "h1", "input": {"nums": [7], "k": 7}, "expected": 1, "note": "single element equal to k"},
     {"id": "h2", "input": {"nums": [7], "k": -7}, "expected": 0, "note": "single element, no answer"},
     {"id": "h3", "input": {"nums": [0, 0, 0, 0, 0], "k": 0}, "expected": 15, "note": "all zeros: every subarray counts"},
-    {"id": "h4", "input": {"nums": [1, -1, 1, -1], "k": 0}, "expected": 4, "note": "k = 0 with cancelling values"},
+    {"id": "h4", "input": {"nums": [1, -1, 1, -1], "k": 0}, "expected": 4, "note": "k = 0 with canceling values"},
     {"id": "h5", "input": {"nums": [-2, -3, 4, -1], "k": -5}, "expected": 1, "note": "negative k"},
     {"id": "h6", "input": {"nums": [1, 2, 3], "k": 100}, "expected": 0, "note": "no subarray reaches k"},
     {"id": "h7", "input": {"nums": [1000, 1000, -1000, 1000], "k": 2000}, "expected": 2, "note": "extreme values"},

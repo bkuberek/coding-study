@@ -13,12 +13,12 @@ The board has `r` rows and `c` columns; `W` is the number of words, `L` the leng
 
 ### Intuition
 
-Deciding whether one word is on the board is a classic backtracking search: start at every cell, and from a cell holding the right letter try the four neighbours for the next letter, marking the cell as used so the same word cannot reuse it. Run that search for every word.
+Deciding whether one word is on the board is a classic backtracking search: start at every cell, and from a cell holding the right letter try the four neighbors for the next letter, marking the cell as used so the same word cannot reuse it. Run that search for every word.
 
 ### Algorithm
 
 1. For each word, try every cell as the start of `trace(cell, 0)`.
-2. `trace(cell, i)`: fail if the cell does not hold `word[i]`; succeed if `i` is the last position. Otherwise mark the cell as used, try `trace` on each in-bounds neighbour with `i + 1`, restore the cell, and report whether any neighbour succeeded.
+2. `trace(cell, i)`: fail if the cell does not hold `word[i]`; succeed if `i` is the last position. Otherwise mark the cell as used, try `trace` on each in-bounds neighbor with `i + 1`, restore the cell, and report whether any neighbor succeeded.
 3. Return the words for which some start succeeded.
 
 ### Correctness
@@ -27,7 +27,7 @@ Deciding whether one word is on the board is a classic backtracking search: star
 
 ### Complexity
 
-- Time: O(W * r * c * 3^L) — each word starts a search at every cell, and each search branches into at most three unused neighbours per letter after the first step.
+- Time: O(W * r * c * 3^L) — each word starts a search at every cell, and each search branches into at most three unused neighbors per letter after the first step.
 - Space: O(L) — the recursion depth is at most the word's length; the marks live in the board itself.
 
 ### Trade-offs
@@ -38,7 +38,7 @@ It reuses the single-word solution unchanged and is easy to trust, but words tha
 
 - Restore the cell after exploring it, also when the search succeeds, or later words see a damaged board.
 - A word longer than the number of cells, or one that needs a cell twice, is never on the board.
-- Single-row and single-column boards: neighbours outside the board must be skipped.
+- Single-row and single-column boards: neighbors outside the board must be skipped.
 
 ### Language notes
 
@@ -53,13 +53,13 @@ It reuses the single-word solution unchanged and is easy to trust, but words tha
 
 ### Intuition
 
-Put all words into a trie. Then one walk on the board can follow the trie at the same time: each step to a neighbour moves one trie edge down. The walk stops as soon as the letters spelled so far are not a prefix of any word, and every word ending at the current trie node is found at once. Words that share a beginning now share the walk.
+Put all words into a trie. Then one walk on the board can follow the trie at the same time: each step to a neighbor moves one trie edge down. The walk stops as soon as the letters spelled so far are not a prefix of any word, and every word ending at the current trie node is found at once. Words that share a beginning now share the walk.
 
 ### Algorithm
 
 1. Insert every word into a trie, storing the complete word at the node where it ends.
 2. From every cell, call `explore(cell, root)`.
-3. `explore(cell, parent)`: stop if the cell is used or `parent` has no child for its letter. Otherwise move to that child; if it stores a word, record the word and clear it. Mark the cell as used, explore the four in-bounds neighbours with the child as the new parent, then restore the cell.
+3. `explore(cell, parent)`: stop if the cell is used or `parent` has no child for its letter. Otherwise move to that child; if it stores a word, record the word and clear it. Mark the cell as used, explore the four in-bounds neighbors with the child as the new parent, then restore the cell.
 4. Return the recorded words.
 
 ### Correctness
@@ -68,7 +68,7 @@ A call `explore(cell, node)` happens exactly for walks of unused cells whose let
 
 ### Complexity
 
-- Time: O(S + r * c * 3^L) — building the trie costs one step per letter of the words; the walks from every cell branch into at most three unused neighbours and never go deeper than the longest word, and in practice stop as soon as the trie has no matching child.
+- Time: O(S + r * c * 3^L) — building the trie costs one step per letter of the words; the walks from every cell branch into at most three unused neighbors and never go deeper than the longest word, and in practice stop as soon as the trie has no matching child.
 - Space: O(26 * S) — at most one trie node per letter of the words, each with 26 slots; the recursion adds O(L).
 
 ### Trade-offs

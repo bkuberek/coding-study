@@ -53,4 +53,4 @@ To split a list in half, use a slow pointer and a fast pointer: when the fast on
 
 ### Hint 3
 
-Recursion costs O(log n) stack. To avoid it, work bottom-up: merge neighbouring runs of length 1, then of length 2, then 4, and so on, until one run covers the list.
+Recursion costs O(log n) stack. To avoid it, work bottom-up: merge neighboring runs of length 1, then of length 2, then 4, and so on, until one run covers the list.

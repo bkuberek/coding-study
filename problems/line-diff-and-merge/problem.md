@@ -130,7 +130,7 @@ The result is every stable line and every resolved chunk, in order. A conflict i
 >>>>>>> theirs
 ```
 
-Changes on neighbouring lines conflict, even when they touch different lines, because no stable line separates them.
+Changes on neighboring lines conflict, even when they touch different lines, because no stable line separates them.
 
 ### Example 1
 

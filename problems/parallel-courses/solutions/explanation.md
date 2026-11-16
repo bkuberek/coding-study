@@ -27,7 +27,7 @@ Play the semesters out. In each one, look at every course not taken yet and take
 
 ### Correctness
 
-By induction on the semester `s`: the courses taken in semester `s` are exactly those whose longest prerequisite chain has `s` courses. A course with no prerequisites is taken in semester 1. A course whose prerequisites all finish by semester `s - 1`, and at least one exactly then, becomes free in semester `s` and not before. Postponing a course never helps, because taking it early only frees its dependants earlier, so this greedy schedule is optimal and its length is the longest chain. If a semester frees nothing, every remaining course has a remaining prerequisite, which forces a cycle among them, and no schedule exists.
+By induction on the semester `s`: the courses taken in semester `s` are exactly those whose longest prerequisite chain has `s` courses. A course with no prerequisites is taken in semester 1. A course whose prerequisites all finish by semester `s - 1`, and at least one exactly then, becomes free in semester `s` and not before. Postponing a course never helps, because taking it early only frees its dependents earlier, so this greedy schedule is optimal and its length is the longest chain. If a semester frees nothing, every remaining course has a remaining prerequisite, which forces a cycle among them, and no schedule exists.
 
 ### Complexity
 

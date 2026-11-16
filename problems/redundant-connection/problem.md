@@ -2,7 +2,7 @@
 
 ## Statement
 
-A network started as a tree: `n` nodes labelled from `1` to `n`, connected without any cycle. Then one more undirected edge was added between two different nodes that were not already directly connected. The resulting `n` edges are listed in `edges`, in some order.
+A network started as a tree: `n` nodes labeled from `1` to `n`, connected without any cycle. Then one more undirected edge was added between two different nodes that were not already directly connected. The resulting `n` edges are listed in `edges`, in some order.
 
 Return an edge whose removal turns the network back into a tree on all `n` nodes. Several edges may qualify; return the one that appears last in `edges`, written exactly as it appears there.
 

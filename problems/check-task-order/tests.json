@@ -17,7 +17,7 @@
     {"id": "h10", "input": {"n": 3, "prerequisites": [[0, 1], [1, 2], [0, 2]], "order": [0, 1, 2]}, "expected": true, "note": "a shortcut pair that the chain already satisfies"},
     {"id": "h11", "input": {"n": 2, "prerequisites": [[1, 0]], "order": []}, "expected": false, "note": "an empty order lists no task"},
     {"id": "h12", "input": {"n": 3, "prerequisites": [[2, 0], [2, 1]], "order": [2, 1, 0]}, "expected": true, "note": "the last-numbered task goes first"},
-    {"id": "h13", "input": {"n": 5, "prerequisites": [[0, 1], [1, 2], [2, 3], [3, 4]], "order": [0, 1, 3, 2, 4]}, "expected": false, "note": "two neighbours on a chain swapped"},
+    {"id": "h13", "input": {"n": 5, "prerequisites": [[0, 1], [1, 2], [2, 3], [3, 4]], "order": [0, 1, 3, 2, 4]}, "expected": false, "note": "two neighbors on a chain swapped"},
     {"id": "h14", "input": {"n": 4, "prerequisites": [[3, 2], [2, 1], [1, 0]], "order": [3, 2, 1, 0]}, "expected": true, "note": "a chain whose valid order counts down"},
     {"id": "h15", "input": {"n": 6, "prerequisites": [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5]], "order": [4, 3, 2, 1, 0, 5]}, "expected": true, "note": "one task needs all the others"},
     {"id": "g1", "generate": {"n": 2000, "seed": 380}, "hang_guard_ms": 30000, "note": "valid order of 2000 tasks: scanning for positions is quadratic here"},

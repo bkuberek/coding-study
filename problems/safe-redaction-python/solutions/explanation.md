@@ -37,7 +37,7 @@ The quote is what makes a proposal checkable. An offset is a claim about a place
 
 1. Place each proposal. If it lies in the text and cuts out its own quote, keep it. If not, and the quote is not empty and occurs in the text, move it to the occurrence closest to its `start` (the earlier on a tie), keeping its label. Otherwise drop it.
 2. Run the email pattern and then the phone pattern on the original text, and turn every match into a span.
-3. Put the placed proposals first and the pattern spans after them, then merge: sort by start and end; walk through, growing a group while the next span starts before the group's end; each group becomes one span from its earliest start to its latest end, labelled by its longest member, then the earliest start, then the earliest position in the list.
+3. Put the placed proposals first and the pattern spans after them, then merge: sort by start and end; walk through, growing a group while the next span starts before the group's end; each group becomes one span from its earliest start to its latest end, labeled by its longest member, then the earliest start, then the earliest position in the list.
 4. Write the text from the merged spans: copy, label, copy, label, and the tail.
 5. To score, count the matches of the final spans against the gold spans with a counter, so each is used once, and apply the formulas, with the cases of an empty side given by the problem.
 

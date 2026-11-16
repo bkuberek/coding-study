@@ -34,7 +34,7 @@ A taxonomy with several parents is a directed acyclic graph, and every question 
 
 ### Correctness
 
-Breadth-first order: when the walk dequeues a level, the next level holds the unseen neighbours of it. A concept is first seen at the smallest level that contains one of its neighbours, so by induction on the level it is first seen at the length of the shortest path from the start. Sorting each level by id gives distance first, then id. The `seen` set makes the walk finish on any finite graph and list each concept once, whatever the number of paths.
+Breadth-first order: when the walk dequeues a level, the next level holds the unseen neighbors of it. A concept is first seen at the smallest level that contains one of its neighbors, so by induction on the level it is first seen at the length of the shortest path from the start. Sorting each level by id gives distance first, then id. The `seen` set makes the walk finish on any finite graph and list each concept once, whatever the number of paths.
 
 Cycle check: adding the link `n` under `b` creates a cycle exactly when there is already a path from `b` up to `n`, or `n == b`. If `n` is not above `b`, then no path leads from `n` through the new link back to `n`, so the graph stays acyclic.
 

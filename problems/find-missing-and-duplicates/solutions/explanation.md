@@ -51,11 +51,11 @@ Simple, obviously correct and read-only, which makes it the oracle. It spends me
 - Go: `map[int]bool` is the set, and a missing key reads as `false`, so the tests need no comma-ok.
 - Rust: `HashSet<i32>`; `insert` returns false when the value was present. The range `1..=n` is cloned so that both filters can walk it.
 
-## Approach: sort (Sort in place and compare neighbours)
+## Approach: sort (Sort in place and compare neighbors)
 
 ### Intuition
 
-In sorted order, equal values are neighbours and a gap between neighbours is a run of missing values. One pass with a counter for "the smallest value not seen yet" reads both answers, already in ascending order.
+In sorted order, equal values are neighbors and a gap between neighbors is a run of missing values. One pass with a counter for "the smallest value not seen yet" reads both answers, already in ascending order.
 
 ### Algorithm
 

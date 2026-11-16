@@ -7,7 +7,7 @@
 | recompute | brute | O(n * k) | O(1) | n and k are tiny, or as the obviously correct baseline |
 | sliding-window | optimal | O(n) | O(1) | default answer |
 
-A window is a run of `k` neighbouring numbers. There are `n - k + 1` of them, one per start position, and consecutive windows share `k - 1` numbers. The brute force ignores that overlap; the sliding window is the idea of using it.
+A window is a run of `k` neighboring numbers. There are `n - k + 1` of them, one per start position, and consecutive windows share `k - 1` numbers. The brute force ignores that overlap; the sliding window is the idea of using it.
 
 ## Approach: recompute (Add up every window from scratch)
 
@@ -53,7 +53,7 @@ Clear and almost impossible to get wrong, which is why it serves as the referenc
 
 ### Intuition
 
-Two neighbouring windows differ by one number in and one number out. So instead of adding up `k` numbers again, take the previous sum, add the number that enters on the right and subtract the number that leaves on the left. That makes each step constant work. Because every window has the same width `k`, the window with the largest sum also has the largest average, so the loop compares sums, which stay exact integers, and divides by `k` once at the end.
+Two neighboring windows differ by one number in and one number out. So instead of adding up `k` numbers again, take the previous sum, add the number that enters on the right and subtract the number that leaves on the left. That makes each step constant work. Because every window has the same width `k`, the window with the largest sum also has the largest average, so the loop compares sums, which stay exact integers, and divides by `k` once at the end.
 
 ### Algorithm
 

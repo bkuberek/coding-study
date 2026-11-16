@@ -13,11 +13,11 @@ Here `p` is the number of points on the ring, `k` the number of followed keys an
 | Level | Change | State after the level |
 |-------|--------|-----------------------|
 | 1 | One point per node; a binary search finds a key's owner; a list in join order for modulo placement | `points`, sorted `(position, label, node)`; `joined` |
-| 2 | Several points per node, labelled `node`, `1#node`, ... | the number of points of each node, to list its positions |
+| 2 | Several points per node, labeled `node`, `1#node`, ... | the number of points of each node, to list its positions |
 | 3 | A set of followed keys, and the report of the last change | `tracked`, `report` |
 | 4 | Walks from the owner point: one skips nodes already listed, one skips full nodes | nothing new: both walk `points` |
 
-The early choice that pays off is to store points, not nodes: a sorted list of `(position, label, node)`. Level 1's single point is the first point of level 2's virtual node, the arcs of level 2 are the gaps between neighbouring points, level 3 compares two lookups, and both walks of level 4 step through the same list.
+The early choice that pays off is to store points, not nodes: a sorted list of `(position, label, node)`. Level 1's single point is the first point of level 2's virtual node, the arcs of level 2 are the gaps between neighboring points, level 3 compares two lookups, and both walks of level 4 step through the same list.
 
 ## Approach: sorted-points (Sorted ring points with binary search)
 

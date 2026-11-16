@@ -67,7 +67,7 @@ Class `9999` is not in the class table, so there is nothing to rate and the resu
 ## Follow-ups
 
 - What changes if every step is rounded to cents instead of only the last? Which of the five entries move, and by how much?
-- Return labelled steps (name and amount) for an audit log instead of five positions.
+- Return labeled steps (name and amount) for an audit log instead of five positions.
 - Load the tables from versioned storage, so an old quote can be rated again with the tables that were in force then (see `versioned-rate-table`).
 
 ## Hints

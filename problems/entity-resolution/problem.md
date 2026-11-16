@@ -171,7 +171,7 @@ The first value is the output of `clusters()` for the five records of level 2 (`
 - The guard tests a merge the way complete linkage does: every cross pair must score at least 0.65. It is not complete-linkage clustering, which merges the two groups whose worst cross pair is best, whereas the guard visits the pairs by their best single score, which is why the order matters. What would a single-linkage test give (that is `components`), and what an average-linkage test? Which one splits a chain like `maria gonzalez, maria gonzales, mario gonzales` the way you want?
 - Two people can share an email, such as a shared office mailbox, and then the score is 1 and the guard cannot see the difference. How would you give a key a weight, or count how many records use it?
 - Blocking by the first three letters of the last token loses `Smith` against `Smyth`, and a name written first-name-last is in another block. Which cheaper or more tolerant keys (sorted tokens, phonetic codes, n-grams, several keys at once) would you add, and what does each cost in comparisons?
-- Choosing the threshold 0.75 and the floor 0.65 by hand is fragile. How would you choose them from a labelled sample, with the pair precision and recall of level 4?
+- Choosing the threshold 0.75 and the floor 0.65 by hand is fragile. How would you choose them from a labeled sample, with the pair precision and recall of level 4?
 - The canonical record is chosen by a fixed rule. What changes when each field carries its own trust, and the entity is built from the best field of each record instead of one record?
 
 ## Hints

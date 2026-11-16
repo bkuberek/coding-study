@@ -28,7 +28,7 @@ The only 0 sits in row 1, column 2, so row 1 and column 2 become all zeros. The 
 
 <!-- case: ex2 -->
 
-The zeros at the top-left and bottom-right corners clear rows 0 and 2 and columns 0 and 2. Only the centre value 4 survives.
+The zeros at the top-left and bottom-right corners clear rows 0 and 2 and columns 0 and 2. Only the center value 4 survives.
 
 ## Constraints
 

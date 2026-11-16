@@ -57,7 +57,7 @@ The bill of a request is the sum over the calls that were made, and a call is bi
 
 ### Trade-offs
 
-- A scan is fine for the sizes here and for a few thousand entries. A cache of millions needs an approximate nearest-neighbour index, which trades a small chance of missing the closest entry for a lookup that does not touch every entry; with it, the tie-break "stored first" is no longer free and has to be built into the index.
+- A scan is fine for the sizes here and for a few thousand entries. A cache of millions needs an approximate nearest-neighbor index, which trades a small chance of missing the closest entry for a lookup that does not touch every entry; with it, the tie-break "stored first" is no longer free and has to be built into the index.
 - The semantic path can be wrong, and the exact path cannot. Trying the exact key first is both cheaper and safer, and it is why a semantic hit is only ever reported for a key that is not stored.
 - The threshold is a single number for all questions. A higher one for questions where a wrong answer costs more (money, health, law), or a check that the cached answer still fits the new question, would lose some savings and avoid some false hits. How much depends on the data, which is why the rate of false hits has to be measured and not assumed.
 - Retiring entries by source version is simple and strict: everything built from a changed source goes, even entries that did not depend on the change. Finer tracking (the part of the source an answer used) keeps more, at the price of recording it.

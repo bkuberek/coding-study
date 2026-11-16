@@ -22,13 +22,13 @@ The minimum number of intervals to remove so that, for every remaining pair, one
 
 <!-- case: ex1 -->
 
-Keeping `[2, 3]` and `[5, 8]` works, and so does keeping `[2, 3]` and `[3, 6]`, which only touch at 3. No three bookings can stay together: `[1, 4]` overlaps both `[2, 3]` and `[3, 6]`, and `[3, 6]` overlaps `[5, 8]`. So at least two of the four must be cancelled.
+Keeping `[2, 3]` and `[5, 8]` works, and so does keeping `[2, 3]` and `[3, 6]`, which only touch at 3. No three bookings can stay together: `[1, 4]` overlaps both `[2, 3]` and `[3, 6]`, and `[3, 6]` overlaps `[5, 8]`. So at least two of the four must be canceled.
 
 ### Example 2
 
 <!-- case: ex2 -->
 
-Each booking starts exactly when the previous one ends, so none of them conflict and nothing is cancelled.
+Each booking starts exactly when the previous one ends, so none of them conflict and nothing is canceled.
 
 ## Constraints
 

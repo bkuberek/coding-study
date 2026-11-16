@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../../schemas/meta.schema.json
 slug: task-scheduler
 title: Task Scheduler
-summary: "Given tasks labelled by letter, where two tasks with the same label must be at least a cooldown number of slots apart, return the fewest time slots needed to run them all."
+summary: "Given tasks labeled by letter, where two tasks with the same label must be at least a cooldown number of slots apart, return the fewest time slots needed to run them all."
 status: ready
 difficulty: medium
 track: dsa

@@ -146,7 +146,7 @@ Each wrong approach below was run as a one-line change on the reference, through
 - **Averaging confidence.** One bad field among five good ones goes through. Caught by `h31` and `h32`.
 - **Leaving out a rule.** Amount: `h33` and `h46`. Zero rate: `h35`. Stated payment: `ex8`. Citations: `h37`.
 - **Letting high confidence excuse a failed citation.** Confidence is a claim, and a citation is evidence. Caught by `h37`.
-- **Honouring what the model recommends.** Caught by `h38`.
+- **Honoring what the model recommends.** Caught by `h38`.
 - **Dropping a rejected output.** Its document then disappears. Caught by `h45` and `h51`.
 
 **People.**

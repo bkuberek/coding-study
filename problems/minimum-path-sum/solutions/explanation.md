@@ -2,7 +2,7 @@
 
 ## Overview
 
-Let m be the number of rows and n the number of columns. Both approaches use the same fact: the robot enters every block, except the start, from the block above or the block on the left, so the cheapest way to a block is its own toll plus the cheaper of the cheapest ways to those two neighbours.
+Let m be the number of rows and n the number of columns. Both approaches use the same fact: the robot enters every block, except the start, from the block above or the block on the left, so the cheapest way to a block is its own toll plus the cheaper of the cheapest ways to those two neighbors.
 
 | Approach | Role | Time | Space | Use when |
 |----------|------|------|-------|----------|
@@ -28,7 +28,7 @@ Ask the question for the goal block: what is the cheapest total toll to arrive h
 
 ### Correctness
 
-By induction on `r + c`. The top-left block's cheapest total is its own toll. For any other block, every route to it ends with a move from the block above or the block on the left, and the part of the route before that move is itself a route to that neighbour. So the cheapest route to the block is its toll plus the cheaper of the two neighbours' cheapest routes, and the recursion computes exactly that. The table only stores values that the recursion would return again, so it changes the speed and not the result.
+By induction on `r + c`. The top-left block's cheapest total is its own toll. For any other block, every route to it ends with a move from the block above or the block on the left, and the part of the route before that move is itself a route to that neighbor. So the cheapest route to the block is its toll plus the cheaper of the two neighbors' cheapest routes, and the recursion computes exactly that. The table only stores values that the recursion would return again, so it changes the speed and not the result.
 
 ### Complexity
 
@@ -41,7 +41,7 @@ The code mirrors the definition, which makes it the easiest to trust and the ora
 
 ### Pitfalls and edge cases
 
-- The top row and left column have only one neighbour; reading `row - 1` or `column - 1` there would run off the grid.
+- The top row and left column have only one neighbor; reading `row - 1` or `column - 1` there would run off the grid.
 - The start block's toll counts, and so does the goal block's toll.
 - A toll of 0 is a valid value, so use a marker such as -1 for "not computed", never 0.
 - A one-cell grid answers with that cell's toll.
@@ -73,7 +73,7 @@ The memoized recursion asks about a block only after the two blocks above and to
 
 ### Correctness
 
-Invariant: when the loop reaches `(r, c)`, every cell above it and to its left is already filled with the cheapest total toll of a route to that block. The cell above is in an earlier row, and the cell on the left is earlier in the same row. The same argument as in the memoization then shows that the new cell is correct: every route to `(r, c)` ends with a move from one of those two neighbours. The last cell, which the loop fills last, is the answer.
+Invariant: when the loop reaches `(r, c)`, every cell above it and to its left is already filled with the cheapest total toll of a route to that block. The cell above is in an earlier row, and the cell on the left is earlier in the same row. The same argument as in the memoization then shows that the new cell is correct: every route to `(r, c)` ends with a move from one of those two neighbors. The last cell, which the loop fills last, is the answer.
 
 ### Complexity
 
@@ -86,9 +86,9 @@ The same time as the memoization with no recursion, so no stack limit and a smal
 
 ### Pitfalls and edge cases
 
-- Visit the blocks in an order where the neighbours are ready. Filling column by column works too, but filling in any order that reaches a block before its neighbours does not.
+- Visit the blocks in an order where the neighbors are ready. Filling column by column works too, but filling in any order that reaches a block before its neighbors does not.
 - Treat the first row and the first column as special cases rather than reading a block outside the grid.
-- Add the block's own toll for every cell, not only for the neighbours' sum; forgetting the start block's toll is the usual off-by-one.
+- Add the block's own toll for every cell, not only for the neighbors' sum; forgetting the start block's toll is the usual off-by-one.
 - The largest answer is 399 blocks of toll 100, which is 39,900, so it fits easily in a 32-bit integer.
 
 ### Language notes

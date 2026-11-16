@@ -19,7 +19,7 @@ signature:
 comparator: {type: exact}
 approaches:
   - {id: hash-set, name: Two hash sets of the values seen and the values repeated, role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
-  - {id: sort, name: Sort in place and compare neighbours, role: intermediate, time: "O(n log n)", space: "O(1)", time_class: "n log n", space_class: "1"}
+  - {id: sort, name: Sort in place and compare neighbors, role: intermediate, time: "O(n log n)", space: "O(1)", time_class: "n log n", space_class: "1"}
   - {id: cyclic-sort, name: Swap every value to its own index and read off the misplaced ones, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
 perf:
   size_param: length of nums

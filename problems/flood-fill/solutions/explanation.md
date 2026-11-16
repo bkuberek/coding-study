@@ -7,17 +7,17 @@
 | dfs | optimal | O(m·n) | O(m·n) | the grid is small and you want the shortest code |
 | bfs | optimal | O(m·n) | O(m·n) | the region can be huge, or you will need distances from the start next |
 
-A grid is a graph in disguise: every tile is a vertex, and two tiles share an edge when they are neighbours (above, below, left or right) and have the same colour. The region to repaint is the connected component of the starting tile, so the task is to visit every vertex of one component. Both approaches visit each tile of the region once; they differ in the order, and so in the data structure that remembers what is left to visit. Neither one builds an explicit graph: the neighbours of a tile are computed from its row and column.
+A grid is a graph in disguise: every tile is a vertex, and two tiles share an edge when they are neighbors (above, below, left or right) and have the same color. The region to repaint is the connected component of the starting tile, so the task is to visit every vertex of one component. Both approaches visit each tile of the region once; they differ in the order, and so in the data structure that remembers what is left to visit. Neither one builds an explicit graph: the neighbors of a tile are computed from its row and column.
 
 ## Approach: dfs (Recursive depth-first fill)
 
 ### Intuition
 
-Repaint the starting tile, then hand the same job to each of its four neighbours: "if you still have the original colour, repaint yourself and hand the job on". The calls go as far as they can in one direction before they come back and try the next one, which is what depth-first means. The repainting does a second job for free: a repainted tile no longer has the original colour, so it will refuse any later request, and the fill cannot loop.
+Repaint the starting tile, then hand the same job to each of its four neighbors: "if you still have the original color, repaint yourself and hand the job on". The calls go as far as they can in one direction before they come back and try the next one, which is what depth-first means. The repainting does a second job for free: a repainted tile no longer has the original color, so it will refuse any later request, and the fill cannot loop.
 
 ### Algorithm
 
-1. Read the original colour `old = grid[row][col]`. If `old` equals `newColor`, return the grid unchanged.
+1. Read the original color `old = grid[row][col]`. If `old` equals `newColor`, return the grid unchanged.
 2. Define `paint(r, c)`:
    1. If `(r, c)` is outside the grid, or `grid[r][c] != old`, return.
    2. Set `grid[r][c] = newColor`.
@@ -26,7 +26,7 @@ Repaint the starting tile, then hand the same job to each of its four neighbours
 
 ### Correctness
 
-`paint` only continues from a tile it has just repainted, and it only moves to neighbours, so every tile it repaints is joined to the start through tiles of the original colour: nothing outside the region is touched. Conversely, take any tile of the region and a path of neighbours from the start to it. The first tile of the path is repainted. If a tile on the path is repainted, its call asks the next tile of the path, which has the original colour and is inside the grid, unless a call already repainted it. Either way the next tile ends up repainted, so by induction along the path the whole region is. A tile is repainted at most once, because the repaint is what makes later calls on it return at once. That also shows the fill stops, but only under the guard of step 1: if the new colour equalled the old one, a repainted tile would still look like part of the region and the calls would never end.
+`paint` only continues from a tile it has just repainted, and it only moves to neighbors, so every tile it repaints is joined to the start through tiles of the original color: nothing outside the region is touched. Conversely, take any tile of the region and a path of neighbors from the start to it. The first tile of the path is repainted. If a tile on the path is repainted, its call asks the next tile of the path, which has the original color and is inside the grid, unless a call already repainted it. Either way the next tile ends up repainted, so by induction along the path the whole region is. A tile is repainted at most once, because the repaint is what makes later calls on it return at once. That also shows the fill stops, but only under the guard of step 1: if the new color equalled the old one, a repainted tile would still look like part of the region and the calls would never end.
 
 ### Complexity
 
@@ -39,17 +39,17 @@ The shortest correct answer and the easiest to read. Its limit is the call stack
 
 ### Pitfalls and edge cases
 
-- Compare the new colour with the original before painting anything. If they are equal, return at once.
-- Save the original colour in a variable first. Reading `grid[row][col]` after the first repaint gives the new colour.
+- Compare the new color with the original before painting anything. If they are equal, return at once.
+- Save the original color in a variable first. Reading `grid[row][col]` after the first repaint gives the new color.
 - Check the bounds before reading `grid[r][c]`, in that order: the four calls step off the grid at its edges.
-- Diagonal tiles are not neighbours: four directions, not eight.
-- A region of one tile (every neighbour is another colour, or the grid is a single tile) must still be repainted.
+- Diagonal tiles are not neighbors: four directions, not eight.
+- A region of one tile (every neighbor is another color, or the grid is a single tile) must still be repainted.
 
 ### Language notes
 
 - Python: a nested function reads `grid`, `old_color` and the sizes from the enclosing scope instead of passing them on every call. The grader raises Python's recursion limit; in a script of your own, a long region would stop with `RecursionError` at the interpreter's default limit.
 - TypeScript: `paint` is an arrow function that closes over `grid`, `oldColor` and `newColor`, and the grader keeps the depth under what Node's default stack allows.
-- Java: a private method takes the grid and both colours as parameters, because Java has no nested functions; arrays are passed by reference, so every call repaints the same grid.
+- Java: a private method takes the grid and both colors as parameters, because Java has no nested functions; arrays are passed by reference, so every call repaints the same grid.
 - Kotlin: `r !in grid.indices` is the bounds check; a private member function plays the part of the nested function.
 - Go: a closure assigned to a variable declared with `var paint func(r, c int)` can call itself; the declaration must come first, because the closure refers to its own name. Go's stack grows on demand.
 - Rust: coordinates travel as `i32` through the helper so that a step to row `-1` is a plain negative number that the first check rejects; they are converted to `usize` only after that check. The grid is passed as `&mut [Vec<i32>]`, a mutable borrow that every recursive call reuses.
@@ -58,22 +58,22 @@ The shortest correct answer and the easiest to read. Its limit is the call stack
 
 ### Intuition
 
-Instead of letting calls pile up, keep a queue of tiles that were repainted but whose neighbours have not been looked at yet. Take a tile from the front, look at its four neighbours, repaint and queue the ones that belong to the region. The fill grows in rings: first the start, then its neighbours, then theirs. A tile is repainted at the moment it is queued, so it is queued only once.
+Instead of letting calls pile up, keep a queue of tiles that were repainted but whose neighbors have not been looked at yet. Take a tile from the front, look at its four neighbors, repaint and queue the ones that belong to the region. The fill grows in rings: first the start, then its neighbors, then theirs. A tile is repainted at the moment it is queued, so it is queued only once.
 
 ### Algorithm
 
 1. Read `old = grid[row][col]`. If it equals `newColor`, return the grid unchanged.
 2. Repaint `(row, col)` and put it in an empty queue.
-3. While the queue is not empty: remove the tile at the front, and for each of its four neighbours inside the grid whose colour is `old`, repaint it and add it to the back of the queue.
+3. While the queue is not empty: remove the tile at the front, and for each of its four neighbors inside the grid whose color is `old`, repaint it and add it to the back of the queue.
 4. Return the grid.
 
 ### Correctness
 
-Every tile that enters the queue has just been repainted and was reached from a tile already in the region by one neighbour step, so the queue only ever holds region tiles. Suppose some tile of the region were never repainted, and take one at the shortest path distance from the start among those. The previous tile on its path is closer, so it was repainted and queued, and it was taken from the queue at some point; at that moment this tile was a neighbour of it, inside the grid, with the original colour, which is exactly the condition that repaints and queues it. That is a contradiction. The loop ends because each tile enters the queue at most once.
+Every tile that enters the queue has just been repainted and was reached from a tile already in the region by one neighbor step, so the queue only ever holds region tiles. Suppose some tile of the region were never repainted, and take one at the shortest path distance from the start among those. The previous tile on its path is closer, so it was repainted and queued, and it was taken from the queue at some point; at that moment this tile was a neighbor of it, inside the grid, with the original color, which is exactly the condition that repaints and queues it. That is a contradiction. The loop ends because each tile enters the queue at most once.
 
 ### Complexity
 
-- Time: O(m·n) — each tile is queued and removed at most once, with four constant-time neighbour checks per removal.
+- Time: O(m·n) — each tile is queued and removed at most once, with four constant-time neighbor checks per removal.
 - Space: O(m·n) — the queue holds the tiles waiting to be processed, and on a branching region that can be a sizeable share of all tiles at once.
 
 ### Trade-offs
@@ -82,9 +82,9 @@ Same running time as `dfs` and no call stack to run out of: the queue lives in o
 
 ### Pitfalls and edge cases
 
-- Repaint when you queue a tile, not when you take it out. If the repaint waits until removal, a tile with two region neighbours is queued twice, and in a big region the queue grows far beyond the number of tiles.
+- Repaint when you queue a tile, not when you take it out. If the repaint waits until removal, a tile with two region neighbors is queued twice, and in a big region the queue grows far beyond the number of tiles.
 - Use a real queue. Removing from the front of a plain array or list shifts every other element and turns the fill into quadratic work.
-- The same-colour guard matters here too: without it, the first neighbour check would find the tile you just repainted, and the queue never empties.
+- The same-color guard matters here too: without it, the first neighbor check would find the tile you just repainted, and the queue never empties.
 
 ### Language notes
 

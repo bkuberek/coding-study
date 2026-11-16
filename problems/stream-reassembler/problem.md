@@ -13,7 +13,7 @@ The stream has three invented kinds of event. Each fragment carries a `sequence`
 - `finish(lastSequence)`: records that `lastSequence` is the stream's last fragment. It returns `true`, or `false` and changes nothing, when the connection has closed, a `finish` was already recorded, or a fragment above `lastSequence` has already arrived. A stream with no fragments at all finishes with `lastSequence` of `-1`.
 - `close()`: the connection is gone, and nothing arrives after this.
 - `status()`: `"complete"` when a `finish` has been recorded and every fragment through its last sequence has arrived, whether or not the connection has closed. Otherwise `"truncated"` if the connection has closed, and otherwise `"streaming"`.
-- `text()`: all the text released so far. On a truncated stream this is what you may show, labelled as cut off: the text up to the first gap, and nothing beyond it.
+- `text()`: all the text released so far. On a truncated stream this is what you may show, labeled as cut off: the text up to the first gap, and nothing beyond it.
 - `missing()`: in ascending order, the sequences that have not arrived, from 0 up to the last sequence when a `finish` has been recorded, and otherwise up to the highest sequence that has arrived.
 
 A fragment may be the empty string, which is a real fragment: it fills its place like any other.

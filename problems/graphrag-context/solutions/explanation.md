@@ -12,7 +12,7 @@ Here `V` is the number of entities, `E` the number of stored facts and `F` the n
 
 | Level | Change | What the pipeline adds |
 |-------|--------|------------------------|
-| 1 | The neighbourhood | An index from entity to the facts that mention it, and a breadth-first search for distances |
+| 1 | The neighborhood | An index from entity to the facts that mention it, and a breadth-first search for distances |
 | 2 | The ranking | A score made of three integer factors and a sort on one composite key |
 | 3 | The budget | A single pass over the sorted list with a counter of tokens left |
 | 4 | The citation | A second use of the same distances: a parent step per entity, followed back to the query entity, and a text format |
@@ -31,7 +31,7 @@ A query is a pipeline: find what is near, order it, take as much as fits, and sa
 2. `egoNetwork`: run a breadth-first search from the entity over `incident`, treating every fact as a link between its two ends in both directions. The hop of a fact is `1 + min(distance of subject, distance of object)`, counting only the ends that were reached. Keep the facts with a hop of at most `hops`, and sort by hop and then by the three names.
 3. `rankFacts`: for each fact compute `hopFactor = 16 >> (hop - 1)`, `steps = min(4, floor(max(0, now - time) / halfLife))`, `recencyFactor = 16 >> steps` and `score = weight * hopFactor * recencyFactor`. Sort by the key `(-score, hop, subject, relation, object)`.
 4. `buildContext`: walk the ranked list with `remaining = budget`. Take a fact when `tokens <= remaining`, with `tokens = ceil((len(subject) + len(relation) + len(object) + 2) / 4)`, and subtract; otherwise go on to the next.
-5. `explain`: take the distances from the entity. The parent step of an entity `v` is the pair (smallest neighbour name at distance `d - 1`, smallest fact between them). Find the nearer end of the fact (ties by name), follow parent steps back to the entity, reverse, and append the fact.
+5. `explain`: take the distances from the entity. The parent step of an entity `v` is the pair (smallest neighbor name at distance `d - 1`, smallest fact between them). Find the nearer end of the fact (ties by name), follow parent steps back to the entity, reverse, and append the fact.
 6. `renderContext`: build the header from the chosen facts and the sum of their tokens, then one line per fact with its path written from the entity: forward arrow when standing on the subject, backward arrow when standing on the object.
 
 ### Correctness
@@ -44,7 +44,7 @@ Ranking: the score is a pure function of the fact, its hop and the query numbers
 
 Packing: the loop takes a fact exactly when the statement does, and `remaining` only goes down, so the sum of the tokens never exceeds the budget. Skipping a fact never changes the facts examined after it, only the counter.
 
-Paths: the parent of each entity is defined by a rule that depends on the entity alone (its distance and its neighbours), so the path to an entity is the same whichever fact led there. Every step reduces the distance by one, so the walk ends at the entity after `distance` steps, and with the fact itself the path has `hop` facts. The nearer end is chosen as the statement says, and the final fact never appears in the chain to its own nearer end, because that end has no neighbour closer to the entity through the fact.
+Paths: the parent of each entity is defined by a rule that depends on the entity alone (its distance and its neighbors), so the path to an entity is the same whichever fact led there. Every step reduces the distance by one, so the walk ends at the entity after `distance` steps, and with the fact itself the path has `hop` facts. The nearer end is chosen as the statement says, and the final fact never appears in the chain to its own nearer end, because that end has no neighbor closer to the entity through the fact.
 
 ### Complexity
 
@@ -57,14 +57,14 @@ Paths: the parent of each entity is defined by a rule that depends on the entity
 - The score is a product of three factors and each halving is an integer shift, which keeps every score exact and the order identical in every language. A smooth exponential decay and learned weights would rank better, at the price of floating point ties and of a score that cannot be checked by hand.
 - Greedy filling is simple and explainable, and may miss the choice with the highest total score within the budget, which an exact knapsack solution finds. Because a fact that does not fit is skipped rather than ending the fill, a small fact lower in the ranking can use the space that a larger one could not.
 - The budget here counts the facts only, and not the paths or the numbering. That keeps the facts and their citations independent of each other. A system that counts everything the model reads must fill the budget with the rendered lines instead, and then the path length changes what fits.
-- Community summaries (clusters of densely connected entities, each summarised in text) answer broad questions that no single entity's neighbourhood can. They are outside this problem, which only retrieves and cites individual facts.
+- Community summaries (clusters of densely connected entities, each summarized in text) answer broad questions that no single entity's neighborhood can. They are outside this problem, which only retrieves and cites individual facts.
 
 ### Pitfalls and edge cases
 
 - Level 1: the hop is decided by the nearer end, so a fact between two entities at the same distance `k` comes at `k + 1`, not at `k`. Direction does not matter for distance. A fact about one entity (subject equal to object) is stored once in the index, and has a hop of one more than the distance of that entity. A repeated triple changes nothing, not even the weight. A fact in the reverse direction is a different fact. An entity with no facts has an empty network.
-- Level 2: `age` is clamped at 0, so a future fact is not penalised. `steps` is the integer part of `age / halfLife`: 9 days with a half-life of 10 is none, 10 is one. After 4 halvings the factor stops falling. Ties go to the nearer fact, then to the names, so equal scores from different hops are not a coin toss. Do not float the division: use integer division.
+- Level 2: `age` is clamped at 0, so a future fact is not penalized. `steps` is the integer part of `age / halfLife`: 9 days with a half-life of 10 is none, 10 is one. After 4 halvings the factor stops falling. Ties go to the nearer fact, then to the names, so equal scores from different hops are not a coin toss. Do not float the division: use integer division.
 - Level 3: the token count is a ceiling: 8 characters are 2 tokens and 9 are 3. A fact larger than the budget is skipped, and so is one larger than what is left, and the walk goes on. A budget of 0 gives an empty list. The tokens are those of the fact alone.
-- Level 4: the parent is the smallest neighbour name at the previous distance, and then the smallest fact between the two, which may be a fact in either direction. For a fact between two entities of the same distance, the path goes through the one with the smaller name. A fact that cannot be reached, or is not stored, has an empty path. The arrow shows the direction in which the fact was stored, not the direction of the walk. The text has no trailing newline, and a context without facts is only its header.
+- Level 4: the parent is the smallest neighbor name at the previous distance, and then the smallest fact between the two, which may be a fact in either direction. For a fact between two entities of the same distance, the path goes through the one with the smaller name. A fact that cannot be reached, or is not stored, has an empty path. The arrow shows the direction in which the fact was stored, not the direction of the walk. The text has no trailing newline, and a context without facts is only its header.
 
 ### Language notes
 
@@ -78,5 +78,5 @@ Paths: the parent of each entity is defined by a rule that depends on the entity
 - V. A. Traag, L. Waltman and N. J. van Eck, "From Louvain to Leiden: guaranteeing well-connected communities", Scientific Reports 9:5233, 2019, doi:10.1038/s41598-019-41695-z: community detection, the first step of the community summaries mentioned above (not implemented here).
 - M. E. J. Newman, "Networks", 2nd edition, Oxford University Press, 2018, doi:10.1093/oso/9780198805090.001.0001: a textbook on networks, with community detection among its topics.
 - N. F. Liu et al., "Lost in the Middle: How Language Models Use Long Contexts", Transactions of the Association for Computational Linguistics 12:157-173, 2024, doi:10.1162/tacl_a_00638: how the position of information in a long context affects its use, which is why the order of the facts matters.
-- [NetworkX `ego_graph`](https://networkx.org/documentation/stable/reference/generated/networkx.generators.ego.ego_graph.html): the usual ego network as an induced subgraph of the neighbours within a radius, which level 1 deliberately does not follow.
+- [NetworkX `ego_graph`](https://networkx.org/documentation/stable/reference/generated/networkx.generators.ego.ego_graph.html): the usual ego network as an induced subgraph of the neighbors within a radius, which level 1 deliberately does not follow.
 - S. Martello and P. Toth, "Knapsack Problems: Algorithms and Computer Implementations", Wiley, 1990: the exact alternative to a greedy fill.

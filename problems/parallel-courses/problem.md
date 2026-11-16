@@ -2,7 +2,7 @@
 
 ## Statement
 
-There are `n` courses, labelled from `1` to `n`. Each pair `[before, after]` in `relations` says that course `before` must be completed in an earlier semester than course `after`.
+There are `n` courses, labeled from `1` to `n`. Each pair `[before, after]` in `relations` says that course `before` must be completed in an earlier semester than course `after`.
 
 In one semester you may take any number of courses, as long as every prerequisite of each of them was completed in a previous semester. Return the smallest number of semesters needed to complete all `n` courses, or `-1` if it is impossible to complete them all.
 
@@ -10,7 +10,7 @@ Reference: this is our own wording of LeetCode problem 1136, [Parallel Courses](
 
 ## Input
 
-- `n`: the number of courses, labelled `1` to `n`
+- `n`: the number of courses, labeled `1` to `n`
 - `relations`: pairs `[before, after]`, each meaning `before` must be done in an earlier semester than `after`
 
 ## Output

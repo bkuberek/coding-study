@@ -52,7 +52,7 @@ Context and support: `remaining` only decreases, so the tokens taken never excee
 
 ### Trade-offs
 
-- The full sort costs `n log n`. A heap of size `k` would make each ranking `O(n m + n log k)`, which matters for a large collection; here `k` is small and the evidence and the attempts recompute the ranking several times, so caching the top `k` per question within one call would save more than a heap. A real system keeps an approximate nearest-neighbour index instead of scanning.
+- The full sort costs `n log n`. A heap of size `k` would make each ranking `O(n m + n log k)`, which matters for a large collection; here `k` is small and the evidence and the attempts recompute the ranking several times, so caching the top `k` per question within one call would save more than a heap. A real system keeps an approximate nearest-neighbor index instead of scanning.
 - Comparing `d * |d| / (p · p)` exactly makes the two languages agree on every order with no tolerance. Floating point is simpler to write and fine for the tests (their ties are exact), but at a scale where scores crowd together, two programs can disagree in the last bits.
 - The decision table counts verdicts. A confidence score with an upper and a lower threshold, as in the published design, says how sure the grader is, and lets the middle band combine both sources; counts are easier to test and to explain.
 - Relevant passages are kept whole here. Cutting them down to their relevant sentences too would save tokens and remove distracting text, at the cost of one more grader call per sentence.

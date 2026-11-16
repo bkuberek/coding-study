@@ -65,7 +65,7 @@ Give every node a list of the nodes it shares a trail with: its adjacency list. 
 
 ### Correctness
 
-A node is added to the queue only as a neighbour of a node taken from the queue, so every queued node is joined to `source` by a chain of trails, and returning `true` is right. If a path `source = v0, ..., vk = target` exists, then by induction every `vi` is queued: `v0` is, and when `v(i-1)` is taken from the queue, `vi` is in its list, so it is either already visited (hence queued earlier) or gets queued now. The loop ends because each node is queued at most once. When the queue empties without a `true`, `target` was never visited, and the argument just made shows no path exists.
+A node is added to the queue only as a neighbor of a node taken from the queue, so every queued node is joined to `source` by a chain of trails, and returning `true` is right. If a path `source = v0, ..., vk = target` exists, then by induction every `vi` is queued: `v0` is, and when `v(i-1)` is taken from the queue, `vi` is in its list, so it is either already visited (hence queued earlier) or gets queued now. The loop ends because each node is queued at most once. When the queue empties without a `true`, `target` was never visited, and the argument just made shows no path exists.
 
 ### Complexity
 
@@ -87,7 +87,7 @@ The usual answer. It is linear and easy to explain. A depth-first search (an exp
 
 - Python: `[[] for _ in range(n)]` creates `n` independent lists; `[[]] * n` would create `n` references to one list. `collections.deque` gives `popleft` in constant time.
 - TypeScript: `Array.from({ length: n }, () => [])` builds independent arrays. The queue is an array with a moving `head` index, so nothing is removed from the front.
-- Java: `List<List<Integer>>` is filled with an `ArrayList` per node; the neighbour loop `for (int neighbor : neighbors.get(node))` unboxes each `Integer`. `ArrayDeque` is the queue.
+- Java: `List<List<Integer>>` is filled with an `ArrayList` per node; the neighbor loop `for (int neighbor : neighbors.get(node))` unboxes each `Integer`. `ArrayDeque` is the queue.
 - Kotlin: `Array(n) { mutableListOf<Int>() }` runs the block once per element, giving independent lists; `ArrayDeque<Int>` with `addLast` and `removeFirst` is the queue.
 - Go: `make([][]int, n)` makes `n` nil slices, and `append` on a nil slice is fine, so no per-node setup is needed; the queue is a slice, with `queue = queue[1:]` to drop the front.
 - Rust: `vec![Vec::new(); count]` clones the empty vector `count` times, which gives independent lists. `VecDeque` is the queue.
@@ -110,7 +110,7 @@ Merging only ever joins the groups of the two ends of a real trail, so two nodes
 
 ### Complexity
 
-- Time: O(V + E * α(V)) — creating the arrays costs V and each edge makes two `find` calls and at most one merge; with union by size and a path-shortening `find`, each call costs an amortised α(V), where α is the inverse of Ackermann's function and grows so slowly that it is effectively constant. Tarjan, "Efficiency of a Good But Not Linear Set Union Algorithm", Journal of the ACM 22(2), 1975, pages 215 to 225, doi:10.1145/321879.321884, gives a bound in terms of this slowly growing inverse for the algorithm with path compression, where `find` points every node on its path at the root. This reference uses path halving instead, where `find` points every other node on the path at its grandparent in a single pass. Tarjan and van Leeuwen, "Worst-case Analysis of Set Union Algorithms", Journal of the ACM 31(2), 1984, pages 245 to 281, doi:10.1145/62.2160, show that linking by size or by rank combined with compression, splitting or halving runs in O(n + m·α(m + n, n)) time for n elements and m operations.
+- Time: O(V + E * α(V)) — creating the arrays costs V and each edge makes two `find` calls and at most one merge; with union by size and a path-shortening `find`, each call costs an amortized α(V), where α is the inverse of Ackermann's function and grows so slowly that it is effectively constant. Tarjan, "Efficiency of a Good But Not Linear Set Union Algorithm", Journal of the ACM 22(2), 1975, pages 215 to 225, doi:10.1145/321879.321884, gives a bound in terms of this slowly growing inverse for the algorithm with path compression, where `find` points every node on its path at the root. This reference uses path halving instead, where `find` points every other node on the path at its grandparent in a single pass. Tarjan and van Leeuwen, "Worst-case Analysis of Set Union Algorithms", Journal of the ACM 31(2), 1984, pages 245 to 281, doi:10.1145/62.2160, show that linking by size or by rank combined with compression, splitting or halving runs in O(n + m·α(m + n, n)) time for n elements and m operations.
 - Space: O(V) — a parent and a size entry per node.
 
 ### Trade-offs

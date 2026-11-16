@@ -170,7 +170,7 @@ The evidence is sentence 2 of `returns_how` (8 tokens), its sentence 3 (4 tokens
 ## Follow-ups
 
 - Here the verdicts are given. A real grader is a model call per passage, and another per sentence when a passage is refined. How would you keep that affordable: a cheaper grader first, a cache keyed by question and passage, grading only what could fit the budget?
-- The decision table counts verdicts. A grader that returns a confidence score needs thresholds instead. How would you choose an upper and a lower threshold from labelled examples, and what does the band between them buy?
+- The decision table counts verdicts. A grader that returns a confidence score needs thresholds instead. How would you choose an upper and a lower threshold from labeled examples, and what does the band between them buy?
 - The rewrites are given. Generated rewrites can drift from what the user asked ("refund for a broken phone" becoming "phone repair"). How would you check that a rewrite still asks the same question, and which of the evidence would you show the user?
 - A fallback source such as a web search returns text that anyone could have written, including instructions aimed at the model. What would you do with that text before it reaches the prompt, besides grading its relevance?
 - Two passages copied from one page are not two independent sources. How would you count support so that duplicates do not pass the threshold?

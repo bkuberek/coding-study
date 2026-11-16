@@ -25,7 +25,7 @@ Chunking decides what can be found. A whole document is too coarse to rank and t
 
 Embedding turns each chunk into a vector, so that "how long do customers have" lands near "within 30 days of purchase" though they share few words. Embedding APIs are paid and rate-limited per request, so a document's chunks go in one request, and a 429 is a request to wait, not a failure.
 
-Retrieval is a nearest-neighbour search: the cosine similarity of the question's vector with every chunk's, best first. Two limits shape it. `k` caps how much context the model gets, and the minimum score decides when the corpus simply does not cover the question. That second limit is the honest "I don't know": with nothing close enough, the model would only guess, so it is not asked at all.
+Retrieval is a nearest-neighbor search: the cosine similarity of the question's vector with every chunk's, best first. Two limits shape it. `k` caps how much context the model gets, and the minimum score decides when the corpus simply does not cover the question. That second limit is the honest "I don't know": with nothing close enough, the model would only guess, so it is not asked at all.
 
 Generation is where grounding is lost or kept. The model must see the retrieved chunks and nothing else, so that what it says can only come from them; sending the whole corpus defeats retrieval and costs a fortune at any real size. And the model's citations are claims, not facts: it can cite a chunk it never saw. The app knows exactly what it showed, so it keeps only those.
 
@@ -81,7 +81,7 @@ Grounding: the model is called only when retrieval found something, and is shown
 
 ### Trade-offs
 
-The exact scan is linear in the number of chunks, which is nothing at a few dozen and slow at millions. pgvector's HNSW index answers in roughly logarithmic time, but it is approximate: it can miss a true neighbour, and with a filter such as the minimum score it can return fewer than `k` rows even when more qualify, unless its search width (`hnsw.ef_search`) is raised or its iterative scans (`hnsw.iterative_scan`, since pgvector 0.8) are turned on. The reference stays exact because the cases expect the exact top `k`, and a corpus that needs the index also needs a way to measure what it misses.
+The exact scan is linear in the number of chunks, which is nothing at a few dozen and slow at millions. pgvector's HNSW index answers in roughly logarithmic time, but it is approximate: it can miss a true neighbor, and with a filter such as the minimum score it can return fewer than `k` rows even when more qualify, unless its search width (`hnsw.ef_search`) is raised or its iterative scans (`hnsw.iterative_scan`, since pgvector 0.8) are turned on. The reference stays exact because the cases expect the exact top `k`, and a corpus that needs the index also needs a way to measure what it misses.
 
 Fixed word windows are the simplest chunking that is easy to state and grade. Real systems cut by tokens, which is what both the embedding model and the chat model count, and prefer boundaries that mean something, headings, paragraphs, sentences, so a chunk is a coherent passage rather than 20 words that start mid-sentence. The overlap is a hedge against bad boundaries; better boundaries need less of it.
 

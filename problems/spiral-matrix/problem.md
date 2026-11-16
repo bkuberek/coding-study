@@ -39,7 +39,7 @@ A single column is read from top to bottom: the spiral turns down right away, be
 
 - Can you do it without marking visited cells, with O(1) extra memory?
 - How would you fill an `n x n` matrix with `1, 2, ..., n^2` in spiral order?
-- What changes for a counterclockwise spiral, or one that starts from the centre?
+- What changes for a counterclockwise spiral, or one that starts from the center?
 
 ## Hints
 

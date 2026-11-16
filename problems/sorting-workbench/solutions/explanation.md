@@ -52,7 +52,7 @@ The counters are exact for the following reasons. In insertion sort, every shift
 
 ### Trade-offs
 
-Insertion sort is quadratic but needs no extra memory, is stable, and is fast on lists that are nearly sorted because its work follows the number of inversions. Merge sort has a guaranteed `n log n` bound and is stable, at the price of extra memory for the merge. Quicksort sorts in place and is fast in practice, is not stable, and has a quadratic worst case; the three-way partition keeps lists with many equal values from being a bad case. Quickselect finds one rank in expected linear time and does not sort the rest. The external sort is what is left when the data does not fit in memory: it reads and writes each value once per pass, so the number of passes, which falls with a bigger `ways` or more memory, is what to minimise. Knuth's volume 3 devotes section 5.4 to external sorting, for the many refinements.
+Insertion sort is quadratic but needs no extra memory, is stable, and is fast on lists that are nearly sorted because its work follows the number of inversions. Merge sort has a guaranteed `n log n` bound and is stable, at the price of extra memory for the merge. Quicksort sorts in place and is fast in practice, is not stable, and has a quadratic worst case; the three-way partition keeps lists with many equal values from being a bad case. Quickselect finds one rank in expected linear time and does not sort the rest. The external sort is what is left when the data does not fit in memory: it reads and writes each value once per pass, so the number of passes, which falls with a bigger `ways` or more memory, is what to minimize. Knuth's volume 3 devotes section 5.4 to external sorting, for the many refinements.
 
 ### Pitfalls and edge cases
 

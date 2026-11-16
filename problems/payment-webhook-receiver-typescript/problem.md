@@ -91,7 +91,7 @@ Each event has an `id`, and the provider delivers every event at least once. Its
 | Has an id your app has already applied, and is the same event: the same JSON value, field for field | 200 | `{"outcome": "duplicate"}`, and nothing changes |
 | Has an id your app has already applied, with any field different | 409 | `{"error": "event id reused"}`, and nothing changes |
 
-The timestamp check of level 1 is your defence against replays. Someone who captured a delivery can send it again, byte for byte, but not sign a new timestamp. Inside the 300 s window a replay is a duplicate and changes nothing. Outside it, the delivery is refused before any id is looked up.
+The timestamp check of level 1 is your defense against replays. Someone who captured a delivery can send it again, byte for byte, but not sign a new timestamp. Inside the 300 s window a replay is a duplicate and changes nothing. Outside it, the delivery is refused before any id is looked up.
 
 ### Example 1
 

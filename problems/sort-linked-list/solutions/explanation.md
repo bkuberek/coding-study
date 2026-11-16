@@ -130,7 +130,7 @@ The standard interview answer: it relinks the given nodes, is stable (ties take 
 
 ### Intuition
 
-Top-down merge sort spends its stack only on remembering where the halves are. Do the same merges in a different order instead: first merge neighbouring single nodes into sorted pairs, then neighbouring pairs into sorted runs of four, and so on. Each pass walks the list once, cutting off two runs, merging them and appending the result.
+Top-down merge sort spends its stack only on remembering where the halves are. Do the same merges in a different order instead: first merge neighboring single nodes into sorted pairs, then neighboring pairs into sorted runs of four, and so on. Each pass walks the list once, cutting off two runs, merging them and appending the result.
 
 ### Algorithm
 

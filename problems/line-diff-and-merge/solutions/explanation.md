@@ -67,7 +67,7 @@ The merge reuses the diff. A base line that both diffs keep is a place where all
 - Hunk headers: an empty range counts the line before it (`-1,0`), `0` at the top of the file, not the next line. A one-line range has no `,1`. The old and new starts differ as soon as an earlier hunk added or removed lines.
 - A gap of exactly `2 * context` kept lines stays in one hunk.
 - Patches: forgetting `added` makes every hunk after one that changed the length search from the wrong place; forgetting `shift` loses a file that moved by more than `maxOffset`; breaking a tie towards the later position, or letting a hunk match before the previous one, applies a change to the wrong copy of repeated lines. A rejected hunk must not stop the patch.
-- Merge: an identical change on both sides is not a conflict; changes on neighbouring lines are, because no stable line separates them; a deletion against an edit is a conflict with an empty side.
+- Merge: an identical change on both sides is not a conflict; changes on neighboring lines are, because no stable line separates them; a deletion against an edit is a conflict with an empty side.
 
 ### Language notes
 

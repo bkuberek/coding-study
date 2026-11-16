@@ -25,19 +25,19 @@ The refund as a decimal, `>= 0`, rounded to cents, or `-1` when `changeDate` is 
 
 <!-- case: ex1 -->
 
-The term has 365 days. Cancelling on 2026-07-02 leaves 183 days (2026-07-02 up to 2027-01-01), so the refund is 1200 * 183 / 365 = 601.6438..., which rounds to 601.64.
+The term has 365 days. Canceling on 2026-07-02 leaves 183 days (2026-07-02 up to 2027-01-01), so the refund is 1200 * 183 / 365 = 601.6438..., which rounds to 601.64.
 
 ### Example 2
 
 <!-- case: ex2 -->
 
-Cancelling on the end date leaves no days of the term, so the refund is 0.
+Canceling on the end date leaves no days of the term, so the refund is 0.
 
 ### Example 3
 
 <!-- case: ex3 -->
 
-Cancelling on the first day of the term refunds the whole premium.
+Canceling on the first day of the term refunds the whole premium.
 
 ## Constraints
 

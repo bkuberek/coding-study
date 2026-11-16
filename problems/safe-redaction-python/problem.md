@@ -102,7 +102,7 @@ PHONE = r"(?<![\w+])(?:\+?[0-9]{1,3}[ .-])?(?:\([0-9]{3}\)|[0-9]{3})[ .-]?[0-9]{
 
 In words: an email is one or more letters, digits or `_ . % + -` before an `@`, then a domain of dot-separated parts with a last part of two or more letters, and it stops before a final full stop. A phone number is ten digits, grouped 3-3-4 with an optional separator of a space, a dot or a hyphen between the groups, an optional area code in brackets, and an optional country code with a `+` or a separator, and it is not a part of a longer run of letters or digits.
 
-The rule: find every match of `EMAIL` in the text, in order, as spans labelled `EMAIL`, then every match of `PHONE`, as spans labelled `PHONE`. Add them to the believed proposals of level 2, after them, and merge all of it by the level 2 rule. Nothing is hidden twice: a find that lies inside, or overlaps, a span the model proposed becomes one span with it, so there is never a `[EMAIL]` inside a `[PERSON]`. When a proposal and a find cover exactly the same characters, the label is the proposal's, since it came first.
+The rule: find every match of `EMAIL` in the text, in order, as spans labeled `EMAIL`, then every match of `PHONE`, as spans labeled `PHONE`. Add them to the believed proposals of level 2, after them, and merge all of it by the level 2 rule. Nothing is hidden twice: a find that lies inside, or overlaps, a span the model proposed becomes one span with it, so there is never a `[EMAIL]` inside a `[PERSON]`. When a proposal and a find cover exactly the same characters, the label is the proposal's, since it came first.
 
 ### Example 1
 

@@ -59,14 +59,14 @@ With two retries and a base delay of 100, the first failure at 10 delays the job
 ## Level 4: Dependencies and cancellation
 
 - `submitAfter(timestamp, jobId, tenant, priority, dependsOn)`: like `submit`, but the job may start only once every job in `dependsOn` is `"DONE"`. Returns `false` and changes nothing when the id was used before or any dependency is unknown, `"FAILED"` or `"CANCELLED"`. An empty `dependsOn` behaves like `submit`.
-- `cancel(timestamp, jobId)`: cancels a `"QUEUED"` job, including one waiting for a retry, and then every queued job that depends on a cancelled job, directly or through other jobs. Their status becomes `"CANCELLED"`. Returns the number of jobs cancelled, or `0` when the job is not queued.
-- When a job becomes `"FAILED"`, the queued jobs that depend on it, directly or not, are cancelled in the same way.
+- `cancel(timestamp, jobId)`: cancels a `"QUEUED"` job, including one waiting for a retry, and then every queued job that depends on a canceled job, directly or through other jobs. Their status becomes `"CANCELLED"`. Returns the number of jobs canceled, or `0` when the job is not queued.
+- When a job becomes `"FAILED"`, the queued jobs that depend on it, directly or not, are canceled in the same way.
 
 ### Example 1
 
 <!-- case: ex4 -->
 
-`test` outranks `build` but must wait for it, so `build` starts first and nothing else can start while it runs. Once `build` is done, `test` starts. Cancelling `deploy` cancels just that job, so nothing is left when `test` completes.
+`test` outranks `build` but must wait for it, so `build` starts first and nothing else can start while it runs. Once `build` is done, `test` starts. Canceling `deploy` cancels just that job, so nothing is left when `test` completes.
 
 ## Constraints
 

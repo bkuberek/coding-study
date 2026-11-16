@@ -4,7 +4,7 @@
 
 Build `GraphContext`, the part of a question-answering assistant that prepares the facts a language model will read. The assistant keeps its knowledge as a *graph* of facts, finds the entity a question is about, and has to turn "everything known around this entity" into a short, ordered and traceable piece of text that fits the model's context window. The API grows over four levels: every level adds methods to the same class, and the methods of earlier levels keep working with the rules of the later levels applied.
 
-**What is GraphRAG?** A language model answers from what it learned in training, which may be old or incomplete. *Retrieval-augmented generation* (RAG) fixes this by fetching relevant information at question time and putting it in the prompt, so that the model can answer from it and cite it. The usual retrieval compares the question with passages of text and takes the most similar passages. One *graph* variant keeps knowledge as facts that connect entities (`ada works_at acme`, `acme based_in paris`), finds the entities named in the question, and fetches the facts around them. That helps with questions that need facts joined together: "in which city does Ada's employer have its office?" needs two facts one step apart, and no single passage may state both. The fetched facts then have to be ranked, because there are usually more than the prompt can hold, cut to a *token budget* (a token is the unit in which a model counts text), and shown with where each came from, so that the answer can cite it. This problem builds those four steps, one per level: the neighbourhood, the ranking, the packing and the citation.
+**What is GraphRAG?** A language model answers from what it learned in training, which may be old or incomplete. *Retrieval-augmented generation* (RAG) fixes this by fetching relevant information at question time and putting it in the prompt, so that the model can answer from it and cite it. The usual retrieval compares the question with passages of text and takes the most similar passages. One *graph* variant keeps knowledge as facts that connect entities (`ada works_at acme`, `acme based_in paris`), finds the entities named in the question, and fetches the facts around them. That helps with questions that need facts joined together: "in which city does Ada's employer have its office?" needs two facts one step apart, and no single passage may state both. The fetched facts then have to be ranked, because there are usually more than the prompt can hold, cut to a *token budget* (a token is the unit in which a model counts text), and shown with where each came from, so that the answer can cite it. This problem builds those four steps, one per level: the neighborhood, the ranking, the packing and the citation.
 
 **The graph.** A fact is a *triple* of `subject`, `relation` and `object` (as in the companion problems on facts and triples), with a **weight** (how much the fact is trusted or how salient it is) and a **time** (when it was recorded or last confirmed). The entities are the subjects and objects. Facts have a direction in what they say, but when looking for what is near an entity, a fact links its two entities in both directions: `bob knows ada` is near `bob` and near `ada`.
 
@@ -25,11 +25,11 @@ Facts come back as rows of text, `[subject, relation, object]` followed by the c
 
 - `addFact(subject, relation, obj, weight, time)`: stores a fact. The identity of a fact is its triple. It returns `true` when the triple is new, and `false` when it is already stored, in which case nothing changes (the weight and the time stay). A relation in the other direction (`b r a` after `a r b`) or another relation between the same entities is a different fact. (The object is called `obj` because some languages reserve `object`.)
 - `size()`: the number of facts.
-- `egoNetwork(entity, hops)`: the facts within `hops` hops of `entity`, as rows `[subject, relation, object, hop]`, sorted by `hop` and then by subject, relation and object. An *ego network* is the neighbourhood of one node.
+- `egoNetwork(entity, hops)`: the facts within `hops` hops of `entity`, as rows `[subject, relation, object, hop]`, sorted by `hop` and then by subject, relation and object. An *ego network* is the neighborhood of one node.
 
 **Distance and hops.** The **distance** of an entity from `entity` is the fewest facts in a walk that starts at `entity` and goes from fact to fact through shared entities, in either direction of the facts. `entity` itself is at distance 0. A fact connects its subject and its object. Its **hop** is `1 + min(distance of its subject, distance of its object)`: how many facts a walk crosses to arrive at it, counting itself. A fact is in the ego network when its hop is at most `hops`. A fact touching neither a reachable entity nor `entity` is never in it. For an entity that has no facts the answer is `[]`.
 
-Note how this differs from the usual definition. In social-network analysis an ego network is the induced subgraph of the entities within a radius of the ego (for example, NetworkX's `ego_graph` returns the induced subgraph of the neighbours within a radius), so at radius 1 it includes the ties among the ego's neighbours. Here a fact between two entities that are both at distance `k` has hop `k + 1` and comes one hop later. The difference is deliberate: a context is built from facts that a walk can cross, so a hop is the number of facts crossed to reach a fact, which is also the length of the path that level 4 cites, and a fact that the induced subgraph would include at `k` would have a path of `k + 1` facts.
+Note how this differs from the usual definition. In social-network analysis an ego network is the induced subgraph of the entities within a radius of the ego (for example, NetworkX's `ego_graph` returns the induced subgraph of the neighbors within a radius), so at radius 1 it includes the ties among the ego's neighbors. Here a fact between two entities that are both at distance `k` has hop `k + 1` and comes one hop later. The difference is deliberate: a context is built from facts that a walk can cross, so a hop is the number of facts crossed to reach a fact, which is also the length of the path that level 4 cites, and a fact that the induced subgraph would include at `k` would have a path of `k + 1` facts.
 
 ### Example 1
 
@@ -54,7 +54,7 @@ The **score** is an integer, with no rounding:
 - `hopFactor = 16 >> (hop - 1)`, which is 16, 8, 4, 2, 1 for hops 1 to 5: each extra hop halves it.
 - `age = max(0, now - time)`, so a fact from the future is as fresh as one from now.
 - `steps = min(4, floor(age / halfLife))`: the number of whole half-lives, at most 4.
-- `recencyFactor = 16 >> steps`, which is 16, 8, 4, 2, 1: each whole half-life halves it, and a fact older than 4 half-lives is not penalised further.
+- `recencyFactor = 16 >> steps`, which is 16, 8, 4, 2, 1: each whole half-life halves it, and a fact older than 4 half-lives is not penalized further.
 - `score = weight * hopFactor * recencyFactor`.
 
 (`x >> k` is `x` halved `k` times, in whole numbers; here it is exact.) The order is: higher score first; equal scores, the smaller `hop` first; then subject, relation and object as text.
@@ -137,11 +137,11 @@ The first context holds the three facts of the example at level 3. In the path o
 
 ## Follow-ups
 
-- The neighbourhood is cut by a number of hops. A hub with thousands of facts floods the context at hop 1. How would you cap what a hub contributes, and what ranking signal would you add to prefer specific facts over generic ones?
+- The neighborhood is cut by a number of hops. A hub with thousands of facts floods the context at hop 1. How would you cap what a hub contributes, and what ranking signal would you add to prefer specific facts over generic ones?
 - Some systems also precompute *communities* of densely connected entities, write a summary of each, and retrieve summaries for broad questions ("what are the main themes?") where the facts around one entity are not enough. What would you store, and when would a summary be stale?
 - Here a fact costs the same whether or not its path is printed. A real context also pays for the path text and the numbering. How would you make the budget cover them, and how does that change the greedy fill?
 - Greedy fills by score order and can miss the choice with the highest total score. When would you pay for an exact knapsack choice, and what would a "diversity" rule (no two facts about the same pair) cost in score?
-- The same fact can be reached by two paths of the same length. If the entity's neighbours change, the cited path can change too. What would you store with a fact to keep a citation stable?
+- The same fact can be reached by two paths of the same length. If the entity's neighbors change, the cited path can change too. What would you store with a fact to keep a citation stable?
 
 ## Hints
 

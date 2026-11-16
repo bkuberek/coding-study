@@ -53,7 +53,7 @@ Numbering: every new version is created while visiting the keys in sorted order,
 - A warehouse table holds all versions in one place and finds the valid one with a range condition on the dates; an index on `(businessKey, validFrom)` makes that the same binary search. In memory, a list per key is the direct equivalent.
 - Copying untracked values into every version keeps each row complete, at the cost of rewriting old rows on every correction. Keeping untracked values once per key, in a separate map, makes corrections O(1) and the rows assembled on read; the answers are the same.
 - Inserting into the middle of a list is linear. A balanced tree per key makes it logarithmic, which matters only for keys with very long histories.
-- A version table without merging can hold neighbours with equal values after late corrections. Merging them would change surrogate keys that facts already point at, which is why the statement forbids it.
+- A version table without merging can hold neighbors with equal values after late corrections. Merging them would change surrogate keys that facts already point at, which is why the statement forbids it.
 
 ### Pitfalls and edge cases
 

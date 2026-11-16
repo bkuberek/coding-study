@@ -167,7 +167,7 @@ For the chain, keep a list with the chain digest after each sealed batch. The ne
 
 ### Hint 6
 
-For the tree, keep the level of leaves and build each level above it by pairing neighbours, copying the last node when the level has an odd length. The sibling of the node at position `i` is at position `i xor 1`, and its side is `"L"` when that position is smaller than `i`. Move up with `i = i / 2`.
+For the tree, keep the level of leaves and build each level above it by pairing neighbors, copying the last node when the level has an odd length. The sibling of the node at position `i` is at position `i xor 1`, and its side is `"L"` when that position is smaller than `i`. Move up with `i = i / 2`.
 
 ### Hint 7
 

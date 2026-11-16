@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../../schemas/meta.schema.json
 slug: flood-fill
 title: Flood Fill
-summary: "Repaint one square of a grid and every same-coloured square joined to it up, down, left or right. A first grid search, before counting regions."
+summary: "Repaint one square of a grid and every same-colored square joined to it up, down, left or right. A first grid search, before counting regions."
 status: ready
 difficulty: easy
 track: dsa

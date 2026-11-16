@@ -10,7 +10,7 @@ Build `PropertyRunner`, a small engine for **property-based testing**. The API g
 2. A **property** is a rule that every input must satisfy, a check that answers yes or no.
 3. A **runner** draws many inputs, checks the property on each, and reports the first one that breaks it, called a **counterexample**.
 
-**A worked example.** Suppose someone wrote a sort that makes only one pass over the list, swapping each pair of neighbours that are out of order. The example test passes: one pass over `[3, 1, 2]` swaps `3` with `1` and then `3` with `2`, which gives `[1, 2, 3]`. The property "the output is in non-decreasing order", checked on 100 random lists, fails on the second list drawn in this problem's level 1 examples, `[5, 3, 4, 2, 0, 9]`: one pass gives `[3, 4, 2, 0, 5, 9]`. The property found the bug that the example missed.
+**A worked example.** Suppose someone wrote a sort that makes only one pass over the list, swapping each pair of neighbors that are out of order. The example test passes: one pass over `[3, 1, 2]` swaps `3` with `1` and then `3` with `2`, which gives `[1, 2, 3]`. The property "the output is in non-decreasing order", checked on 100 random lists, fails on the second list drawn in this problem's level 1 examples, `[5, 3, 4, 2, 0, 9]`: one pass gives `[3, 4, 2, 0, 5, 9]`. The property found the bug that the example missed.
 
 **Why everything is fixed here.** Real tools draw their inputs at random. To make every answer exact and the same in every language, this problem draws them from a small pseudo-random generator that is specified bit by bit, started from a **seed**: the same seed gives the same inputs. Generators and properties travel through the tests as short strings in a small language described below, because a test case can hold only data.
 
@@ -89,7 +89,7 @@ A random counterexample is often large and noisy: `[5,3,4,2,0,9]` hides the bug 
 1. **Shorter lists.** For a chunk size `c` equal to `n`, then `n/2`, `n/4` and so on, rounded down, while `c >= 1`: for each start `i = 0, c, 2c, ...` with `i + c <= n`, the list without the `c` elements from position `i`. A chunk size is skipped when `n - c < MIN`. The first candidate of a list that may be empty is `[]`.
 2. **Simpler elements.** For each position from the first to the last, and for each candidate of the element there (by `G`'s rules, in order), the list with that one element replaced.
 
-A candidate that equals the value itself, or an earlier candidate, is left out: removing either of two equal neighbours gives the same list once.
+A candidate that equals the value itself, or an earlier candidate, is left out: removing either of two equal neighbors gives the same list once.
 
 - `candidates(gen, seed, index)`: the candidates, as text and in order, of the `index`-th value (counted from `1`) that `gen` makes from `seed`, the last value `generate(gen, seed, index)` would list.
 - `minimize(gen, prop, seed, runs)`: `[]` when `check` with the same arguments would not report a failure. Otherwise the **shrink path**: the counterexample `check` reports, then every value the shrinker moved to, in order. The last entry is the shrunk counterexample.

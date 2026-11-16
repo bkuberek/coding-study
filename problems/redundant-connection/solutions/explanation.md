@@ -78,7 +78,7 @@ Much faster than a search in typical inputs and only a few lines, but its runnin
 ### Pitfalls and edge cases
 
 - Link roots, never the endpoints themselves.
-- Size the parent array `n + 1`, since nodes are labelled from 1.
+- Size the parent array `n + 1`, since nodes are labeled from 1.
 
 ### Language notes
 

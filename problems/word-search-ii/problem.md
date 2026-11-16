@@ -23,7 +23,7 @@ The words of `words` that can be traced on the board, in any order, each listed 
 
 <!-- case: ex1 -->
 
-`cat` runs along the top row, `core` goes down from `c` to `o` and then right through `r` and `e`, `dog` runs along the bottom row and `rat` goes up from the centre and then right. `code` fails because the only `d` touches no `e`, and `toe` fails because `t` has no neighbouring `o`.
+`cat` runs along the top row, `core` goes down from `c` to `o` and then right through `r` and `e`, `dog` runs along the bottom row and `rat` goes up from the center and then right. `code` fails because the only `d` touches no `e`, and `toe` fails because `t` has no neighboring `o`.
 
 ### Example 2
 
@@ -46,7 +46,7 @@ The words of `words` that can be traced on the board, in any order, each listed 
 
 ### Hint 1
 
-For one word, a depth-first search from every cell answers the question: mark the cell as used, try the four neighbours for the next letter, and unmark it on the way back.
+For one word, a depth-first search from every cell answers the question: mark the cell as used, try the four neighbors for the next letter, and unmark it on the way back.
 
 ### Hint 2
 

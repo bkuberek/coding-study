@@ -138,7 +138,7 @@ Before any run the trace is empty. The check accepts only the claim "patched the
 
 ## Follow-ups
 
-- A model stuck in a loop may alternate between two calls (A, B, A, B), and then no two neighbours are the same failure. How would you detect it, for example with the last `k` failures, and what does it cost in false stops?
+- A model stuck in a loop may alternate between two calls (A, B, A, B), and then no two neighbors are the same failure. How would you detect it, for example with the last `k` failures, and what does it cost in false stops?
 - Masking digits merges `exit code 1` and `exit code 2`. Which parts of a message would you mask or keep in a tool you know, and how would you let each tool decide?
 - Budgets here are checked between steps, so one long step can overshoot them. How would you stop a step that is already running?
 - The check is given as data here. What changes when it is a real test run that can itself be slow, flaky or fail for a reason that has nothing to do with the claim?

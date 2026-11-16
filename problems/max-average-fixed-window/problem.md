@@ -2,7 +2,7 @@
 
 ## Statement
 
-A bakery writes down its takings for each day in a row, in order. The owner wants to know which stretch of exactly `k` days in a row went best. In programming terms, a run of neighbouring numbers of a fixed length is called a window: the window of width 3 that starts at position 0 holds the numbers at positions 0, 1 and 2, the next one holds positions 1, 2 and 3, and so on. Sliding the window one step to the right drops its first number and picks up one new number at the end.
+A bakery writes down its takings for each day in a row, in order. The owner wants to know which stretch of exactly `k` days in a row went best. In programming terms, a run of neighboring numbers of a fixed length is called a window: the window of width 3 that starts at position 0 holds the numbers at positions 0, 1 and 2, the next one holds positions 1, 2 and 3, and so on. Sliding the window one step to the right drops its first number and picks up one new number at the end.
 
 The average of a window is the sum of its numbers divided by `k`. Given the array `nums` and the width `k`, return the largest average that any window of width `k` has.
 

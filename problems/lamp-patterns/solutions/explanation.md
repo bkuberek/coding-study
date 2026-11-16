@@ -24,7 +24,7 @@ Every arrangement of `n` lamps is a string of `n` characters from `0` and `1`, s
 
 ### Correctness
 
-Binary numerals of a fixed length are in one-to-one correspondence with the numbers they stand for, so the loop writes each of the 2^n strings exactly once, and a larger number gives a string that is larger in dictionary order. A string is allowed exactly when no two neighbouring characters are both `1`, which is what the `"11"` search tests.
+Binary numerals of a fixed length are in one-to-one correspondence with the numbers they stand for, so the loop writes each of the 2^n strings exactly once, and a larger number gives a string that is larger in dictionary order. A string is allowed exactly when no two neighboring characters are both `1`, which is what the `"11"` search tests.
 
 ### Complexity
 
@@ -38,7 +38,7 @@ It is the shortest correct program and a good cross-check for anything cleverer.
 ### Pitfalls and edge cases
 
 - Forgetting to pad with zeros: `5` is `"101"` for `n = 3` but `"0101"` for `n = 4`, and a missing leading `0` breaks both the length and the order.
-- The test can also be done on the number itself: `number & (number >> 1)` is zero exactly when no two neighbouring bits are both set. That is a nice follow-up, but the string test is easier to read.
+- The test can also be done on the number itself: `number & (number >> 1)` is zero exactly when no two neighboring bits are both set. That is a nice follow-up, but the string test is easier to read.
 
 ### Language notes
 
@@ -80,7 +80,7 @@ Both approaches have the same shape of answer, but this one never builds a strin
 
 - Forgetting the undo step leaves stale characters in the shared list, and every later string is wrong.
 - Appending the shared list itself to the result stores a reference that later changes; copy it (`"".join`, `toString`, `string(...)`, `clone`) at the moment it is complete.
-- The first lamp has no left neighbour, so the check must allow `1` when the list is empty.
+- The first lamp has no left neighbor, so the check must allow `1` when the list is empty.
 - `n = 1` gives `["0", "1"]`: the pruning rule never fires.
 
 ### Language notes

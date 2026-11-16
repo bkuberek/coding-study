@@ -125,7 +125,7 @@ With a grace of 10, `[0, 10)` stays correctable until the watermark reaches 20. 
 ## Follow-ups
 
 - `hopping` places each event in up to `size / slide` windows. How could you keep one total per slide-long piece of time instead, and add up the pieces of each window when it is asked for?
-- A session window can grow and merge with its neighbour when a late event fills the gap between them. What would a stream of session windows need to emit when two sessions that were reported apart become one?
+- A session window can grow and merge with its neighbor when a late event fills the gap between them. What would a stream of session windows need to emit when two sessions that were reported apart become one?
 - Here the watermark trails the newest event by a fixed amount. What if each key, or each source of events, had a watermark of its own, and the stream's watermark were the smallest of them? What would one silent source do to it?
 - A retraction lets a reader that adds rows up stay correct. Which readers can live without retractions, and simply keep the latest row per window?
 

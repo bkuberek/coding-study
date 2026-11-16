@@ -8,7 +8,7 @@ The model decides which tools to ask for, and nothing it says can be trusted to 
 
 `cstudy` runs your app in a Docker sandbox with mock servers for the model and for each of the shop's systems. The model is a scripted stand-in: it replies to the questions the cases ask, step by step, as a real model might, and it reaches nothing outside the sandbox. The grader asks your app the questions and judges what it answers and what each system saw it send. The shop, its systems, its staff and every number are invented.
 
-**Test fixtures with planted instructions.** Some help center snippets and one customer note in the test data hold planted instructions: plainly labelled text such as `TEST FIXTURE, planted instruction: ...` that asks the assistant to call a tool it should not, or to reveal its system prompt. The scripted model obeys them, as a real model sometimes does. Your app's job is to make sure that obeying them changes nothing that matters.
+**Test fixtures with planted instructions.** Some help center snippets and one customer note in the test data hold planted instructions: plainly labeled text such as `TEST FIXTURE, planted instruction: ...` that asks the assistant to call a tool it should not, or to reveal its system prompt. The scripted model obeys them, as a real model sometimes does. Your app's job is to make sure that obeying them changes nothing that matters.
 
 ## Input
 

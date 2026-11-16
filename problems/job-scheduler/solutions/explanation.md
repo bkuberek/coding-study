@@ -27,13 +27,13 @@ Priority order and eligibility are independent. The order of the queue never cha
 
 ### Algorithm
 
-1. `submitAfter` (and `submit`, which is `submitAfter` with no dependencies): reject a known id or a dependency that is unknown, failed or cancelled. Otherwise create the job with `sequence` = number of jobs so far, register it in each dependency's `dependents`, and insert it into the queue.
+1. `submitAfter` (and `submit`, which is `submitAfter` with no dependencies): reject a known id or a dependency that is unknown, failed or canceled. Otherwise create the job with `sequence` = number of jobs so far, register it in each dependency's `dependents`, and insert it into the queue.
 2. `runNext(t)`: walk the queue in order. For the first job with `canStart(job, t)`, remove it from the queue, mark it `RUNNING`, append `t` to its tenant's start times and return its id. Return `""` if none passes.
 3. `canStart(job, t)`: `job.notBefore <= t`; every dependency is `DONE`; and when the tenant has a limit, the number of its start times greater than `t - window` is below `limit` (one binary search, since start times are ascending).
 4. `complete`: a running job becomes `DONE`.
 5. `fail`: a running job counts the failure `k`. When `k <= maxRetries` under the tenant's current policy, set `notBefore = t + baseDelay * 2^(k-1)`, put the job back in the queue, and return `notBefore`. Otherwise mark it `FAILED`, cancel its dependents, and return `0`.
-6. `cancel`: a queued job is removed and marked `CANCELLED`, then its dependents are cancelled; return 1 plus their count.
-7. Cancelling dependents: walk the `dependents` lists with a stack. Each job still `QUEUED` is removed from the queue, marked `CANCELLED`, counted, and its own dependents are pushed. Jobs already cancelled are skipped, so a job reachable through two paths counts once.
+6. `cancel`: a queued job is removed and marked `CANCELLED`, then its dependents are canceled; return 1 plus their count.
+7. Canceling dependents: walk the `dependents` lists with a stack. Each job still `QUEUED` is removed from the queue, marked `CANCELLED`, counted, and its own dependents are pushed. Jobs already canceled are skipped, so a job reachable through two paths counts once.
 
 ### Correctness
 
@@ -45,7 +45,7 @@ A queued job's dependencies are never `FAILED` or `CANCELLED`: `submitAfter` rej
 
 ### Complexity
 
-- Time: O(q (d + log s)) per runNext; O(q) per submit, retry or cancel — `runNext` may check every queued job, each check costing `d` status lookups and one binary search. Inserting into or removing from a sorted array is O(q) in Python and TypeScript (O(log q) with Java's and Kotlin's `TreeSet`). A cascade visits each cancelled job once.
+- Time: O(q (d + log s)) per runNext; O(q) per submit, retry or cancel — `runNext` may check every queued job, each check costing `d` status lookups and one binary search. Inserting into or removing from a sorted array is O(q) in Python and TypeScript (O(log q) with Java's and Kotlin's `TreeSet`). A cascade visits each canceled job once.
 - Space: O(j + s) — every job and its dependency lists are kept for status queries, plus every start time for the rate windows.
 
 ### Trade-offs

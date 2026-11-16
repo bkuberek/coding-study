@@ -51,7 +51,7 @@ Deny-overrides is easy to reason about but blunt: you cannot carve out an except
 - **A deny through inheritance is still a deny.** A role's own allow does not beat a deny from a parent, or from an unrelated role the principal also holds (`h7`, `h8`).
 - **Recursion without a visited set never ends** on a cycle (`ex3`, `h12`, `h13`).
 - **A visited set that only tracks the current path** ends on a cycle, but it is exponential when many paths lead to one role: 40 diamonds in a row mean 2^40 paths (`h14`).
-- **Memoizing each role's rules during the walk.** On a cycle, a role that is reached while its neighbour is still being computed gets a partial answer, and it stays wrong after the walk (`h12`).
+- **Memoizing each role's rules during the walk.** On a cycle, a role that is reached while its neighbor is still being computed gets a partial answer, and it stays wrong after the walk (`h12`).
 - **Caching answers.** A check must see a rule, an assignment or an edge added a moment ago (`h15`).
 - **Wildcards on one side only.** `*` works for a deny as well as for an allow (`h9`, `h10`), and a deny on one action does not touch another (`h9`).
 - **`deny` and `default-deny` are different answers,** although a caller treats them alike. Merging them loses the audit trail (`h16`).

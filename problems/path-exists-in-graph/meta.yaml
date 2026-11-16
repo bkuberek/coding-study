@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../../schemas/meta.schema.json
 slug: path-exists-in-graph
 title: Path Exists in a Graph
-summary: "Given n nodes and a list of two-way connections, decide whether you can travel from one node to another. A first graph problem, with a list of neighbours per node."
+summary: "Given n nodes and a list of two-way connections, decide whether you can travel from one node to another. A first graph problem, with a list of neighbors per node."
 status: ready
 difficulty: easy
 track: dsa

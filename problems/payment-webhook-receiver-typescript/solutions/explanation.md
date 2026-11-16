@@ -21,7 +21,7 @@
 
 A webhook is a request from the internet that claims to come from the provider. The signature is the only thing that makes the claim true, and it is a claim about bytes: the provider computed an HMAC over the timestamp and the body exactly as it sent them. So the check has to run on those bytes, before anything else touches them. A parsed and re-encoded body is a different string, and it fails every honest delivery.
 
-The timestamp is inside the signed text for a reason. Without it, a delivery captured once would be valid forever. With it, a captured delivery is valid for 300 s, and inside that window it is just a duplicate, which the idempotency rule already makes harmless. The window and the id store are one defence: each covers the time the other cannot.
+The timestamp is inside the signed text for a reason. Without it, a delivery captured once would be valid forever. With it, a captured delivery is valid for 300 s, and inside that window it is just a duplicate, which the idempotency rule already makes harmless. The window and the id store are one defense: each covers the time the other cannot.
 
 Delivery order is not event order. The provider numbers each order's events, so the receiver can rebuild the order they happened in, and apply them through a small state machine that would refuse a refund of a payment that never succeeded. An event that arrives early is either held until the gap closes, or the gap is filled from the provider's own record. Either way, nothing is applied out of turn.
 

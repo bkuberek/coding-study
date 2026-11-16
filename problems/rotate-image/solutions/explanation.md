@@ -92,7 +92,7 @@ Apply the mapping repeatedly: a cell in the top edge goes to the right edge, the
 
 ### Correctness
 
-With `n - 1 - last = layer`, the mapping `(r, c) -> (c, n - 1 - r)` sends the left cell `(last - offset, layer)` to the top cell `(layer, layer + offset)`, the bottom cell `(last, last - offset)` to the left cell, the right cell `(layer + offset, last)` to the bottom cell, and the top cell to the right cell. Step 2 performs exactly those four moves. As `offset` runs from 0 to `last - layer - 1`, the top cells cover the layer's top edge except its last corner, so every cell of the layer is in exactly one cycle; the layers cover the matrix, and the centre of an odd matrix is a cycle of length one that stays put.
+With `n - 1 - last = layer`, the mapping `(r, c) -> (c, n - 1 - r)` sends the left cell `(last - offset, layer)` to the top cell `(layer, layer + offset)`, the bottom cell `(last, last - offset)` to the left cell, the right cell `(layer + offset, last)` to the bottom cell, and the top cell to the right cell. Step 2 performs exactly those four moves. As `offset` runs from 0 to `last - layer - 1`, the top cells cover the layer's top edge except its last corner, so every cell of the layer is in exactly one cycle; the layers cover the matrix, and the center of an odd matrix is a cycle of length one that stays put.
 
 ### Complexity
 
@@ -106,7 +106,7 @@ Moves each value once, the minimum, but the four index expressions are easy to m
 ### Pitfalls and edge cases
 
 - The inner loop runs to `last - layer - 1`, not `last - layer`: the last corner of the top edge is already the first cell of the right edge.
-- Odd sides have a centre cell that no layer touches; even sides have none. Test both (sides 4 and 5).
+- Odd sides have a center cell that no layer touches; even sides have none. Test both (sides 4 and 5).
 - Doing the four moves in the wrong order overwrites a value before it is read; derive the order from the mapping rather than by symmetry.
 
 ### Language notes

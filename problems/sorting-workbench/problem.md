@@ -113,7 +113,7 @@ Methods to add:
 - `quickSelect(values, k)`: returns the `k`-th smallest value, where `k = 1` is the smallest. Equal values count separately: in `[7, 2, 9, 2, 5]` the sorted order is `2, 2, 5, 7, 9`, so the 2nd smallest is `2` and the 3rd is `5`.
 - `report()` after either method returns `[partitions, steps]`, counted below.
 
-**The idea.** Pick one value of the range, the **pivot**. Rearrange the range so that all values smaller than the pivot come first, then all values equal to the pivot, then all larger values. The block of values equal to the pivot is now in its final place. What remains is to sort the smaller block and the larger block, which are separate smaller problems. This rearranging is a **partition**. Putting the equal values in a block of their own is the **three-way partition**, also known as the Dutch national flag problem, after the three coloured stripes of that flag, which the items are grouped by; it keeps a list full of equal values from being split over and over.
+**The idea.** Pick one value of the range, the **pivot**. Rearrange the range so that all values smaller than the pivot come first, then all values equal to the pivot, then all larger values. The block of values equal to the pivot is now in its final place. What remains is to sort the smaller block and the larger block, which are separate smaller problems. This rearranging is a **partition**. Putting the equal values in a block of their own is the **three-way partition**, also known as the Dutch national flag problem, after the three colored stripes of that flag, which the items are grouped by; it keeps a list full of equal values from being split over and over.
 
 **The partition, exactly.** For the range of positions `low .. high`, with `high > low`:
 

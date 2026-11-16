@@ -19,7 +19,7 @@ Implement the facade class `Library`. Time is a day number passed to each call a
 
 Rules:
 
-- A copy is on loan, set aside for one member (reserved), or free. A free copy is never left on the shelf while members wait: whenever a copy becomes free (a return, new copies, a cancelled reservation), it is reserved for the member at the front of the title's queue, who leaves the queue.
+- A copy is on loan, set aside for one member (reserved), or free. A free copy is never left on the shelf while members wait: whenever a copy becomes free (a return, new copies, a canceled reservation), it is reserved for the member at the front of the title's queue, who leaves the queue.
 - A member may borrow when they have no unpaid fines, do not already have a copy of that title, and have fewer than `maxLoans` books. They get their reserved copy if they have one, otherwise a free copy. The due day is `day + loanDays`.
 - Returning on day `d` a book due on day `due` adds a fine of `max(0, d - due) * finePerDay`.
 - A hold is allowed only when no copy is free, and the member neither has the title on loan, nor a reserved copy, nor a hold for it already. Unpaid fines do not prevent holds.

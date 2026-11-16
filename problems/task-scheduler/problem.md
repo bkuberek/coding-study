@@ -2,7 +2,7 @@
 
 ## Statement
 
-A single processor has to run a list of tasks. Each task is labelled with an uppercase letter, and tasks with the same label are interchangeable copies of the same job. Every task takes exactly one time slot. In each slot the processor either runs one task or sits idle.
+A single processor has to run a list of tasks. Each task is labeled with an uppercase letter, and tasks with the same label are interchangeable copies of the same job. Every task takes exactly one time slot. In each slot the processor either runs one task or sits idle.
 
 There is one rule: after running a task with some label, the processor must let at least `cooldown` slots pass before it runs another task with the same label. Those slots can be spent on other labels or on idling. You may run the tasks in any order. Return the smallest number of slots needed to finish all of them, counting idle slots.
 

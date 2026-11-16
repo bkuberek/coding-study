@@ -31,7 +31,7 @@ A digest is a fingerprint: equal data gives equal digests, and different data gi
 2. A batch keeps its record digests and its digest, the SHA-256 of the record digests joined in order. `addBatch` builds one, and `sameBatch` compares the stored digests.
 3. A chain keeps pending records, sealed batches and a list of chain digests. `addRecord` appends to pending; when pending reaches the batch size, it builds a batch, appends `SHA-256(previous chain digest || batch digest)` to the list (the previous digest is 32 zero bytes for the first batch) and clears pending. `chainDigest` is the last entry, or 64 zeros; `sameChain` compares the two last entries.
 4. `commonPrefix` bisects on `k` in `0 .. min(len)`: if the digests at position `k - 1` are equal, the answer is at least `k`; otherwise it is below `k`.
-5. A batch builds its tree on the first request: leaves are `SHA-256(0x00 || record digest)`, and each level above is `SHA-256(0x01 || left || right)` over neighbours, copying the last node of a level of odd length. The root is the single node at the top.
+5. A batch builds its tree on the first request: leaves are `SHA-256(0x00 || record digest)`, and each level above is `SHA-256(0x01 || left || right)` over neighbors, copying the last node of a level of odd length. The root is the single node at the top.
 6. `proof` walks from the leaf up. At each level the sibling of position `i` is `i xor 1`, on the left when that position is smaller, and the next position is `i / 2`. `verify` starts from the leaf of the canonical record and applies each step on the side it names, rejecting a malformed step first, and compares the final hexadecimal to the root.
 
 ### Correctness

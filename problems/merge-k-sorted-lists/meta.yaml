@@ -19,7 +19,7 @@ comparator: {type: exact}
 approaches:
   - {id: one-by-one, name: Merge the lists into the result one at a time, role: brute, time: "O(k N)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
   - {id: min-heap, name: Min-heap of the k front nodes, role: optimal, time: "O(N log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
-  - {id: pairwise, name: Merge neighbouring lists in rounds, role: optimal, time: "O(N log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
+  - {id: pairwise, name: Merge neighboring lists in rounds, role: optimal, time: "O(N log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
 perf:
   size_param: "total nodes N, with k = N/10 lists"
   size_ladder: [100, 1000, 10000]

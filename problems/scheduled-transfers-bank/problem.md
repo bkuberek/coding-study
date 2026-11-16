@@ -45,7 +45,7 @@ The second `createAccount` of `ivy` fails, and so does the deposit to `max`, who
 - `scheduleTransfer(timestamp, sourceId, targetId, amount, delay)`: books a transfer of `amount` from the source to the target, due at `timestamp + delay`. Returns its id `"transfer<k>"`, where `k` numbers the transfers booked successfully in the whole bank, starting at 1. Returns `""` and books nothing when either account is missing or both are the same account. The source's balance is not checked when the transfer is booked.
 - A booked transfer runs by itself. Every transfer due at time `t` runs before anything else happens in the first call whose timestamp is `t` or later. When several are due by then, they run in order of due time, and transfers due at the same time run in the order they were booked. Each one takes effect at its due time, not at the time of the call that set it off.
 - A transfer that runs moves the money exactly like `transfer`, and its amount counts toward the source's total in `topSpenders`. When the source's balance is below `amount` at the due time, the transfer is skipped: nothing moves, and it is never tried again.
-- `cancelTransfer(timestamp, accountId, transferId)`: cancels a booked transfer before it runs, so it never runs. Only its source account may cancel it. Returns `true` on success, and `false` when the account does not exist, no transfer has that id, `accountId` is not the transfer's source, or the transfer has already run, been skipped or been cancelled.
+- `cancelTransfer(timestamp, accountId, transferId)`: cancels a booked transfer before it runs, so it never runs. Only its source account may cancel it. Returns `true` on success, and `false` when the account does not exist, no transfer has that id, `accountId` is not the transfer's source, or the transfer has already run, been skipped or been canceled.
 
 ### Example 1
 
@@ -77,9 +77,9 @@ The second `createAccount` of `ivy` fails, and so does the deposit to `max`, who
 
 ## Follow-ups
 
-- Here time only moves when a call arrives. In a real service, transfers must run on time without any traffic, and several workers share the work. How would you hand out due transfers so that each runs exactly once, for example a jobs table whose rows workers claim with `SELECT ... FOR UPDATE SKIP LOCKED`, or a delay queue, and how would you record whether each one ran, was skipped or was cancelled?
+- Here time only moves when a call arrives. In a real service, transfers must run on time without any traffic, and several workers share the work. How would you hand out due transfers so that each runs exactly once, for example a jobs table whose rows workers claim with `SELECT ... FOR UPDATE SKIP LOCKED`, or a delay queue, and how would you record whether each one ran, was skipped or was canceled?
 - Two debits of the same account that arrive at the same moment can both see enough money and overdraw it together. How would you prevent that: a row lock, a conditional update such as `UPDATE ... SET balance = balance - :amount WHERE balance >= :amount`, or a version check with retries?
-- Why a heap rather than a list kept sorted by due time? Compare what booking, cancelling and running a transfer cost with each.
+- Why a heap rather than a list kept sorted by due time? Compare what booking, canceling and running a transfer cost with each.
 
 ## Hints
 
@@ -93,7 +93,7 @@ Run the due transfers at the start of every call. Each transfer has its own dela
 
 ### Hint 3
 
-Removing a cancelled transfer from the middle of a heap is awkward. Mark it as no longer pending, leave it where it is, and throw it away when it reaches the top.
+Removing a canceled transfer from the middle of a heap is awkward. Mark it as no longer pending, leave it where it is, and throw it away when it reaches the top.
 
 ### Hint 4
 

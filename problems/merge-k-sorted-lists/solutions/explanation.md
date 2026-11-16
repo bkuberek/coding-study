@@ -86,7 +86,7 @@ The standard answer, and the one that generalizes: it works on `k` streams that 
 - Go: `container/heap` works on any type that implements `Len`, `Less`, `Swap`, `Push` and `Pop`, so the reference declares a `nodeHeap` slice type. `Less` compares plain integers, so unlike Python's tuples it needs no tie-breaking index. Overwriting the root and calling `heap.Fix(&heads, 0)` is Python's `heapreplace`.
 - Rust: `BinaryHeap` is a max-heap, so entries are wrapped in `Reverse`. A `Box<ListNode>` has no ordering, so the heap holds `(value, list index)` pairs, the index breaks ties as in Python, and the nodes stay in `lists`. `peek_mut` plus an assignment replaces the root and sifts it down when the guard drops (`heapreplace`); `PeekMut::pop` removes an exhausted list.
 
-## Approach: pairwise (Merge neighbouring lists in rounds)
+## Approach: pairwise (Merge neighboring lists in rounds)
 
 ### Intuition
 
@@ -95,7 +95,7 @@ Merging one list at a time builds a lopsided merge tree: early nodes take part i
 ### Algorithm
 
 1. If `lists` is empty, return null.
-2. While more than one list remains, replace the lists by the merges of neighbouring pairs (the last list passes through alone when the count is odd).
+2. While more than one list remains, replace the lists by the merges of neighboring pairs (the last list passes through alone when the count is odd).
 3. Return the remaining list.
 
 ### Correctness
@@ -119,6 +119,6 @@ Same bound as the heap, built from the simplest list routine, and often faster i
 ### Language notes
 
 - Python: a list comprehension builds the next round; `heads[index + 1] if ... else None` handles the odd one out.
-- Kotlin: `chunked(2) { pair -> ... }` groups neighbours and transforms each group in one call; `pair.getOrNull(1)` is null for a lone last list.
+- Kotlin: `chunked(2) { pair -> ... }` groups neighbors and transforms each group in one call; `pair.getOrNull(1)` is null for a lone last list.
 - Java: the next round's array has `(length + 1) / 2` slots, the integer form of `ceil(length / 2)`.
 - Rust: `heads.into_iter()` is consumed two items at a time with `pending.next()` and `pending.next().flatten()`, which turns a missing partner into an empty list, and `Vec::with_capacity(heads.len().div_ceil(2))` sizes the next round.

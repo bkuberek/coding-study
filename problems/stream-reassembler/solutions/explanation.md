@@ -48,7 +48,7 @@ Holding fragments costs memory the sender controls. A real implementation bounds
 - **Treating `finish` as the end.** Fragments can still arrive after it (`ex2`, `h2`).
 - **An empty fragment is falsy.** `while held.get(next):` stops at `""`, so the stream sticks forever and the text behind it never comes out (`h3`). Test for presence.
 - **Zero and -1 are real values.** `if last_sequence:` skips a stream of one fragment (`h9`), and a stream with no fragments finishes with `-1` (`h10`).
-- **Overwriting a held fragment.** A map write makes the last copy win, but only while the fragment is held, so the behaviour depends on timing (`h4`).
+- **Overwriting a held fragment.** A map write makes the last copy win, but only while the fragment is held, so the behavior depends on timing (`h4`).
 - **Assuming the stream starts where the first fragment does.** If fragment 0 never arrives, nothing may be released (`h5`).
 - **Showing text beyond a gap.** The text of a truncated stream stops at the first gap (`ex4`, `h6`).
 - **Letting events revive a closed stream.** A delta after `close` is ignored, even one that would fill the gap, and a `finish` after `close` is refused (`h8`).

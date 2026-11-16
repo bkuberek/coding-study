@@ -58,7 +58,7 @@ Try the first example on paper. Starting at campsite 0, which campsites can you 
 
 ### Hint 2
 
-To ask "which campsites are next to this one?" quickly, it helps to keep a list for each campsite with its neighbours, called an adjacency list. Reading the edge list for every question would take far too long. Build the lists once: for each trail `[a, b]`, put `b` in the list of `a` and `a` in the list of `b`.
+To ask "which campsites are next to this one?" quickly, it helps to keep a list for each campsite with its neighbors, called an adjacency list. Reading the edge list for every question would take far too long. Build the lists once: for each trail `[a, b]`, put `b` in the list of `a` and `a` in the list of `b`.
 
 ### Hint 3
 
@@ -66,4 +66,4 @@ Keep a record of the campsites you have already visited, so that a ring of trail
 
 ### Hint 4
 
-Put `source` in a queue (or on a stack) and mark it visited. Repeatedly take one campsite out, return `true` if it is the target, and add every unvisited neighbour to the queue after marking it. If the queue empties without meeting the target, return `false`. There is another way to look at the same question: group campsites that are linked, and ask whether `source` and `target` ended up in the same group.
+Put `source` in a queue (or on a stack) and mark it visited. Repeatedly take one campsite out, return `true` if it is the target, and add every unvisited neighbor to the queue after marking it. If the queue empties without meeting the target, return `false`. There is another way to look at the same question: group campsites that are linked, and ask whether `source` and `target` ended up in the same group.

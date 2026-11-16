@@ -52,7 +52,7 @@ The pair and B-cubed measures follow their formulas, with the conventions for em
 ### Trade-offs
 
 - Blocking is a bet on recall. A pair that shares no key is never found, and a key shared by too many records (a very common surname, a mailbox used by a department) brings back the quadratic cost. In practice one runs several blocking passes with different keys and takes the union, and caps or skips oversized blocks.
-- A weighted sum of two measures is easy to explain and to tune, but it hides which measure drove a decision. Production systems often learn the weights, or the whole decision, from labelled pairs; the Fellegi-Sunter model does it with a likelihood ratio per field.
+- A weighted sum of two measures is easy to explain and to tune, but it hides which measure drove a decision. Production systems often learn the weights, or the whole decision, from labeled pairs; the Fellegi-Sunter model does it with a likelihood ratio per field.
 - The merge test of complete linkage is the strictest of the usual linkage rules: one dissimilar pair can keep two large groups apart. Average linkage is more forgiving, and single linkage is the plain closure that `components` computes. Standard agglomerative complete linkage merges, at each step, the two groups whose worst cross pair is best; the guard instead goes through the matches from the best single score down, so it depends on the order of the pairs, and standard complete linkage on a fixed set of scores does not.
 - B-cubed and pairwise measures answer different questions. Reporting both, and the list of errors, is how one finds out whether the mistakes are a few large wrong merges or many small missed ones.
 

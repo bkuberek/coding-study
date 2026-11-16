@@ -23,7 +23,7 @@ The early decision that pays off is to make candidates a function of the *genera
 
 ### Intuition
 
-A property test is three small machines. A generator is a recipe that turns random numbers into a value; written in prefix form, it parses with one recursive function, and the value it draws has the same tree shape as the recipe. A runner is a loop over draws from one stream. A shrinker is hill-climbing in the space of values the generator could make: from a failing value, step to a simpler failing neighbour until there is none. The candidates define the neighbours, so each generator kind defines its own: an integer moves toward its target, a list loses chunks or simplifies an element, a pair simplifies one part, a filter keeps only the neighbours that pass it. Stateful testing is the same idea with a sequence of commands as the value and "model and system disagree" as the failing property.
+A property test is three small machines. A generator is a recipe that turns random numbers into a value; written in prefix form, it parses with one recursive function, and the value it draws has the same tree shape as the recipe. A runner is a loop over draws from one stream. A shrinker is hill-climbing in the space of values the generator could make: from a failing value, step to a simpler failing neighbor until there is none. The candidates define the neighbors, so each generator kind defines its own: an integer moves toward its target, a list loses chunks or simplifies an element, a pair simplifies one part, a filter keeps only the neighbors that pass it. Stateful testing is the same idea with a sequence of commands as the value and "model and system disagree" as the failing property.
 
 ### Algorithm
 

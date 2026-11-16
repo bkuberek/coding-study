@@ -22,7 +22,7 @@ Nothing is returned. The test checks the contents of `matrix` after the call.
 
 <!-- case: ex1 -->
 
-The old first column holds 5, 2 and 6; read from bottom to top, it becomes the new first row `[6, 2, 5]`. The old first row `[5, 1, 8]` becomes the new last column, read from top to bottom. The centre value 0 stays where it is.
+The old first column holds 5, 2 and 6; read from bottom to top, it becomes the new first row `[6, 2, 5]`. The old first row `[5, 1, 8]` becomes the new last column, read from top to bottom. The center value 0 stays where it is.
 
 ### Example 2
 

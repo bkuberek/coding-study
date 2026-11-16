@@ -2,7 +2,7 @@
 
 ## Statement
 
-A corridor has `n` lamps in a row. Each lamp is either on or off, and the safety rule says that no two neighbouring lamps may be on at the same time. Write one arrangement as a string of `n` characters from left to right, with `1` for a lamp that is on and `0` for a lamp that is off. For example, `"1010"` is allowed and `"0110"` is not.
+A corridor has `n` lamps in a row. Each lamp is either on or off, and the safety rule says that no two neighboring lamps may be on at the same time. Write one arrangement as a string of `n` characters from left to right, with `1` for a lamp that is on and `0` for a lamp that is off. For example, `"1010"` is allowed and `"0110"` is not.
 
 Return every allowed arrangement exactly once, in increasing order. Strings of the same length are ordered like words in a dictionary, so `"0"` comes before `"1"` at the first position where two strings differ.
 
@@ -65,7 +65,7 @@ With two lamps, only `"11"` is forbidden.
 ## Follow-ups
 
 - Count the answers for `n = 1, 2, 3, 4, 5`. Which well-known sequence do the counts follow, and why does the last lamp being off or on explain it?
-- How would you change the rule so that no three neighbouring lamps may all be on?
+- How would you change the rule so that no three neighboring lamps may all be on?
 - Can you list the same answers without recursion, by counting from `0` up to `2^n - 1` and looking at the bits of each number?
 
 ## Hints

@@ -51,7 +51,7 @@ Timers: the heap orders entries by `(due, sequence)`. The sequence number grows 
 
 ### Complexity
 
-- Time: O(r) per call for r rules and expectations; O(c) per spy question over a double's c calls; O(log t) per timer event — a call checks each expectation and rule of the double at most once; a count or `callTimes` reads the double's call positions; each push and pop of the heap is logarithmic, and a cancelled timer is popped once and dropped.
+- Time: O(r) per call for r rules and expectations; O(c) per spy question over a double's c calls; O(log t) per timer event — a call checks each expectation and rule of the double at most once; a count or `callTimes` reads the double's call positions; each push and pop of the heap is logarithmic, and a canceled timer is popped once and dropped.
 - Space: O(r + c + t) — each rule, expectation, logged call and timer is stored once, and the heap holds at most one entry per timer.
 
 ### Trade-offs

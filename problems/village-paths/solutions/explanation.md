@@ -7,7 +7,7 @@
 | relabel-group | brute | O(n) per addPath, O(1) for the other calls | O(n) | there are few villages, or paths are rare compared with questions |
 | disjoint-set-forest | optimal | O(α(n)) amortized per call | O(n) | default answer; paths and questions come in any mix |
 
-`n` is the number of villages and α is the inverse Ackermann function, which grows so slowly that it is at most 4 for every `n` below 2^65536. Over a generated sequence with `n` villages and 3n calls, relabelling costs about n^2 steps and the forest costs about n steps.
+`n` is the number of villages and α is the inverse Ackermann function, which grows so slowly that it is at most 4 for every `n` below 2^65536. Over a generated sequence with `n` villages and 3n calls, relabeling costs about n^2 steps and the forest costs about n steps.
 
 ## Approach: relabel-group (Give each group a label and relabel one whole group on every merge)
 
@@ -33,7 +33,7 @@ Invariant: two villages have the same label exactly when they are in the same gr
 
 ### Trade-offs
 
-It is the simplest correct design, and it makes questions as cheap as they can be. Its weakness is the merge, which touches every village even when the groups are tiny; keeping a list of members per group and relabelling only the smaller one is a known improvement that the forest makes unnecessary.
+It is the simplest correct design, and it makes questions as cheap as they can be. Its weakness is the merge, which touches every village even when the groups are tiny; keeping a list of members per group and relabeling only the smaller one is a known improvement that the forest makes unnecessary.
 
 ### Pitfalls and edge cases
 
@@ -58,7 +58,7 @@ Writing a name next to every village is more than is needed. It is enough that e
 
 Two small rules keep the chains of pointers short. Pointing the smaller group's leader at the larger group's leader (union by size) means a village's chain grows by one step only when its group is attached under a group at least as large, which at least doubles the size of its group. A group can double at most log2(n) times, so no chain is longer than about log2(n). Redirecting every village passed during a search straight to the leader (path compression) makes later searches from those villages one step long. Together they give an amortized cost per call that grows like the inverse Ackermann function.
 
-This is the structure of the tree-based method for identifying equivalence classes that Galler and Fischer published in 1964 (Communications of the ACM 7(5):301-303, doi 10.1145/364099.364331). Crossref's record spells the second author "Fisher"; "Fischer" is his own spelling, as in his 1972 MIT memo AIM-256, "Efficiency of Equivalence Algorithms". Tarjan analysed a known set-union algorithm of this kind in 1975 and showed that, for `m >= n`, the worst-case time of `m` finds mixed with `n - 1` unions is bounded by constant multiples of `m·α(m, n)`, where α is related to a functional inverse of Ackermann's function (Journal of the ACM 22(2):215-225, doi 10.1145/321879.321884). Tarjan and van Leeuwen gave a worst-case analysis of set union algorithms and their variants in 1984 (Journal of the ACM 31(2):245-281, doi 10.1145/62.2160).
+This is the structure of the tree-based method for identifying equivalence classes that Galler and Fischer published in 1964 (Communications of the ACM 7(5):301-303, doi 10.1145/364099.364331). Crossref's record spells the second author "Fisher"; "Fischer" is his own spelling, as in his 1972 MIT memo AIM-256, "Efficiency of Equivalence Algorithms". Tarjan analyzed a known set-union algorithm of this kind in 1975 and showed that, for `m >= n`, the worst-case time of `m` finds mixed with `n - 1` unions is bounded by constant multiples of `m·α(m, n)`, where α is related to a functional inverse of Ackermann's function (Journal of the ACM 22(2):215-225, doi 10.1145/321879.321884). Tarjan and van Leeuwen gave a worst-case analysis of set union algorithms and their variants in 1984 (Journal of the ACM 31(2):245-281, doi 10.1145/62.2160).
 
 ### Algorithm
 
@@ -78,7 +78,7 @@ Invariant: following `parent` from any village ends at a leader (a village that 
 
 ### Trade-offs
 
-It makes merges as cheap as questions at the price of slightly more work per question than a plain array read, and it is the standard answer whenever groups only merge. It cannot split a group or list a group's members cheaply: both need extra structure. Either rule alone is already a large improvement over the relabelling approach; both together are what the almost-constant bound needs.
+It makes merges as cheap as questions at the price of slightly more work per question than a plain array read, and it is the standard answer whenever groups only merge. It cannot split a group or list a group's members cheaply: both need extra structure. Either rule alone is already a large improvement over the relabeling approach; both together are what the almost-constant bound needs.
 
 ### Pitfalls and edge cases
 

@@ -270,7 +270,7 @@ A person's number has to be on the form as well. Being a person does not exempt 
 
 - The model's confidence scores turn out to be badly calibrated: its 0.95 is right 70% of the time. What would you measure, and what would you do with the threshold?
 - The queue is backing up. Which of these reasons could you remove safely, and how would you know? What would you watch after removing one?
-- A month's decisions are now labelled data. How would you use them, and which problem would that create?
+- A month's decisions are now labeled data. How would you use them, and which problem would that create?
 - The payment formula gets a new input. How do you make sure a case decided last month can still be explained?
 
 ## Hints

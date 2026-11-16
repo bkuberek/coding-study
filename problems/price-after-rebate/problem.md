@@ -30,7 +30,7 @@ Here is a different small question, so you can see the shape of the idea. People
 
 The people left on the stack at the end (170 and 165) never meet anyone taller. Notice two things. The stack never has a person taller than the one beneath it (otherwise the taller one would already have answered the one beneath), so the people who can be answered next are always at the top. And every person is pushed once and popped at most once, so the whole walk does a small, fixed amount of work per person, however long the line is.
 
-Your question is a close cousin of this one: you want the first *no more expensive* item rather than the first taller person, and you want the price paid rather than the neighbour's value. Work out what changes in the stack before you code.
+Your question is a close cousin of this one: you want the first *no more expensive* item rather than the first taller person, and you want the price paid rather than the neighbor's value. Work out what changes in the stack before you code.
 
 ## Input
 
@@ -73,7 +73,7 @@ Take Example 1 by hand. For the item in slot 0, walk to the right one slot at a 
 
 ### Hint 2
 
-An item that has not found its cheaper neighbour yet is "waiting". When a new item arrives from the right, it may be the answer for several waiting items at once. Which waiting items does it answer: the dear ones, the cheap ones, or all of them?
+An item that has not found its cheaper neighbor yet is "waiting". When a new item arrives from the right, it may be the answer for several waiting items at once. Which waiting items does it answer: the dear ones, the cheap ones, or all of them?
 
 ### Hint 3
 

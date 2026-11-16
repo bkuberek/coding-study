@@ -36,7 +36,7 @@ Every rule of the problem has the same shape: if two triples (three for a transi
    - as `p owl:inverseOf q`: record both directions and mirror every pair already stored for either predicate.
 3. `closure`, `types`, `instances` and `superClasses` filter the closure, drop the class itself from the superclasses, and sort.
 4. `ask` is `entailed` when the triple is in the closure; for an `rdf:type` triple it is `contradicted` when one type of the subject is disjoint with the asked class or one of its superclasses; otherwise `unknown`.
-5. `inconsistencies` normalises each `owl:disjointWith` triple of the closure to a sorted pair, and intersects the instance sets of its two classes.
+5. `inconsistencies` normalizes each `owl:disjointWith` triple of the closure to a sorted pair, and intersects the instance sets of its two classes.
 6. `validate` builds the types of each node from the asserted triples only: its asserted classes and the classes reached through asserted `rdfs:subClassOf` triples. For each shape, each focus node and each constraint, it counts the distinct asserted values and checks the class of each value.
 7. `contrast` reports the same rows and, for each, a lookup in the closure: the number of objects for a minimum, the membership of the class triple for a class, nothing for a maximum.
 
@@ -50,7 +50,7 @@ The validator is correct because it follows the table of the statement, and it n
 
 ### Complexity
 
-- Time: O(J) to saturate, J the rule joins; O(F V) to validate — each triple is processed once, and the joins it triggers are bounded by the stored triples that share a term with it (for a transitive chain of `n` nodes, `J` is `O(n^3)` in the worst case, since each of the `n^2` links is joined with up to `n` neighbours); validation looks at each focus node and each constraint once, with a set lookup for the class of each value.
+- Time: O(J) to saturate, J the rule joins; O(F V) to validate — each triple is processed once, and the joins it triggers are bounded by the stored triples that share a term with it (for a transitive chain of `n` nodes, `J` is `O(n^3)` in the worst case, since each of the `n^2` links is joined with up to `n` neighbors); validation looks at each focus node and each constraint once, with a set lookup for the class of each value.
 - Space: O(T) for the T triples of the closure — the closure and its indexes; `T` is `O(n^2)` for a transitive property over `n` nodes.
 
 ### Trade-offs

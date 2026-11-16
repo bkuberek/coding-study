@@ -17,7 +17,7 @@
 
 - [ ] Defines a suggest endpoint with locale and an index version, and sets cache headers.
 - [ ] Keeps server responses unpersonalized so the CDN and browser can cache them.
-- [ ] Describes client behavior: debounce, cancelling stale requests, reusing results for longer prefixes.
+- [ ] Describes client behavior: debounce, canceling stale requests, reusing results for longer prefixes.
 - [ ] Models the query log, daily aggregates, index snapshots, trending overlay and blocklist.
 
 ## High-level design

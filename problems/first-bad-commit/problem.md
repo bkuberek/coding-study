@@ -14,7 +14,7 @@ You get the result of testing every commit as an array `statuses`, where `status
 
 Write a function that says where the first bad commit is. When skipped commits make the answer uncertain, it says exactly which positions are possible.
 
-**Why the answer can be uncertain.** Ignore the skipped commits for a moment and read the others from oldest to newest: they are some goods followed by some bads, never a good after a bad. The boundary lies between the last good commit and the first commit known to be bad. If the two are neighbours, the bug appeared exactly at the first known bad commit. If there are skipped commits between them, any of those could be the first bad commit as well, because nothing says they are good. Two examples with `.` marking a skipped commit:
+**Why the answer can be uncertain.** Ignore the skipped commits for a moment and read the others from oldest to newest: they are some goods followed by some bads, never a good after a bad. The boundary lies between the last good commit and the first commit known to be bad. If the two are neighbors, the bug appeared exactly at the first known bad commit. If there are skipped commits between them, any of those could be the first bad commit as well, because nothing says they are good. Two examples with `.` marking a skipped commit:
 
 ```text
 good good good BAD BAD       the first bad commit is the first BAD: no doubt

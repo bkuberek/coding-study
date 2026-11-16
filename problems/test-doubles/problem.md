@@ -122,14 +122,14 @@ The lenient mock allows `quota`, which a stub rule answers, and expects two send
 
 ## Level 4: A fake clock
 
-A **fake** is a real, working implementation, made simple for tests. A common one is a **fake clock**. Code that waits, retries after a delay or runs a job every minute schedules **timers**: "in 300 milliseconds, call this". With a real clock, a test of a 5-minute timeout takes 5 minutes, and a test that sleeps "just long enough" fails on a busy machine. A fake clock keeps time that moves only when the test says so: the test moves it forward and the timers that come due fire at once, in order. A stub could only say what time it is; the fake keeps the behaviour that matters, timers that fire in the right order at the right moments.
+A **fake** is a real, working implementation, made simple for tests. A common one is a **fake clock**. Code that waits, retries after a delay or runs a job every minute schedules **timers**: "in 300 milliseconds, call this". With a real clock, a test of a 5-minute timeout takes 5 minutes, and a test that sleeps "just long enough" fails on a busy machine. A fake clock keeps time that moves only when the test says so: the test moves it forward and the timers that come due fire at once, in order. A stub could only say what time it is; the fake keeps the behavior that matters, timers that fire in the right order at the right moments.
 
 The library now has a clock. Time is a whole number of milliseconds, starts at `0` and changes only through `advance`. A timer, when it fires, makes a call to a double exactly as the code under test would with `call`: stubs answer it, mocks check it and spies record it, and its answer goes nowhere. Every recorded call also remembers the time at which it was made.
 
 - `now()`: the current time.
 - `schedule(delay, name, method, args)`: the code under test sets a **one-shot timer** that calls `method` of the double `name` with `args` at time `now() + delay` (`delay` from `0`). It returns the timer's **id**: timers are numbered `1`, `2`, `3` and so on in the order they are made, by `schedule` and `every` together. It returns `-1`, and makes no timer, when no double has the name.
-- `every(interval, name, method, args)`: the same, for a **repeating timer**: it fires at `now() + interval`, then every `interval` after each firing (`interval` from `1`), until it is cancelled.
-- `cancel(timerId)`: stops a timer that is still waiting to fire: a one-shot timer that has not fired, or a repeating timer. It returns `true` when it stopped one, and `false` for a timer that has already fired once and for all, one that is already cancelled, and an id that was never given.
+- `every(interval, name, method, args)`: the same, for a **repeating timer**: it fires at `now() + interval`, then every `interval` after each firing (`interval` from `1`), until it is canceled.
+- `cancel(timerId)`: stops a timer that is still waiting to fire: a one-shot timer that has not fired, or a repeating timer. It returns `true` when it stopped one, and `false` for a timer that has already fired once and for all, one that is already canceled, and an id that was never given.
 - `advance(ms)`: the test moves the clock forward by `ms` (from `0`). Every timer due at or before the new time fires, in time order; while a timer fires, `now()` reads the time it was due. A repeating timer that fires is put back in line for its next time, and fires again within the same `advance` if that time comes before the end. At the end, the clock reads the old time plus `ms`, whether timers fired or not. It returns the firings in order, each as `<id>@<time>`, such as `"2@300"`.
 - `pending()`: the timers still waiting, each as `<id>@<due time>`, in the order they would fire.
 - `callTimes(name, method)`: the time of each recorded call to `method` of the double `name`, in order; `[]` when there are none and when no double has the name. A call made with `call` happens at the current time.
@@ -142,13 +142,13 @@ The library now has a clock. Time is a whole number of milliseconds, starts at `
 
 <!-- case: ex7 -->
 
-Three retries are scheduled for 100, 300 and 700 ms. Moving to 150 fires the first. The third is cancelled, so moving on by 1000 fires only the second, and the clock reads 1150. The stub saw `fetch` at 100 and 300. Nothing is waiting now, and a timer cannot be cancelled twice.
+Three retries are scheduled for 100, 300 and 700 ms. Moving to 150 fires the first. The third is canceled, so moving on by 1000 fires only the second, and the clock reads 1150. The stub saw `fetch` at 100 and 300. Nothing is waiting now, and a timer cannot be canceled twice.
 
 ### Example 2
 
 <!-- case: ex8 -->
 
-The timer for `c` has a delay of 0 and fires at the first `advance`, even one of 0 ms. `a` and `b` are both due at 5 and fire in the order they were scheduled. The blinking timer, made at time 5, fires at 15, 25 and 35 within one `advance` of 30, and waits for 45 until it is cancelled. The first call the stub got was `draw(c)`.
+The timer for `c` has a delay of 0 and fires at the first `advance`, even one of 0 ms. `a` and `b` are both due at 5 and fire in the order they were scheduled. The blinking timer, made at time 5, fires at 15, 25 and 35 within one `advance` of 30, and waits for 45 until it is canceled. The first call the stub got was `draw(c)`.
 
 ## Constraints
 

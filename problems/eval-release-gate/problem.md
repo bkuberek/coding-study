@@ -60,7 +60,7 @@ The run is reported by case id, whatever the order it was stored in. `c1` is val
 
 ## Level 2: Judge scores and human labels
 
-Some qualities have no rule. Is the answer correct, polite, short enough? A **judge** scores them on a **rubric**: each answer gets a score from 1 to 5 on each **criterion**. Using a model as a judge is cheap and scales, and it is not neutral: a judge can have biases, such as favouring longer answers or the first answer it reads (see the explanation's further reading). So a few answers, the **calibration subset**, are also scored by humans. A human score is the better evidence: where there is one, it replaces the judge's. And the two are compared, to learn how far to trust the judge.
+Some qualities have no rule. Is the answer correct, polite, short enough? A **judge** scores them on a **rubric**: each answer gets a score from 1 to 5 on each **criterion**. Using a model as a judge is cheap and scales, and it is not neutral: a judge can have biases, such as favoring longer answers or the first answer it reads (see the explanation's further reading). So a few answers, the **calibration subset**, are also scored by humans. A human score is the better evidence: where there is one, it replaces the judge's. And the two are compared, to learn how far to trust the judge.
 
 - `addScores(run, criteria, caseIds, scores)`: stores the judge's scores for cases of a run: `scores[i][j]` is the score of `caseIds[i]` on `criteria[j]`. It replaces the judge's scores of the run (not the humans'), and returns the number of cases.
 - `addHumanScores(run, caseIds, criteria, scores)`: the same shape, for the human scores. A human score is for a cell (case, criterion) that the judge has scored. A new human score for a cell replaces the older one. It returns the number of cells set.
@@ -167,7 +167,7 @@ The candidate's `c2` contains `guaranteed`, and the new case `n1` is missing two
 
 - The gate checks a verdict by a pass score. What would you change to also require that no *criterion* gets worse by more than some amount, and what does that cost in false alarms?
 - With two or three repeats the range rule is cheap and conservative. When would you replace it with a statistical test, such as a bootstrap over the cases, and what do you need that this problem does not have?
-- Humans labelled only a few answers. How would you choose which ones, so that the kappa says the most about the judge? How many labels does a kappa of 0.4 need before you trust it?
+- Humans labeled only a few answers. How would you choose which ones, so that the kappa says the most about the judge? How many labels does a kappa of 0.4 need before you trust it?
 - A judge is often asked to compare two answers to the same question rather than to score one. What biases does that remove, and what new ones appear (the order of the two answers)?
 - The golden set grows by one case for each new failure. What happens to the cost of a run after a year, and how would you retire cases without losing coverage?
 - A critical case regresses by one point and everything else improves. Should the gate block? Who decides, and how does the output of this problem help them decide?

@@ -70,7 +70,7 @@ Start with the plainest bookkeeping: an array `label` with one entry per village
 
 ### Hint 2
 
-Relabelling a whole group makes `addPath` slow for big groups. Store something cheaper at each village: the name of another village in the same group that it points to, or itself if it points to nobody. Follow the pointers from any village and you arrive at one special village that points to itself, the group's leader. Two villages are in the same group exactly when they lead to the same leader.
+Relabeling a whole group makes `addPath` slow for big groups. Store something cheaper at each village: the name of another village in the same group that it points to, or itself if it points to nobody. Follow the pointers from any village and you arrive at one special village that points to itself, the group's leader. Two villages are in the same group exactly when they lead to the same leader.
 
 ### Hint 3
 

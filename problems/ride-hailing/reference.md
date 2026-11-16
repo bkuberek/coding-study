@@ -91,7 +91,7 @@ trip service --> trip events + outbox --> payments (on completion), notification
 
 - One dispatch shard owns each city's driver dispatch state: a single writer, so reserving a driver is an in-memory compare-and-set (`available -> offered(trip)`), not a distributed lock. A standby replicates the state and takes over with a fencing token if the owner fails.
 - The offer expires after 10 seconds; the reservation is released on decline, timeout or expiry, so a driver is never stuck as offered.
-- Accept is a conditional transition: the trip moves `requested -> driver_assigned` only if the trip is still requested and the driver still holds this offer. A rider cancelling at the same moment races on the same conditional write; whichever commits first wins and the other gets a conflict.
+- Accept is a conditional transition: the trip moves `requested -> driver_assigned` only if the trip is still requested and the driver still holds this offer. A rider canceling at the same moment races on the same conditional write; whichever commits first wins and the other gets a conflict.
 - A confirmed request is never dropped: the trip is persisted before matching starts, and a sweeper re-queues trips that stay `requested` longer than a few seconds without an active offer (for example after a dispatch failover).
 - Greedy versus batched matching: greedy offers each request the best driver now and is simplest; batching requests for 1-2 seconds and solving an assignment problem lowers total pickup time across the city at the cost of a little latency. Start greedy, add batching for dense cities.
 
