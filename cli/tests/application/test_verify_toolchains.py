@@ -10,7 +10,10 @@ import pytest
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.problem import Language
 from tests.e2e import e2e_environment
-from tests.fakes import repository_root, without
+from tests.fakes import FakeToolchainCheck, make_environment, repository_root, without
+from tests.real_service_projects import PYTHON, copy_fixture
+from tests.sandbox_fakes import FakeSandbox
+from tests.service_problems import make_content
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 NO_NODE = "node was not found on PATH"
@@ -79,3 +82,33 @@ def test_skip_lang_leaves_the_language_out_of_the_coverage(environment):
     )
     report = verify_content(environment, request, lambda _line: None)
     assert [entry.language for entry in report.coverage] == list(OTHERS)
+
+
+NO_HOST_TOOLCHAINS = FakeToolchainCheck(
+    {language: f"{language.value} is missing" for language in Language}
+)
+
+
+@pytest.fixture
+def engine():
+    return FakeSandbox(control_port=5001)
+
+
+@pytest.fixture
+def service_environment(tmp_path, engine):
+    """A Python service project, on a machine with none of the host's toolchains."""
+    root = make_content(tmp_path)
+    copy_fixture(PYTHON, root / "problems" / PYTHON)
+    return make_environment(root, sandbox=engine, toolchain_check=NO_HOST_TOOLCHAINS)
+
+
+def test_a_service_project_is_judged_by_its_docker_toolchain_not_the_hosts(
+    service_environment, engine
+):
+    request = VerifyRequest(slugs=(PYTHON,), require_ready=True)
+
+    [problem] = verify_content(service_environment, request, lambda _line: None).problems
+
+    assert engine.called("install")
+    assert not any(result.skipped for result in problem.languages)
+    assert not any("skipped" in error for error in problem.ready_errors)

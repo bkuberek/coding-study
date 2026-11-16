@@ -141,7 +141,7 @@ cstudy verify max-gap --oracle --ladder --require-ready
 
 Without slugs, `cstudy verify` checks every problem, the catalog's and yours.
 
-A language whose toolchain is not installed, such as Rust without `cargo`, is skipped, not fatal: its line says `rs skipped`, a `skipped` line gives the reason (`skipped  rust: cargo was not found on PATH`), and every other language is still checked. A skip does not fail the run, except under `--require-ready`, which counts the language as not passed. A language that you leave out with `--skip-lang` is not counted at all, so `cstudy verify --require-ready --skip-lang rust` passes on a machine without Rust when the other languages pass.
+A language whose toolchain is not installed, such as Rust without `cargo`, is skipped, not fatal: its line says `rs skipped`, a `skipped` line gives the reason (`skipped  rust: cargo was not found on PATH`), and every other language is still checked. A service project runs in Docker, so only its Docker toolchains count, not the host's. A skip does not fail the run, except under `--require-ready`, which counts the language as not passed. A language that you leave out with `--skip-lang` is not counted at all, so `cstudy verify --require-ready --skip-lang rust` passes on a machine without Rust when the other languages pass.
 
 ### Exit codes
 
