@@ -15,8 +15,8 @@ from coding_study.adapters.ai.http_json import (
     endpoint_override,
 )
 from coding_study.adapters.ai.models import ProviderModels
-from coding_study.adapters.environment_factory import AI_OFF, NoLanguageModels
-from coding_study.domain.ai import ApiKey, ModelRef, Provider
+from coding_study.adapters.environment_factory import NoLanguageModels
+from coding_study.domain.ai import AI_OFF, ApiKey, ModelRef, Provider
 from coding_study.domain.ai_models import ModelRequest, ProviderError, ProviderErrorKind
 from coding_study.domain.errors import ConfigError, UsageError
 from tests.fake_ai_provider import Answer, FakeAiProvider, Route

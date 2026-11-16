@@ -121,7 +121,7 @@ The task table lives in the domain (`domain/ai_routing.py`), and later milestone
 |------|---------|
 | AI is off | `AI is off: turn it on with ai.enabled = true (cstudy config edit) or in Settings` |
 | The model it needs is unset | `ai.model is not set: choose the model of fixed routing in Settings or with cstudy config edit`; under auto, `ai.strong is not set: auto routing serves AI review from the strong tier` |
-| Its provider has no key | `no key for openrouter, which the strong tier uses: cstudy ai key openrouter, or Settings` |
+| Its provider has no key | `no key for openrouter, which the strong tier uses: cstudy ai key openrouter, or Settings`; under fixed routing, `no key for anthropic, which ai.model uses: cstudy ai key anthropic, or Settings` |
 
 ## What is sent
 

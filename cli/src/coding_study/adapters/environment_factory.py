@@ -64,7 +64,7 @@ from coding_study.adapters.yaml_problem_sets import YamlProblemSets
 from coding_study.application.ai_ports import LanguageModels
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
-from coding_study.domain.ai import ApiKey, Provider
+from coding_study.domain.ai import AI_OFF, ApiKey, Provider
 from coding_study.domain.ai_models import ModelReply, ModelRequest
 from coding_study.domain.config import Config
 from coding_study.domain.deprecations import DEPRECATIONS
@@ -169,9 +169,6 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         models=_language_models(config.ai.enabled, user.environ),
         workspace_languages=read_marker(workspace).languages if has_marker(workspace) else None,
     )
-
-
-AI_OFF = "AI is off: turn it on with ai.enabled = true (cstudy config edit) or in Settings"
 
 
 class NoLanguageModels:

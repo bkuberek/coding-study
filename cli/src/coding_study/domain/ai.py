@@ -40,6 +40,9 @@ class AiTask(StrEnum):
     CHECK = "check"
 
 
+AI_OFF = "AI is off: turn it on with ai.enabled = true (cstudy config edit) or in Settings"
+"""What a task refused because `ai.enabled` is false says (docs/specs/ai.md#routing)."""
+
 MODEL_SHAPE = "expected provider:model, such as anthropic:<model id>"
 
 
