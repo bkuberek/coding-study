@@ -123,6 +123,11 @@ class WorkspaceBusyError(Exception):
     (exit code 3)."""
 
 
+class FolderNotDeletedError(Exception):
+    """A language's folder that `cstudy lang remove --delete-folder` could not delete whole; the
+    text names what stays (exit code 4)."""
+
+
 class VersionControlError(Exception):
     """git is missing, or cannot compare the repository with a branch (exit code 4)."""
 

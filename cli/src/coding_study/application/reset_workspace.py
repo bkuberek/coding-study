@@ -105,9 +105,9 @@ def _groups(environment: Environment) -> tuple[ResetGroup, ...]:
             ResetOption.FILES,
             "practice files, project folders and notes",
             (
-                ResetEntry("practice files", _own_files(workspace, *_practice_directories())),
+                ResetEntry("practice files", own_files(workspace, *_practice_directories())),
                 ResetEntry("project folders", len(_own_entries(workspace, PROJECTS_DIRECTORY))),
-                ResetEntry("notes", _own_files(workspace, NOTES_DIRECTORY)),
+                ResetEntry("notes", own_files(workspace, NOTES_DIRECTORY)),
             ),
         ),
         ResetGroup(
@@ -130,7 +130,7 @@ def _own_entries(workspace: Workspace, directory: str) -> tuple[str, ...]:
     )
 
 
-def _own_files(workspace: Workspace, *directories: str) -> int:
+def own_files(workspace: Workspace, *directories: str) -> int:
     return sum(
         path != KEEP_FILE
         for directory in directories

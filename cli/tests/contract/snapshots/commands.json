@@ -390,7 +390,17 @@
   "cstudy lang remove": {
     "subcommands": []
   },
+  "cstudy lang remove --delete-folder": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
   "cstudy lang remove --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy lang remove --yes": {
     "choices": [],
     "deprecated": false,
     "takes_value": false

@@ -318,6 +318,26 @@ class WorkspaceLanguageStore(Protocol):
         ...
 
 
+class LanguageFolders(Protocol):
+    """The template folders of a workspace's languages, which `cstudy lang remove --delete-folder`
+    deletes (docs/specs/cli.md#deleting-a-languages-folder). Paths are workspace-relative."""
+
+    def present(self, path: str) -> bool:
+        """Whether anything is at `path`, a link included."""
+        ...
+
+    def leaves_workspace(self, path: str) -> bool:
+        """Whether `path` is a link, or resolves outside the workspace. What a folder holds is not
+        asked: a link inside it, `.venv/bin/python` among them, is deleted as a link."""
+        ...
+
+    def delete(self, path: str) -> None:
+        """Deletes the file or the folder `path` with everything in it; a link is removed, never
+        followed. Nothing happens when nothing is there. Raises FolderNotDeletedError, after
+        deleting all it can, when something stays."""
+        ...
+
+
 class StubGenerator(Protocol):
     """One per language (docs/specs/runners.md#stub-generation)."""
 

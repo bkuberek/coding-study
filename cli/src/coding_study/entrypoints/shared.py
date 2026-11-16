@@ -28,6 +28,7 @@ from coding_study.domain.errors import (
     BackupError,
     ConfigError,
     ContentError,
+    FolderNotDeletedError,
     LanguageNotSetUpError,
     LanguageServerNotInstalledError,
     MigrationError,
@@ -82,6 +83,7 @@ ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {
     ContentRootError: ExitCode.USAGE_ERROR,
     WorkspaceError: ExitCode.USAGE_ERROR,
     VersionControlError: ExitCode.ENVIRONMENT_ERROR,
+    FolderNotDeletedError: ExitCode.ENVIRONMENT_ERROR,
     ResetNotConfirmedError: ExitCode.USAGE_ERROR,
     WorkspaceBusyError: ExitCode.USAGE_ERROR,
 }
