@@ -30,8 +30,7 @@ from tests.project_builders import project_meta
 STOCK = 3
 CHECKOUTS = 10
 ROUND_TRIP_S = 0.05
-"""Between reading the stock and writing it back: what a query to a database costs, and far more
-than the spread of a burst's arrivals, so a shop that does not lock oversells every time."""
+"""Between reading the stock and writing it back: what a query to a database costs."""
 UNUSED_CONTROL_PORT = 9
 EXACT = ComparatorSpec(ComparatorType.EXACT)
 
@@ -67,11 +66,16 @@ def reservations_document() -> dict[str, Any]:
 
 @dataclass
 class Shop:
-    """One item's stock, read and written in two steps with a round trip between them."""
+    """One item's stock, read and written in two steps with a round trip between them. A shop
+    that does not lock lets every checkout of a burst read the stock before any writes it back,
+    so it oversells every time, however the burst's arrivals spread."""
 
     locking: bool
     stock: int = STOCK
     _lock: threading.Lock = field(default_factory=threading.Lock)
+    _all_read: threading.Barrier = field(
+        default_factory=lambda: threading.Barrier(CHECKOUTS, timeout=GENEROUS_WAIT_S)
+    )
 
     def restock(self, _request: AppRequest) -> AppAnswer:
         self.stock = STOCK
@@ -88,6 +92,8 @@ class Shop:
 
     def _check_then_update(self) -> AppAnswer:
         seen = self.stock
+        if not self.locking:
+            self._all_read.wait()
         time.sleep(ROUND_TRIP_S)
         if seen <= 0:
             return AppAnswer(409, {"error": "out of stock"})
