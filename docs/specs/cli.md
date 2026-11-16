@@ -75,7 +75,7 @@
 | `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next), [`set list` and `set show`](#cstudy-set), [`learn`](#cstudy-learn), [`docs`](#cstudy-docs) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet. An object that names content by `slug` carries its [canonical ID](compatibility.md#canonical-content-ids) as `id` beside it |
 | `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#cstudy-test) on every autograded problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
-| `--no-color` | Plain output (also when `NO_COLOR` is set or stdout is not a TTY) |
+| `--no-color` | No colors, also when `NO_COLOR` is set; dim and bold stay. Output that is not a terminal is plain |
 | `-v`, `--verbose` | Planned, not implemented yet: show runner commands, build output and timings |
 | `--workspace PATH` | The workspace, before the command (`cstudy --workspace ~/ws start two-sum`); overrides `CSTUDY_WORKSPACE` |
 | `--content PATH` | The content root, before the command; overrides `CSTUDY_CONTENT`. Unrelated to `cstudy list --content`, which filters by content status |

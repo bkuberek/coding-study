@@ -42,7 +42,7 @@ def global_options(
         ),
     ] = False,
     no_color: Annotated[
-        bool, typer.Option("--no-color", help="Plain output (also with NO_COLOR or no TTY).")
+        bool, typer.Option("--no-color", help="No colors (also with NO_COLOR); dim and bold stay.")
     ] = False,
     workspace: Annotated[
         Path | None,
