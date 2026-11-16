@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v0.52.1 (2026-11-16)
+
+### Bug Fixes
+
+- Show and finish a rubric attempt whose slug a workspace problem took
+  ([`8c1cea5`](https://github.com/bkuberek/coding-study/commit/8c1cea5092ebaece79c44f8d4ec64436a689a993))
+
+- Write the Go suite overlay in the attempt's run folder
+  ([`09031d3`](https://github.com/bkuberek/coding-study/commit/09031d3cedd9299105664be25fdc0e4f22542ee9))
+
+### Build System
+
+- Run the content gate as concurrent verify groups
+  ([`6479585`](https://github.com/bkuberek/coding-study/commit/6479585733ed25634575344755007650d2b37c05))
+
+### Chores
+
+- **showcase**: Retake the web UI shots for cstudy 0.52
+  ([`25d9f64`](https://github.com/bkuberek/coding-study/commit/25d9f64e96ddaf1cab472b3b6adc8e3e1ac186aa))
+
+### Testing
+
+- Leave service projects out of the generator-check tests
+  ([`a909ded`](https://github.com/bkuberek/coding-study/commit/a909ded64dacd568f3bd04c87eebbc16a26798e7))
+
+
 ## v0.52.0 (2026-11-16)
 
 ### Bug Fixes
