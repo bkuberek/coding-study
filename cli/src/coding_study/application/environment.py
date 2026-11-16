@@ -30,6 +30,7 @@ from coding_study.application.ports import (
     Workspace,
 )
 from coding_study.domain.config import Config
+from coding_study.domain.problem import Language
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,3 +89,6 @@ class Environment:
     preferences: PreferencesStore
     """The web UI's preferences: a service project's install builds the server its sidecar runs,
     if that server is not the one of `.cs/lsp/`, only while `code_intelligence` is on."""
+    workspace_languages: tuple[Language, ...] | None = None
+    """The marker's `languages`, in the order a workspace lists them; None when the workspace chose
+    none, so it has all six (docs/specs/installation-and-workspaces.md#workspace-languages)."""

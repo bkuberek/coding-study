@@ -112,3 +112,30 @@ def test_a_service_project_is_judged_by_its_docker_toolchain_not_the_hosts(
     assert engine.called("install")
     assert not any(result.skipped for result in problem.languages)
     assert not any("skipped" in error for error in problem.ready_errors)
+
+
+def test_a_language_the_workspace_does_not_list_is_skipped_and_the_others_verify(environment):
+    environment = replace(environment, workspace_languages=(Language.PYTHON,))
+    problem = verify(environment, skip_languages=OTHERS)
+    assert [(r.language, r.skipped, r.passing) for r in problem.languages] == [
+        (Language.PYTHON, None, 2),
+        (TYPESCRIPT, "not one of this workspace's languages: cstudy lang add typescript", 0),
+    ]
+
+
+def test_the_ready_gate_counts_an_unlisted_language_as_not_passed(environment):
+    environment = replace(environment, workspace_languages=(Language.PYTHON,))
+    problem = verify(environment, require_ready=True, skip_languages=OTHERS)
+    assert (
+        "typescript skipped: not one of this workspace's languages: cstudy lang add typescript"
+        in problem.ready_errors
+    )
+
+
+def test_a_service_project_verifies_whatever_the_workspaces_languages(service_environment, engine):
+    environment = replace(service_environment, workspace_languages=(Language.RUST,))
+    request = VerifyRequest(slugs=(PYTHON,), require_ready=True)
+
+    [problem] = verify_content(environment, request, lambda _line: None).problems
+
+    assert not any(result.skipped for result in problem.languages)

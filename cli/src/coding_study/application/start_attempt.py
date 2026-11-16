@@ -8,9 +8,11 @@ from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
 from coding_study.application.jdk_requirement import require_jdk
+from coding_study.application.language_requirement import require_workspace_language
 from coding_study.application.project_start import (
     ProjectStartRequest,
     StartedProject,
+    project_start_language,
     start_project,
 )
 from coding_study.application.starter_helpers import append_helper
@@ -24,6 +26,7 @@ from coding_study.domain.practice_manifests import practice_manifest, with_probl
 from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Language, Problem, ProblemKind, StubSource
 from coding_study.domain.problem_files import PROBLEM_FILE
+from coding_study.domain.service_project import service_of
 from coding_study.domain.starter_summary import starter_summary
 
 
@@ -61,11 +64,15 @@ def start_attempt(environment: Environment, request: StartRequest) -> StartedAtt
     problem = environment.problems.load(request.slug)
     if problem.meta.kind is ProblemKind.PROJECT:
         return _start_project(environment, problem, request)
-    language = resolve_language(request.language, environment.config)
+    language = resolve_language(
+        request.language, environment.config, environment.workspace_languages
+    )
     _require_language(problem, language)
+    in_progress = environment.progress.in_progress_attempt(request.slug, language)
+    if in_progress is None or request.fresh:
+        require_workspace_language(environment, language)
     require_jdk(environment, problem.meta, language)
     stub_path = layout.stub_path(problem.meta, language)
-    in_progress = environment.progress.in_progress_attempt(request.slug, language)
     if in_progress is not None and not request.fresh:
         created = _ensure_stub(environment, problem, language)
         _list_in_manifest(environment, problem, language)
@@ -90,6 +97,8 @@ def _start_project(
 ) -> StartedAttempt:
     """A project problem starts in its folder, in its one language
     (docs/specs/cli.md#cstudy-start)."""
+    if service_of(problem.meta) is None:
+        _require_workspace_language_for_new_attempt(environment, problem, request)
     scheduled = environment.progress.schedule_entry(problem.meta.slug) is not None
     mode = attempt_mode(request.mock, scheduled)
     project_request = ProjectStartRequest(request.language, request.fresh, request.timer_s, mode)
@@ -104,6 +113,17 @@ def _start_project(
         archived_to=started.archived_to,
         project=started.project,
     )
+
+
+def _require_workspace_language_for_new_attempt(
+    environment: Environment, problem: Problem, request: StartRequest
+) -> None:
+    """A project problem outside a service stack uses the workspace's toolchain, so its language
+    must be a workspace language too, unless an attempt in progress is resumed."""
+    language = project_start_language(problem, request.language)
+    in_progress = environment.progress.in_progress_attempt(problem.meta.slug, language)
+    if in_progress is None or request.fresh:
+        require_workspace_language(environment, language)
 
 
 def _require_language(problem: Problem, language: Language) -> None:

@@ -76,6 +76,33 @@ def test_the_start_hint_uses_the_language_given(environment):
     )
 
 
+def test_a_lang_outside_the_workspaces_languages_exits_3_with_the_lang_add_hint(
+    environment, monkeypatch
+):
+    narrowed = replace(environment, workspace_languages=(Language.PYTHON, Language.GO))
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: narrowed)
+    result = invoke("--lang", "rust")
+    assert (result.exit_code, result.output) == (
+        ExitCode.USAGE_ERROR,
+        "error: rust is not one of this workspace's languages (python, go): cstudy lang add rust\n",
+    )
+
+
+def test_a_refused_lang_with_start_starts_nothing(environment, monkeypatch):
+    narrowed = replace(environment, workspace_languages=(Language.PYTHON,))
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: narrowed)
+    result = invoke("--lang", "rust", "--start")
+    assert (result.exit_code, environment.progress.active_attempt()) == (ExitCode.USAGE_ERROR, None)
+
+
+def test_the_start_hint_uses_the_first_workspace_language_when_the_default_is_not_one(
+    environment, monkeypatch
+):
+    narrowed = replace(environment, workspace_languages=(Language.GO, Language.RUST))
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: narrowed)
+    assert invoke().output.splitlines()[1] == "start   cstudy start two-sum --lang go"
+
+
 def test_nothing_in_scope(environment):
     result = invoke("--track", "practical")
     assert (result.exit_code, result.output) == (0, "nothing due and no new problems in scope\n")

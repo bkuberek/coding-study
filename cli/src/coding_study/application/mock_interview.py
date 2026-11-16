@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from coding_study.application.environment import Environment
+from coding_study.application.language_requirement import require_workspace_language
 from coding_study.application.next_problem import graded_attempts, jdk_reason, jdk_scope
 from coding_study.application.practice_catalog import is_item, practice_candidates
 from coding_study.application.start_attempt import StartRequest, start_attempt
@@ -33,7 +34,7 @@ class MockRequest:
     tracks: tuple[Track, ...] = ()
     """Empty: the config's `next.tracks`."""
     language: Language | None = None
-    """None: the config's `default_lang`."""
+    """None: the default language (`default_lang` while it is a workspace language)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +92,11 @@ def start_mock(environment: Environment, request: MockRequest) -> MockSession:
     """Raises UsageError while another mock interview runs."""
     require_no_running_mock(environment, "cstudy mock")
     clock = environment.clock
-    language = resolve_language(request.language, environment.config)
+    if request.language is not None:
+        require_workspace_language(environment, request.language)
+    language = resolve_language(
+        request.language, environment.config, environment.workspace_languages
+    )
     scope = NextScope(
         tracks=frozenset(request.tracks or environment.config.next.tracks),
         language=language,

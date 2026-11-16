@@ -84,6 +84,67 @@ def test_a_check_that_names_a_missing_language_skips_it(environment):
     assert split.skipped == (Language.TYPESCRIPT,)
 
 
+def lang_add_reason(language: Language) -> str:
+    return f"not one of this workspace's languages: cstudy lang add {language}"
+
+
+def test_a_language_the_workspace_does_not_list_is_skipped_with_the_lang_add_reason(environment):
+    environment = replace(environment, workspace_languages=(Language.PYTHON, Language.GO))
+    split = split_by_toolchain(environment, TWO_SUM, ALL_LANGUAGES)
+    assert (split.runnable, dict(split.reasons)) == (
+        (Language.PYTHON, Language.GO),
+        {
+            Language.TYPESCRIPT: lang_add_reason(Language.TYPESCRIPT),
+            Language.JAVA: lang_add_reason(Language.JAVA),
+            Language.KOTLIN: lang_add_reason(Language.KOTLIN),
+            Language.RUST: lang_add_reason(Language.RUST),
+        },
+    )
+
+
+def test_an_unlisted_language_keeps_its_place_among_the_skipped(environment):
+    environment = replace(environment, workspace_languages=(Language.GO,))
+    split = split_by_toolchain(environment, TWO_SUM, [Language.RUST, Language.GO, Language.PYTHON])
+    assert (split.runnable, split.skipped) == ((Language.GO,), (Language.RUST, Language.PYTHON))
+
+
+def test_a_workspace_that_chose_no_languages_skips_none_for_that_reason(environment):
+    split = split_by_toolchain(environment, TWO_SUM, ALL_LANGUAGES)
+    assert dict(split.reasons) == {}
+
+
+def test_the_workspace_reason_takes_a_language_the_jdk_would_skip_too(environment):
+    environment = replace(
+        environment, jdk=jdk_of(27), workspace_languages=(Language.PYTHON, Language.JAVA)
+    )
+    split = split_by_toolchain(environment, TWO_SUM, ALL_LANGUAGES)
+    assert (split.reasons[Language.KOTLIN], split.reasons[Language.JAVA]) == (
+        lang_add_reason(Language.KOTLIN),
+        OUTSIDE_RANGE,
+    )
+
+
+def test_a_listed_language_without_its_program_is_skipped_for_the_program(environment):
+    environment = replace(
+        environment,
+        toolchain_check=without("cargo"),
+        workspace_languages=(Language.PYTHON, Language.RUST),
+    )
+    assert (
+        dict(split_by_toolchain(environment, TWO_SUM, ALL_LANGUAGES).reasons)[Language.RUST]
+        == NO_CARGO
+    )
+
+
+def test_languages_with_one_unlisted_reason_stay_one_group_each(environment):
+    environment = replace(environment, workspace_languages=(Language.PYTHON,))
+    groups = split_by_toolchain(environment, TWO_SUM, [Language.GO, Language.RUST]).reason_groups()
+    assert groups == (
+        ((Language.GO,), lang_add_reason(Language.GO)),
+        ((Language.RUST,), lang_add_reason(Language.RUST)),
+    )
+
+
 def test_narrowed_keeps_the_order_and_drops_what_is_skipped():
     assert narrowed(ALL_LANGUAGES, None, (Language.GO, Language.RUST)) == [
         language for language in ALL_LANGUAGES if language not in (Language.GO, Language.RUST)

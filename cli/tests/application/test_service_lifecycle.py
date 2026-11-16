@@ -30,6 +30,7 @@ from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.file_states import FileState
 from coding_study.domain.levels import FIRST_LEVEL
+from coding_study.domain.problem import Language
 from coding_study.domain.sandbox import (
     PYTHON_IMAGE,
     CommandOutcome,
@@ -107,6 +108,14 @@ def test_a_new_attempt_asks_the_engine_nothing(environment, engine):
     started(environment)
 
     assert engine.calls == []
+
+
+def test_a_service_project_starts_whatever_the_workspaces_languages(environment):
+    environment = replace(environment, workspace_languages=(Language.RUST,))
+
+    started(environment)
+
+    assert environment.progress.active_attempt() is not None
 
 
 def test_a_resumed_attempt_keeps_the_folder(environment):

@@ -4,13 +4,21 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade
 from coding_study.domain.config import Config
-from coding_study.domain.errors import LanguageNotSetUpError, UnknownProblemError
+from coding_study.domain.errors import LanguageNotSetUpError, UnknownProblemError, UsageError
 from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
-from tests.fakes import NOW, FakeClock, FakeStubGenerator, FakeToolchains, make_environment
+from tests.fakes import (
+    NOW,
+    FakeClock,
+    FakeStubGenerator,
+    FakeToolchains,
+    jdk_of,
+    make_environment,
+)
 from tests.fakes import repository_root as copy_repository
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
@@ -225,3 +233,91 @@ def test_a_practice_file_with_the_old_header_is_not_rewritten_for_a_new_attempt(
         environment.workspace.read_text(STUB)
         == '"""Two Sum. Statement: .statements/two-sum.md."""\n'
     )
+
+
+# A new attempt starts only in a workspace language (docs/specs/cli.md#the-workspaces-languages).
+
+GO_STUB = "go/practice/two_sum/two_sum.go"
+REFUSAL = "go is not one of this workspace's languages (python): cstudy lang add go"
+
+
+@pytest.fixture
+def every_language(tmp_path: Path):
+    """Every language can write a stub, so only the workspace's languages can refuse one."""
+    generators: dict[Language, StubGenerator] = {
+        language: FakeStubGenerator() for language in Language
+    }
+    return make_environment(
+        copy_repository(tmp_path, PRACTICE),
+        toolchains=FakeToolchains(stub_generators=generators),
+        clock=FakeClock(),
+    )
+
+
+def only(environment, *languages: Language, **config):
+    return replace(environment, workspace_languages=languages, config=Config(**config))
+
+
+def test_a_language_outside_the_workspace_exits_with_the_lang_add_hint(every_language):
+    environment = only(every_language, Language.PYTHON)
+    with pytest.raises(UsageError) as refused:
+        start(environment, language=Language.GO)
+    assert str(refused.value) == REFUSAL
+
+
+def test_a_refused_language_writes_nothing(every_language):
+    environment = only(every_language, Language.PYTHON)
+    with pytest.raises(UsageError):
+        start(environment, language=Language.GO)
+    assert (
+        environment.progress.active_attempt(),
+        environment.workspace.exists(GO_STUB),
+        environment.workspace.exists(STATEMENT),
+    ) == (None, False, False)
+
+
+def test_a_refusal_comes_before_the_jdk_check(every_language):
+    environment = replace(only(every_language, Language.PYTHON), jdk=jdk_of(27))
+    with pytest.raises(UsageError, match="java is not one of this workspace's languages"):
+        start(environment, language=Language.JAVA)
+
+
+def test_a_workspace_language_starts(every_language):
+    environment = only(every_language, Language.PYTHON, Language.GO)
+    assert start(environment, language=Language.GO).stub_path == GO_STUB
+
+
+def test_the_default_language_applies_while_the_workspace_lists_it(every_language):
+    environment = only(every_language, Language.PYTHON, Language.GO, default_lang=Language.GO)
+    assert start(environment).attempt.language is Language.GO
+
+
+def test_the_first_workspace_language_replaces_a_default_it_does_not_list(every_language):
+    environment = only(every_language, Language.GO, Language.RUST)
+    assert start(environment).attempt.language is Language.GO
+
+
+def test_a_workspace_without_languages_starts_in_any_language(every_language):
+    assert start(every_language, language=Language.GO).stub_path == GO_STUB
+
+
+def test_an_attempt_in_progress_resumes_after_its_language_leaves_the_workspace(every_language):
+    started = start(every_language, language=Language.GO)
+    environment = only(every_language, Language.PYTHON)
+    resumed = start(environment, language=Language.GO)
+    assert (resumed.resumed, resumed.attempt.id) == (True, started.attempt.id)
+
+
+def test_fresh_in_a_language_outside_the_workspace_is_refused(every_language):
+    start(every_language, language=Language.GO)
+    environment = only(every_language, Language.PYTHON)
+    with pytest.raises(UsageError, match="cstudy lang add go"):
+        start(environment, language=Language.GO, fresh=True)
+
+
+def test_a_refused_fresh_keeps_the_attempt_in_progress(every_language):
+    started = start(every_language, language=Language.GO)
+    environment = only(every_language, Language.PYTHON)
+    with pytest.raises(UsageError):
+        start(environment, language=Language.GO, fresh=True)
+    assert environment.progress.in_progress_attempt("two-sum", Language.GO) == started.attempt

@@ -9,6 +9,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 
 from coding_study.application.environment import Environment
+from coding_study.application.language_requirement import require_workspace_language
 from coding_study.application.practice_catalog import checked_by_slug, practice_candidates
 from coding_study.application.problem_sets import find_set, set_standing
 from coding_study.domain.attempts import Attempt
@@ -123,6 +124,8 @@ def next_problem(environment: Environment, request: NextRequest) -> NextPick | S
 
 def _selection(environment: Environment, request: NextRequest) -> _Selection:
     _reject_unknown_values(request)
+    if request.language is not None:
+        require_workspace_language(environment, request.language)
     clock = environment.clock
     scope = NextScope(
         tracks=frozenset(_tracks_in_scope(environment, request)),
@@ -178,7 +181,8 @@ def _tracks_in_scope(environment: Environment, request: NextRequest) -> Sequence
 
 def jdk_scope(environment: Environment, requested: Language | None) -> JdkScope:
     """The selected JDK and the language that `cstudy start` would start a problem in."""
-    return JdkScope(environment.jdk.selected(), resolve_language(requested, environment.config))
+    language = resolve_language(requested, environment.config, environment.workspace_languages)
+    return JdkScope(environment.jdk.selected(), language)
 
 
 def jdk_reason(
@@ -270,7 +274,8 @@ def start_language(
     environment: Environment, candidate: Candidate, requested: Language | None
 ) -> Language | None:
     """The language `cstudy next --start` starts `candidate` in: a project problem's own, `--lang`
-    or the config's `default_lang` for another problem, and none for a rubric problem."""
+    or the default language (`default_lang` while it is a workspace language) for another problem,
+    and none for a rubric problem."""
     if not candidate.autograded:
         return None
     meta = environment.problems.load(candidate.slug).meta
@@ -282,4 +287,4 @@ def _problem_language(
 ) -> Language:
     if meta.kind is ProblemKind.PROJECT:
         return project_language(meta)
-    return resolve_language(requested, environment.config)
+    return resolve_language(requested, environment.config, environment.workspace_languages)

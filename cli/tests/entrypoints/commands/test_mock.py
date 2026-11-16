@@ -116,6 +116,27 @@ def test_lang_writes_stubs_in_that_language(environment):
     assert "   stub       jvm/kotlin/src/main/kotlin/practice/lru_cache/" in output
 
 
+def test_a_lang_outside_the_workspaces_languages_exits_3_with_the_lang_add_hint(
+    environment, monkeypatch
+):
+    narrowed = replace(environment, workspace_languages=(Language.PYTHON,))
+    monkeypatch.setattr(mock, "load_environment", lambda *_: narrowed)
+    result = invoke("mock", "--lang", "kotlin")
+    assert (result.exit_code, started(environment)) == (ExitCode.USAGE_ERROR, [])
+    assert "kotlin is not one of this workspace's languages (python): cstudy lang add kotlin" in (
+        result.output
+    )
+
+
+def test_the_mock_starts_in_the_first_workspace_language_when_the_default_is_not_one(
+    environment, monkeypatch
+):
+    narrowed = replace(environment, workspace_languages=(Language.KOTLIN, Language.GO))
+    monkeypatch.setattr(mock, "load_environment", lambda *_: narrowed)
+    output = invoke("mock").output
+    assert output.splitlines()[0] == "mock interview · 2 problems · 45 min shared timer · kotlin"
+
+
 def test_track_reaches_items(environment):
     invoke("mock", "--track", "system-design", "--count", "1")
     assert started(environment) == ["url-shortener"]

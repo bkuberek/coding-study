@@ -57,7 +57,7 @@ from coding_study.adapters.toml_config import TomlConfigSource, config_path
 from coding_study.adapters.toolchains import RegistryToolchains, RuntimeToolchains
 from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.adapters.workspace_fs import WorkspaceFs
-from coding_study.adapters.workspace_marker import has_marker
+from coding_study.adapters.workspace_marker import has_marker, read_marker
 from coding_study.adapters.yaml_problem_sets import YamlProblemSets
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
@@ -158,6 +158,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         stack_clients=open_stack_clients,
         problem_sets=YamlProblemSets(WorkspaceFs(workspace)),
         preferences=FsPreferencesStore(workspace),
+        workspace_languages=read_marker(workspace).languages if has_marker(workspace) else None,
     )
 
 

@@ -1,5 +1,7 @@
 """The language `cstudy next --start` starts a pick in (docs/specs/cli.md#cstudy-next)."""
 
+from dataclasses import replace
+
 from coding_study.application.next_problem import start_language
 from coding_study.domain.config import Config
 from coding_study.domain.next_selection import Candidate
@@ -34,3 +36,27 @@ def test_lang_chooses_a_problems_language(tmp_path):
 def test_an_item_has_no_language(tmp_path):
     environment = make_environment(repository_root(tmp_path, FIXTURE_PROBLEMS), config=KOTLIN)
     assert start_language(environment, ITEM, Language.JAVA) is None
+
+
+def test_a_default_language_outside_the_workspace_gives_way_to_its_first_language(tmp_path):
+    environment = make_environment(
+        repository_root(tmp_path, FIXTURE_PROBLEMS),
+        config=KOTLIN,
+        workspace_languages=(Language.PYTHON, Language.GO),
+    )
+    assert start_language(environment, TWO_SUM, None) is Language.PYTHON
+
+
+def test_a_default_language_of_the_workspace_stays(tmp_path):
+    environment = make_environment(
+        repository_root(tmp_path, FIXTURE_PROBLEMS),
+        config=KOTLIN,
+        workspace_languages=(Language.PYTHON, Language.KOTLIN),
+    )
+    assert start_language(environment, TWO_SUM, None) is Language.KOTLIN
+
+
+def test_a_project_problem_keeps_its_own_language_in_any_workspace(tmp_path):
+    environment = project_environment(tmp_path, ScriptedProjectProcess(), config=KOTLIN)
+    narrowed = replace(environment, workspace_languages=(Language.GO,))
+    assert start_language(narrowed, PROJECT, None) is Language.PYTHON

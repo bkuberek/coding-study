@@ -277,3 +277,41 @@ def test_a_rubric_problem_in_progress_is_resumed_without_a_language(tmp_path, pr
     found = recommended(environment, tracks=(Track.SYSTEM_DESIGN,))
     assert isinstance(found.pick, ResumePick)
     assert (found.kind, found.language) == (EntryKind.SYSTEM_DESIGN, None)
+
+
+def python_and_go(environment):
+    return replace(environment, workspace_languages=(Language.PYTHON, Language.GO))
+
+
+def test_a_lang_outside_the_workspaces_languages_is_a_usage_error(environment):
+    request = NextRequest(language=Language.KOTLIN)
+    with pytest.raises(UsageError) as refused:
+        next_problem(python_and_go(environment), request)
+    assert str(refused.value) == (
+        "kotlin is not one of this workspace's languages (python, go): cstudy lang add kotlin"
+    )
+
+
+def test_a_recommendation_refuses_a_lang_outside_the_workspaces_languages(environment):
+    with pytest.raises(UsageError, match="cstudy lang add kotlin"):
+        recommend(python_and_go(environment), NextRequest(language=Language.KOTLIN))
+
+
+def test_a_lang_of_the_workspace_picks_as_before(environment):
+    assert picked(python_and_go(environment), language=Language.GO) == "two-sum"
+
+
+def test_a_recommendation_starts_in_the_first_workspace_language_when_the_default_is_not_one(
+    environment,
+):
+    narrowed = replace(environment, workspace_languages=(Language.KOTLIN, Language.GO))
+    assert described(recommend(narrowed, NextRequest()))[2] is Language.KOTLIN
+
+
+def test_a_recommendation_starts_in_the_default_language_when_the_workspace_lists_it(environment):
+    narrowed = replace(
+        environment,
+        workspace_languages=(Language.PYTHON, Language.GO),
+        config=Config(default_lang=Language.GO),
+    )
+    assert described(recommend(narrowed, NextRequest()))[2] is Language.GO

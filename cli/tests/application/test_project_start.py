@@ -145,6 +145,35 @@ def test_another_language_starts_nothing(environment):
     assert environment.progress.active_attempt() is None
 
 
+def only_rust(environment: Environment) -> Environment:
+    return replace(environment, workspace_languages=(Language.RUST,))
+
+
+def test_a_project_outside_the_workspaces_languages_exits_with_the_lang_add_hint(environment):
+    expected = "python is not one of this workspace's languages (rust): cstudy lang add python"
+    with pytest.raises(UsageError) as refused:
+        start(only_rust(environment))
+    assert str(refused.value) == expected
+
+
+def test_a_refused_project_start_writes_nothing(environment):
+    refused = only_rust(environment)
+    with pytest.raises(UsageError):
+        start(refused)
+    assert (refused.progress.active_attempt(), refused.workspace.exists(FOLDER)) == (None, False)
+
+
+def test_a_project_in_progress_resumes_after_its_language_leaves_the_workspace(environment):
+    first = start(environment)
+    assert start(only_rust(environment)).attempt.id == first.attempt.id
+
+
+def test_fresh_on_a_project_outside_the_workspaces_languages_is_refused(environment):
+    start(environment)
+    with pytest.raises(UsageError, match="cstudy lang add python"):
+        start(only_rust(environment), fresh=True)
+
+
 def test_starting_again_resumes_the_attempt(environment):
     first = start(environment)
     assert start(environment).attempt.id == first.attempt.id

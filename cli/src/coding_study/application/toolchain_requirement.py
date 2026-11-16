@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from coding_study.application.environment import Environment
 from coding_study.application.jdk_requirement import split_by_jdk
+from coding_study.application.language_requirement import is_workspace_language, lang_add
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.service_project import service_of
 
@@ -48,13 +49,22 @@ def narrowed(
 def split_by_toolchain(
     environment: Environment, meta: ProblemMeta, languages: Sequence[Language]
 ) -> ToolchainSplit:
-    """`languages` in their order, with those moved to `skipped` that the selected JDK or the
-    machine's toolchains cannot run. A service project's languages are judged by the JDK range
-    alone: its toolchains are the ones in its Docker images."""
-    jdk = split_by_jdk(environment, meta, languages)
-    reasons = {language: jdk.reason for language in jdk.skipped if jdk.reason is not None}
+    """`languages` in their order, with those moved to `skipped` that the workspace does not list,
+    the selected JDK cannot run or the machine's toolchains cannot run. A service project's
+    languages are judged by the JDK range alone: its toolchains are the ones in its Docker
+    images, and it uses no language folder."""
     if service_of(meta) is not None:
+        jdk = split_by_jdk(environment, meta, languages)
+        reasons = {language: jdk.reason for language in jdk.skipped if jdk.reason is not None}
         return ToolchainSplit(jdk.runnable, jdk.skipped, reasons)
+    listed = [language for language in languages if is_workspace_language(environment, language)]
+    reasons = {
+        language: f"not one of this workspace's languages: {lang_add(language)}"
+        for language in languages
+        if language not in listed
+    }
+    jdk = split_by_jdk(environment, meta, listed)
+    reasons |= {language: jdk.reason for language in jdk.skipped if jdk.reason is not None}
     runnable: list[Language] = []
     for language in jdk.runnable:
         missing = environment.toolchain_check.missing(language)
