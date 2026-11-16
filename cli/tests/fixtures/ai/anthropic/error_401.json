@@ -1,0 +1,8 @@
+{
+  "type": "error",
+  "error": {
+    "type": "authentication_error",
+    "message": "invalid x-api-key: sk-test-0123456789"
+  },
+  "request_id": "req_01ExampleAuth"
+}

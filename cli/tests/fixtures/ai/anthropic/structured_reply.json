@@ -1,0 +1,25 @@
+{
+  "id": "msg_01ExampleStructured",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-example",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "Compare each criterion with the notes.",
+      "signature": "c2lnbmF0dXJl"
+    },
+    {
+      "type": "text",
+      "text": "{\"verdict\": \"met\", \"summary\": \"The notes cover the criteria.\"}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 1200,
+    "cache_creation_input_tokens": 300,
+    "cache_read_input_tokens": 500,
+    "output_tokens": 340
+  }
+}

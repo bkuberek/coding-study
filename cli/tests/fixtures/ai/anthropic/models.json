@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "type": "model",
+      "id": "claude-strong-example",
+      "display_name": "Claude Strong Example",
+      "created_at": "2026-09-21T00:00:00Z",
+      "lifecycle": "active"
+    },
+    {
+      "type": "model",
+      "id": "claude-fast-example",
+      "display_name": "Claude Fast Example",
+      "created_at": "2026-06-01T00:00:00Z",
+      "lifecycle": "active"
+    }
+  ],
+  "first_id": "claude-strong-example",
+  "has_more": false,
+  "last_id": "claude-fast-example"
+}

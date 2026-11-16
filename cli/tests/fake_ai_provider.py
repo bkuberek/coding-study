@@ -9,7 +9,8 @@ server. A test or a child `cstudy` reaches it through `CSTUDY_AI_ENDPOINT`.
 `script` queues answers for one route of a provider, each served once, in order. A request to a
 path that is no provider's, or to a route whose answers are used up, is answered 404 or 599 and
 kept in `unanswered`, so a test can assert that nothing went astray. Every request is kept in
-`received`. It imports the standard library only.
+`received`, its path without the query, which is kept beside it. It imports the standard library
+only.
 """
 
 import json
@@ -76,6 +77,8 @@ class Received:
     headers: Mapping[str, str]
     """With lower-case names."""
     body: bytes
+    query: str = ""
+    """What follows the `?` of the path, which routes ignore."""
 
     @property
     def json(self) -> Any:
@@ -159,11 +162,13 @@ def _server(host: str, provider: FakeAiProvider) -> ThreadingHTTPServer:
 
         def _serve(self) -> None:
             length = int(self.headers.get("Content-Length") or 0)
+            path, _, query = self.path.partition("?")
             request = Received(
                 self.command,
-                self.path,
+                path,
                 {name.lower(): value for name, value in self.headers.items()},
                 self.rfile.read(length),
+                query,
             )
             answer = provider.answer(request)
             provider.pause(answer.delay_s)

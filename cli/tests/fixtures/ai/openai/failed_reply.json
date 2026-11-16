@@ -1,0 +1,13 @@
+{
+  "id": "resp_0failed",
+  "object": "response",
+  "status": "failed",
+  "error": {
+    "code": "server_error",
+    "message": "The model failed to generate a response for sk-test-0123456789."
+  },
+  "incomplete_details": null,
+  "model": "gpt-example",
+  "output": [],
+  "usage": null
+}

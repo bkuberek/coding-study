@@ -1,14 +1,15 @@
 """The model port, by provider (docs/specs/ai.md#architecture).
 
 `ProviderModels` sends each request to the adapter of the request's provider. An adapter is a
-module with a function that takes the `JsonClient` and returns a `ProviderAdapter`; `ADAPTERS`
-names them.
+class that takes the `JsonClient` and provides a `ProviderAdapter`; `ADAPTERS` names them.
 """
 
 from collections.abc import Callable, Mapping
 from typing import Protocol
 
+from coding_study.adapters.ai.anthropic import AnthropicModels
 from coding_study.adapters.ai.http_json import JsonClient
+from coding_study.adapters.ai.openai import OpenAiModels
 from coding_study.adapters.workspace_marker import tool_version
 from coding_study.application.ai_ports import LanguageModels
 from coding_study.domain.ai import ApiKey, Provider
@@ -30,8 +31,11 @@ class ProviderAdapter(Protocol):
 
 type AdapterFactory = Callable[[JsonClient], ProviderAdapter]
 
-ADAPTERS: dict[Provider, AdapterFactory] = {}
-"""The provider adapters of this build, each added with its module."""
+ADAPTERS: dict[Provider, AdapterFactory] = {
+    Provider.ANTHROPIC: AnthropicModels,
+    Provider.OPENAI: OpenAiModels,
+}
+"""The provider adapters of this build."""
 
 
 class ProviderModels:

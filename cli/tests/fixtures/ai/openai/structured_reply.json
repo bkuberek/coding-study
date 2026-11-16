@@ -1,0 +1,39 @@
+{
+  "id": "resp_0example",
+  "object": "response",
+  "status": "completed",
+  "error": null,
+  "incomplete_details": null,
+  "model": "gpt-example",
+  "output": [
+    {
+      "id": "rs_0example",
+      "type": "reasoning",
+      "summary": []
+    },
+    {
+      "id": "msg_0example",
+      "type": "message",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "text": "{\"verdict\": \"met\", \"summary\": \"The notes cover the criteria.\"}"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 1500,
+    "input_tokens_details": {
+      "cached_tokens": 500
+    },
+    "output_tokens": 1186,
+    "output_tokens_details": {
+      "reasoning_tokens": 1024
+    },
+    "total_tokens": 2686
+  }
+}

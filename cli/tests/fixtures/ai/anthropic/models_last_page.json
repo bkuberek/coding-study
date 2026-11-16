@@ -1,0 +1,14 @@
+{
+  "data": [
+    {
+      "type": "model",
+      "id": "claude-fast-example",
+      "display_name": "Claude Fast Example",
+      "created_at": "2026-06-01T00:00:00Z",
+      "lifecycle": "deprecated"
+    }
+  ],
+  "first_id": "claude-fast-example",
+  "has_more": false,
+  "last_id": "claude-fast-example"
+}

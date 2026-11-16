@@ -1,0 +1,33 @@
+{
+  "id": "resp_0refusal",
+  "object": "response",
+  "status": "completed",
+  "error": null,
+  "incomplete_details": null,
+  "model": "gpt-example",
+  "output": [
+    {
+      "id": "msg_0refusal",
+      "type": "message",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "refusal",
+          "refusal": "I'm sorry, I can't assist with that."
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 850,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 14,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 864
+  }
+}

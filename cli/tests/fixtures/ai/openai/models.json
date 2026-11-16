@@ -1,0 +1,23 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-strong-example",
+      "object": "model",
+      "created": 1790000000,
+      "owned_by": "system"
+    },
+    {
+      "id": "gpt-fast-example",
+      "object": "model",
+      "created": 1780000000,
+      "owned_by": "system"
+    },
+    {
+      "id": "text-embedding-example",
+      "object": "model",
+      "created": 1770000000,
+      "owned_by": "system"
+    }
+  ]
+}

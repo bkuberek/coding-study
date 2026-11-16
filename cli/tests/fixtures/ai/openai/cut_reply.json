@@ -1,0 +1,36 @@
+{
+  "id": "resp_0cut",
+  "object": "response",
+  "status": "incomplete",
+  "error": null,
+  "incomplete_details": {
+    "reason": "max_output_tokens"
+  },
+  "model": "gpt-example",
+  "output": [
+    {
+      "id": "msg_0cut",
+      "type": "message",
+      "status": "incomplete",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "text": "{\"verdict\": \"met\", \"summary\": \"The notes cov"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 900,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 16000,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 16900
+  }
+}
