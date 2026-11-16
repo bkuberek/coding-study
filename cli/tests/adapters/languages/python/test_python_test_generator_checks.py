@@ -46,7 +46,8 @@ RUNNER_SOURCES = REPOSITORY_ROOT / "runners" / "python" / "src"
 
 def python_projects() -> list[Path]:
     """The directories of the fixture's and the catalog's Python project problems, and of the
-    conformance suite's on the virtual clock."""
+    conformance suite's on the virtual clock. Service projects are left out: their cases are HTTP
+    steps, so no test files are generated for them."""
     return [
         *(
             directory
@@ -66,9 +67,12 @@ def is_python_project(meta_file: Path, *, on_the_clock: bool = False) -> bool:
     if not meta_file.is_file():
         return False
     meta = yaml.safe_load(meta_file.read_text())
-    clock = (meta.get("project") or {}).get("clock")
+    settings = meta.get("project") or {}
+    clock = settings.get("clock")
     project = meta.get("kind") == "project" and meta.get("languages") == ["python"]
-    return project and (clock == "virtual" or not on_the_clock)
+    return (
+        project and settings.get("grading") != "http" and (clock == "virtual" or not on_the_clock)
+    )
 
 
 PROJECTS = python_projects()

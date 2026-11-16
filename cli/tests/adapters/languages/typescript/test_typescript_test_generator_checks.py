@@ -2,7 +2,8 @@
 them, and they agree with the grader on real projects.
 
 Prettier 3 runs with its defaults on the level files of the TypeScript project problems (the
-fixture's, the catalog's and the conformance suite's on the virtual clock) and on seeded random
+fixture's, the catalog's and the conformance suite's on the virtual clock; service projects are
+left out, because their cases run over HTTP) and on seeded random
 corpora, on the real clock and on the virtual one, that reach the long-line layouts. The
 level files of each project then run with `node --test`, which strips their types, on its
 reference (every one passes) and on its starter (level 1 fails: a bare starter only with "Not
@@ -62,7 +63,8 @@ CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
 
 def typescript_projects() -> list[Path]:
     """The directories of the fixture's and the catalog's TypeScript project problems, and of the
-    conformance suite's on the virtual clock."""
+    conformance suite's on the virtual clock. Service projects are left out: their cases are HTTP
+    steps, so no test files are generated for them."""
     return [
         *(
             directory
@@ -82,14 +84,17 @@ def is_typescript_project(meta_file: Path, *, on_the_clock: bool = False) -> boo
     if not meta_file.is_file():
         return False
     meta = yaml.safe_load(meta_file.read_text())
-    clock = (meta.get("project") or {}).get("clock")
+    settings = meta.get("project") or {}
+    clock = settings.get("clock")
     project = meta.get("kind") == "project" and meta.get("languages") == ["typescript"]
-    return project and (clock == "virtual" or not on_the_clock)
+    return (
+        project and settings.get("grading") != "http" and (clock == "virtual" or not on_the_clock)
+    )
 
 
 def has_a_bare_starter(directory: Path) -> bool:
-    """Whether the starter's methods only throw `Not implemented`. The starters of the service and
-    debugging problems hold none: they run, and get their cases wrong on purpose."""
+    """Whether the starter's methods only throw `Not implemented`. The starters of the debugging
+    problems hold none: they run, and get their cases wrong on purpose."""
     return any(
         NOT_IMPLEMENTED in file.read_text() for file in (directory / "starter").rglob("*.ts")
     )
