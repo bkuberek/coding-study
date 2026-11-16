@@ -45,10 +45,29 @@ export interface DoneChoice {
   readonly notes: string;
 }
 
+/**
+ * `not in this workspace: cstudy lang add rust` for each of `languages` the workspace does not
+ * list, since a new attempt starts only in a workspace language (docs/specs/cli.md#the-workspaces-languages).
+ * A service project runs in Docker and uses no language folder, so none of its languages is refused.
+ */
+export function workspaceRefusals(languages: readonly string[], workspace: readonly string[], serviceProject: boolean): ReadonlyMap<string, string> {
+  if (serviceProject) return new Map();
+  return new Map(languages.filter((language) => !workspace.includes(language)).map((language) => [language, `not in this workspace: cstudy lang add ${language}`]));
+}
+
+/** Why each language cannot start, the reasons of each map in the order given. */
+export function languageReasons(...refusals: readonly ReadonlyMap<string, string>[]): ReadonlyMap<string, readonly string[]> {
+  const reasons = new Map<string, string[]>();
+  for (const found of refusals) {
+    for (const [language, reason] of found) reasons.set(language, [...(reasons.get(language) ?? []), reason]);
+  }
+  return reasons;
+}
+
 /** The language `cstudy start` gets `--lang` for: none for a project or a problem checked by a rubric, else
- * `default_lang` when the problem has it, else its first language. A language in `blocked`, such as
- * a Java the selected JDK cannot run, gives way to the first one that is not; when every language
- * is blocked, the usual choice stays. */
+ * the default language (`profile.default_language`) when the problem has it, else its first language. A
+ * language in `blocked`, such as a Java the selected JDK cannot run, or one the workspace does not list,
+ * gives way to the first one that is not; when every language is blocked, the usual choice stays. */
 export function defaultLanguage(
   problem: Pick<ProblemDocument, "kind" | "languages">,
   defaultLang: string,

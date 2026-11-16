@@ -234,6 +234,9 @@ export interface GuideEntry {
   readonly title: string;
   readonly summary: string;
   readonly level: GuideLevel;
+  /** What the guide is about, and who it is for (`general` for any engineer). */
+  readonly domains: readonly string[];
+  readonly job_roles: readonly string[];
   readonly prerequisites: readonly string[];
   readonly related: readonly string[];
   readonly problems: readonly string[];
@@ -257,6 +260,7 @@ export interface PathSummary {
 export interface GuideListing {
   readonly guides: readonly GuideEntry[];
   readonly paths: readonly PathSummary[];
+  readonly profile: ProfileEffect & { readonly hidden: { readonly guides: number; readonly paths: number } };
 }
 
 /** `cstudy learn <guide> --json`, with the HTML the Guides view shows. */
@@ -484,9 +488,16 @@ export interface MockAttempt {
   readonly language: string | null;
 }
 
+/** The new medium and hard problems a start would pick from, and those the learner profile hid
+ * from them (0 and 0 while the profile narrows nothing in that run). */
+export interface MockScope {
+  readonly problems: number;
+  readonly hidden: number;
+}
+
 /** `GET /api/v1/mock`. */
 export type MockState =
-  | { readonly running: false }
+  | { readonly running: false; readonly scope: MockScope }
   | {
       readonly running: true;
       readonly ends_at: string;

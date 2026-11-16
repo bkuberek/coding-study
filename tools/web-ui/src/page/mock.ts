@@ -5,6 +5,7 @@
 
 import { ApiError, type Api } from "./api.ts";
 import { h } from "./dom.ts";
+import { LABEL_DIMENSIONS, widenedDimensions, widenFlags } from "./filter-model.ts";
 import type { NotificationStream } from "./notifications.ts";
 import { MOCK_HASH } from "./routes.ts";
 import type { MockAttempt, MockState, StartedMock } from "./types.ts";
@@ -23,8 +24,10 @@ export interface MockForm {
   readonly count: number;
   /** Empty: the configuration's `next.tracks`. */
   readonly tracks: readonly string[];
-  /** Null: `default_lang`. */
+  /** Null: the default language of the workspace (`profile.default_language`). */
   readonly language: string | null;
+  /** The dimensions of the learner profile this start drops, `role,domain`, as `--widen` does. */
+  readonly widen: string;
 }
 
 export interface MockCard extends MockAttempt {
@@ -55,8 +58,30 @@ export function mockCommand(form: MockForm): string {
     form.count === DEFAULT_COUNT ? null : `--count ${form.count}`,
     ...form.tracks.map((track) => `--track ${track}`),
     form.language === null ? null : `--lang ${form.language}`,
+    ...widenFlags({ widen: form.widen }, LABEL_DIMENSIONS),
   ];
   return ["cstudy mock", ...flags].filter(Boolean).join(" ");
+}
+
+/** The query of `GET /api/v1/mock` that counts what a start with this form would pick from. */
+export function mockScopeQuery(form: MockForm): string {
+  const query = new URLSearchParams();
+  for (const track of form.tracks) query.append("tracks", track);
+  if (form.language !== null) query.set("language", form.language);
+  for (const dimension of widenedDimensions(form.widen, LABEL_DIMENSIONS)) query.append("widen", dimension);
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
+/** The body of `POST /api/v1/mock`. */
+export function mockBody(form: MockForm): {
+  minutes: number;
+  count: number;
+  tracks: readonly string[] | null;
+  language: string | null;
+  widen: readonly string[];
+} {
+  return { minutes: form.minutes, count: form.count, tracks: form.tracks.length ? form.tracks : null, language: form.language, widen: widenedDimensions(form.widen, LABEL_DIMENSIONS) };
 }
 
 /**

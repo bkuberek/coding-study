@@ -4,8 +4,9 @@
  * browser.
  */
 
+import { activeFilters, type ActiveFilter, apiQuery, type Counted, type Describe, LABEL_DIMENSIONS, widenText } from "./filter-model.ts";
 import { statusWords } from "./format.ts";
-import { type GuideFilterKey, type GuideFilters, guideHash, problemHash } from "./routes.ts";
+import { GUIDE_FILTER_KEYS, type GuideFilters, guideHash, problemHash } from "./routes.ts";
 import type { GuideEntry, GuideLevel, GuideListing, PathStep, PathSummary } from "./types.ts";
 
 export const LEVELS: readonly GuideLevel[] = ["intro", "core", "advanced"];
@@ -19,13 +20,6 @@ export const STATUSES: readonly string[] = ["read", "not_read"];
 export interface Narrowed {
   readonly guides: readonly GuideEntry[];
   readonly paths: readonly PathSummary[];
-}
-
-export interface ActiveGuideFilter {
-  readonly key: Exclude<GuideFilterKey, "search">;
-  readonly value: string;
-  /** `level: core`, as its chip reads. */
-  readonly words: string;
 }
 
 interface Searched {
@@ -83,23 +77,54 @@ export function narrowListing(listing: GuideListing, filters: GuideFilters): Nar
   };
 }
 
-/** Whether the search or a filter holds a value. */
+/** Whether the search, a filter or a widening holds a value. */
 export function isNarrowed(filters: GuideFilters): boolean {
-  return searchWords(filters.search).length > 0 || Boolean(filters.level || filters.path || filters.status);
+  return searchWords(filters.search).length > 0 || Boolean(filters.domain || filters.role || filters.widen || filters.level || filters.path || filters.status);
 }
 
 export function pathTitles(listing: GuideListing): ReadonlyMap<string, string> {
   return new Map(listing.paths.map((path) => [path.slug, path.title]));
 }
 
+/** A filter's value in words: a path by its title, `not_read` as `not read`. */
+export function describeGuideFilter(titles: ReadonlyMap<string, string>): Describe {
+  return (key, value) => (key === "path" ? (titles.get(value) ?? value) : key === "status" ? statusWords(value) : value);
+}
+
 /** Each filter that shows as a chip, `key: value` as the Problems view's read. The search has
  * none: its field already shows it. */
-export function activeGuideFilters(filters: GuideFilters, titles: ReadonlyMap<string, string>): readonly ActiveGuideFilter[] {
-  const chips: ActiveGuideFilter[] = [];
-  if (filters.level) chips.push({ key: "level", value: filters.level, words: `level: ${filters.level}` });
-  if (filters.path) chips.push({ key: "path", value: filters.path, words: `path: ${titles.get(filters.path) ?? filters.path}` });
-  if (filters.status) chips.push({ key: "status", value: filters.status, words: `status: ${statusWords(filters.status)}` });
-  return chips;
+export function activeGuideFilters(filters: GuideFilters, titles: ReadonlyMap<string, string>): readonly ActiveFilter[] {
+  return activeFilters(filters, GUIDE_FILTER_KEYS, describeGuideFilter(titles));
+}
+
+/** What the server narrows of the listing: the labels and the widening. The search, the level, the
+ * path and the status narrow in the page. */
+const SCOPE_KEYS = ["domain", "role", "widen"] as const;
+
+/** The query that reads the listing the route's domain, role and widening ask for. */
+export function scopeQuery(filters: GuideFilters): string {
+  return apiQuery(filters, SCOPE_KEYS, LABEL_DIMENSIONS);
+}
+
+/** The query that reads that listing with the profile dropped, which a chip's counts are out of:
+ * an explicit domain or role still applies. */
+export function wideScopeQuery(filters: GuideFilters): string {
+  return apiQuery({ domain: filters.domain, role: filters.role, widen: widenText(LABEL_DIMENSIONS) }, SCOPE_KEYS, LABEL_DIMENSIONS);
+}
+
+/**
+ * How many guides and paths the profile keeps of those it would without narrowing, each as the
+ * filters other than the search leave them: `scoped` is the listing the route's domain, role and
+ * widening ask the server for, and `wide` the same with the profile dropped.
+ */
+export function profileCounts(wide: GuideListing, scoped: GuideListing, filters: GuideFilters): readonly Counted[] {
+  const others = { ...filters, search: "" };
+  const kept = narrowListing(scoped, others);
+  const whole = narrowListing(wide, others);
+  return [
+    { shown: kept.guides.length, whole: whole.guides.length, noun: "guides" },
+    { shown: kept.paths.length, whole: whole.paths.length, noun: "paths" },
+  ];
 }
 
 /** `no guides match "zebra", level: advanced`: what an empty section says; `no guides` when

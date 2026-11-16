@@ -144,3 +144,11 @@ test("a widening that names no dimension, or one twice, is dropped or written on
     [{ view: "problems", filters: {} }, { view: "problems", filters: { widen: "role" } }, { view: "problems", filters: { widen: "lang,role,domain" } }],
   );
 });
+
+test("the guides view keeps its domain, role and widening in the query, a guide having no language to widen", () => {
+  assert.deepEqual(parseRoute("#/guides?widen=lang,role&level=core&role=backend&domain=security"), {
+    view: "guides",
+    filters: { domain: "security", role: "backend", widen: "role", level: "core" },
+  });
+  assert.equal(guidesHash({ search: "hash", level: "advanced", widen: "role", domain: "security" }), "#/guides?domain=security&widen=role&level=advanced&search=hash");
+});

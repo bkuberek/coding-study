@@ -12,7 +12,7 @@ export const NEXT_FILTERS: readonly FilterKey[] = ["set", "track", "widen", "pat
 
 /** The Guides view's filters that `cstudy learn` takes; its path has no flag, since `--path` shows
  * a path's steps. */
-export const LEARN_FILTERS: readonly GuideFilterKey[] = ["level", "status", "search"];
+export const LEARN_FILTERS: readonly GuideFilterKey[] = ["domain", "role", "widen", "level", "status", "search"];
 
 export function listCommand(filters: Filters): string {
   return withFlags("cstudy list", filters, FILTER_KEYS, DIMENSIONS);

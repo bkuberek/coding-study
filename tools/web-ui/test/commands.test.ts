@@ -103,3 +103,10 @@ test("the next command takes no widening of the language: a pick starts in a wor
     ["cstudy next", "cstudy next --widen role", "cstudy next --track dsa --widen all"],
   );
 });
+
+test("the learn command names the domain, the role and the widening before the level", () => {
+  assert.deepEqual(
+    [learnCommand({ domain: "security", widen: "role", level: "advanced", search: "hash" }), learnCommand({ widen: "role,domain" }), learnCommand({ widen: "domain" })],
+    ["cstudy learn --domain security --widen role --level advanced --search hash", "cstudy learn --widen all", "cstudy learn --widen domain"],
+  );
+});

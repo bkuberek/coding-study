@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { ApiError, type Api } from "../src/page/api.ts";
-import { bannerText, countdown, lockMessage, mockCommand, MockWatch } from "../src/page/mock.ts";
+import { bannerText, countdown, lockMessage, mockBody, mockCommand, type MockForm, mockScopeQuery, MockWatch } from "../src/page/mock.ts";
 import type { Notice, NoticeListener } from "../src/page/notifications.ts";
 import type { MockState } from "../src/page/types.ts";
 
@@ -17,7 +17,7 @@ function running(remaining: number, ...attempts: (typeof GROUP_ANAGRAMS)[]): Moc
 function scripted(states: MockState[], ended: ReadonlySet<number> = new Set()): Api {
   return {
     get: async <Document>(path: string): Promise<Document> => {
-      if (path === "/api/v1/mock") return (states.shift() ?? { running: false }) as Document;
+      if (path === "/api/v1/mock") return (states.shift() ?? { running: false, scope: { problems: 0, hidden: 0 } }) as Document;
       const id = Number(path.split("/").pop());
       if (ended.has(id)) throw new ApiError(409, "attempt_ended", `attempt ${id} is no longer in progress`);
       return { attempt_id: id } as Document;
@@ -53,14 +53,36 @@ test("the lock message is the CLI's, with the unfinished problems sorted", () =>
   );
 });
 
+const DEFAULTS: MockForm = { minutes: 45, count: 2, tracks: [], language: null, widen: "" };
+
 test("the mock command names only what differs from the defaults", () => {
-  assert.equal(mockCommand({ minutes: 45, count: 2, tracks: [], language: null }), "cstudy mock");
+  assert.equal(mockCommand(DEFAULTS), "cstudy mock");
 });
 
 test("the mock command names each flag the form sets", () => {
   assert.equal(
-    mockCommand({ minutes: 30, count: 1, tracks: ["dsa", "lld"], language: "kotlin" }),
+    mockCommand({ minutes: 30, count: 1, tracks: ["dsa", "lld"], language: "kotlin", widen: "" }),
     "cstudy mock --minutes 30 --count 1 --track dsa --track lld --lang kotlin",
+  );
+});
+
+test("the mock command widens the profile as --widen does: all, or one dimension", () => {
+  assert.deepEqual(
+    [mockCommand({ ...DEFAULTS, widen: "role,domain" }), mockCommand({ ...DEFAULTS, widen: "role" }), mockCommand({ ...DEFAULTS, language: "go", widen: "domain" })],
+    ["cstudy mock --widen all", "cstudy mock --widen role", "cstudy mock --lang go --widen domain"],
+  );
+});
+
+test("a start the page counts or makes names its tracks, language and widening as the server takes them", () => {
+  const form: MockForm = { minutes: 30, count: 3, tracks: ["dsa", "lld"], language: "go", widen: "role" };
+  assert.deepEqual(
+    [mockScopeQuery(form), mockScopeQuery(DEFAULTS), mockBody(form), mockBody(DEFAULTS).tracks],
+    [
+      "?tracks=dsa&tracks=lld&language=go&widen=role",
+      "",
+      { minutes: 30, count: 3, tracks: ["dsa", "lld"], language: "go", widen: ["role"] },
+      null,
+    ],
   );
 });
 
@@ -93,7 +115,7 @@ test("a card whose attempt left the mock and ended shows finished", async () => 
 });
 
 test("once the timer ends an unfinished attempt stays in progress", async () => {
-  const watch = new MockWatch(scripted([running(10, GROUP_ANAGRAMS), { running: false }]));
+  const watch = new MockWatch(scripted([running(10, GROUP_ANAGRAMS), { running: false, scope: { problems: 0, hidden: 0 } }]));
   await watch.refresh();
   await watch.refresh();
   assert.deepEqual([watch.state()?.running, watch.cards().map((card) => card.status)], [false, ["in_progress"]]);

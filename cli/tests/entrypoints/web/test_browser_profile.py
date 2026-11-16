@@ -1,15 +1,17 @@
-"""The learner profile in the Problems view, in a real browser, in each engine of
-`tests/browsers.py` (docs/specs/web-ui.md#filter-component): the profile is the default filter and
-shows one quiet chip with its counts (`120 of 400 · your profile: python, go · backend`), a button
-named `Show all 400: …` that widens in the route, followed by `edit profile`; the rows are those of
-the command above the view; widening survives a reload and the route's query. A profile that hides
-nothing shows no chip.
+"""The learner profile in the Problems, Guides and Mock views and the Start dialog, in a real
+browser, in each engine of `tests/browsers.py` (docs/specs/web-ui.md#filter-component): the profile
+is the default filter and shows one quiet chip with its counts (`120 of 400 · your profile: python,
+go · backend`), a button named `Show all 400: …` that widens in the route, followed by `edit
+profile`; the rows are those of the command above the view; widening survives a reload and the
+route's query; the Start dialog disables a language the workspace does not list. A profile that
+hides nothing shows no chip.
 
 The workspaces are bare ones over the catalog of the checkout, nothing is run. Playwright and its
 engines are set up as `tests/browsers.py` says; without them the test is skipped.
 """
 
 import json
+import re
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -32,13 +34,21 @@ LANGUAGES = ("python", "go")
 ROLE = "backend"
 DOMAINS = ("security", "backend")
 PROFILE = f"{', '.join(LANGUAGES)} · {ROLE} · {', '.join(DOMAINS)}"
+LABELS = f"{ROLE} · {', '.join(DOMAINS)}"
 WIDENED = ["language: any", "role: any", "domain: any"]
+LABEL_CHIPS = ["role: any", "domain: any"]
 LISTED = ".listing:not([aria-busy]) table.problems"
 SLUGS = "table.problems tbody tr .slug"
 COMMAND = ".command-text"
 CHIP = "#chip-profile"
 EDIT = ".filter-summary a.edit-profile"
 COUNT = ".filter-summary .filter-count"
+GUIDE_ROWS = "ul.guide-list > li"
+PATH_CARDS = "ul.path-cards > li"
+MOCK_FORM = "form.mock-form"
+MOCK_COMMAND_IS = (
+    "expected => document.querySelector('form.mock-form .cmd')?.textContent === expected"
+)
 COMMAND_IS = "expected => document.querySelector('.command-text')?.textContent === expected"
 FOCUSED = "document.activeElement?.id"
 
@@ -50,6 +60,12 @@ class Visit:
     cli_shown: int = 0
     cli_hidden: int = 0
     cli_widened: int = 0
+    cli_guides: int = 0
+    cli_guides_hidden: int = 0
+    cli_guides_wide: int = 0
+    cli_paths: int = 0
+    cli_paths_hidden: int = 0
+    rust_slug: str = ""
     # The Problems view.
     chip_text: str = ""
     chip_name: str = ""
@@ -78,6 +94,29 @@ class Visit:
     fragment_after_choosing_any: str = ""
     fragment_after_clear: str = ""
     chip_after_clear: int = 0
+    # The Guides view.
+    guides_chip_text: str = ""
+    guides_chip_name: str = ""
+    guides_rows: int = 0
+    guides_command: str = ""
+    guides_widened_fragment: str = ""
+    guides_widened_command: str = ""
+    guides_widened_rows: int = 0
+    guides_widened_chips: list[str] = field(default_factory=list[str])
+    guides_chip_after: int = -1
+    # The Mock view.
+    mock_chip_text: str = ""
+    mock_chip_name: str = ""
+    mock_command: str = ""
+    mock_command_widened: str = ""
+    mock_widened_chips: list[str] = field(default_factory=list[str])
+    mock_chip_after: int = -1
+    mock_languages: list[str] = field(default_factory=list[str])
+    # The Start dialog.
+    start_options: list[str] = field(default_factory=list[str])
+    start_disabled: list[str] = field(default_factory=list[str])
+    start_language: str = ""
+    start_note: str = ""
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -131,6 +170,17 @@ def _read_the_cli(workspace: Path, seen: Visit) -> None:
     seen.cli_hidden = listing["profile"]["hidden"]["problems"]
     wide = _cstudy(workspace, "list", "--widen", "all")
     seen.cli_widened = len(wide["entries"])
+    guides = _cstudy(workspace, "learn")
+    seen.cli_guides = len(guides["guides"])
+    seen.cli_guides_hidden = guides["profile"]["hidden"]["guides"]
+    seen.cli_paths = len(guides["paths"])
+    seen.cli_paths_hidden = guides["profile"]["hidden"]["paths"]
+    seen.cli_guides_wide = len(_cstudy(workspace, "learn", "--widen", "all")["guides"])
+    seen.rust_slug = next(
+        entry["slug"]
+        for entry in wide["entries"]
+        if "rust" in entry["languages"] and "python" in entry["languages"]
+    )
 
 
 def _words(text: str) -> str:
@@ -213,6 +263,52 @@ def _give_the_profile_back(page: Any, seen: Visit) -> None:
     seen.chip_after_clear = page.locator(CHIP).count()
 
 
+def _guides(page: Any, base: str, seen: Visit) -> None:
+    page.goto(f"{base}/#/guides")
+    page.wait_for_selector(f"{GUIDE_ROWS}, {PATH_CARDS}")
+    page.wait_for_selector(CHIP)
+    seen.guides_chip_text = _words(page.locator(CHIP).inner_text())
+    seen.guides_chip_name = page.locator(CHIP).get_attribute("aria-label") or ""
+    seen.guides_rows = page.locator(GUIDE_ROWS).count()
+    seen.guides_command = page.locator(COMMAND).inner_text()
+    page.click(CHIP)
+    _wait_for_command(page, "cstudy learn --widen all")
+    page.wait_for_function(
+        "wanted => document.querySelectorAll('ul.guide-list > li').length === wanted",
+        arg=seen.cli_guides_wide,
+    )
+    seen.guides_widened_fragment = page.evaluate("location.hash")
+    seen.guides_widened_command = page.locator(COMMAND).inner_text()
+    seen.guides_widened_rows = page.locator(GUIDE_ROWS).count()
+    seen.guides_widened_chips = _chips(page)
+    seen.guides_chip_after = page.locator(CHIP).count()
+
+
+def _mock(page: Any, base: str, seen: Visit) -> None:
+    page.goto(f"{base}/#/mock")
+    page.wait_for_selector(MOCK_FORM)
+    page.wait_for_selector(CHIP)
+    seen.mock_chip_text = _words(page.locator(CHIP).inner_text())
+    seen.mock_chip_name = page.locator(CHIP).get_attribute("aria-label") or ""
+    seen.mock_command = page.locator("form.mock-form .cmd").inner_text()
+    seen.mock_languages = page.locator("#mock-language option").all_inner_texts()
+    page.click(CHIP)
+    page.wait_for_function(MOCK_COMMAND_IS, arg="cstudy mock --widen all")
+    seen.mock_command_widened = page.locator("form.mock-form .cmd").inner_text()
+    seen.mock_widened_chips = _chips(page)
+    seen.mock_chip_after = page.locator(CHIP).count()
+
+
+def _start_dialog(page: Any, base: str, seen: Visit) -> None:
+    page.goto(f"{base}/#/problems/{seen.rust_slug}")
+    page.click("button:has-text('Start…')")
+    page.wait_for_selector("#start-language")
+    seen.start_options = page.locator("#start-language option").all_inner_texts()
+    seen.start_disabled = page.locator("#start-language option:disabled").all_inner_texts()
+    seen.start_language = page.locator("#start-language").input_value()
+    seen.start_note = page.locator("#start-jdk-note").inner_text()
+
+
 @pytest.fixture(scope="module")
 def visit(engine: str, narrowed: Path, server: RunningServer) -> Visit:
     seen = Visit()
@@ -226,6 +322,9 @@ def visit(engine: str, narrowed: Path, server: RunningServer) -> Visit:
         _widen_by_the_chip(page, seen)
         _reload(page, seen)
         _give_the_profile_back(page, seen)
+        _guides(page, server.address, seen)
+        _mock(page, server.address, seen)
+        _start_dialog(page, server.address, seen)
         browser.close()
     return seen
 
@@ -252,6 +351,12 @@ def unfiltered(engine: str, plain_server: RunningServer) -> Plain:
         seen.chips["problems"] = page.locator(CHIP).count()
         seen.summary_hidden = not page.locator(".filter-summary").is_visible()
         seen.lang_first = page.locator("#filter-lang option").first.inner_text()
+        page.goto(f"{plain_server.address}/#/guides")
+        page.wait_for_selector(GUIDE_ROWS)
+        seen.chips["guides"] = page.locator(CHIP).count()
+        page.goto(f"{plain_server.address}/#/mock")
+        page.wait_for_selector(MOCK_FORM)
+        seen.chips["mock"] = page.locator(CHIP).count() + page.locator(EDIT).count()
         browser.close()
     return seen
 
@@ -331,8 +436,61 @@ def test_clear_empties_the_route_so_the_profile_applies_again(visit):
     assert (visit.fragment_after_clear, visit.chip_after_clear) == ("#/", 1)
 
 
+def test_the_guides_view_shows_the_counts_of_cstudy_learn(visit):
+    guides = f"{visit.cli_guides} of {visit.cli_guides + visit.cli_guides_hidden} guides"
+    paths = f"{visit.cli_paths} of {visit.cli_paths + visit.cli_paths_hidden} paths"
+    assert visit.guides_chip_text == f"{guides} · {paths} · your profile: {LABELS}{CLOSE}"
+    assert visit.guides_rows == visit.cli_guides
+    assert visit.guides_command == "cstudy learn"
+
+
+def test_the_guides_chip_is_named_for_all_it_would_show(visit):
+    wanted = (
+        f"Show all {visit.cli_guides + visit.cli_guides_hidden} guides and "
+        f"{visit.cli_paths + visit.cli_paths_hidden} paths: your profile shows "
+        f"{visit.cli_guides} guides and {visit.cli_paths} paths, roles {ROLE} and general; "
+        f"domains {', '.join(DOMAINS)}"
+    )
+    assert visit.guides_chip_name == wanted
+
+
+def test_widening_the_guides_keeps_it_in_the_route_and_the_command(visit):
+    assert visit.guides_widened_fragment == "#/guides?widen=role,domain"
+    assert visit.guides_widened_command == "cstudy learn --widen all"
+    assert visit.guides_widened_rows == visit.cli_guides_wide
+    assert visit.guides_chip_after == 0
+    assert [chip.strip(CLOSE) for chip in visit.guides_widened_chips] == LABEL_CHIPS
+
+
+def test_the_mock_view_shows_the_chip_of_its_scope(visit):
+    assert re.fullmatch(rf"\d+ of \d+ · your profile: {LABELS}{CLOSE}", visit.mock_chip_text), (
+        visit.mock_chip_text
+    )
+    assert visit.mock_chip_name.startswith("Show all ")
+    assert visit.mock_chip_name.endswith(f"roles {ROLE} and general; domains {', '.join(DOMAINS)}")
+    assert visit.mock_command == "cstudy mock"
+
+
+def test_the_mock_chip_widens_the_picks_for_this_start(visit):
+    assert visit.mock_command_widened == "cstudy mock --widen all"
+    assert visit.mock_chip_after == 0
+    assert [chip.strip(CLOSE) for chip in visit.mock_widened_chips] == LABEL_CHIPS
+
+
+def test_the_mock_form_offers_the_workspaces_languages_only(visit):
+    assert visit.mock_languages == list(LANGUAGES)
+
+
+def test_the_start_dialog_disables_a_language_the_workspace_does_not_list(visit):
+    assert "rust" in visit.start_options
+    assert set(visit.start_disabled) == set(visit.start_options) - set(LANGUAGES)
+    assert "rust" in visit.start_disabled
+    assert visit.start_language == "python"
+    assert "not in this workspace: cstudy lang add rust" in visit.start_note
+
+
 def test_a_profile_that_hides_nothing_shows_no_chip_and_no_line(unfiltered):
-    assert unfiltered.chips == {"problems": 0}
+    assert unfiltered.chips == {"problems": 0, "guides": 0, "mock": 0}
     assert unfiltered.summary_hidden
 
 

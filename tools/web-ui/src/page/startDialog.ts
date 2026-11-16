@@ -7,7 +7,7 @@
  * fetched when the first Start control is used (NFR-12).
  */
 
-import { defaultLanguage, refreshAttemptsMenu, REVIEW_DIALOG_NOTE, startBody, startLine, type StartChoice } from "./attempts.ts";
+import { defaultLanguage, languageReasons, refreshAttemptsMenu, REVIEW_DIALOG_NOTE, startBody, startLine, type StartChoice, workspaceRefusals } from "./attempts.ts";
 import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";
 import { h } from "./dom.ts";
@@ -27,8 +27,12 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
   const sheet = openSheet(`start · ${problem.slug}`);
   const fixedLanguage = problem.kind === PROJECT ? (problem.languages[0] ?? null) : null;
   const choosesLanguage = problem.kind !== PROJECT && problem.languages.length > 0;
-  const refusals = jdkRefusals(problem.slug, problem.languages, context.session.selected_jdk, problem.jdk);
-  const initial = defaultLanguage(problem, context.session.default_lang, new Set(refusals.keys()));
+  // What keeps a language from starting: the workspace does not list it, or the selected JDK cannot run it.
+  const refusals = languageReasons(
+    workspaceRefusals(problem.languages, context.session.profile.languages, problem.requires !== null),
+    jdkRefusals(problem.slug, problem.languages, context.session.selected_jdk, problem.jdk),
+  );
+  const initial = defaultLanguage(problem, context.session.profile.default_language, new Set(refusals.keys()));
   const language = h(
     "select",
     { id: "start-language", name: "language", "aria-describedby": refusals.size ? "start-jdk-note" : null },
@@ -36,7 +40,7 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
   );
   if (initial !== null) language.value = initial;
   const jdkNote = refusals.size
-    ? h("div", { class: "jdk-note", id: "start-jdk-note" }, ...[...refusals.values()].map((reason) => h("p", {}, reason)))
+    ? h("div", { class: "jdk-note", id: "start-jdk-note" }, ...[...refusals.values()].flat().map((reason) => h("p", {}, reason)))
     : null;
   const fresh = h("input", { type: "checkbox", id: "start-fresh", name: "fresh" });
   const minutes = h("input", { type: "number", id: "start-timer", name: "timer", min: TIMER_RANGE.min, max: TIMER_RANGE.max, step: 1, placeholder: "none", inputmode: "numeric" });

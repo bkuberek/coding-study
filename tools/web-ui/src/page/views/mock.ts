@@ -10,10 +10,12 @@ import "./mock.css";
 import { refreshAttemptsMenu } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h } from "../dom.ts";
-import { countdown, DEFAULT_COUNT, DEFAULT_MINUTES, type MockCard, mockCommand, type MockForm } from "../mock.ts";
+import { activeLine } from "../filter-bar.ts";
+import { type Dimension, LABEL_DIMENSIONS, type Narrowing, profileChip, sessionNarrowing, widenedDimensions, widenText } from "../filter-model.ts";
+import { countdown, DEFAULT_COUNT, DEFAULT_MINUTES, type MockCard, mockBody, mockCommand, type MockForm, mockScopeQuery } from "../mock.ts";
 import { attemptHash } from "../routes.ts";
 import { failure, loading } from "../states.ts";
-import type { MockState, StartedMock } from "../types.ts";
+import type { MockScope, MockState, StartedMock } from "../types.ts";
 
 const TICK_MS = 1000;
 const LOCK_RULE = "new medium and hard problems; hints and solutions lock until the timer ends or every problem is done";
@@ -50,7 +52,7 @@ export function mockView(context: PageContext): Cleanup {
         another,
       );
     } else {
-      region.replaceChildren(startForm(context));
+      region.replaceChildren(startForm(context, state.scope));
     }
     tick();
   };
@@ -112,27 +114,72 @@ function cardList(cards: readonly MockCard[]): HTMLElement {
   );
 }
 
-function startForm(context: PageContext): HTMLElement {
+/**
+ * The start form. The learner profile narrows what a start picks from, so while it hides some of
+ * the new medium and hard problems in the form's scope the filter component's profile chip says
+ * how many (`GET /api/v1/mock`), read again when the tracks or the language change; its removal
+ * widens the picks for this start, as `--widen` does, without changing the profile.
+ */
+function startForm(context: PageContext, initial: MockScope): HTMLElement {
   const { session } = context;
+  const { profile } = session;
+  const narrowing = sessionNarrowing(session);
   const minutes = h("input", { type: "number", id: "mock-minutes", ...MINUTES_RANGE, value: DEFAULT_MINUTES, required: true });
   const count = h("input", { type: "number", id: "mock-count", ...COUNT_RANGE, value: DEFAULT_COUNT, required: true });
   const tracks = session.tracks.map((track) => h("input", { type: "checkbox", name: "track", value: track, id: `mock-track-${track}` }));
   const language = h(
     "select",
     { id: "mock-language" },
-    ...session.languages.map((name) => h("option", { value: name, selected: name === session.default_lang }, name)),
+    ...profile.languages.map((name) => h("option", { value: name, selected: name === profile.default_language }, name)),
   );
   const line = h("code", { class: "cmd" });
   const outcome = h("div", { class: "sheet-error", role: "status" });
   const submit = h("button", { type: "submit", class: "button primary" }, "Start the mock");
+  let widened: readonly Dimension[] = [];
+  let scope = initial;
+  let reading = 0;
   const form = (): MockForm => ({
     minutes: Number(minutes.value),
     count: Number(count.value),
     tracks: tracks.filter((input) => input.checked).map((input) => input.value),
-    language: language.value === session.default_lang ? null : language.value,
+    language: language.value === profile.default_language ? null : language.value,
+    widen: widenText(widened),
   });
   const update = () => {
     line.textContent = mockCommand(form());
+  };
+  // The roles and domains the profile narrows, until this start widens them.
+  const narrowed = (): Narrowing => ({
+    lang: null,
+    role: widened.includes("role") ? null : narrowing.role,
+    domain: widened.includes("domain") ? null : narrowing.domain,
+  });
+  const profileLine = activeLine({
+    keys: [],
+    widens: LABEL_DIMENSIONS,
+    tally: false,
+    fallback: "mock-minutes",
+    change: (next) => {
+      widened = widenedDimensions(next["widen"], LABEL_DIMENSIONS);
+      update();
+      showProfile();
+      readScope();
+    },
+  });
+  const showProfile = () => {
+    const picked = [{ shown: scope.problems, whole: scope.problems + scope.hidden, noun: null }];
+    profileLine.show({ filters: { widen: widenText(widened) }, count: "", profile: profileChip(picked, narrowed()), searching: false });
+  };
+  const readScope = () => {
+    const token = ++reading;
+    context.api
+      .get<MockState>(`/api/v1/mock${mockScopeQuery(form())}`)
+      .then((state) => {
+        if (token !== reading || state.running) return;
+        scope = state.scope;
+        showProfile();
+      })
+      .catch(() => undefined);
   };
   const element = h(
     "form",
@@ -146,17 +193,19 @@ function startForm(context: PageContext): HTMLElement {
       h("legend", {}, "tracks (none: next.tracks)"),
       ...tracks.map((input) => h("label", { class: "check", for: input.id }, input, input.value)),
     ),
+    profileLine.element,
     h("p", { class: "sheet-command" }, line, submit),
     outcome,
   );
   element.addEventListener("input", update);
+  element.addEventListener("change", (event) => {
+    if (event.target === language || tracks.some((track) => track === event.target)) readScope();
+  });
   element.addEventListener("submit", (event) => {
     event.preventDefault();
     submit.disabled = true;
-    const chosen = form();
-    const body = { minutes: chosen.minutes, count: chosen.count, tracks: chosen.tracks.length ? chosen.tracks : null, language: chosen.language };
     context.api
-      .post<StartedMock>("/api/v1/mock", body)
+      .post<StartedMock>("/api/v1/mock", mockBody(form()))
       .then(async (started) => {
         if (started.problems.length === 0) {
           outcome.replaceChildren(h("p", { class: "quiet" }, started.message ?? ""));
@@ -173,5 +222,6 @@ function startForm(context: PageContext): HTMLElement {
       });
   });
   update();
+  showProfile();
   return element;
 }

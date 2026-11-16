@@ -7,36 +7,39 @@
  * with a link to read the guide or start the problem (`cstudy learn --path <path>`).
  */
 
-import "../filters.css";
 import "./guides.css";
 
 import { learnCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
-import { command, h, isSearchShortcut, rendered } from "../dom.ts";
+import { command, h, rendered } from "../dom.ts";
 import { exampleTabs } from "../example-tabs.ts";
+import { filterBar, type ListFilter } from "../filter-bar.ts";
+import { type FilterValues, LABEL_DIMENSIONS, narrowedBy, profileChip, sessionNarrowing, wideQuery } from "../filter-model.ts";
 import { statusWords } from "../format.ts";
 import {
-  activeGuideFilters,
   countWords,
+  describeGuideFilter,
   isNarrowed,
   LEVELS,
   narrowListing,
   noMatch,
   pathTitles,
+  profileCounts,
   progressText,
+  scopeQuery,
   STATUSES,
   stepCommand,
   stepHref,
   stepTarget,
+  wideScopeQuery,
 } from "../guides-model.ts";
-import { type GuideFilterKey, type GuideFilters, GUIDES_HASH, guideHash, guidesHash, pathHash, problemHash } from "../routes.ts";
+import { GUIDE_FILTER_KEYS, type GuideFilters, GUIDES_HASH, guideHash, guidesHash, pathHash, problemHash } from "../routes.ts";
 import { empty, loading, messageOf, showFailure } from "../states.ts";
 import type { GuideDocument, GuideEntry, GuideListing, MarkedRead, PathDocument, PathStep, PathSummary } from "../types.ts";
 
 const GUIDES_API = "/api/v1/guides";
-/** The ids of the Problems view's search and filters, which never shows beside this one. */
-const SEARCH_FIELD = "filter-search";
-type ChoiceKey = Exclude<GuideFilterKey, "search">;
+/** The whole listing, which ignores the profile: the count's whole, the titles of a guide's links. */
+const WHOLE_QUERY = wideQuery(LABEL_DIMENSIONS);
 const LEVEL_WORDS: Readonly<Record<GuideEntry["level"], string>> = {
   intro: "intro: a first idea",
   core: "core: used every day",
@@ -78,71 +81,53 @@ function guideRow(guide: GuideEntry): HTMLElement {
   );
 }
 
-/** A filter's list; the value the route names stays a choice, whatever the list holds. */
-function filterSelect(key: ChoiceKey, chosen: string | undefined, choices: readonly (readonly [string, string])[], blank: string): HTMLSelectElement {
-  const values = chosen && !choices.some(([value]) => value === chosen) ? [[chosen, chosen] as const, ...choices] : choices;
-  return h(
-    "select",
-    { id: `filter-${key}`, name: key, class: chosen ? "is-set" : null },
-    h("option", { value: "" }, blank),
-    ...values.map(([value, words]) => h("option", { value, selected: chosen === value }, words)),
-  );
+/** What the Guides view holds of the server's listings: the whole one, which ignores the profile
+ * and the filters; the one the route's domain, role and widening ask for; and that one with the
+ * profile dropped, which the profile chip counts against. */
+interface Listings {
+  readonly whole: GuideListing;
+  readonly scoped: GuideListing;
+  readonly wide: GuideListing;
 }
 
+type Read = (query: string) => Promise<GuideListing>;
+
 /**
- * The search, the filters and the lists they narrow, in place: the listing is read once, so typing
- * and choosing ask the server nothing, and the route's query follows each change without adding to
- * the history.
+ * The search, the filters and the lists they narrow, in place: the search, the level, the path and
+ * the status narrow the listing already read, so typing and choosing ask the server nothing; a
+ * change of the domain, the role or the widening reads the listing that scope asks for, which the
+ * server narrows by the labels of the guides and of each path's steps. The route's query follows
+ * each change without adding to the history.
  */
-function listing(context: PageContext, found: GuideListing, initial: GuideFilters): HTMLElement[] {
-  if (found.guides.length === 0 && found.paths.length === 0) {
-    return [empty("There are no guides in this content root yet.", h("p", { class: "quiet" }, command("cstudy learn")))];
+function listing(context: PageContext, held: Listings, initial: GuideFilters, read: Read): { readonly nodes: HTMLElement[]; readonly detach: Cleanup } {
+  const { whole } = held;
+  if (whole.guides.length === 0 && whole.paths.length === 0) {
+    return { nodes: [empty("There are no guides in this content root yet.", h("p", { class: "quiet" }, command("cstudy learn")))], detach: () => undefined };
   }
-  const { shell } = context;
+  const { shell, session } = context;
+  let { scoped, wide } = held;
   let filters: GuideFilters = { ...initial };
-  const titles = pathTitles(found);
-  const pathCards = new Map(found.paths.map((path) => [path.slug, pathCard(path)]));
-  const guideRows = new Map(found.guides.map((guide) => [guide.slug, guideRow(guide)]));
+  let reading = 0;
+  const titles = pathTitles(whole);
+  const pathCards = new Map(whole.paths.map((path) => [path.slug, pathCard(path)]));
+  const guideRows = new Map(whole.guides.map((guide) => [guide.slug, guideRow(guide)]));
   const pathList = h("ul", { class: "plain path-cards" });
   const guideList = h("ul", { class: "plain guide-list" });
   const noPaths = h("p", { class: "quiet guide-none" });
   const noGuides = h("p", { class: "quiet guide-none" });
 
-  const search = h("input", {
-    id: SEARCH_FIELD,
-    name: "search",
-    type: "search",
-    value: filters.search ?? "",
-    placeholder: "search guides and paths…",
-    spellcheck: "false",
-    autocomplete: "off",
-    "aria-keyshortcuts": "/",
-  });
-  const selects: Record<ChoiceKey, HTMLSelectElement> = {
-    level: filterSelect("level", filters.level, LEVELS.map((level) => [level, level] as const), "level"),
-    path: filterSelect("path", filters.path, found.paths.map((path) => [path.slug, path.title] as const), "path"),
-    status: filterSelect("status", filters.status, STATUSES.map((status) => [status, statusWords(status)] as const), "status"),
-  };
-  const form = h(
-    "form",
-    { class: "filters", role: "search", "aria-label": "Filter guides and paths" },
-    h(
-      "label",
-      { class: "filter-search", for: search.id },
-      h("span", { class: "sr-only" }, "Search guides and paths by title, summary or slug"),
-      h("span", { class: "filter-prompt", "aria-hidden": "true" }, ">"),
-      search,
-    ),
-    ...(Object.keys(selects) as ChoiceKey[]).map((key) => h("label", { class: "filter", for: `filter-${key}` }, h("span", { class: "sr-only" }, key), selects[key])),
-  );
-  form.addEventListener("submit", (event) => event.preventDefault());
+  const named = (values: readonly string[]) => values.map((value) => ({ value, words: value }));
+  const lists: ListFilter[] = [
+    { key: "domain", choices: named(session.domains) },
+    { key: "role", choices: named(session.job_roles) },
+    { key: "level", choices: named(LEVELS) },
+    { key: "path", choices: whole.paths.map((path) => ({ value: path.slug, words: path.title })) },
+    { key: "status", choices: STATUSES.map((status) => ({ value: status, words: statusWords(status) })) },
+  ];
+  const route = (): GuideFilters => ({ ...filters, search: (filters.search ?? "").trim() });
 
-  const count = h("span", { class: "filter-count" });
-  const clear = h("a", { href: GUIDES_HASH, class: "clear" }, "clear");
-  const summary = h("div", { class: "filter-summary" });
-
-  const draw = () => {
-    const narrowed = narrowListing(found, filters);
+  const draw = (announce: boolean) => {
+    const narrowed = narrowListing(scoped, filters);
     pathList.replaceChildren(...narrowed.paths.flatMap((path) => pathCards.get(path.slug) ?? []));
     guideList.replaceChildren(...narrowed.guides.flatMap((guide) => guideRows.get(guide.slug) ?? []));
     pathList.hidden = narrowed.paths.length === 0;
@@ -151,54 +136,63 @@ function listing(context: PageContext, found: GuideListing, initial: GuideFilter
     noGuides.hidden = !guideList.hidden;
     noPaths.textContent = noMatch("paths", filters, titles);
     noGuides.textContent = noMatch("guides", filters, titles);
-    count.textContent = countWords(narrowed, found);
-    const chips = activeGuideFilters(filters, titles).map(({ key, words }, index, active) => {
-      const chip = h("button", { type: "button", id: `chip-${key}`, class: "filter-chip", "aria-label": `Remove the filter ${words}` }, words, " ", h("span", { "aria-hidden": "true" }, "×"));
-      const neighbor = active[index + 1] ?? active[index - 1];
-      chip.addEventListener("click", () => {
-        selects[key].value = "";
-        change({ [key]: "" });
-        (neighbor === undefined ? search : (summary.querySelector<HTMLElement>(`#chip-${neighbor.key}`) ?? search)).focus();
-      });
-      return chip;
-    });
-    summary.replaceChildren(...chips, h("span", { class: "filter-tally" }, count, h("span", { class: "quiet" }, " · "), clear));
-    const narrowing = isNarrowed(filters);
-    summary.hidden = !narrowing;
-    shell.setStatus({ mode: "GUIDES", where: narrowing ? count.textContent : "guides and paths" });
-    if (narrowing) shell.announce(`showing ${count.textContent}`);
+    const tally = countWords(narrowed, whole);
+    const profile = profileChip(profileCounts(wide, scoped, filters), narrowedBy(scoped.profile));
+    bar.show({ filters, count: tally, profile });
+    shell.setStatus({ mode: "GUIDES", where: bar.line.hidden ? "guides and paths" : tally });
+    if (announce && !bar.line.hidden) shell.announce(`showing ${tally}`);
   };
-  const change = (changed: GuideFilters) => {
-    filters = { ...filters, ...changed };
-    for (const key of Object.keys(selects) as ChoiceKey[]) selects[key].classList.toggle("is-set", Boolean(filters[key]));
-    const route = { ...filters, search: (filters.search ?? "").trim() };
-    history.replaceState(null, "", guidesHash(route));
-    shell.setCommand(learnCommand(route));
-    draw();
+  const change = (next: FilterValues) => {
+    const before = scopeQuery(filters);
+    filters = Object.fromEntries(GUIDE_FILTER_KEYS.flatMap((key) => (next[key] ? [[key, next[key]]] : []))) as GuideFilters;
+    history.replaceState(null, "", guidesHash(route()));
+    shell.setCommand(learnCommand(route()));
+    if (scopeQuery(filters) === before) {
+      draw(true);
+      return;
+    }
+    // The rows follow the labels and the widening once the server has narrowed them.
+    draw(false);
+    const token = ++reading;
+    Promise.all([read(scopeQuery(filters)), read(wideScopeQuery(filters))])
+      .then(([scopedNow, wideNow]) => {
+        if (token !== reading) return;
+        scoped = scopedNow;
+        wide = wideNow;
+        draw(true);
+      })
+      .catch((error: unknown) => shell.announce(`could not read the guides: ${messageOf(error)}`));
   };
-  search.addEventListener("input", () => change({ search: search.value }));
-  for (const key of Object.keys(selects) as ChoiceKey[]) selects[key].addEventListener("change", () => change({ [key]: selects[key].value }));
-  clear.addEventListener("click", (event) => {
-    event.preventDefault();
-    search.value = "";
-    for (const select of Object.values(selects)) select.value = "";
-    change({ search: "", level: "", path: "", status: "" });
-    search.focus();
+  const bar = filterBar({
+    name: "guides and paths",
+    search: { placeholder: "search guides and paths…", label: "Search guides and paths by title, summary or slug" },
+    filters,
+    keys: GUIDE_FILTER_KEYS,
+    row: lists,
+    narrowing: sessionNarrowing(session),
+    widens: LABEL_DIMENSIONS,
+    describe: describeGuideFilter(titles),
+    change,
+    searched: (text) => change({ ...filters, search: text }),
+    clearHref: GUIDES_HASH,
   });
-  draw();
+  draw(true);
 
-  return [
-    h("div", { class: "filter-bar" }, form),
-    summary,
-    h(
-      "section",
-      { class: "guide-section", "aria-labelledby": "paths-heading" },
-      h("h2", { id: "paths-heading" }, "paths"),
-      h("p", { class: "quiet" }, "A path puts guides and problems in order, from a topic's first idea to an expert's. The paths run from introductory to advanced."),
-      ...(found.paths.length ? [pathList, noPaths] : [empty("no paths yet")]),
-    ),
-    h("section", { class: "guide-section", "aria-labelledby": "all-guides-heading" }, h("h2", { id: "all-guides-heading" }, "all guides"), guideList, noGuides),
-  ];
+  return {
+    nodes: [
+      bar.row,
+      bar.line,
+      h(
+        "section",
+        { class: "guide-section", "aria-labelledby": "paths-heading" },
+        h("h2", { id: "paths-heading" }, "paths"),
+        h("p", { class: "quiet" }, "A path puts guides and problems in order, from a topic's first idea to an expert's. The paths run from introductory to advanced."),
+        ...(whole.paths.length ? [pathList, noPaths] : [empty("no paths yet")]),
+      ),
+      h("section", { class: "guide-section", "aria-labelledby": "all-guides-heading" }, h("h2", { id: "all-guides-heading" }, "all guides"), guideList, noGuides),
+    ],
+    detach: bar.attach(),
+  };
 }
 
 export function guidesView(context: PageContext, filters: GuideFilters): Cleanup {
@@ -217,24 +211,27 @@ export function guidesView(context: PageContext, filters: GuideFilters): Cleanup
     ),
   );
   let left = false;
-  void api
-    .get<GuideListing>(GUIDES_API)
-    .then((found) => {
-      if (!left) body.replaceChildren(...listing(context, found, filters));
+  let detach: Cleanup = () => undefined;
+  // Each listing is read once, whichever view of it asks.
+  const reads = new Map<string, Promise<GuideListing>>();
+  const read: Read = (query) => {
+    const held = reads.get(query) ?? api.get<GuideListing>(`${GUIDES_API}${query}`);
+    reads.set(query, held);
+    return held;
+  };
+  void Promise.all([read(WHOLE_QUERY), read(scopeQuery(filters)), read(wideScopeQuery(filters))])
+    .then(([whole, scoped, wide]) => {
+      if (left) return;
+      const drawn = listing(context, { whole, scoped, wide }, filters, read);
+      detach = drawn.detach;
+      body.replaceChildren(...drawn.nodes);
     })
     .catch((error: unknown) => {
       if (!left) showFailure(body, error);
     });
-  const focusSearch = (event: KeyboardEvent) => {
-    const field = body.querySelector<HTMLInputElement>(`#${SEARCH_FIELD}`);
-    if (field === null || !isSearchShortcut(event)) return;
-    event.preventDefault();
-    field.focus();
-  };
-  document.addEventListener("keydown", focusSearch);
   return () => {
     left = true;
-    document.removeEventListener("keydown", focusSearch);
+    detach();
   };
 }
 
@@ -297,7 +294,7 @@ export function guideView(context: PageContext, slug: string): Cleanup {
   shell.main.replaceChildren(page);
   let left = false;
   let stopTabs = (): void => undefined;
-  void Promise.all([api.get<GuideDocument>(`${GUIDES_API}/${encodeURIComponent(slug)}`), api.get<GuideListing>(GUIDES_API)])
+  void Promise.all([api.get<GuideDocument>(`${GUIDES_API}/${encodeURIComponent(slug)}`), api.get<GuideListing>(`${GUIDES_API}${WHOLE_QUERY}`)])
     .then(([guide, found]) => {
       if (left) return;
       const titles = new Map(found.guides.map((entry) => [entry.slug, entry]));

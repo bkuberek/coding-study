@@ -6,7 +6,7 @@
 
 import "./problem.css";
 
-import { defaultLanguage, REVIEW_PRACTICE_NOTE } from "../attempts.ts";
+import { defaultLanguage, REVIEW_PRACTICE_NOTE, workspaceRefusals } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { solutionButton } from "../solution.ts";
@@ -127,7 +127,8 @@ function needsSection(context: PageContext, problem: ProblemDocument): HTMLEleme
 
 function practice(context: PageContext, problem: ProblemDocument, history: History): HTMLElement {
   const scheduled = history.schedule !== null;
-  const language = defaultLanguage(problem, context.session.default_lang);
+  const { profile } = context.session;
+  const language = defaultLanguage(problem, profile.default_language, new Set(workspaceRefusals(problem.languages, profile.languages, problem.requires !== null).keys()));
   const start = h("button", { type: "button", class: "button primary", title: `${startCommand(problem.slug, language)} --no-open` }, "Start…");
   start.addEventListener("click", () => openLazily(context, () => import("../sheets.ts"), (dialog) => dialog.openStartDialog(context, problem, scheduled)));
   const solution = solutionButton(context, problem.slug);

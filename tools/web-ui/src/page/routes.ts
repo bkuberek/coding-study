@@ -13,8 +13,8 @@ export type FilterKey = (typeof FILTER_KEYS)[number];
 export type Filters = Partial<Record<FilterKey, string>>;
 
 /** The filters and the search of the Guides view (docs/specs/web-ui.md#guides-view), the search
- * last as in `FILTER_KEYS`. */
-export const GUIDE_FILTER_KEYS = ["level", "path", "status", "search"] as const;
+ * last as in `FILTER_KEYS`. A guide has no language, so its `widen` names roles and domains only. */
+export const GUIDE_FILTER_KEYS = ["domain", "role", "widen", "level", "path", "status", "search"] as const;
 export type GuideFilterKey = (typeof GUIDE_FILTER_KEYS)[number];
 export type GuideFilters = Partial<Record<GuideFilterKey, string>>;
 

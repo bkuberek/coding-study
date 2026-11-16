@@ -6,12 +6,32 @@ import {
   doneCommand,
   doneLines,
   hintText,
+  languageReasons,
   REVIEW_DIALOG_NOTE,
   REVIEW_PRACTICE_NOTE,
   startBody,
   startLine,
+  workspaceRefusals,
 } from "../src/page/attempts.ts";
 import type { DoneDocument } from "../src/page/types.ts";
+
+test("a language the workspace does not list cannot start, and says how to add it", () => {
+  assert.deepEqual([...workspaceRefusals(["python", "go", "rust"], ["python", "go"], false)], [["rust", "not in this workspace: cstudy lang add rust"]]);
+});
+
+test("a service project uses no language folder, so the workspace refuses none of its languages", () => {
+  assert.equal(workspaceRefusals(["rust"], ["python"], true).size, 0);
+});
+
+test("a language's reasons keep the order of the maps, the workspace's before the JDK's", () => {
+  const reasons = languageReasons(new Map([["java", "not in this workspace: cstudy lang add java"]]), new Map([["java", "JDK 27"], ["kotlin", "JDK 27"]]));
+  assert.deepEqual([...reasons], [["java", ["not in this workspace: cstudy lang add java", "JDK 27"]], ["kotlin", ["JDK 27"]]]);
+});
+
+test("the default language gives way to the first the workspace lists", () => {
+  const blocked = new Set(workspaceRefusals(["python", "go", "rust"], ["go"], false).keys());
+  assert.equal(defaultLanguage({ kind: "function", languages: ["python", "go", "rust"] }, "python", blocked), "go");
+});
 
 const PASSED: DoneDocument = {
   slug: "two-sum",

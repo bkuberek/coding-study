@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { activeGuideFilters, countWords, isNarrowed, narrowListing, noMatch, pathTitles, progressText, stepCommand, stepHref, stepTarget } from "../src/page/guides-model.ts";
+import {
+  activeGuideFilters,
+  countWords,
+  isNarrowed,
+  narrowListing,
+  noMatch,
+  pathTitles,
+  profileCounts,
+  progressText,
+  scopeQuery,
+  stepCommand,
+  stepHref,
+  stepTarget,
+  wideScopeQuery,
+} from "../src/page/guides-model.ts";
 import type { GuideEntry, GuideListing, PathStep, PathSummary } from "../src/page/types.ts";
 
 function step(kind: PathStep["kind"], slug: string, level: number | null = null): PathStep {
@@ -25,8 +39,11 @@ test("a path's progress reads as steps done of all", () => {
 });
 
 function guide(slug: string, level: GuideEntry["level"], read = false, summary = "A short summary."): GuideEntry {
-  return { slug, title: slug.replaceAll("-", " "), summary, level, prerequisites: [], related: [], problems: [], read, read_at: read ? "2026-11-11T09:00:00+00:00" : null };
+  return { slug, title: slug.replaceAll("-", " "), summary, level, domains: ["algorithms"], job_roles: ["general"], prerequisites: [], related: [], problems: [], read, read_at: read ? "2026-11-11T09:00:00+00:00" : null };
 }
+
+/** What a listing says of the profile when it narrowed nothing. */
+const NOT_NARROWED = { languages: null, job_roles: null, domains: null, hidden: { guides: 0, paths: 0 } } as const;
 
 function path(slug: string, level: PathSummary["level"], guides: readonly string[], title = slug): PathSummary {
   return { slug, title, summary: "From the first idea on.", level, guides, done: 0, total: guides.length };
@@ -45,6 +62,7 @@ const LISTING: GuideListing = {
     path("hashing", "core", ["hash-functions", "hash-maps-and-sets", "consistent-hashing", "merkle-trees"], "Hashing: from your first hash map"),
     path("problems-only", null, []),
   ],
+  profile: NOT_NARROWED,
 };
 
 const slugsOf = (entries: readonly { readonly slug: string }[]): string[] => entries.map((entry) => entry.slug);
@@ -137,13 +155,62 @@ test("an empty section with nothing asked says there are none", () => {
 });
 
 test("the count reads what shows of the whole listing", () => {
-  const small: GuideListing = { guides: LISTING.guides.slice(0, 1), paths: LISTING.paths.slice(0, 1) };
+  const small: GuideListing = { guides: LISTING.guides.slice(0, 1), paths: LISTING.paths.slice(0, 1), profile: NOT_NARROWED };
   assert.deepEqual(
     [countWords(narrowListing(LISTING, { level: "core" }), LISTING), countWords(narrowListing(small, {}), small)],
     ["1 of 5 guides · 1 of 3 paths", "1 of 1 guide · 1 of 1 path"],
   );
 });
 
-test("the view is narrowed while a search or a filter holds a value", () => {
-  assert.deepEqual([isNarrowed({}), isNarrowed({ search: "  " }), isNarrowed({ search: "hash" }), isNarrowed({ status: "read" })], [false, false, true, true]);
+test("the view is narrowed while a search, a filter or a widening holds a value", () => {
+  assert.deepEqual(
+    [isNarrowed({}), isNarrowed({ search: "  " }), isNarrowed({ search: "hash" }), isNarrowed({ status: "read" }), isNarrowed({ domain: "security" }), isNarrowed({ widen: "role" })],
+    [false, false, true, true, true, true],
+  );
+});
+
+test("the domain and the role show as chips, in the route's order before the level", () => {
+  assert.deepEqual(
+    activeGuideFilters({ level: "core", role: "backend", domain: "security", widen: "role" }, pathTitles(LISTING)).map((chip) => [chip.key, chip.words]),
+    [
+      ["domain", "domain: security"],
+      ["role", "role: backend"],
+      ["level", "level: core"],
+    ],
+  );
+});
+
+test("the server narrows by the labels and the widening only, so a change of the level asks it nothing", () => {
+  assert.deepEqual(
+    [scopeQuery({}), scopeQuery({ level: "core", search: "hash" }), scopeQuery({ domain: "security", role: "backend", widen: "role" }), scopeQuery({ widen: "role,domain" })],
+    ["", "", "?domain=security&role=backend", "?widen=role&widen=domain"],
+  );
+});
+
+test("the listing the chip counts against drops the profile but keeps what the route names", () => {
+  assert.deepEqual(
+    [wideScopeQuery({}), wideScopeQuery({ level: "core" }), wideScopeQuery({ domain: "security" }), wideScopeQuery({ role: "backend", widen: "domain" })],
+    ["?widen=role&widen=domain", "?widen=role&widen=domain", "?domain=security&widen=role", "?role=backend&widen=domain"],
+  );
+});
+
+/** A listing of the guides and paths the profile of a test keeps, whatever it narrowed. */
+function kept(guides: readonly string[], paths: readonly string[]): GuideListing {
+  return {
+    guides: LISTING.guides.filter((entry) => guides.includes(entry.slug)),
+    paths: LISTING.paths.filter((entry) => paths.includes(entry.slug)),
+    profile: { languages: null, job_roles: null, domains: ["security"], hidden: { guides: 0, paths: 0 } },
+  };
+}
+
+test("the profile counts what it keeps of what the filters but the search leave, guides and paths apart", () => {
+  const scoped = kept(["hash-functions", "merkle-trees"], ["hashing"]);
+  assert.deepEqual(profileCounts(LISTING, scoped, {}), [
+    { shown: 2, whole: 5, noun: "guides" },
+    { shown: 1, whole: 3, noun: "paths" },
+  ]);
+  assert.deepEqual(profileCounts(LISTING, scoped, { level: "advanced", search: "nothing of the kind" }), [
+    { shown: 1, whole: 1, noun: "guides" },
+    { shown: 0, whole: 0, noun: "paths" },
+  ]);
 });
