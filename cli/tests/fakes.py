@@ -574,8 +574,8 @@ class FakeAiStore:
         return self._newest_first(ids)
 
     def dismiss_review(self, review_id: int, at: datetime) -> bool:
-        record = self.reviews[review_id]
-        if record.dismissed_at is not None:
+        record = self.reviews.get(review_id)
+        if record is None or record.dismissed_at is not None:
             return False
         self.reviews[review_id] = replace(record, dismissed_at=at)
         return True

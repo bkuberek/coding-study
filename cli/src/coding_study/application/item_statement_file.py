@@ -32,18 +32,24 @@ def guide_links(environment: Environment, meta: ItemMeta) -> tuple[GuideLink, ..
     return tuple(links)
 
 
-def item_statement_text(
-    environment: Environment, meta: ItemMeta, guides: tuple[GuideLink, ...]
-) -> str:
+def item_change(environment: Environment, meta: ItemMeta) -> Change:
+    """The change a code review problem puts under review: `change.diff`, and each file of
+    `files/`."""
     items = environment.items
-    change = Change(
+    return Change(
         diff=items.read_text(meta.slug, CHANGE_FILE),
         files=tuple(
             ChangeFile(name, items.read_text(meta.slug, f"{CHANGE_DIRECTORY}/{name}") or "")
             for name in items.file_names(meta.slug, CHANGE_DIRECTORY)
         ),
     )
-    parts = ItemStatementParts(items.read_text(meta.slug, PROMPT_FILE), change, guides)
+
+
+def item_statement_text(
+    environment: Environment, meta: ItemMeta, guides: tuple[GuideLink, ...]
+) -> str:
+    prompt = environment.items.read_text(meta.slug, PROMPT_FILE)
+    parts = ItemStatementParts(prompt, item_change(environment, meta), guides)
     return render_item_statement(meta, parts)
 
 
