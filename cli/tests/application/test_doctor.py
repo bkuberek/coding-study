@@ -246,6 +246,10 @@ class FakeSetup:
     missing: tuple[str, ...] = ()
     current: bool = True
     refreshed: list[Path] = field(default_factory=list[Path])
+    asked: list[tuple[Language, ...] | None] = field(
+        default_factory=list[tuple[Language, ...] | None]
+    )
+    """The languages each `missing_files` and `write_missing` call was given."""
 
     def workspace_at_or_above(self, directory: Path) -> Path | None:
         return None
@@ -256,11 +260,13 @@ class FakeSetup:
     def missing_files(
         self, root: Path, languages: tuple[Language, ...] | None = None
     ) -> tuple[str, ...]:
+        self.asked.append(languages)
         return self.missing
 
     def write_missing(
         self, root: Path, languages: tuple[Language, ...] | None = None
     ) -> ScaffoldOutcome:
+        self.asked.append(languages)
         return ScaffoldOutcome(self.missing, ())
 
     def runtime_current(self, root: Path) -> bool:
@@ -367,6 +373,7 @@ def workspace_with(
     progress: FakeProgress | None = None,
     preferences: MemoryPreferences | None = None,
     language_servers: FakeLanguageServers | None = None,
+    languages: tuple[Language, ...] | None = None,
 ) -> PracticeWorkspace:
     servers = language_servers or FakeLanguageServers()
     return PracticeWorkspace(
@@ -382,6 +389,7 @@ def workspace_with(
         preferences=preferences or MemoryPreferences(),
         language_servers=servers,
         language_server_installer=servers,
+        languages=languages,
     )
 
 

@@ -201,10 +201,11 @@ def _workspace(
         return NotFound(str(error), unusable=has_marker(workspace_directory(cwd, environ)))
     content_root = content.files.root if isinstance(content, ContentLocation) else root
     language_servers = LspDirectory(root, SubprocessToolProbe(), SubprocessCommandRunner())
+    marker = read_marker(root)
     return PracticeWorkspace(
         files=FsRepositoryFiles(root),
         problems=FsProblemFiles(root, root_name=WORKSPACE_ROOT),
-        created_with=read_marker(root).created_with,
+        created_with=marker.created_with,
         setup=FsWorkspaceSetup(content_root / RUNNERS_DIRECTORY, tool_version()),
         toolchains=RegistryToolchains(LANGUAGES, LanguageContext(root, root / RUNTIME_RUNNERS)),
         runner_process=SubprocessRunner(root / RUNS_DIRECTORY),
@@ -214,6 +215,7 @@ def _workspace(
         preferences=FsPreferencesStore(root),
         language_servers=language_servers,
         language_server_installer=language_servers,
+        languages=marker.languages,
     )
 
 

@@ -31,6 +31,7 @@ from coding_study.application.ports import (
 from coding_study.application.preferences import read_preferences
 from coding_study.domain.code_intelligence import BASEDPYRIGHT, LanguageServer, License
 from coding_study.domain.jdk import JdkSource, SelectedJdk
+from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode
@@ -240,6 +241,50 @@ def test_doctor_environment_reads_the_marker_version(tmp_path):
     environment = doctor.doctor_environment(tmp_path, {}, tmp_path)
     assert isinstance(environment.workspace, PracticeWorkspace)
     assert environment.workspace.created_with == "0.0.9"
+
+
+def chose_languages(directory: Path, *languages: str) -> Path:
+    """`directory` as a workspace whose marker lists these languages."""
+    marker = mark_workspace(directory) / ".cs" / "workspace.toml"
+    names = ", ".join(f'"{language}"' for language in languages)
+    marker.write_text(f'schema = 1\ncreated_with = "0.1.0"\nlanguages = [{names}]\n')
+    return directory
+
+
+def test_doctor_environment_reads_the_languages_of_the_marker(tmp_path):
+    chose_languages(tmp_path, "go", "python")
+    workspace = doctor.doctor_environment(tmp_path, {}, tmp_path).workspace
+    assert isinstance(workspace, PracticeWorkspace)
+    assert workspace.languages == (Language.PYTHON, Language.GO)
+
+
+def test_doctor_environment_has_no_languages_for_a_marker_without_them(tmp_path):
+    mark_workspace(tmp_path)
+    workspace = doctor.doctor_environment(tmp_path, {}, tmp_path).workspace
+    assert isinstance(workspace, PracticeWorkspace)
+    assert workspace.languages is None
+
+
+def test_a_marker_whose_languages_do_not_load_makes_the_workspace_unusable(tmp_path):
+    chose_languages(tmp_path, "golang")
+    workspace = doctor.doctor_environment(tmp_path, {}, tmp_path).workspace
+    assert isinstance(workspace, NotFound)
+    assert workspace.unusable is True
+
+
+def test_fix_restores_the_files_of_the_chosen_languages_only(monkeypatch, tmp_path):
+    workspace = chose_languages(tmp_path, "python")
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    stub_report(monkeypatch)
+    monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
+    lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
+    restored = [line for line in lines if line.startswith("restored ")]
+    assert "restored python/pyproject.toml" in restored
+    assert not [line for line in restored if line.split()[1].split("/")[0] in LEFT_OUT]
+    assert not any((workspace / folder).exists() for folder in LEFT_OUT)
+
+
+LEFT_OUT = ("typescript", "jvm", "go", "go.work", "rust")
 
 
 def test_doctor_environment_selects_the_jdk_its_environment_names(tmp_path):

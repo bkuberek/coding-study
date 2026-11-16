@@ -82,6 +82,7 @@ from coding_study.domain.code_intelligence import (
     License,
     warm_up_succeeded,
 )
+from coding_study.domain.config import Config
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
     DELVE_VERSION,
@@ -118,6 +119,7 @@ from coding_study.domain.layout import (
     PYTHON_VENV,
     RUST_PROJECT,
 )
+from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import (
     CORE_LANGUAGES,
     ComparatorSpec,
@@ -150,6 +152,12 @@ INSTALL_RUST = (
 )
 
 _DOTTED_VERSION = re.compile(r"(?P<version>\d+(?:\.\d+)+)")
+
+
+def _covers(languages: tuple[Language, ...] | None, *wanted: Language) -> bool:
+    """Whether a workspace with these `languages` has any of the `wanted`: None, no languages
+    chosen, has all six."""
+    return languages is None or any(language in languages for language in wanted)
 
 
 class CheckStatus(StrEnum):
@@ -210,6 +218,10 @@ class PracticeWorkspace:
     on."""
     language_servers: LanguageServerLocator
     language_server_installer: LanguageServerInstaller
+    languages: tuple[Language, ...] | None = None
+    """The languages its marker lists, in workspace order: every check and fix step that belongs
+    to another language is left out (docs/specs/installation-and-workspaces.md). None, a marker
+    without `languages`, is all six, with Go and Rust optional."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,6 +250,8 @@ class _WorkspaceArtifact:
     project: str
     artifact: str
     fix_command: str
+    languages: tuple[Language, ...]
+    """The workspace languages that need it: any of them."""
 
     @property
     def path(self) -> str:
@@ -249,12 +263,17 @@ FIX_COMMAND = "cstudy doctor --fix"
 INIT_COMMAND = "cstudy init"
 MISSING_FILES_SHOWN = 5
 OPTIONAL_LANGUAGE_FILES = "go and rust files"
+LANGUAGES_CHECK = "languages"
+ALL_SIX = "all six (none chosen; cstudy lang remove narrows them)"
 OPTIONAL_PROJECTS = frozenset({GO_PROJECT, RUST_PROJECT})
-PYTHON_VENV_ARTIFACT = _WorkspaceArtifact(PYTHON_PROJECT, PYTHON_VENV, FIX_COMMAND)
+JVM_LANGUAGES = (Language.JAVA, Language.KOTLIN)
+PYTHON_VENV_ARTIFACT = _WorkspaceArtifact(
+    PYTHON_PROJECT, PYTHON_VENV, FIX_COMMAND, (Language.PYTHON,)
+)
 WORKSPACE_ARTIFACTS = (
-    _WorkspaceArtifact("jvm", "gradlew", FIX_COMMAND),
+    _WorkspaceArtifact("jvm", "gradlew", FIX_COMMAND, JVM_LANGUAGES),
     PYTHON_VENV_ARTIFACT,
-    _WorkspaceArtifact("typescript", "node_modules", FIX_COMMAND),
+    _WorkspaceArtifact("typescript", "node_modules", FIX_COMMAND, (Language.TYPESCRIPT,)),
 )
 DEBUGPY_CHECK = "python debugpy"
 PYTEST_CHECK = "python pytest"
@@ -423,7 +442,7 @@ NO_JAVA_FIX = replace(JVM_FIX, manual=JDK_FIX)
 """The warm-up as it is reported when there is no JDK it can build with."""
 JAVA_CHECK = "java"
 SUPPORTED_RANGE = f"cstudy supports JDK {SUPPORTED_JDKS.minimum} to {SUPPORTED_JDKS.maximum}"
-JVM_PROJECT_LANGUAGES = (Language.JAVA, Language.KOTLIN)
+JVM_PROJECT_LANGUAGES = JVM_LANGUAGES
 PROJECT_WARMUPS = "../.cs/runtime/runners/jvm/project-warmup"
 """From `jvm/`: a project folder per language in the runner runtime, with one test each."""
 JVM_PROJECT_WARMUPS = tuple(
@@ -472,11 +491,12 @@ def repair_workspace(workspace: PracticeWorkspace, notify: ProgressNotice) -> Sc
     safe), link the Python project folders to the venv again, and bring the runner runtime in
     step with the content."""
     root = workspace.files.root
-    restored = workspace.setup.write_missing(root)
+    restored = workspace.setup.write_missing(root, workspace.languages)
     for relative in restored.written:
         notify(f"restored {relative}")
-    for folder in workspace.project_links.relink(root):
-        notify(f"relinked {folder}/{PYTHON_VENV}")
+    if _covers(workspace.languages, Language.PYTHON):
+        for folder in workspace.project_links.relink(root):
+            notify(f"relinked {folder}/{PYTHON_VENV}")
     for runner in _folder_checking_runners(workspace):
         for path in runner.repair_folders():
             notify(f"wrote {path}")
@@ -545,7 +565,7 @@ def _note_skipped_servers(
 ) -> None:
     """One line saying the servers were left out and how to turn them on, unless every server
     `--fix` installs is installed already, when there is nothing to miss."""
-    states = language_server_states(workspace.language_servers, jdk)
+    states = _language_server_states(workspace, jdk)
     if any(_is_missing(state) and state.fix == FIX_COMMAND for state in states):
         notify(SERVERS_SKIPPED_NOTE)
 
@@ -555,7 +575,7 @@ def _note_servers_you_install(
 ) -> None:
     """A line for each missing server that `--fix` does not install, such as rust-analyzer,
     which comes with the Rust toolchain that cstudy never changes, naming its own fix."""
-    for state in language_server_states(workspace.language_servers, jdk):
+    for state in _language_server_states(workspace, jdk):
         if _is_missing(state) and state.fix not in (None, FIX_COMMAND):
             notify(f"{state.problem}: {FIX_COMMAND} does not install it; run {state.fix}")
 
@@ -564,11 +584,21 @@ def _is_missing(state: LanguageServerState) -> bool:
     return state.status is ServerStatus.NOT_INSTALLED
 
 
+def _language_server_states(
+    workspace: PracticeWorkspace, jdk: JdkSelector
+) -> tuple[LanguageServerState, ...]:
+    """The states of the workspace's languages only."""
+    states = language_server_states(workspace.language_servers, jdk)
+    return tuple(state for state in states if _covers(workspace.languages, state.language))
+
+
 def _jvm_warm_up_blocker(workspace: PracticeWorkspace, jdk: JdkSelector) -> str | None:
     """Why a workspace with a JVM project cannot warm Gradle up: no JDK, or one older than the
     supported minimum, on which Gradle would only fail. A JDK above the range warms up, so the
     problems that opt in to it build offline too."""
-    if not workspace.files.exists(JVM_FIX.project):
+    if not _covers(workspace.languages, *JVM_LANGUAGES) or not workspace.files.exists(
+        JVM_FIX.project
+    ):
         return None
     selected = jdk.selected()
     if selected is None:
@@ -712,28 +742,59 @@ def _succeeded(result: ProbeResult | None) -> bool:
 def _fix_plan(
     workspace: PracticeWorkspace, content: ContentLocation | NotFound, jvm: bool
 ) -> list[tuple[FixStep, Path]]:
-    files = workspace.files
+    """The steps of the workspace's languages whose project folder exists."""
+    files, languages = workspace.files, workspace.languages
     plan = [
         (step, files.root / step.project)
-        for step in (PYTHON_FIX, PYTEST_FIX, TYPESCRIPT_FIX)
-        if files.exists(step.project)
+        for step, language in (
+            (PYTHON_FIX, Language.PYTHON),
+            (PYTEST_FIX, Language.PYTHON),
+            (TYPESCRIPT_FIX, Language.TYPESCRIPT),
+        )
+        if _covers(languages, language) and files.exists(step.project)
     ]
-    if _is_checkout(content) and content.files.exists(RUNNER_TYPESCRIPT):
+    if (
+        _covers(languages, Language.TYPESCRIPT)
+        and _is_checkout(content)
+        and content.files.exists(RUNNER_TYPESCRIPT)
+    ):
         plan.append((RUNNER_TYPESCRIPT_FIX, content.files.root / RUNNER_TYPESCRIPT))
     if _code_intelligence_on(workspace):
-        plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
-        plan += [(step, files.root / step.project) for step in DOWNLOAD_STEPS]
-        plan += [(step, files.root / step.project) for step in GO_INSTALL_STEPS]
-        needed = workspace.language_servers.installed_service_languages()
-        plan += [
-            (step, files.root / step.project)
-            for step, server in FETCH_STEPS.items()
-            if not server.linux_build or server.language in needed
-        ]
-    if jvm and files.exists(JVM_FIX.project):
+        plan += _language_server_plan(workspace)
+    if jvm and _covers(languages, *JVM_LANGUAGES) and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
         if _code_intelligence_on(workspace):
-            plan += [(step, files.root / step.project) for step in WARM_UP_STEPS]
+            plan += [
+                (step, files.root / step.project)
+                for step, server in WARM_UP_STEPS.items()
+                if _covers(languages, server.language)
+            ]
+    return plan
+
+
+def _language_server_plan(workspace: PracticeWorkspace) -> list[tuple[FixStep, Path]]:
+    """The installs of the servers of the workspace's languages: the pnpm project only when one
+    of them is a Node server, the downloads, the Go builds and the fetches of the others."""
+    root, languages = workspace.files.root, workspace.languages
+    plan: list[tuple[FixStep, Path]] = []
+    if any(
+        server.version_script is not None and _covers(languages, server.language)
+        for server in LANGUAGE_SERVERS
+    ):
+        plan.append((LANGUAGE_SERVERS_FIX, root / LSP_DIRECTORY))
+    plan += [
+        (step, root / step.project)
+        for steps in (DOWNLOAD_STEPS, GO_INSTALL_STEPS)
+        for step, server in steps.items()
+        if _covers(languages, server.language)
+    ]
+    needed = workspace.language_servers.installed_service_languages()
+    plan += [
+        (step, root / step.project)
+        for step, server in FETCH_STEPS.items()
+        if _covers(languages, server.language)
+        and (not server.linux_build or server.language in needed)
+    ]
     return plan
 
 
@@ -748,18 +809,10 @@ def _is_checkout(content: ContentLocation | NotFound) -> TypeGuard[ContentLocati
 def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> DoctorReport:
     tools = environment.tools
     installs = environment.installs.scan()
+    workspace = environment.workspace
+    languages = None if isinstance(workspace, NotFound) else workspace.languages
     results = [
-        _python(tools),
-        _present_tool(tools, "uv", INSTALL_UV),
-        _node(tools),
-        _present_tool(tools, "pnpm", INSTALL_PNPM),
-        _java(environment.jdk),
-        _gradle(tools),
-        _go(tools),
-        _rustc(tools),
-        _cargo(tools),
-        _delve(tools, environment.debug_servers.delve()),
-        _lldb_server(environment.debug_servers.lldb_server()),
+        *_toolchain_rows(tools, environment.jdk, environment.debug_servers, languages),
         *_docker_rows(environment.sandbox),
         _config(environment.config),
         _content(environment.content),
@@ -767,6 +820,33 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         *_workspace(environment, installs, notify),
     ]
     return DoctorReport(tuple(results))
+
+
+def _toolchain_rows(
+    tools: ToolProbe,
+    jdk: JdkSelector,
+    debug_servers: DebugServers,
+    languages: tuple[Language, ...] | None,
+) -> list[CheckResult]:
+    """The toolchains of the workspace's languages (docs/specs/cli.md#rows-by-language): a
+    chosen Go or Rust is required, so its rows fail; without a choice, Go and Rust are optional."""
+    chosen = languages is not None
+    rows: list[CheckResult] = []
+    if _covers(languages, Language.PYTHON):
+        rows += [_python(tools), _present_tool(tools, "uv", INSTALL_UV)]
+    if _covers(languages, Language.TYPESCRIPT):
+        rows += [_node(tools), _present_tool(tools, "pnpm", INSTALL_PNPM)]
+    if _covers(languages, *JVM_LANGUAGES):
+        rows += [_java(jdk), _gradle(tools)]
+    if _covers(languages, Language.GO):
+        rows.append(_go(tools, required=chosen))
+    if _covers(languages, Language.RUST):
+        rows += [_rustc(tools, required=chosen), _cargo(tools, required=chosen)]
+    if _covers(languages, Language.GO):
+        rows.append(_delve(tools, debug_servers.delve()))
+    if _covers(languages, Language.RUST):
+        rows.append(_lldb_server(debug_servers.lldb_server()))
+    return rows
 
 
 def _docker_rows(engine: SandboxEngine) -> list[CheckResult]:
@@ -922,35 +1002,43 @@ def _minimum_text(minimum: tuple[int, int]) -> str:
     return ".".join(str(part) for part in minimum)
 
 
-def _go(tools: ToolProbe) -> CheckResult:
-    """Only `--lang go` needs Go, so a missing or old one warns."""
+def _optional(required: bool) -> CheckStatus:
+    """Only `--lang go` and `--lang rust` need their toolchains, so without a choice of languages
+    a missing one warns; a workspace that chose the language requires it."""
+    return CheckStatus.FAIL if required else CheckStatus.WARN
+
+
+def _go(tools: ToolProbe, required: bool = False) -> CheckResult:
+    """A missing or old Go warns, or fails when the workspace chose Go."""
+    missing = _optional(required)
     version = _version_of(tools, ("go", "version"))
     if isinstance(version, _Unavailable):
-        return CheckResult("go", CheckStatus.WARN, version.reason, fix=INSTALL_GO)
+        return CheckResult("go", missing, version.reason, fix=INSTALL_GO)
     if not _at_least(version, MINIMUM_GO):
         detail = (
             f"{version} (need {_minimum_text(MINIMUM_GO)} or newer; "
             "cstudy builds with GOTOOLCHAIN=local and never downloads one)"
         )
-        return CheckResult("go", CheckStatus.WARN, detail, fix=INSTALL_GO)
+        return CheckResult("go", missing, detail, fix=INSTALL_GO)
     return CheckResult("go", CheckStatus.OK, version)
 
 
-def _rustc(tools: ToolProbe) -> CheckResult:
-    """Only `--lang rust` needs Rust, so a missing or old one warns."""
+def _rustc(tools: ToolProbe, required: bool = False) -> CheckResult:
+    """A missing or old Rust warns, or fails when the workspace chose Rust."""
+    missing = _optional(required)
     version = _version_of(tools, ("rustc", "--version"))
     if isinstance(version, _Unavailable):
-        return CheckResult("rustc", CheckStatus.WARN, version.reason, fix=INSTALL_RUST)
+        return CheckResult("rustc", missing, version.reason, fix=INSTALL_RUST)
     if not _at_least(version, MINIMUM_RUSTC):
         detail = f"{version} (need {_minimum_text(MINIMUM_RUSTC)} or newer)"
-        return CheckResult("rustc", CheckStatus.WARN, detail, fix=INSTALL_RUST)
+        return CheckResult("rustc", missing, detail, fix=INSTALL_RUST)
     return CheckResult("rustc", CheckStatus.OK, version)
 
 
-def _cargo(tools: ToolProbe) -> CheckResult:
+def _cargo(tools: ToolProbe, required: bool = False) -> CheckResult:
     version = _version_of(tools, ("cargo", "--version"))
     if isinstance(version, _Unavailable):
-        return CheckResult("cargo", CheckStatus.WARN, version.reason, fix=INSTALL_RUST)
+        return CheckResult("cargo", _optional(required), version.reason, fix=INSTALL_RUST)
     return CheckResult("cargo", CheckStatus.OK, version)
 
 
@@ -1040,38 +1128,76 @@ def _workspace(
     created = f"created with cstudy {workspace.created_with}"
     if workspace.created_with != environment.version:
         created += f", running {environment.version}"
+    languages = workspace.languages
+    python = _covers(languages, Language.PYTHON)
     return [
         CheckResult("workspace", CheckStatus.OK, f"{files.root} ({created})"),
+        _languages(workspace, environment.config),
         *_workspace_files(workspace),
         _projects(files),
         _runtime(workspace),
         _progress_database(workspace.progress),
-        *(_workspace_artifact(files, artifact) for artifact in WORKSPACE_ARTIFACTS),
-        *_debugpy(environment.tools, files),
-        *_pytest(environment.tools, files),
-        _project_links(workspace),
+        *(
+            _workspace_artifact(files, artifact)
+            for artifact in WORKSPACE_ARTIFACTS
+            if _covers(languages, *artifact.languages)
+        ),
+        *(_debugpy(environment.tools, files) if python else []),
+        *(_pytest(environment.tools, files) if python else []),
+        *([_project_links(workspace)] if python else []),
         *_folder_checks(workspace),
-        *_venv_location(workspace),
-        *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
+        *(_venv_location(workspace) if python else []),
+        *(
+            _runner(workspace, language, notify)
+            for language in CORE_LANGUAGES
+            if _covers(languages, language)
+        ),
         *_project_libraries(workspace),
         *_web_ui(environment.web, reinstall_command(installs)),
         *_language_servers(workspace, environment.jdk),
     ]
 
 
+def _languages(workspace: PracticeWorkspace, source: ConfigSource) -> CheckResult:
+    """The workspace's languages, never a warning: a `default_lang` outside them only means that
+    `cstudy start` falls back to the first of them (docs/specs/cli.md#rows-by-language)."""
+    languages = workspace.languages
+    if languages is None:
+        return CheckResult(LANGUAGES_CHECK, CheckStatus.OK, ALL_SIX)
+    named = ", ".join(language.value for language in languages)
+    default = _default_language(source)
+    if default is None or default in languages:
+        return CheckResult(LANGUAGES_CHECK, CheckStatus.OK, named)
+    used = resolve_language(None, Config(default_lang=default), languages)
+    detail = f"{named} (cstudy start uses {used}: default_lang {default} is not one of them)"
+    return CheckResult(LANGUAGES_CHECK, CheckStatus.OK, detail)
+
+
+def _default_language(source: ConfigSource) -> Language | None:
+    """None for a config that does not load, which the `config` row reports."""
+    try:
+        return source.load().default_lang
+    except ConfigError:
+        return None
+
+
 def _workspace_files(workspace: PracticeWorkspace) -> list[CheckResult]:
     """Workspaces from before Go and Rust lack their files, which `--fix` writes, so those only
     warn, and the `projects` check covers the project folders; any other missing file blocks
-    practice."""
-    missing = workspace.setup.missing_files(workspace.files.root)
-    optional = tuple(path for path in missing if _is_optional_language_file(path))
+    practice. A workspace that chose its languages has no optional ones: a chosen Go or Rust is
+    required, and the languages it did not choose have no files to miss."""
+    languages = workspace.languages
+    missing = workspace.setup.missing_files(workspace.files.root, languages)
+    optional = tuple(
+        path for path in missing if languages is None and _is_optional_language_file(path)
+    )
     core = tuple(
         path for path in missing if path not in optional and not _is_in_projects_folder(path)
     )
-    return [
-        _files_row(core, workspace.problems),
-        _missing_files(OPTIONAL_LANGUAGE_FILES, optional, CheckStatus.WARN),
-    ]
+    rows = [_files_row(core, workspace.problems)]
+    if languages is None:
+        rows.append(_missing_files(OPTIONAL_LANGUAGE_FILES, optional, CheckStatus.WARN))
+    return rows
 
 
 def _files_row(missing: tuple[str, ...], problems: ProblemFiles) -> CheckResult:
@@ -1164,7 +1290,11 @@ def _folder_row(check: FolderCheck) -> CheckResult:
 
 
 def _folder_checking_runners(workspace: PracticeWorkspace) -> list[ProjectFolderChecks]:
-    runners = (_runner_of(workspace, language) for language in PROJECT_LANGUAGES)
+    runners = (
+        _runner_of(workspace, language)
+        for language in PROJECT_LANGUAGES
+        if _covers(workspace.languages, language)
+    )
     return [runner for runner in runners if isinstance(runner, ProjectFolderChecks)]
 
 
@@ -1270,6 +1400,8 @@ def _project_libraries(workspace: PracticeWorkspace) -> list[CheckResult]:
         return []
     results: list[CheckResult] = []
     for language in JVM_PROJECT_LANGUAGES:
+        if not _covers(workspace.languages, language):
+            continue
         runner = workspace.toolchains.runner(language)
         if not isinstance(runner, ProjectLibraries):
             continue
@@ -1335,10 +1467,11 @@ def _language_servers(workspace: PracticeWorkspace, jdk: JdkSelector) -> list[Ch
     cannot run on, warns."""
     if not _code_intelligence_on(workspace):
         return []
-    states = language_server_states(workspace.language_servers, jdk)
+    states = _language_server_states(workspace, jdk)
     rows = [_language_server_row(state) for state in states if state.server is not None]
     for state in sidecar_build_states(workspace.language_servers, jdk):
-        rows.append(_language_server_row(state, f"{state.language} service projects"))
+        if _covers(workspace.languages, state.language):
+            rows.append(_language_server_row(state, f"{state.language} service projects"))
     return rows
 
 
