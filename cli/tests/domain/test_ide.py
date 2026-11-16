@@ -7,10 +7,12 @@ from coding_study.domain.ide import (
     Change,
     GeneratedFile,
     Ide,
+    IdeWorkspace,
     Regeneration,
     content_digest,
     plan_regeneration,
 )
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 
 TASKS = ".vscode/tasks.json"
 MISC = ".idea/misc.xml"
@@ -119,3 +121,20 @@ def test_files_of_an_ide_not_regenerated_are_left_alone():
 def test_the_paths_to_inspect_are_the_generated_and_the_recorded_ones():
     regeneration = Regeneration((NEW,), {MISC: OLD_DIGEST, "elsewhere/x": OLD_DIGEST}, BOTH)
     assert regeneration.paths() == {TASKS, MISC}
+
+
+def test_a_workspace_has_every_language_unless_told_otherwise():
+    assert IdeWorkspace().languages == ALL_LANGUAGES
+
+
+def test_a_workspace_has_a_language_it_lists():
+    workspace = IdeWorkspace(languages=(Language.PYTHON, Language.GO))
+    assert (workspace.has(Language.GO), workspace.has(Language.RUST)) == (True, False)
+
+
+def test_a_workspace_has_any_of_several_languages():
+    workspace = IdeWorkspace(languages=(Language.KOTLIN,))
+    assert (workspace.has(Language.JAVA, Language.KOTLIN), workspace.has(Language.JAVA)) == (
+        True,
+        False,
+    )

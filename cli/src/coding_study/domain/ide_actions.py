@@ -76,6 +76,10 @@ class ProblemAction:
     def command(self) -> str:
         return self.arguments[0]
 
+    def applies_to(self, workspace_languages: tuple[Language, ...]) -> bool:
+        """Whether the workspace lists a language the action means something for."""
+        return any(language in workspace_languages for language in self.languages)
+
     def each_variant(self) -> tuple[Variant | None, ...]:
         """One entry per configuration an IDE without prompts needs: every variant, or None."""
         return self.choice.variants if self.choice else (None,)

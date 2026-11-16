@@ -9,6 +9,7 @@ import pytest
 from coding_study.adapters.ide.generated_files import MANIFEST_FILE, FsGeneratedFiles
 from coding_study.domain.ide import content_digest
 from coding_study.domain.jdk import JdkSource, SelectedJdk
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 from tests.fakes import jdk_of
 from tests.helpers import selecting_jdk
 
@@ -109,3 +110,30 @@ def test_without_a_selector_it_is_the_one_the_shell_selects(tmp_path, monkeypatc
 def test_without_any_jdk_nothing_is_selected(tmp_path, monkeypatch):
     monkeypatch.setenv("JAVA_HOME", str(tmp_path / "no-jdk-here"))
     assert FsGeneratedFiles(tmp_path).selected_jdk() is None
+
+
+# the workspace's languages
+
+
+def marker(root: Path, text: str) -> None:
+    (root / ".cs").mkdir(exist_ok=True)
+    (root / ".cs" / "workspace.toml").write_text(text)
+
+
+def test_a_marker_without_languages_is_every_language(files, tmp_path):
+    marker(tmp_path, 'schema = 1\ncreated_with = "0.52.1"\n')
+    assert files.languages() == ALL_LANGUAGES
+
+
+def test_the_languages_are_the_markers_in_workspace_order(files, tmp_path):
+    marker(tmp_path, 'schema = 1\ncreated_with = "0.52.1"\nlanguages = ["rust", "python"]\n')
+    assert files.languages() == (Language.PYTHON, Language.RUST)
+
+
+def test_a_missing_marker_is_every_language(files):
+    assert files.languages() == ALL_LANGUAGES
+
+
+def test_an_unreadable_marker_is_every_language(files, tmp_path):
+    marker(tmp_path, 'schema = 1\ncreated_with = "0.52.1"\nlanguages = ["cobol"]\n')
+    assert files.languages() == ALL_LANGUAGES

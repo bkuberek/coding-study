@@ -10,6 +10,10 @@
   listening for the JVM that `cstudy test --debug --debug-connect` starts, both launched by a
   compound configuration.
 
+A workspace that chose its languages gets the Gradle project files and the Java and Kotlin debug
+configurations only while it lists Java or Kotlin, and the actions that belong to one language
+(`--typecheck`, `--debug-connect`) only with it; the other actions are language-agnostic.
+
 ElementTree serializes every file in IntelliJ's own layout (two-space indents, attributes in
 IntelliJ's order, a final newline), so generating it again gives the same bytes.
 """
@@ -89,14 +93,22 @@ class _Configuration:
 
 class IntellijProject:
     def files(self, workspace: IdeWorkspace = NO_PROJECT_FOLDERS) -> tuple[GeneratedFile, ...]:
-        """IntelliJ's files depend on the JDK of `workspace` and on nothing else in it: it writes no
-        Rust project files."""
-        configurations = (*_action_configurations(), *_debug_configurations())
-        return (
-            GeneratedFile(f"{DIRECTORY}/misc.xml", _project_file(_misc(workspace.jdk))),
-            GeneratedFile(f"{DIRECTORY}/gradle.xml", _project_file(_gradle())),
-            *(configuration.file() for configuration in configurations),
+        """IntelliJ's files depend on the languages and the JDK of `workspace` and on nothing else
+        in it: it writes no Rust project files."""
+        jvm = workspace.has(*JVM)
+        configurations = (
+            *_action_configurations(workspace),
+            *(_debug_configurations() if jvm else ()),
         )
+        project_files = (
+            (
+                GeneratedFile(f"{DIRECTORY}/misc.xml", _project_file(_misc(workspace.jdk))),
+                GeneratedFile(f"{DIRECTORY}/gradle.xml", _project_file(_gradle())),
+            )
+            if jvm
+            else ()
+        )
+        return (*project_files, *(configuration.file() for configuration in configurations))
 
 
 def _misc(jdk: SelectedJdk | None) -> ET.Element:
@@ -140,8 +152,10 @@ def _gradle() -> ET.Element:
     return project
 
 
-def _action_configurations() -> Iterator[_Configuration]:
+def _action_configurations(workspace: IdeWorkspace) -> Iterator[_Configuration]:
     for action in (*PROBLEM_ACTIONS, DEBUG_CONNECT):
+        if not action.applies_to(workspace.languages):
+            continue
         for scope in action.scopes:
             for variant in action.each_variant():
                 yield _action_configuration(action, scope, variant)

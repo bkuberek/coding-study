@@ -296,7 +296,7 @@ The files cover the workspace's [languages](#workspace-languages). A workspace t
 | `.vscode/settings.json` | `python.defaultInterpreterPath` with `python`; `typescript.tsdk` with `typescript`; `java.import.gradle.enabled` with `java` or `kotlin`; `go.toolsEnvVars` with `go`; the `rust-analyzer.*` keys with `rust`. The watcher and search exclusions always |
 | `.vscode/extensions.json` | `ms-python.python` and `ms-python.debugpy` with `python`; `vscjava.vscode-java-pack` and `vscjava.vscode-gradle` with `java` or `kotlin`; `golang.go` with `go`; `rust-lang.rust-analyzer` and `vadimcn.vscode-lldb` with `rust` |
 | `.idea/misc.xml`, `.idea/gradle.xml` | `java` or `kotlin` |
-| `.idea/runConfigurations/` | The folders `cstudy: current file`, `cstudy: active attempt` and `cstudy: workspace` always, since their actions are language-agnostic; `cstudy: debug` (the listener and its compounds) with `java` or `kotlin` |
+| `.idea/runConfigurations/` | The folders `cstudy: current file`, `cstudy: active attempt` and `cstudy: workspace` always, with every action but those of one language: `cstudy test --typecheck` is written with `typescript` only and `cstudy test --debug --debug-connect` with `java` or `kotlin`; `cstudy: debug` (the listener and its compounds) with `java` or `kotlin` |
 
 A language added or removed changes these files by the rewriting rule below: [`cstudy lang`](cli.md#cstudy-lang) refreshes the files of each IDE whose files `cstudy` wrote, and a file this `cstudy` no longer generates for the workspace is deleted while it matches its digest.
 

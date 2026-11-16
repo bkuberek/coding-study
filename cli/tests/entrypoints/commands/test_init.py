@@ -1,5 +1,6 @@
 """`cstudy init` (docs/specs/installation-and-workspaces.md#cstudy-init)."""
 
+import json
 import os
 import shutil
 import tomllib
@@ -30,6 +31,7 @@ PRACTICE_PROJECT_FILES = (
     "rust/practice/.gitkeep",
 )
 VSCODE_TASKS = ".vscode/tasks.json"
+VSCODE_LAUNCH = ".vscode/launch.json"
 IDEA_MISC = ".idea/misc.xml"
 
 
@@ -334,3 +336,37 @@ def test_a_directory_with_files_keeps_them_when_it_chooses_languages(target):
     (target / "README.md").write_text("my notes\n")
     init(str(target), "--lang", "python")
     assert (target / "README.md").read_text() == "my notes\n"
+
+
+def test_lang_writes_the_vscode_files_of_those_languages_only(target):
+    init(str(target), "--lang", "go", "--lang", "python")
+    assert sorted(path.name for path in (target / ".vscode").iterdir()) == [
+        "extensions.json",
+        "launch.json",
+        "settings.json",
+        "tasks.json",
+    ]
+    tasks = json.loads((target / VSCODE_TASKS).read_text())["tasks"]
+    assert not [task["label"] for task in tasks if "--typecheck" in task["label"]]
+
+
+def test_lang_leaves_the_other_languages_out_of_the_vscode_files(target):
+    init(str(target), "--lang", "go", "--lang", "python")
+    text = "".join(
+        (target / ".vscode" / name).read_text().lower()
+        for name in ("settings.json", "extensions.json", "launch.json")
+    )
+    assert not [word for word in ("typescript", "java", "rust", "lldb") if word in text]
+
+
+def test_lang_without_a_jvm_language_writes_no_gradle_project_and_no_jvm_debugging(target):
+    init(str(target), "--lang", "go", "--lang", "python")
+    names = [path.name for path in (target / ".idea" / "runConfigurations").iterdir()]
+    assert not (target / IDEA_MISC).exists()
+    assert not (target / ".idea" / "gradle.xml").exists()
+    assert not [name for name in names if "ebug" in name or "typecheck" in name]
+
+
+def test_lang_with_kotlin_alone_writes_the_gradle_project_and_no_launch_file(target):
+    init(str(target), "--lang", "kotlin")
+    assert ((target / IDEA_MISC).is_file(), (target / VSCODE_LAUNCH).exists()) == (True, False)

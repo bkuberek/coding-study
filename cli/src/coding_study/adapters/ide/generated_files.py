@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import cast
 
 from coding_study.adapters.jdk_locator import shell_jdk
+from coding_study.adapters.workspace_marker import MarkerError, read_marker
 from coding_study.application.ports import JdkSelector
 from coding_study.domain.ide import content_digest
 from coding_study.domain.jdk import SelectedJdk
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 from coding_study.domain.workspace_projects import CARGO_MANIFEST, PROJECTS_DIRECTORY
 
 MANIFEST_FILE = ".cs/ide.json"
@@ -31,6 +33,14 @@ class FsGeneratedFiles:
 
     def selected_jdk(self) -> SelectedJdk | None:
         return self._jdk.selected()
+
+    def languages(self) -> tuple[Language, ...]:
+        """The marker's languages; all six when it lists none. A marker that cannot be read has
+        been reported already, by the command that found the workspace."""
+        try:
+            return read_marker(self._root).languages or ALL_LANGUAGES
+        except MarkerError:
+            return ALL_LANGUAGES
 
     def digest(self, path: str) -> str | None:
         target = self._root / path

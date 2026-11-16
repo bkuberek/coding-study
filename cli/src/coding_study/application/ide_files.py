@@ -6,7 +6,7 @@ what is on disk, applies the plan and records what it wrote.
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from coding_study.domain.ide import (
@@ -20,6 +20,8 @@ from coding_study.domain.ide import (
     plan_regeneration,
 )
 from coding_study.domain.jdk import SelectedJdk
+from coding_study.domain.layout import JVM_LANGUAGES
+from coding_study.domain.problem import Language
 
 
 class IdeRenderer(Protocol):
@@ -53,6 +55,11 @@ class GeneratedFiles(Protocol):
         `Cargo.toml`, as `projects/<slug>/Cargo.toml`, in path order."""
         ...
 
+    def languages(self) -> tuple[Language, ...]:
+        """The workspace's languages, in the order the marker lists them; all six when it chose
+        none."""
+        ...
+
     def selected_jdk(self) -> SelectedJdk | None:
         """The JDK the shell selects ([the selected JDK](docs/specs/cli.md#the-selected-jdk)); None
         when no JDK is found. A `java` that names no home is run to ask for it."""
@@ -82,9 +89,9 @@ class IdeReport:
 def generate_ide_files(
     renderers: Mapping[Ide, IdeRenderer], files: GeneratedFiles, request: IdeRequest
 ) -> IdeReport:
-    workspace = IdeWorkspace(
-        files.rust_projects(), files.selected_jdk() if Ide.IDEA in request.ides else None
-    )
+    workspace = IdeWorkspace(files.rust_projects(), languages=files.languages())
+    if Ide.IDEA in request.ides and workspace.has(*JVM_LANGUAGES):
+        workspace = replace(workspace, jdk=files.selected_jdk())
     generated = tuple(file for ide in request.ides for file in renderers[ide].files(workspace))
     recorded = files.manifest()
     regeneration = Regeneration(generated, recorded, request.ides, force=request.force)

@@ -150,3 +150,54 @@ def test_a_switch_of_jdk_keeps_the_file_once_it_was_edited(workspace, tmp_path):
         True,
         True,
     )
+
+
+# the workspace's languages
+
+LAUNCH = ".vscode/launch.json"
+GRADLE = ".idea/gradle.xml"
+
+
+def choose_languages(workspace: Path, *languages: str) -> None:
+    marker = workspace / ".cs" / "workspace.toml"
+    names = ", ".join(f'"{language}"' for language in languages)
+    marker.write_text(marker.read_text() + f"languages = [{names}]\n")
+
+
+def test_ide_writes_the_files_of_the_workspaces_languages_only(workspace):
+    choose_languages(workspace, "python")
+    ide(workspace)
+    assert ((workspace / LAUNCH).is_file(), (workspace / MISC).exists()) == (True, False)
+
+
+def test_ide_removes_the_files_of_a_language_the_workspace_no_longer_lists(workspace):
+    ide(workspace)
+    choose_languages(workspace, "kotlin")
+    result = ide(workspace)
+    assert (
+        (workspace / LAUNCH).exists(),
+        (workspace / MISC).is_file(),
+        "removed" in result.output,
+    ) == (
+        False,
+        True,
+        True,
+    )
+
+
+def test_ide_keeps_an_edited_file_of_a_language_the_workspace_no_longer_lists(workspace):
+    ide(workspace)
+    (workspace / LAUNCH).write_text("{}\n")
+    choose_languages(workspace, "kotlin")
+    ide(workspace)
+    assert (workspace / LAUNCH).read_text() == "{}\n"
+
+
+def test_ide_writes_again_the_files_of_a_language_added_to_the_marker(workspace):
+    choose_languages(workspace, "kotlin")
+    ide(workspace)
+    assert not (workspace / LAUNCH).exists()
+    marker = workspace / ".cs" / "workspace.toml"
+    marker.write_text(marker.read_text().replace('"kotlin"', '"kotlin", "go"'))
+    ide(workspace)
+    assert (workspace / LAUNCH).is_file()

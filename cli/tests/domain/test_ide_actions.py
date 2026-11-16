@@ -96,3 +96,24 @@ def test_every_action_name_is_unique():
         for variant in action.each_variant()
     ]
     assert len(names) == len(set(names))
+
+
+def test_an_action_for_every_language_applies_to_any_workspace():
+    assert ProblemAction(("test",)).applies_to((Language.KOTLIN,))
+
+
+def test_an_action_for_some_languages_applies_to_a_workspace_with_one_of_them():
+    typecheck = next(action for action in PROBLEM_ACTIONS if "--typecheck" in action.arguments)
+    assert (
+        typecheck.applies_to((Language.PYTHON, Language.TYPESCRIPT)),
+        typecheck.applies_to((Language.PYTHON, Language.GO)),
+    ) == (True, False)
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_connecting_to_a_listening_debugger_applies_with_either_jvm_language(language):
+    assert DEBUG_CONNECT.applies_to((language,))
+
+
+def test_connecting_to_a_listening_debugger_does_not_apply_without_the_jvm():
+    assert not DEBUG_CONNECT.applies_to((Language.PYTHON, Language.GO, Language.RUST))

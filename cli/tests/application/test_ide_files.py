@@ -3,6 +3,10 @@
 
 from collections.abc import Mapping
 
+import pytest
+
+from coding_study.adapters.ide.intellij import IntellijProject
+from coding_study.adapters.ide.vscode import VsCodeProject
 from coding_study.application.ide_files import IdeRequest, generate_ide_files, link_rust_projects
 from coding_study.domain.ide import (
     NO_PROJECT_FOLDERS,
@@ -13,8 +17,10 @@ from coding_study.domain.ide import (
     content_digest,
 )
 from coding_study.domain.jdk import JdkSource, SelectedJdk
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 
 TASKS = ".vscode/tasks.json"
+LAUNCH = ".vscode/launch.json"
 MISC = ".idea/misc.xml"
 
 
@@ -37,6 +43,7 @@ class InMemoryFiles:
         self.recorded: dict[str, str] = {}
         self.manifest_saves = 0
         self.jdk_asks = 0
+        self.workspace_languages: tuple[Language, ...] = ALL_LANGUAGES
 
     def digest(self, path: str) -> str | None:
         content = self.contents.get(path)
@@ -58,6 +65,9 @@ class InMemoryFiles:
     def rust_projects(self) -> tuple[str, ...]:
         return ("projects/bank-project-rust/Cargo.toml",)
 
+    def languages(self) -> tuple[Language, ...]:
+        return self.workspace_languages
+
     def selected_jdk(self) -> SelectedJdk | None:
         self.jdk_asks += 1
         return SELECTED
@@ -68,6 +78,7 @@ RENDERERS = {
     Ide.IDEA: FakeRenderer(GeneratedFile(MISC, "misc\n")),
 }
 BOTH = IdeRequest((Ide.VSCODE, Ide.IDEA))
+REAL_RENDERERS = {Ide.VSCODE: VsCodeProject(), Ide.IDEA: IntellijProject()}
 
 
 def changes(report) -> dict[str, Change]:
@@ -141,6 +152,71 @@ def test_the_renderers_see_the_workspaces_rust_projects():
     renderer = FakeRenderer(GeneratedFile(TASKS, "tasks\n"))
     generate_ide_files({Ide.VSCODE: renderer}, InMemoryFiles(), IdeRequest((Ide.VSCODE,)))
     assert renderer.workspaces == [IdeWorkspace(("projects/bank-project-rust/Cargo.toml",))]
+
+
+# the workspace's languages (docs/specs/installation-and-workspaces.md#ide-files)
+
+
+def test_the_renderers_see_the_workspaces_languages():
+    renderer = FakeRenderer(GeneratedFile(TASKS, "tasks\n"))
+    store = InMemoryFiles()
+    store.workspace_languages = (Language.PYTHON, Language.GO)
+    generate_ide_files({Ide.VSCODE: renderer}, store, IdeRequest((Ide.VSCODE,)))
+    assert renderer.workspaces[-1].languages == (Language.PYTHON, Language.GO)
+
+
+def test_a_workspace_without_a_jvm_language_never_asks_for_the_jdk():
+    """Asking can start a JVM, and nothing in the files would name the answer."""
+    store = InMemoryFiles()
+    store.workspace_languages = (Language.PYTHON,)
+    renderers = {Ide.IDEA: FakeRenderer(GeneratedFile(MISC, "misc\n"))}
+    generate_ide_files(renderers, store, IdeRequest((Ide.IDEA,)))
+    assert (store.jdk_asks, renderers[Ide.IDEA].workspaces[-1].jdk) == (0, None)
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_workspace_with_a_jvm_language_asks_for_the_jdk(language):
+    store = InMemoryFiles()
+    store.workspace_languages = (language,)
+    renderers = {Ide.IDEA: FakeRenderer(GeneratedFile(MISC, "misc\n"))}
+    generate_ide_files(renderers, store, IdeRequest((Ide.IDEA,)))
+    assert renderers[Ide.IDEA].workspaces[-1].jdk == SELECTED
+
+
+def narrow_to(store: InMemoryFiles, *languages: Language) -> None:
+    store.workspace_languages = languages
+    generate_ide_files(REAL_RENDERERS, store, BOTH)
+
+
+def test_removing_a_language_deletes_the_files_cstudy_wrote_for_it():
+    store = InMemoryFiles()
+    generate_ide_files(REAL_RENDERERS, store, BOTH)
+    narrow_to(store, Language.KOTLIN)
+    assert LAUNCH not in store.contents
+    assert LAUNCH not in store.recorded
+
+
+def test_removing_the_jvm_languages_deletes_the_gradle_project_files():
+    store = InMemoryFiles()
+    generate_ide_files(REAL_RENDERERS, store, BOTH)
+    narrow_to(store, Language.PYTHON)
+    assert {".idea/misc.xml", ".idea/gradle.xml"}.isdisjoint(store.contents)
+
+
+def test_a_file_edited_since_is_kept_and_forgotten_when_its_language_goes():
+    store = InMemoryFiles()
+    generate_ide_files(REAL_RENDERERS, store, BOTH)
+    store.contents[LAUNCH] = "mine\n"
+    narrow_to(store, Language.KOTLIN)
+    assert (store.contents[LAUNCH], LAUNCH in store.recorded) == ("mine\n", False)
+
+
+def test_adding_a_language_writes_the_files_it_needs():
+    store = InMemoryFiles()
+    narrow_to(store, Language.KOTLIN)
+    assert LAUNCH not in store.contents
+    narrow_to(store, Language.KOTLIN, Language.PYTHON)
+    assert LAUNCH in store.contents
 
 
 # cstudy start of a Rust project links its folder (docs/specs/cli.md#cstudy-start)

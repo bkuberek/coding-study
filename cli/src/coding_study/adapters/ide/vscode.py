@@ -3,8 +3,9 @@
 Tasks run `cstudy` on the file in the editor (`${file}`) or on the active attempt; debug
 configurations start `cstudy test --debug` as a background task and attach once cstudy prints its
 ready line. VS Code cannot debug Kotlin (microsoft/vscode-java-debug#241), so Kotlin has tasks
-only. Every file is JSON with a fixed key order, two-space indents and a final newline, so
-generating it again gives the same bytes.
+only. A workspace that chose its languages gets the files of those languages only. Every file is
+JSON with a fixed key order, two-space indents and a final newline, so generating it again gives
+the same bytes.
 """
 
 import json
@@ -27,7 +28,7 @@ from coding_study.domain.ide_actions import (
     debug_name,
 )
 from coding_study.domain.layout import PYTHON_PROJECT, RUST_PROJECT, TYPESCRIPT_PROJECT
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 
 JsonObject = dict[str, Any]
 
@@ -48,13 +49,19 @@ NO_PROBLEMS_PATTERN = {
 """A background task's problem matcher needs a pattern; cstudy reports no file problems."""
 NO_PROBLEM_MATCHER: list[Any] = []
 """Without a matcher, VS Code asks how to scan the output each time a task runs."""
-SETTINGS: JsonObject = {
-    "python.defaultInterpreterPath": f"{WORKSPACE_FOLDER}/{PYTHON_PROJECT}/.venv/bin/python",
-    "typescript.tsdk": f"{TYPESCRIPT_PROJECT}/node_modules/typescript/lib",
-    "java.import.gradle.enabled": True,
-    "go.toolsEnvVars": {"GOTOOLCHAIN": "local"},
+PYTHON_SETTINGS: JsonObject = {
+    "python.defaultInterpreterPath": f"{WORKSPACE_FOLDER}/{PYTHON_PROJECT}/.venv/bin/python"
+}
+TYPESCRIPT_SETTINGS: JsonObject = {
+    "typescript.tsdk": f"{TYPESCRIPT_PROJECT}/node_modules/typescript/lib"
+}
+JVM_SETTINGS: JsonObject = {"java.import.gradle.enabled": True}
+GO_SETTINGS: JsonObject = {"go.toolsEnvVars": {"GOTOOLCHAIN": "local"}}
+RUST_SETTINGS: JsonObject = {
     "rust-analyzer.linkedProjects": [f"{RUST_PROJECT}/Cargo.toml"],
     "rust-analyzer.check.allTargets": True,
+}
+EXCLUSIONS: JsonObject = {
     "files.watcherExclude": {
         "**/.gradle/**": True,
         "**/.kotlin/**": True,
@@ -72,25 +79,19 @@ SETTINGS: JsonObject = {
         "**/target": True,
     },
 }
-"""The interpreter and compiler of the workspace's own projects. The Java extension finds the
-Gradle project in `jvm/` itself; the JDK is left to the user's setup, since
-`java.jdt.ls.java.home` would pin a machine-specific path. gopls finds `go/` through the
-workspace's `go.work`; the Go tools run with `GOTOOLCHAIN=local`, as `cstudy` does, so they never
-download a toolchain. rust-analyzer needs the link because `Cargo.toml` is in `rust/`, checks every
-target because each problem is an `[[example]]`. It passes `--keep-going` to `cargo check` itself,
-which keeps one broken problem from hiding the errors of the others; passing it again through
-`rust-analyzer.check.extraArgs` makes cargo fail and VS Code show no Rust diagnostics."""
-EXTENSIONS: JsonObject = {
-    "recommendations": [
-        "ms-python.python",
-        "ms-python.debugpy",
-        "vscjava.vscode-java-pack",
-        "vscjava.vscode-gradle",
-        "golang.go",
-        "rust-lang.rust-analyzer",
-        "vadimcn.vscode-lldb",
-    ]
-}
+"""The settings are the interpreter and compiler of the workspace's own projects, each written with
+its language, then the exclusions every workspace gets. The Java extension finds the Gradle project
+in `jvm/` itself; the JDK is left to the user's setup, since `java.jdt.ls.java.home` would pin a
+machine-specific path. gopls finds `go/` through the workspace's `go.work`; the Go tools run with
+`GOTOOLCHAIN=local`, as `cstudy` does, so they never download a toolchain. rust-analyzer needs the
+link because `Cargo.toml` is in `rust/`, checks every target because each problem is an
+`[[example]]`. It passes `--keep-going` to `cargo check` itself, which keeps one broken problem from
+hiding the errors of the others; passing it again through `rust-analyzer.check.extraArgs` makes
+cargo fail and VS Code show no Rust diagnostics."""
+PYTHON_EXTENSIONS = ["ms-python.python", "ms-python.debugpy"]
+JVM_EXTENSIONS = ["vscjava.vscode-java-pack", "vscjava.vscode-gradle"]
+GO_EXTENSIONS = ["golang.go"]
+RUST_EXTENSIONS = ["rust-lang.rust-analyzer", "vadimcn.vscode-lldb"]
 DEBUGGABLE = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.GO, Language.RUST)
 """The languages VS Code attaches to; Kotlin breakpoints never bind (vscode-java-debug#241)."""
 EMPTY_TARGET = 'target create ""'
@@ -109,31 +110,82 @@ LINKED_PROJECTS = "rust-analyzer.linkedProjects"
 
 class VsCodeProject:
     def files(self, workspace: IdeWorkspace = NO_PROJECT_FOLDERS) -> tuple[GeneratedFile, ...]:
+        """For `workspace`'s languages; `launch.json` only while one of them has a debugger."""
+        launch = _launch(workspace)
         return (
-            _json_file("tasks.json", _tasks()),
-            _json_file("launch.json", _launch()),
+            _json_file("tasks.json", _tasks(workspace)),
+            *((_json_file("launch.json", launch),) if launch else ()),
             _json_file("settings.json", _settings(workspace)),
-            _json_file("extensions.json", EXTENSIONS),
+            _json_file("extensions.json", _extensions(workspace)),
         )
 
 
 def _settings(workspace: IdeWorkspace) -> JsonObject:
-    """The settings, with each Rust project folder linked after the workspace's `rust/`: a folder
-    is a crate of its own, which rust-analyzer finds only through `linkedProjects`."""
-    return {**SETTINGS, LINKED_PROJECTS: [*SETTINGS[LINKED_PROJECTS], *workspace.rust_projects]}
+    """Each listed language's settings, in the order a workspace lists languages, with each Rust
+    project folder linked after the workspace's `rust/`: a folder is a crate of its own, which
+    rust-analyzer finds only through `linkedProjects`."""
+    settings: JsonObject = {}
+    for language in ALL_LANGUAGES:
+        if workspace.has(language):
+            settings.update(_language_settings(language, workspace))
+    return {**settings, **EXCLUSIONS}
+
+
+def _language_settings(language: Language, workspace: IdeWorkspace) -> JsonObject:
+    match language:
+        case Language.PYTHON:
+            return PYTHON_SETTINGS
+        case Language.TYPESCRIPT:
+            return TYPESCRIPT_SETTINGS
+        case Language.JAVA | Language.KOTLIN:
+            return JVM_SETTINGS
+        case Language.GO:
+            return GO_SETTINGS
+        case Language.RUST:
+            linked = [*RUST_SETTINGS[LINKED_PROJECTS], *workspace.rust_projects]
+            return {**RUST_SETTINGS, LINKED_PROJECTS: linked}
+        case _:
+            assert_never(language)
+
+
+def _extensions(workspace: IdeWorkspace) -> JsonObject:
+    recommendations: list[str] = []
+    for language in ALL_LANGUAGES:
+        if workspace.has(language):
+            recommendations.extend(_language_extensions(language))
+    return {"recommendations": list(dict.fromkeys(recommendations))}
+
+
+def _language_extensions(language: Language) -> list[str]:
+    match language:
+        case Language.PYTHON:
+            return PYTHON_EXTENSIONS
+        case Language.TYPESCRIPT:
+            return []
+        case Language.JAVA | Language.KOTLIN:
+            return JVM_EXTENSIONS
+        case Language.GO:
+            return GO_EXTENSIONS
+        case Language.RUST:
+            return RUST_EXTENSIONS
+        case _:
+            assert_never(language)
 
 
 def _json_file(name: str, document: JsonObject) -> GeneratedFile:
     return GeneratedFile(f"{DIRECTORY}/{name}", json.dumps(document, indent=INDENT) + "\n")
 
 
-def _tasks() -> JsonObject:
+def _tasks(workspace: IdeWorkspace) -> JsonObject:
+    """Every action but those of languages the workspace lacks (`--typecheck`), and the debug
+    tasks while VS Code debugs one of its languages."""
+    actions = [action for action in PROBLEM_ACTIONS if action.applies_to(workspace.languages)]
     tasks = [
-        *(task for action in PROBLEM_ACTIONS for task in _problem_tasks(action)),
+        *(task for action in actions for task in _problem_tasks(action)),
         *(_task(action.name, action.arguments) for action in WORKSPACE_ACTIONS),
-        *(_debug_task(scope) for scope in DEBUG_LISTEN.scopes),
+        *(_debug_task(scope) for scope in DEBUG_LISTEN.scopes if _debugged(workspace)),
     ]
-    inputs = [_input(action, action.choice) for action in PROBLEM_ACTIONS if action.choice]
+    inputs = [_input(action, action.choice) for action in actions if action.choice]
     return {"version": TASKS_VERSION, "tasks": tasks, "inputs": inputs}
 
 
@@ -188,8 +240,21 @@ def _input(action: ProblemAction, choice: Choice) -> JsonObject:
     }
 
 
-def _launch() -> JsonObject:
-    attaches = [attach for attach in DEBUG_ATTACH if attach.language in DEBUGGABLE]
+def _debugged(workspace: IdeWorkspace) -> bool:
+    """Whether the workspace lists a language VS Code debugs."""
+    return workspace.has(*DEBUGGABLE)
+
+
+def _launch(workspace: IdeWorkspace) -> JsonObject | None:
+    """The attach configurations of the workspace's debuggable languages; None when it has none
+    (Kotlin alone)."""
+    attaches = [
+        attach
+        for attach in DEBUG_ATTACH
+        if attach.language in DEBUGGABLE and workspace.has(attach.language)
+    ]
+    if not attaches:
+        return None
     configurations = [_attach(attach, scope) for scope in BOTH_SCOPES for attach in attaches]
     return {"version": LAUNCH_VERSION, "configurations": configurations}
 

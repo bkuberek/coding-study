@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from coding_study.domain.jdk import SelectedJdk
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 
 
 class Ide(StrEnum):
@@ -54,6 +55,14 @@ class IdeWorkspace:
     jdk: SelectedJdk | None = None
     """The JDK the shell selects, which IntelliJ's project JDK is named after; None when no JDK is
     found, or when the IDE being generated has no use for it."""
+    languages: tuple[Language, ...] = ALL_LANGUAGES
+    """The workspace's languages: the files hold what those languages need and nothing else
+    (docs/specs/installation-and-workspaces.md#ide-files). A workspace that chose none has all
+    six."""
+
+    def has(self, *languages: Language) -> bool:
+        """Whether the workspace lists any of `languages`."""
+        return any(language in self.languages for language in languages)
 
 
 NO_PROJECT_FOLDERS = IdeWorkspace()
