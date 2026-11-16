@@ -9,6 +9,7 @@
 | [`cstudy init`](installation-and-workspaces.md#cstudy-init) | Create a workspace | W1 |
 | [`cstudy doctor`](#cstudy-doctor) | Check and set up toolchains | 0 |
 | [`cstudy ide`](#cstudy-ide) | Write or refresh the VS Code and IntelliJ project files | W1 |
+| [`cstudy lang`](#cstudy-lang) | List, add or remove the workspace's languages | Learner profile |
 | [`cstudy start`](#cstudy-start) | Create or reopen a stub, open the statement, begin an attempt | 0 |
 | [`cstudy dev`](service-projects.md#how-you-reach-them) | Run a service project's stack in the foreground, until Ctrl-C, or one command in its app's environment with `--exec` | 12 |
 | [`cstudy test`](#cstudy-test) | Run the user's code against the cases; for a project problem, its native tests | 0 |
@@ -119,6 +120,10 @@ progress_db = "progress.db"      # relative to the workspace root
 [next]
 tracks = ["dsa"]
 
+[profile]                        # the learner profile's default filters; each defaults to every value
+job_roles = ["backend", "platform", "security-engineer", "ai-engineer", "ml-engineer", "data-engineer", "frontend"]
+domains = ["algorithms", "backend", "security", "identity", "ai-llm", "fintech", "data", "infrastructure", "systems", "software-design", "frontend"]
+
 [time_limit]
 enabled = false                  # time limits are off unless enabled here or by flag
 # value = "5x"                   # unset by default, so meta.yaml perf.time_limit applies
@@ -158,6 +163,7 @@ The [Settings view](web-ui.md#settings-view) of `cstudy serve` edits this file t
 | Keys | A change applies |
 |------|------------------|
 | `default_lang` | At the next command; an open page, which read it with the session, after a reload |
+| `profile.job_roles`, `profile.domains` | At the next command; an open page, which read them with the session, after a reload |
 | `open_on_start`, `next.tracks`, `study_guides.root` | At the next command. The page never opens an editor |
 | `progress_db` | At the next command and the page's next request. Restart `cstudy serve`: its live updates watch the old file until then |
 | `time_limit.*`, `hang_guard.ms` | At the next run, in the terminal or the page |
@@ -166,6 +172,75 @@ The [Settings view](web-ui.md#settings-view) of `cstudy serve` edits this file t
 | The `schedule` intervals and `max_interval_days` | For reviews scheduled from then on; dates already set do not move |
 | `schedule.mastered_interval_days` | At once, for every problem: it is read each time a status shows |
 | `done.auto_commit` | Never: it is reserved |
+
+## The learner profile
+
+The learner profile is the default filter of every list you choose from: the languages you practice, the job roles you prepare for and the domains you study ([ADR 0028](../decisions/0028-learner-profile.md)). Each dimension defaults to all of its values, so a profile you never set filters nothing. A command can widen it for one run without changing it.
+
+| Dimension | Values | Stored in | Set with |
+|-----------|--------|-----------|----------|
+| Languages | `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | The workspace's marker: [workspace languages](installation-and-workspaces.md#workspace-languages) | [`cstudy init --lang`](installation-and-workspaces.md#cstudy-init), [`cstudy lang`](#cstudy-lang), the [Settings view](web-ui.md#settings-view) |
+| Job roles | The `job_roles` values of the [labels](content.md#labels) but `general` | `profile.job_roles` in this file | [`cstudy config edit`](#cstudy-config), the Settings view |
+| Domains | The `domains` values of the labels | `profile.domains` in this file | The same |
+
+| Key rule | Detail |
+|----------|--------|
+| Shape | A list of one or more values, each once. Leaving the key out means every value, including values a later `cstudy` adds; a list that names every value today does not take new ones |
+| Refused | An unknown value (`profile.domains: unknown domain "fintek"; use one of algorithms, backend, …`), an empty list (`profile.job_roles: expected at least one role; leave the key out for every role`) and `general` (`profile.job_roles: "general" always shows: list the roles you prepare for`), each a [config error](#configuration) like any other key's |
+| Narrows | A dimension narrows when it holds fewer than all its values. A profile that narrows nothing changes no output |
+
+### Where the profile applies
+
+| Command | Dimensions it applies |
+|---------|-----------------------|
+| [`cstudy list`](#cstudy-list) | Languages, job roles, domains |
+| [`cstudy next`](#cstudy-next) | Languages, job roles, domains |
+| [`cstudy mock`](#cstudy-mock) | Languages, job roles, domains |
+| [`cstudy learn`](#cstudy-learn), the list form | Job roles, domains: a guide teaches in every language |
+
+It does not apply to a set (`--set` on `cstudy list` and `cstudy next`, and [`cstudy set`](#cstudy-set): a set holds what you put in it), to `cstudy learn <guide>` and `cstudy learn --path <path>`, to `cstudy stats`, `cstudy history` and the reviews of the [Progress view](web-ui.md#progress-view) (what you did stays visible), to [`cstudy verify`](#cstudy-verify), or to any command given a slug.
+
+### Matching
+
+| Dimension | An entry matches when |
+|-----------|-----------------------|
+| Languages | Its reference languages (`languages` of `cstudy list --json`) include one of the profile's. A rubric problem, which has none, always matches |
+| Job roles | It lists one of the profile's roles, or `general`, which is any engineer. An entry that lists no role, a problem of your own without labels, matches |
+| Domains | It lists one of the profile's domains. An entry that lists no domain matches |
+
+A guide matches by its own `domains` and `job_roles` ([guides](guides.md#metayaml)); a path matches when one of its steps, a guide or a problem, matches. Every dimension the command applies must match.
+
+### Explicit filters and widening
+
+| Rule | Detail |
+|------|--------|
+| An explicit filter | `--lang`, `--role` and `--domain` replace the profile in their dimension and may name a value outside it, which widens to it. Each keeps its own rule: `--role backend` matches entries that list `backend` only, without `general`, and `cstudy list --lang` leaves rubric problems out as before |
+| `--widen DIMENSION` | Repeatable: drops the profile in that dimension for this run, without changing it. `cstudy list` takes `lang`, `role`, `domain` and `all` (the three); `cstudy next`, `cstudy mock` and `cstudy learn` take `role`, `domain` and `all` (the two), since `next` and `mock` pick only what a workspace language can start and a guide has no language. Any other value is a usage error (exit 3). With an explicit filter of the same dimension, the explicit value applies and `--widen` changes nothing more |
+| The profile line | While the profile hid at least one entry, the human output ends with one dim line, on standard output after everything else, that says how much shows of what `--widen all` would show with the same other flags, which dimensions narrowed, and how to see the rest: `filtered by your profile: 120 of 400 problems · languages python, go · roles backend and general · --widen all shows all 400`. A dimension that a flag replaced or widened is not named. When the profile hid nothing, even while it narrows, there is no line. `--json` never prints it ([the profile line](#the-profile-line)) |
+| `--json` | `cstudy list --json`, `cstudy next --json` and `cstudy learn --json` hold `profile`: `{"languages", "job_roles", "domains", "hidden"}`. The first three are each the profile's values that narrowed the rows, or null when that dimension did not narrow them (it holds every value, a flag replaced it, `--widen` dropped it, or the command does not apply it, as `languages` in `cstudy learn`); `job_roles` never lists `general`, which matches whatever the profile holds. `hidden` counts the entries the profile hid, those `--widen all` with the same other flags would add: `{"problems": 280}` in `list` and `next`, `{"guides": 92, "paths": 11}` in `learn`, each 0 when it hid none. The counts are never text in a document |
+
+#### The profile line
+
+| Command | Line |
+|---------|------|
+| `cstudy list` | `filtered by your profile: 120 of 400 problems · languages python, go · --widen all shows all 400`: the rows printed, after every flag, `--search` included, of the rows `--widen all` would print |
+| `cstudy next` | `filtered by your profile: picked from 120 of 400 problems · roles backend and general · --widen all picks from all 400`: the problems in the pick's scope, before the selection chose one |
+| `cstudy mock` | `filtered by your profile: picked from 30 of 95 new medium and hard problems · domains security · --widen all picks from all 95`: the problems the picks came from |
+| `cstudy learn` | `filtered by your profile: 40 of 132 guides, 9 of 20 paths · domains security · --widen all shows them all` |
+
+It goes to standard output, as the [web hint](#the-web-hint) of `cstudy learn` and `cstudy docs` does, since it describes the output it ends and belongs with it when the output is paged or saved; standard error holds `error:` lines, warnings and the notices of a debug run. It is dim on a terminal and plain text otherwise, under `--no-color` too, like every other style. It is a hint, not a warning: no `warning:` prefix and no color of its own. A command whose profile left nothing says so in its empty-state message instead ([`cstudy mock`](#cstudy-mock)), with the same `--widen all`.
+
+### The workspace's languages
+
+A workspace's languages are the only ones a new attempt starts in, because the folders of the others may not exist ([workspace languages](installation-and-workspaces.md#workspace-languages)).
+
+| Rule | Detail |
+|------|--------|
+| Default language | `--lang`, else `default_lang` when it is one of the workspace's languages, else the first of them in the order `python`, `typescript`, `java`, `kotlin`, `go`, `rust`. [`cstudy start`](#cstudy-start), `cstudy next --start`, [`cstudy mock`](#cstudy-mock) and the `language` of `cstudy next --json` use it |
+| A pick's language | `cstudy next` and `cstudy mock` start a pick in `--lang`, else in the default language when the problem lists it, else in the first of the workspace's languages it lists; a project problem in its own language |
+| Another language | A new attempt in a language outside the workspace's exits 3 and writes nothing: `rust is not one of this workspace's languages (python, go): cstudy lang add rust`. `cstudy next --lang` and `cstudy mock --lang` refuse it the same way. Resuming an attempt in progress, and every other command on an attempt that exists, still work while its files do |
+| Service projects | A [service project](service-projects.md) runs in Docker and uses no language folder, so it starts whatever the workspace's languages; the profile still filters it by its language in lists and picks |
+| Outside a workspace | `cstudy list` and `cstudy learn` read no marker, so the languages are all six; the roles and domains of this file still apply |
 
 ## The selected JDK
 
@@ -212,7 +287,7 @@ cstudy doctor [--fix [--accept-license <server>]... | --json]
 
 It also has `docker` and `docker leftovers` rows, which `WARN` and never `FAIL`, since only service projects need Docker. Asking starts nothing, and `--fix` starts a stopped engine and removes leftovers by label only. See [Docker states](service-projects.md#docker-states) and [Leftovers](service-projects.md#leftovers).
 
-Checks Python 3.13, uv, Node 24 or newer, pnpm, the [selected JDK](#the-selected-jdk) (21 to 26), Homebrew Gradle, Go 1.25 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../../user-docs/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the [`cstudy` installs on `PATH`](#the-installs-row), the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config, the content and the installs are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema, after copying it to `.cs/backups/` (one line, `progress.db: backed up to .cs/backups/progress-schema-4-20261024T100000Z.db; migrated from schema 4 to 7`; a copy that fails stops `--fix` with exit 4, `cannot back up progress.db before migrating it: <reason>; nothing changed`, and so does a script that fails, which restores the copy and says so, `migrating progress.db from schema 4 failed at schema 6: <reason>; restored it from .cs/backups/<file>`, both before the steps below), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless the selected JDK is older than 21 or missing (then one `FAIL` line, `skipped: java is not installed or does not run` or `skipped: JDK 17 is older than 21`, with the JDK fix, replaces the Gradle steps; a JDK above the range still warms up, so the problems that opt in to it build offline too), the Gradle warm-up: `./gradlew --no-watch-fs :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain --no-watch-fs csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. Each Gradle command runs on the [selected JDK](#the-selected-jdk), like every other Gradle call of `cstudy`: it passes `-Dorg.gradle.java.home=<home>` and sets `JAVA_HOME`, so one command uses one JDK whatever the Gradle home configures; the lines above print the command without them. `--fix` outside a workspace exits 3.
+Checks Python 3.13, uv, Node 24 or newer, pnpm, the [selected JDK](#the-selected-jdk) (21 to 26), Homebrew Gradle, Go 1.25 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, unless the workspace lists Go or Rust among its chosen languages, as [Rows by language](#rows-by-language) says, with a link to the [toolchains guide](../../user-docs/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the [`cstudy` installs on `PATH`](#the-installs-row), the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config, the content and the installs are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema, after copying it to `.cs/backups/` (one line, `progress.db: backed up to .cs/backups/progress-schema-4-20261024T100000Z.db; migrated from schema 4 to 7`; a copy that fails stops `--fix` with exit 4, `cannot back up progress.db before migrating it: <reason>; nothing changed`, and so does a script that fails, which restores the copy and says so, `migrating progress.db from schema 4 failed at schema 6: <reason>; restored it from .cs/backups/<file>`, both before the steps below), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless the selected JDK is older than 21 or missing (then one `FAIL` line, `skipped: java is not installed or does not run` or `skipped: JDK 17 is older than 21`, with the JDK fix, replaces the Gradle steps; a JDK above the range still warms up, so the problems that opt in to it build offline too), the Gradle warm-up: `./gradlew --no-watch-fs :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain --no-watch-fs csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. Each Gradle command runs on the [selected JDK](#the-selected-jdk), like every other Gradle call of `cstudy`: it passes `-Dorg.gradle.java.home=<home>` and sets `JAVA_HOME`, so one command uses one JDK whatever the Gradle home configures; the lines above print the command without them. `--fix` outside a workspace exits 3.
 
 | Status | Meaning |
 |--------|---------|
@@ -234,6 +309,33 @@ ok    runner kotlin answers hello: jvm 21.0.2, protocol 1
 ```
 
 Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succeeded), else 4.
+
+### Rows by language
+
+In a workspace whose marker lists its [languages](installation-and-workspaces.md#workspace-languages), `cstudy doctor` checks those languages only: the rows of the others are left out, not shown as skipped, and `--fix` runs none of their steps. A workspace that lists none, and `cstudy doctor` outside a workspace, check all six as above, with Go and Rust optional.
+
+| Rows | Shown for | Status when the toolchain is missing or too old, in a workspace that lists its languages |
+|------|-----------|--------------------------------------------------------------------------------------------|
+| `python`, `uv` | `python` | `FAIL` |
+| `node`, `pnpm` | `typescript` | `FAIL` |
+| `java`, `gradle` | `java` or `kotlin` | `FAIL` for `java`; `WARN` for `gradle`, as above |
+| `go` | `go` | `FAIL`: the learner chose Go, so it is not optional here |
+| `rustc`, `cargo` | `rust` | `FAIL`, as for Go |
+| `delve` | `go` | `WARN`, as above: only `--debug` needs it |
+| Rust's debug server | `rust` | `WARN`, as above |
+| `docker`, `docker leftovers`, `config`, `content`, `installs`, `web ui assets`, `web server` | Every workspace | As above |
+
+The workspace rows follow the same rule ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), and a `languages` row names them:
+
+```text
+ok    languages python, go
+ok    languages python, go (cstudy start uses python: default_lang typescript is not one of them)
+ok    languages all six (none chosen; cstudy lang remove narrows them)
+```
+
+The row is `ok` in each case: a `default_lang` outside the languages is not an error, since the [default language](#the-workspaces-languages) falls back to the first of them. A marker whose `languages` does not load is an unreadable marker ([marker](installation-and-workspaces.md#marker)): the `workspace` row fails and there is no `languages` row.
+
+With the code-intelligence preference on, the `code intelligence <language>` rows, and the servers `--fix` installs, are those of the workspace's languages too: basedpyright for `python`, typescript-language-server for `typescript`, JDT LS for `java`, the Kotlin LSP for `kotlin` (only with its license accepted, as above), gopls for `go` and rust-analyzer for `rust`.
 
 The setup commands of `--fix` and the version checks run with the same allowlisted environment as your code ([Process environment](runners.md#process-environment)): your proxy and CA-certificate variables reach them, so an install behind a corporate network works, and a token in your shell does not.
 
@@ -360,6 +462,68 @@ ide      vscode, idea · 1 updated · 1 kept
 warning  kept .vscode/tasks.json: edited, or not written by cstudy (cstudy ide --force overwrites it)
 ```
 
+The files cover the workspace's [languages](installation-and-workspaces.md#workspace-languages) only: the settings, extensions, debug configurations and IntelliJ's JVM files of a language the workspace does not list are left out, and a file cstudy wrote for a language since removed is deleted while unchanged, by the removal rule above ([IDE files](installation-and-workspaces.md#ide-files)).
+
+## cstudy lang
+
+```text
+cstudy lang list
+cstudy lang add <language>...
+cstudy lang remove <language>... [--delete-folder] [--yes]
+```
+
+The workspace's languages decide which practice folders it has, which toolchains [`cstudy doctor`](#rows-by-language) checks, which [IDE files](installation-and-workspaces.md#ide-files) it gets and which languages a new attempt can start in; they are the languages of the [learner profile](#the-learner-profile). They live in the marker's `languages` ([workspace languages](installation-and-workspaces.md#workspace-languages)). Every subcommand needs a workspace. `<language>` is one of `python`, `typescript`, `java`, `kotlin`, `go` and `rust`; another value exits 3 (`unknown language "golang"; use python, typescript, java, kotlin, go or rust`), and nothing changes.
+
+| Subcommand | Does | Says |
+|------------|------|------|
+| `list` | Nothing | `languages  python, go`, then `folders    python/, go/ and go.work`, then `add        cstudy lang add <language>`; for a marker without `languages`, `languages  all six (none chosen; cstudy lang remove narrows them)` |
+| `add <language>...` | Adds the languages to the marker in the order above, writes each one's template files that are missing, never overwriting one, and refreshes the IDE files of each IDE whose files cstudy wrote, as `cstudy ide` does for it. A language already there changes nothing | `added      go`, `files      go/ and go.work: 3 written, 0 kept`, the `ide` line of [`cstudy ide`](#cstudy-ide) when a file changed, then `next       cstudy doctor --fix`; for a language already there, `go is already one of this workspace's languages`, and for a marker without `languages`, `go is already one of this workspace's languages (it has all six)`; exit 0 |
+| `remove <language>...` | Takes the languages out of the marker and refreshes the IDE files as `add` does. By default it deletes no file: the language's folder and its practice files stay, and stop being checked, generated for or offered. With `--delete-folder` it also deletes each language's folder, after a question ([below](#deleting-a-languages-folder)). Progress, `.archive/`, `projects/` and `notes/` always stay, and the language's rows leave `cstudy doctor`. A marker without `languages` gets the other five written out | `removed    rust`, `kept       rust/ (cstudy lang remove rust --delete-folder deletes it)`, or `deleted    rust/ (12 practice files)` with `--delete-folder`, then the `ide` line when a file changed; for a language not there, `rust is not one of this workspace's languages`; exit 0 |
+
+| Case | Result |
+|------|--------|
+| `remove` of every language the workspace has | `a workspace needs at least one language`, exit 3, and nothing changes |
+| `remove` of a language with an attempt in progress, without `--delete-folder` | Allowed: the attempt can still be resumed and finished while its files exist. The output adds `note       attempt 7 (lru-cache, rust) is in progress` |
+| A marker that does not parse | Its error, exit 3, as every command that needs a workspace ([marker](installation-and-workspaces.md#marker)); it is never overwritten |
+| A Java and Kotlin pair | Both share `jvm/`: adding either writes it, and removing one keeps the other's folder in use, also with `--delete-folder`, which deletes `jvm/` only when neither language remains |
+| `--yes` without `--delete-folder` | Nothing: there is no question to answer |
+
+`add` and `remove` write the marker with tomlkit, keeping its comments and other keys, as `cstudy doctor --fix` writes an accepted license. The [Settings view](web-ui.md#settings-view) adds and removes languages, and deletes a removed language's folder, through the same use cases.
+
+### Deleting a language's folder
+
+`cstudy lang remove <language>... --delete-folder` removes the languages as above and deletes their folders: `python/`, `typescript/`, `jvm/` (when neither Java nor Kotlin remains), `go/` with `go.work`, and `rust/`, whole, toolchain files (`.venv`, `node_modules`, `build/`, `target/`) included ([workspace languages](installation-and-workspaces.md#workspace-languages)). It first prints what goes and what stays, then asks.
+
+| Rule | Detail |
+|------|--------|
+| Preview | `delete     rust/ (12 practice files)`, one line per folder, the count being the files under the language's practice paths, as [`cstudy reset --files`](installation-and-workspaces.md#what-cstudy-reset-deletes) counts them; `keep       jvm/: kotlin still uses it` for a shared folder that stays; then `stays      progress, .archive/, projects/ and notes/` |
+| Question | `Delete rust/? Its 12 practice files can't be recovered. [y/N]`, naming every folder of the preview. `--yes` does not ask. A no, or just Enter, prints `not removed: nothing changed` and exits 0 with the marker and the folders as they were |
+| No terminal | Standard input is not a terminal, without `--yes`: `cstudy lang remove --delete-folder asks before it deletes; in a script, pass --yes`, exit 3, after the preview, and nothing changes |
+| An attempt in progress | In a language being removed, it refuses before the preview, exit 3, and nothing changes: `cannot delete rust/: attempt 7 (lru-cache, rust) is in progress; finish it with cstudy done or end it with cstudy abort, or remove rust without --delete-folder` (one attempt named per line when several) |
+| A run or a job is active | `cstudy lang remove waits until it ends: a run or a job is in progress (process 4242)`, exit 3, nothing changes, as [`cstudy reset`](#cstudy-reset) sees runs and jobs |
+| Links | A link inside a folder is deleted as a link; its target is never followed. A folder that is itself a link, or that resolves outside the workspace: `rust leaves the workspace, so cstudy lang remove deleted nothing; remove the link first`, exit 3. Every folder is checked before anything goes |
+| Order | The checks, then the preview and the question, then the marker, then the folders, then the IDE files. A folder that cannot be deleted whole exits 4 naming what stays (`could not delete rust/target/debug: permission denied; the rest of rust/ is deleted`); running the same command again deletes the rest |
+| A language not listed | `--delete-folder` on a language the workspace no longer lists deletes its folder that stayed, after the same preview and question: `rust is not one of this workspace's languages`, then the `deleted` line. A folder already gone prints `rust/ is not there` and asks nothing |
+| Never deleted | Progress rows, `.archive/`, project folders under `projects/`, `notes/`, your problems and `sets.yaml`, whatever their language |
+
+```text
+$ cstudy lang remove rust --delete-folder
+delete     rust/ (12 practice files)
+stays      progress, .archive/, projects/ and notes/
+Delete rust/? Its 12 practice files can't be recovered. [y/N] y
+removed    rust
+deleted    rust/ (12 practice files)
+ide        vscode · 1 updated
+```
+
+```text
+$ cstudy lang add go
+added      go
+files      go/ and go.work: 3 written, 0 kept
+ide        vscode · 2 updated
+next       cstudy doctor --fix
+```
+
 ## cstudy start
 
 ```text
@@ -370,7 +534,7 @@ A service project's start shows [what the problem depends on](service-projects.m
 
 | Flag | Effect |
 |------|--------|
-| `--lang` | Language; default `default_lang` |
+| `--lang` | Language; default the [default language](#the-workspaces-languages): `default_lang` while it is one of the workspace's languages. A new attempt in a language the workspace does not list exits 3 with the `cstudy lang add` to run, before anything is written |
 | `--fresh` | Archive the existing file and write a new stub (implied for review attempts). Nothing is deleted: the file moves to `.archive/<slug>/<attempt_id>-<lang>/`, where the web UI's History reads it |
 | `--timer` | Time box, for example `25m` or `1h`; shown by `cstudy test`; finishing over time caps the grade at `hard` |
 | `--no-open` | Do not launch the editor |
@@ -1048,8 +1212,10 @@ next    cstudy start two-sum
 ## cstudy next
 
 ```text
-cstudy next [--set NAME] [--track T]... [--pattern P] [--difficulty D] [--lang L] [--domain D] [--role R] [--scope S] [--new | --review] [--start | --json]
+cstudy next [--set NAME] [--track T]... [--pattern P] [--difficulty D] [--lang L] [--domain D] [--role R] [--scope S] [--widen role|domain|all]... [--new | --review] [--start | --json]
 ```
+
+The [learner profile](#the-learner-profile) narrows the scope in its three dimensions, attempts in progress included, as `--lang`, `--domain` and `--role` would, by the [matching rules](#matching); it never widens the tracks, as an explicit label filter does. Picks start in a [workspace language](#the-workspaces-languages), so the languages are always the workspace's: `--lang` names one of them, and `--widen` takes `role`, `domain` or `all`. Under `--set` the profile does not apply. While it hid a problem from the scope, the output ends with the [profile line](#the-profile-line), and `--json` adds `profile` ([Explicit filters and widening](#explicit-filters-and-widening)).
 
 Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection), which resumes first: an attempt in progress comes before a due review and a new problem, so it picks up what is open before it suggests more, and `--new` or `--review` force their kind, as they skip reviews or new problems. Without one open, the pick is a review or a new problem. `--track` is repeatable and reaches rubric problems, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and in its own language for a project problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--domain`, `--role` and `--scope` filter as in [`cstudy list`](#cstudy-list), by the [labels](content.md#labels) of problems alike. `--new` together with `--review`, a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), or a `--domain` or `--role` outside its list, is a usage error (exit 3). A label filter with no `--track` searches every track, because the default scope, the config's `next.tracks` (`dsa`, by default), would leave out what a domain, role or scope names; `--track` narrows it again. A problem outside `dsa` falls in its track's weakness group, so a domain has no weakness of its own. It never picks a problem that the [selected JDK](#the-selected-jdk) cannot run in the language `--start` would use (`--lang`, else `default_lang`); when that leaves nothing, the message says why (`nothing to pick: JDK 27 (JAVA_HOME) cannot run java problems; cstudy supports JDK 21 to 26`; with no JDK, `nothing to pick: no JDK was found, so java problems cannot run; cstudy supports JDK 21 to 26`), also as the `message` of `--json`. A project problem counts in its own language, since `--start` starts it there. When the scope holds nothing to pick for another reason, the message stays `nothing due and no new problems in scope`.
 
@@ -1085,13 +1251,15 @@ also    two-sum (python) · url-shortener
 
 The scope's filters apply to the open attempts as to the other picks: an attempt on a problem outside them, or that the [selected JDK](#the-selected-jdk) cannot run, is not offered. `--start` resumes the attempt.
 
-`--json` prints the pick as one document instead: `{"pick": "resume", "review" or "new", "id", "slug", "title", "kind", "checked_by", "difficulty", "group", "reason", "language", "start"}`, and for a resume also `attempt_id` and `also_open` (the other attempts in progress, each `{"attempt_id", "id", "slug", "language"}`, empty when there is none), where `id`, `kind` and `checked_by` are as in [`cstudy list --json`](#cstudy-list) (`kind` is `system-design` or `code-review` for a rubric problem), `group` the pick's [weakness group](progress-and-scheduling.md#weakness-score) (the primary pattern of a `dsa` problem, else the track), `reason` the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for a rubric problem) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. Under `--set` the document also holds `set`, `{"name", "passed", "total", "finished"}`, `finished` true once every entry is passed, and the entry the set's order chose has `pick` `new`, with a `reason` of `next in backend-loop, 2 of 3`. `--json` with `--start` is a usage error (exit 3).
+`--json` prints the pick as one document instead: `{"pick": "resume", "review" or "new", "id", "slug", "title", "kind", "checked_by", "difficulty", "group", "reason", "language", "start"}`, and for a resume also `attempt_id` and `also_open` (the other attempts in progress, each `{"attempt_id", "id", "slug", "language"}`, empty when there is none), where `id`, `kind` and `checked_by` are as in [`cstudy list --json`](#cstudy-list) (`kind` is `system-design` or `code-review` for a rubric problem), `group` the pick's [weakness group](progress-and-scheduling.md#weakness-score) (the primary pattern of a `dsa` problem, else the track), `reason` the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for a rubric problem) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. Both forms hold `profile` ([learner profile](#explicit-filters-and-widening)). When the profile is what left nothing, the message says so and how to widen: `nothing to pick in your profile (roles backend and general); widen with cstudy next --widen all`. Under `--set` the document also holds `set`, `{"name", "passed", "total", "finished"}`, `finished` true once every entry is passed, and the entry the set's order chose has `pick` `new`, with a `reason` of `next in backend-loop, 2 of 3`. `--json` with `--start` is a usage error (exit 3).
 
 ## cstudy list
 
 ```text
-cstudy list [--set NAME] [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--domain D] [--role R] [--scope S] [--search TEXT] [--needs WHAT] [--checked-by tests|rubric] [--json]
+cstudy list [--set NAME] [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--domain D] [--role R] [--scope S] [--widen lang|role|domain|all]... [--search TEXT] [--needs WHAT] [--checked-by tests|rubric] [--json]
 ```
+
+The [learner profile](#the-learner-profile) narrows the rows in its three dimensions, by the [matching rules](#matching), before the other filters; `--lang`, `--domain` and `--role` replace it in their dimension, and `--widen` drops it there. Under `--set` it does not apply. While it hid a row, the table ends with the [profile line](#the-profile-line) (`filtered by your profile: 120 of 400 problems · languages python, go · --widen all shows all 400`), and `--json` holds `profile` with the count it hid ([Explicit filters and widening](#explicit-filters-and-widening)). The [Problems view](web-ui.md#problems-view) shows the same rows for the same flags.
 
 `--checked-by`: `tests` keeps the problems checked by their tests, `rubric` those checked by a rubric, which are the rubric problems and the problems of the `lld` track that carry a `rubric.md` ([Checked by](compatibility.md#checked-by)); a problem checked both ways matches either. `--needs`: `none` keeps what needs nothing beyond the language's toolchain, which leaves out every service project; `docker` or a service's name keeps the problems that need it. A `NEEDS` column shows when a listed row has a value, from the manifest alone, so listing runs nothing ([what a problem depends on](service-projects.md#where-it-shows)).
 
@@ -1101,7 +1269,7 @@ Rows come in the [order](compatibility.md#order) of the catalog before your own 
 
 `--status`: `new`, `in_progress` (an attempt is open, which comes ahead of every other status; `in-progress` works too), `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). The table writes the status in words, `in progress` for `in_progress`, as `cstudy history` does in its first line, and `mastered 2/4` for a problem [mastered through level 2 of 4](progress-and-scheduling.md#mastery-per-level); `--json`, the API and the web route keep the value `in_progress`. `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, `system-design` or `code-review`. `--lang` filters to problems whose references cover that language. `--domain` and `--role` list the entries that list that [domain or job role](content.md#labels), as `--pattern` does for a pattern: each is one value that matches any listed value, and a value no entry lists finds nothing. `--scope` is `function`, `project` or `system`. The three combine with each other and with the other filters by AND, and keep the rubric problems, which carry the labels; a problem of your own that leaves its labels out matches none that is set. The table is one list in the [order](compatibility.md#order) of the catalog: by track, so the rubric problems come after the `debugging` ones, then by `order` and slug, and your own problems after the catalog's. A rubric problem has `-` for the references and its track in the pattern column; `--pattern` and `--lang` leave rubric problems out, and so does a `--kind` that is not `system-design` or `code-review`. The list shows every problem whatever the [selected JDK](#the-selected-jdk): in the `REFS` column `java!` and `kt!` mark a language that the JDK cannot run for that problem, and one footer line names the marked languages, the JDK and the reason (`! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26`; a JDK of the supported range that only some problems' own `jdk` ranges exclude, `! java, kt: not run on JDK 23 (JAVA_HOME): outside the JDK range the problem declares`; with no JDK, `! java, kt: no JDK was found`; with a `JAVA_HOME` that holds none, `! java, kt: JAVA_HOME (/opt/jdk) holds no JDK`). Without a mark there is no footer. `--set` lists the rows of a [set](#cstudy-set), problems together in the set's order, and combines with the other filters by AND; it needs a workspace, an unknown set exits 3, and one footer line names the slugs the catalog no longer has (`missing from the catalog: old-problem`).
 
-`--json` prints the same rows as one document, in the order of the table: `{"today": "2026-10-24", "entries": [...]}`, each entry with `requires` (null but for a service project), `id` (the [canonical ID](compatibility.md#canonical-content-ids), `problem/<slug>`), `slug`, `title`, `track`, `kind` (`system-design` or `code-review` for a rubric problem), `checked_by` (`["tests"]`, `["tests", "rubric"]` or `["rubric"]`, [derived from the folder](compatibility.md#checked-by)), `difficulty`, `patterns`, `domains` and `job_roles` (lists, empty for a problem of your own that leaves them out), `scope` (null likewise), `languages` (the reference languages, empty for a rubric problem), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status` (one of the `--status` values, `in_progress` included), `levels` (`{"last", "passed", "mastered"}` for a progressive or project problem: its last level, the most levels a pass reached in any language and the levels it is [mastered through](progress-and-scheduling.md#mastery-per-level); null otherwise), `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for a rubric problem and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. Under `--set` the document also holds `set`, `{"name", "missing"}`, `missing` the slugs the catalog no longer has. Exit 0.
+`--json` prints the same rows as one document, in the order of the table: `{"today": "2026-10-24", "entries": [...]}`, each entry with `requires` (null but for a service project), `id` (the [canonical ID](compatibility.md#canonical-content-ids), `problem/<slug>`), `slug`, `title`, `track`, `kind` (`system-design` or `code-review` for a rubric problem), `checked_by` (`["tests"]`, `["tests", "rubric"]` or `["rubric"]`, [derived from the folder](compatibility.md#checked-by)), `difficulty`, `patterns`, `domains` and `job_roles` (lists, empty for a problem of your own that leaves them out), `scope` (null likewise), `languages` (the reference languages, empty for a rubric problem), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status` (one of the `--status` values, `in_progress` included), `levels` (`{"last", "passed", "mastered"}` for a progressive or project problem: its last level, the most levels a pass reached in any language and the levels it is [mastered through](progress-and-scheduling.md#mastery-per-level); null otherwise), `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for a rubric problem and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. It also holds `profile`, what the [learner profile](#explicit-filters-and-widening) left out. Under `--set` the document also holds `set`, `{"name", "missing"}`, `missing` the slugs the catalog no longer has. Exit 0.
 
 ```text
 SLUG              DIFF    PATTERN          STATUS        DUE         REFS
@@ -1183,7 +1351,7 @@ Prints the rendered statement (title, metadata, sections, examples generated fro
 ## cstudy learn
 
 ```text
-cstudy learn [--search <words>] [--level <level>] [--status read|not_read] [--json]
+cstudy learn [--search <words>] [--level <level>] [--status read|not_read] [--domain D] [--role R] [--widen role|domain|all]... [--json]
 cstudy learn <guide> [--lang <language>]
 cstudy learn <guide> [--done] [--json]
 cstudy learn <guide> --open
@@ -1195,7 +1363,7 @@ Reads the [concept guides and learning paths](guides.md) of the content root ([A
 
 | Form | Does | Says |
 |------|------|------|
-| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths, from introductory to advanced ([path order](guides.md#path-order)). `--search` keeps the guides and paths whose title, summary or slug holds every word of it, each word in any of them, in any case; `--level` those at that level (`intro`, `core`, `advanced`: a guide's, or a path's [level](guides.md#path-order)); `--status read` the guides marked read and the paths whose guides all are, `--status not_read` the others (a path without guides is neither). They combine, in the text and in `--json`, by the rule of the web UI's [Guides view](web-ui.md#guides-view) | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with each path's level (`-` for a path without guides) and steps done of total, `next    cstudy learn --path <path>` for the first path not finished, and the [web hint](#the-web-hint); with no `guides/`, `no guides in <content root>`; a section the filters leave empty says what was asked: `no paths match "hash", level: advanced` |
+| `cstudy learn` | Lists the guides, by path order and then by slug, and the paths, from introductory to advanced ([path order](guides.md#path-order)). `--search` keeps the guides and paths whose title, summary or slug holds every word of it, each word in any of them, in any case; `--level` those at that level (`intro`, `core`, `advanced`: a guide's, or a path's [level](guides.md#path-order)); `--status read` the guides marked read and the paths whose guides all are, `--status not_read` the others (a path without guides is neither). `--domain` and `--role` keep the guides that list that [domain or job role](content.md#labels), each one value, and the paths with a step, a guide or a problem, that lists it; a value outside its list exits 3 as in `cstudy list`. The [learner profile](#the-learner-profile)'s roles and domains narrow both lists first, by the [matching rules](#matching); `--domain` and `--role` replace them, and `--widen` drops them. They combine, in the text and in `--json`, by the rule of the web UI's [Guides view](web-ui.md#guides-view), and the text ends with the [profile line](#the-profile-line), after the web hint, while the profile hid a guide or a path | A `GUIDES` table (slug, level, read or not, title), a `PATHS` list with each path's level (`-` for a path without guides) and steps done of total, `next    cstudy learn --path <path>` for the first path not finished, and the [web hint](#the-web-hint); with no `guides/`, `no guides in <content root>`; a section the filters leave empty says what was asked: `no paths match "hash", level: advanced` |
 | `cstudy learn <guide>` | Shows the guide, its `mermaid` blocks and their markers left out, so each diagram shows as its [text drawing](guides.md#text-drawings), and each example with [variants](guides.md#variants) in one language, by [the rule](guides.md#the-language-shown): `default_lang`, else Python, where the example has it. On a terminal it is Markdown rendered by Rich; otherwise, piped or redirected, the Markdown text as written | The guide, each example with variants followed by `Also in typescript, go: cstudy learn <guide> --lang <language>`, then `examples  <folder>` when it has examples, `done      cstudy learn <guide> --done`, or `read      2026-11-11` once marked, and the web hint |
 | `cstudy learn <guide> --lang <language>` | The same, each example with variants in `<language>` where it has it: one of `bash`, `python`, `typescript`, `java`, `kotlin`, `go`, `rust` and `javascript`. Another value, or `--lang` with no guide, with `--path`, `--done`, `--json` or `--open`, is a usage error (exit 3) | The same |
 | `cstudy learn <guide> --done` | Marks the guide read; the first time is kept | `marked hash-functions read`, or `hash-functions was marked read on 2026-11-11`, which changes nothing and exits 0 |
@@ -1235,7 +1403,7 @@ A problem step's status is `passed` once done, or for a level target `level N pa
 
 The list and a guide end with one dim line, `Read with rendered diagrams in the web UI: cstudy learn <guide> --open` (the guide's slug after a guide, `<guide>` after the list). `--json` never prints it.
 
-`--json` of the list prints `{"guides": [...], "paths": [...]}`: each guide `{"id", "slug", "title", "summary", "level", "prerequisites", "related", "problems", "read", "read_at"}` (`read_at` an ISO 8601 UTC time or null) and each path `{"id", "slug", "title", "summary", "level", "guides", "done", "total"}` (`level` the path's [level](guides.md#path-order) or null, `guides` the slugs of its guide steps in order). `--json` of a guide prints the guide's fields with `"markdown"`, `guide.md` as written, `diagrams` and all, and `"examples"`, the absolute paths of its examples. `--json` of `--done` prints `{"id", "slug", "read_at", "already"}`, `already` true when it was marked before. `--json` of a path prints `{"id", "slug", "title", "summary", "done", "total", "next", "steps": [...]}`: `next` the first step not done or null, and each step `{"position", "kind", "id", "slug", "title", "level", "done", "status", "level_passed"}`, `kind` `guide` or `problem`, `level` the target or null, `status` as the table writes it, and `level_passed` the highest level an attempt has passed, or null for a guide or a problem without levels.
+`--json` of the list prints `{"guides": [...], "paths": [...], "profile": {...}}`: `profile` as [Explicit filters and widening](#explicit-filters-and-widening) says, with `languages` always null, and each guide `{"id", "slug", "title", "summary", "level", "domains", "job_roles", "prerequisites", "related", "problems", "read", "read_at"}` (`read_at` an ISO 8601 UTC time or null) and each path `{"id", "slug", "title", "summary", "level", "guides", "done", "total"}` (`level` the path's [level](guides.md#path-order) or null, `guides` the slugs of its guide steps in order). `--json` of a guide prints the guide's fields, `domains` and `job_roles` among them, with `"markdown"`, `guide.md` as written, `diagrams` and all, and `"examples"`, the absolute paths of its examples. `--json` of `--done` prints `{"id", "slug", "read_at", "already"}`, `already` true when it was marked before. `--json` of a path prints `{"id", "slug", "title", "summary", "done", "total", "next", "steps": [...]}`: `next` the first step not done or null, and each step `{"position", "kind", "id", "slug", "title", "level", "done", "status", "level_passed"}`, `kind` `guide` or `problem`, `level` the target or null, `status` as the table writes it, and `level_passed` the highest level an attempt has passed, or null for a guide or a problem without levels.
 
 ## cstudy docs
 
@@ -1317,7 +1485,7 @@ cstudy verify [<slug>...] [--changed] [--track T] [--lang L] [--skip-lang L]... 
 | `--jobs` | Parallel language runners (default: number of languages). The runners of a concurrent problem's languages still take turns: their builds overlap, but each runs its stress cases alone |
 | `--stress N` | Concurrent problems, and project problems with stress cases: runs per stress case and variant for D6 and D7 (default 10); D7 requires failures in at least `ceil(0.9 * N)` runs. The line reports the fewest runs a correct reference passed (`stress 10/10`), the slowest correct run as a share of its deadline (`slowest 8%`) and the (broken reference, language, case, variant) combinations caught (`broken caught 11/11`) |
 
-Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks). A language that cannot run here is skipped, and the checks of the problem's other languages run, in parallel as `--jobs` says. Two things skip a language. A problem whose [JDK range](#the-selected-jdk) does not contain the selected JDK has its Java and Kotlin skipped. A language whose toolchain is missing is skipped for that reason: `node` for TypeScript, `go` for Go and `cargo` for Rust, each looked up on `PATH`, and the workspace's Python interpreter (`python/.venv/bin/python`) for Python. The line shows `java skipped · kt skipped` or `rs skipped`, and a `skipped` line names the reason, one line for the languages that share it (`skipped  java, kotlin: runs on JDK 24 to 26; JAVA_HOME selects JDK 21`, `skipped  rust: cargo was not found on PATH`). A skip alone is no failure and does not change the exit code; `--require-ready` counts a skipped language as not passed, so the run exits 1 and a `not ready` line names the language and the reason (`not ready: rust skipped: cargo was not found on PATH`). A language removed with `--skip-lang` is the opposite: it is not a skip and is not counted. `--conformance` skips a fixture's languages the same way, with `rs skipped` on the fixture's line; the exit code stays 0 unless `--require-ready` is given, which fails the fixture with a `not ready` line. A missing toolchain does not end the run. A runner that fails to start for a function, design or concurrent problem's language (the binary cannot be executed, or the runner does not say hello in time) fails that problem, with the reason under its line, exit 1, and the run goes on with the other languages and problems; a project problem's runner that fails to start, and an environment check before any problem runs, such as a missing `git` for `--changed`, end the run with exit 4. A built binary the system reports as busy (`Text file busy`) is started again for about two seconds before that. A [service project](service-projects.md#how-you-reach-them) runs in Docker, so its languages are judged by their Docker toolchains, not the host's: only the JDK range can skip its Java and Kotlin. A [project problem](problem-format.md#project-problems)'s line shows its one language, its cases (D3) and its native suite (D9): `bank-project-...  static ok · py 1/1 ok · suite 14/14`; with stress cases or the virtual clock, D6, D7 and D10 run for it too (`bank-project-...  static ok · go 1/1 ok · suite 14/14 · clock 10/10 · slowest 0.2%`: the fewest runs of the reference that agree on every case's outputs, and the slowest run of any case as a share of that case's hang guard; a case that differs between runs, or a run over a quarter of its guard, is listed under `clock:`); `--oracle` and `--ladder` print `n/a` for it, and `--lang` with another language leaves it out.
+Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks). A language that cannot run here is skipped, and the checks of the problem's other languages run, in parallel as `--jobs` says. Three things skip a language. A language the workspace does not list among its [languages](#cstudy-lang) is skipped with `not one of this workspace's languages: cstudy lang add <language>`, since its folder may not exist; the [learner profile](#the-learner-profile) does not otherwise apply to `cstudy verify`. A problem whose [JDK range](#the-selected-jdk) does not contain the selected JDK has its Java and Kotlin skipped. A language whose toolchain is missing is skipped for that reason: `node` for TypeScript, `go` for Go and `cargo` for Rust, each looked up on `PATH`, and the workspace's Python interpreter (`python/.venv/bin/python`) for Python. The line shows `java skipped · kt skipped` or `rs skipped`, and a `skipped` line names the reason, one line for the languages that share it (`skipped  java, kotlin: runs on JDK 24 to 26; JAVA_HOME selects JDK 21`, `skipped  rust: cargo was not found on PATH`). A skip alone is no failure and does not change the exit code; `--require-ready` counts a skipped language as not passed, so the run exits 1 and a `not ready` line names the language and the reason (`not ready: rust skipped: cargo was not found on PATH`). A language removed with `--skip-lang` is the opposite: it is not a skip and is not counted. `--conformance` skips a fixture's languages the same way, with `rs skipped` on the fixture's line; the exit code stays 0 unless `--require-ready` is given, which fails the fixture with a `not ready` line. A missing toolchain does not end the run. A runner that fails to start for a function, design or concurrent problem's language (the binary cannot be executed, or the runner does not say hello in time) fails that problem, with the reason under its line, exit 1, and the run goes on with the other languages and problems; a project problem's runner that fails to start, and an environment check before any problem runs, such as a missing `git` for `--changed`, end the run with exit 4. A built binary the system reports as busy (`Text file busy`) is started again for about two seconds before that. A [service project](service-projects.md#how-you-reach-them) runs in Docker, so its languages are judged by their Docker toolchains, not the host's: only the JDK range can skip its Java and Kotlin. A [project problem](problem-format.md#project-problems)'s line shows its one language, its cases (D3) and its native suite (D9): `bank-project-...  static ok · py 1/1 ok · suite 14/14`; with stress cases or the virtual clock, D6, D7 and D10 run for it too (`bank-project-...  static ok · go 1/1 ok · suite 14/14 · clock 10/10 · slowest 0.2%`: the fewest runs of the reference that agree on every case's outputs, and the slowest run of any case as a share of that case's hang guard; a case that differs between runs, or a run over a quarter of its guard, is listed under `clock:`); `--oracle` and `--ladder` print `n/a` for it, and `--lang` with another language leaves it out.
 
 ```text
 two-sum           static ok · py 2/2 ok · ts 1/1 ok · java 1/1 ok · kt 1/1 ok · oracle 200/200
@@ -1411,7 +1579,7 @@ With `--since 2026-10-01` the attempts line reads `6 finished since 2026-10-01 �
 ## cstudy mock
 
 ```text
-cstudy mock [--minutes 45] [--count 2] [--track T]... [--lang L]
+cstudy mock [--minutes 45] [--count 2] [--track T]... [--lang L] [--domain D] [--role R] [--widen role|domain|all]...
 ```
 
 Picks `count` problems with `cstudy next` rules (new only, medium and hard), starts them with a shared timer, disables `cstudy hint` and `cstudy solution` until the timer ends or all are done.
@@ -1421,7 +1589,9 @@ Picks `count` problems with `cstudy next` rules (new only, medium and hard), sta
 | `--minutes` | The shared timer in minutes (default 45) |
 | `--count` | How many problems (default 2); when the scope runs out, fewer start and the header says `1 of 2 problems` |
 | `--track` | Repeatable, as in `cstudy next`; default `next.tracks`. Rubric problems take part like the others; their timer never caps the grade |
-| `--lang` | Only problems available in the language, started in it; default `default_lang`. A Java or Kotlin problem that the [selected JDK](#the-selected-jdk) cannot run is not available; when that leaves nothing, the message is `no new medium or hard problems in scope: ` followed by the reason `cstudy next` gives |
+| `--lang` | Only problems available in the language, started in it; default the [default language](#the-workspaces-languages). It must be one of the workspace's languages, or the mock exits 3 with the `cstudy lang add` to run. A Java or Kotlin problem that the [selected JDK](#the-selected-jdk) cannot run is not available; when that leaves nothing, the message is `no new medium or hard problems in scope: ` followed by the reason `cstudy next` gives |
+| `--domain`, `--role` | Only problems that list that [domain or job role](content.md#labels), as in `cstudy next`; unlike there, they do not widen the tracks |
+| `--widen` | `role`, `domain` or `all`, repeatable: the picks ignore the [learner profile](#the-learner-profile) in that dimension. Without it, the profile's roles and domains narrow the picks by the [matching rules](#matching); its languages are the workspace's, which `--lang` already bounds. When the profile is what left nothing, the message is `no new medium or hard problems in your profile (roles backend and general); widen with cstudy mock --widen all`; while it hid a problem from the picks' scope, the output ends with the [profile line](#the-profile-line) |
 
 | Rule | Detail |
 |------|--------|

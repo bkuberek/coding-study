@@ -35,6 +35,8 @@ Validated by `schemas/guide.schema.json`.
 title: Hash maps and sets
 summary: Why a lookup takes constant time on average, how collisions are resolved, and when it all goes wrong.
 level: intro
+domains: [algorithms]
+job_roles: [general]
 prerequisites: [hash-functions]
 related: [counting-and-frequency]
 problems: [contains-duplicate, two-sum, valid-anagram]
@@ -45,10 +47,24 @@ problems: [contains-duplicate, two-sum, valid-anagram]
 | `title` | string, 1 to 80 characters | yes | The guide's `# ` heading repeats it |
 | `summary` | string, 1 to 240 characters | yes | One or two sentences, shown in lists |
 | `level` | `intro`, `core` or `advanced` | yes | `intro`: the first idea of a topic; `core`: what working engineers use daily; `advanced`: designs and guarantees beyond the basics |
+| `domains` | list of [domains](content.md#labels), one or more, each once | yes | What the guide is about, from the closed list problems use. The [learner profile](cli.md#the-learner-profile) and the Domain filter match on it |
+| `job_roles` | list of [job roles](content.md#labels), one or more, each once | yes | Who the guide is for: `general` for what any engineer uses, else the roles it serves. The profile and the Role filter match on it, `general` matching every role profile |
 | `prerequisites` | list of guide slugs | no | Guides to read first. They form no cycle |
 | `related` | list of guide slugs | no | Guides worth reading next, in no order |
 | `problems` | list of problem slugs | no | The problems that practice the guide, in the order to try them; each is named in `## Practice` |
 | `shell` | boolean, default false | no | true for a guide whose topic is the shell, such as `using-the-terminal`: a [shell guide](#shell-guides), whose examples may have a bash variant |
+
+### Labels
+
+A guide's `domains` and `job_roles` come from the closed lists of [content](content.md#labels), with the meanings written there; a guide has no `scope`. They are chosen by this rule, so the Guides view and the [learner profile](cli.md#the-learner-profile) show a guide beside the problems it teaches for:
+
+1. **Start from its problems.** Take each domain, and each role, that at least half of the guide's `problems` list, counting each problem once.
+2. **Correct by what it teaches.** Keep a domain only when the guide's text teaches that subject, and add the domain of its main subject when step 1 missed it: a data structure, an algorithm or a language's pitfalls is `algorithms`; operating systems, networking and the mechanics of distributed systems are `systems`; services, APIs and storage engines behind them are `backend`; and so on through the table.
+3. **Roles.** `general` alone for what any engineer uses: data structures and algorithms, testing basics, the terminal, a first language. Otherwise the roles of step 1, corrected by who uses the topic every day, without `general`.
+4. **Bounds.** One to three domains and one to three roles.
+5. **A guide without problems** is labeled by steps 2 to 4 alone, with the paths that hold it as a hint.
+
+G12 warns, without failing, when a guide that names problems shares no domain with them, which is how step 2 is reviewed.
 
 ## guide.md
 
@@ -277,7 +293,7 @@ The shipped paths name these levels, from what each teaches: `intro` for "Gettin
 
 | Id | Check |
 |----|-------|
-| G1 | `meta.yaml` valid against `schemas/guide.schema.json` |
+| G1 | `meta.yaml` valid against `schemas/guide.schema.json`: among the rest, `domains` and `job_roles` present, non-empty, each value once and from the closed lists of [content](content.md#labels), which a fast test holds equal to the schema's `$defs` |
 | G2 | The folder's name is a valid slug and not `paths`; it holds `meta.yaml`, `guide.md`, an optional `examples/` of files and an optional `diagrams/` of files, and nothing else |
 | G3 | `guide.md`: `# <title>` with the title of `meta.yaml`, the [sections](#sections) non-empty and in order, no `TODO` |
 | G4 | `prerequisites` and `related` name other guides that exist; `problems` name problems that exist, each named in `## Practice` |
@@ -288,6 +304,7 @@ The shipped paths name these levels, from what each teaches: `intro` for "Gettin
 | G9 | `## Further reading` holds at least one `https://` link |
 | G10 | The n-th `mermaid` block has `diagrams/<n>-light.svg` and `diagrams/<n>-dark.svg`, each starting with a marker whose hash matches its source; every file in `diagrams/` is one of them. A missing or stale drawing, and a file that belongs to no diagram, fail with the hint to run `pnpm render` in `tools/guides/`, which removes such a file |
 | G11 | A warning, which fails nothing: an example with variants that lacks a language of its [target](#variants), on one line, such as `examples/chaining has no rust variant yet; an example with variants aims for python, typescript, java, kotlin, go and rust` |
+| G12 | A warning, which fails nothing: a guide that names `problems` and shares no domain with any of them, on one line, such as `domains [systems] are on none of its problems (algorithms); see the labeling rule in guides.md#labels` |
 
 ### Paths
 
@@ -330,6 +347,6 @@ The path's next step is its first step that is not done.
 
 ## Guides page
 
-The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, each example with [variants](#variants) as tabs that change language together, starting on the [language shown](#the-language-shown), links between guides and to the problems that practice them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. The list shows the paths in their [order](#path-order), from introductory to advanced, and narrows the guides and the paths by a search and by level, path and status (read or not), kept in the page's URL. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
+The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, each example with [variants](#variants) as tabs that change language together, starting on the [language shown](#the-language-shown), links between guides and to the problems that practice them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. The list shows the paths in their [order](#path-order), from introductory to advanced, and narrows the guides and the paths by a search and by domain, role, level, path and status (read or not), kept in the page's URL, the [learner profile](cli.md#the-learner-profile)'s roles and domains narrowing them by default. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
 
 `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` run `cstudy serve --open` landing on the guide or the path ([cli](cli.md#cstudy-learn)). The terminal still reads every guide in full.

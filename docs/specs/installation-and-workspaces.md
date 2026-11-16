@@ -60,9 +60,34 @@ created_with = "0.1.0"
 |-----|---------|
 | `schema` | Workspace layout version; this `cstudy` supports `1`. A newer schema fails `cstudy doctor` (upgrade `cstudy`) and every command that needs a workspace exits 3 |
 | `created_with` | The `cstudy` version that ran `cstudy init`; `cstudy doctor` prints it next to the running version |
+| `languages` | The workspace's languages, a list of one or more of `python`, `typescript`, `java`, `kotlin`, `go` and `rust`, each once, in that order: `languages = ["python", "go"]`. Written by `cstudy init --lang` and [`cstudy lang`](cli.md#cstudy-lang); absent, the workspace has all six with Go and Rust optional ([Workspace languages](#workspace-languages)). An empty list, an unknown or repeated value, or a value that is not a list makes the marker unreadable: `.cs/workspace.toml: languages: unknown language "golang"; use python, typescript, java, kotlin, go or rust` |
 | `[licenses.<server>]` | Written only when you accept the license of a server that has one, the Kotlin LSP's (`[licenses.kotlin-lsp]`), with `cstudy doctor --fix`: the agreement's `name` and `url`. An acceptance holds while they match the agreement the build `--fix` fetches comes under, so a newer version of it asks again ([Licenses](cli.md#licenses)) |
 
+### Workspace languages
+
+A workspace's languages decide which practice folders it has, which toolchains `cstudy doctor` checks, which IDE files it gets and which languages a new attempt starts in. They are the languages of the [learner profile](cli.md#the-learner-profile) ([ADR 0028](../decisions/0028-learner-profile.md)).
+
+| Language | Its template files |
+|----------|--------------------|
+| `python` | `python/` |
+| `typescript` | `typescript/` |
+| `java`, `kotlin` | `jvm/`, whole: one Gradle build holds both subprojects, so either language writes it, and the other's subproject stays in it unused |
+| `go` | `go/` and `go.work` |
+| `rust` | `rust/` |
+| Every workspace | `notes/`, `problems/`, `projects/`, `README.md`, `.gitignore` and the marker |
+
+| State | Rule |
+|-------|------|
+| Not chosen | A marker without `languages`, which every workspace created before this key and every `cstudy init` without `--lang` has: all six languages, every template file, and `cstudy doctor` as before, the four core toolchains required and Go and Rust optional ([ADR 0012](../decisions/0012-go-and-rust.md)) |
+| Chosen | A marker with `languages`: those languages' template files only, and each chosen language's toolchain required, Go and Rust included ([cli](cli.md#rows-by-language)) |
+| Adding | [`cstudy lang add`](cli.md#cstudy-lang) writes the language's missing template files, never overwriting one, and refreshes the IDE files cstudy wrote; `cstudy doctor --fix` then installs its toolchain files (`uv sync`, `pnpm install`, the Gradle warm-up) |
+| Removing | [`cstudy lang remove`](cli.md#cstudy-lang) keeps the folder by default: it and its practice files stay, and stop being checked, generated for or offered. With `--delete-folder`, after a question, it deletes the language's template folders above, whole (`jvm/` only when neither Java nor Kotlin remains), and refuses while an attempt in that language is in progress ([deleting a language's folder](cli.md#deleting-a-languages-folder)). Progress, `.archive/`, `projects/` and `notes/` always stay. A folder of a language the workspace does not list is never written, refreshed or reported missing |
+| Upgrading | Nothing changes for a workspace without the key. The marker's `schema` stays 1, since the key is additive; an older `cstudy` ignores it, and its `cstudy doctor` reports the folders a narrowed workspace lacks as missing |
+| Other content | `.cs/runtime/` keeps every language's runner (internal and small), `cstudy reset` treats every practice folder that exists as before, and [your own problems](#your-own-problems) may still list any language, and start in one of them only once the workspace has it |
+
 ### Layout
+
+The language folders below (`python/`, `typescript/`, `jvm/`, `go/` with `go.work`, `rust/`) are those of a workspace that has all six [languages](#workspace-languages); a workspace that chose its languages has theirs only.
 
 ```text
 <workspace>/
@@ -129,7 +154,7 @@ A project folder that stays keeps its manifest, so a later `cstudy start` copies
 ## cstudy init
 
 ```text
-cstudy init [PATH] [--git] [--force] [--ide vscode|idea]... [--no-ide]
+cstudy init [PATH] [--lang L]... [--git] [--force] [--ide vscode|idea]... [--no-ide]
 ```
 
 Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, then the current directory), creating the directory when needed.
@@ -138,10 +163,11 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 |------|------|
 | Refusals (exit 3) | `PATH` already holds a marker (`cstudy doctor --fix` repairs a workspace); `PATH` is inside another workspace; `PATH` is at or below a content checkout (a directory with `problems/` and `schemas/`) unless `--force` |
 | Files | Copies the template: the practice projects (`python/`, `typescript/`, `jvm/`, `go/`, `rust/`) and `go.work`, `notes/`, `problems/` and `projects/` (each with `.gitkeep`), `README.md` and `.gitignore`; makes `jvm/gradlew` executable; writes the marker. An existing file is never overwritten, so `cstudy init` can adopt a directory that already has files (for example a cloned repository) |
+| `--lang` | Repeatable, one of `python`, `typescript`, `java`, `kotlin`, `go` and `rust`: the workspace's [languages](#workspace-languages). The marker gets `languages` with them, in that order and each once, and only their template files are copied, with the shared ones. Without `--lang` the marker has no `languages` and every template file is copied, as before. Another value exits 3 (`unknown language "golang"; use python, typescript, java, kotlin, go or rust`) before anything is written |
 | Runtime | Materializes the runners into `.cs/runtime/` ([below](#runner-runtime)), so an IDE can import the projects right away |
 | IDE files | Writes the [IDE files](#ide-files) of VS Code and IntelliJ IDEA, as `cstudy ide` does; `--ide vscode` or `--ide idea` (repeatable) writes only those, `--no-ide` none, and both together exit 3 |
 | `--git` | Runs `git init` in `PATH`; `cstudy` never commits |
-| Output | `created workspace <path>`, the number of files written and skipped, the IDE files line of [`cstudy ide`](cli.md#cstudy-ide), then the next steps: `cd <path>`, `cstudy doctor --fix`, `cstudy start two-sum` |
+| Output | `created workspace <path>`, then `languages  python, go` with `--lang` (`languages  all six` without), the number of files written and skipped, the IDE files line of [`cstudy ide`](cli.md#cstudy-ide), then the next steps: `cd <path>`, `cstudy doctor --fix`, `cstudy start two-sum`. The start line names `--lang` with the first chosen language when `default_lang` is not one of them (`cstudy start two-sum --lang go`) |
 
 `cstudy init` installs nothing: `cstudy doctor --fix` runs `uv sync`, `pnpm install` and the Gradle warm-up (skipped, with a `FAIL` line that says `skipped: java is not installed or does not run` or `skipped: JDK 17 is older than 21` and the JDK to select or install, when [the selected JDK](cli.md#the-selected-jdk) is missing or older than 21; a JDK above the supported range still warms up, so the problems that opt in to it build offline too). The Go and Rust toolchains are optional, although problems have Go and Rust references: neither command runs `go` or `cargo`, so a machine without them gets the same workspace, and only `--lang go` needs Go 1.25 or newer and `--lang rust` Rust 1.80 or newer (without them, `cstudy test` exits 4 with `go was not found on PATH` or `cargo was not found on PATH`). `cstudy doctor` checks `go`, `rustc` and `cargo` and only warns when one is missing or too old ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
@@ -261,6 +287,19 @@ Go and Rust need no tasks or run configurations of their own: every action is la
 
 An existing workspace gets the new settings and extensions from `cstudy ide`, which follows the rewriting rule below: it updates `settings.json` and `extensions.json` while they are as `cstudy` wrote them, and keeps (with a warning) the ones you edited until `cstudy ide --force`, or until you copy the keys over. `cstudy doctor --fix` never writes IDE files. Go and Rust debug configurations are VS Code's only, in `launch.json` (above); IntelliJ IDEA gets none.
 
+The files cover the workspace's [languages](#workspace-languages). A workspace that has not chosen them gets everything above. One that has gets, of what is language-specific, only its languages' parts:
+
+| File | Written for |
+|------|-------------|
+| `.vscode/tasks.json` | Every action, which is language-agnostic, except the `cstudy test --typecheck` tasks, written with `typescript` only, and the `cstudy test --debug` tasks, written while the workspace lists a language VS Code debugs (`python`, `typescript`, `java`, `go`, `rust`) |
+| `.vscode/launch.json` | The configurations of each listed language VS Code debugs; not written for a workspace whose only languages are none of them (`kotlin` alone) |
+| `.vscode/settings.json` | `python.defaultInterpreterPath` with `python`; `typescript.tsdk` with `typescript`; `java.import.gradle.enabled` with `java` or `kotlin`; `go.toolsEnvVars` with `go`; the `rust-analyzer.*` keys with `rust`. The watcher and search exclusions always |
+| `.vscode/extensions.json` | `ms-python.python` and `ms-python.debugpy` with `python`; `vscjava.vscode-java-pack` and `vscjava.vscode-gradle` with `java` or `kotlin`; `golang.go` with `go`; `rust-lang.rust-analyzer` and `vadimcn.vscode-lldb` with `rust` |
+| `.idea/misc.xml`, `.idea/gradle.xml` | `java` or `kotlin` |
+| `.idea/runConfigurations/` | The folders `cstudy: current file`, `cstudy: active attempt` and `cstudy: workspace` always, since their actions are language-agnostic; `cstudy: debug` (the listener and its compounds) with `java` or `kotlin` |
+
+A language added or removed changes these files by the rewriting rule below: [`cstudy lang`](cli.md#cstudy-lang) refreshes the files of each IDE whose files `cstudy` wrote, and a file this `cstudy` no longer generates for the workspace is deleted while it matches its digest.
+
 | Rule | Detail |
 |------|--------|
 | Launcher | IntelliJ expands macros such as `$FilePath$` in JAR Application configurations but not in Shell Script ones, so current-file configurations run `.cs/runtime/ide/cstudy-launcher.jar` ([runtime](#runner-runtime)). It runs `cstudy <arguments>` with the same standard streams and exits with its exit code; it finds `cstudy` through `-Dcstudy.executable`, `CSTUDY_EXECUTABLE`, `PATH`, `UV_TOOL_BIN_DIR`, `XDG_BIN_HOME` and `~/.local/bin`, and exits 127 naming `CSTUDY_EXECUTABLE` when it finds none. Built reproducibly from `tools/ide-launcher/` (javac 21, Java 17 bytecode) and shipped as package data; a test rebuilds it and compares the bytes |
@@ -274,8 +313,22 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 
 ## cstudy doctor in a workspace
 
+In a workspace that has chosen its [languages](#workspace-languages), every check below that belongs to a language is left out for the languages it does not list, and `--fix` skips their steps:
+
+| Checks | Belong to |
+|--------|-----------|
+| `python/.venv`, `python debugpy`, `python pytest`, `project links`, `python/.venv location`, `runner python`, `code intelligence python` | `python` |
+| `typescript/node_modules`, `runner typescript`, `code intelligence typescript` | `typescript` |
+| `jvm/gradlew`, `runner java`, `java project libraries`, `code intelligence java` | `java` (`jvm/gradlew` also `kotlin`) |
+| `runner kotlin`, `kotlin project libraries`, `code intelligence kotlin` and its service-projects row | `kotlin` |
+| `go projects`, `code intelligence go` | `go` |
+| `rust project config`, `rust linked projects`, `code intelligence rust` | `rust` |
+
+`workspace files` then covers the template files of the chosen languages and the shared ones, and FAILs for any missing; there is no `go and rust files` row, since a chosen Go or Rust is not optional. A `languages` row follows `workspace` ([cli](cli.md#rows-by-language)). The machine's toolchain rows are scoped the same way ([cli](cli.md#rows-by-language)). With no languages chosen, every row below shows, as before.
+
 | Check | `ok` | Otherwise |
 |-------|------|-----------|
+| `languages` | The workspace's languages (`python, go`), or `all six (none chosen; cstudy lang remove narrows them)`, with the default language when `default_lang` is not one of them | Never WARN or FAIL: a marker whose `languages` does not load fails the `workspace` row instead |
 | `content` | Path, `bundled` or `checkout` | FAIL when the content root cannot be found |
 | `workspace` | Path and `created with cstudy <version>` (with the running version when it differs) | WARN when there is no workspace (`fix: cstudy init`); FAIL for an unreadable marker or a newer schema |
 | `workspace files` | Every core template file exists (everything but the Go and Rust files below), and every directory of `problems/` is named by a slug and has no `id:` line in its `meta.yaml` | FAIL listing up to 5 missing files, `fix: cstudy doctor --fix`; WARN, when none is missing, naming up to 5 such directories with the fix to make: the quoted `mv` to run from the workspace root and the `id:` line to delete ([your own problems](#your-own-problems)) |
@@ -296,6 +349,8 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 | `python/.venv location` | The shebang of the venv's console scripts names this `python/.venv` | WARN when it names another path (the workspace moved): the console scripts no longer run, though `cstudy` does; `fix: rm -rf python/.venv && cstudy doctor --fix` |
 
 `cstudy doctor --fix` first writes every missing template file (never overwriting one, so practice files are never touched), recreates missing or dangling `.venv` links in Python project folders, missing `go.work` files in Go project folders and missing `.cargo/config.toml` files in Rust project folders, refreshes the runner runtime, migrates an older `progress.db` to the latest schema (under the same lock as the first command that opens it, after copying it to `.cs/backups/` and with the line `progress.db: backed up to .cs/backups/<file>; migrated from schema N to M`; a copy that fails stops `--fix` with exit 4, `cannot back up progress.db before migrating it: <reason>; nothing changed`, the file unchanged, and so does a script that fails, which restores the copy and says so; a newer or unreadable one is left as it is, and its row stays), then runs `uv sync` in `python/` and, when `python/.venv` cannot import pytest, adds it the way the template declares it (`pytest>=9.1`): `uv add --dev --offline "pytest>=9.1"`, which needs only uv's cache, and, only if that fails, the same without `--offline`. When both fail, as when offline with pytest not cached, the step prints `FAIL`, the end of uv's output and `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`, and `--fix` exits 4; the rest of the fix still runs. Then it runs `pnpm install` in `typescript/` (and in the content checkout's `runners/typescript` when the content is a checkout), installs `.cs/lsp/` while the `code_intelligence` preference is on ([Layout](#layout)), and runs the Gradle warm-up in `jvm/`: the runtime classpath of both practice projects, which caches the runner's own libraries, then the two warm-up projects of [JVM project folders](#jvm-project-folders). Outside a workspace it exits 3.
+
+In a workspace that has chosen its [languages](#workspace-languages), `--fix` writes the missing template files of those languages and the shared ones only, so it never recreates a folder the workspace does not list; it runs `uv sync` and the pytest step only with `python`, `pnpm install` in `typescript/` only with `typescript` (the content checkout's `runners/typescript` too), the Gradle warm-up only with `java` or `kotlin`, relinks Python project folders only with `python`, writes Go `go.work` files only with `go` and Rust `.cargo/config.toml` files only with `rust`, and installs the language servers of those languages only. The runner runtime is refreshed whole, every runner included.
 
 ## Web UI assets
 

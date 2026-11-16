@@ -180,6 +180,8 @@ Three labels say what a problem is about, who it is for and how big the thing yo
 | `data-engineer` | Engineers who build and run data pipelines and tables |
 | `frontend` | Engineers who build browser UIs |
 
+Concept guides carry `domains` and `job_roles` too, from the same lists and chosen by the [labeling rule of guides](guides.md#labels), and no `scope`; `schemas/guide.schema.json` holds the same `$defs` as `schemas/meta.schema.json`, and the same fast test holds it equal to `domain/taxonomy.py`. The [learner profile](cli.md#the-learner-profile) narrows lists by the domains and roles a learner chooses, by the [matching rules](cli.md#matching): an entry that lists `general` matches every role profile, since it is for any engineer, so `general` is not a value of the profile.
+
 | `scope` value | Meaning | Fits |
 |---------------|---------|------|
 | `function` | One function or class, in one file, with no folder or process of yours | `kind` `function`, `design`, `progressive` or `concurrent`, and code review problems |

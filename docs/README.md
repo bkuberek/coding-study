@@ -65,6 +65,7 @@ How to use `cstudy` lives in [`user-docs/`](../user-docs/), shipped with it and 
 | [0025](decisions/0025-concept-guides-and-learning-paths.md) | Concept guides and learning paths are content in `guides/`, checked by `cstudy verify` and read with `cstudy learn`; diagrams are Mermaid with text drawings made when a guide is written, examples are run by a test, and reading is marked in `progress.db` |
 | [0026](decisions/0026-user-docs.md) | User docs are Markdown pages with front matter in `user-docs/`, shipped as content, read with `cstudy docs` and the web UI's Docs view, checked by `cstudy verify` against the command line, and copied by the website |
 | [0027](decisions/0027-compatibility-contract.md) | A compatibility contract held by snapshots and JSON Schemas, with deprecation warnings on stderr only; content named `<type>/<slug>`, problem folders named by slug with no number, the items as rubric-checked problems, and a backup before every migration |
+| [0028](decisions/0028-learner-profile.md) | A learner profile of languages, job roles and domains is the default filter of every list you choose from, in the terminal and the page, with a dim line or a chip that says how much it hides; roles and domains live in `config.toml`, languages in the workspace's marker, which decide its folders, doctor rows and IDE files, and `cstudy lang` or Settings adds or removes them, keeping or deleting the folder; one filter component; labels on guides |
 
 ## Conventions
 
