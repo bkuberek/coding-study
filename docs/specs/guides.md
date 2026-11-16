@@ -304,7 +304,7 @@ The shipped paths name these levels, from what each teaches: `intro` for "Gettin
 | G9 | `## Further reading` holds at least one `https://` link |
 | G10 | The n-th `mermaid` block has `diagrams/<n>-light.svg` and `diagrams/<n>-dark.svg`, each starting with a marker whose hash matches its source; every file in `diagrams/` is one of them. A missing or stale drawing, and a file that belongs to no diagram, fail with the hint to run `pnpm render` in `tools/guides/`, which removes such a file |
 | G11 | A warning, which fails nothing: an example with variants that lacks a language of its [target](#variants), on one line, such as `examples/chaining has no rust variant yet; an example with variants aims for python, typescript, java, kotlin, go and rust` |
-| G12 | A warning, which fails nothing: a guide that names `problems` and shares no domain with any of them, on one line, such as `domains [systems] are on none of its problems (algorithms); see the labeling rule in guides.md#labels` |
+| G12 | A warning, which fails nothing: a guide that names `problems` and shares no domain with any of them, on one line, such as `domains [systems] are on none of its problems (algorithms); see the labeling rule in guides.md#labels`, the problems' domains each once, in the order of the [domain list](content.md#labels). It says nothing when none of the guide's problems loads (G4 reports a name that is not a problem), when its problems list no domain, or when the guide lists none (G1 fails it) |
 
 ### Paths
 
