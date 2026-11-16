@@ -2,15 +2,14 @@
 
 from urllib.parse import quote
 
-from coding_study.adapters.ai.http_json import JsonClient
-from coding_study.adapters.ai.json_fields import (
-    JsonObject,
+from coding_study.adapters.ai.http_json import JsonClient, JsonObject
+from coding_study.adapters.ai.reply_json import (
     count,
-    invalid_reply,
     items,
     mapping,
     parse_object,
-    text,
+    text_of,
+    unreadable_reply,
 )
 from coding_study.domain.ai import ApiKey, Provider
 from coding_study.domain.ai_models import Ending, ModelReply, ModelRequest, Usage
@@ -66,7 +65,7 @@ class GoogleAdapter:
                 deadline_s=deadline_s,
             )
             ids.update(_generating_ids(page))
-            token = text(page.get("nextPageToken"))
+            token = text_of(page.get("nextPageToken"))
             if not token:
                 break
         return tuple(sorted(ids))
@@ -89,7 +88,7 @@ def _generating_ids(page: JsonObject) -> list[str]:
     for item in items(page.get("models")):
         model = mapping(item)
         methods = items(model.get("supportedGenerationMethods"))
-        name = text(model.get("name"))
+        name = text_of(model.get("name"))
         if GENERATE_METHOD in methods and name:
             ids.append(name.removeprefix(MODEL_PREFIX))
     return ids
@@ -107,16 +106,16 @@ def _reply(reply: JsonObject, *, structured: bool) -> ModelReply:
     usage = _usage(reply)
     candidates = items(reply.get("candidates"))
     if not candidates:
-        block = text(mapping(reply.get("promptFeedback")).get("blockReason"))
+        block = text_of(mapping(reply.get("promptFeedback")).get("blockReason"))
         if block and block != UNSPECIFIED_BLOCK:
             return ModelReply(Ending.REFUSED, usage=usage)
-        raise invalid_reply(Provider.GOOGLE, "it holds no candidate", usage)
+        raise unreadable_reply(Provider.GOOGLE, "it holds no candidate", usage)
     candidate = mapping(candidates[0])
-    finish = text(candidate.get("finishReason"))
+    finish = text_of(candidate.get("finishReason"))
     if finish in REFUSED_FINISHES:
         return ModelReply(Ending.REFUSED, usage=usage)
     written = "".join(
-        text(part.get("text"))
+        text_of(part.get("text"))
         for part in map(mapping, items(mapping(candidate.get("content")).get("parts")))
         if not part.get("thought")
     )
@@ -124,10 +123,10 @@ def _reply(reply: JsonObject, *, structured: bool) -> ModelReply:
         return ModelReply(Ending.LENGTH, written, usage=usage)
     if not written:
         reason = f"it holds no text (finish reason {finish})" if finish else "it holds no text"
-        raise invalid_reply(Provider.GOOGLE, reason, usage)
+        raise unreadable_reply(Provider.GOOGLE, reason, usage)
     if not structured:
         return ModelReply(Ending.COMPLETE, written, usage=usage)
     data = parse_object(written)
     if data is None:
-        raise invalid_reply(Provider.GOOGLE, "the text is not a JSON object", usage)
+        raise unreadable_reply(Provider.GOOGLE, "the text is not a JSON object", usage)
     return ModelReply(Ending.COMPLETE, written, data, usage)

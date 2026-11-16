@@ -34,9 +34,30 @@ def text_of(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
-def invalid_reply(provider: Provider, reason: str, usage: Usage | None) -> ProviderError:
+def amount(value: object) -> float | None:
+    """A number of dollars, or None when `value` is no number."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def invalid_reply(provider: Provider, reason: str, usage: Usage | None = None) -> ProviderError:
     """The error for a reply that cannot be used, which still counts its tokens."""
     return ProviderError(ProviderErrorKind.INVALID_REPLY, f"{provider} {reason}", usage)
+
+
+def unreadable_reply(provider: Provider, reason: str, usage: Usage | None = None) -> ProviderError:
+    """`invalid_reply` for a reply whose content cannot be read, with `reason` as the cause."""
+    return invalid_reply(provider, f"sent a reply that cstudy cannot read: {reason}", usage)
+
+
+def parse_object(reply_text: str) -> JsonObject | None:
+    """The JSON object a model wrote, or None when the text is not one."""
+    try:
+        parsed: object = json.loads(reply_text)
+    except ValueError:
+        return None
+    return cast("JsonObject", parsed) if isinstance(parsed, dict) else None
 
 
 def structured(provider: Provider, text: str, usage: Usage | None) -> JsonObject:
