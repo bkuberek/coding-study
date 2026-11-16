@@ -27,7 +27,7 @@ The promise starts at 1.0.0. Before it, any release may change any surface.
 | Canonical IDs | Public | A released content ID never changes, since progress is keyed on it. Content itself may be corrected or reworded in any release | The grammar of [Canonical content IDs](#canonical-content-ids) | `cli/tests/domain/test_content_ids.py`; every schema in `schemas/cli/` except `export.schema.json` requires `id` by the grammar |
 | Web API, `.cs/`, guide and path formats, the user-docs page format | Internal | They may change in any release. A user-docs page's slug is its canonical ID, `doc/<slug>`, which never changes; its heading ids and front matter may, with a release note | `schemas/web-api.schema.json`, [installation-and-workspaces](installation-and-workspaces.md#layout) (`.cs/`), `schemas/guide.schema.json`, `schemas/path.schema.json`, [user-docs](user-docs.md) | Their own tests, which hold the page and the server together and promise nothing to other programs |
 | Human-readable output | Not promised | Scripts use `--json` | Nothing | Nothing |
-| AI features | Preview | Their commands, `[ai]` keys and behavior may change in a minor release. The assistance record and AI review records are public | Their specs, from v0.60 | Their own tests |
+| AI features | Preview | Their commands, `[ai]` keys and behavior may change in a minor release. The assistance record and AI review records are public | Their specs, from v0.54 | Their own tests |
 | Kotlin code intelligence | Preview | It depends on builds outside cstudy that expire | [web-ui](web-ui.md#code-intelligence-sessions) | Its own tests |
 
 A surface not in this table is internal. Internal names in the code, such as modules, classes and enum members, are not a surface.
@@ -199,7 +199,7 @@ How a problem is checked is derived from its folder, not written in `meta.yaml`:
 |-------|------|
 | `tests` | Every autograded kind |
 | `rubric` | The folder has `rubric.md` |
-| `ai-review` | Reserved for v0.60; no problem has it yet |
+| `ai-review` | Reserved for v0.54; no problem has it yet |
 
 So the 8 `lld` problems with a `rubric.md` are `tests` and `rubric`, rubric problems are `rubric`, and the rest are `tests`.
 

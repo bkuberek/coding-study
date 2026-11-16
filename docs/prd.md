@@ -64,7 +64,7 @@ cstudy next  ->  cstudy start <slug> --lang kotlin  ->  edit in editor  ->  cstu
 - No AI grading of code or behavioral answers. Planned for 1.0 as a preview, not built: opt-in AI review of rubric-checked problems with your own key, which never changes a grade; code stays graded deterministically ([ADR 0021](decisions/0021-ai-reviewed-problems.md), [roadmap](roadmap.md#v100)).
 - No copying of LeetCode statements or test data ([ADR 0004](decisions/0004-original-problem-wording.md)).
 - No languages beyond Python, TypeScript, Java, Kotlin, Go and Rust in 1.0 ([ADR 0012](decisions/0012-go-and-rust.md)).
-- No native Windows support. macOS and Linux are supported and verified for every release candidate: CI runs on Ubuntu, and the [toolchains guide](guides/toolchains.md) covers both. Windows runs cstudy through WSL2: 1.0 ships a setup guide that warns it is not tested on Windows or WSL, and 1.1 adds WSL2 verification.
+- No native Windows support. macOS and Linux are supported, and verified by a recorded gate on each before 1.0.0: CI runs on Ubuntu, and the [toolchains guide](guides/toolchains.md) covers both. Windows runs cstudy through WSL2: 1.0 ships a setup guide that warns it is not tested on Windows or WSL, and 1.1 adds WSL2 verification.
 
 ## 3. AI system requirements
 

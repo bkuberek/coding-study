@@ -1,4 +1,4 @@
-> **Draft.** This guide becomes final in the 1.0 release candidates.
+> **Draft.** This guide becomes final in 1.0.0.
 
 # Upgrading from cstudy 0.x to 1.0
 

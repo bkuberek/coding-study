@@ -31,7 +31,7 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 | Bench verdicts for 5 problems with an O(n^2) brute force, and their stability over 5 runs | 2 | A recorded run on an idle machine |
 | Full `cstudy verify` (no oracle, no ladder) within the NFR-3 time | 3 | A recorded timing |
 
-Each open item is a [v1.0.0 criterion](#release-criteria): P5, P6, C2, P4 and PF3.
+Each open item is a [v1.0.0 criterion](#release-criteria), P5, C2, P4 and PF3, except real practice, which is P6 of [v1.1](#v11-criteria).
 
 ## v1.0.0
 
@@ -89,23 +89,22 @@ Rules:
 
 ### Release criteria
 
-Status is **met**, **partly met** or **not met**; not met includes criteria that need a recorded run that does not exist yet. Each criterion names the milestone that closes it.
+Status is **met**, **partly met** or **not met**; not met includes criteria that need a recorded run that does not exist yet. Each criterion names the milestone that closes it. The criteria that close after 1.0.0 are listed under [v1.1](#v11-criteria).
 
 | Area | Met | Partly met | Not met |
 |------|----:|-----------:|--------:|
-| Compatibility and release engineering | 6 | 1 | 3 |
-| Product | 1 | 2 | 10 |
+| Compatibility and release engineering | 6 | 1 | 0 |
+| Product | 1 | 2 | 8 |
 | AI preview | 0 | 0 | 9 |
 | Content | 2 | 2 | 5 |
 | Platforms and install | 0 | 3 | 4 |
-| Reliability | 1 | 1 | 2 |
+| Reliability | 1 | 0 | 0 |
 | Docs | 2 | 0 | 1 |
-| Accessibility | 2 | 1 | 1 |
+| Accessibility | 2 | 1 | 0 |
 | Performance | 1 | 1 | 2 |
-| Security and sandbox | 0 | 2 | 3 |
-| Licensing | 3 | 3 | 0 |
-| Privacy and offline | 2 | 2 | 1 |
-| **Total (79)** | **20** | **18** | **41** |
+| Licensing | 3 | 1 | 0 |
+| Privacy and offline | 2 | 0 | 0 |
+| **Total (60)** | **20** | **11** | **29** |
 
 #### Compatibility and release engineering
 
@@ -115,10 +114,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | E2 | Contract tests: a snapshot of commands, flags and exit codes; a JSON Schema per `--json` document; snapshots of the config keys and the workspace marker | Met: `cli/tests/contract/` snapshots the commands, flags, exit codes, config keys, environment variables and marker, and validates real output against the 17 schemas of `schemas/cli/`, with a coverage test | v0.51 |
 | E3 | Canonical IDs `<type>/<slug>` for all content; numeric problem IDs and the ID column are gone and folders are `problems/<slug>`; the 16 items are problems of the kinds `system-design` and `code-review`, checked by a rubric; the Problems page has a Checked by column (tests, rubric, plus AI review) | Met: IDs, slug folders, rubric problems and Checked by with its filter in `cstudy list` and the page; the `ai-review` value is reserved for AI3 | v0.51 |
 | E4 | Every migration takes a backup first; upgrade tests migrate a fixture of each schema from 1.0 forward; export round trips keep every row | Met: a backup before each migration, restored when a script fails; `test_sqlite_upgrades.py` migrates a fixture of each schema 1 to 7 and round-trips its export | v0.51 |
-| E5 | Curated release notes for each minor release: highlights, upgrading, deprecations | Not met | v0.64 |
-| E6 | Release candidates are tagged without reaching the Homebrew tap, and only fixes land during the soak | Not met | v0.64 |
-| E7 | Rollback is documented and drilled once: install the previous version, then restore from the backup or an export | Not met | v0.64 |
-| E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Partly met: a draft covers the 0.51 changes and the learner profile, linked from the README and the docs index | v0.51 (draft), release candidates (final) |
+| E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Partly met: a draft covers the 0.51 changes and the learner profile, linked from the README and the docs index | v0.51 (draft), v1.0.0 (final) |
 | E9 | 1.0.0 is cut deliberately with a major bump | Met: `semantic-release version --major` | v1.0.0 |
 | E10 | A release is cut only after CI passes on main: the Version workflow runs after CI, and a manual release checks CI first | Met | v0.50 |
 
@@ -126,91 +122,86 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| P1 | A learner profile of languages, job roles and domains, each defaulting to all, sets the default filters on every page; a page's filter can widen them without editing the profile; one shared filter component serves every page | Partly met: `cstudy list`, `next`, `mock` and `learn` apply the profile, with `--widen`, the profile line and `profile` in `--json`, and the web API serves the profile and takes `widen`; the page's shared filter component, its profile chip and the Settings Profile section remain | v0.52 |
-| P2 | Languages decide which workspace folders exist: `cstudy init --lang`, `cstudy lang add`, and `doctor`, `doctor --fix` and the IDE files scoped to the chosen languages; a fresh workspace with one language gets an all-ok `doctor` | Met: `cstudy init --lang` and `cstudy lang add` and `remove`; `doctor`, `doctor --fix` and the IDE files keep to the workspace's languages; a slow test runs `init --lang`, `doctor --fix` and `doctor` for each language whose toolchain is installed and finds every row ok, but for the machine-level `docker`, `docker leftovers` and `installs` rows and the Gradle and debugger rows, which only regenerating the wrapper and `--debug` need | v0.52 |
-| P3 | Every journey of the [definition](#definition) passes in the terminal, and on the page where the page has it | Partly met: the parity end-to-end test covers practice for every kind in all six languages | Release candidates |
-| P4 | `bench` is honest: on 5 problems with an O(n²) brute force, the brute force gets `suboptimal` at medium or high confidence in every language, the optimal reference gets `optimal`, and the verdicts hold in 5 runs out of 5 | Not met | v0.54 |
-| P5 | Editor checks: LazyVim shows language-server diagnostics in a fresh stub per language, and IntelliJ imports `jvm/` with both subprojects | Not met | v0.54 |
-| P6 | Real use during the soak: at least 30 finished attempts across at least 4 languages and every kind, in both the terminal and the page, with no open P1 issue | Not met | Release candidates |
-| P7 | The desktop app is designed: an accepted ADR for `cstudy app` and `cstudy app install` | Not met | v0.64 |
-| P8 | Feedback and issue reporting: GitHub issue forms in `.github/ISSUE_TEMPLATE` for a bug, missing content or a feature, and a content error in a problem or guide; "Found an issue?" and "Missing something?" entries in the page, one global and one on every problem and guide page, open the matching form in the browser, prefilled through query parameters with the cstudy version, the OS, the page and the content ID (`<type>/<slug>`), never with code or transcripts; `cstudy feedback` does the same from the terminal | Not met | v0.53 |
-| P9 | A cstudy-owned lab image, and a variant with the AWS CLI, built in CI from a pinned Debian snapshot, published, pinned by digest and with its licenses recorded, under an ADR that amends [ADR 0019](decisions/0019-service-projects.md) for lab images | Not met | v0.59 |
-| P10 | `cstudy shell [<slug>] [--host <name>]` opens an interactive shell as your UID on a host of a running lab stack, refuses without a terminal (exit 3), and keeps the shell history in the project folder; the page shows the command with a copy button | Not met | v0.59 |
-| P11 | Lab stacks start broken: a lab stack is up once its infrastructure runs, not when its services are healthy, and a problem-owned break step injects each level's fault into the dev stack once, seeded by `CSTUDY_FAULT_SEED`, so names, ports and sizes vary between attempts | Not met | v0.59 |
-| P12 | Two-phase grading: `cstudy submit` runs the checks on the stack you fixed, then on a fresh stack built from your project folder with the fault injected again, then checks that `rca.md` has its sections (symptoms, evidence, root cause, fix, prevention); a level passes only when all three pass, and the level's rubric then reviews the written root cause | Not met | v0.59 |
-| P13 | The kind `troubleshooting`, shown as checks + rubric in the Checked by column, with its schema and its `cstudy verify` checks: every level fails on the unfixed stack, the reference fix passes both phases, a fix made only at run time fails the fresh stack, and three seeds give the same verdicts | Not met | v0.59 |
+| P1 | A learner profile of languages, job roles and domains, each defaulting to all, sets the default filters on every page; a page's filter can widen them without editing the profile; one shared filter component serves every page | Partly met: `cstudy list`, `next`, `mock` and `learn` apply the profile, with `--widen`, the profile line and `profile` in `--json`, and the web API serves the profile and takes `widen`; the page's shared filter component, its profile chip and the Settings Profile section remain | v0.53 |
+| P2 | Languages decide which workspace folders exist: `cstudy init --lang`, `cstudy lang add`, and `doctor`, `doctor --fix` and the IDE files scoped to the chosen languages; a fresh workspace with one language gets an all-ok `doctor` | Met: `cstudy init --lang` and `cstudy lang add` and `remove`; `doctor`, `doctor --fix` and the IDE files keep to the workspace's languages; a slow test runs `init --lang`, `doctor --fix` and `doctor` for each language whose toolchain is installed and finds every row ok, but for the machine-level `docker`, `docker leftovers` and `installs` rows and the Gradle and debugger rows, which only regenerating the wrapper and `--debug` need | v0.53 |
+| P3 | Every journey of the [definition](#definition) passes in the terminal, and on the page where the page has it | Partly met: the parity end-to-end test covers practice for every kind in all six languages | v1.0.0 |
+| P4 | `bench` is honest: on 5 problems with an O(n²) brute force, the brute force gets `suboptimal` at medium or high confidence in every language, the optimal reference gets `optimal`, and the verdicts hold in 5 runs out of 5 | Not met | v0.58 |
+| P5 | Editor checks: LazyVim shows language-server diagnostics in a fresh stub per language, and IntelliJ imports `jvm/` with both subprojects | Not met | v0.58 |
+| P8 | Feedback and issue reporting: GitHub issue forms in `.github/ISSUE_TEMPLATE` for a bug, missing content or a feature, and a content error in a problem or guide; "Found an issue?" and "Missing something?" entries in the page, one global and one on every problem and guide page, open the matching form in the browser, prefilled through query parameters with the cstudy version, the OS, the page and the content ID (`<type>/<slug>`), never with code or transcripts; `cstudy feedback` does the same from the terminal | Not met | v0.55 |
+| P9 | A cstudy-owned lab image, and a variant with the AWS CLI, built in CI from a pinned Debian snapshot, published, pinned by digest and with its licenses recorded, under an ADR that amends [ADR 0019](decisions/0019-service-projects.md) for lab images | Not met | v0.63 |
+| P10 | `cstudy shell [<slug>] [--host <name>]` opens an interactive shell as your UID on a host of a running lab stack, refuses without a terminal (exit 3), and keeps the shell history in the project folder; the page shows the command with a copy button | Not met | v0.63 |
+| P11 | Lab stacks start broken: a lab stack is up once its infrastructure runs, not when its services are healthy, and a problem-owned break step injects each level's fault into the dev stack once, seeded by `CSTUDY_FAULT_SEED`, so names, ports and sizes vary between attempts | Not met | v0.63 |
+| P12 | Two-phase grading: `cstudy submit` runs the checks on the stack you fixed, then on a fresh stack built from your project folder with the fault injected again, then checks that `rca.md` has its sections (symptoms, evidence, root cause, fix, prevention); a level passes only when all three pass, and the level's rubric then reviews the written root cause | Not met | v0.63 |
+| P13 | The kind `troubleshooting`, shown as checks + rubric in the Checked by column, with its schema and its `cstudy verify` checks: every level fails on the unfixed stack, the reference fix passes both phases, a fix made only at run time fails the fresh stack, and three seeds give the same verdicts | Not met | v0.63 |
 
 #### AI preview
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| AI1 | Bring your own key: keys only in `credentials.toml`, never in the workspace, logs, transcripts or exports; consent before the first send per provider, model and purpose; a daily token cap; usage and known cost shown | Not met | v0.60 |
-| AI2 | Routing: one fixed model, or auto, which serves each task from a fast or a strong tier you configure | Not met | v0.60 |
-| AI3 | AI review of rubric-checked problems: a schema-validated verdict per rubric criterion, stored as a versioned record with provider, model and rubric version, labeled AI review, never changing a grade or the schedule | Not met | v0.60 |
-| AI4 | The chat drawer on every page, with free sessions you create, rename, archive, compact and delete, and the same sessions in `cstudy ai chat`; the drawer is a chunk with its own bundle budget | Not met | v0.61 |
-| AI5 | Web search through each provider's server-side search tool, per message, counted in usage | Not met | v0.61 |
-| AI6 | Problem sessions: one per `attempt_id`, read-only once the attempt is done or aborted; help modes `interviewer`, `collaborator` and `tutor`; during `cstudy mock`, interviewer only, with free sessions locked | Not met | v0.62 |
-| AI7 | Each turn gets a tag; a versioned assistance record is stored on the attempt, caps the review grade, and shows in `cstudy history`, `cstudy stats` and the page | Not met | v0.62 |
-| AI8 | With AI off, nothing leaves the machine and every other feature works as before | Not met | v0.60 |
-| AI9 | The assistant notices when a message sounds like a bug or a missing feature, offers to draft the issue, shows the draft, and opens the prefilled form of P8 only after you agree. cstudy holds no GitHub token; you submit the issue on GitHub | Not met | v0.61 |
+| AI1 | Bring your own key: keys only in `credentials.toml`, never in the workspace, logs, transcripts or exports; consent before the first send per provider, model and purpose; a daily token cap; usage and known cost shown | Not met | v0.54 |
+| AI2 | Routing: one fixed model, or auto, which serves each task from a fast or a strong tier you configure | Not met | v0.54 |
+| AI3 | AI review of rubric-checked problems: a schema-validated verdict per rubric criterion, stored as a versioned record with provider, model and rubric version, labeled AI review, never changing a grade or the schedule | Not met | v0.54 |
+| AI4 | The chat drawer on every page, with free sessions you create, rename, archive, compact and delete, and the same sessions in `cstudy ai chat`; the drawer is a chunk with its own bundle budget | Not met | v0.55 |
+| AI5 | Web search through each provider's server-side search tool, per message, counted in usage | Not met | v0.55 |
+| AI6 | Problem sessions: one per `attempt_id`, read-only once the attempt is done or aborted; help modes `interviewer`, `collaborator` and `tutor`; during `cstudy mock`, interviewer only, with free sessions locked | Not met | v0.56 |
+| AI7 | Each turn gets a tag; a versioned assistance record is stored on the attempt, caps the review grade, and shows in `cstudy history`, `cstudy stats` and the page | Not met | v0.56 |
+| AI8 | With AI off, nothing leaves the machine and every other feature works as before | Not met | v0.54 |
+| AI9 | The assistant notices when a message sounds like a bug or a missing feature, offers to draft the issue, shows the draft, and opens the prefilled form of P8 only after you agree. cstudy holds no GitHub token; you submit the issue on GitHub | Not met | v0.55 |
 
 #### Content
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| C1 | `cstudy verify --oracle --require-ready` exits 0 over the whole catalog on the release-candidate commit | Partly met: the oracle check passes everywhere, with no run recorded for a release candidate | v0.54, release candidates |
-| C2 | `cstudy verify --ladder --require-ready` exits 0 over the whole catalog | Not met | v0.54 |
-| C3 | Every guide passes its checks, and every path has a review record with checked citations | Partly met: the paths on main have records | v0.54, then each content milestone |
-| C4 | The `related` rule is settled, symmetric where the spec requires it, and enforced by a static check | Not met | v0.54 |
-| C5 | A problem that links a guide is a step of a path that holds that guide, unless exempted, enforced by a `verify` check; the paths that open on a hard problem open on an easy one or a `level: 1` step | Not met | v0.54 |
+| C1 | `cstudy verify --oracle --require-ready` exits 0 over the whole catalog on the commit cut as 1.0.0 | Partly met: the oracle check passes everywhere, with no run recorded on the 1.0.0 commit | v0.58, v1.0.0 |
+| C2 | `cstudy verify --ladder --require-ready` exits 0 over the whole catalog | Not met | v0.58 |
+| C3 | Every guide passes its checks, and every path has a review record with checked citations | Partly met: the paths on main have records | v0.58, then each content milestone |
+| C4 | The `related` rule is settled, symmetric where the spec requires it, and enforced by a static check | Not met | v0.58 |
+| C5 | A problem that links a guide is a step of a path that holds that guide, unless exempted, enforced by a `verify` check; the paths that open on a hard problem open on an easy one or a `level: 1` step | Not met | v0.58 |
 | C6 | The counts agree across the README, this roadmap and the catalog | Met | Kept in every milestone |
-| C7 | The content must-haves below, each passing C1 to C3 | Not met | v0.55 to v0.57, v0.63 |
-| C8 | Browser-graded React problems: the grader of [Phase 16](#phase-16-frontend-problems) and two problems on it | Not met | v0.58 |
-| C9 | Guides carry `job_roles` and `domains` labels, checked by `cstudy verify` | Met: all 132 guides carry both, `schemas/guide.schema.json` requires them (G1), and G12 warns when a guide shares no domain with its problems; `cstudy verify --static` passes with four G12 warnings, each justified | v0.52 |
+| C7 | The content must-haves below, each passing C1 to C3 | Not met | v0.59 to v0.61, v0.64 |
+| C8 | Browser-graded React problems: the grader of [Phase 16](#phase-16-frontend-problems) and two problems on it | Not met | v0.62 |
+| C9 | Guides carry `job_roles` and `domains` labels, checked by `cstudy verify` | Met: all 132 guides carry both, `schemas/guide.schema.json` requires them (G1), and G12 warns when a guide shares no domain with its problems; `cstudy verify --static` passes with four G12 warnings, each justified | v0.53 |
 
 The content must-haves:
 
 | Must-have | Guides | Problems | Milestone |
 |-----------|-------:|---------:|-----------|
-| DSA foundations path: complexity analysis, linked lists, sorting, bit manipulation, matrices and number tricks; the unlinked DSA problems linked | 5 | 0 | v0.55 |
-| Debugging, git and code reading path, with the debugging track as its steps | 7 | 0 | v0.55 |
-| Backend services path: HTTP API design, validation and errors, schema design and migrations, background jobs and queues, caching, rate limiting; the unlinked backend problems linked | 6 | 0 | v0.55 |
-| Advanced DSA guides: minimum spanning trees and bridges, range queries, string matching | 3 | 0 | v0.55 |
-| Applied SQL and database on-ramps: SQL problems graded against Postgres, and problems for the LSM and page guides | 2 | 5 | v0.56 |
-| System design path, with system-design problems as its steps, opening on an easy one | 5 | 2 | v0.56 |
-| Software design path, with the low-level design problems as its steps | 5 | 0 | v0.56 |
-| Concurrency and async path, with an easy problem and a worker pool on channels | 4 | 2 | v0.56 |
-| Frontend fundamentals path on today's engine | 6 | 3 | v0.57 |
-| Platform and operations path: containers, CI/CD and deploys, logs, metrics and traces, SLOs and alerting, incidents | 5 | 2 | v0.57 |
-| Entry problems for the networking, distributed systems, OS, data engineering and testing paths, and a mutation tester | 0 | 6 | v0.57 |
-| Machine learning depth: trees and ensembles, clustering and nearest neighbors, neural network basics | 3 | 3 | v0.57 |
-| Security: password storage and sessions, encryption and signatures | 2 | 2 | v0.57 |
-| Browser-graded React problems: the search box, and a data table with sorting and pagination | 0 | 2 | v0.58 |
-| Operations and troubleshooting guides: three paths, on Linux servers and SSH; databases, caches and search; and messaging and cloud CLIs, opening on a shared troubleshooting method | 22 | 0 | v0.63 |
-| Break-and-fix problems on Linux servers and SSH: a full disk, a runaway process, memory and the OOM killer, a proxy's 502s, names and certificates, an SSH bastion and tunnels | 0 | 6 | v0.63 |
-| Break-and-fix problems on databases, caches and search: Postgres locks and connections, a MySQL metadata lock, MongoDB slow queries behind license acceptance, a Valkey cache that evicts everything, and OpenSearch cluster health, mappings and heavy queries | 0 | 8 | v0.63 |
-| Break-and-fix problems on messaging and cloud CLIs: Kafka consumer lag, a stuck Valkey stream consumer, SQS, SNS and EventBridge through the real `aws` CLI on Moto, RabbitMQ, NATS JetStream, and a cloud incident with Google Pub/Sub read from recorded `gcloud` output | 0 | 6 | v0.63 |
+| DSA foundations path: complexity analysis, linked lists, sorting, bit manipulation, matrices and number tricks; the unlinked DSA problems linked | 5 | 0 | v0.59 |
+| Debugging, git and code reading path, with the debugging track as its steps | 7 | 0 | v0.59 |
+| Backend services path: HTTP API design, validation and errors, schema design and migrations, background jobs and queues, caching, rate limiting; the unlinked backend problems linked | 6 | 0 | v0.59 |
+| Advanced DSA guides: minimum spanning trees and bridges, range queries, string matching | 3 | 0 | v0.59 |
+| Applied SQL and database on-ramps: SQL problems graded against Postgres, and problems for the LSM and page guides | 2 | 5 | v0.60 |
+| System design path, with system-design problems as its steps, opening on an easy one | 5 | 2 | v0.60 |
+| Software design path, with the low-level design problems as its steps | 5 | 0 | v0.60 |
+| Concurrency and async path, with an easy problem and a worker pool on channels | 4 | 2 | v0.60 |
+| Frontend fundamentals path on today's engine | 6 | 3 | v0.61 |
+| Platform and operations path: containers, CI/CD and deploys, logs, metrics and traces, SLOs and alerting, incidents | 5 | 2 | v0.61 |
+| Entry problems for the networking, distributed systems, OS, data engineering and testing paths, and a mutation tester | 0 | 6 | v0.61 |
+| Machine learning depth: trees and ensembles, clustering and nearest neighbors, neural network basics | 3 | 3 | v0.61 |
+| Security: password storage and sessions, encryption and signatures | 2 | 2 | v0.61 |
+| Browser-graded React problems: the search box, and a data table with sorting and pagination | 0 | 2 | v0.62 |
+| Operations and troubleshooting guides: three paths, on Linux servers and SSH; databases, caches and search; and messaging and cloud CLIs, opening on a shared troubleshooting method | 22 | 0 | v0.64 |
+| Break-and-fix problems on Linux servers and SSH: a full disk, a runaway process, memory and the OOM killer, a proxy's 502s, names and certificates, an SSH bastion and tunnels | 0 | 6 | v0.64 |
+| Break-and-fix problems on databases, caches and search: Postgres locks and connections, a MySQL metadata lock, MongoDB slow queries behind license acceptance, a Valkey cache that evicts everything, and OpenSearch cluster health, mappings and heavy queries | 0 | 8 | v0.64 |
+| Break-and-fix problems on messaging and cloud CLIs: Kafka consumer lag, a stuck Valkey stream consumer, SQS, SNS and EventBridge through the real `aws` CLI on Moto, RabbitMQ, NATS JetStream, and a cloud incident with Google Pub/Sub read from recorded `gcloud` output | 0 | 6 | v0.64 |
 | **Total** | **75** | **47** | |
 
 #### Platforms and install
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| PL1 | A published support matrix: macOS on Apple Silicon and Linux x86_64 and arm64 with glibc (Ubuntu 24.04 the reference) supported and verified; Windows through WSL2 documented, not verified; native Windows unsupported | Not met | v0.53 |
-| PL2 | A macOS gate for every release candidate: install from its artifacts, `init`, `doctor --fix`, one problem per language, one service project, a browser-graded problem, and the page in Safari | Not met | v0.53, then every release candidate |
-| PL3 | A Linux gate for every release candidate: a fresh install from its artifacts in a clean container, the wheel with its requirements file and the Homebrew formula on Linux, then the same journey as PL2 | Partly met: the full local gates run on Linux | v0.53, then every release candidate |
-| PL4 | A "Run on Windows with WSL2" guide, with the warning that cstudy is not tested on Windows or WSL | Not met | v0.53 |
-| PL5 | The install docs pin versions: uv and pipx install from a version tag, and Homebrew from the tap | Partly met: uv and pipx build the default branch | v0.53 |
-| PL6 | A policy for how the toolchain floors move in 1.x | Partly met: the floors are documented, the policy is not | v0.53 |
-| PL7 | A fresh-eyes run of the README and the Getting started path on clean macOS and Linux machines, with every stumble fixed | Not met | v0.53 |
+| PL1 | A published support matrix: macOS on Apple Silicon and Linux x86_64 and arm64 with glibc (Ubuntu 24.04 the reference) supported and verified; Windows through WSL2 documented, not verified; native Windows unsupported | Not met | v0.57 |
+| PL2 | A macOS gate, recorded in the Platforms milestone and again on the commit cut as 1.0.0: install from the release artifacts, `init`, `doctor --fix`, one problem per language, one service project, a browser-graded problem, and the page in Safari | Not met | v0.57, v1.0.0 |
+| PL3 | A Linux gate, recorded in the Platforms milestone and again on the commit cut as 1.0.0: a fresh install from the release artifacts in a clean container, the wheel with its requirements file and the Homebrew formula on Linux, then the same journey as PL2 | Partly met: the full local gates run on Linux | v0.57, v1.0.0 |
+| PL4 | A "Run on Windows with WSL2" guide, with the warning that cstudy is not tested on Windows or WSL | Not met | v0.57 |
+| PL5 | The install docs pin versions: uv and pipx install from a version tag, and Homebrew from the tap | Partly met: uv and pipx build the default branch | v0.57 |
+| PL6 | A policy for how the toolchain floors move in 1.x | Partly met: the floors are documented, the policy is not | v0.57 |
+| PL7 | A fresh-eyes run of the README and the Getting started path on clean macOS and Linux machines, with every stumble fixed | Not met | v0.57 |
 
 #### Reliability
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| R1 | The full local gate passes twice in a row on the release-candidate commit, with no reruns | Partly met: v0.50 hardened the load-sensitive tests (a one-off container gets 30 s beyond its command's limit, a stopped backing service starts with `up --wait`, and the timing and JDWP tests wait for what they check); two clean gates in a row on a release candidate remain | v0.50 (hardening), release candidates |
-| R2 | CI is green on main for the release candidate and throughout the soak | Not met | Release candidates |
-| R3 | No internal error (exit 70) during the soak | Not met | Release candidates |
 | R4 | The docs state what CI runs and what stays a local gate | Met | |
 
 #### Docs
@@ -219,43 +210,30 @@ The content must-haves:
 |----|-----------|--------|-----------|
 | D1 | The normative docs match what shipped | Met: the specs, the architecture, the docs index, the PRD, the README and the user docs match v0.51 | v0.51, then each milestone |
 | D2 | In-app docs: `cstudy docs`, a Docs page, and a test that parses every command and flag the docs show against the real CLI | Met: the 13 pages of `user-docs/`, read with `cstudy docs` and the Docs page, and `tests/content/test_user_docs.py` | v0.50 |
-| D3 | A guide to the AI preview: keys, providers, what is sent, costs and caps | Not met | v0.62 |
+| D3 | A guide to the AI preview: keys, providers, what is sent, costs and caps | Not met | v0.56 |
 
 #### Accessibility
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| A1 | axe-core finds no WCAG 2.2 A or AA violation on any view or dialog, in light and dark, at 1440 and 390 pixels, in Chromium, Firefox and WebKit | Met locally; CI runs Chromium | Every release candidate |
+| A1 | axe-core finds no WCAG 2.2 A or AA violation on any view or dialog, in light and dark, at 1440 and 390 pixels, in Chromium, Firefox and WebKit | Met locally; CI runs Chromium | Kept in every milestone, run again for v1.0.0 |
 | A2 | The keyboard-only journey passes | Met | |
-| A3 | A manual screen-reader pass of the learn and practice journeys with VoiceOver and Orca, with its findings fixed | Not met | v0.64 |
 | A4 | Every new view and control (Guides search, example tabs, the Docs page, the profile filters, the shell command and the grading phases of troubleshooting problems, the AI drawer) is covered by A1 and A2 | Partly met: covered as each lands; the profile filters are not covered until their page controls and browser tests land | Each milestone |
 
 #### Performance
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| PF1 | NFR-1's warm `cstudy test` p50 per language, recorded on the release candidate on Linux and macOS | Partly met: measured on 0.x | v0.54, release candidates |
-| PF2 | NFR-2 at the 1.0 catalog size | Not met | v0.54 |
-| PF3 | NFR-3: a recorded full `verify --require-ready` at the 1.0 catalog size, with the budget revised to it | Not met | v0.54 |
+| PF1 | NFR-1's warm `cstudy test` p50 per language, recorded on the commit cut as 1.0.0 on Linux and macOS | Partly met: measured on 0.x | v0.58, v1.0.0 |
+| PF2 | NFR-2 at the 1.0 catalog size | Not met | v0.58 |
+| PF3 | NFR-3: a recorded full `verify --require-ready` at the 1.0 catalog size, with the budget revised to it | Not met | v0.58 |
 | PF4 | NFR-11 and NFR-12, with a budget for each new chunk | Met | Kept in every milestone |
-
-#### Security and sandbox
-
-| ID | Criterion | Status | Milestone |
-|----|-----------|--------|-----------|
-| S1 | An independent security review of `cstudy serve`, the code-intelligence broker, the sandbox, the browser grader, the lab stacks and `cstudy shell`, the license acceptance for images, and the AI features, with a threat model and its findings closed | Partly met: the controls are specified and tested | v0.64 |
-| S2 | A clean dependency audit of `uv.lock`, the web UI lock, the language-server manifest and the pinned images | Not met | v0.64, release candidates |
-| S3 | Rootless Docker and SELinux proven or documented as unsupported | Not met | v0.64 |
-| S4 | A written trust model for problems from others: generators, oracles, checkers and native code run as you, with no sandbox | Not met | v0.64 |
-| S5 | `SECURITY.md` states the 1.x support window | Partly met | v0.64 |
 
 #### Licensing
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| L1 | `cstudy about --credits` and `--licenses` list every component cstudy redistributes or downloads, the vendored Rust crates, the vendored Go module and the images included, with the images under an accepted license listed apart | Partly met | v0.64 |
-| L2 | The Kotlin language server has explicit acceptance, a preview label and handled expiry | Partly met: acceptance and expiry exist | v0.64 |
-| L3 | Every image a problem pulls is pinned by digest and its license recorded. Each is under an OSI-approved license, unless the problem needs a specific image under another license. Then the problem names that license and links its text, nothing is pulled until you accept it (with `cstudy start --accept-license <key>` or a prompt at a terminal, never by `--yes`), and your acceptance is recorded in the workspace's marker as `[licenses.<key>]`, the same way as the Kotlin LSP's. The problem carries a license marker in `cstudy list`, `cstudy show` and the page, and shows as unavailable, with the reason and the command, until you accept. No image needs an account, a token or the network after it is pulled | Partly met: digests are enforced | v0.59 (license acceptance for images), v0.64 |
+| L3 | Every image a problem pulls is pinned by digest and its license recorded. Each is under an OSI-approved license, unless the problem needs a specific image under another license. Then the problem names that license and links its text, nothing is pulled until you accept it (with `cstudy start --accept-license <key>` or a prompt at a terminal, never by `--yes`), and your acceptance is recorded in the workspace's marker as `[licenses.<key>]`, the same way as the Kotlin LSP's. The problem carries a license marker in `cstudy list`, `cstudy show` and the page, and shows as unavailable, with the reason and the command, until you accept. No image needs an account, a token or the network after it is pulled | Partly met: digests are enforced | v0.63 |
 | L4 | Code and content under MIT, in original wording, with sources recorded | Met | |
 | L5 | Terms that bind the user are disclosed | Met | |
 | L6 | The backing-services test fixture moves from `redis:7.4.12-alpine`, under RSALv2 or SSPLv1, which are not open source, to Valkey: `cli/tests/fixtures/service_projects/fixture-members-python/services/compose.yaml`, with its test and the service-projects spec | Met: the fixture uses Valkey | v0.50 |
@@ -264,9 +242,6 @@ The content must-haves:
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| O1 | No telemetry and no update check, enforced by a test | Partly met: neither exists; no test guards it | v0.64 |
-| O2 | A published network map: each command that can use the network, and why | Partly met: spread across the specs | v0.64 |
-| O3 | Offline proof: after setup, the learn, practice and levels journeys and a page run pass with networking off | Not met | v0.64 |
 | O4 | The page requests nothing off the machine | Met | |
 | O5 | User code sees only the allowlisted environment | Met | |
 
@@ -278,24 +253,22 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 |-----------|----------|----------|
 | v0.49 | Guide paths on database internals, infrastructure as code and knowledge representation, with their review records (C3): 132 guides and 20 paths | Released |
 | v0.50 | Guides page search and filters; example tabs; in-app docs with `cstudy docs`, the Docs page and the parsed docs test (D2); hardening of load-sensitive tests (R1); releases only after CI (E10); the Valkey fixture (L6); A4 and PF4 for the new UI | Released |
-| v0.51 Compatibility contract | The compatibility spec and ADR 0027 (E1); contract tests: snapshots of the command line, exit codes, config keys, environment variables and workspace marker, and a JSON Schema for every `--json` document and the export (E2); canonical IDs `<type>/<slug>`, `problems/<slug>`, the 16 former items as `system-design` and `code-review` problems checked by a rubric, and the Checked by column (E3); a backup before every migration, the upgrade test matrix and export round trips (E4); a deprecation registry and its stderr warnings; the docs pass and the user pages for upgrading, the command reference, your own problems, the IDE and the debugger, and the kinds of problems (D1); a draft `UPGRADING.md` (E8) | Engineering |
-| v0.52 Learner profile | Languages, job roles and domains as default filters on every page, widened per page, through one shared filter component (P1); `cstudy init --lang`, `cstudy lang add`, and `doctor` and the IDE files scoped to the workspace's languages (P2); `job_roles` and `domains` on guides with their `verify` check (C9); A4 for the profile and filters | Engineering |
-| v0.53 Platforms | The support matrix and the toolchain-floor policy (PL1, PL6); version-pinned install docs (PL5); the shared smoke script and the first recorded macOS and Linux gates (PL2, PL3); the WSL2 guide (PL4); the fresh-eyes onboarding run (PL7); the issue forms, the page's feedback entries and `cstudy feedback` (P8) | Engineering |
-| v0.54 Content bar | Recorded oracle and ladder runs over the catalog, with the bands fixed (C1, C2); bench stability (P4); the `related` rule and the path-step check, with the existing gaps closed (C4, C5); review records (C3); the editor checks (P5); NFR timings (PF1 to PF3). The [Status](#status) table closes | Engineering, mostly overnight runs on an idle machine |
-| v0.55 Content batch 1 | DSA foundations, debugging and code reading, backend services and advanced DSA: 21 guides, 3 paths and about 100 link edits (C7) | Content |
-| v0.56 Content batch 2 | Applied SQL, system design, software design, concurrency and async: 16 guides, 3 paths, 9 problems (C7) | Content |
-| v0.57 Content batch 3 | Frontend fundamentals, platform and operations, entry problems, machine learning, security: 16 guides, 2 paths, 16 problems (C7) | Content |
-| v0.58 Frontend problems | [Phase 16](#phase-16-frontend-problems): the ADR and spike, a browser image in the sandbox, the grader that drives it, `cstudy dev` for it, and the React search box and data table (C8) | Engineering |
-| v0.59 Operations engine | An ADR for the kind `troubleshooting` that amends [ADR 0019](decisions/0019-service-projects.md), and its spike on macOS and Linux; the lab images (P9); `cstudy shell` (P10); lab stacks that start broken and the seeded break step (P11); two-phase grading and the `rca.md` rubric (P12); the kind, its schema and its `verify` checks (P13); license acceptance for images (L3); the Checked by value, the shell command and the two grading phases on the page, with A4 for them | Engineering |
-| v0.60 AI foundation | An ADR that amends [ADR 0021](decisions/0021-ai-reviewed-problems.md); the model port and four provider adapters; keys, consent, caps and usage (AI1); fixed and auto routing (AI2); the AI settings section; AI review of rubric-checked problems (AI3); nothing sent with AI off (AI8) | Engineering |
-| v0.61 AI chat | Sessions in `progress.db`; replies as child `cstudy ai reply --events` processes relayed to the page; the drawer chunk and its budget; free sessions and `cstudy ai chat` (AI4); page context; web search (AI5); issue drafts from the assistant (AI9) | Engineering |
-| v0.62 AI problem sessions | Problem sessions, help modes and the mock rules (AI6); turn tags, the assistance record, its grade caps, and its place in history, stats, export and import (AI7); the AI preview guide (D3); the PRD's AI requirements | Engineering |
-| v0.63 Content batch 4 | Operations and troubleshooting: 22 guides in 3 paths, and 20 break-and-fix problems on the v0.59 engine (C7) | Content; the problems follow v0.59 |
-| v0.64 Hardening | The security review and threat model (S1); the dependency audit (S2); rootless Docker and SELinux (S3); the trust model (S4); `SECURITY.md` (S5); the network map, the telemetry guard and the offline test (O1 to O3); licensing (L1 to L3); the screen-reader pass (A3); the release-notes template, release-candidate tags and the rollback drill (E5 to E7); the desktop app ADR (P7) | Engineering |
-| v1.0.0-rc.1 to rc.n | Feature freeze; the macOS and Linux gates on every candidate (PL2, PL3); a 14-day soak with real use (P6), CI green (R2) and no exit 70 (R3); the journey checklist (P3); two clean full gates in a row (R1); final runs of C1, A1, PF1 and S2; curated notes and the final `UPGRADING.md` (E8) | The 14-day soak |
-| v1.0.0 | Every criterion met; the major bump (E9) | The last release |
+| v0.51 Compatibility contract | The compatibility spec and ADR 0027 (E1); contract tests: snapshots of the command line, exit codes, config keys, environment variables and workspace marker, and a JSON Schema for every `--json` document and the export (E2); canonical IDs `<type>/<slug>`, `problems/<slug>`, the 16 former items as `system-design` and `code-review` problems checked by a rubric, and the Checked by column (E3); a backup before every migration, the upgrade test matrix and export round trips (E4); a deprecation registry and its stderr warnings; the docs pass and the user pages for upgrading, the command reference, your own problems, the IDE and the debugger, and the kinds of problems (D1); a draft `UPGRADING.md` (E8) | Released |
+| v0.53 Learner profile | Languages, job roles and domains as default filters on every page, widened per page, through one shared filter component (P1); `cstudy init --lang`, `cstudy lang add`, and `doctor` and the IDE files scoped to the workspace's languages (P2); `job_roles` and `domains` on guides with their `verify` check (C9); A4 for the profile and filters | Engineering |
+| v0.54 AI foundation | An ADR that amends [ADR 0021](decisions/0021-ai-reviewed-problems.md); the model port and four provider adapters; keys, consent, caps and usage (AI1); fixed and auto routing (AI2); the AI settings section; AI review of rubric-checked problems (AI3); nothing sent with AI off (AI8) | Engineering |
+| v0.55 AI chat | Sessions in `progress.db`; replies as child `cstudy ai reply --events` processes relayed to the page; the drawer chunk and its budget; free sessions and `cstudy ai chat` (AI4); page context; web search (AI5); the issue forms, the page's feedback entries and `cstudy feedback` (P8); issue drafts from the assistant that open P8's prefilled form (AI9) | Engineering |
+| v0.56 AI problem sessions | Problem sessions, help modes and the mock rules (AI6); turn tags, the assistance record, its grade caps, and its place in history, stats, export and import (AI7); the AI preview guide (D3); the PRD's AI requirements | Engineering |
+| v0.57 Platforms | The support matrix and the toolchain-floor policy (PL1, PL6); version-pinned install docs (PL5); the shared smoke script and the first recorded macOS and Linux gates (PL2, PL3); the WSL2 guide (PL4); the fresh-eyes onboarding run (PL7) | Engineering; the macOS gate and the onboarding run need the owner's machines |
+| v0.58 Content bar | Recorded oracle and ladder runs over the catalog, with the bands fixed (C1, C2); bench stability (P4); the `related` rule and the path-step check, with the existing gaps closed (C4, C5); review records (C3); the editor checks (P5); NFR timings (PF1 to PF3). The [Status](#status) table closes, except for real practice, which [v1.1](#v11) tracks | Engineering, mostly overnight runs on an idle machine; the editor checks need the owner |
+| v0.59 Content batch 1 | DSA foundations, debugging and code reading, backend services and advanced DSA: 21 guides, 3 paths and about 100 link edits (C7) | Content |
+| v0.60 Content batch 2 | Applied SQL, system design, software design, concurrency and async: 16 guides, 3 paths, 9 problems (C7) | Content |
+| v0.61 Content batch 3 | Frontend fundamentals, platform and operations, entry problems, machine learning, security: 16 guides, 2 paths, 16 problems (C7) | Content |
+| v0.62 Frontend problems | [Phase 16](#phase-16-frontend-problems): the ADR and spike, a browser image in the sandbox, the grader that drives it, `cstudy dev` for it, and the React search box and data table (C8) | Engineering |
+| v0.63 Operations engine | An ADR for the kind `troubleshooting` that amends [ADR 0019](decisions/0019-service-projects.md), and its spike on macOS and Linux; the lab images (P9); `cstudy shell` (P10); lab stacks that start broken and the seeded break step (P11); two-phase grading and the `rca.md` rubric (P12); the kind, its schema and its `verify` checks (P13); license acceptance for images (L3); the Checked by value, the shell command and the two grading phases on the page, with A4 for them | Engineering |
+| v0.64 Content batch 4 | Operations and troubleshooting: 22 guides in 3 paths, and 20 break-and-fix problems on the v0.63 engine (C7) | Content; the problems follow v0.63 |
+| v1.0.0 | Cut once the last milestone passes the full local gate: the macOS and Linux gates on that commit (PL2, PL3); the journey checklist (P3); final runs of C1, A1 and PF1; the final `UPGRADING.md` (E8); every criterion met; the major bump (E9) | The full gate and the macOS gate |
 
-**AI preview rules** that v0.60 to v0.62 build:
+**AI preview rules** that v0.54 to v0.56 build:
 
 - Help caps the review grade: light help caps it at `ok`, heavy help at `hard`, and a full answer gives `again`. An assisted attempt still counts as passed; the schedule brings it back sooner.
 - A turn that could not be tagged counts as light help and shows as untagged in the record.
@@ -303,29 +276,69 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 - A free session on another page during an attempt is allowed, with a reminder and a one-click move into the problem session.
 - `cstudy export` leaves out transcripts unless `--with-transcripts` is given; assistance records and AI reviews are always included.
 
-**Order.** The contract comes first, so every later change is measured against it and new content uses canonical IDs. The profile comes before the platform gates, so the gates exercise the final `init` and `doctor`, and before the content batches, so new guides carry their labels. The operations engine follows the frontend grader, which also adds an image and a grader to the sandbox, so the two share review, and it needs the contract's kinds and canonical IDs. The operations guides need no engine; the break-and-fix problems need the engine and are built alongside the AI milestones. The content batches and the frontend grader can be built alongside the AI milestones and ship in whichever release is ready first, so the version numbers are an order, not a promise. Hardening comes last before the freeze, so the security review sees the code that ships, the lab stacks and `cstudy shell` among it.
+**Order.** The contract comes first, so every later change is measured against it and new content uses canonical IDs. The learner profile follows, before the platform gates, so the gates exercise the final `init` and `doctor`, and before the content batches, so new guides carry their labels. The AI milestones come next because everything they depend on is built: canonical IDs, rubric problems, attempts and settings. AI chat carries the issue forms and feedback entries (P8), because the assistant's issue drafts (AI9) open P8's prefilled form. The platform gates then run on a build that has the AI features. The operations engine follows the frontend grader, which also adds an image and a grader to the sandbox, so the two share review, and it needs the contract's kinds and canonical IDs. The operations guides need no engine; the break-and-fix problems need it. The content batches can be built alongside the engineering milestones and ship in whichever release is ready first, so the version numbers are an order, not a promise. v1.0.0 is cut when the last milestone passes the full gate, with no release candidates and no soak; the security review, the release-candidate process and the soak are [v1.1](#v11) work.
 
-**Estimate.** About 4 to 7 weeks from v0.50 to v1.0.0, which puts v1.0.0 between mid-December 2026 and early January 2027. It is re-derived from measured velocity at each release:
+**Estimate.** About 13 to 20 working days from the learner profile to v1.0.0, which puts v1.0.0 between about December 3 and December 14, 2026. It is re-derived from measured velocity at each release:
 
+- **Engineering takes 1 to 3 days per milestone.** The learner profile, a spec, 22 tasks, the user docs and a bug fix, took about one working day of AI-assisted work plus a heavy local gate of about 2.5 hours; the compatibility contract took about 2 days. The heavy gate runs one at a time, so milestones queue behind it.
 - **Content moves in days, not weeks.** From v0.40.0 (2026-11-11) to v0.49.0 (2026-11-14), about 3.4 days, the project shipped 131 guides and 69 problems, each reviewed independently, in 10 releases.
-- **Engineering has no measured velocity yet.** Each engineering milestone is bounded by the heavy local gate, about 1.5 to 3 hours per release and run one at a time, and by its reviews. Until its velocity is measured, each takes 1 to 3 days.
-- **The soak is fixed.** Its 14 days are calendar time at any pace.
+- **The owner paces some steps.** The macOS gate, the editor checks and the fresh-eyes onboarding run need the owner's machines and time, and they set the pace when engineering moves faster than they can be scheduled.
+- **There is no soak.** Nothing in the path to 1.0.0 is fixed calendar time.
 
 | Stretch | Paced by | Days |
 |---------|----------|-----:|
-| Content: the remaining must-haves, 75 guides and 47 problems (v0.55 to v0.57, v0.63) | Measured velocity, built alongside engineering and off the critical path | 2 to 5 |
-| Engineering: 10 milestones (v0.51 to v0.54, v0.58 to v0.62, v0.64) | The heavy gate and reviews, 1 to 3 days each | 10 to 30 |
-| Release candidates | The 14-day soak, plus the macOS and Linux gates on each candidate | 15 to 17 |
-| **Critical path** | Engineering, then the release candidates | **25 to 47** |
+| Learner profile: its page work and the 0.53 release | The heavy gate | 1 |
+| Engineering: 7 milestones (v0.54 to v0.58, v0.62, v0.63) | The heavy gate and reviews, 1 to 3 days each, 1.5 to 2.5 on average | 11 to 17 |
+| Content: the remaining must-haves, 75 guides and 47 problems (v0.59 to v0.61, v0.64) | Measured velocity, built alongside engineering and off the critical path | 2 to 5 |
+| v1.0.0 | The full gate, the macOS and Linux gates, the final `UPGRADING.md` | 1 to 2 |
+| **Critical path** | Engineering, then v1.0.0 | **13 to 20** |
 
 ## v1.1
 
-Two additions, each additive to the 1.0 promise.
+Three additions, each additive to the 1.0 promise.
 
 | Addition | Contents | Size |
 |----------|----------|------|
-| Desktop app (preview) | `cstudy app` opens the page in its own window over the same server, assets and API as `cstudy serve`, which stays the reference way in. `cstudy app install` sets up its own dependencies without sudo, in an environment cstudy owns: pyobjc on macOS, Qt WebEngine wheels on Linux, and Edge in app mode under WSL2. It writes a launcher per platform, and closing the window stops everything the server started. The app never gets a page feature the browser lacks, and a smoke test per platform covers it. Its flags become stable after one minor release as a preview | L |
+| Hardening | The security review and threat model (S1); the dependency audit (S2); rootless Docker and SELinux (S3); the trust model for problems from others (S4); `SECURITY.md` (S5); the network map, the telemetry guard and the offline test (O1 to O3); the credits and licenses listing and the Kotlin language server's preview label (L1, L2); the screen-reader pass (A3); curated release notes, release candidates and the rollback drill (E5 to E7); and, on the first release candidates, a 14-day soak with real use (P6), two clean full gates in a row (R1), CI green (R2) and no exit 70 (R3) | L, plus the 14-day soak |
+| Desktop app (preview) | An accepted ADR first (P7). `cstudy app` opens the page in its own window over the same server, assets and API as `cstudy serve`, which stays the reference way in. `cstudy app install` sets up its own dependencies without sudo, in an environment cstudy owns: pyobjc on macOS, Qt WebEngine wheels on Linux, and Edge in app mode under WSL2. It writes a launcher per platform, and closing the window stops everything the server started. The app never gets a page feature the browser lacks, and a smoke test per platform covers it. Its flags become stable after one minor release as a preview | L |
 | WSL2 verification | A smoke test inside WSL2 on a local Windows VM for every release candidate: install, `init`, `doctor --fix`, a problem per language, the page from a Windows browser, a service project on Docker Desktop's WSL 2 backend, export and import, and an upgrade. `cstudy serve --open` opens a Windows browser, and a `wsl` doctor row warns about a workspace under `/mnt/`. The WSL2 guide drops its warning | M |
+
+### v1.1 criteria
+
+These criteria use the status scale of the [release criteria](#release-criteria) and close in v1.1.
+
+| Area | Met | Partly met | Not met |
+|------|----:|-----------:|--------:|
+| Compatibility and release engineering | 0 | 0 | 3 |
+| Product | 0 | 0 | 2 |
+| Reliability | 0 | 1 | 2 |
+| Accessibility | 0 | 0 | 1 |
+| Security and sandbox | 0 | 2 | 3 |
+| Licensing | 0 | 2 | 0 |
+| Privacy and offline | 0 | 2 | 1 |
+| **Total (19)** | **0** | **7** | **12** |
+
+| ID | Criterion | Status | Addition |
+|----|-----------|--------|----------|
+| E5 | Curated release notes for each minor release: highlights, upgrading, deprecations | Not met | Hardening |
+| E6 | Release candidates are tagged without reaching the Homebrew tap, and only fixes land during the soak | Not met | Hardening |
+| E7 | Rollback is documented and drilled once: install the previous version, then restore from the backup or an export | Not met | Hardening |
+| P6 | Real use during the soak: at least 30 finished attempts across at least 4 languages and every kind, in both the terminal and the page, with no open P1 issue | Not met | Hardening |
+| P7 | The desktop app is designed: an accepted ADR for `cstudy app` and `cstudy app install` | Not met | Desktop app |
+| R1 | The full local gate passes twice in a row on the release-candidate commit, with no reruns | Partly met: v0.50 hardened the load-sensitive tests (a one-off container gets 30 s beyond its command's limit, a stopped backing service starts with `up --wait`, and the timing and JDWP tests wait for what they check); two clean gates in a row on a release candidate remain | Hardening |
+| R2 | CI is green on main for the release candidate and throughout the soak | Not met | Hardening |
+| R3 | No internal error (exit 70) during the soak | Not met | Hardening |
+| A3 | A manual screen-reader pass of the learn and practice journeys with VoiceOver and Orca, with its findings fixed | Not met | Hardening |
+| S1 | An independent security review of `cstudy serve`, the code-intelligence broker, the sandbox, the browser grader, the lab stacks and `cstudy shell`, the license acceptance for images, and the AI features, with a threat model and its findings closed | Partly met: the controls are specified and tested | Hardening |
+| S2 | A clean dependency audit of `uv.lock`, the web UI lock, the language-server manifest and the pinned images | Not met | Hardening |
+| S3 | Rootless Docker and SELinux proven or documented as unsupported | Not met | Hardening |
+| S4 | A written trust model for problems from others: generators, oracles, checkers and native code run as you, with no sandbox | Not met | Hardening |
+| S5 | `SECURITY.md` states the 1.x support window | Partly met | Hardening |
+| L1 | `cstudy about --credits` and `--licenses` list every component cstudy redistributes or downloads, the vendored Rust crates, the vendored Go module and the images included, with the images under an accepted license listed apart | Partly met | Hardening |
+| L2 | The Kotlin language server has explicit acceptance, a preview label and handled expiry | Partly met: acceptance and expiry exist | Hardening |
+| O1 | No telemetry and no update check, enforced by a test | Partly met: neither exists; no test guards it | Hardening |
+| O2 | A published network map: each command that can use the network, and why | Partly met: spread across the specs | Hardening |
+| O3 | Offline proof: after setup, the learn, practice and levels journeys and a page run pass with networking off | Not met | Hardening |
 
 ## Beyond 1.1
 
@@ -617,7 +630,7 @@ Suggested order: PP1 to PP15 are built. P9, code intelligence and the Web UI, is
 
 ## Phase 14: AI-reviewed problems
 
-**Status.** Steps 1 and 2 are part of the AI preview of [v1.0.0](#v100), milestones v0.60 to v0.62, as a wider design that adds the assistant and problem sessions; the 16 items are rubric-checked problems by then. Steps 3 and 4 come after 1.1.
+**Status.** Steps 1 and 2 are part of the AI preview of [v1.0.0](#v100), milestones v0.54 to v0.56, as a wider design that adds the assistant and problem sessions; the 16 items are rubric-checked problems by then. Steps 3 and 4 come after 1.1.
 
 **Scope.** [ADR 0021](decisions/0021-ai-reviewed-problems.md): an opt-in class of problems reviewed by a live LLM with your own key. It needs the environment allowlist of Phase 12's P2, which is built.
 
@@ -641,7 +654,7 @@ Suggested order: PP1 to PP15 are built. P9, code intelligence and the Web UI, is
 
 ## Phase 16: Frontend problems
 
-**Status.** Planned for [v1.0.0](#v100), milestone v0.58; not started.
+**Status.** Planned for [v1.0.0](#v100), milestone v0.62; not started.
 
 **Scope.** Problems where you fix or build a real UI component, such as a search box with keyboard navigation, graded by driving the page in a headless browser inside the sandbox: pressing keys, reading what is highlighted, and checking what the page asked the server. It needs a browser image in the sandbox, a grader that drives it, and a decision on frameworks (React first). Until then, the logic of such problems is taught as state machines driven by events, such as the autocomplete problem below, which can later move here.
 
