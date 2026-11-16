@@ -9,14 +9,14 @@
 | `browser` | `tests/entrypoints/web/test_browser_*.py` | Only the Playwright engines installed under `~/.cache/ms-playwright` |
 | `docker` | `-m docker`, without the browser test files | Needs a Docker engine; includes `docker_jvm` and `docker_go` |
 
-`slow-core`, `browser` and `docker` start together once `fast` passes.
+Lanes run in this order: `fast` alone, then `browser` alone, then `slow-core` and `docker` together. `browser` runs alone because Docker's network changes cancel Chromium's requests (`net::ERR_NETWORK_CHANGED`). A failed lane skips the later ones unless `--no-stop` is given.
 
 ## Run
 
 ```bash
 tools/gate/lanes.sh                       # all four lanes
-tools/gate/lanes.sh fast                  # only the named lanes (fast still goes first)
-tools/gate/lanes.sh --no-stop             # run the other lanes even when fast fails
+tools/gate/lanes.sh fast                  # only the named lanes, still in that order
+tools/gate/lanes.sh --no-stop             # run the later lanes even when an earlier lane fails
 tools/gate/lanes.sh --collect-check       # prove the lanes are disjoint and cover the suite
 tools/gate/lanes.sh fast -- -k test_user_docs   # arguments after -- go to every lane
 ```
@@ -25,7 +25,7 @@ tools/gate/lanes.sh fast -- -k test_user_docs   # arguments after -- go to every
 |------|---------|
 | `--logs DIR` | Write logs under `DIR`; the default is a new `cs-gate-logs-<timestamp>` directory under `${TMPDIR:-/tmp}` |
 | `--serial` | Run every lane without pytest-xdist workers |
-| `--no-stop` | Run `slow-core`, `browser` and `docker` even when `fast` fails |
+| `--no-stop` | Run the later lanes even when an earlier lane fails |
 | `--collect-check` | Collect each lane and the full suite, and compare the node ids; runs no tests, exits non-zero on an overlap or a gap |
 | `-- ARGS` | Extra pytest arguments for every lane. A lane's own arguments come first, so a `-k` passed here replaces the browser lane's engine filter |
 | `CS_LANE_ARGS_<LANE>` | Environment variable with extra arguments for one lane (`FAST`, `SLOW_CORE`, `BROWSER`, `DOCKER`) |

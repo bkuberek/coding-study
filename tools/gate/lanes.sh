@@ -6,7 +6,7 @@
 #   browser    the browser test files, on the Playwright engines that are installed
 #   docker     -m docker, without the browser test files
 #
-# fast runs first and alone; slow-core, browser and docker then run together.
+# fast runs first and alone, then browser alone, then slow-core and docker together.
 # Each lane runs on pytest-xdist workers: fast -n 4, slow-core and browser
 # -n 2 --dist loadfile, docker serial.
 # See tools/gate/README.md.
@@ -24,7 +24,7 @@ Options:
   --logs DIR        write logs, JUnit XML and summary.log under DIR
                     (default: a new timestamped directory under ${TMPDIR:-/tmp})
   --serial          run every lane without pytest-xdist workers
-  --no-stop         run slow-core, browser and docker even when fast fails
+  --no-stop         run the later lanes even when an earlier lane fails
   --collect-check   collect every lane and the full suite, and check that the lanes
                     are pairwise disjoint and together cover the suite; runs no tests
   -h, --help        show this help
@@ -428,25 +428,32 @@ case " ${LANES[*]} " in
     ;;
 esac
 
-REST=()
-for lane in "${LANES[@]}"; do
-  if [ "$lane" = fast ]; then
-    run_group fast
-  else
-    REST+=("$lane")
-  fi
-done
+# Stages run one after the other, the lanes of a stage together: Docker's network
+# changes cancel Chromium's requests, so browser runs without docker beside it.
+STAGES=("fast" "browser" "slow-core docker")
+FAILED_STAGE=""
 
-if [ ${#REST[@]} -gt 0 ]; then
-  if [ "$FAILED" -gt 0 ] && [ "$NO_STOP" -eq 0 ]; then
-    for lane in "${REST[@]}"; do
-      line=$(printf '%-10s skipped: fast failed (--no-stop runs it anyway)' "$lane")
+for stage in "${STAGES[@]}"; do
+  STAGE_LANES=()
+  for lane in $stage; do
+    case " ${LANES[*]} " in
+      *" $lane "*) STAGE_LANES+=("$lane") ;;
+    esac
+  done
+  [ ${#STAGE_LANES[@]} -gt 0 ] || continue
+  if [ -n "$FAILED_STAGE" ] && [ "$NO_STOP" -eq 0 ]; then
+    for lane in "${STAGE_LANES[@]}"; do
+      line=$(printf '%-10s skipped: %s failed (--no-stop runs it anyway)' "$lane" "$FAILED_STAGE")
       printf '%s\n' "$line" | tee -a "$SUMMARY"
     done
-  else
-    run_group "${REST[@]}"
+    continue
   fi
-fi
+  run_group "${STAGE_LANES[@]}"
+  if [ "$FAILED" -gt 0 ] && [ -z "$FAILED_STAGE" ]; then
+    FAILED_STAGE=${STAGE_LANES[*]}
+    FAILED_STAGE=${FAILED_STAGE// /, }
+  fi
+done
 
 printf '\nsummary: %s\n' "$SUMMARY"
 [ "$FAILED" -eq 0 ]
