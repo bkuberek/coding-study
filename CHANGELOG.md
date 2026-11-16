@@ -2,6 +2,132 @@
 
 <!-- version list -->
 
+## v0.53.0 (2026-11-16)
+
+### Bug Fixes
+
+- Check pnpm for a Node-installed language server in cstudy doctor
+  ([`5fc411c`](https://github.com/bkuberek/coding-study/commit/5fc411caf0d6b9d352f072144644afae9d1a7544))
+
+- Count end of input as no at cstudy lang remove's question
+  ([`5e90e72`](https://github.com/bkuberek/coding-study/commit/5e90e72c340874da80f9e836fe7f27e99e68e246))
+
+- Give the focus back to Save when Cancel or Escape closes the removal dialog
+  ([`5c000e4`](https://github.com/bkuberek/coding-study/commit/5c000e4855e57bae08f033ef70e98fb4b1ea27be))
+
+- Give the Settings profile its own route and refuse an empty checkbox group in the page
+  ([`fb91883`](https://github.com/bkuberek/coding-study/commit/fb918838088f841f7a3b3397afee5b5baa147137))
+
+- Pick in the default language when the workspace chose no languages
+  ([`fd1c8cc`](https://github.com/bkuberek/coding-study/commit/fd1c8cc32b5aaeec15164827e59141ce9a8e3efb))
+
+- Say that --no-color drops colors, not every style
+  ([`39c56bf`](https://github.com/bkuberek/coding-study/commit/39c56bffb1e33c1d93eae1a953ee3ccf9cc2c917))
+
+- Space the profile's checkboxes so a wrapped row keeps each 24 pixels clear
+  ([`7aae257`](https://github.com/bkuberek/coding-study/commit/7aae25746276675b1ca08a5d110c8fd96e3366a9))
+
+### Build System
+
+- Recheck failed verify problems alone before the gate fails
+  ([`0b8fe24`](https://github.com/bkuberek/coding-study/commit/0b8fe24c915c74487054439c00666146c8ba11c4))
+
+### Continuous Integration
+
+- Run the browser tests on two workers
+  ([`aa650e9`](https://github.com/bkuberek/coding-study/commit/aa650e95efcd85c3e00f5b3a254966d45657ed2b))
+
+### Documentation
+
+- Describe the learner profile in the architecture, upgrading notes and roadmap
+  ([`9f89717`](https://github.com/bkuberek/coding-study/commit/9f89717eb979a572ce8b8dfbcdb2262192dcc652))
+
+- Explain the learner profile and workspace languages in the user docs
+  ([`68742ec`](https://github.com/bkuberek/coding-study/commit/68742ecb0da9c893e98819261d8bc0d8cc208076))
+
+- Mark the learner profile criterion met
+  ([`5412181`](https://github.com/bkuberek/coding-study/commit/5412181bcf2287ed15009b15a3039b4a7997069e))
+
+- Plan the AI milestones next and cut v1.0.0 without a soak
+  ([`f3330d3`](https://github.com/bkuberek/coding-study/commit/f3330d3544a0bbccd101451a35141ca8e92b16df))
+
+- Specify the learner profile and workspace languages
+  ([`ef891ea`](https://github.com/bkuberek/coding-study/commit/ef891ea34a1363234e612e760b0c378e2ba30408))
+
+- State the learner profile's messages and edge cases in the specs
+  ([`1a1ebcc`](https://github.com/bkuberek/coding-study/commit/1a1ebcca0d88a5b215da4a379950eeff97463c5a))
+
+### Features
+
+- Add and remove a workspace's languages with cstudy lang
+  ([`fbf38b6`](https://github.com/bkuberek/coding-study/commit/fbf38b6048cf265444c7a0e84069c0af19463a9a))
+
+- Add the learner profile's job roles and domains to the config
+  ([`3e38bd3`](https://github.com/bkuberek/coding-study/commit/3e38bd3c21fce09cf6f944049d4f520bd267d280))
+
+- Check only the workspace's languages in cstudy doctor
+  ([`05a93f5`](https://github.com/bkuberek/coding-study/commit/05a93f55715e704577424b88636e2733adc913d4))
+
+- Choose a workspace's languages with cstudy init --lang
+  ([`d31e03b`](https://github.com/bkuberek/coding-study/commit/d31e03b6c6e7f7216986825d4824c1c0890c75f4))
+
+- Choose to keep or delete a removed language's folder in Settings
+  ([`a4ab959`](https://github.com/bkuberek/coding-study/commit/a4ab9597626e324fadcdfa66e11dd2f63a90eec2))
+
+- Delete a removed language's folder with cstudy lang remove --delete-folder
+  ([`ff30d30`](https://github.com/bkuberek/coding-study/commit/ff30d306220bb2df6d9913c07d2fff3fd93d8382))
+
+- Edit the learner profile in Settings
+  ([`7f6a9ef`](https://github.com/bkuberek/coding-study/commit/7f6a9efd31e35c604c830545b9b2724d2c6f76ac))
+
+- Filter cstudy learn by domain, role and the learner profile
+  ([`e27628b`](https://github.com/bkuberek/coding-study/commit/e27628b57106688a839b27a36976a55d3276882f))
+
+- Filter cstudy list by the learner profile
+  ([`d518438`](https://github.com/bkuberek/coding-study/commit/d5184384892e3f944d1f93bc312f8e70d47b83cb))
+
+- Filter guides by the learner profile, domain and role
+  ([`efe6511`](https://github.com/bkuberek/coding-study/commit/efe65119004ab4c94fa7dbb0fefa927b42b92e35))
+
+- One filter component with the learner profile, on the Problems view
+  ([`94dbfab`](https://github.com/bkuberek/coding-study/commit/94dbfab0d1aabf5419de56dd249267e498241767))
+
+- Pick next and mock problems within the learner profile
+  ([`fd8c247`](https://github.com/bkuberek/coding-study/commit/fd8c24702bdbca0f36ef5cee681c1b629a524bfe))
+
+- Read domain and job role labels on guides
+  ([`a296102`](https://github.com/bkuberek/coding-study/commit/a296102ffb2abded3fc85f6cafe28aa550307bcd))
+
+- Require domain and job role labels on every guide
+  ([`b573cc3`](https://github.com/bkuberek/coding-study/commit/b573cc3ef736d8b265fe85687d1de7bf859a7156))
+
+- Serve the learner profile and workspace languages to the page
+  ([`699a56d`](https://github.com/bkuberek/coding-study/commit/699a56d1d6587dee823ada96d61d3f301b7eabb6))
+
+- Start new attempts only in the workspace's languages
+  ([`49f1c22`](https://github.com/bkuberek/coding-study/commit/49f1c2222fba85b742e216085a9c0154ac1dbb7c))
+
+- Write IDE files for the workspace's languages only
+  ([`8350f5e`](https://github.com/bkuberek/coding-study/commit/8350f5e640c8ef6fe9c6570c5530a1ba2842b19c))
+
+- **content**: Label guides a to l with domains and job roles
+  ([`be4204a`](https://github.com/bkuberek/coding-study/commit/be4204a057fc4e24720eac5197104f0ec8b641fd))
+
+- **content**: Label guides m to z with domains and job roles
+  ([`7fed5ee`](https://github.com/bkuberek/coding-study/commit/7fed5eebe842d335b5e5570fad6259dca56ec872))
+
+### Testing
+
+- Count the lang command group and run the browser job for the profile workspace helper
+  ([`888ac5b`](https://github.com/bkuberek/coding-study/commit/888ac5ba65962217024d5db675f2728223acc96c))
+
+- Cover the learner profile and filters with axe and the keyboard
+  ([`a4a8699`](https://github.com/bkuberek/coding-study/commit/a4a86997a67d98b2042fbec5731f8f6aef0d8daf))
+
+- Make every checkout of the unlocked shop read the stock before any writes it
+  ([`2dbfe7d`](https://github.com/bkuberek/coding-study/commit/2dbfe7d09a8362ac5d21a71b4a2ed3c96eae61eb))
+
+
 ## v0.52.1 (2026-11-16)
 
 ### Bug Fixes
