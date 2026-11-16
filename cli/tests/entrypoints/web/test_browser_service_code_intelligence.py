@@ -11,6 +11,7 @@ and nothing here needs it. Playwright and Chromium are set up as `tests/browsers
 them the test is skipped.
 """
 
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -119,7 +120,7 @@ def _install_fake_typescript_server(workspace: Path) -> None:
     script = workspace / LSP_DIRECTORY / str(TYPESCRIPT_LANGUAGE_SERVER.script)
     script.parent.mkdir(parents=True)
     script.write_text("")
-    (workspace / "typescript" / "node_modules").unlink()
+    shutil.rmtree(workspace / "typescript" / "node_modules")
 
 
 def _open_the_file(page: Any, server: RunningServer) -> None:
