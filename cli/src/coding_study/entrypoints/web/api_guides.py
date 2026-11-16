@@ -10,15 +10,22 @@ from starlette.routing import BaseRoute, Route
 
 from coding_study.application.environment import Environment
 from coding_study.application.learn import (
+    ListingFilter,
     guide_drawing,
     guide_page,
+    label_scope,
     learn_listing,
     mark_read,
     path_view,
+    profiled_listing,
 )
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.labels import LabelFilter
+from coding_study.domain.profile import Widening
 from coding_study.entrypoints.commands.learn import (
     guide_document,
+    label_filter,
+    learn_widening,
     listing_document,
     marked_document,
     path_document,
@@ -40,7 +47,12 @@ def _slug(request: Request) -> str:
 
 
 async def list_guides(request: Request) -> Response:
-    return JsonResponse(await in_workspace(request, _listing))
+    """`cstudy learn --json`, under the learner profile as the command applies it, with the
+    `--domain`, `--role` and `--widen` it takes."""
+    query = request.query_params
+    labels = label_filter(query.get("domain"), query.get("role"))
+    widening = learn_widening(query.getlist("widen"))
+    return JsonResponse(await in_workspace(request, _listing, labels, widening))
 
 
 async def show_guide(request: Request) -> Response:
@@ -75,8 +87,12 @@ def guide_routes() -> list[BaseRoute]:
     ]
 
 
-def _listing(environment: Environment) -> dict[str, JsonValue]:
-    return listing_document(learn_listing(environment))
+def _listing(
+    environment: Environment, labels: LabelFilter, widening: Widening
+) -> dict[str, JsonValue]:
+    scope = label_scope(environment, labels, widening)
+    profiled = profiled_listing(learn_listing(environment), ListingFilter(), scope)
+    return listing_document(profiled.listing, profiled)
 
 
 def _guide(environment: Environment, slug: str) -> dict[str, JsonValue]:

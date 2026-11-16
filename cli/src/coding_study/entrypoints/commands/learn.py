@@ -157,8 +157,8 @@ def learn(
     if guide is None and done:
         raise UsageError(DONE_NEEDS_GUIDE)
     wanted = ListingFilter(search or "", level, status)
-    labels = _label_filter(domain, role)
-    widening = _widening(widen or [])
+    labels = label_filter(domain, role)
+    widening = learn_widening(widen or [])
     if guide is not None or path is not None:
         if wanted.narrows:
             raise UsageError(FILTERS_NARROW_THE_LIST)
@@ -184,7 +184,7 @@ def learn(
         _print_listing(output, environment, learn_listing(environment), as_json, wanted, scope)
 
 
-def _label_filter(domain: str | None, role: str | None) -> LabelFilter:
+def label_filter(domain: str | None, role: str | None) -> LabelFilter:
     """`--domain` and `--role`, each a value of the closed lists of content.md#labels."""
     if domain is not None and domain not in DOMAINS:
         raise UsageError(f'unknown domain "{domain}"; use one of {", ".join(DOMAINS)}')
@@ -193,7 +193,7 @@ def _label_filter(domain: str | None, role: str | None) -> LabelFilter:
     return LabelFilter(domain, role)
 
 
-def _widening(values: list[str]) -> Widening:
+def learn_widening(values: list[str]) -> Widening:
     """`--widen` values: `role`, `domain` or `all`; `lang` is the list command's."""
     for value in values:
         if value not in WIDEN_VALUES:
@@ -369,8 +369,7 @@ def _labeled(label: str, value: str) -> Text:
 def listing_document(
     listing: LearnListing, profiled: ProfiledListing | None = None
 ) -> dict[str, JsonValue]:
-    """`profiled` adds `profile`, which only the command prints; the web API's listing has none
-    yet."""
+    """`profiled` adds `profile`, with what the learner profile hid."""
     document: dict[str, JsonValue] = {
         "guides": [_guide_fields(entry) for entry in listing.guides],
         "paths": [

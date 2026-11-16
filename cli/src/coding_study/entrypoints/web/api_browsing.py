@@ -2,6 +2,8 @@
 (docs/specs/web-ui.md#browsing). Each answers the `--json` document of the command it mirrors,
 built by that command's own builder from the use case the command calls."""
 
+from dataclasses import replace
+
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import Response
@@ -22,10 +24,11 @@ from coding_study.domain.errors import UnknownProblemError
 from coding_study.domain.items import EntryKind
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
+from coding_study.domain.profile import PICK_DIMENSIONS, Widening, learner_profile
 from coding_study.domain.scheduling import ProblemStatus
 from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.history import history_document
-from coding_study.entrypoints.commands.list_problems import list_document
+from coding_study.entrypoints.commands.list_problems import explicit_widening, list_document
 from coding_study.entrypoints.commands.next_problem import next_document
 from coding_study.entrypoints.web.context import in_workspace
 from coding_study.entrypoints.web.documents import markdown_document, problem_document
@@ -33,9 +36,12 @@ from coding_study.entrypoints.web.queries import choice, choice_list, positive_i
 from coding_study.entrypoints.web.responses import JsonResponse
 
 PROBLEMS = "/api/v1/problems"
+WIDEN = "widen"
 
 
 async def problems(request: Request) -> Response:
+    """`cstudy list --json`, under the learner profile as the command applies it: widened by
+    `widen` and by each explicit filter of a dimension, and not at all in a set."""
     query = request.query_params
     problem_filter = ProblemFilter(
         track=choice(query, "track", Track),
@@ -48,7 +54,14 @@ async def problems(request: Request) -> Response:
         labels=_labels(query),
         checked_by=choice(query, "checked", CheckedBy),
     )
-    return JsonResponse(await in_workspace(request, _problems, problem_filter, _set_name(query)))
+    widening = explicit_widening(
+        query.getlist(WIDEN),
+        problem_filter.language,
+        problem_filter.labels.role,
+        problem_filter.labels.domain,
+    )
+    set_name = _set_name(query)
+    return JsonResponse(await in_workspace(request, _problems, problem_filter, set_name, widening))
 
 
 async def problem(request: Request) -> Response:
@@ -69,15 +82,21 @@ async def history(request: Request) -> Response:
 
 
 async def next_pick(request: Request) -> Response:
+    """`cstudy next --json`, under the learner profile as the command applies it."""
     query = request.query_params
+    labels = _labels(query)
+    language = choice(query, "lang", Language)
     next_request = NextRequest(
         tracks=choice_list(query, "track", Track),
         pattern=query.get("pattern"),
         difficulty=choice(query, "difficulty", Difficulty),
-        language=choice(query, "lang", Language),
+        language=language,
         source=next_source(switch(query, "new"), switch(query, "review")),
-        labels=_labels(query),
+        labels=labels,
         set_name=_set_name(query),
+        widening=explicit_widening(
+            query.getlist(WIDEN), language, labels.role, labels.domain, PICK_DIMENSIONS
+        ),
     )
     return JsonResponse(await in_workspace(request, _next, next_request))
 
@@ -102,9 +121,16 @@ def _set_name(query: QueryParams) -> str | None:
 
 
 def _problems(
-    environment: Environment, problem_filter: ProblemFilter, set_name: str | None
+    environment: Environment,
+    problem_filter: ProblemFilter,
+    set_name: str | None,
+    widening: Widening,
 ) -> dict[str, JsonValue]:
-    return list_document(environment, in_named_set(environment, problem_filter, set_name))
+    problem_filter = in_named_set(environment, problem_filter, set_name)
+    if set_name is None:
+        profile = learner_profile(environment.config.profile, environment.workspace_languages)
+        problem_filter = replace(problem_filter, profile=profile, widening=widening)
+    return list_document(environment, problem_filter)
 
 
 def _slug(request: Request) -> str:
@@ -146,4 +172,5 @@ def _history(environment: Environment, slug: str) -> dict[str, JsonValue]:
 
 
 def _next(environment: Environment, request: NextRequest) -> dict[str, JsonValue]:
-    return next_document(recommend(environment, request))
+    profile = learner_profile(environment.config.profile, environment.workspace_languages)
+    return next_document(recommend(environment, replace(request, profile=profile)))

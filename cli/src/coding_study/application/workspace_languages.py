@@ -143,7 +143,7 @@ def language_removal_preview(
     workspace (UsageError). It changes nothing."""
     plan = removal_plan(environment, folders, languages, adding)
     if plan.attempts:
-        raise UsageError("\n".join(_attempt_refusal(attempt) for attempt in plan.attempts))
+        raise UsageError("\n".join(attempt_refusal(attempt) for attempt in plan.attempts))
     busy = activity.active_run()
     if busy is not None:
         raise WorkspaceBusyError(f"cstudy lang remove waits until it ends: {busy}")
@@ -216,7 +216,8 @@ def _folder_preview(
     return FolderPreview(paths, removed, FolderState.PRESENT, count)
 
 
-def _attempt_refusal(attempt: Attempt) -> str:
+def attempt_refusal(attempt: Attempt) -> str:
+    """Why an attempt in progress in a removed language stops a deletion of its folder."""
     assert attempt.language is not None
     folder = folder_text(TEMPLATE_PATHS[attempt.language])
     language = attempt.language.value

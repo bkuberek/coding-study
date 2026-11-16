@@ -63,7 +63,7 @@
       "description": "GET /api/v1/session",
       "type": "object",
       "additionalProperties": false,
-      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds", "domains", "job_roles", "scopes", "patterns", "selected_jdk"],
+      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds", "domains", "job_roles", "scopes", "patterns", "selected_jdk", "profile"],
       "properties": {
         "api": { "const": 1 },
         "cstudy": { "type": "string" },
@@ -78,7 +78,78 @@
         "job_roles": { "description": "The values of cstudy list --role", "type": "array", "items": { "type": "string" } },
         "scopes": { "description": "The values of cstudy list --scope", "type": "array", "items": { "type": "string" } },
         "patterns": { "description": "The patterns of the taxonomy, for cstudy list --pattern", "type": "array", "items": { "type": "string" } },
-        "selected_jdk": { "$ref": "#/$defs/selected_jdk" }
+        "selected_jdk": { "$ref": "#/$defs/selected_jdk" },
+        "profile": {
+          "description": "The learner profile (docs/specs/cli.md#the-learner-profile): the default filter of the Problems, Guides and Mock views",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["languages", "languages_chosen", "default_language", "job_roles", "domains"],
+          "properties": {
+            "languages": { "description": "The workspace's languages: all six when it chose none", "type": "array", "items": { "$ref": "#/$defs/language" }, "minItems": 1, "uniqueItems": true },
+            "languages_chosen": { "description": "Whether the marker lists the languages", "type": "boolean" },
+            "default_language": { "description": "default_lang while it is one of the languages, else the first of them", "$ref": "#/$defs/language" },
+            "job_roles": { "description": "profile.job_roles as the config holds it, without general", "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+            "domains": { "description": "profile.domains as the config holds it", "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+          }
+        }
+      }
+    },
+    "languages": {
+      "description": "GET /api/v1/languages: cstudy lang list",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languages", "chosen", "folders"],
+      "properties": {
+        "languages": { "type": "array", "items": { "$ref": "#/$defs/language" }, "minItems": 1, "uniqueItems": true },
+        "chosen": { "description": "False when the marker lists none and the workspace has all six", "type": "boolean" },
+        "folders": { "description": "The template folders and files of the languages, in workspace order", "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "language_folders": {
+      "description": "The folders a removal deletes: a path (go/ and go.work are one) with the practice files in it",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "files"],
+        "properties": { "path": { "type": "string", "minLength": 1 }, "files": { "type": "integer", "minimum": 0 } }
+      }
+    },
+    "languages_changed": {
+      "description": "POST /api/v1/languages: what cstudy lang add and cstudy lang remove do, in one change",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languages", "chosen", "added", "removed", "written", "kept", "deleted", "ide", "notes"],
+      "properties": {
+        "languages": { "description": "The workspace's languages afterwards", "type": "array", "items": { "$ref": "#/$defs/language" }, "minItems": 1, "uniqueItems": true },
+        "chosen": { "type": "boolean" },
+        "added": { "description": "The languages the workspace did not have", "type": "array", "items": { "$ref": "#/$defs/language" } },
+        "removed": { "description": "The languages the workspace had", "type": "array", "items": { "$ref": "#/$defs/language" } },
+        "written": { "description": "Template files created, the marker among them", "type": "array", "items": { "type": "string" } },
+        "kept": { "description": "Template files that were there", "type": "array", "items": { "type": "string" } },
+        "deleted": { "$ref": "#/$defs/language_folders" },
+        "ide": { "description": "The IDE files created, rewritten or removed", "type": "array", "items": { "type": "string" } },
+        "notes": { "description": "An attempt in progress in a removed language, which stays", "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "language_removal": {
+      "description": "GET /api/v1/languages/removal: the preview cstudy lang remove --delete-folder prints",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delete", "keep", "stays", "blocked"],
+      "properties": {
+        "delete": { "$ref": "#/$defs/language_folders" },
+        "keep": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "reason"],
+            "properties": { "path": { "type": "string", "minLength": 1 }, "reason": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "stays": { "description": "What a deletion never touches", "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "blocked": { "description": "The refusal for each attempt in progress in a removed language; empty when the deletion can go ahead", "type": "array", "items": { "type": "string", "minLength": 1 } }
       }
     },
     "config": {
@@ -814,8 +885,17 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["running"],
-          "properties": { "running": { "const": false } }
+          "required": ["running", "scope"],
+          "properties": {
+            "running": { "const": false },
+            "scope": {
+              "description": "The new medium and hard problems a start would pick from, and the ones the learner profile hid from them; both 0 while the profile narrows nothing",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["problems", "hidden"],
+              "properties": { "problems": { "type": "integer", "minimum": 0 }, "hidden": { "type": "integer", "minimum": 0 } }
+            }
+          }
         },
         {
           "type": "object",

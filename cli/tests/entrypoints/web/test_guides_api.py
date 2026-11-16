@@ -3,12 +3,14 @@
 `cstudy learn <guide> --done` does, and a problem's `guides`."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.content_ids import ContentType
 from coding_study.domain.guide_markdown import mermaid_digest
 from coding_study.entrypoints import cli
@@ -65,9 +67,75 @@ def error(response) -> tuple[int, str, str]:
 
 def test_the_list_is_the_document_of_cstudy_learn(client, monkeypatch, environment):
     mark(client, "hash-functions")
-    document = cli_document(monkeypatch, environment)
-    document.pop("profile")  # the page applies the profile itself, from the whole listing
-    assert client.get(GUIDES).json() == document
+    assert client.get(GUIDES).json() == cli_document(monkeypatch, environment)
+
+
+def test_the_list_names_nothing_hidden_while_the_profile_narrows_nothing(client):
+    assert client.get(GUIDES).json()["profile"] == {
+        "languages": None,
+        "job_roles": None,
+        "domains": None,
+        "hidden": {"guides": 0, "paths": 0},
+    }
+
+
+def narrowed(tmp_path: Path, environment: Environment, **settings):
+    """A server over the workspace under a profile of `settings`, and that workspace."""
+    profiled = replace(environment, config=Config(profile=ProfileSettings(**settings)))
+    return session_client(web_app(tmp_path / "narrowed", profiled)), profiled
+
+
+def test_the_list_applies_the_learner_profile_as_cstudy_learn_does(
+    tmp_path, environment, monkeypatch
+):
+    server, profiled = narrowed(tmp_path, environment, domains=("security",))
+    with server as client:
+        document = client.get(GUIDES).json()
+    assert document == cli_document(monkeypatch, profiled)
+    assert (document["guides"], document["profile"]["domains"]) == ([], ["security"])
+    assert document["profile"]["hidden"]["guides"] > 0
+
+
+@pytest.mark.parametrize(
+    ("query", "flags"),
+    [
+        ("widen=all", ["--widen", "all"]),
+        ("widen=domain", ["--widen", "domain"]),
+        ("widen=role&widen=domain", ["--widen", "role", "--widen", "domain"]),
+        ("domain=algorithms", ["--domain", "algorithms"]),
+        ("role=general&widen=domain", ["--role", "general", "--widen", "domain"]),
+    ],
+)
+def test_widening_the_list_is_what_cstudy_learn_widen_prints(
+    tmp_path, environment, monkeypatch, query, flags
+):
+    server, profiled = narrowed(tmp_path, environment, domains=("security",))
+    with server as client:
+        document = client.get(f"{GUIDES}?{query}").json()
+    assert document == cli_document(monkeypatch, profiled, *flags)
+
+
+def test_widening_the_domains_lists_the_guides_the_profile_hid(tmp_path, environment):
+    server, _ = narrowed(tmp_path, environment, domains=("security",))
+    with server as client:
+        document = client.get(f"{GUIDES}?widen=domain").json()
+    assert ([guide["slug"] for guide in document["guides"]], document["profile"]["hidden"]) == (
+        ["hash-functions", "hash-maps"],
+        {"guides": 0, "paths": 0},
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "message"),
+    [
+        ("widen=lang", 'unknown widening "lang"; cstudy learn takes role, domain, all'),
+        ("domain=nowhere", 'unknown domain "nowhere"; use one of '),
+        ("role=chef", 'unknown job role "chef"; use one of '),
+    ],
+)
+def test_a_value_cstudy_learn_refuses_gets_422_usage(client, query, message):
+    status, code, text = error(client.get(f"{GUIDES}?{query}"))
+    assert (status, code, text.startswith(message)) == (422, "usage", True)
 
 
 def test_a_guide_is_the_document_of_cstudy_learn_with_its_html(client, monkeypatch, environment):

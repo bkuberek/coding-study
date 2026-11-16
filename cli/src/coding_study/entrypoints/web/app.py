@@ -23,6 +23,7 @@ from coding_study.entrypoints.web.api_events import event_routes
 from coding_study.entrypoints.web.api_files import file_routes
 from coding_study.entrypoints.web.api_guides import guide_routes
 from coding_study.entrypoints.web.api_health import health_routes
+from coding_study.entrypoints.web.api_languages import language_routes
 from coding_study.entrypoints.web.api_mock import mock_routes
 from coding_study.entrypoints.web.api_past_files import past_file_routes
 from coding_study.entrypoints.web.api_practice import practice_routes
@@ -59,6 +60,7 @@ def create_app(
         *session_routes(),
         *about_routes(),
         *config_routes(),
+        *language_routes(),
         *browsing_routes(),
         *set_routes(),
         *guide_routes(),

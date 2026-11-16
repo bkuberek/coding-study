@@ -4,11 +4,11 @@ import json
 
 import pytest
 
-from coding_study.domain.config import Config
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.jdk import JdkSource
 from coding_study.domain.preferences import DEFAULT_PROBLEM_COLUMNS
 from coding_study.domain.problem import Language
-from coding_study.domain.taxonomy import PATTERNS
+from coding_study.domain.taxonomy import DOMAINS, PATTERNS
 from tests.fakes import FakeJdk, jdk_of
 from tests.web_server import (
     PORT,
@@ -99,6 +99,21 @@ def test_the_session_describes_the_server_and_the_workspace(tmp_path, app):
             "source": "JAVA_HOME",
             "supported": True,
         },
+        "profile": {
+            "languages": ["python", "typescript", "java", "kotlin", "go", "rust"],
+            "languages_chosen": False,
+            "default_language": "python",
+            "job_roles": [
+                "backend",
+                "platform",
+                "security-engineer",
+                "ai-engineer",
+                "ml-engineer",
+                "data-engineer",
+                "frontend",
+            ],
+            "domains": list(DOMAINS),
+        },
     }
 
 
@@ -134,6 +149,57 @@ def test_the_session_reads_the_default_language_from_the_config(tmp_path):
     with session_client(web_app(tmp_path, environment)) as client:
         document = client.get("/api/v1/session").json()
     assert document["default_lang"] == "kotlin"
+
+
+def profile(tmp_path, **overrides):
+    environment = web_workspace(tmp_path, **overrides)
+    with session_client(web_app(tmp_path, environment)) as client:
+        return client.get("/api/v1/session").json()["profile"]
+
+
+def test_the_profile_holds_the_workspaces_languages_and_the_configs_labels(tmp_path):
+    settings = ProfileSettings(job_roles=("backend", "platform"), domains=("backend",))
+    found = profile(
+        tmp_path,
+        config=Config(profile=settings),
+        workspace_languages=(Language.PYTHON, Language.GO),
+    )
+    assert found == {
+        "languages": ["python", "go"],
+        "languages_chosen": True,
+        "default_language": "python",
+        "job_roles": ["backend", "platform"],
+        "domains": ["backend"],
+    }
+
+
+def test_the_default_language_is_the_first_language_when_the_configured_one_is_not_listed(
+    tmp_path,
+):
+    found = profile(
+        tmp_path,
+        config=Config(default_lang=Language.RUST),
+        workspace_languages=(Language.TYPESCRIPT, Language.GO),
+    )
+    assert found["default_language"] == "typescript"
+
+
+def test_the_default_language_is_the_configured_one_when_it_is_listed(tmp_path):
+    found = profile(
+        tmp_path,
+        config=Config(default_lang=Language.GO),
+        workspace_languages=(Language.PYTHON, Language.GO),
+    )
+    assert found["default_language"] == "go"
+
+
+def test_a_workspace_that_chose_no_languages_has_all_six_and_the_configured_default(tmp_path):
+    found = profile(tmp_path, config=Config(default_lang=Language.KOTLIN))
+    assert (found["languages"], found["languages_chosen"], found["default_language"]) == (
+        [language.value for language in Language],
+        False,
+        "kotlin",
+    )
 
 
 def test_the_api_answers_json_in_utf8(app):

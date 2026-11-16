@@ -1,22 +1,29 @@
 """The browsing endpoints: each answers the document of the CLI command it mirrors, through the
 same use case (docs/specs/web-ui.md#browsing)."""
 
+import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from coding_study.application.list_problems import ProblemFilter
 from coding_study.application.next_problem import NextRequest, recommend
 from coding_study.application.problem_history import problem_history
+from coding_study.application.problem_sets import add_to_set, create_set
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.checked_by import CheckedBy
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.content_ids import ContentType
 from coding_study.domain.items import EntryKind
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import NextSource
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.taxonomy import Scope
+from coding_study.entrypoints import cli
+from coding_study.entrypoints.commands import list_problems, next_problem
 from coding_study.entrypoints.commands.history import history_document
 from coding_study.entrypoints.commands.list_problems import list_document
 from coding_study.entrypoints.commands.next_problem import next_document
@@ -403,3 +410,145 @@ def test_the_next_pick_says_which_jdk_ran_out_of_problems(tmp_path):
 def test_the_problem_document_carries_the_jdk_range_of_the_listing(client, environment):
     document = client.get("/api/v1/problems/two-sum").json()
     assert document["jdk"] == {"min": 21, "max": 26}
+
+
+# the learner profile (docs/specs/cli.md#the-learner-profile)
+
+runner = CliRunner()
+BACKEND = ProfileSettings(domains=("backend",))
+
+
+def profiled(environment, languages=None, settings=BACKEND):
+    """The workspace under a config whose `[profile]` is `settings`, listing `languages` (None:
+    it chose none)."""
+    return replace(environment, config=Config(profile=settings), workspace_languages=languages)
+
+
+@pytest.fixture
+def narrowed(tmp_path, environment):
+    """A server over a workspace whose profile keeps the backend domain, and that workspace."""
+    narrowing = profiled(environment)
+    with session_client(web_app(tmp_path, narrowing)) as client:
+        yield client, narrowing
+
+
+def cli_document(monkeypatch, environment, *arguments: str):
+    """What the command prints under `--json` in that workspace."""
+    for module, names in (
+        (list_problems, ("load_catalog_environment", "load_environment")),
+        (next_problem, ("load_environment",)),
+    ):
+        for name in names:
+            monkeypatch.setattr(module, name, lambda *_: environment)
+    result = runner.invoke(cli.app, [*arguments, "--json"])
+    assert result.exit_code == 0, result.output
+    return json.loads(result.stdout)
+
+
+def slugs(document) -> list[str]:
+    return [entry["slug"] for entry in document["entries"]]
+
+
+def test_the_problem_list_applies_the_learner_profile(narrowed):
+    client, _ = narrowed
+    document = client.get("/api/v1/problems").json()
+    profile = document["profile"]
+    assert (profile["domains"], profile["hidden"]["problems"] > 0) == (["backend"], True)
+    assert "two-sum" not in slugs(document)
+
+
+def test_the_problem_list_is_what_cstudy_list_prints_under_the_profile(narrowed, monkeypatch):
+    client, environment = narrowed
+    assert client.get("/api/v1/problems").json() == cli_document(monkeypatch, environment, "list")
+
+
+@pytest.mark.parametrize(
+    ("query", "flags"),
+    [
+        ("widen=all", ["--widen", "all"]),
+        ("widen=domain", ["--widen", "domain"]),
+        ("widen=role&widen=domain", ["--widen", "role", "--widen", "domain"]),
+        ("widen=role", ["--widen", "role"]),
+        ("domain=algorithms", ["--domain", "algorithms"]),
+        ("lang=go", ["--lang", "go"]),
+        ("role=general&widen=lang", ["--role", "general", "--widen", "lang"]),
+    ],
+)
+def test_widening_the_problem_list_is_what_cstudy_list_widen_prints(
+    narrowed, monkeypatch, query, flags
+):
+    client, environment = narrowed
+    expected = cli_document(monkeypatch, environment, "list", *flags)
+    assert client.get(f"/api/v1/problems?{query}").json() == expected
+
+
+def test_widening_every_dimension_lists_what_the_profile_hid(narrowed):
+    client, _ = narrowed
+    document = client.get("/api/v1/problems?widen=all").json()
+    assert (document["profile"]["hidden"], "two-sum" in slugs(document)) == (
+        {"problems": 0},
+        True,
+    )
+
+
+def test_an_explicit_filter_replaces_the_profile_in_its_dimension(narrowed):
+    client, _ = narrowed
+    document = client.get("/api/v1/problems?domain=algorithms").json()
+    assert ("two-sum" in slugs(document), document["profile"]["domains"]) == (True, None)
+
+
+def test_a_workspaces_languages_narrow_the_list_as_the_profile_does(tmp_path, environment):
+    go = profiled(environment, (Language.GO,), ProfileSettings())
+    with session_client(web_app(tmp_path, go)) as client:
+        document = client.get("/api/v1/problems").json()
+    assert document["profile"]["languages"] == ["go"]
+
+
+def test_a_set_ignores_the_profile(tmp_path, environment):
+    narrowing = profiled(environment)
+    create_set(narrowing, "loop")
+    add_to_set(narrowing, "loop", ["two-sum"])
+    with session_client(web_app(tmp_path, narrowing)) as client:
+        document = client.get("/api/v1/problems?set=loop").json()
+    assert (slugs(document), document["profile"]["hidden"]) == (["two-sum"], {"problems": 0})
+
+
+def test_an_unknown_widening_gets_the_clis_422(narrowed):
+    client, _ = narrowed
+    response = client.get("/api/v1/problems?widen=everything")
+    assert (error(response), response.json()["error"]["message"]) == (
+        (422, "usage"),
+        'unknown widening "everything"; use lang, role, domain or all',
+    )
+
+
+def test_the_next_pick_applies_the_learner_profile(narrowed, monkeypatch):
+    client, environment = narrowed
+    document = client.get("/api/v1/next").json()
+    assert document == cli_document(monkeypatch, environment, "next")
+    assert document["profile"]["domains"] == ["backend"]
+
+
+@pytest.mark.parametrize(
+    ("query", "flags"),
+    [
+        ("widen=all", ["--widen", "all"]),
+        ("widen=domain&widen=role", ["--widen", "domain", "--widen", "role"]),
+        ("domain=algorithms", ["--domain", "algorithms"]),
+    ],
+)
+def test_widening_the_next_pick_is_what_cstudy_next_widen_picks(
+    narrowed, monkeypatch, query, flags
+):
+    client, environment = narrowed
+    expected = cli_document(monkeypatch, environment, "next", *flags)
+    assert client.get(f"/api/v1/next?{query}").json() == expected
+
+
+def test_the_next_pick_widens_roles_and_domains_only(narrowed):
+    client, _ = narrowed
+    response = client.get("/api/v1/next?widen=lang")
+    assert (error(response), response.json()["error"]["message"]) == (
+        (422, "usage"),
+        'unknown widening "lang"; use role, domain or all',
+    )

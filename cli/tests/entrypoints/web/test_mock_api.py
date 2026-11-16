@@ -8,12 +8,16 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
+from typer.testing import CliRunner
 
 from coding_study.application.complete_attempt import DoneRequest, complete_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.mock_interview import MockRequest, start_mock
 from coding_study.application.ports import StubGenerator
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.problem import Language
+from coding_study.entrypoints import cli
+from coding_study.entrypoints.commands import mock
 from tests.fakes import (
     NOW,
     FakeStubGenerator,
@@ -157,7 +161,10 @@ def test_a_value_cstudy_mock_refuses_gets_422(tmp_path, environment, body):
 
 
 def test_no_mock_answers_not_running(tmp_path, environment):
-    assert get(tmp_path, environment).json() == {"running": False}
+    assert get(tmp_path, environment).json() == {
+        "running": False,
+        "scope": {"problems": 0, "hidden": 0},
+    }
 
 
 def test_a_mock_started_in_the_terminal_shows(tmp_path, environment):
@@ -207,4 +214,118 @@ def test_a_finished_problem_leaves_the_mock(tmp_path, environment):
 def test_the_mock_ends_with_its_timer(tmp_path, environment):
     start_mock(environment, MockRequest())
     environment.clock.advance(timedelta(minutes=45))  # type: ignore[attr-defined]
-    assert get(tmp_path, environment).json() == {"running": False}
+    assert get(tmp_path, environment).json()["running"] is False
+
+
+# the learner profile (docs/specs/cli.md#cstudy-mock)
+
+
+def edit_meta(environment: Environment, slug: str, old: str, new: str) -> None:
+    meta = environment.root / "problems" / slug / "meta.yaml"
+    meta.write_text(meta.read_text().replace(old, new, 1))
+
+
+@pytest.fixture
+def backend(environment: Environment) -> Environment:
+    """A workspace whose profile keeps the backend domain, which only lru-cache lists, of the
+    three new medium and hard problems."""
+    edit_meta(environment, "lru-cache", "domains: [algorithms]", "domains: [backend]")
+    return replace(environment, config=Config(profile=ProfileSettings(domains=("backend",))))
+
+
+def scope(tmp_path, environment: Environment, query: str = "") -> dict[str, int]:
+    return get_query(tmp_path, environment, query).json()["scope"]
+
+
+def get_query(tmp_path, environment: Environment, query: str):
+    with session_client(web_app(tmp_path, environment)) as client:
+        return client.get(f"{MOCK}?{query}")
+
+
+def test_the_scope_counts_the_problems_the_profile_leaves_and_hid(tmp_path, backend):
+    assert scope(tmp_path, backend) == {"problems": 1, "hidden": 2}
+
+
+def test_the_scope_has_the_counts_of_the_profile_line_of_cstudy_mock(
+    tmp_path, backend, monkeypatch
+):
+    shown = scope(tmp_path, backend)
+    monkeypatch.setattr(mock, "load_environment", lambda *_: backend)
+    line = CliRunner().invoke(cli.app, ["mock"]).output.splitlines()[-1]
+    assert f"picked from {shown['problems']} of {shown['problems'] + shown['hidden']} " in line
+
+
+def test_asking_the_scope_starts_nothing(tmp_path, backend):
+    scope(tmp_path, backend)
+    assert in_progress(backend) == {}
+
+
+@pytest.mark.parametrize(
+    ("query", "counts"),
+    [
+        ("widen=all", {"problems": 0, "hidden": 0}),
+        ("widen=domain", {"problems": 0, "hidden": 0}),
+        ("widen=role", {"problems": 1, "hidden": 2}),
+        ("domain=algorithms", {"problems": 0, "hidden": 0}),
+        ("tracks=dsa", {"problems": 1, "hidden": 2}),
+        ("tracks=practical", {"problems": 0, "hidden": 0}),
+    ],
+)
+def test_the_scope_takes_the_values_a_start_takes(tmp_path, backend, query, counts):
+    assert scope(tmp_path, backend, query) == counts
+
+
+def test_a_language_the_workspace_lacks_gets_the_clis_422(tmp_path, environment):
+    go_less = replace(environment, workspace_languages=(Language.PYTHON,))
+    response = get_query(tmp_path, go_less, "language=go")
+    assert (response.status_code, response.json()["error"]["code"]) == (422, "usage")
+
+
+@pytest.mark.parametrize(
+    ("query", "message"),
+    [
+        ("widen=lang", 'unknown widening "lang"; use role, domain or all'),
+        ("tracks=chess", 'invalid tracks "chess": use one of '),
+        ("domain=nowhere", 'unknown domain "nowhere"'),
+    ],
+)
+def test_a_scope_value_cstudy_mock_refuses_gets_422(tmp_path, environment, query, message):
+    response = get_query(tmp_path, environment, query)
+    assert (response.status_code, response.json()["error"]["message"].startswith(message)) == (
+        422,
+        True,
+    )
+
+
+def test_a_start_picks_within_the_profile_as_cstudy_mock_does(tmp_path, backend):
+    response = post(tmp_path, backend, {})
+    assert [problem["slug"] for problem in response.json()["problems"]] == ["lru-cache"]
+
+
+def test_widening_a_start_picks_what_the_profile_hid(tmp_path, backend):
+    problems = post(tmp_path, backend, {"widen": ["all"]}).json()["problems"]
+    assert [problem["slug"] for problem in problems] == ["group-anagrams", "lru-cache"]
+
+
+def test_an_explicit_domain_replaces_the_profile_in_a_start(tmp_path, backend):
+    problems = post(tmp_path, backend, {"domain": "algorithms", "count": 3}).json()["problems"]
+    assert [problem["slug"] for problem in problems] == ["group-anagrams", "first-missing-positive"]
+
+
+def test_a_profile_that_left_nothing_gets_the_clis_message(tmp_path, environment):
+    secure = replace(environment, config=Config(profile=ProfileSettings(domains=("security",))))
+    document = post(tmp_path, secure, {}).json()
+    assert (document["problems"], document["message"]) == (
+        [],
+        "no new medium or hard problems in your profile (domains security); "
+        "widen with cstudy mock --widen all",
+    )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"widen": "all"}, {"widen": ["lang"]}, {"domain": "nowhere"}, {"role": 3}, {"domain": 1}],
+)
+def test_a_profile_value_cstudy_mock_refuses_gets_422(tmp_path, backend, body):
+    response = post(tmp_path, backend, body)
+    assert (response.status_code, in_progress(backend)) == (422, {})

@@ -25,6 +25,7 @@ from coding_study.application.workspace_languages import (
     change_languages,
     language_removal_preview,
 )
+from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import FolderNotDeletedError, UsageError
 from coding_study.domain.problem import ALL_LANGUAGES, Language
 from coding_study.domain.workspace_languages import (
@@ -42,7 +43,8 @@ NEEDS_A_TERMINAL = (
     "cstudy lang remove --delete-folder asks before it deletes; in a script, pass --yes"
 )
 NOT_REMOVED = "not removed: nothing changed"
-STAYS = "progress, .archive/, projects/ and notes/"
+STAYS_PATHS = ("progress", ".archive/", "projects/", "notes/")
+STAYS = f"{', '.join(STAYS_PATHS[:-1])} and {STAYS_PATHS[-1]}"
 ADD_HINT = "cstudy lang add <language>"
 NEXT_STEP = "cstudy doctor --fix"
 LANGUAGES_ARGUMENT = typer.Argument(help="python, typescript, java, kotlin, go or rust.")
@@ -200,8 +202,7 @@ def _remove_lines(change: LanguageChange, deleted: bool) -> Iterator[Text]:
     if not deleted:
         for attempt in plan.attempts:
             if attempt.language in plan.listed:
-                where = f"{attempt.slug}, {attempt.language}"
-                yield _line("note", f"attempt {attempt.id} ({where}) is in progress")
+                yield _line("note", attempt_note(attempt))
 
 
 def _preview_lines(folders: tuple[FolderPreview, ...]) -> Iterator[Text]:
@@ -210,7 +211,7 @@ def _preview_lines(folders: tuple[FolderPreview, ...]) -> Iterator[Text]:
             case FolderState.PRESENT:
                 yield _line("delete", f"{folder.text} ({_files(folder.practice_files)})")
             case FolderState.IN_USE:
-                yield _line("keep", f"{folder.text}: {_names(folder.users)} still uses it")
+                yield _line("keep", f"{folder.text}: {still_uses(folder)}")
             case FolderState.ABSENT:
                 pass
     yield _line("stays", STAYS)
@@ -220,12 +221,25 @@ def _confirmed(present: tuple[FolderPreview, ...]) -> bool:
     """Asks whether to delete `present`. Raises UsageError when there is no one to ask."""
     if not _is_terminal():
         raise UsageError(NEEDS_A_TERMINAL)
+    return typer.confirm(delete_question(present), default=False)
+
+
+def delete_question(present: tuple[FolderPreview, ...]) -> str:
+    """What the command asks before it deletes `present`, and the page's second confirmation."""
     names = folder_text(path for folder in present for path in folder.paths)
     count = sum(folder.practice_files for folder in present)
     whose = "Its" if len(present) == 1 else "Their"
-    return typer.confirm(
-        f"Delete {names}? {whose} {_files(count)} can't be recovered.", default=False
-    )
+    return f"Delete {names}? {whose} {_files(count)} can't be recovered."
+
+
+def still_uses(folder: FolderPreview) -> str:
+    """Why a folder stays: the remaining languages that use it."""
+    return f"{_names(folder.users)} still uses it"
+
+
+def attempt_note(attempt: Attempt) -> str:
+    """What `remove` says of an attempt in progress in a removed language, which it keeps."""
+    return f"attempt {attempt.id} ({attempt.slug}, {attempt.language}) is in progress"
 
 
 def _is_terminal() -> bool:

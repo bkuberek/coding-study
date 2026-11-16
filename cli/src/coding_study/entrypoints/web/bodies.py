@@ -45,6 +45,17 @@ def required_text_list(body: Body, name: str) -> tuple[str, ...]:
     return values
 
 
+def text_list(body: Body, name: str) -> tuple[str, ...]:
+    """A list of strings; empty when absent or null."""
+    found = body.get(name)
+    if found is None:
+        return ()
+    values = _text_list(found)
+    if values is None:
+        raise UsageError(f"invalid {name} {_shown(found)}: use a list of strings")
+    return values
+
+
 def _text_list(found: object) -> tuple[str, ...] | None:
     if not isinstance(found, list):
         return None

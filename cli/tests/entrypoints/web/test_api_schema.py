@@ -16,12 +16,15 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 from starlette.testclient import TestClient
+from typer.testing import CliRunner
 
+from coding_study.adapters.workspace_marker import read_marker
 from coding_study.application.attempt_changes import WatchedFolder, workspace_snapshot
 from coding_study.application.environment import Environment
 from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.problem import Language
+from coding_study.entrypoints import cli
 from coding_study.entrypoints.web.notifications import Notifications, WorkspaceWatch
 from coding_study.entrypoints.web.runs import Children
 from tests.doc_builders import write_docs
@@ -54,6 +57,9 @@ SCHEMA = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
 DEV = "/api/v1/dev"
 DOCUMENTS = (
     "session",
+    "languages",
+    "languages_changed",
+    "language_removal",
     "about",
     "about_licenses",
     "preferences",
@@ -151,6 +157,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     export = _practice(tmp_path_factory.mktemp("practice"), record)
     _import(tmp_path_factory.mktemp("import"), export, record)
     _mock(tmp_path_factory.mktemp("mock"), record)
+    _languages(tmp_path_factory.mktemp("languages"), record)
     _watch(tmp_path_factory.mktemp("watch"), record)
     _reset(tmp_path_factory.mktemp("reset"), record)
     _sets(tmp_path_factory.mktemp("sets"), record)
@@ -159,6 +166,34 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _guides(tmp_path_factory.mktemp("guides"), record)
     _docs(tmp_path_factory.mktemp("docs"), record)
     return record.documents
+
+
+def _languages(root: Path, record: Recorder) -> None:
+    """The languages of a workspace that chose two, a removal previewed, a language added, and
+    one removed with its folder, which asks first."""
+    created = CliRunner().invoke(
+        cli.app, ["init", str(root / "workspace"), "--lang", "python", "--lang", "go"]
+    )
+    assert created.exit_code == 0, created.output
+    workspace = root / "workspace"
+    (workspace / "schemas").symlink_to(SCHEMAS_DIRECTORY)
+    environment = make_environment(workspace, workspace_languages=read_marker(workspace).languages)
+    environment.progress.attempts_in_progress()
+    languages = "/api/v1/languages"
+    with session_client(web_app(root / "server", environment)) as client:
+        record("languages", client.get(languages))
+        record("language_removal", client.get(f"{languages}/removal?language=go"))
+        record("error", client.get(f"{languages}/removal"))
+        record(
+            "languages_changed",
+            client.post(languages, json={"add": ["rust"]}, headers=WRITE_HEADERS),
+        )
+        remove = {"remove": ["rust"], "delete_folders": True}
+        record("error", client.post(languages, json=remove, headers=WRITE_HEADERS))
+        record(
+            "languages_changed",
+            client.post(languages, json={**remove, "confirm": True}, headers=WRITE_HEADERS),
+        )
 
 
 def _needs(root: Path, record: Recorder) -> None:

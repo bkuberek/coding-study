@@ -20,7 +20,9 @@ from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.items import EntryKind, entry_kind
+from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
+from coding_study.domain.profile import NO_PROFILE_EFFECT, ProfileEffect, learner_profile
 from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, PATTERNS, Scope
 from coding_study.entrypoints.commands._events import EVENTS_VERSION
 from coding_study.entrypoints.commands.list_problems import selected_jdk_value
@@ -36,7 +38,7 @@ MOCK_LOCKS = ("hint", "solution", "mock")
 
 def session_document(environment: Environment, port: int, version: str) -> dict[str, object]:
     """`GET /api/v1/session`: the server, its workspace, and the values the page's filters and
-    forms offer."""
+    forms offer, with the learner profile that is their default."""
     return {
         "api": API_VERSION,
         "cstudy": version,
@@ -52,6 +54,20 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
         "scopes": [scope.value for scope in Scope],
         "patterns": list(PATTERNS),
         "selected_jdk": selected_jdk_value(environment.jdk.selected()),
+        "profile": _profile_value(environment),
+    }
+
+
+def _profile_value(environment: Environment) -> dict[str, JsonValue]:
+    """The learner profile as the page's filters start from it."""
+    languages = environment.workspace_languages
+    profile = learner_profile(environment.config.profile, languages)
+    return {
+        "languages": [language.value for language in profile.languages],
+        "languages_chosen": profile.languages_chosen,
+        "default_language": resolve_language(None, environment.config, languages).value,
+        "job_roles": list(profile.job_roles),
+        "domains": list(profile.domains),
     }
 
 
@@ -234,11 +250,15 @@ def started_mock_document(session: MockSession) -> dict[str, JsonValue]:
     }
 
 
-def running_mock_document(mock: CurrentMock | None) -> dict[str, JsonValue]:
+def running_mock_document(
+    mock: CurrentMock | None, scope: ProfileEffect | None = None
+) -> dict[str, JsonValue]:
     """`GET /api/v1/mock`: the mock whose timer runs, with the unfinished problems its lock
-    names, in the order they started."""
+    names, in the order they started; with none, the `scope` a start would pick from: the new
+    medium and hard problems it leaves and those the learner profile hid."""
     if mock is None:
-        return {"running": False}
+        counts = scope or NO_PROFILE_EFFECT
+        return {"running": False, "scope": {"problems": counts.shown, "hidden": counts.hidden}}
     attempts: list[JsonValue] = [_mock_attempt_value(started) for started in mock.attempts]
     return {
         "running": True,

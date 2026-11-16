@@ -8,6 +8,7 @@ from coding_study.domain.workspace_languages import (
     WorkspaceLanguageError,
     choose,
     folder_groups,
+    folder_names,
     folder_text,
     from_marker,
     ordered,
@@ -169,3 +170,7 @@ def test_go_alone_has_go_and_go_work():
 )
 def test_folders_are_named_as_the_output_says_them(paths, text):
     assert folder_text(paths) == text
+
+
+def test_each_folder_is_named_with_its_slash_and_a_file_without_one():
+    assert folder_names(["python", "go", "go.work", "jvm"]) == ("python/", "go/", "go.work", "jvm/")

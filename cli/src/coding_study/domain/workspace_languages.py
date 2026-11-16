@@ -110,7 +110,12 @@ def sharing(paths: tuple[str, ...]) -> tuple[Language, ...]:
     return tuple(language for language in ALL_LANGUAGES if TEMPLATE_PATHS[language] == paths)
 
 
+def folder_names(paths: Iterable[str]) -> tuple[str, ...]:
+    """The paths as the output names them one by one: `python/`, `go/`, `go.work`."""
+    return tuple(path if path in FILE_PATHS else f"{path}/" for path in paths)
+
+
 def folder_text(paths: Iterable[str]) -> str:
     """The paths as the output names them: `go/ and go.work`, `python/, go/ and go.work`."""
-    names = [path if path in FILE_PATHS else f"{path}/" for path in paths]
+    names = folder_names(paths)
     return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
