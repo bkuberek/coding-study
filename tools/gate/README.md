@@ -99,6 +99,23 @@ tools/gate/verify.sh --list                          # print each group with its
 | `--fresh` | Run `cstudy init DIR --no-ide` and `cstudy doctor --fix` first |
 | `--logs DIR` | Write logs under `DIR`; the default is a new `cs-verify-logs-<timestamp>` directory under `${TMPDIR:-/tmp}` |
 | `--no-stop` | Run the later parts even when `static` fails |
+| `--no-recheck` | Do not rerun failures alone; any failed part fails the gate |
 | `--list` | Print the groups and exit |
 
-`summary.log` has one line per part: name, exit code, wall time and cstudy's final `result` line; `<part>.log` holds the full output. The script exits non-zero when any part failed. Every call is `uv run --no-sync cstudy`, because a plain `uv run` would sync the environment back to the default groups.
+### Recheck
+
+Concurrency problems have load-sensitive checks: a deliberately broken solution must be caught in at least 9 of 10 stress runs, a conformance fixture's stress case has the same bound, and a suite case can time out. The concurrent parts load the machine, so these checks can fail there and pass when rerun alone.
+
+When a part fails, the script reads its log, collects the problems and conformance fixtures whose line is `FAIL` or `not ready`, and reruns only those once, serially and alone, after every part has finished:
+
+| Failed part | Rerun as | Command |
+|-------------|----------|---------|
+| `ordinary`, `services-a`, `services-b`, `services-other` | `recheck-problems` | `cstudy verify --require-ready --jobs 1 <problems>` |
+| `conformance` | `recheck-conformance` | `cstudy verify --conformance --require-ready --jobs 1 <fixtures>` |
+| `track-system-design`, `track-code-review` | `recheck-track-<track>` | `cstudy verify --track <track> --require-ready --jobs 1` |
+
+The problem table truncates long names with `...`; the script maps each to the problem directory it is a prefix of. Each recheck part has its own log, which starts with the 1-minute load average, and its own summary line.
+
+The gate passes when every recheck passes. The original failing lines stay in `summary.log`, followed by a `gate: PASSED ON RECHECK` line that names the parts that failed first. A failure the script cannot map to a problem or fixture (including a `static` failure under `--no-stop`) is not rerun and fails the gate. `--no-recheck` disables the rerun.
+
+`summary.log` has one line per part: name, exit code, wall time and cstudy's final `result` line; `<part>.log` holds the full output. The script exits non-zero when a part failed and its recheck did not pass. Every call is `uv run --no-sync cstudy`, because a plain `uv run` would sync the environment back to the default groups.

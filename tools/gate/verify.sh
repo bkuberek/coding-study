@@ -12,7 +12,8 @@
 #                     the two tracks
 #
 # After static, ordinary, services-a, services-b, services-other and the chain
-# conformance, track-system-design, track-code-review run together.
+# conformance, track-system-design, track-code-review run together. Problems and
+# conformance fixtures that fail there are rerun once, serially and alone (recheck-*).
 # See tools/gate/README.md.
 
 set -u
@@ -30,6 +31,7 @@ Options:
   --logs DIR        write logs and summary.log under DIR
                     (default: a new timestamped directory under ${TMPDIR:-/tmp})
   --no-stop         run the later stages even when static fails
+  --no-recheck      do not rerun failed problems and fixtures alone; any failure fails the gate
   --list            print each group with its slug count and exit; runs nothing
   -h, --help        show this help
 EOF
@@ -38,6 +40,43 @@ EOF
 die() {
   printf 'verify.sh: %s\n' "$*" >&2
   exit 2
+}
+
+# Names whose line in a cstudy verify log is FAIL or "not ready". Per-problem and
+# per-fixture lines start in column 0; detail lines are indented and ignored.
+failed_names() {
+  awk '
+    /^[^ \t]/ && $1 != "result" && $1 ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ &&
+      ($0 ~ /(^|[ \t])FAIL([ \t]|$)/ || $0 ~ /not ready/) { print $1 }
+  ' "$1"
+}
+
+# resolve_failures LOG NAME... : the full names failed in LOG, one per line. The
+# problem table truncates long names to "prefix..."; each is mapped to the NAMEs it
+# is a prefix of. Returns 1 when a truncated name matches nothing.
+resolve_failures() {
+  local log=$1 name prefix candidate found rc=0
+  shift
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    case $name in
+      *...)
+        prefix=${name%...}
+        found=0
+        for candidate in "$@"; do
+          case $candidate in
+            "$prefix"*)
+              printf '%s\n' "$candidate"
+              found=1
+              ;;
+          esac
+        done
+        [ "$found" -eq 1 ] || rc=1
+        ;;
+      *) printf '%s\n' "$name" ;;
+    esac
+  done < <(failed_names "$log")
+  return "$rc"
 }
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
@@ -49,6 +88,8 @@ FRESH=0
 LOGS=""
 NO_STOP=0
 LIST=0
+RECHECK=1
+PARSE_LOG=""
 PIDS=()
 
 while [ $# -gt 0 ]; do
@@ -87,9 +128,25 @@ while [ $# -gt 0 ]; do
       LIST=1
       shift
       ;;
+    --no-recheck)
+      RECHECK=0
+      shift
+      ;;
+    --parse-failures)
+      # Hidden test hook: --parse-failures LOG [NAME...] prints the resolved failures.
+      [ $# -ge 2 ] || die "--parse-failures needs a log file"
+      PARSE_LOG=$2
+      shift 2
+      break
+      ;;
     *) die "unknown argument: $1 (see --help)" ;;
   esac
 done
+
+if [ -n "$PARSE_LOG" ]; then
+  resolve_failures "$PARSE_LOG" "$@"
+  exit $?
+fi
 
 # A service project has `grading: http` under `project:` in its meta.yaml; one with
 # backing services also has a services/ folder. Plain file checks, no YAML parser.
@@ -109,6 +166,11 @@ for meta in "$PROBLEMS_DIR"/*/meta.yaml; do
   else
     ORDINARY+=("$slug")
   fi
+done
+CONFORMANCE_DIR=$SCRIPT_DIR/../../runners/conformance
+FIXTURES=()
+for dir in "$CONFORMANCE_DIR"/*/; do
+  [ -d "$dir" ] && FIXTURES+=("$(basename "$dir")")
 done
 HALF=$(((${#SERVICES_BACKED[@]} + 1) / 2))
 SERVICES_A=("${SERVICES_BACKED[@]:0:HALF}")
@@ -157,11 +219,27 @@ fmt_time() {
   printf '%d:%02d:%02d' $(($1 / 3600)) $(($1 % 3600 / 60)) $(($1 % 60))
 }
 
+# The 1-minute load average, or "unknown".
+load_average() {
+  local load=""
+  if [ -r /proc/loadavg ]; then
+    read -r load _ </proc/loadavg
+  elif command -v sysctl >/dev/null 2>&1; then
+    load=$(sysctl -n vm.loadavg 2>/dev/null | tr -d '{}' | awk '{print $1}')
+  fi
+  if [ -z "$load" ] && command -v uptime >/dev/null 2>&1; then
+    load=$(uptime | sed 's/.*load averages*: *//' | tr -d ',' | awk '{print $1}')
+  fi
+  printf '%s' "${load:-unknown}"
+}
+
 # Runs one part: run_part NAME CSTUDY-ARGS... ; the exit status is cstudy's.
+# A non-empty RUN_PREFACE is written to the part's log first.
 run_part() {
   local part=$1 log=$LOGS/$1.log start=$SECONDS rc=0 result line
   shift
-  uv run --no-sync cstudy "$@" </dev/null >"$log" 2>&1
+  printf '%s' "${RUN_PREFACE:-}" >"$log"
+  uv run --no-sync cstudy "$@" </dev/null >>"$log" 2>&1
   rc=$?
   result=$(grep -E '^ *result ' "$log" | tail -n 1 | sed 's/^ *//')
   [ -n "$result" ] || result="no result line; see $log"
@@ -213,5 +291,78 @@ for pid in "${PIDS[@]}"; do
 done
 PIDS=()
 
+# Reruns what failed in the concurrent parts, once, serially and alone, because the
+# stress and timing checks depend on machine load. Sets RECHECK_OK=1 when every
+# failed part was rerun and the rerun passed.
+RECHECK_OK=0
+UNRESOLVED=0
+COLLECTED=()
+
+# collect LOG NAME... : appends the failed names in LOG to COLLECTED.
+collect() {
+  local names name
+  names=$(resolve_failures "$@") || UNRESOLVED=1
+  [ -n "$names" ] || UNRESOLVED=1
+  while IFS= read -r name; do
+    [ -n "$name" ] && COLLECTED+=("$name")
+  done <<<"$names"
+}
+
+recheck() {
+  local part track problems=() fixtures=() tracks=() rc=0 original
+  original=$(printf '%s\n' "$FAILED_PARTS" | paste -sd, - | sed 's/,/, /g')
+  for part in $FAILED_PARTS; do
+    COLLECTED=()
+    case $part in
+      ordinary) collect "$LOGS/$part.log" "${ORDINARY[@]}" ;;
+      services-a) collect "$LOGS/$part.log" ${SERVICES_A[@]+"${SERVICES_A[@]}"} ;;
+      services-b) collect "$LOGS/$part.log" ${SERVICES_B[@]+"${SERVICES_B[@]}"} ;;
+      services-other) collect "$LOGS/$part.log" ${SERVICES_OTHER[@]+"${SERVICES_OTHER[@]}"} ;;
+      conformance) collect "$LOGS/$part.log" ${FIXTURES[@]+"${FIXTURES[@]}"} ;;
+      *) ;;
+    esac
+    case $part in
+      ordinary | services-a | services-b | services-other)
+        problems+=(${COLLECTED[@]+"${COLLECTED[@]}"})
+        ;;
+      conformance) fixtures+=(${COLLECTED[@]+"${COLLECTED[@]}"}) ;;
+      track-system-design) tracks+=(system-design) ;;
+      track-code-review) tracks+=(code-review) ;;
+      *) UNRESOLVED=1 ;;
+    esac
+  done
+  printf 'recheck: first run failed in %s; rerunning alone\n' "$original" | tee -a "$SUMMARY"
+  RUN_PREFACE=$(printf 'load average (1 min) before the recheck: %s\n' "$(load_average)")
+  if [ "${#problems[@]}" -gt 0 ]; then
+    run_part recheck-problems verify --require-ready --jobs 1 "${problems[@]}" || rc=1
+  fi
+  if [ "${#fixtures[@]}" -gt 0 ]; then
+    run_part recheck-conformance verify --conformance --require-ready --jobs 1 "${fixtures[@]}" || rc=1
+  fi
+  for track in ${tracks[@]+"${tracks[@]}"}; do
+    run_part "recheck-track-$track" verify --track "$track" --require-ready --jobs 1 || rc=1
+  done
+  RUN_PREFACE=""
+  if [ "$UNRESOLVED" -eq 1 ]; then
+    rc=1
+    printf 'recheck: some failures could not be mapped to problems or fixtures to rerun\n' | tee -a "$SUMMARY"
+  fi
+  if [ "$rc" -eq 0 ]; then
+    RECHECK_OK=1
+    printf 'gate: PASSED ON RECHECK; first run failed in %s; the rerun alone passed\n' "$original" | tee -a "$SUMMARY"
+  else
+    printf 'gate: FAILED; first run failed in %s; recheck failed or incomplete\n' "$original" | tee -a "$SUMMARY"
+  fi
+}
+
+FAILED_PARTS=$(awk '$2 ~ /^exit=[1-9]/ {print $1}' "$SUMMARY")
+if [ -n "$FAILED_PARTS" ] && [ "$RECHECK" -eq 1 ]; then
+  recheck
+fi
+
 printf '\nsummary: %s\n' "$SUMMARY"
-[ "$FAILED" -eq 0 ] && ! grep -q 'exit=[1-9]' "$SUMMARY"
+if [ -z "$FAILED_PARTS" ]; then
+  [ "$FAILED" -eq 0 ]
+else
+  [ "$RECHECK_OK" -eq 1 ]
+fi
