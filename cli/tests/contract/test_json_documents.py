@@ -37,6 +37,8 @@ from coding_study.application.http_grading_ports import StackClients, StackEndpo
 from coding_study.application.ports import CaseListener, RunnerLaunch
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
+from coding_study.domain.ai import AiTask, ModelRef, Provider, Routing
+from coding_study.domain.ai_records import CallOutcome, Consent, ModelCall
 from coding_study.domain.attempts import (
     Attempt,
     AttemptMode,
@@ -49,7 +51,7 @@ from coding_study.domain.attempts import (
 from coding_study.domain.bench_records import BenchRunRecord
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import Confidence, Verdict
-from coding_study.domain.config import Config, ProfileSettings
+from coding_study.domain.config import AiSettings, Config, ProfileSettings
 from coding_study.domain.content_ids import ContentType
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.http_grading import HttpResponse
@@ -83,6 +85,7 @@ from coding_study.domain.suite_runs import (
 )
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import (
+    ai,
     docs,
     doctor,
     export,
@@ -106,6 +109,8 @@ from tests.doc_builders import write_docs
 from tests.e2e import e2e_environment
 from tests.fakes import (
     NOW,
+    FakeAiStore,
+    FakeCredentials,
     FakeJdk,
     FakeLanguageRunner,
     FakeStubGenerator,
@@ -412,6 +417,132 @@ def test_doctor_rejects_a_status_it_does_not_name(monkeypatch):
     document = json.loads(doctor_result().stdout)
     document["checks"][0]["status"] = "WARN"
     assert schema_errors("doctor", document)
+
+
+# cstudy ai status --json and cstudy ai usage --json
+
+AI_MODEL = ModelRef(Provider.ANTHROPIC, "claude-x")
+AI_FAST = ModelRef(Provider.OPENROUTER, "vendor/model")
+
+
+def ai_environment(tmp_path, problems, monkeypatch, settings: AiSettings, **parts):
+    environment = make_environment(
+        repository_root(tmp_path, problems),
+        config=Config(ai=settings),
+        ai_store=FakeAiStore(),
+        **parts,
+    )
+    monkeypatch.setattr(ai, "load_environment", lambda *_: environment)
+    return environment
+
+
+def ai_call(provider: Provider, model: str, purpose: AiTask, cost: float | None) -> ModelCall:
+    return ModelCall(
+        purpose,
+        provider,
+        model,
+        None,
+        None,
+        NOW.date(),
+        NOW,
+        NOW,
+        CallOutcome.OK,
+        None,
+        900,
+        100,
+        1_000,
+        cost,
+    )
+
+
+def ai_document(*arguments: str) -> Any:
+    result = runner.invoke(cli.app, ["ai", *arguments, "--json"])
+    assert result.exit_code == ExitCode.SUCCESS
+    return json.loads(result.stdout)
+
+
+def test_ai_status_with_ai_off(tmp_path, problems, monkeypatch):
+    ai_environment(tmp_path, problems, monkeypatch, AiSettings())
+    document = ai_document("status")
+    assert_valid("ai-status", document)
+    assert document["enabled"] is False
+
+
+def test_ai_status_with_everything_set(tmp_path, problems, monkeypatch):
+    environment = ai_environment(
+        tmp_path,
+        problems,
+        monkeypatch,
+        AiSettings(enabled=True, routing=Routing.AUTO, fast=AI_FAST, strong=AI_MODEL),
+        credentials=FakeCredentials({Provider.ANTHROPIC: "sk-sentinel"}),
+    )
+    environment.ai_store.grant_consent(Consent(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, NOW))
+    environment.ai_store.record_call(ai_call(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, 0.01))
+    document = ai_document("status")
+    assert_valid("ai-status", document)
+    assert [task["ready"] for task in document["tasks"]] == [True, False]
+
+
+def test_ai_status_with_a_credentials_file_that_does_not_load(tmp_path, problems, monkeypatch):
+    ai_environment(
+        tmp_path,
+        problems,
+        monkeypatch,
+        AiSettings(enabled=True, model=AI_MODEL),
+        credentials=FakeCredentials(issue="credentials.toml: [anthropic is not valid TOML"),
+    )
+    document = ai_document("status")
+    assert_valid("ai-status", document)
+    assert document["credentials"]["issue"]
+
+
+def test_ai_status_rejects_an_undocumented_field(tmp_path, problems, monkeypatch):
+    environment = ai_environment(
+        tmp_path,
+        problems,
+        monkeypatch,
+        AiSettings(enabled=True, model=AI_MODEL),
+        credentials=FakeCredentials({Provider.ANTHROPIC: "sk-sentinel"}),
+    )
+    environment.ai_store.grant_consent(Consent(Provider.ANTHROPIC, "claude-x", AiTask.CHECK, NOW))
+    document = ai_document("status")
+    for path in (
+        (),
+        ("models",),
+        ("tasks", 0),
+        ("tasks", 0, "models", 0),
+        ("credentials",),
+        ("credentials", "keys"),
+        ("consents", 0),
+        ("today",),
+    ):
+        assert_rejects_extra_field("ai-status", document, path)
+
+
+def test_ai_usage_without_a_request(tmp_path, problems, monkeypatch):
+    ai_environment(tmp_path, problems, monkeypatch, AiSettings())
+    document = ai_document("usage")
+    assert_valid("ai-usage", document)
+    assert (document["rows"], document["total"]["cost_usd"]) == ([], None)
+
+
+def test_ai_usage_with_requests_with_and_without_a_cost(tmp_path, problems, monkeypatch):
+    environment = ai_environment(tmp_path, problems, monkeypatch, AiSettings())
+    environment.ai_store.record_call(ai_call(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, None))
+    environment.ai_store.record_call(
+        ai_call(Provider.OPENROUTER, "vendor/model", AiTask.CHECK, 0.00003)
+    )
+    document = ai_document("usage", "--days", "30")
+    assert_valid("ai-usage", document)
+    assert [row["cost_usd"] for row in document["rows"]] == [None, 0.00003]
+
+
+def test_ai_usage_rejects_an_undocumented_field(tmp_path, problems, monkeypatch):
+    environment = ai_environment(tmp_path, problems, monkeypatch, AiSettings())
+    environment.ai_store.record_call(ai_call(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, 0.1))
+    document = ai_document("usage")
+    for path in ((), ("rows", 0), ("total",)):
+        assert_rejects_extra_field("ai-usage", document, path)
 
 
 # cstudy export (the file)

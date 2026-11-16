@@ -36,12 +36,12 @@ DOCUMENTS: dict[str, tuple[str, ...]] = {
     "submit": ("submit",),
     "stats": ("stats",),
     "doctor": ("doctor",),
+    "ai status": ("ai-status",),
+    "ai usage": ("ai-usage",),
     EXPORT: ("export",),
 }
 """The command, or `cstudy export` for the file it writes, and the schemas of its documents."""
 PLANNED: dict[str, tuple[str, ...]] = {
-    "ai status": ("ai-status",),
-    "ai usage": ("ai-usage",),
     "ai review": ("ai-review", "ai-review-list"),
 }
 """Documents that docs/specs/ai.md defines before their commands exist, with their schemas."""

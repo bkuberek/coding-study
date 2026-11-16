@@ -93,10 +93,31 @@
   },
   "cstudy ai": {
     "subcommands": [
-      "key"
+      "consent",
+      "key",
+      "status",
+      "usage"
     ]
   },
   "cstudy ai --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai consent": {
+    "subcommands": []
+  },
+  "cstudy ai consent --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai consent --purpose": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy ai consent --revoke": {
     "choices": [],
     "deprecated": false,
     "takes_value": false
@@ -110,6 +131,37 @@
     "takes_value": false
   },
   "cstudy ai key --remove": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai status": {
+    "subcommands": []
+  },
+  "cstudy ai status --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai status --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai usage": {
+    "subcommands": []
+  },
+  "cstudy ai usage --days": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy ai usage --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai usage --json": {
     "choices": [],
     "deprecated": false,
     "takes_value": false
