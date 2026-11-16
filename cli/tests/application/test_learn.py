@@ -10,17 +10,23 @@ from coding_study.application.environment import Environment
 from coding_study.application.learn import (
     LearnListing,
     ListingFilter,
+    ProfiledListing,
     guide_page,
+    label_scope,
     learn_listing,
     mark_read,
     narrow_listing,
     path_view,
+    profiled_listing,
 )
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.concept_guides import GuideLevel, GuideStatus
-from coding_study.domain.config import Config
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.errors import UnknownGuideError
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import Language
+from coding_study.domain.profile import widening_from
+from coding_study.domain.taxonomy import DOMAINS, PROFILE_JOB_ROLES
 from tests.fakes import NOW, FakeClock, make_environment
 from tests.guide_builders import write_guide, write_hashing, write_path
 
@@ -285,3 +291,175 @@ def test_a_failed_problem_reads_as_attempted(environment: Environment):
 def test_an_unknown_path_says_where_the_paths_are(environment: Environment):
     with pytest.raises(UnknownGuideError, match='unknown path "zzz"; cstudy learn lists the paths'):
         path_view(environment, "zzz")
+
+
+# The learner profile, `--domain`, `--role` and `--widen` (docs/specs/cli.md#matching)
+
+
+NO_FILTER = ListingFilter()
+
+
+@pytest.fixture
+def labeled(environment: Environment, content_root: Path) -> Environment:
+    """Hashing's guides are algorithms for any engineer; four more, and paths of their own."""
+    write_guide(content_root, "tls", "TLS", domains=("security",), job_roles=("security-engineer",))
+    write_guide(content_root, "etl", "ETL", domains=("data",), job_roles=("data-engineer",))
+    write_guide(content_root, "basics", "Basics", domains=("algorithms",), job_roles=("general",))
+    write_guide(content_root, "apis", "APIs", domains=("backend", "data"), job_roles=("backend",))
+    write_path(content_root, "secure", ["guide: tls", "guide: etl"], title="Secure")
+    write_path(content_root, "pipelines", ["guide: etl"], title="Pipelines")
+    write_path(content_root, "problem-steps", ["problem: two-sum", "problem: gone"], title="Steps")
+    return make_environment(content_root)
+
+
+def profiled(
+    environment: Environment,
+    *,
+    domains: tuple[str, ...] = DOMAINS,
+    roles: tuple[str, ...] = PROFILE_JOB_ROLES,
+    domain: str | None = None,
+    role: str | None = None,
+    widen: tuple[str, ...] = (),
+    wanted: ListingFilter = NO_FILTER,
+) -> ProfiledListing:
+    config = Config(profile=ProfileSettings(job_roles=roles, domains=domains))
+    configured = replace(environment, config=config)
+    scope = label_scope(configured, LabelFilter(domain, role), widening_from(widen))
+    return profiled_listing(learn_listing(configured), wanted, scope)
+
+
+def test_a_default_profile_lists_everything_and_hides_nothing(labeled: Environment):
+    result = profiled(labeled)
+    assert (shown(result.listing), result.narrowed.is_empty) == (
+        shown(learn_listing(labeled)),
+        True,
+    )
+    assert (result.hidden_guides, result.hidden_paths) == (0, 0)
+
+
+def test_a_domain_profile_keeps_the_guides_that_list_one(
+    labeled: Environment,
+):
+    guides, paths = shown(profiled(labeled, domains=("security",)).listing)
+    assert (guides, paths) == (["tls"], ["hashing", "secure"])
+
+
+def test_a_guide_listing_one_of_its_domains_matches(labeled: Environment):
+    guides, _ = shown(profiled(labeled, domains=("backend",)).listing)
+    assert ("apis" in guides, "etl" in guides) == (True, False)
+
+
+def test_a_path_matches_through_any_of_its_steps(labeled: Environment):
+    result = profiled(labeled, domains=("security",))
+    _, paths = shown(result.listing)
+    assert ("secure" in paths, "pipelines" in paths) == (True, False)
+
+
+def test_a_path_matches_through_a_problem_step_and_ignores_a_step_the_catalog_lacks(
+    labeled: Environment,
+):
+    only_data = profiled(labeled, domains=("data",)).listing
+    only_algorithms = profiled(labeled, domains=("algorithms",)).listing
+    assert (
+        "problem-steps" in shown(only_data)[1],
+        "problem-steps" in shown(only_algorithms)[1],
+    ) == (False, True)
+
+
+def test_a_role_profile_keeps_general_and_the_roles_it_names(labeled: Environment):
+    guides, _ = shown(profiled(labeled, roles=("data-engineer",)).listing)
+    assert sorted(guides) == [
+        "a-loose-guide",
+        "basics",
+        "etl",
+        "hash-functions",
+        "hash-maps",
+    ]
+
+
+def test_hidden_counts_are_what_widen_all_would_add_with_the_same_flags(labeled: Environment):
+    result = profiled(labeled, domains=("security",))
+    assert (result.guides.shown, result.guides.total) == (1, 7)
+    assert (result.paths.shown, result.paths.total) == (2, 4)
+    assert (result.hidden_guides, result.hidden_paths) == (6, 2)
+
+
+def test_a_search_narrows_the_counts_the_profile_line_gives(labeled: Environment):
+    result = profiled(labeled, domains=("security",), wanted=ListingFilter(search="t"))
+    everything = profiled(labeled, wanted=ListingFilter(search="t"))
+    assert (result.guides.total, result.paths.total) == (
+        len(everything.listing.guides),
+        len(everything.listing.paths),
+    )
+
+
+def test_the_profile_narrows_by_the_values_it_holds_without_general(labeled: Environment):
+    result = profiled(labeled, domains=("security", "data"), roles=("backend",))
+    assert (result.narrowed.domains, result.narrowed.job_roles, result.narrowed.languages) == (
+        ("security", "data"),
+        ("backend",),
+        None,
+    )
+
+
+def test_an_explicit_domain_replaces_the_profiles_domains(labeled: Environment):
+    result = profiled(labeled, domains=("security",), domain="data")
+    guides, _ = shown(result.listing)
+    assert sorted(guides) == ["apis", "etl"]
+    assert result.narrowed.domains is None
+
+
+def test_an_explicit_domain_leaves_the_profiles_roles_applying(labeled: Environment):
+    result = profiled(labeled, roles=("backend",), domain="data")
+    assert shown(result.listing)[0] == ["apis"]
+    assert result.narrowed.job_roles == ("backend",)
+
+
+def test_an_explicit_role_matches_only_the_guides_that_list_it_not_general(labeled: Environment):
+    guides, _ = shown(profiled(labeled, role="general").listing)
+    assert sorted(guides) == ["a-loose-guide", "basics", "hash-functions", "hash-maps"]
+
+
+def test_an_explicit_value_outside_the_profile_widens_to_it(labeled: Environment):
+    guides, _ = shown(profiled(labeled, roles=("backend",), role="data-engineer").listing)
+    assert guides == ["etl"]
+
+
+def test_widen_domain_drops_only_the_domains_of_the_profile(labeled: Environment):
+    result = profiled(labeled, domains=("security",), roles=("data-engineer",), widen=("domain",))
+    assert sorted(shown(result.listing)[0]) == [
+        "a-loose-guide",
+        "basics",
+        "etl",
+        "hash-functions",
+        "hash-maps",
+    ]
+    assert (result.narrowed.domains, result.narrowed.job_roles) == (None, ("data-engineer",))
+
+
+def test_widen_all_lists_everything_and_hides_nothing(labeled: Environment):
+    result = profiled(labeled, domains=("security",), roles=("backend",), widen=("all",))
+    assert shown(result.listing) == shown(learn_listing(labeled))
+    assert (result.hidden_guides, result.hidden_paths, result.narrowed.is_empty) == (0, 0, True)
+
+
+def test_a_profile_that_narrows_but_hides_nothing_counts_zero(labeled: Environment):
+    every_label = tuple(DOMAINS)
+    result = profiled(labeled, domains=every_label[:-1])
+    assert (result.hidden_guides, result.hidden_paths) == (0, 0)
+    assert result.narrowed.domains == every_label[:-1]
+
+
+def test_the_profile_applies_to_the_listing_and_not_to_a_guide_or_a_path(labeled: Environment):
+    config = Config(profile=ProfileSettings(domains=("security",)))
+    configured = replace(labeled, config=config)
+    assert guide_page(configured, "etl").entry.meta.slug == "etl"
+    assert path_view(configured, "pipelines").path.slug == "pipelines"
+
+
+def test_a_workspaces_languages_do_not_narrow_guides(labeled: Environment):
+    chosen = replace(labeled, workspace_languages=(Language.GO,))
+    scope = label_scope(chosen)
+    assert shown(profiled_listing(learn_listing(chosen), ListingFilter(), scope).listing) == shown(
+        learn_listing(labeled)
+    )

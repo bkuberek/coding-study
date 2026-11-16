@@ -13,23 +13,37 @@ from rich.text import Text
 from coding_study.adapters.environment_factory import load_catalog_environment, load_environment
 from coding_study.application.environment import Environment
 from coding_study.application.learn import (
+    NO_SCOPE,
     GuideEntry,
     GuidePage,
+    LabelScope,
     LearnListing,
     ListingFilter,
     MarkedRead,
     PathView,
+    ProfiledListing,
     guide_page,
+    label_scope,
     learn_listing,
     mark_read,
-    narrow_listing,
     path_view,
+    profiled_listing,
 )
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.concept_guides import GuideLevel, GuideStatus, StepKind, StepProgress
 from coding_study.domain.content_ids import ContentType, content_id
 from coding_study.domain.errors import UsageError
 from coding_study.domain.guide_examples import TAB_ORDER
+from coding_study.domain.labels import LabelFilter
+from coding_study.domain.profile import (
+    WIDEN_ALL,
+    WIDEN_DIMENSIONS,
+    ProfileLineKind,
+    Widening,
+    profile_line,
+    widening_from,
+)
+from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES
 from coding_study.entrypoints.commands.serve import run_server
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
@@ -60,6 +74,12 @@ FILTERS_NARROW_THE_LIST = (
     "--search, --level and --status narrow the list: cstudy learn --search <words>, "
     "without a guide or --path"
 )
+LABELS_APPLY_TO_THE_LIST = (
+    "--domain, --role and --widen apply to the list: cstudy learn --domain <domain>, "
+    "without a guide or --path"
+)
+WIDEN_VALUES = tuple(value for value in (*WIDEN_DIMENSIONS, WIDEN_ALL) if value != "lang")
+"""A guide has no language, so `cstudy learn` widens roles, domains or all of them."""
 LANG_PRINTS = (
     "--lang picks the language of a printed guide's examples: "
     "cstudy learn <guide> --lang <language>"
@@ -101,6 +121,20 @@ def learn(
             "--status", help="List what is read, or not: a path once all its guides are read."
         ),
     ] = None,
+    domain: Annotated[
+        str | None, typer.Option("--domain", help="List the guides and paths on this domain.")
+    ] = None,
+    role: Annotated[
+        str | None, typer.Option("--role", help="List the guides and paths for this job role.")
+    ] = None,
+    widen: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--widen",
+            help="Drop the learner profile's roles or domains for this run: "
+            f"{', '.join(WIDEN_VALUES)}. Repeatable.",
+        ),
+    ] = None,
     open_page: Annotated[
         bool,
         typer.Option("--open", help="Serve the web UI and open the guide or the path there."),
@@ -123,8 +157,13 @@ def learn(
     if guide is None and done:
         raise UsageError(DONE_NEEDS_GUIDE)
     wanted = ListingFilter(search or "", level, status)
-    if wanted.narrows and (guide is not None or path is not None):
-        raise UsageError(FILTERS_NARROW_THE_LIST)
+    labels = _label_filter(domain, role)
+    widening = _widening(widen or [])
+    if guide is not None or path is not None:
+        if wanted.narrows:
+            raise UsageError(FILTERS_NARROW_THE_LIST)
+        if labels.is_set or widen:
+            raise UsageError(LABELS_APPLY_TO_THE_LIST)
     if language is not None:
         _check_language(language, guide is None or done or open_page or as_json)
     if open_page:
@@ -141,7 +180,27 @@ def learn(
     elif guide is not None:
         _print_guide(output, guide_page(environment, guide, language), as_json)
     else:
-        _print_listing(output, environment, learn_listing(environment), as_json, wanted)
+        scope = label_scope(environment, labels, widening)
+        _print_listing(output, environment, learn_listing(environment), as_json, wanted, scope)
+
+
+def _label_filter(domain: str | None, role: str | None) -> LabelFilter:
+    """`--domain` and `--role`, each a value of the closed lists of content.md#labels."""
+    if domain is not None and domain not in DOMAINS:
+        raise UsageError(f'unknown domain "{domain}"; use one of {", ".join(DOMAINS)}')
+    if role is not None and role not in JOB_ROLES:
+        raise UsageError(f'unknown job role "{role}"; use one of {", ".join(JOB_ROLES)}')
+    return LabelFilter(domain, role)
+
+
+def _widening(values: list[str]) -> Widening:
+    """`--widen` values: `role`, `domain` or `all`; `lang` is the list command's."""
+    for value in values:
+        if value not in WIDEN_VALUES:
+            raise UsageError(
+                f'unknown widening "{value}"; cstudy learn takes {", ".join(WIDEN_VALUES)}'
+            )
+    return widening_from(values)
 
 
 def _check_language(language: str, printing_no_guide: bool) -> None:
@@ -174,10 +233,12 @@ def _print_listing(
     whole: LearnListing,
     as_json: bool,
     wanted: ListingFilter = ListingFilter(),  # noqa: B008 - frozen, so one shared default is safe
+    scope: LabelScope = NO_SCOPE,
 ) -> None:
-    listing = narrow_listing(whole, wanted)
+    profiled = profiled_listing(whole, wanted, scope)
+    listing = profiled.listing
     if as_json:
-        typer.echo(json.dumps(listing_document(listing), indent=2))
+        typer.echo(json.dumps(listing_document(listing, profiled), indent=2))
         return
     if not whole.guides and not whole.paths:
         output.print(Text(f"no guides in {environment.content_root}"))
@@ -218,6 +279,11 @@ def _print_listing(
             output.print(_labeled("next", f"cstudy learn --path {unfinished.path.slug}"))
     if listing.guides:
         output.print(Text(WEB_HINT.format(slug="<guide>"), style="dim"))
+    line = profile_line(
+        ProfileLineKind.SHOWS_THEM, (profiled.guides, profiled.paths), profiled.narrowed
+    )
+    if line is not None:
+        output.print(Text(line, style="dim"))
 
 
 def _no_match(noun: str, wanted: ListingFilter) -> str:
@@ -300,8 +366,12 @@ def _labeled(label: str, value: str) -> Text:
     return line
 
 
-def listing_document(listing: LearnListing) -> dict[str, JsonValue]:
-    return {
+def listing_document(
+    listing: LearnListing, profiled: ProfiledListing | None = None
+) -> dict[str, JsonValue]:
+    """`profiled` adds `profile`, which only the command prints; the web API's listing has none
+    yet."""
+    document: dict[str, JsonValue] = {
         "guides": [_guide_fields(entry) for entry in listing.guides],
         "paths": [
             {
@@ -316,6 +386,21 @@ def listing_document(listing: LearnListing) -> dict[str, JsonValue]:
             }
             for view in listing.paths
         ],
+    }
+    if profiled is not None:
+        document["profile"] = profile_document(profiled)
+    return document
+
+
+def profile_document(profiled: ProfiledListing) -> dict[str, JsonValue]:
+    """The profile's values that narrowed the lists, null where one did not, and what it hid
+    (docs/specs/cli.md#explicit-filters-and-widening); a guide has no language."""
+    narrowed = profiled.narrowed
+    return {
+        "languages": None,
+        "job_roles": None if narrowed.job_roles is None else list(narrowed.job_roles),
+        "domains": None if narrowed.domains is None else list(narrowed.domains),
+        "hidden": {"guides": profiled.hidden_guides, "paths": profiled.hidden_paths},
     }
 
 

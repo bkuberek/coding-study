@@ -408,6 +408,11 @@
   "cstudy learn": {
     "subcommands": []
   },
+  "cstudy learn --domain": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy learn --done": {
     "choices": [],
     "deprecated": false,
@@ -447,6 +452,11 @@
     "deprecated": false,
     "takes_value": true
   },
+  "cstudy learn --role": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
   "cstudy learn --search": {
     "choices": [],
     "deprecated": false,
@@ -457,6 +467,11 @@
       "read",
       "not_read"
     ],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy learn --widen": {
+    "choices": [],
     "deprecated": false,
     "takes_value": true
   },

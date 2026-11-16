@@ -18,8 +18,11 @@ from coding_study.domain.concept_guides import (
     StepKind,
     StepProgress,
     by_level,
+    explicit_widening,
+    guide_labels,
     guide_step_progress,
     highest_level_passed,
+    labels_listed,
     matches_search,
     path_level,
     problem_step_progress,
@@ -29,8 +32,19 @@ from coding_study.domain.concept_guides import (
 from coding_study.domain.errors import UnknownGuideError
 from coding_study.domain.guide_examples import PYTHON, LanguageChoice, terminal_text
 from coding_study.domain.guide_markdown import GuideMarkdown, is_svg_file
+from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.problem import ProblemSummary
 from coding_study.domain.problem_sets import target_reached
+from coding_study.domain.profile import (
+    ALL_DIMENSIONS,
+    GUIDE_DIMENSIONS,
+    NO_WIDENING,
+    Counted,
+    NarrowedValues,
+    Profile,
+    Widening,
+    learner_profile,
+)
 from coding_study.domain.scheduling import ProblemProgress
 
 MISSING = "missing"
@@ -51,6 +65,9 @@ class PathView:
     level: GuideLevel | None = None
     """The level the path is for, from its guides' levels (docs/specs/guides.md#path-order);
     None for a path without guides."""
+    step_labels: tuple[Labels, ...] = ()
+    """The labels of its steps, a guide's or a problem's, that the catalog has: a path is listed by
+    the profile, `--domain` and `--role` when one of them is (docs/specs/cli.md#matching)."""
 
     @property
     def done(self) -> int:
@@ -84,6 +101,51 @@ class ListingFilter:
     @property
     def narrows(self) -> bool:
         return bool(search_words(self.search)) or self.level is not None or self.status is not None
+
+
+@dataclass(frozen=True, slots=True)
+class LabelScope:
+    """`--domain`, `--role` and `--widen`, with the learner profile they replace or drop
+    (docs/specs/cli.md#explicit-filters-and-widening)."""
+
+    profile: Profile = field(default_factory=Profile)
+    labels: LabelFilter = field(default_factory=LabelFilter)
+    widening: Widening = NO_WIDENING
+
+    @property
+    def everything(self) -> "LabelScope":
+        """The same flags with the profile dropped: what `--widen all` would list."""
+        return LabelScope(self.profile, self.labels, self.widening.plus(*ALL_DIMENSIONS))
+
+    @property
+    def narrowed(self) -> NarrowedValues:
+        """The profile's values that narrowed this run: `languages` is never one, since a guide
+        teaches in every language."""
+        widening = explicit_widening(self.labels, self.widening)
+        return self.profile.narrowed(GUIDE_DIMENSIONS, widening)
+
+
+NO_SCOPE = LabelScope()
+"""The profile of a workspace that chose nothing, and no flags: nothing narrows."""
+
+
+@dataclass(frozen=True, slots=True)
+class ProfiledListing:
+    """What `cstudy learn` lists, and what the learner profile hid of it."""
+
+    listing: LearnListing
+    narrowed: NarrowedValues
+    guides: Counted
+    paths: Counted
+    """Shown against what `--widen all` would show with the same other flags."""
+
+    @property
+    def hidden_guides(self) -> int:
+        return self.guides.total - self.guides.shown
+
+    @property
+    def hidden_paths(self) -> int:
+        return self.paths.total - self.paths.shown
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,10 +196,39 @@ def learn_listing(environment: Environment) -> LearnListing:
     return LearnListing(guides, paths)
 
 
-def narrow_listing(listing: LearnListing, wanted: ListingFilter) -> LearnListing:
+def label_scope(
+    environment: Environment,
+    labels: LabelFilter = LabelFilter(),  # noqa: B008 - frozen, so one shared default is safe
+    widening: Widening = NO_WIDENING,
+) -> LabelScope:
+    """The scope of a run: the config's roles and domains as the profile, which the flags replace
+    or drop."""
+    profile = learner_profile(environment.config.profile, environment.workspace_languages)
+    return LabelScope(profile, labels, widening)
+
+
+def profiled_listing(
+    listing: LearnListing, wanted: ListingFilter, scope: LabelScope
+) -> ProfiledListing:
+    """The listing `wanted` and `scope` keep, and how many guides and paths the profile hid of
+    those the same flags keep with `--widen all`."""
+    shown = narrow_listing(listing, wanted, scope)
+    whole = narrow_listing(listing, wanted, scope.everything)
+    return ProfiledListing(
+        shown,
+        scope.narrowed,
+        Counted(len(shown.guides), len(whole.guides), "guides"),
+        Counted(len(shown.paths), len(whole.paths), "paths"),
+    )
+
+
+def narrow_listing(
+    listing: LearnListing, wanted: ListingFilter, scope: LabelScope = NO_SCOPE
+) -> LearnListing:
     """The guides and the paths that hold every word of the search in their title, summary or
-    slug, at the level and in the status asked, each list in its order; the Guides page's search
-    and filters keep the same (`tools/web-ui/src/page/guides-model.ts`)."""
+    slug, at the level and in the status asked, and listed by `scope`'s profile and `--domain` and
+    `--role`, each list in its order; the Guides page's search and filters keep the same
+    (`tools/web-ui/src/page/guides-model.ts`)."""
     words = search_words(wanted.search)
     read = {entry.meta.slug for entry in listing.guides if entry.read_at is not None}
 
@@ -148,6 +239,7 @@ def narrow_listing(listing: LearnListing, wanted: ListingFilter) -> LearnListing
             matches_search(words, meta.title, meta.summary, meta.slug)
             and wanted.level in (None, meta.level)
             and wanted.status in (None, status)
+            and labels_listed((guide_labels(meta),), scope.profile, scope.labels, scope.widening)
         )
 
     def path_kept(view: PathView) -> bool:
@@ -156,6 +248,7 @@ def narrow_listing(listing: LearnListing, wanted: ListingFilter) -> LearnListing
             matches_search(words, path.title, path.summary, path.slug)
             and wanted.level in (None, view.level)
             and wanted.status in (None, _path_status(path, read))
+            and labels_listed(view.step_labels, scope.profile, scope.labels, scope.widening)
         )
 
     return LearnListing(
@@ -241,7 +334,13 @@ def _require(slug: str, known: tuple[str, ...], noun: str) -> None:
 def _path_view(
     progress: "_Progress", path: LearningPath, levels: Mapping[str, GuideLevel]
 ) -> PathView:
-    return PathView(path, tuple(progress.of(step) for step in path.steps), path_level(path, levels))
+    labels = (progress.labels_of(step) for step in path.steps)
+    return PathView(
+        path,
+        tuple(progress.of(step) for step in path.steps),
+        path_level(path, levels),
+        tuple(entry for entry in labels if entry is not None),
+    )
 
 
 class _Progress:
@@ -261,6 +360,14 @@ class _Progress:
         if summary is None:
             return StepProgress(step, step.slug, done=False, status=MISSING)
         return problem_step_progress(step, self._facts(summary))
+
+    def labels_of(self, step: PathStep) -> Labels | None:
+        """The labels of a step's guide or problem; None when the catalog does not have it."""
+        if step.kind is StepKind.GUIDE:
+            catalog = self._environment.guides
+            return guide_labels(catalog.load(step.slug)) if step.slug in catalog.slugs() else None
+        summary = self._summary(step.slug)
+        return None if summary is None else summary.meta.labels
 
     def _facts(self, summary: ProblemSummary) -> ProblemFacts:
         meta = summary.meta

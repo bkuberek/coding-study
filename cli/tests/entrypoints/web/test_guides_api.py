@@ -65,7 +65,9 @@ def error(response) -> tuple[int, str, str]:
 
 def test_the_list_is_the_document_of_cstudy_learn(client, monkeypatch, environment):
     mark(client, "hash-functions")
-    assert client.get(GUIDES).json() == cli_document(monkeypatch, environment)
+    document = cli_document(monkeypatch, environment)
+    document.pop("profile")  # the page applies the profile itself, from the whole listing
+    assert client.get(GUIDES).json() == document
 
 
 def test_a_guide_is_the_document_of_cstudy_learn_with_its_html(client, monkeypatch, environment):

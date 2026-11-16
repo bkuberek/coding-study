@@ -2,6 +2,7 @@
 
 import io
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,14 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from coding_study.application.environment import Environment
-from coding_study.application.learn import GuideEntry, LearnListing, PathView, guide_page
+from coding_study.application.learn import (
+    GuideEntry,
+    LearnListing,
+    PathView,
+    guide_page,
+    label_scope,
+    learn_listing,
+)
 from coding_study.domain.concept_guides import (
     GuideLevel,
     GuideMeta,
@@ -17,13 +25,14 @@ from coding_study.domain.concept_guides import (
     PathStep,
     StepProgress,
 )
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.content_ids import ContentType
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import learn
 from coding_study.entrypoints.shared import ExitCode
 from tests.content_id_checks import content_ids_in
 from tests.fakes import NOW, make_environment
-from tests.guide_builders import write_guide, write_hashing
+from tests.guide_builders import write_guide, write_hashing, write_path
 
 runner = CliRunner()
 HINT = "Read with rendered diagrams in the web UI: cstudy learn"
@@ -431,3 +440,162 @@ def test_the_list_with_long_slugs_keeps_its_columns_aligned(environment: Environ
     assert {row.index("core") for row in guide_rows} == {lines[1].index("LEVEL")}
     assert {row[lines[1].index("LEVEL")] for row in path_rows} == {learn.NO_LEVEL}
     assert {row.index("0 of 0") for row in path_rows} == {len(long_guide) + 2 + learn.LEVEL_WIDTH}
+
+
+# The learner profile, `--domain`, `--role` and `--widen` (docs/specs/cli.md#the-profile-line)
+
+PROFILE_LINE = (
+    "filtered by your profile: 1 of 4 guides, 2 of 3 paths · domains security · "
+    "--widen all shows them all"
+)
+
+
+@pytest.fixture
+def narrowed(environment: Environment, content_root: Path, monkeypatch: pytest.MonkeyPatch):
+    """A security profile over hashing's two algorithms guides, one guide for security and one for
+    data, each in a path of its own."""
+    write_guide(content_root, "tls", "TLS", domains=("security",), job_roles=("security-engineer",))
+    write_guide(content_root, "etl", "ETL", domains=("data",), job_roles=("data-engineer",))
+    write_path(content_root, "secure", ["guide: tls"], title="Secure")
+    write_path(content_root, "pipelines", ["guide: etl"], title="Pipelines")
+    profile = ProfileSettings(domains=("security",))
+    profiled = replace(make_environment(content_root), config=Config(profile=profile))
+    monkeypatch.setattr(learn, "load_catalog_environment", lambda *_: profiled)
+    return profiled
+
+
+def listed(output: str) -> set[str]:
+    rows = (line.split() for line in output.splitlines())
+    return {row[0] for row in rows if row and row[0] not in {"GUIDES", "PATHS", "SLUG", "next"}}
+
+
+def test_the_profile_narrows_the_list_and_the_line_ends_it_after_the_web_hint(narrowed):
+    lines = invoke().output.splitlines()
+    assert (lines[-2], lines[-1]) == (f"{HINT} <guide> --open", PROFILE_LINE)
+    assert {"tls", "secure", "etl", "pipelines"} & listed(invoke().output) == {"tls", "secure"}
+
+
+def test_widen_all_lists_everything_and_prints_no_line(narrowed):
+    output = invoke("--widen", "all").output
+    assert {"tls", "secure", "etl", "pipelines"} <= listed(output)
+    assert "filtered by your profile" not in output
+
+
+def test_widen_domain_drops_the_domains_and_the_line(narrowed):
+    output = invoke("--widen", "domain").output
+    assert ({"etl", "pipelines"} <= listed(output), "filtered by your profile" in output) == (
+        True,
+        False,
+    )
+
+
+def test_widen_repeats(narrowed):
+    assert "filtered by your profile" not in invoke("--widen", "role", "--widen", "domain").output
+
+
+def test_an_explicit_domain_replaces_the_profile_and_names_no_dimension(narrowed):
+    output = invoke("--domain", "data").output
+    assert ({"etl", "pipelines"} <= listed(output), {"tls", "secure"} & listed(output)) == (
+        True,
+        set(),
+    )
+    assert "filtered by your profile" not in output
+
+
+def test_an_explicit_role_keeps_the_profile_line_for_the_domains(narrowed):
+    lines = invoke("--role", "data-engineer").output.splitlines()
+    assert lines[-1].startswith("filtered by your profile: ")
+    assert "domains security" in lines[-1]
+    assert "roles" not in lines[-1]
+
+
+def test_a_profile_that_hides_nothing_prints_no_line(
+    environment: Environment, monkeypatch: pytest.MonkeyPatch
+):
+    profile = ProfileSettings(domains=("algorithms",))
+    profiled = replace(environment, config=Config(profile=profile))
+    monkeypatch.setattr(learn, "load_catalog_environment", lambda *_: profiled)
+    assert "filtered by your profile" not in invoke().output
+
+
+def test_the_profile_line_counts_what_the_search_leaves(narrowed):
+    line = invoke("--search", "etl").output.splitlines()[-1]
+    assert line == (
+        "filtered by your profile: 0 of 1 guides, 0 of 0 paths · domains security · "
+        "--widen all shows them all"
+    )
+
+
+def test_json_carries_what_the_profile_hid_and_prints_no_line(narrowed):
+    result = invoke("--json")
+    document = json.loads(result.output)
+    assert document["profile"] == {
+        "languages": None,
+        "job_roles": None,
+        "domains": ["security"],
+        "hidden": {"guides": 3, "paths": 1},
+    }
+    assert {guide["slug"] for guide in document["guides"]} == {"tls"}
+
+
+def test_json_widened_has_null_values_and_zero_hidden(narrowed):
+    document = json.loads(invoke("--json", "--widen", "all").output)
+    assert document["profile"] == {
+        "languages": None,
+        "job_roles": None,
+        "domains": None,
+        "hidden": {"guides": 0, "paths": 0},
+    }
+
+
+def test_a_default_profile_gives_the_listing_it_always_gave(environment: Environment):
+    document = json.loads(invoke("--json").output)
+    assert document["profile"] == {
+        "languages": None,
+        "job_roles": None,
+        "domains": None,
+        "hidden": {"guides": 0, "paths": 0},
+    }
+    assert [guide["slug"] for guide in document["guides"]] == ["hash-functions", "hash-maps"]
+
+
+def test_the_line_is_dim_on_a_terminal_and_plain_text_otherwise(narrowed):
+    scope = label_scope(narrowed)
+    plain, styled = io.StringIO(), io.StringIO()
+    whole = learn_listing(narrowed)
+    learn._print_listing(Console(file=plain, width=200), narrowed, whole, False, scope=scope)
+    terminal = Console(file=styled, force_terminal=True, width=200, color_system="standard")
+    learn._print_listing(terminal, narrowed, whole, False, scope=scope)
+    assert plain.getvalue().splitlines()[-1] == PROFILE_LINE
+    assert f"\x1b[2m{PROFILE_LINE}\x1b[0m" in styled.getvalue()
+
+
+def test_an_unknown_domain_or_role_is_a_usage_error(narrowed):
+    domain = invoke("--domain", "fintek")
+    role = invoke("--role", "wizard")
+    assert (domain.exit_code, role.exit_code) == (ExitCode.USAGE_ERROR, ExitCode.USAGE_ERROR)
+    assert 'unknown domain "fintek"; use one of algorithms, backend' in domain.output
+    assert 'unknown job role "wizard"; use one of general, backend' in role.output
+
+
+@pytest.mark.parametrize("value", ["lang", "everything"])
+def test_a_widening_a_guide_cannot_take_is_a_usage_error(narrowed, value: str):
+    result = invoke("--widen", value)
+    assert result.exit_code == ExitCode.USAGE_ERROR
+    assert f'unknown widening "{value}"; cstudy learn takes role, domain, all' in result.output
+
+
+@pytest.mark.parametrize("flags", [("--domain", "data"), ("--role", "backend"), ("--widen", "all")])
+@pytest.mark.parametrize("target", [("hash-maps",), ("--path", "hashing")])
+def test_the_profile_flags_apply_to_the_list_not_to_a_guide_or_a_path(
+    narrowed, flags: tuple[str, ...], target: tuple[str, ...]
+):
+    result = invoke(*target, *flags)
+    assert result.exit_code == ExitCode.USAGE_ERROR
+    assert "apply to the list" in result.output
+
+
+def test_a_guide_and_a_path_ignore_the_profile(narrowed):
+    assert invoke("etl").exit_code == ExitCode.SUCCESS
+    assert "filtered by your profile" not in invoke("etl").output
+    assert invoke("--path", "pipelines").exit_code == ExitCode.SUCCESS

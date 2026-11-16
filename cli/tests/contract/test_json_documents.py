@@ -117,7 +117,7 @@ from tests.fakes import (
     repository_root,
     two_sum,
 )
-from tests.guide_builders import write_hashing, write_path
+from tests.guide_builders import write_guide, write_hashing, write_path
 from tests.helpers import (
     CONCURRENCY_PROBLEMS,
     FIRST_CATALOG,
@@ -1139,6 +1139,20 @@ def test_the_guides_and_the_paths(guides):
     assert_ids(document, ContentType.GUIDE, ContentType.PATH)
 
 
+def test_the_guides_and_the_paths_with_a_narrowed_profile(guides, monkeypatch):
+    write_guide(guides.root, "tls", "TLS", domains=("security",), job_roles=("backend",))
+    narrowed = replace(guides, config=Config(profile=ProfileSettings(domains=("data",))))
+    install(monkeypatch, narrowed)
+    document = command_document("learn")
+    assert_valid("learn-list", document)
+    assert document["profile"] == {
+        "languages": None,
+        "job_roles": None,
+        "domains": ["data"],
+        "hidden": {"guides": 3, "paths": 2},
+    }
+
+
 def test_the_guides_and_the_paths_after_a_read(guides):
     command_document("learn", "hash-functions", "--done")
     document = command_document("learn")
@@ -1221,7 +1235,7 @@ def test_a_path_with_a_step_the_catalog_lacks(guides):
 
 def test_learn_rejects_an_undocumented_field(guides):
     listing = command_document("learn")
-    for path in ((), ("guides", 0), ("paths", 0)):
+    for path in ((), ("guides", 0), ("paths", 0), ("profile",), ("profile", "hidden")):
         assert_rejects_extra_field("learn-list", listing, path)
     assert_rejects_extra_field("learn-guide", command_document("learn", "hash-maps"), ())
     assert_rejects_extra_field("learn-done", command_document("learn", "hash-maps", "--done"), ())

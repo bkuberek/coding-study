@@ -1,13 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "coding-study learn list document",
-  "description": "`cstudy learn --json`: the guides and the learning paths. Spec: docs/specs/cli.md#cstudy-learn",
+  "description": "`cstudy learn --json`: the guides and the learning paths, and what the learner profile hid. Spec: docs/specs/cli.md#cstudy-learn",
   "type": "object",
   "additionalProperties": false,
-  "required": ["guides", "paths"],
+  "required": ["guides", "paths", "profile"],
   "properties": {
     "guides": { "type": "array", "items": { "$ref": "#/$defs/guide" } },
-    "paths": { "type": "array", "items": { "$ref": "#/$defs/path" } }
+    "paths": { "type": "array", "items": { "$ref": "#/$defs/path" } },
+    "profile": { "$ref": "#/$defs/profile" }
   },
   "$defs": {
     "count": { "type": "integer", "minimum": 0 },
@@ -15,6 +16,27 @@
     "label": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
     "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" },
     "level": { "enum": ["intro", "core", "advanced"] },
+    "profile": {
+      "description": "The learner profile's part in this listing. Spec: docs/specs/cli.md#explicit-filters-and-widening",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languages", "job_roles", "domains", "hidden"],
+      "properties": {
+        "languages": { "description": "Always null: a guide teaches in every language", "type": "null" },
+        "job_roles": { "description": "The profile's roles that narrowed the lists, never `general`; null when they narrowed nothing (every role, `--role` or `--widen` replaced them)", "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/label" } }, { "type": "null" }] },
+        "domains": { "description": "The profile's domains that narrowed the lists; null when they narrowed nothing", "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/label" } }, { "type": "null" }] },
+        "hidden": {
+          "description": "What the profile hid: the guides and paths `--widen all` would add with the same other flags, each 0 when it hid none",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["guides", "paths"],
+          "properties": {
+            "guides": { "$ref": "#/$defs/count" },
+            "paths": { "$ref": "#/$defs/count" }
+          }
+        }
+      }
+    },
     "guide": {
       "type": "object",
       "additionalProperties": false,

@@ -13,6 +13,14 @@ from enum import StrEnum
 from fractions import Fraction
 
 from coding_study.domain.attempts import Attempt, AttemptStatus
+from coding_study.domain.labels import LabelFilter, Labels
+from coding_study.domain.profile import (
+    GUIDE_DIMENSIONS,
+    NO_WIDENING,
+    Dimension,
+    Profile,
+    Widening,
+)
 from coding_study.domain.scheduling import ProblemStatus
 
 GUIDES_DIRECTORY = "guides"
@@ -157,6 +165,43 @@ def by_level(
         return (level is None, 0 if level is None else LEVEL_RANKS[level], not ranks, mean)
 
     return tuple(sorted(paths, key=rank))
+
+
+def guide_labels(meta: GuideMeta) -> Labels:
+    """What a guide says it is about and who it is for, as the profile reads an entry."""
+    return Labels(domains=meta.domains, job_roles=meta.job_roles)
+
+
+def explicit_widening(explicit: LabelFilter, widening: Widening = NO_WIDENING) -> Widening:
+    """`--widen`, plus the dimension of each explicit `--domain` or `--role`, which replaces the
+    profile there (docs/specs/cli.md#explicit-filters-and-widening)."""
+    dimensions = {
+        Dimension.DOMAINS: explicit.domain is not None,
+        Dimension.JOB_ROLES: explicit.role is not None,
+    }
+    return widening.plus(*(dimension for dimension, given in dimensions.items() if given))
+
+
+def labels_listed(
+    labels: Iterable[Labels],
+    profile: Profile,
+    explicit: LabelFilter = LabelFilter(),  # noqa: B008 - frozen, so one shared default is safe
+    widening: Widening = NO_WIDENING,
+) -> bool:
+    """Whether a guide, with one `Labels`, or a path, with those of its steps, is listed: an
+    explicit `--domain` or `--role` matches by what the entry lists, and the profile's roles and
+    domains, unless one of those flags or `--widen` replaced them, by the rule of
+    docs/specs/cli.md#matching. A path matches when one of its steps does; a guide has no
+    language, so the profile's languages never apply. With nothing to apply, everything is listed,
+    a path without steps included."""
+    applied = explicit_widening(explicit, widening)
+    if not explicit.is_set and not profile.active(GUIDE_DIMENSIONS, applied):
+        return True
+    return any(
+        explicit.matches(entry)
+        and profile.matches(entry, applies=GUIDE_DIMENSIONS, widening=applied)
+        for entry in labels
+    )
 
 
 def search_words(text: str) -> tuple[str, ...]:

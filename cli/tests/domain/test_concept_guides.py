@@ -6,19 +6,24 @@ import pytest
 from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus
 from coding_study.domain.concept_guides import (
     GuideLevel,
+    GuideMeta,
     LearningPath,
     PathStep,
     ProblemFacts,
     StepKind,
     by_level,
+    guide_labels,
     guide_step_progress,
     highest_level_passed,
+    labels_listed,
     matches_search,
     path_level,
     problem_step_progress,
     search_words,
     unknown_slug_message,
 )
+from coding_study.domain.labels import LabelFilter, Labels
+from coding_study.domain.profile import Profile, widening_from
 from coding_study.domain.scheduling import ProblemStatus
 
 STARTED = datetime(2026, 11, 11, 9, tzinfo=UTC)
@@ -235,3 +240,73 @@ def test_a_search_finds_every_word_in_any_field_in_any_case():
         matches_search(words, "Hash functions", "A summary.", "hash-functions"),
         matches_search((), "Anything"),
     ] == [("hash", "maps"), True, True, False, True]
+
+
+# The learner profile over guides and paths (docs/specs/cli.md#matching)
+
+SECURITY = Profile(domains=("security",))
+BACKEND = Profile(job_roles=("backend",))
+TLS = Labels(domains=("security",), job_roles=("security-engineer",))
+ANY_ENGINEER = Labels(domains=("algorithms",), job_roles=("general",))
+
+
+def test_a_guides_labels_are_its_domains_and_job_roles():
+    meta = GuideMeta("tls", "TLS", "Summary.", INTRO, ("security",), ("security-engineer",))
+    assert guide_labels(meta) == TLS
+
+
+def test_a_default_profile_lists_every_entry_even_a_path_without_steps():
+    entries = ((), (TLS,), (Labels(),))
+    assert [labels_listed(labels, Profile()) for labels in entries] == [True] * 3
+
+
+def test_a_profiles_domains_keep_an_entry_that_lists_one_or_lists_none():
+    assert [
+        labels_listed((TLS,), SECURITY),
+        labels_listed((ANY_ENGINEER,), SECURITY),
+        labels_listed((Labels(),), SECURITY),
+    ] == [True, False, True]
+
+
+def test_a_role_profile_always_keeps_general():
+    assert [
+        labels_listed((ANY_ENGINEER,), BACKEND),
+        labels_listed((TLS,), BACKEND),
+        labels_listed((Labels(domains=("backend",), job_roles=("backend", "platform")),), BACKEND),
+    ] == [True, False, True]
+
+
+def test_a_path_matches_through_any_of_its_steps():
+    assert [
+        labels_listed((ANY_ENGINEER, TLS), SECURITY),
+        labels_listed((ANY_ENGINEER, ANY_ENGINEER), SECURITY),
+        labels_listed((), SECURITY),
+    ] == [True, False, False]
+
+
+def test_an_explicit_value_replaces_the_profile_in_its_dimension_and_not_general():
+    assert [
+        labels_listed((ANY_ENGINEER,), BACKEND, LabelFilter(role="backend")),
+        labels_listed((ANY_ENGINEER,), BACKEND, LabelFilter(role="general")),
+        labels_listed((TLS,), SECURITY, LabelFilter(domain="algorithms")),
+        labels_listed((ANY_ENGINEER,), SECURITY, LabelFilter(domain="algorithms")),
+        labels_listed((Labels(),), SECURITY, LabelFilter(domain="algorithms")),
+    ] == [False, True, False, True, False]
+
+
+def test_an_explicit_value_leaves_the_other_dimension_to_the_profile():
+    profile = Profile(domains=("security",), job_roles=("backend",))
+    assert [
+        labels_listed((TLS,), profile, LabelFilter(domain="security")),
+        labels_listed((TLS,), profile, LabelFilter(role="security-engineer")),
+        labels_listed((ANY_ENGINEER,), profile, LabelFilter(role="general")),
+    ] == [False, True, False]
+
+
+def test_widening_drops_the_profile_in_that_dimension_only():
+    profile = Profile(domains=("security",), job_roles=("backend",))
+    assert [
+        labels_listed((ANY_ENGINEER,), profile, widening=widening_from(["domain"])),
+        labels_listed((TLS,), profile, widening=widening_from(["domain"])),
+        labels_listed((TLS,), profile, widening=widening_from(["all"])),
+    ] == [True, False, True]
