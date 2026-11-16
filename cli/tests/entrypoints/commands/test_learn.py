@@ -71,8 +71,8 @@ def test_the_list_as_json_has_no_hint(environment: Environment):
             "title": "Hash maps",
             "summary": "A short summary.",
             "level": "intro",
-            "domains": [],
-            "job_roles": [],
+            "domains": ["algorithms"],
+            "job_roles": ["general"],
             "prerequisites": ["hash-functions"],
             "related": [],
             "problems": ["two-sum"],
@@ -229,9 +229,9 @@ def test_the_labels_of_a_guide_are_in_the_list_and_the_guide_as_json(
     ] * 2
 
 
-def test_a_guide_without_labels_has_empty_lists_in_the_json(environment: Environment):
+def test_a_guide_carries_its_labels_in_the_json(environment: Environment):
     document = json.loads(invoke("hash-maps", "--json").output)
-    assert (document["domains"], document["job_roles"]) == ([], [])
+    assert (document["domains"], document["job_roles"]) == (["algorithms"], ["general"])
 
 
 def test_done_marks_the_guide_read_once(environment: Environment):

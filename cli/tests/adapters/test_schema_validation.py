@@ -25,6 +25,14 @@ from tests.helpers import (
 )
 
 SOURCE = "problems/two-sum/meta.yaml"
+GUIDE_SOURCE = "guides/hash-maps/meta.yaml"
+GUIDE_META = {
+    "title": "Hash maps",
+    "summary": "Lookups in constant time on average.",
+    "level": "intro",
+    "domains": ["algorithms"],
+    "job_roles": ["general"],
+}
 
 type Mutation = Callable[[dict[str, Any]], None]
 
@@ -579,3 +587,18 @@ def test_study_guides_are_relative_to_the_study_guides_root(guide):
     meta = url_shortener()
     meta["references"]["study_guides"] = [guide]
     assert rubric_issues(meta) == []
+
+
+def validator_for_guide_file() -> SchemaValidator:
+    return SchemaValidator.from_file(SCHEMAS_DIRECTORY / "guide.schema.json")
+
+
+def test_a_labeled_guide_meta_is_valid():
+    assert validator_for_guide_file().violations(dict(GUIDE_META), GUIDE_SOURCE) == []
+
+
+@pytest.mark.parametrize("label", ["domains", "job_roles"])
+def test_a_guide_meta_without_a_label_list_fails(label: str):
+    meta = {key: value for key, value in GUIDE_META.items() if key != label}
+    issues = validator_for_guide_file().violations(meta, GUIDE_SOURCE)
+    assert [str(issue) for issue in issues] == [f"{GUIDE_SOURCE}: '{label}' is a required property"]

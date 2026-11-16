@@ -26,6 +26,8 @@ def test_a_guide_loads_its_meta_with_its_folder_as_slug(content_root: Path):
         title="Hash maps",
         summary="A short summary.",
         level=GuideLevel.INTRO,
+        domains=("algorithms",),
+        job_roles=("general",),
         prerequisites=("hash-functions",),
         problems=("two-sum",),
     )
@@ -43,19 +45,27 @@ def test_a_guide_loads_its_domains_and_job_roles(content_root: Path):
     assert (meta.domains, meta.job_roles) == (("algorithms", "backend"), ("general",))
 
 
-def test_a_guide_without_labels_has_none_yet(content_root: Path):
-    write_guide(content_root, "hash-maps", "Hash maps")
-    meta = FsGuideCatalog(content_root).load("hash-maps")
-    assert (meta.domains, meta.job_roles) == ((), ())
+@pytest.mark.parametrize(
+    ("domains", "job_roles", "missing"),
+    [((), ("general",), "domains"), (("algorithms",), (), "job_roles")],
+)
+def test_a_guide_without_a_label_list_is_a_content_error(
+    content_root: Path, domains: tuple[str, ...], job_roles: tuple[str, ...], missing: str
+):
+    write_guide(content_root, "hash-maps", "Hash maps", domains=domains, job_roles=job_roles)
+    with pytest.raises(ContentError) as error:
+        FsGuideCatalog(content_root).load("hash-maps")
+    assert str(error.value).startswith("guides/hash-maps/meta.yaml: ")
+    assert f"'{missing}' is a required property" in str(error.value)
 
 
 @pytest.mark.parametrize(
     ("domains", "job_roles", "location"),
     [
-        (("physics",), (), "domains[0]"),
-        (("algorithms", "algorithms"), (), "domains"),
-        ((), ("wizard",), "job_roles[0]"),
-        ((), ("backend", "backend"), "job_roles"),
+        (("physics",), ("general",), "domains[0]"),
+        (("algorithms", "algorithms"), ("general",), "domains"),
+        (("algorithms",), ("wizard",), "job_roles[0]"),
+        (("algorithms",), ("backend", "backend"), "job_roles"),
     ],
 )
 def test_a_label_outside_its_list_or_listed_twice_is_a_content_error(

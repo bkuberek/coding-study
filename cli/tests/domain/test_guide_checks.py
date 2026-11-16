@@ -22,11 +22,18 @@ META = GuideMeta(
     title="Hash maps",
     summary="Lookups in constant time on average.",
     level=GuideLevel.INTRO,
+    domains=("algorithms",),
+    job_roles=("general",),
     prerequisites=("hash-functions",),
     problems=("two-sum",),
 )
 FUNCTIONS = GuideMeta(
-    slug="hash-functions", title="Hash functions", summary="s", level=GuideLevel.INTRO
+    slug="hash-functions",
+    title="Hash functions",
+    summary="s",
+    level=GuideLevel.INTRO,
+    domains=("algorithms",),
+    job_roles=("general",),
 )
 CATALOG = CatalogFacts(
     guides={"hash-maps": META, "hash-functions": FUNCTIONS},
