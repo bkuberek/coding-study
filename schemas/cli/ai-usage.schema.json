@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study AI usage document",
+  "description": "`cstudy ai usage --json`: the AI requests of this workspace per local day, provider, model and purpose. Preview: it may change in a minor release. Spec: docs/specs/cli.md#cstudy-ai-usage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["days", "from", "to", "cap", "rows", "total"],
+  "properties": {
+    "days": { "description": "`--days`", "type": "integer", "minimum": 1, "maximum": 366 },
+    "from": { "description": "The first day covered", "$ref": "#/$defs/day" },
+    "to": { "description": "The last day covered: today", "$ref": "#/$defs/day" },
+    "cap": { "description": "`ai.daily_token_cap`", "type": "integer", "minimum": 1 },
+    "rows": {
+      "description": "One row per day, provider, model and purpose with a request, oldest first",
+      "type": "array",
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "total": { "$ref": "#/$defs/counters" }
+  },
+  "$defs": {
+    "day": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "day",
+        "provider",
+        "model",
+        "purpose",
+        "requests",
+        "failed",
+        "input_tokens",
+        "output_tokens",
+        "counted_tokens",
+        "cost_usd",
+        "requests_without_cost"
+      ],
+      "properties": {
+        "day": { "$ref": "#/$defs/day" },
+        "provider": { "enum": ["anthropic", "google", "openai", "openrouter"] },
+        "model": { "description": "The provider's model id", "type": "string", "minLength": 1 },
+        "purpose": { "enum": ["review", "check"] },
+        "requests": { "$ref": "#/$defs/count" },
+        "failed": { "description": "Requests that failed or were interrupted", "$ref": "#/$defs/count" },
+        "input_tokens": { "description": "Input tokens the provider reported", "$ref": "#/$defs/count" },
+        "output_tokens": { "description": "Output tokens the provider reported, reasoning included", "$ref": "#/$defs/count" },
+        "counted_tokens": { "description": "What the daily cap counts: the reported tokens, else each request's estimate", "$ref": "#/$defs/count" },
+        "cost_usd": { "description": "The sum of the costs the provider reported, in US dollars; null when it reported none", "type": ["number", "null"], "minimum": 0 },
+        "requests_without_cost": { "$ref": "#/$defs/count" }
+      }
+    },
+    "counters": {
+      "description": "The rows added up",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests", "failed", "input_tokens", "output_tokens", "counted_tokens", "cost_usd", "requests_without_cost"],
+      "properties": {
+        "requests": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "input_tokens": { "$ref": "#/$defs/count" },
+        "output_tokens": { "$ref": "#/$defs/count" },
+        "counted_tokens": { "$ref": "#/$defs/count" },
+        "cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "requests_without_cost": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

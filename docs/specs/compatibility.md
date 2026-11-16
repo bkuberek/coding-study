@@ -20,14 +20,14 @@ The promise starts at 1.0.0. Before it, any release may change any surface.
 | `--json` documents | Public, additive only | Fields are never removed, renamed or retyped, and each document has a published JSON Schema | `schemas/cli/<document>.schema.json` ([JSON documents](#json-documents)) | `cli/tests/contract/test_json_documents.py`, `test_json_coverage.py` |
 | `--events` stream | Public, versioned | `version` 1 changes only with an incompatible change, and readers ignore unknown event types and fields | `schemas/events.schema.json` (`cstudy test`, `cstudy submit`) and `schemas/dev-events.schema.json` (`cstudy dev`), each `version` 1 | The event tests, such as `cli/tests/entrypoints/commands/test_events.py` and `test_dev_events.py`, and the version in `test_snapshots.py` |
 | Workspace layout outside `.cs/` | Public | A 1.0 workspace works with every 1.x. A layout change bumps the marker's `schema` and `cstudy doctor --fix` migrates it; an older cstudy refuses a newer schema | [installation-and-workspaces](installation-and-workspaces.md#layout); the marker in `cli/tests/contract/snapshots/marker.json` | `test_snapshots.py` |
-| `progress.db` | Public in behavior | Every 1.x migrates any earlier 1.x database forward, automatically, after a backup. No downgrade. The tables are not an API for other programs, except the assistance and AI review records, which are public records once they exist | [progress-and-scheduling](progress-and-scheduling.md#schema); [Migrations](#migrations) | `cli/tests/adapters/test_sqlite_upgrades.py` over `cli/tests/fixtures/progress/schema-<N>.sql` |
+| `progress.db` | Public in behavior | Every 1.x migrates any earlier 1.x database forward, automatically, after a backup. No downgrade. The tables are not an API for other programs, except the AI review records (`ai_reviews`, [ai](ai.md#the-record)) and, once they exist, the assistance records, which are public records | [progress-and-scheduling](progress-and-scheduling.md#schema); [Migrations](#migrations) | `cli/tests/adapters/test_sqlite_upgrades.py` over `cli/tests/fixtures/progress/schema-<N>.sql` |
 | Progress export | Public | Any 1.x imports any earlier 1.x export | `schemas/cli/export.schema.json`, `version` 1 | `test_json_documents.py`; the round trips in `test_sqlite_upgrades.py` |
 | Config keys and environment variables | Public | Keys and meanings stay; a default may change in a minor release, with a release note | `cli/tests/contract/snapshots/config-keys.json` and `environment.json`; [Environment variables](#environment-variables) | `test_snapshots.py`, `cli/tests/contract/test_environment_variables.py` |
 | Your own problems | Public, additive only | A problem that passes `cstudy verify` under 1.0 loads, runs and verifies under every 1.x. New checks apply to catalog content only | `schemas/meta.schema.json`, `schemas/tests.schema.json`, [problem-format](problem-format.md); the problem-format variables of [Environment variables](#environment-variables) | `cstudy verify`; the schema tests in `cli/tests/adapters/test_schema_validation.py` |
 | Canonical IDs | Public | A released content ID never changes, since progress is keyed on it. Content itself may be corrected or reworded in any release | The grammar of [Canonical content IDs](#canonical-content-ids) | `cli/tests/domain/test_content_ids.py`; every schema in `schemas/cli/` except `export.schema.json` requires `id` by the grammar |
 | Web API, `.cs/`, guide and path formats, the user-docs page format | Internal | They may change in any release. A user-docs page's slug is its canonical ID, `doc/<slug>`, which never changes; its heading ids and front matter may, with a release note | `schemas/web-api.schema.json`, [installation-and-workspaces](installation-and-workspaces.md#layout) (`.cs/`), `schemas/guide.schema.json`, `schemas/path.schema.json`, [user-docs](user-docs.md) | Their own tests, which hold the page and the server together and promise nothing to other programs |
 | Human-readable output | Not promised | Scripts use `--json` | Nothing | Nothing |
-| AI features | Preview | Their commands, `[ai]` keys and behavior may change in a minor release. The assistance record and AI review records are public | Their specs, from v0.54 | Their own tests |
+| AI features | Preview | Their commands, `[ai]` keys and behavior may change in a minor release. The assistance record and AI review records are public | [ai](ai.md#surfaces), from v0.54: the `cstudy ai` commands, the `[ai]` keys (marked `preview` in `config-keys.json`), the `ai-status` and `ai-usage` documents, the web API's AI endpoints and jobs; the AI review record and its documents are public | Their own tests, and for the record the export and upgrade tests |
 | Kotlin code intelligence | Preview | It depends on builds outside cstudy that expire | [web-ui](web-ui.md#code-intelligence-sessions) | Its own tests |
 
 A surface not in this table is internal. Internal names in the code, such as modules, classes and enum members, are not a surface.
@@ -56,7 +56,7 @@ Each snapshot is a JSON file in `cli/tests/contract/snapshots/`, written from th
 |----------|-------|-----------|
 | `commands.json` | Every command and subcommand, and for each flag: its names, whether it takes a value, its choices when it is a choice, and `deprecated` | `command_spec` in `entrypoints/command_table.py` |
 | `exit-codes.json` | Each exit code by name: the [exit codes](cli.md#exit-codes) of `ExitCode` in `entrypoints/shared.py`, including `HANGUP = 129` and `TERMINATED = 143`, the exits of a run or a server that a signal stopped | `ExitCode` |
-| `config-keys.json` | Each key of `config.toml`: name, kind, default, choices and whether it is reserved | `domain/config_keys.py` and the parser's key names in `adapters/toml_config.py` |
+| `config-keys.json` | Each key of `config.toml`: name, kind, default, choices and whether it is reserved or preview; a change to a preview key is a preview change | `domain/config_keys.py` and the parser's key names in `adapters/toml_config.py` |
 | `environment.json` | The variable names of each class of [Environment variables](#environment-variables) | `domain/environment_variables.py` |
 | `marker.json` | The marker's keys, `schema`, `created_with` and the optional `languages` ([workspace languages](installation-and-workspaces.md#workspace-languages)), the shape of `[licenses.<key>]`, and `SCHEMA_VERSION` | `adapters/workspace_marker.py` |
 
@@ -92,6 +92,10 @@ One schema per document, in `schemas/cli/`, shipped in the wheel under `coding_s
 | Submit | `cstudy submit --json` | `submit.schema.json` |
 | Stats | `cstudy stats --json` | `stats.schema.json` |
 | Doctor | `cstudy doctor --json` | `doctor.schema.json` |
+| AI status (preview) | `cstudy ai status --json` | `ai-status.schema.json` |
+| AI usage (preview) | `cstudy ai usage --json` | `ai-usage.schema.json` |
+| AI review | `cstudy ai review --json`, and with `--show` | `ai-review.schema.json`: the record's fields are public, additive only |
+| AI reviews | `cstudy ai review --list --json` | `ai-review-list.schema.json`: the same |
 | Progress export | `cstudy export` (the file) | `export.schema.json` |
 
 | Rule | Detail |
@@ -100,7 +104,7 @@ One schema per document, in `schemas/cli/`, shipped in the wheel under `coding_s
 | Closed objects | Every object sets `additionalProperties: false`, so a field the schema does not name fails the tests. Readers still ignore unknown fields ([Rules](#rules)) |
 | Deprecated fields | Carry `"deprecated": true` |
 | Validation | `test_json_documents.py` runs each command over the test workspaces and validates its output against its schema; the export is validated from `cstudy export` and from the export fixtures of the upgrade tests |
-| Coverage | `test_json_coverage.py` fails when a command or subcommand with a `--json` flag in `command_spec`, or `cstudy export`, has no schema in `schemas/cli/`, or when a file there is used by none |
+| Coverage | `test_json_coverage.py` fails when a command or subcommand with a `--json` flag in `command_spec`, or `cstudy export`, has no schema in `schemas/cli/`, or when a file there is used by none. A schema a spec defines ahead of its command, as [ai](ai.md) does for the `cstudy ai` documents, is listed in its `PLANNED` table instead, which may name only commands that do not exist yet: the commit that adds the command moves its entry to `DOCUMENTS`, where its real output is validated |
 
 ## Environment variables
 
@@ -110,7 +114,7 @@ Every variable `cstudy` reads or sets is in exactly one class. `domain/environme
 |-------|-----------|---------|
 | Public (3 of `cstudy`'s own, 4 shared) | `CSTUDY_WORKSPACE`, `CSTUDY_CONTENT`, `CSTUDY_CONFIG` ([cli](cli.md#global-flags), [configuration](cli.md#configuration)); `NO_COLOR`, `VISUAL`, `EDITOR`, `JAVA_HOME`, which `cstudy` reads with their usual meaning | Set by you; the [config keys and environment variables](#surfaces) row |
 | Problem format (6) | `CSTUDY_DATA_DIR` in the app container; `CSTUDY_MOCK_CONTROL_URL` and `CSTUDY_MOCK_CONTROL_TOKEN` for `commands.test`; `CSTUDY_RESET_PHASE` for `commands.reset`; `CSTUDY_PROBLEM_DIR` and `CSTUDY_GRADED_LEVEL` for `commands.grade_setup` ([service-projects](service-projects.md#environment), [contract](service-projects.md#contract)) | Set by `cstudy` for user code and problem code; the [your own problems](#surfaces) row |
-| Internal (5) | `CSTUDY_EGRESS_HOSTS` (the sandbox's egress probe), `CSTUDY_GO_DEBUG_LISTEN`, `CSTUDY_GO_DELVE` and `CSTUDY_GO_DEBUG_PACKAGE` (cstudy to its Go runner in a debug run of a project), `CSTUDY_HIDDEN_DIRECTORIES` (cstudy to the `hide_paths.cjs` preload of a Node language server, [web-ui](web-ui.md#code-intelligence-sessions)) | None |
+| Internal (6) | `CSTUDY_EGRESS_HOSTS` (the sandbox's egress probe), `CSTUDY_GO_DEBUG_LISTEN`, `CSTUDY_GO_DELVE` and `CSTUDY_GO_DEBUG_PACKAGE` (cstudy to its Go runner in a debug run of a project), `CSTUDY_HIDDEN_DIRECTORIES` (cstudy to the `hide_paths.cjs` preload of a Node language server, [web-ui](web-ui.md#code-intelligence-sessions)), `CSTUDY_AI_ENDPOINT` (a loopback address every AI provider adapter sends to instead of its provider, for cstudy's own tests; any other value is refused, [ai](ai.md#http)) | None |
 
 The process environment of user code is the allowlist of [runners](runners.md#process-environment). Other variables `cstudy` reads, such as `PATH`, the `XDG_` base directories and the toolchains' own (`GOPATH`, `GRADLE_USER_HOME`, `LLDB_DEBUGSERVER_PATH`), keep the meaning their owners give them, and `cstudy` promises nothing more about them.
 
@@ -199,15 +203,15 @@ How a problem is checked is derived from its folder, not written in `meta.yaml`:
 |-------|------|
 | `tests` | Every autograded kind |
 | `rubric` | The folder has `rubric.md` |
-| `ai-review` | Reserved for v0.54; no problem has it yet |
+| `ai-review` | A rubric kind, `system-design` or `code-review`: an [AI review](ai.md#ai-review) can read its notes against its rubric, from v0.54. It describes the problem, whatever the AI settings |
 
-So the 8 `lld` problems with a `rubric.md` are `tests` and `rubric`, rubric problems are `rubric`, and the rest are `tests`.
+So the 8 `lld` problems with a `rubric.md` are `tests` and `rubric`, rubric problems are `rubric` and `ai-review`, and the rest are `tests`.
 
 | Surface | Detail |
 |---------|--------|
 | JSON | `checked_by`, an array in that order, on the problem entries of `cstudy list`, `cstudy next` and `cstudy status`, and of the web API |
-| Filter | `cstudy list --checked-by tests` or `--checked-by rubric` |
-| The page | A Checked by column on the Problems view, showing `tests`, `tests + rubric` or `rubric`, in the default columns where ID was, and a `checked` filter |
+| Filter | `cstudy list --checked-by tests`, `--checked-by rubric` or `--checked-by ai-review` |
+| The page | A Checked by column on the Problems view, showing `tests`, `tests + rubric` or `rubric + AI review`, in the default columns where ID was, and a `checked` filter |
 
 ### No ID column
 
@@ -230,10 +234,10 @@ The ID column is gone from the `cstudy list` table and from the Problems view. T
 
 | Item | Rule |
 |------|------|
-| Fixtures | `cli/tests/fixtures/progress/schema-<N>.sql`, plain SQL, for each schema N from 1 to the latest, today 7. Each applies migrations 1 to N and inserts at least one row into every table that exists at N, covering every `mode` and `status` value, and the JSON of `schedule.levels` from N = 6 |
+| Fixtures | `cli/tests/fixtures/progress/schema-<N>.sql`, plain SQL, for each schema N from 1 to the latest, today 8 (`0008_ai.sql`). Each applies migrations 1 to N and inserts at least one row into every table that exists at N, covering every `mode` and `status` value, the JSON of `schedule.levels` from N = 6, and from N = 8 every AI table, with an `ai_reviews` row of each verdict |
 | Coverage | A test fails when the latest migration has no fixture |
 | Upgrades | For each N below the latest, through the store's first use and through `cstudy doctor --fix`: the schema is the latest; one backup exists, reads schema N and holds the fixture's rows; every fixture row survives with its values, and new columns are NULL. The latest fixture opens as it is, with no backup |
-| Round trips | For each N, an export of the migrated database imports into an empty database, and exporting that gives the same document except `exported_at`. An export built at schema N imports into the latest schema with every row |
+| Round trips | For each N, an export of the migrated database imports into an empty database, and exporting that gives the same document except `exported_at`. An export built at schema N imports into the latest schema with every row. `ai_calls` and `ai_consents` are in no export, so the round trip leaves them out ([ai](ai.md#records-and-progress)) |
 
 ## Deprecation
 

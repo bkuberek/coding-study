@@ -37,6 +37,7 @@
 | [`cstudy config edit`, `cstudy config path`](#cstudy-config) | Open your `config.toml` in your editor; print its path | 9 |
 | [`cstudy reset`](#cstudy-reset) | Delete progress and state, after a preview and a typed word | 9 |
 | [`cstudy about`](#cstudy-about) | Show the version, license, links and credits | 9 |
+| [`cstudy ai`](#cstudy-ai) | The AI preview: keys, consent, usage, the check, and AI review of rubric problems | AI foundation |
 
 `<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list`, `cstudy show`, `cstudy learn` and `cstudy docs` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set`, `cstudy learn --done` and the `--open` of `cstudy learn` and `cstudy docs` need one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
@@ -72,7 +73,7 @@
 
 | Flag | Effect |
 |------|--------|
-| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next), [`set list` and `set show`](#cstudy-set), [`learn`](#cstudy-learn), [`docs`](#cstudy-docs) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet. An object that names content by `slug` carries its [canonical ID](compatibility.md#canonical-content-ids) as `id` beside it |
+| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next), [`set list` and `set show`](#cstudy-set), [`learn`](#cstudy-learn), [`docs`](#cstudy-docs), [`doctor`](#cstudy-doctor), and [`ai status`, `ai usage` and `ai review`](#cstudy-ai) have it; `bench` and `verify` do not yet. An object that names content by `slug` carries its [canonical ID](compatibility.md#canonical-content-ids) as `id` beside it |
 | `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#cstudy-test) on every autograded problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
 | `--no-color` | No colors, also when `NO_COLOR` is set; dim and bold stay. Output that is not a terminal is plain |
@@ -106,7 +107,13 @@ This section lists every published schema:
 | Submit | [`cstudy submit --json`](#cstudy-submit) | [`submit.schema.json`](../../schemas/cli/submit.schema.json) |
 | Stats | [`cstudy stats --json`](#cstudy-stats) | [`stats.schema.json`](../../schemas/cli/stats.schema.json) |
 | Doctor | [`cstudy doctor --json`](#cstudy-doctor) | [`doctor.schema.json`](../../schemas/cli/doctor.schema.json) |
+| AI status (preview) | [`cstudy ai status --json`](#cstudy-ai) | [`ai-status.schema.json`](../../schemas/cli/ai-status.schema.json) |
+| AI usage (preview) | [`cstudy ai usage --json`](#cstudy-ai) | [`ai-usage.schema.json`](../../schemas/cli/ai-usage.schema.json) |
+| AI review | [`cstudy ai review --json`](#cstudy-ai), and with `--show` | [`ai-review.schema.json`](../../schemas/cli/ai-review.schema.json) |
+| AI reviews | [`cstudy ai review --list --json`](#cstudy-ai) | [`ai-review-list.schema.json`](../../schemas/cli/ai-review-list.schema.json) |
 | Progress export | [`cstudy export`](#cstudy-export) (the file) | [`export.schema.json`](../../schemas/cli/export.schema.json) |
+
+The two AI review documents carry the [AI review record](ai.md#the-record), a public record; the other AI documents are preview ([ai](ai.md#surfaces)).
 
 ## Configuration
 
@@ -152,7 +159,17 @@ auto_commit = false              # reserved (PRD Q3)
 
 [study_guides]
 # root = "~/study-guides"        # unset by default: no study-guide links; absolute or "~/" path
+
+[ai]                             # the AI preview (docs/specs/ai.md); nothing is sent while enabled is false
+enabled = false
+routing = "fixed"                # fixed: every task uses model; auto: each task uses its tier
+# model = "anthropic:<model id>" # unset by default: the model of fixed routing
+# fast = "openrouter:<model id>" # unset by default: auto routing's fast tier
+# strong = "openai:<model id>"   # unset by default: auto routing's strong tier
+daily_token_cap = 500000         # input and output tokens per local day, every AI task together, in this workspace
 ```
+
+The `[ai]` keys are preview: their names and meanings may change in a minor release ([ai](ai.md#settings)). Your provider keys are not in this file: they are in `credentials.toml` beside it ([keys](ai.md#keys)).
 
 `study_guides.root` is the directory that the `references.study_guides` paths of a rubric problem are relative to ([study guides](content.md#study-guides)). The `[schedule]` intervals are the fixed ones of the [scheduling table](progress-and-scheduling.md#scheduling-algorithm): a change applies to reviews scheduled after it, and dates already set do not move; the ease multipliers are not configurable.
 
@@ -172,6 +189,8 @@ The [Settings view](web-ui.md#settings-view) of `cstudy serve` edits this file t
 | The `schedule` intervals and `max_interval_days` | For reviews scheduled from then on; dates already set do not move |
 | `schedule.mastered_interval_days` | At once, for every problem: it is read each time a status shows |
 | `done.auto_commit` | Never: it is reserved |
+| `ai.enabled` | At the next command; an open page, which read it with the session, after a reload |
+| `ai.routing`, `ai.model`, `ai.fast`, `ai.strong`, `ai.daily_token_cap` | At the next AI request |
 
 ## The learner profile
 
@@ -286,6 +305,8 @@ cstudy doctor [--fix [--accept-license <server>]... | --json]
 ```
 
 It also has `docker` and `docker leftovers` rows, which `WARN` and never `FAIL`, since only service projects need Docker. Asking starts nothing, and `--fix` starts a stopped engine and removes leftovers by label only. See [Docker states](service-projects.md#docker-states) and [Leftovers](service-projects.md#leftovers).
+
+While `ai.enabled` is true or `credentials.toml` exists, an `ai` row shows the AI preview's state: the routing, the providers with a key, and a `WARN` for a task that cannot run, a `credentials.toml` that does not load, or one in a Git working tree or inside the workspace. It never `FAIL`s and never asks a provider anything ([ai](ai.md#cstudy-doctor)).
 
 Checks Python 3.13, uv, Node 24 or newer, pnpm, the [selected JDK](#the-selected-jdk) (21 to 26), Homebrew Gradle, Go 1.25 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, unless the workspace lists Go or Rust among its chosen languages, as [Rows by language](#rows-by-language) says, with a link to the [toolchains guide](../../user-docs/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the [`cstudy` installs on `PATH`](#the-installs-row), the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config, the content and the installs are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema, after copying it to `.cs/backups/` (one line, `progress.db: backed up to .cs/backups/progress-schema-4-20261024T100000Z.db; migrated from schema 4 to 7`; a copy that fails stops `--fix` with exit 4, `cannot back up progress.db before migrating it: <reason>; nothing changed`, and so does a script that fails, which restores the copy and says so, `migrating progress.db from schema 4 failed at schema 6: <reason>; restored it from .cs/backups/<file>`, both before the steps below), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless the selected JDK is older than 21 or missing (then one `FAIL` line, `skipped: java is not installed or does not run` or `skipped: JDK 17 is older than 21`, with the JDK fix, replaces the Gradle steps; a JDK above the range still warms up, so the problems that opt in to it build offline too), the Gradle warm-up: `./gradlew --no-watch-fs :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain --no-watch-fs csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. Each Gradle command runs on the [selected JDK](#the-selected-jdk), like every other Gradle call of `cstudy`: it passes `-Dorg.gradle.java.home=<home>` and sets `JAVA_HOME`, so one command uses one JDK whatever the Gradle home configures; the lines above print the command without them. `--fix` outside a workspace exits 3.
 
@@ -1256,12 +1277,12 @@ The scope's filters apply to the open attempts as to the other picks: an attempt
 ## cstudy list
 
 ```text
-cstudy list [--set NAME] [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--domain D] [--role R] [--scope S] [--widen lang|role|domain|all]... [--search TEXT] [--needs WHAT] [--checked-by tests|rubric] [--json]
+cstudy list [--set NAME] [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--domain D] [--role R] [--scope S] [--widen lang|role|domain|all]... [--search TEXT] [--needs WHAT] [--checked-by tests|rubric|ai-review] [--json]
 ```
 
 The [learner profile](#the-learner-profile) narrows the rows in its three dimensions, by the [matching rules](#matching), before the other filters; `--lang`, `--domain` and `--role` replace it in their dimension, and `--widen` drops it there. Under `--set` it does not apply. While it hid a row, the table ends with the [profile line](#the-profile-line) (`filtered by your profile: 120 of 400 problems · languages python, go · --widen all shows all 400`), and `--json` holds `profile` with the count it hid ([Explicit filters and widening](#explicit-filters-and-widening)). The [Problems view](web-ui.md#problems-view) shows the same rows for the same flags.
 
-`--checked-by`: `tests` keeps the problems checked by their tests, `rubric` those checked by a rubric, which are the rubric problems and the problems of the `lld` track that carry a `rubric.md` ([Checked by](compatibility.md#checked-by)); a problem checked both ways matches either. `--needs`: `none` keeps what needs nothing beyond the language's toolchain, which leaves out every service project; `docker` or a service's name keeps the problems that need it. A `NEEDS` column shows when a listed row has a value, from the manifest alone, so listing runs nothing ([what a problem depends on](service-projects.md#where-it-shows)).
+`--checked-by`: `tests` keeps the problems checked by their tests, `rubric` those checked by a rubric, which are the rubric problems and the problems of the `lld` track that carry a `rubric.md`, and `ai-review` those an [AI review](ai.md#ai-review) can read, the rubric problems ([Checked by](compatibility.md#checked-by)); a problem checked several ways matches each of them, whatever the AI settings. `--needs`: `none` keeps what needs nothing beyond the language's toolchain, which leaves out every service project; `docker` or a service's name keeps the problems that need it. A `NEEDS` column shows when a listed row has a value, from the manifest alone, so listing runs nothing ([what a problem depends on](service-projects.md#where-it-shows)).
 
 Rows come in the [order](compatibility.md#order) of the catalog before your own problems, then the track, the primary pattern's position in the taxonomy (problems without patterns first), `order` and the slug.
 
@@ -1269,7 +1290,7 @@ Rows come in the [order](compatibility.md#order) of the catalog before your own 
 
 `--status`: `new`, `in_progress` (an attempt is open, which comes ahead of every other status; `in-progress` works too), `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). The table writes the status in words, `in progress` for `in_progress`, as `cstudy history` does in its first line, and `mastered 2/4` for a problem [mastered through level 2 of 4](progress-and-scheduling.md#mastery-per-level); `--json`, the API and the web route keep the value `in_progress`. `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, `system-design` or `code-review`. `--lang` filters to problems whose references cover that language. `--domain` and `--role` list the entries that list that [domain or job role](content.md#labels), as `--pattern` does for a pattern: each is one value that matches any listed value, and a value no entry lists finds nothing. `--scope` is `function`, `project` or `system`. The three combine with each other and with the other filters by AND, and keep the rubric problems, which carry the labels; a problem of your own that leaves its labels out matches none that is set. The table is one list in the [order](compatibility.md#order) of the catalog: by track, so the rubric problems come after the `debugging` ones, then by `order` and slug, and your own problems after the catalog's. A rubric problem has `-` for the references and its track in the pattern column; `--pattern` and `--lang` leave rubric problems out, and so does a `--kind` that is not `system-design` or `code-review`. The list shows every problem whatever the [selected JDK](#the-selected-jdk): in the `REFS` column `java!` and `kt!` mark a language that the JDK cannot run for that problem, and one footer line names the marked languages, the JDK and the reason (`! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26`; a JDK of the supported range that only some problems' own `jdk` ranges exclude, `! java, kt: not run on JDK 23 (JAVA_HOME): outside the JDK range the problem declares`; with no JDK, `! java, kt: no JDK was found`; with a `JAVA_HOME` that holds none, `! java, kt: JAVA_HOME (/opt/jdk) holds no JDK`). Without a mark there is no footer. `--set` lists the rows of a [set](#cstudy-set), problems together in the set's order, and combines with the other filters by AND; it needs a workspace, an unknown set exits 3, and one footer line names the slugs the catalog no longer has (`missing from the catalog: old-problem`).
 
-`--json` prints the same rows as one document, in the order of the table: `{"today": "2026-10-24", "entries": [...]}`, each entry with `requires` (null but for a service project), `id` (the [canonical ID](compatibility.md#canonical-content-ids), `problem/<slug>`), `slug`, `title`, `track`, `kind` (`system-design` or `code-review` for a rubric problem), `checked_by` (`["tests"]`, `["tests", "rubric"]` or `["rubric"]`, [derived from the folder](compatibility.md#checked-by)), `difficulty`, `patterns`, `domains` and `job_roles` (lists, empty for a problem of your own that leaves them out), `scope` (null likewise), `languages` (the reference languages, empty for a rubric problem), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status` (one of the `--status` values, `in_progress` included), `levels` (`{"last", "passed", "mastered"}` for a progressive or project problem: its last level, the most levels a pass reached in any language and the levels it is [mastered through](progress-and-scheduling.md#mastery-per-level); null otherwise), `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for a rubric problem and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. It also holds `profile`, what the [learner profile](#explicit-filters-and-widening) left out. Under `--set` the document also holds `set`, `{"name", "missing"}`, `missing` the slugs the catalog no longer has. Exit 0.
+`--json` prints the same rows as one document, in the order of the table: `{"today": "2026-10-24", "entries": [...]}`, each entry with `requires` (null but for a service project), `id` (the [canonical ID](compatibility.md#canonical-content-ids), `problem/<slug>`), `slug`, `title`, `track`, `kind` (`system-design` or `code-review` for a rubric problem), `checked_by` (`["tests"]`, `["tests", "rubric"]` or `["rubric", "ai-review"]`, [derived from the folder](compatibility.md#checked-by)), `difficulty`, `patterns`, `domains` and `job_roles` (lists, empty for a problem of your own that leaves them out), `scope` (null likewise), `languages` (the reference languages, empty for a rubric problem), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status` (one of the `--status` values, `in_progress` included), `levels` (`{"last", "passed", "mastered"}` for a progressive or project problem: its last level, the most levels a pass reached in any language and the levels it is [mastered through](progress-and-scheduling.md#mastery-per-level); null otherwise), `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for a rubric problem and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. It also holds `profile`, what the [learner profile](#explicit-filters-and-widening) left out. Under `--set` the document also holds `set`, `{"name", "missing"}`, `missing` the slugs the catalog no longer has. Exit 0.
 
 ```text
 SLUG              DIFF    PATTERN          STATUS        DUE         REFS
@@ -1600,7 +1621,7 @@ Picks `count` problems with `cstudy next` rules (new only, medium and hard), sta
 | Picks | Step 2 of the [`cstudy next` selection](progress-and-scheduling.md#cstudy-next-selection) over the new `medium` and `hard` problems in scope, so the difficulty gate opens `medium` at once. Each pick comes from a group not picked yet while another group still has a new problem; picked problems count as in progress for the later picks |
 | Start | Each pick starts like `cstudy start <slug> --fresh --timer <minutes>m`, with attempt mode `mock`. The attempts start together with the same time box: that is the shared timer. `cstudy test` shows the time left, and `cstudy done` past the timer caps the grade at `hard`, as with `--timer` |
 | Project problems | Take part like other problems when the `practical` track is in scope and their language is the mock's; each starts like `cstudy start <slug> --fresh --timer <minutes>m`. In a mock attempt [`cstudy submit`](#cstudy-submit) reports only the number of failing hidden cases per level |
-| Lock | While the timer runs and a problem of the mock is unfinished, `cstudy hint`, `cstudy solution` and another `cstudy mock` exit 3: `cstudy hint is locked during the mock interview (group-anagrams, lru-cache; 31:20 left); it unlocks when the timer ends or every problem is done`. The mock is the attempts in progress with mode `mock`; nothing else is stored |
+| Lock | While the timer runs and a problem of the mock is unfinished, `cstudy hint`, `cstudy solution`, `cstudy ai review` (but its `--list`, `--show` and `--dismiss`) and another `cstudy mock` exit 3: `cstudy hint is locked during the mock interview (group-anagrams, lru-cache; 31:20 left); it unlocks when the timer ends or every problem is done`. The mock is the attempts in progress with mode `mock`; nothing else is stored |
 
 ```text
 $ cstudy mock
@@ -1623,7 +1644,7 @@ A rubric problem shows `notes` and `prompt` lines instead, and the header names 
 cstudy export [--out PATH]
 ```
 
-Writes every `progress.db` table but `meta` as JSON (`submissions` and `level_unlocks` included), for backup (PRD Q2): `progress-export.json` at the workspace root by default, which the user may commit; a relative `--out` is relative to the current directory, and an existing file is replaced. Rows keep their ids and their stored values (the JSON columns of `bench_runs` stay strings), in insertion order, one row per line so a committed export diffs by row. [`cstudy import`](#cstudy-import) restores it.
+Writes every `progress.db` table but `meta` as JSON (`submissions`, `level_unlocks` and the AI review records, `ai_reviews`, included), except `ai_calls` and `ai_consents`, the AI usage log and consents, which are this machine's state ([ai](ai.md#records-and-progress)), for backup (PRD Q2): `progress-export.json` at the workspace root by default, which the user may commit; a relative `--out` is relative to the current directory, and an existing file is replaced. Rows keep their ids and their stored values (the JSON columns of `bench_runs` stay strings), in insertion order, one row per line so a committed export diffs by row. [`cstudy import`](#cstudy-import) restores it.
 
 ```json
 {
@@ -1640,14 +1661,15 @@ Writes every `progress.db` table but `meta` as JSON (`submissions` and `level_un
     "bench_runs": [],
     "submissions": [],
     "level_unlocks": [],
-    "guide_reads": []
+    "guide_reads": [],
+    "ai_reviews": []
   }
 }
 ```
 
 ```text
 $ cstudy export
-exported  attempts 6 · test_runs 4 · schedule 3 · bench_runs 3 · submissions 0 · level_unlocks 0 · guide_reads 0
+exported  attempts 6 · test_runs 4 · schedule 3 · bench_runs 3 · submissions 0 · level_unlocks 0 · guide_reads 0 · ai_reviews 0
 file      progress-export.json
 ```
 
@@ -1667,7 +1689,9 @@ imported  attempts 6 · test_runs 4 · schedule 3 · bench_runs 3
 into      progress.db
 ```
 
-Exits 3, importing nothing, when the database already holds an attempt, test run, schedule entry, bench run, submission or level unlock (merging is [PRD Q12](../prd.md#8-open-questions)), when the file is missing, not JSON or not an export, when its `schema_version` is newer than this `cstudy`, or when a table, column or row does not fit the schema. A `progress.db` newer than this `cstudy` also exits 3, and an older one that cannot be copied first exits 4, as for [`cstudy export`](#cstudy-export), importing nothing. Exit 0 otherwise.
+It neither reads nor checks `ai_calls` and `ai_consents`, which an export leaves out, so the AI usage and consents of this workspace stay as they were.
+
+Exits 3, importing nothing, when the database already holds an attempt, test run, schedule entry, bench run, submission, level unlock or AI review (merging is [PRD Q12](../prd.md#8-open-questions)), when the file is missing, not JSON or not an export, when its `schema_version` is newer than this `cstudy`, or when a table, column or row does not fit the schema. A `progress.db` newer than this `cstudy` also exits 3, and an older one that cannot be copied first exits 4, as for [`cstudy export`](#cstudy-export), importing nothing. Exit 0 otherwise.
 
 ## cstudy config
 
@@ -1723,6 +1747,94 @@ Needs no workspace and reads no configuration. The [About view](web-ui.md#about-
 | `about --licenses` | The full license text: cstudy's own, then each Python package's, then `THIRD_PARTY_LICENSES.txt` whole. A package that ships no text says so |
 
 `--credits` and `--licenses` together exit 3 with `choose one of --credits and --licenses`. `THIRD_PARTY_LICENSES.txt` is written by the web build into `entrypoints/web/static/`, which the wheel ships, so it is on every install.
+
+## cstudy ai
+
+The AI preview ([ai](ai.md), [ADR 0029](../decisions/0029-ai-foundation.md)). Its commands, flags and human output are preview and may change in a minor release; the AI review record is public. Every subcommand but `key` and `models` needs a workspace.
+
+```text
+cstudy ai status [--json]
+cstudy ai usage [--days N] [--json]
+cstudy ai key <provider> [--remove]
+cstudy ai models <provider>
+cstudy ai consent <provider>:<model id> --purpose review|check [--revoke]
+cstudy ai check
+cstudy ai review [<slug>] [--dry-run | --json]
+cstudy ai review [<slug>] --list [--json]
+cstudy ai review --show ID [--json]
+cstudy ai review --dismiss ID
+```
+
+`<provider>` is `anthropic`, `google`, `openai` or `openrouter`; any other exits 3. With AI off, `models`, `check` and a `review` that would send exit 3 with `AI is off: turn it on with ai.enabled = true (cstudy config edit) or in Settings`; the other forms send nothing and work.
+
+### cstudy ai status
+
+```text
+$ cstudy ai status
+ai        on · routing auto · fast openrouter:<model id> · strong anthropic:<model id>
+review    ready · strong anthropic:<model id>
+check     ready · fast openrouter:<model id>, strong anthropic:<model id>
+keys      anthropic, openrouter · in ~/.config/coding-study/credentials.toml
+consents  anthropic:<model id> review (2026-11-16) · openrouter:<model id> check (2026-11-16)
+today     12,400 of 500,000 tokens · 3 requests · $0.00003 known, 2 requests without a reported cost
+```
+
+| Line | Content |
+|------|---------|
+| `ai` | `off: nothing is sent; turn it on with ai.enabled = true (cstudy config edit) or in Settings`, or `on` with the routing and its models (`on · routing fixed · anthropic:<model id>`) |
+| A line per task | `ready` with the model or models it uses, or why it cannot run: `ai.strong is not set`, `no key for openrouter`, `AI is off` |
+| `keys` | The providers with a key, or `none`, and the file; the file's problem instead when it does not load |
+| `consents` | Each consent, with its provider, model, purpose and day; `none` |
+| `today` | Counted tokens of the cap, requests, the known cost, and how many requests reported none |
+
+`--json` prints `{"enabled", "routing", "models": {"model", "fast", "strong"}, "tasks": [{"task", "models": [{"tier", "model"}], "ready", "reason"}], "credentials": {"path", "keys": {"anthropic", "google", "openai", "openrouter"}, "issue"}, "consents": [{"provider", "model", "purpose", "granted_at"}], "today": {"day", "tokens", "cap", "requests", "cost_usd", "requests_without_cost"}}`: a model that is unset, a `tier` under fixed routing, a `reason` of a ready task and an `issue` of a file that loads are null, and `keys` holds true for each provider with a key. Exit 0, AI off included.
+
+### cstudy ai usage
+
+```text
+$ cstudy ai usage --days 2
+DAY         PROVIDER    MODEL       PURPOSE  REQUESTS  INPUT  OUTPUT  COST
+2026-11-15  anthropic   <model id>  review          2  9,812   4,820  -
+2026-11-16  openrouter  <model id>  check           1     40      12  $0.00003
+total       3 requests, 0 failed · 14,684 tokens counted · $0.00003 known, 2 requests without a reported cost
+```
+
+One row per local day, provider, model and purpose, oldest first, over the last `--days` days, today included (1 to 366, default 7; another value exits 3). `COST` is `-` where no request of the row reported one. With no request, `no AI requests in the last 7 days`. `--json` prints `{"days", "from", "to", "cap", "rows": [{"day", "provider", "model", "purpose", "requests", "failed", "input_tokens", "output_tokens", "counted_tokens", "cost_usd", "requests_without_cost"}], "total": {"requests", "failed", "input_tokens", "output_tokens", "counted_tokens", "cost_usd", "requests_without_cost"}}`, `cost_usd` null where none was reported. Exit 0.
+
+### cstudy ai key
+
+`cstudy ai key anthropic` asks for the key with a hidden prompt, or reads one line of standard input when that is not a terminal, and writes it to `credentials.toml` ([keys](ai.md#keys)): `anthropic key saved in ~/.config/coding-study/credentials.toml`. It never takes the key as an argument, never prints it, and does not try it (`cstudy ai check` does). `--remove` deletes the provider's key: `anthropic key removed`, or `anthropic has no key`. It works with AI off. Exit 3 for an empty key or one with spaces, an unknown provider, or a file that would be inside the workspace; 4 when the file does not load or cannot be written, which leaves it as it was.
+
+### cstudy ai models
+
+Prints the provider's model ids, one per line, sorted, as its list endpoint returns them ([providers](ai.md#providers)), for `ai.model`, `ai.fast` and `ai.strong`. It sends only the request for the list, with your key: no consent, no tokens and no usage row. Exit 3 with AI off or without the provider's key, 4 when the provider fails.
+
+### cstudy ai consent
+
+`cstudy ai consent anthropic:<model id> --purpose review` records your consent to send to that model for that purpose, which a terminal otherwise asks the first time ([consent](ai.md#consent)): `consent recorded: anthropic:<model id> for AI review`. `--revoke` removes it: `consent revoked: anthropic:<model id> for AI review`, or `no consent to revoke for anthropic:<model id> and AI review`. `--purpose` is required, `review` or `check`. A model that is not `<provider>:<model id>` exits 3. It needs no key and works with AI off.
+
+### cstudy ai check
+
+Sends the [check](ai.md#the-check) to each model the routing names, after asking for consent where none is recorded: one line per model with its tier (none under fixed routing), the model, and `ok` with the time, the tokens and the known cost, or `FAIL` with the [error](ai.md#errors). Exit 0 when every model passed, 3 when refused before sending, 4 when one failed.
+
+### cstudy ai review
+
+| Form | Does |
+|------|------|
+| `cstudy ai review [<slug>]` | Reviews the notes of the problem's attempt in progress, or of its latest attempt, against its rubric ([AI review](ai.md#ai-review)); `<slug>` defaults to the problem of the active attempt. After the [consent](ai.md#consent) question the first time, it prints `reviewing with anthropic:<model id>, up to 300 s` on standard error, then prints and stores the review. Ctrl-C stops it, exit 130, and stores the request as interrupted |
+| `--dry-run` | Prints the instructions and the message exactly as the review would send them, then the model it would use and the estimate, and sends nothing; it needs no key, no consent and AI on or off alike |
+| `--list` | The problem's reviews, newest first, with `REVIEW`, `ATTEMPT`, `WHEN`, `MODEL` and `RESULT` (`18 met · 6 partly · 4 missed of 28`), and `dismissed` after one you dismissed; `no AI reviews of url-shortener yet` |
+| `--show ID` | One stored review in full, as a new review prints it ([what it shows](ai.md#what-it-shows)) |
+| `--dismiss ID` | Marks the review dismissed: `dismissed AI review 3 of url-shortener`, or `AI review 3 is already dismissed`. It stays stored |
+
+`--json` prints the [`ai-review`](../../schemas/cli/ai-review.schema.json) document of the new review, or of `--show`: `{"id", "slug", "review_id", "attempt_id", "format", "created_at", "provider", "model", "prompt_version", "rubric_sha256", "notes_sha256", "notes_changed", "criteria": [{"number", "area", "criterion", "verdict", "evidence", "gaps"}], "summary", "counts": {"met", "partial", "missing", "total"}, "quotes_dropped", "usage": {"input_tokens", "output_tokens", "cost_usd"}, "dismissed_at"}`, where `notes_changed` says whether the attempt's notes differ now from the notes reviewed, null when they are gone. With `--list` it prints the [`ai-review-list`](../../schemas/cli/ai-review-list.schema.json) document, `{"id", "slug", "reviews": [...]}`, each review as above, newest first.
+
+| Exit | When |
+|------|------|
+| 0 | Reviewed, listed, shown or dismissed; also `not sent` after a no at the consent question |
+| 3 | Refused before anything was sent: a problem that is not a rubric problem, no attempt, notes missing, still the template or over 64 KiB, a mock running ([when it runs](ai.md#when-it-runs)), AI off, a model unset or a provider without a key ([routing](ai.md#routing)), the cap ([usage](ai.md#usage-and-the-daily-token-cap)), no consent without a terminal; an unknown review id; more than one of `--dry-run`, `--list`, `--show` and `--dismiss`, `--json` with `--dry-run` or `--dismiss`, or a slug with `--show` or `--dismiss` |
+| 4 | The provider or `credentials.toml` failed ([errors](ai.md#errors)), a reply that fails its checks included |
+| 130 | Interrupted |
 
 ## cstudy serve
 

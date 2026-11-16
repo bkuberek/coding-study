@@ -52,7 +52,9 @@ The 6 Phase 5 problems and their model per language (`-`: not listed in `languag
 
 ## Rubric-checked problems
 
-The problems of the kinds `system-design` and `code-review` are checked against a rubric, by you; nothing grades them automatically. The rules that make them problems are in [compatibility](compatibility.md#rubric-checked-problems). Planned: these problems, self-reviewed today, gain optional AI review, with no change for those who do not use it. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
+The problems of the kinds `system-design` and `code-review` are checked against a rubric, by you; nothing grades them automatically. The rules that make them problems are in [compatibility](compatibility.md#rubric-checked-problems). With the AI preview on, an [AI review](ai.md#ai-review) reads your notes against the rubric and gives a verdict per criterion, labeled AI review; it never changes the grade, which stays your own rating, and nothing changes for those who do not use it ([ADR 0029](../decisions/0029-ai-foundation.md)).
+
+AI review reads `rubric.md` as written: each `- [ ] <criterion>` line is one criterion, numbered across the areas in order, and the file's SHA-256 is the rubric version a review records. Criteria that name specific points, as `review-payment-retry`'s name each planted issue, are what let a review judge an answer without `reference.md`, which is never sent.
 
 ```text
 problems/<slug>/              # kind: system-design

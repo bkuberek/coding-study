@@ -112,9 +112,9 @@
       "enum": ["function", "design", "progressive", "concurrent", "project", "system-design", "code-review"]
     },
     "checked_by": {
-      "description": "How the answer is checked: `tests`, `rubric` or both",
+      "description": "How the answer is checked: `tests`, `tests` and `rubric`, or `rubric` and `ai-review` (docs/specs/compatibility.md#checked-by)",
       "type": "array",
-      "items": { "enum": ["tests", "rubric"] }
+      "items": { "enum": ["tests", "rubric", "ai-review"] }
     },
     "open_attempt": {
       "type": "object",

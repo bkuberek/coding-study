@@ -11,9 +11,9 @@
       "pattern": "^(problem|guide|path|doc)/[a-z][a-z0-9]*(-[a-z0-9]+)*$"
     },
     "checked_by": {
-      "description": "How a problem is checked, tests before rubric (docs/specs/compatibility.md#checked-by)",
+      "description": "How a problem is checked, in the order tests, rubric, ai-review (docs/specs/compatibility.md#checked-by)",
       "type": "array",
-      "items": { "enum": ["tests", "rubric"] },
+      "items": { "enum": ["tests", "rubric", "ai-review"] },
       "minItems": 1,
       "maxItems": 2,
       "uniqueItems": true

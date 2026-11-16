@@ -133,14 +133,14 @@ Every path `cstudy` prints for a workspace file is relative to the workspace roo
 
 | Path | Holds | A reset |
 |------|-------|---------|
-| `progress.db` | Attempts, test runs, scheduled reviews, bench runs, submissions, level unlocks, guides read | Empties every table in one transaction; the file, its schema and `meta` stay |
+| `progress.db` | Attempts, test runs, scheduled reviews, bench runs, submissions, level unlocks, guides read, and the AI preview's reviews, requests and consents ([ai](ai.md#records-and-progress)) | Empties every table in one transaction; the file, its schema and `meta` stay |
 | `.cs/runs/` | The data of runs | Deletes each run's folder |
 | `.statements/` | Statements rendered for the attempts | Deletes them; `cstudy start` renders them again |
 | `python/practice/`, `typescript/practice/`, `jvm/*/src/main/*/practice/`, `go/practice/`, `rust/practice/` | Your practice files | With `--files`: deletes all but `.gitkeep`, and takes the problems out of `rust/Cargo.toml` |
 | `projects/`, `.cs/projects/` | Your project folders, their manifests and locks | With `--files`: deletes all but `.gitkeep`, and refreshes VS Code's linked projects when `cstudy` wrote them |
 | `notes/` | Your answers to rubric problems | With `--files`: deletes all but `.gitkeep` |
 | `.archive/` | The files of earlier attempts | With `--archive` only |
-| `config.toml`, `.cs/serve/` | Your configuration and preferences | Keeps |
+| `config.toml`, `credentials.toml`, `.cs/serve/` | Your configuration, your AI provider keys, which are never in the workspace ([keys](ai.md#keys)), and your preferences | Keeps |
 | `.cs/workspace.toml`, `.cs/ide.json`, `.vscode/`, `.idea/`, `.gitignore`, `README.md` | The marker and the project files | Keeps |
 | `.cs/runtime/`, `.cs/lsp/`, `python/.venv`, `node_modules/`, the Gradle wrapper | Toolchains and language servers | Keeps: `cstudy doctor --fix` would have to install them again |
 | `.cs/build/`, `.cs/cases/`, `.cs/calibration/`, the index | Caches of the content | Keeps: they hold nothing of yours and cost time to build |

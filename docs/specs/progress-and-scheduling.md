@@ -4,7 +4,7 @@ Progress lives in SQLite (`progress.db`, gitignored). The database stores only f
 
 ## Schema
 
-Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`; `0006_level_passes.sql` adds `attempts.levels_passed`, `attempts.levels_total`, `test_runs.levels_passed` and `schedule.levels` for [level passes](#level-passes) and [mastery per level](#mastery-per-level), NULL in the rows written before it; `0007_guide_reads.sql` adds `guide_reads` for [concept guides](guides.md#reading-progress), with `IF NOT EXISTS`. A script that adds a column the table already has, as one run again under a new number does, runs statement by statement, skipping that column. Processes that open a database at the same time migrate it one after another, under a lock on its folder. A database migrates on the first command that opens it. An older one that has a schema is first copied, under that lock and before the first script runs, with SQLite's online backup to `.cs/backups/<db stem>-schema-<N>-<UTC yyyymmddThhmmssZ>.db` (`-2`, `-3`, ... on a name clash), the copy is checked to read schema N, and one line on standard error names it, `progress.db: backed up to .cs/backups/<file>; migrated from schema N to M`; of processes that open an old database together, one copies and migrates. A new database migrates with no copy. When the copy fails nothing changes and the command exits 4, `cannot back up progress.db before migrating it: <reason>; nothing changed`. When a script fails after the copy, the copy is written back over the database, still under the lock, and the command exits 4, `migrating progress.db from schema N failed at schema M: <reason>; restored it from .cs/backups/<file>`; if writing it back fails too, the message names the copy to put back by hand, and an interrupt restores the copy and then ends the command. A database at a schema newer than this `cstudy` knows is refused before any read or write, exit 3, `progress.db uses schema N, newer than the M this cstudy reads: upgrade cstudy`; there is no downgrade. Backups are kept, never pruned, and [`cstudy reset`](cli.md#cstudy-reset) keeps them ([compatibility](compatibility.md#migrations)). `cstudy doctor` shows the schema (`progress database`: WARN when older, FAIL when newer than this `cstudy` knows) without migrating, and `cstudy doctor --fix` migrates it now, under the same lock and with the same copy and line ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`. [`cstudy reset`](cli.md#cstudy-reset) empties every table but `meta` in one transaction and records the highest attempt id it deleted there as `attempt_id_floor`; a new attempt's id is one above the higher of that and the table's own, since `.archive/<slug>/<attempt_id>-<lang>/`, which a reset keeps by default, names old attempts by id.
+Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`; `0006_level_passes.sql` adds `attempts.levels_passed`, `attempts.levels_total`, `test_runs.levels_passed` and `schedule.levels` for [level passes](#level-passes) and [mastery per level](#mastery-per-level), NULL in the rows written before it; `0007_guide_reads.sql` adds `guide_reads` for [concept guides](guides.md#reading-progress), with `IF NOT EXISTS`; `0008_ai.sql` adds `ai_reviews`, `ai_calls` and `ai_consents` for the [AI preview](ai.md), with `IF NOT EXISTS`. A script that adds a column the table already has, as one run again under a new number does, runs statement by statement, skipping that column. Processes that open a database at the same time migrate it one after another, under a lock on its folder. A database migrates on the first command that opens it. An older one that has a schema is first copied, under that lock and before the first script runs, with SQLite's online backup to `.cs/backups/<db stem>-schema-<N>-<UTC yyyymmddThhmmssZ>.db` (`-2`, `-3`, ... on a name clash), the copy is checked to read schema N, and one line on standard error names it, `progress.db: backed up to .cs/backups/<file>; migrated from schema N to M`; of processes that open an old database together, one copies and migrates. A new database migrates with no copy. When the copy fails nothing changes and the command exits 4, `cannot back up progress.db before migrating it: <reason>; nothing changed`. When a script fails after the copy, the copy is written back over the database, still under the lock, and the command exits 4, `migrating progress.db from schema N failed at schema M: <reason>; restored it from .cs/backups/<file>`; if writing it back fails too, the message names the copy to put back by hand, and an interrupt restores the copy and then ends the command. A database at a schema newer than this `cstudy` knows is refused before any read or write, exit 3, `progress.db uses schema N, newer than the M this cstudy reads: upgrade cstudy`; there is no downgrade. Backups are kept, never pruned, and [`cstudy reset`](cli.md#cstudy-reset) keeps them ([compatibility](compatibility.md#migrations)). `cstudy doctor` shows the schema (`progress database`: WARN when older, FAIL when newer than this `cstudy` knows) without migrating, and `cstudy doctor --fix` migrates it now, under the same lock and with the same copy and line ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`. [`cstudy reset`](cli.md#cstudy-reset) empties every table but `meta` in one transaction and records the highest attempt id it deleted there as `attempt_id_floor`; a new attempt's id is one above the higher of that and the table's own, since `.archive/<slug>/<attempt_id>-<lang>/`, which a reset keeps by default, names old attempts by id.
 
 ```sql
 PRAGMA foreign_keys = ON;
@@ -115,9 +115,58 @@ CREATE TABLE guide_reads (             -- concept guides marked read with cstudy
   slug     TEXT PRIMARY KEY,
   read_at  TEXT NOT NULL               -- the first time it was marked
 );
+
+CREATE TABLE ai_reviews (              -- AI review records: public, format 1 (docs/specs/ai.md#the-record)
+  id              INTEGER PRIMARY KEY,
+  attempt_id      INTEGER NOT NULL REFERENCES attempts (id),
+  format          INTEGER NOT NULL,    -- 1
+  created_at      TEXT NOT NULL,
+  provider        TEXT NOT NULL,       -- anthropic, google, openai, openrouter
+  model           TEXT NOT NULL,       -- the provider's model id
+  prompt_version  TEXT NOT NULL,       -- the instructions' version: review-1
+  rubric_sha256   TEXT NOT NULL,       -- the rubric version: sha256 of rubric.md as reviewed against
+  notes_sha256    TEXT NOT NULL,       -- sha256 of the notes reviewed
+  items           TEXT NOT NULL,       -- JSON [{number, area, criterion, verdict, evidence, gaps}] in rubric order
+  summary         TEXT NOT NULL,
+  quotes_dropped  INTEGER NOT NULL DEFAULT 0,
+  input_tokens    INTEGER,
+  output_tokens   INTEGER,
+  cost_usd        REAL,                -- as the provider reported it; NULL when it reported none
+  dismissed_at    TEXT
+);
+CREATE INDEX ai_reviews_by_attempt ON ai_reviews (attempt_id, created_at);
+
+CREATE TABLE ai_calls (                -- every request to an AI provider's model: usage and the daily cap
+  id              INTEGER PRIMARY KEY,
+  purpose         TEXT NOT NULL,       -- review, check; later milestones add theirs
+  provider        TEXT NOT NULL,
+  model           TEXT NOT NULL,
+  tier            TEXT,                -- fast or strong; NULL under fixed routing
+  attempt_id      INTEGER REFERENCES attempts (id),  -- the attempt an AI review reviewed
+  local_day       TEXT NOT NULL,       -- YYYY-MM-DD on this machine's clock: the day the cap counts it in
+  started_at      TEXT NOT NULL,
+  ended_at        TEXT NOT NULL,
+  outcome         TEXT NOT NULL CHECK (outcome IN ('ok', 'failed', 'interrupted')),
+  error           TEXT,                -- auth, rate_limit, model, refused, length, network, timeout, provider, invalid_reply
+  input_tokens    INTEGER,             -- as the provider reported them; NULL without a usage report
+  output_tokens   INTEGER,
+  counted_tokens  INTEGER NOT NULL,    -- what the cap counts: the reported tokens, else the request's estimate
+  cost_usd        REAL                 -- as the provider reported it; NULL when it reported none
+);
+CREATE INDEX ai_calls_by_day ON ai_calls (local_day);
+
+CREATE TABLE ai_consents (             -- consent to send, per provider, model and purpose
+  provider    TEXT NOT NULL,
+  model       TEXT NOT NULL,
+  purpose     TEXT NOT NULL,
+  granted_at  TEXT NOT NULL,
+  PRIMARY KEY (provider, model, purpose)
+);
 ```
 
 `0007_guide_reads.sql` adds `guide_reads`, with `IF NOT EXISTS`: a [concept guide](guides.md#reading-progress) is read once `cstudy learn <guide> --done` marks it, and a path's progress is computed from it and from the attempts.
+
+`0008_ai.sql` adds the three AI tables, with `IF NOT EXISTS` ([ai](ai.md#records-and-progress)). `purpose`, `tier` and `error` carry no `CHECK`, so a later milestone adds values without rebuilding a table; the code checks them. `ai_calls` and `ai_consents` are this machine's state: `cstudy export` leaves them out and `cstudy import` neither reads nor checks them; `cstudy reset` empties them with the rest.
 
 ## Attempt lifecycle
 
@@ -144,7 +193,7 @@ Grades: 0 `again`, 1 `hard`, 2 `ok`, 3 `easy`. Computed in order:
 
 A problem with levels passes through level N of M with its own rating rule, and a mock adds a level cap ([level passes](#level-passes)). The solution step counts `first_pass_at`, which still means every level, so a solution revealed before then grades 0.
 
-Rubric problems use step 2 only: no `--gave-up`, and revealing the reference, hints and the timer never lower the grade. Their attempts have `lang` NULL and `stub_path` set to the notes file.
+Rubric problems use step 2 only: no `--gave-up`, and revealing the reference, hints and the timer never lower the grade. Their attempts have `lang` NULL and `stub_path` set to the notes file. An [AI review](ai.md#ai-review) of an attempt, before or after `cstudy done`, changes nothing here: no grade, rating, schedule, status or statistic reads `ai_reviews`.
 
 ## Project attempts
 

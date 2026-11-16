@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study AI status document",
+  "description": "`cstudy ai status --json`: the AI preview's settings, what each task would use, the keys set, the consents and today's usage. Preview: it may change in a minor release. Spec: docs/specs/cli.md#cstudy-ai-status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["enabled", "routing", "models", "tasks", "credentials", "consents", "today"],
+  "properties": {
+    "enabled": { "description": "`ai.enabled`", "type": "boolean" },
+    "routing": { "description": "`ai.routing`", "enum": ["fixed", "auto"] },
+    "models": {
+      "description": "The models the config names, or null where a key is unset",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "fast", "strong"],
+      "properties": {
+        "model": { "$ref": "#/$defs/optional_model" },
+        "fast": { "$ref": "#/$defs/optional_model" },
+        "strong": { "$ref": "#/$defs/optional_model" }
+      }
+    },
+    "tasks": {
+      "description": "Each AI task: the models it would send to, and whether it can run now",
+      "type": "array",
+      "items": { "$ref": "#/$defs/task" }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "keys", "issue"],
+      "properties": {
+        "path": { "description": "credentials.toml, beside config.toml", "type": "string", "minLength": 1 },
+        "keys": {
+          "description": "Whether each provider has a key; never the key itself",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["anthropic", "google", "openai", "openrouter"],
+          "properties": {
+            "anthropic": { "type": "boolean" },
+            "google": { "type": "boolean" },
+            "openai": { "type": "boolean" },
+            "openrouter": { "type": "boolean" }
+          }
+        },
+        "issue": { "description": "Why the file does not load, or null", "type": ["string", "null"] }
+      }
+    },
+    "consents": {
+      "description": "Each consent to send, per provider, model and purpose",
+      "type": "array",
+      "items": { "$ref": "#/$defs/consent" }
+    },
+    "today": { "$ref": "#/$defs/today" }
+  },
+  "$defs": {
+    "provider": { "enum": ["anthropic", "google", "openai", "openrouter"] },
+    "model": {
+      "description": "`<provider>:<model id>`",
+      "type": "string",
+      "pattern": "^(anthropic|google|openai|openrouter):\\S+$"
+    },
+    "optional_model": { "anyOf": [{ "$ref": "#/$defs/model" }, { "type": "null" }] },
+    "purpose": { "enum": ["review", "check"] },
+    "count": { "type": "integer", "minimum": 0 },
+    "instant": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$" },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "models", "ready", "reason"],
+      "properties": {
+        "task": { "$ref": "#/$defs/purpose" },
+        "models": {
+          "description": "The models the task sends to, in order; empty while one it needs is unset",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tier", "model"],
+            "properties": {
+              "tier": { "description": "Null under fixed routing", "enum": ["fast", "strong", null] },
+              "model": { "$ref": "#/$defs/model" }
+            }
+          }
+        },
+        "ready": { "description": "Whether the task can send now: AI on, its models set, their providers with a key", "type": "boolean" },
+        "reason": { "description": "Why it cannot, as the command words its refusal; null when ready", "type": ["string", "null"] }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "purpose", "granted_at"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/provider" },
+        "model": { "description": "The provider's model id", "type": "string", "minLength": 1 },
+        "purpose": { "$ref": "#/$defs/purpose" },
+        "granted_at": { "$ref": "#/$defs/instant" }
+      }
+    },
+    "today": {
+      "description": "Today's requests in this workspace, on this machine's local date",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["day", "tokens", "cap", "requests", "cost_usd", "requests_without_cost"],
+      "properties": {
+        "day": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "tokens": { "description": "The tokens the cap counts today", "$ref": "#/$defs/count" },
+        "cap": { "description": "`ai.daily_token_cap`", "type": "integer", "minimum": 1 },
+        "requests": { "$ref": "#/$defs/count" },
+        "cost_usd": { "description": "The sum of the costs providers reported, in US dollars; null when none did", "type": ["number", "null"], "minimum": 0 },
+        "requests_without_cost": { "description": "Requests whose provider reported no cost", "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

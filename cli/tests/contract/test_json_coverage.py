@@ -4,6 +4,10 @@
 A command or subcommand with a `--json` flag in `command_spec`, and `cstudy export`, name the
 schemas of their documents in `DOCUMENTS`. A new `--json` flag fails here until its document has
 a schema file and an entry; `test_json_documents.py` then validates real output against it.
+
+A spec that defines documents ahead of their commands lists their schemas in `PLANNED`. An entry
+there may name only a command that does not exist yet, so the commit that adds the command must
+move it to `DOCUMENTS`, where its real output is validated.
 """
 
 from collections.abc import Iterator
@@ -35,6 +39,12 @@ DOCUMENTS: dict[str, tuple[str, ...]] = {
     EXPORT: ("export",),
 }
 """The command, or `cstudy export` for the file it writes, and the schemas of its documents."""
+PLANNED: dict[str, tuple[str, ...]] = {
+    "ai status": ("ai-status",),
+    "ai usage": ("ai-usage",),
+    "ai review": ("ai-review", "ai-review-list"),
+}
+"""Documents that docs/specs/ai.md defines before their commands exist, with their schemas."""
 
 
 def program() -> CommandSpec:
@@ -79,10 +89,25 @@ def test_every_document_has_a_schema(command, name):
 
 
 def test_every_schema_is_the_schema_of_a_document():
-    used = {name for names in DOCUMENTS.values() for name in names}
+    used = {name for names in (*DOCUMENTS.values(), *PLANNED.values()) for name in names}
     assert sorted(schema_names() - used) == []
 
 
 def test_no_two_commands_share_a_schema():
-    named = [name for names in DOCUMENTS.values() for name in names]
+    named = [name for names in (*DOCUMENTS.values(), *PLANNED.values()) for name in names]
     assert sorted(name for name in set(named) if named.count(name) > 1) == []
+
+
+@pytest.mark.parametrize(
+    ("command", "name"),
+    [(command, name) for command, names in PLANNED.items() for name in names],
+    ids=lambda value: str(value),
+)
+def test_every_planned_document_has_a_schema(command, name):
+    assert name in schema_names(), f"cstudy {command}: no schemas/cli/{name}.schema.json"
+
+
+def test_a_planned_document_names_no_command_that_exists():
+    """Once its command exists, a document moves to DOCUMENTS, where its output is validated."""
+    built = sorted(set(PLANNED) & set(commands_with_json(program())))
+    assert built == []
