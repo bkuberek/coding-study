@@ -322,6 +322,8 @@ def languaged(engine: str, python_only: Path, python_server: RunningServer) -> L
         page.uncheck(f"{LANGUAGE}typescript")
         seen.commands_remove = page.locator(COMMANDS).inner_text()
         page.click(SAVE)
+        # A removal asks first; keeping the folder is the default.
+        page.click("dialog.sheet[open] button:has-text('Keep the folder')")
         seen.remove_status = _status(page, "removed")
         seen.marker_after_remove = _marker(python_only)["languages"]
         seen.typescript_folder_kept = (python_only / "typescript").is_dir()

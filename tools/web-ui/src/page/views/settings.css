@@ -290,3 +290,9 @@ html:has(.settings-bar) {
 .profile-commands {
   margin: 8px 0 0;
 }
+
+/* The removal dialog: why a deletion is refused, in the fail ink, beside the disabled Delete. */
+.removal-reason {
+  margin: 0 0 6px;
+  color: var(--fail);
+}

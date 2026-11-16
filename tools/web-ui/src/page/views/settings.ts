@@ -15,7 +15,8 @@ import { changesText, lineParts, type SaveLine, saveLines, type StoreOutcome } f
 import { THEMES } from "../shell.ts";
 import type { LanguageStates, Preferences, Theme } from "../types.ts";
 import { configStage } from "./config-form.ts";
-import { languagesStage } from "./profile-section.ts";
+import { type LanguageSave, languagesStage } from "./profile-section.ts";
+import { askRemoval } from "./removal-dialog.ts";
 import { dangerSection } from "./reset-dialog.ts";
 
 type Switch = "vim" | "run_on_save" | "typecheck" | "code_intelligence" | "autocomplete";
@@ -101,6 +102,17 @@ export function settingsView(context: PageContext): Cleanup {
     saving = true;
     say([{ text: "saving…", failed: false }]);
     refresh();
+    // A removal asks keep or delete before any store is written, as a new `progress_db` does.
+    let removal: LanguageSave = { deleteFolders: false };
+    const { remove } = languages.changes();
+    if (remove.length > 0) {
+      const chosen = await askRemoval(context, remove);
+      if (chosen === null) {
+        settle([{ text: "not saved", failed: false }]);
+        return;
+      }
+      removal = chosen;
+    }
     let configOutcome: StoreOutcome = null;
     // First, so its question can still stop the Save before anything is written.
     if (Object.keys(config.changes()).length > 0) {
@@ -120,7 +132,7 @@ export function settingsView(context: PageContext): Cleanup {
     let languagesOutcome: StoreOutcome = null;
     if (languages.count() > 0) {
       try {
-        languagesOutcome = await languages.save({ deleteFolders: false });
+        languagesOutcome = await languages.save(removal);
       } catch (error) {
         languagesOutcome = { error: messageOf(error) };
       }
