@@ -1821,8 +1821,8 @@ Sends the [check](ai.md#the-check) to each model the routing names, after asking
 
 | Form | Does |
 |------|------|
-| `cstudy ai review [<slug>]` | Reviews the notes of the problem's attempt in progress, or of its latest attempt, against its rubric ([AI review](ai.md#ai-review)); `<slug>` defaults to the problem of the active attempt. After the [consent](ai.md#consent) question the first time, it prints `reviewing with anthropic:<model id>, up to 300 s` on standard error, then prints and stores the review. Ctrl-C stops it, exit 130, and stores the request as interrupted |
-| `--dry-run` | Prints the instructions and the message exactly as the review would send them, then the model it would use and the estimate, and sends nothing; it needs no key, no consent and AI on or off alike |
+| `cstudy ai review [<slug>]` | Reviews the notes of the problem's attempt in progress, or of its latest attempt, against its rubric ([AI review](ai.md#ai-review)); `<slug>` defaults to the problem of the active attempt. After the [consent](ai.md#consent) question the first time, it prints `reviewing with anthropic:<model id>, up to 300 s` on standard error, then prints and stores the review. A no at the question prints `not sent`, on standard error with `--json`. Ctrl-C stops it, exit 130, and stores the request as interrupted |
+| `--dry-run` | Prints the instructions and the message exactly as the review would send them, between the lines `=== instructions review-1 ===`, `=== message ===` and `=== not sent ===`, then the `model` it would use and the `estimate`, and sends nothing; it needs no key, no consent and AI on or off alike |
 | `--list` | The problem's reviews, newest first, with `REVIEW`, `ATTEMPT`, `WHEN`, `MODEL` and `RESULT` (`18 met · 6 partly · 4 missed of 28`), and `dismissed` after one you dismissed; `no AI reviews of url-shortener yet` |
 | `--show ID` | One stored review in full, as a new review prints it ([what it shows](ai.md#what-it-shows)) |
 | `--dismiss ID` | Marks the review dismissed: `dismissed AI review 3 of url-shortener`, or `AI review 3 is already dismissed`. It stays stored |

@@ -30,6 +30,7 @@ from coding_study.entrypoints.commands.ai_report import (
     usage_document,
     usage_lines,
 )
+from coding_study.entrypoints.commands.ai_review import review
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
 NAME = "ai"
@@ -45,6 +46,7 @@ def register(app: typer.Typer) -> None:
     add_command(group, consent, "consent")
     add_command(group, models, "models")
     add_command(group, check, "check")
+    add_command(group, review, "review")
     app.add_typer(group, name=NAME)
 
 

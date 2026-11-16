@@ -38,6 +38,7 @@ from coding_study.application.ports import CaseListener, RunnerLaunch
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.ai import AiTask, ModelRef, Provider, Routing
+from coding_study.domain.ai_models import Ending, ModelReply, Usage
 from coding_study.domain.ai_records import CallOutcome, Consent, ModelCall
 from coding_study.domain.attempts import (
     Attempt,
@@ -86,6 +87,7 @@ from coding_study.domain.suite_runs import (
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import (
     ai,
+    ai_review,
     docs,
     doctor,
     export,
@@ -115,6 +117,7 @@ from tests.fakes import (
     FakeLanguageRunner,
     FakeStubGenerator,
     FakeToolchains,
+    ScriptedLanguageModels,
     ScriptedRunnerProcess,
     declare_jdk,
     jdk_of,
@@ -543,6 +546,110 @@ def test_ai_usage_rejects_an_undocumented_field(tmp_path, problems, monkeypatch)
     document = ai_document("usage")
     for path in ((), ("rows", 0), ("total",)):
         assert_rejects_extra_field("ai-usage", document, path)
+
+
+# cstudy ai review --json, with --show and with --list
+
+AI_REVIEW_NOTES = "notes/system-design/url-shortener.md"
+
+
+def ai_review_environment(tmp_path, monkeypatch, *replies: ModelReply) -> Environment:
+    """url-shortener with an attempt, notes that are written and a consent, over scripted
+    models."""
+    environment = make_environment(
+        repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS),
+        config=Config(ai=AiSettings(enabled=True, model=AI_MODEL)),
+        credentials=FakeCredentials({Provider.ANTHROPIC: "sk-sentinel"}),
+        models=ScriptedLanguageModels(*replies),
+    )
+    start_item_attempt(environment, ItemStartRequest("url-shortener"))
+    environment.workspace.write_text(AI_REVIEW_NOTES, "Redirects stay fast.\nStorage is 4 TB.\n")
+    environment.ai_store.grant_consent(Consent(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, NOW))
+    monkeypatch.setattr(ai_review, "load_environment", lambda *_: environment)
+    return environment
+
+
+def ai_review_reply(
+    verdict: str = "met", evidence: tuple[str, ...] = ("redirects stay fast",)
+) -> ModelReply:
+    data = {
+        "criteria": [
+            {
+                "id": f"C{number}",
+                "verdict": verdict,
+                "evidence": list(evidence),
+                "gaps": "" if verdict == "met" else "nothing on this",
+            }
+            for number in range(1, 6)
+        ],
+        "summary": "Strong on the redirect path.",
+    }
+    return ModelReply(Ending.COMPLETE, "{}", data, Usage(900, 100, 0.00012))
+
+
+def ai_review_documents(*arguments: str) -> Any:
+    result = runner.invoke(cli.app, ["ai", "review", *arguments, "--json"])
+    assert result.exit_code == ExitCode.SUCCESS, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_ai_review_of_a_new_review(tmp_path, monkeypatch):
+    ai_review_environment(tmp_path, monkeypatch, ai_review_reply())
+    document = ai_review_documents("url-shortener")
+    assert_valid("ai-review", document)
+    assert document["usage"] == {"input_tokens": 900, "output_tokens": 100, "cost_usd": 0.00012}
+    assert document["criteria"][0]["evidence"] == ["redirects stay fast"]
+
+
+def test_ai_review_of_a_stored_review_with_dropped_quotes_and_no_cost(tmp_path, monkeypatch):
+    reply = replace(ai_review_reply("partial", ("not in the notes",)), usage=Usage(900, 100))
+    environment = ai_review_environment(tmp_path, monkeypatch, reply)
+    ai_review_documents("url-shortener")
+    environment.workspace.write_text(AI_REVIEW_NOTES, "Rewritten.\n")
+    document = ai_review_documents("--show", "1")
+    assert_valid("ai-review", document)
+    assert (document["quotes_dropped"], document["notes_changed"]) == (5, True)
+    assert document["usage"]["cost_usd"] is None
+
+
+def test_ai_review_of_a_dismissed_review(tmp_path, monkeypatch):
+    ai_review_environment(tmp_path, monkeypatch, ai_review_reply())
+    ai_review_documents("url-shortener")
+    assert runner.invoke(cli.app, ["ai", "review", "--dismiss", "1"]).exit_code == 0
+    document = ai_review_documents("--show", "1")
+    assert_valid("ai-review", document)
+    assert document["dismissed_at"] is not None
+
+
+def test_ai_review_rejects_an_undocumented_field(tmp_path, monkeypatch):
+    ai_review_environment(tmp_path, monkeypatch, ai_review_reply())
+    document = ai_review_documents("url-shortener")
+    for path in ((), ("criteria", 0), ("counts",), ("usage",)):
+        assert_rejects_extra_field("ai-review", document, path)
+
+
+def test_ai_review_list_without_a_review(tmp_path, monkeypatch):
+    ai_review_environment(tmp_path, monkeypatch)
+    document = ai_review_documents("url-shortener", "--list")
+    assert_valid("ai-review-list", document)
+    assert document["reviews"] == []
+
+
+def test_ai_review_list_with_reviews_newest_first(tmp_path, monkeypatch):
+    ai_review_environment(tmp_path, monkeypatch, ai_review_reply(), ai_review_reply("missing", ()))
+    ai_review_documents("url-shortener")
+    ai_review_documents("url-shortener")
+    document = ai_review_documents("--list")
+    assert_valid("ai-review-list", document)
+    assert [review["review_id"] for review in document["reviews"]] == [2, 1]
+
+
+def test_ai_review_list_rejects_an_undocumented_field(tmp_path, monkeypatch):
+    ai_review_environment(tmp_path, monkeypatch, ai_review_reply())
+    ai_review_documents("url-shortener")
+    document = ai_review_documents("--list")
+    for path in ((), ("reviews", 0), ("reviews", 0, "criteria", 0), ("reviews", 0, "usage")):
+        assert_rejects_extra_field("ai-review-list", document, path)
 
 
 # cstudy export (the file)

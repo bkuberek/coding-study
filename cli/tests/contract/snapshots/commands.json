@@ -97,6 +97,7 @@
       "consent",
       "key",
       "models",
+      "review",
       "status",
       "usage"
     ]
@@ -152,6 +153,39 @@
     "choices": [],
     "deprecated": false,
     "takes_value": false
+  },
+  "cstudy ai review": {
+    "subcommands": []
+  },
+  "cstudy ai review --dismiss": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
+  },
+  "cstudy ai review --dry-run": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai review --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai review --json": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai review --list": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai review --show": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": true
   },
   "cstudy ai status": {
     "subcommands": []
