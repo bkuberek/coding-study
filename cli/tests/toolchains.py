@@ -30,12 +30,20 @@ def tool_works(name: str) -> bool:
 
 
 needs_rustfmt = pytest.mark.skipif(not tool_works("rustfmt"), reason="rustfmt is not installed")
+needs_cargo = pytest.mark.skipif(not tool_works("cargo"), reason="cargo is not installed")
 
 
 def jvm_marked[T](values: Iterable[T], language_of: Callable[[T], str] = str) -> list[Any]:
-    """`values` as test parameters with the Java and Kotlin ones marked `jvm`, for a slow test over
-    every language: CI selects the JVM rows with `-m jvm` and runs them on the JDKs of the range."""
-    return [
-        pytest.param(value, marks=pytest.mark.jvm) if language_of(value) in JVM_LANGUAGES else value
-        for value in values
-    ]
+    """`values` as test parameters with the Java and Kotlin ones marked `jvm` and the Rust one
+    skipped without cargo, for a slow test over every language: CI selects the JVM rows with
+    `-m jvm` and runs them on the JDKs of the range."""
+    marked: list[Any] = []
+    for value in values:
+        language = language_of(value)
+        if language in JVM_LANGUAGES:
+            marked.append(pytest.param(value, marks=pytest.mark.jvm))
+        elif language == "rust":
+            marked.append(pytest.param(value, marks=needs_cargo))
+        else:
+            marked.append(value)
+    return marked
