@@ -183,3 +183,79 @@ The full contract: [Compatibility](docs/specs/compatibility.md).
 ## 0.52 to 1.0
 
 This section fills in as each release ships.
+
+### The learner profile
+
+The learner profile is the default filter of `cstudy list`, `cstudy next`, `cstudy mock` and `cstudy learn`, and of the Problems, Guides and Mock views of `cstudy serve`: the languages you practice, the job roles you prepare for and the domains you study. Each defaults to all of its values. Read [the learner profile](docs/specs/cli.md#the-learner-profile).
+
+Nothing changes for your workspace until you choose. A workspace whose marker has no `languages` has all six languages, and `cstudy doctor`, `cstudy doctor --fix`, the IDE files and `cstudy start` behave as before: Python, TypeScript, Java and Kotlin required, Go and Rust optional. With that marker and a config file without `[profile]` keys, the profile filters nothing, so every list and pick shows what it showed before.
+
+What to do: nothing. When you want fewer languages or a narrower list, choose them.
+
+### Workspace languages
+
+`cstudy init --lang <language>` (repeatable) creates a workspace with those languages' folders only, and `cstudy lang` changes them later:
+
+```bash
+cstudy lang list                         # the languages and their folders
+cstudy lang add go                       # writes go/ and go.work, then: cstudy doctor --fix
+cstudy lang remove rust                  # keeps rust/ on disk
+cstudy lang remove rust --delete-folder  # deletes rust/ after a question; --yes skips it
+```
+
+They are written to the marker as `languages = ["python", "go"]`. The marker's `schema` stays 1. Once a workspace lists its languages:
+
+- `cstudy doctor` shows and `--fix` runs only those languages' rows and steps, and a chosen Go or Rust is required, so it fails when missing. A `languages` row names them.
+- The IDE files hold only those languages' settings, extensions and debug configurations.
+- A new attempt in another language exits 3, with the command that adds it: `rust is not one of this workspace's languages (python, go): cstudy lang add rust`. An attempt in progress still resumes. Service projects start whatever the languages.
+- `cstudy verify` skips the other languages, each with `not one of this workspace's languages: cstudy lang add <language>`.
+- Removing a language never deletes progress, `.archive/`, `projects/` or `notes/`.
+
+An older `cstudy` ignores `languages`: its `cstudy doctor` reports the folders of the languages you left out as missing, and its `cstudy doctor --fix` writes them.
+
+### Job roles and domains in `config.toml`
+
+Two keys, set with `cstudy config edit` or in Settings:
+
+```toml
+[profile]
+job_roles = ["backend", "platform"]   # leave the key out for every role
+domains = ["backend", "security"]     # leave the key out for every domain
+```
+
+An empty list, an unknown or repeated value, and `general` in `job_roles` are config errors. `general` is not a profile value: an entry labeled `general` matches every role profile.
+
+What to do: nothing, unless you want them.
+
+### `--widen` and the profile line
+
+While the profile narrows a list, these commands apply it by default:
+
+| Command | New flags |
+|---------|-----------|
+| `cstudy list` | `--widen lang\|role\|domain\|all` |
+| `cstudy next` | `--widen role\|domain\|all` |
+| `cstudy mock` | `--domain`, `--role`, `--widen role\|domain\|all` |
+| `cstudy learn` | `--domain`, `--role`, `--widen role\|domain\|all` |
+
+`--widen` is repeatable and drops the profile in that dimension for one run, without changing it. An explicit `--lang`, `--role` or `--domain` replaces the profile in its dimension. `--set` ignores the profile.
+
+While the profile hid at least one entry, the human output ends with one dim line on standard output:
+
+```text
+filtered by your profile: 120 of 400 problems · languages python, go · --widen all shows all 400
+```
+
+What to do: a script that reads the human output of these commands drops the last line when it starts with `filtered by your profile:`, or reads `--json`, which never prints it.
+
+### `profile` in `--json`
+
+`cstudy list --json`, `cstudy next --json` and `cstudy learn --json` carry `profile`: the values that narrowed the rows, by dimension, null where a dimension narrowed nothing, and `hidden`, the entries the profile left out (`{"problems": 280}`, or `{"guides": 92, "paths": 11}` in `learn`). Guides in `cstudy learn --json` carry `domains` and `job_roles`.
+
+What to do: nothing. The fields are added; with no profile set, the entries are the same as before and every `hidden` count is 0.
+
+### Guides need `domains` and `job_roles`
+
+Every guide's `meta.yaml` lists `domains` and `job_roles`, and `cstudy verify` fails a guide without them.
+
+What to do, only if you keep a content root of your own (`--content` or `CSTUDY_CONTENT`) with guides of your own: add both lists to each guide's `meta.yaml`, as [the guide format](docs/specs/guides.md#metayaml) describes.

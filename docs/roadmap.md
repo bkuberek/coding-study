@@ -94,9 +94,9 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | Area | Met | Partly met | Not met |
 |------|----:|-----------:|--------:|
 | Compatibility and release engineering | 6 | 1 | 3 |
-| Product | 0 | 1 | 12 |
+| Product | 1 | 2 | 10 |
 | AI preview | 0 | 0 | 9 |
-| Content | 1 | 2 | 6 |
+| Content | 2 | 2 | 5 |
 | Platforms and install | 0 | 3 | 4 |
 | Reliability | 1 | 1 | 2 |
 | Docs | 2 | 0 | 1 |
@@ -105,7 +105,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | Security and sandbox | 0 | 2 | 3 |
 | Licensing | 3 | 3 | 0 |
 | Privacy and offline | 2 | 2 | 1 |
-| **Total (79)** | **18** | **17** | **44** |
+| **Total (79)** | **20** | **18** | **41** |
 
 #### Compatibility and release engineering
 
@@ -118,7 +118,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | E5 | Curated release notes for each minor release: highlights, upgrading, deprecations | Not met | v0.64 |
 | E6 | Release candidates are tagged without reaching the Homebrew tap, and only fixes land during the soak | Not met | v0.64 |
 | E7 | Rollback is documented and drilled once: install the previous version, then restore from the backup or an export | Not met | v0.64 |
-| E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Partly met: a draft covers the 0.51 changes, linked from the README and the docs index | v0.51 (draft), release candidates (final) |
+| E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Partly met: a draft covers the 0.51 changes and the learner profile, linked from the README and the docs index | v0.51 (draft), release candidates (final) |
 | E9 | 1.0.0 is cut deliberately with a major bump | Met: `semantic-release version --major` | v1.0.0 |
 | E10 | A release is cut only after CI passes on main: the Version workflow runs after CI, and a manual release checks CI first | Met | v0.50 |
 
@@ -126,8 +126,8 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| P1 | A learner profile of languages, job roles and domains, each defaulting to all, sets the default filters on every page; a page's filter can widen them without editing the profile; one shared filter component serves every page | Not met | v0.52 |
-| P2 | Languages decide which workspace folders exist: `cstudy init --lang`, `cstudy lang add`, and `doctor`, `doctor --fix` and the IDE files scoped to the chosen languages; a fresh workspace with one language gets an all-ok `doctor` | Not met | v0.52 |
+| P1 | A learner profile of languages, job roles and domains, each defaulting to all, sets the default filters on every page; a page's filter can widen them without editing the profile; one shared filter component serves every page | Partly met: `cstudy list`, `next`, `mock` and `learn` apply the profile, with `--widen`, the profile line and `profile` in `--json`, and the web API serves the profile and takes `widen`; the page's shared filter component, its profile chip and the Settings Profile section remain | v0.52 |
+| P2 | Languages decide which workspace folders exist: `cstudy init --lang`, `cstudy lang add`, and `doctor`, `doctor --fix` and the IDE files scoped to the chosen languages; a fresh workspace with one language gets an all-ok `doctor` | Met: `cstudy init --lang` and `cstudy lang add` and `remove`; `doctor`, `doctor --fix` and the IDE files keep to the workspace's languages; a slow test runs `init --lang`, `doctor --fix` and `doctor` for each language whose toolchain is installed and finds every row ok, but for the machine-level `docker`, `docker leftovers` and `installs` rows and the Gradle and debugger rows, which only regenerating the wrapper and `--debug` need | v0.52 |
 | P3 | Every journey of the [definition](#definition) passes in the terminal, and on the page where the page has it | Partly met: the parity end-to-end test covers practice for every kind in all six languages | Release candidates |
 | P4 | `bench` is honest: on 5 problems with an O(n²) brute force, the brute force gets `suboptimal` at medium or high confidence in every language, the optimal reference gets `optimal`, and the verdicts hold in 5 runs out of 5 | Not met | v0.54 |
 | P5 | Editor checks: LazyVim shows language-server diagnostics in a fresh stub per language, and IntelliJ imports `jvm/` with both subprojects | Not met | v0.54 |
@@ -166,7 +166,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | C6 | The counts agree across the README, this roadmap and the catalog | Met | Kept in every milestone |
 | C7 | The content must-haves below, each passing C1 to C3 | Not met | v0.55 to v0.57, v0.63 |
 | C8 | Browser-graded React problems: the grader of [Phase 16](#phase-16-frontend-problems) and two problems on it | Not met | v0.58 |
-| C9 | Guides carry `job_roles` and `domains` labels, checked by `cstudy verify` | Not met | v0.52 |
+| C9 | Guides carry `job_roles` and `domains` labels, checked by `cstudy verify` | Met: all 132 guides carry both, `schemas/guide.schema.json` requires them (G1), and G12 warns when a guide shares no domain with its problems; `cstudy verify --static` passes with four G12 warnings, each justified | v0.52 |
 
 The content must-haves:
 
@@ -228,7 +228,7 @@ The content must-haves:
 | A1 | axe-core finds no WCAG 2.2 A or AA violation on any view or dialog, in light and dark, at 1440 and 390 pixels, in Chromium, Firefox and WebKit | Met locally; CI runs Chromium | Every release candidate |
 | A2 | The keyboard-only journey passes | Met | |
 | A3 | A manual screen-reader pass of the learn and practice journeys with VoiceOver and Orca, with its findings fixed | Not met | v0.64 |
-| A4 | Every new view and control (Guides search, example tabs, the Docs page, the profile filters, the shell command and the grading phases of troubleshooting problems, the AI drawer) is covered by A1 and A2 | Partly met: covered as each lands | Each milestone |
+| A4 | Every new view and control (Guides search, example tabs, the Docs page, the profile filters, the shell command and the grading phases of troubleshooting problems, the AI drawer) is covered by A1 and A2 | Partly met: covered as each lands; the profile filters are not covered until their page controls and browser tests land | Each milestone |
 
 #### Performance
 

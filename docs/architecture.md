@@ -76,7 +76,10 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `ProblemSetStore` | `YamlProblemSets` (`adapters/yaml_problem_sets.py`) | The workspace's `sets.yaml`: read and validated, and changed by the lines a change needs, keeping the user's comments ([ADR 0023](decisions/0023-problem-sets.md)) |
 | `GuideCatalog` | `FsGuideCatalog` (`adapters/fs_guide_catalog.py`) | The [concept guides and learning paths](specs/guides.md) in `guides/`: `meta.yaml` and path files validated with JSON Schema, `guide.md` and the example files ([ADR 0025](decisions/0025-concept-guides-and-learning-paths.md)) |
 | `UserDocs` | `FsUserDocs` (`adapters/fs_user_docs.py`) | The [user docs](specs/user-docs.md) in `user-docs/`: one Markdown page per topic, its front matter validated with JSON Schema ([ADR 0026](decisions/0026-user-docs.md)) |
-| `WorkspaceSetup` | `FsWorkspaceSetup` | The workspace template, the marker, the runner runtime (`RunnerRuntime`) and `git init`, for `cstudy init` and `cstudy doctor` |
+| `WorkspaceSetup` | `FsWorkspaceSetup` | The workspace template, the marker, the runner runtime (`RunnerRuntime`) and `git init`, for `cstudy init` and `cstudy doctor`; the template files it writes or reports missing are those of the workspace's [languages](#workspace-languages) and the shared ones |
+| `WorkspaceLanguageStore` | `FsWorkspaceLanguageStore` (`adapters/workspace_setup.py`) | The marker's `languages`, rewritten keeping its comments, and the missing template files of added languages, never overwriting one, for `cstudy lang` and the Settings view |
+| `LanguageFolders` | `FsLanguageFolders` (`adapters/language_folders.py`) | The template folders that `cstudy lang remove --delete-folder` deletes: whether one is there, whether it is a link or resolves outside the workspace, and its deletion, a link inside it deleted as a link |
+| `RunActivity` | `ProcessRunActivity` (`adapters/run_activity.py`) | Whether a run or a job is active, which `cstudy reset` and `cstudy lang remove --delete-folder` wait for |
 | `Clock`, `Random` | system implementations | Injected for deterministic tests |
 
 | Layer | Package | May import |
@@ -105,9 +108,39 @@ An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 
 ### Languages
 
-`Language` has six members. `ALL_LANGUAGES` is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; a problem lists fewer only where a language cannot express it (check S13), on the concurrency and debugging tracks (`LANGUAGE_SUBSET_TRACKS`) or in the security, identity and AI domains (`LANGUAGE_SUBSET_DOMAINS`, [ADR 0020](decisions/0020-catalog-labels.md)); a project problem lists exactly one ([ADR 0014](decisions/0014-project-problems.md)), and code that branches on `ProblemKind` uses the same exhaustive `match`. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) are the languages whose toolchains every workspace needs: `cstudy doctor` fails without them, and only warns about Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
+`Language` has six members. `ALL_LANGUAGES` is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; a problem lists fewer only where a language cannot express it (check S13), on the concurrency and debugging tracks (`LANGUAGE_SUBSET_TRACKS`) or in the security, identity and AI domains (`LANGUAGE_SUBSET_DOMAINS`, [ADR 0020](decisions/0020-catalog-labels.md)); a project problem lists exactly one ([ADR 0014](decisions/0014-project-problems.md)), and code that branches on `ProblemKind` uses the same exhaustive `match`. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) are the languages whose toolchains a workspace that has not chosen its languages needs: there `cstudy doctor` fails without them, and only warns about Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
 
-The adapter registry holds one stub generator and one runner per language that has an adapter package. Every language has its adapters now. A language without them would raise `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, as it does for any part that is not built yet; `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. `cstudy doctor` handshakes the runners of the core languages only; for Go and Rust it checks the toolchains and debuggers and warns when one is missing.
+The adapter registry holds one stub generator and one runner per language that has an adapter package. Every language has its adapters now. A language without them would raise `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, as it does for any part that is not built yet; `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. `cstudy doctor` handshakes the runners of the core languages only; for Go and Rust it checks the toolchains and debuggers.
+
+#### Workspace languages
+
+A workspace's languages are the marker's `languages`, one or more of the six; a marker without the key has all six and has chosen none ([workspace languages](specs/installation-and-workspaces.md#workspace-languages), [ADR 0028](decisions/0028-learner-profile.md)). They decide which practice folders exist, which toolchains `cstudy doctor` requires, which IDE files are written and which languages a new attempt starts in.
+
+| Piece | Path | Role |
+|-------|------|------|
+| The language table | `domain/workspace_languages.py` | Each language's template paths (`template_paths`, an exhaustive `match`: Java and Kotlin share `jvm/`, Go owns `go/` and `go.work`), the workspace order, parsing of `--lang` values and of the marker's value, and the folder names the output prints (`go/ and go.work`) |
+| The marker | `adapters/workspace_marker.py` | `read_marker` validates `languages`, so a bad value makes the marker unreadable; `write_languages` rewrites it with tomlkit, keeping comments and other keys |
+| The environment | `Environment.workspace_languages` | The marker's languages, or None when the workspace chose none; every use case reads them from here |
+| Template files | `WorkspaceSetup`, `WorkspaceLanguageStore` | `cstudy init --lang` and `cstudy doctor --fix` write the template files of the workspace's languages and the shared ones only; `cstudy lang add` writes an added language's |
+| New attempts | `application/language_requirement.py` | `require_workspace_language` refuses a new attempt outside the workspace's languages with exit 3 and the `cstudy lang add` hint, before anything is written; a service project uses no language folder and is exempt |
+| Default language | `domain/precedence.py` | `resolve_language` takes the workspace's languages: `--lang`, else `default_lang` when it is one of them, else the first of them |
+| Verify | `application/toolchain_requirement.py` | `split_by_toolchain` skips a language the workspace does not list, with its reason, before the JDK range and the missing toolchains |
+| Doctor | `application/doctor.py` | Toolchain rows, workspace rows and `--fix` steps of the workspace's languages only, each chosen language required, Go and Rust included, and the `languages` row ([rows by language](specs/cli.md#rows-by-language)) |
+| IDE files | `domain/ide.py`, `domain/ide_actions.py` | `IdeWorkspace.languages` and `IdeAction.applies_to` leave out the settings, extensions, debug configurations and actions of the languages the workspace does not list |
+| Adding and removing | `application/workspace_languages.py`, `entrypoints/commands/lang.py` | `change_languages` writes the marker, then the added languages' template files, then, when asked, deletes the removed languages' folders; `language_removal_preview` runs every check that can refuse a deletion and says what goes and what stays, changing nothing. The entrypoint refreshes the IDE files cstudy wrote (`refresh_written_ides`). `cstudy lang` and the Settings view call the same use cases |
+
+### Learner profile
+
+The learner profile is the default filter of `cstudy list`, `next`, `mock` and `learn` and of the page's Problems, Guides and Mock views ([the learner profile](specs/cli.md#the-learner-profile), [ADR 0028](decisions/0028-learner-profile.md)). It has three dimensions, each defaulting to all of its values: the workspace's languages, and the job roles and domains of `profile.job_roles` and `profile.domains` in `config.toml` (`ProfileSettings` in `domain/config.py`).
+
+| Piece | Path | Role |
+|-------|------|------|
+| The rule | `domain/profile.py` | `learner_profile` builds a `Profile` from the config's settings and the workspace's languages. `Profile.matches` is the one matching rule of every list: a role profile keeps `general` entries, a language profile keeps rubric problems, and an entry without a dimension is kept. `Widening` holds the dimensions a run ignores the profile in (`--widen`, and the dimension of each explicit `--lang`, `--role` or `--domain`). `ProfileEffect` counts what the profile hid, and `profile_line` words the dim line that ends the command's output |
+| Use cases | `application/list_problems.py`, `application/next_problem.py` with `domain/next_selection.py`, `application/mock_interview.py`, `application/learn.py` | Each takes a `Profile` and a `Widening`, narrows its rows or its pick's scope, and returns the `ProfileEffect`: the shown and total counts, and the values that narrowed. `mock_scope` gives the Mock view the same counts before a mock starts |
+| CLI | `entrypoints/commands/list_problems.py`, `next_problem.py`, `mock.py`, `learn.py` | Build the profile, parse `--widen`, print the profile line on standard output while the profile hid an entry, and write `profile` with its `hidden` counts in `--json` |
+| Web | `entrypoints/web/documents.py`, `api_browsing.py`, `api_guides.py`, `api_mock.py`, `api_languages.py` | The session document carries the profile the page's filters start from; the list, next, guide and mock routes take `widen`, `domain` and `role` and call the same use cases; the languages routes serve `cstudy lang`'s use cases and the removal preview |
+
+Neither these use cases nor these routes write the profile: widening is per run, and only `cstudy init --lang`, `cstudy lang`, `cstudy config edit` and the Settings view change it.
 
 ### Use cases
 
@@ -124,6 +157,8 @@ The adapter registry holds one stub generator and one runner per language that h
 | `StartMock` | `cstudy mock` |
 | `ExportProgress`, `ImportProgress` | `cstudy export`, `cstudy import` |
 | `InitWorkspace` | `cstudy init` |
+| `workspace_languages`, `change_languages`, `language_removal_preview` | `cstudy lang`, the Settings view's languages |
+| `mock_scope` | The Mock view's profile counts |
 | `AttemptStatus`, `ProblemHistory` | `cstudy status`, `cstudy history` |
 | `AttemptFiles` | The web UI's editor and file tree |
 
@@ -153,6 +188,7 @@ sequenceDiagram
   participant J as JdkSelector
   U->>C: cstudy start two-sum --lang kotlin
   C->>R: load("two-sum")
+  Note over C: a new attempt and kotlin not one of the workspace's languages: error, exit 3, nothing written
   C->>J: selected JDK within the problem's range?
   Note over C,J: outside it: error, exit 4, nothing written
   C->>W: stub exists?
@@ -257,6 +293,8 @@ The repository holds no workspace. A workspace, created by `cstudy init` anywher
 
 ### Per-language workspace projects
 
+A workspace holds the projects of its [languages](#workspace-languages) only; one that has not chosen them holds all of these.
+
 | Language | Project root | User file | Tooling |
 |----------|--------------|-----------|---------|
 | Python | `python/` | `practice/<snake_slug>.py` | `pyproject.toml` (requires-python >= 3.13), `.venv` via `uv sync`, `cs-support` as editable path dependency on `../.cs/runtime/runners/python`, ruff and pyright configured |
@@ -280,10 +318,10 @@ Project roots are relative to the workspace. `jvm/settings.gradle.kts` uses `inc
 | Gradle | Homebrew, used once | Generates the wrapper in the workspace template's `jvm/` | Maintainers regenerating the wrapper (`brew install gradle`) |
 | Gradle wrapper | pinned in `gradle-wrapper.properties` | All JVM builds | Nobody: it ships in the workspace template, and `cstudy init` copies it |
 | Kotlin compiler | pinned Kotlin Gradle plugin in `gradle/libs.versions.toml` | Fetched by Gradle; no global `kotlinc` | Nobody: Gradle fetches it |
-| Go | 1.25 or newer | Go runner and the `go/` practice project, built offline | Go practice (optional; `cstudy doctor` warns when missing) |
-| Rust | `rustc` 1.80 or newer, through rustup | Rust runner and the `rust/` practice project, built offline | Rust practice (optional; `cstudy doctor` warns when missing) |
+| Go | 1.25 or newer | Go runner and the `go/` practice project, built offline | Go practice (optional, `cstudy doctor` warning when missing, unless the workspace chose Go) |
+| Rust | `rustc` 1.80 or newer, through rustup | Rust runner and the `rust/` practice project, built offline | Rust practice (optional, `cstudy doctor` warning when missing, unless the workspace chose Rust) |
 
-`cstudy doctor` checks every row and `cstudy doctor --fix` restores missing workspace files, refreshes the runner runtime, then runs `uv sync`, `pnpm install` and a Gradle warm-up build.
+`cstudy doctor` checks every row and `cstudy doctor --fix` restores missing workspace files, refreshes the runner runtime, then runs `uv sync`, `pnpm install` and a Gradle warm-up build. In a workspace that chose its languages, both keep to those languages' rows and steps, and each chosen language's toolchain is required ([rows by language](specs/cli.md#rows-by-language)).
 
 ## Cache directory `.cs/`
 
