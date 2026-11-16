@@ -3,6 +3,7 @@
     "subcommands": [
       "abort",
       "about",
+      "ai",
       "bench",
       "config",
       "dev",
@@ -86,6 +87,29 @@
     "takes_value": false
   },
   "cstudy about --licenses": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai": {
+    "subcommands": [
+      "key"
+    ]
+  },
+  "cstudy ai --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai key": {
+    "subcommands": []
+  },
+  "cstudy ai key --help": {
+    "choices": [],
+    "deprecated": false,
+    "takes_value": false
+  },
+  "cstudy ai key --remove": {
     "choices": [],
     "deprecated": false,
     "takes_value": false

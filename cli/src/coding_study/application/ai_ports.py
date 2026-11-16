@@ -23,7 +23,9 @@ class LanguageModels(Protocol):
 
 
 class Credentials(Protocol):
-    """`credentials.toml`, beside `config.toml` (docs/specs/ai.md#keys)."""
+    """`credentials.toml`, beside `config.toml` (docs/specs/ai.md#keys). Every method but `issue`
+    raises UsageError for a file that would be inside the workspace, and ConfigError for one that
+    does not load (`save_key` and `remove_key`: or cannot be written, which stays as it was)."""
 
     @property
     def location(self) -> str: ...

@@ -391,3 +391,51 @@ def test_a_uri_that_is_no_file_of_this_machine_hides_nothing(workspace, content,
 
 def test_a_path_the_system_cannot_open_hides_nothing(workspace, content):
     assert is_hidden("file:///nul%00l/x.py", hidden_by(workspace, content)) is False
+
+
+# credentials.toml, a file the library never shows (docs/specs/ai.md#keys)
+
+SECRET = "sk-library-sentinel"
+
+
+def credentials_file(directory: Path) -> Path:
+    return written(
+        directory / "config" / "credentials.toml", f'[anthropic]\napi_key = "{SECRET}"\n'
+    )
+
+
+def test_the_credentials_file_is_hidden_by_its_path(tmp_path, workspace, content):
+    file = credentials_file(tmp_path)
+    assert is_hidden(file.as_uri(), (file,)) is True
+
+
+def test_a_link_to_the_credentials_file_is_hidden(tmp_path, workspace, content):
+    file = credentials_file(tmp_path)
+    link = workspace / "notes.toml"
+    link.symlink_to(file)
+    assert is_hidden(link.as_uri(), (file,)) is True
+
+
+def test_a_second_name_of_the_credentials_file_is_hidden_by_its_identity(
+    tmp_path, workspace, content
+):
+    file = credentials_file(tmp_path)
+    twin = workspace / "twin.toml"
+    os.link(file, twin)
+    assert is_hidden(twin.as_uri(), (file,)) is True
+
+
+def test_the_credentials_file_is_never_read_as_a_library_file(tmp_path, workspace, content):
+    file = credentials_file(tmp_path)
+    link = workspace / "notes.toml"
+    link.symlink_to(file)
+    for named in (file, link):
+        with pytest.raises(LibraryRefusalError) as refused:
+            read_library_file(named.as_uri(), workspace, (file,))
+        assert (refused.value.reason, SECRET in str(refused.value)) == (Reason.BUILD_AREA, False)
+
+
+def test_another_file_beside_the_credentials_is_not_hidden(tmp_path, workspace, content):
+    file = credentials_file(tmp_path)
+    other = written(file.parent / "config.toml")
+    assert is_hidden(other.as_uri(), (file,)) is False

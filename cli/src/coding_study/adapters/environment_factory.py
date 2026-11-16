@@ -55,6 +55,7 @@ from coding_study.adapters.subprocess_tool_probe import (
 from coding_study.adapters.system_clock import SystemClock
 from coding_study.adapters.system_machine import SystemMachine
 from coding_study.adapters.toml_config import TomlConfigSource, config_path
+from coding_study.adapters.toml_credentials import open_credentials
 from coding_study.adapters.toolchains import RegistryToolchains, RuntimeToolchains
 from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.adapters.workspace_fs import WorkspaceFs
@@ -160,6 +161,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         problem_sets=YamlProblemSets(WorkspaceFs(workspace)),
         preferences=FsPreferencesStore(workspace),
         ai_store=SqliteAiStore(workspace / config.progress_db, workspace),
+        credentials=open_credentials(user.environ, user.home, workspace),
         workspace_languages=read_marker(workspace).languages if has_marker(workspace) else None,
     )
 

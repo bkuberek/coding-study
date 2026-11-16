@@ -13,6 +13,7 @@ import asyncio
 import json
 import os
 import sys
+from pathlib import Path
 from typing import cast
 
 from starlette.requests import Request
@@ -20,6 +21,7 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
+from coding_study.adapters.toml_credentials import credentials_path
 from coding_study.application.code_intelligence import (
     LanguageServerState,
     SessionTarget,
@@ -63,7 +65,7 @@ async def session(websocket: WebSocket) -> None:
     await websocket.accept()
     if await _carries_token(websocket, server):
         watched = None if target.sidecar is not None else os.getpid()
-        broker = LanguageBroker(target, server.settings.version, watched)
+        broker = LanguageBroker(target, server.settings.version, watched, _hidden_files(server))
         await server.sessions.serve(websocket, target, broker)
 
 
@@ -76,10 +78,17 @@ async def warm_up(server: ServerState) -> None:
         environment = await server.worker.run(server.settings.load_environment)
         target = await server.worker.run(warm_up_target, environment, preferences)
         if target is not None:
-            broker = LanguageBroker(target, server.settings.version, os.getpid())
+            broker = LanguageBroker(
+                target, server.settings.version, os.getpid(), _hidden_files(server)
+            )
             await server.sessions.warm(target, broker)
     except Exception as error:  # the page works without it; the reason is reported
         print(f"cstudy serve: no language server warmed up: {error}", file=sys.stderr)
+
+
+def _hidden_files(server: ServerState) -> tuple[Path, ...]:
+    """The files a library file is never read from: the user's `credentials.toml`."""
+    return (credentials_path(Path(server.settings.config_file.location)),)
 
 
 def code_intelligence_routes() -> list[BaseRoute]:

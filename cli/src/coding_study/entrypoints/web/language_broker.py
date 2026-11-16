@@ -15,7 +15,7 @@ no process: it is given a message and says what to send where.
 import asyncio
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
@@ -109,15 +109,22 @@ class LanguageBroker:
     """One session's rules. `version` is cstudy's, and `pid` that of `cstudy serve`, which the
     server watches when it follows LSP's `processId` rule; None for a server in a sidecar, which
     cannot see this machine's processes and would exit at once (it stops at the end of its input
-    instead)."""
+    instead). `hidden_files` are files that no library file or answer may show, as the hidden
+    directories are: `credentials.toml`."""
 
-    def __init__(self, target: SessionTarget, version: str, pid: int | None) -> None:
+    def __init__(
+        self,
+        target: SessionTarget,
+        version: str,
+        pid: int | None,
+        hidden_files: Sequence[Path] = (),
+    ) -> None:
         self._target = target
         self._version = version
         self._pid = pid
         self._root = PurePosixPath(str(target.directory))
         self._root_uri = target.directory.as_uri()
-        self._hidden = target.hidden
+        self._hidden = (*target.hidden, *hidden_files)
         self._initialized = False
         self._pending: dict[Id, _Sent] = {}
         """The requests the page sent that the server has not answered, by id: the broker's own

@@ -23,6 +23,7 @@ from coding_study.adapters.locations import (
     ContentRootError,
     WorkspaceError,
 )
+from coding_study.domain.ai_models import ProviderError
 from coding_study.domain.deprecations import Deprecation
 from coding_study.domain.errors import (
     BackupError,
@@ -71,6 +72,7 @@ ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {
     UnknownTopicError: ExitCode.USAGE_ERROR,
     ContentError: ExitCode.CONTENT_ERROR,
     ConfigError: ExitCode.ENVIRONMENT_ERROR,
+    ProviderError: ExitCode.ENVIRONMENT_ERROR,
     BackupError: ExitCode.ENVIRONMENT_ERROR,
     MigrationError: ExitCode.ENVIRONMENT_ERROR,
     LanguageNotSetUpError: ExitCode.ENVIRONMENT_ERROR,

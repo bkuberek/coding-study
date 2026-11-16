@@ -351,6 +351,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "problem_sets": YamlProblemSets(WorkspaceFs(root)),
         "preferences": FsPreferencesStore(root),
         "ai_store": SqliteAiStore(root / "progress.db"),
+        "credentials": FakeCredentials(),
     }
     parts.update(overrides)
     return Environment(**parts)  # type: ignore[arg-type]

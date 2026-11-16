@@ -93,6 +93,7 @@ cstudy --no-color list --track dsa
 | `cstudy lang remove <language>...` | `--delete-folder`, `--yes` | Takes languages out of the workspace. Their folders, your practice files and your progress stay; a removed language stops being checked, generated for and offered. `--delete-folder` also deletes each language's folder, after a preview and a question; `--yes` does not ask. It refuses while an attempt in a removed language is in progress, and the folders cannot be recovered. A workspace needs at least one language |
 | `cstudy config path` | - | Prints the path of your `config.toml` |
 | `cstudy config edit` | - | Opens your `config.toml` in `$VISUAL` or `$EDITOR`, and creates it when it is missing ([your configuration](settings.md#your-configuration)) |
+| `cstudy ai key <provider>` | `--remove` | Keeps an AI provider's key (`anthropic`, `google`, `openai` or `openrouter`) in `credentials.toml`, beside your `config.toml`. It asks for the key with a hidden prompt, or reads one line of standard input in a script; it never takes the key as an argument, never prints it and does not try it. `--remove` deletes the provider's key. It works with AI off and needs no workspace. The file is private to you (mode `0600`), and `cstudy` refuses to read or write it inside a workspace |
 | `cstudy about` | `--credits`, `--licenses` | Shows the version, the license, the links and the credits. `--credits` lists the software `cstudy` uses; `--licenses` prints the full license texts |
 
 ## Content

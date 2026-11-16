@@ -6,6 +6,7 @@ import typer
 from typer.testing import CliRunner
 
 from coding_study.adapters.locations import ContentRootError, WorkspaceError
+from coding_study.domain.ai_models import ProviderError, ProviderErrorKind
 from coding_study.domain.errors import (
     ConfigError,
     ContentError,
@@ -39,8 +40,8 @@ def registered_commands() -> set[str | None]:
     return {command.name for command in cli.app.registered_commands}
 
 
-def test_lang_set_and_config_are_the_groups_of_commands():
-    assert [group.name for group in cli.app.registered_groups] == ["lang", "set", "config"]
+def test_lang_set_config_and_ai_are_the_groups_of_commands():
+    assert [group.name for group in cli.app.registered_groups] == ["lang", "set", "config", "ai"]
 
 
 def test_every_command_so_far_is_registered():
@@ -112,6 +113,10 @@ def app_raising(error: Exception) -> typer.Typer:
         (UnknownProblemError("three-sum"), ExitCode.USAGE_ERROR),
         (ContentError([ContentIssue("problems/x/meta.yaml", "id", "bad")]), ExitCode.CONTENT_ERROR),
         (ConfigError("config.toml", ["bad key"]), ExitCode.ENVIRONMENT_ERROR),
+        (
+            ProviderError(ProviderErrorKind.AUTH, "anthropic refused the key (401)"),
+            ExitCode.ENVIRONMENT_ERROR,
+        ),
         (LanguageNotSetUpError("kotlin", "runner"), ExitCode.ENVIRONMENT_ERROR),
         (RunnerStartError("runner did not say hello"), ExitCode.ENVIRONMENT_ERROR),
         (RunnerProtocolError("bad event"), ExitCode.INTERNAL_ERROR),
