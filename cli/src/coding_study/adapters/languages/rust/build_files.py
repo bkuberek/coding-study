@@ -89,7 +89,7 @@ CLOCK_FEATURE = "clock"
 """The runner crate's feature that grades the virtual clock on tokio, which only the harness of a
 project on the virtual clock turns on (docs/specs/runners.md#virtual-clock-and-stress-in-project-
 jobs)."""
-LABELLED_CODES = frozenset({"E0308"})
+LABELED_CODES = frozenset({"E0308"})
 """Errors whose primary span's label says what the message does not: `expected i32, found
 i64`."""
 SYMBOL_NOT_FOUND = "SymbolNotFound"
@@ -355,7 +355,7 @@ def marked_unavailable(
 def _mismatch(error: CompilerError) -> str | None:
     """`E0308` as the bridge sees it: for an argument, rustc expects the user's parameter type and
     finds the declared one; for the result, the other way round."""
-    found = _EXPECTED_FOUND.fullmatch(error.label) if error.code in LABELLED_CODES else None
+    found = _EXPECTED_FOUND.fullmatch(error.label) if error.code in LABELED_CODES else None
     if found is None:
         return None
     expected, actual = found["expected"], found["found"]

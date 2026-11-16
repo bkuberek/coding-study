@@ -119,7 +119,7 @@ class LanguageSession:
         self.sidecar = sidecar
         """Holds a service project's sidecar up until the server has stopped."""
         self.finished = asyncio.Event()
-        """Set once the session is over: its socket closed and its relays cancelled."""
+        """Set once the session is over: its socket closed and its relays canceled."""
         self.relays: list[asyncio.Task[Any]] = []
         self.stop_listening: Callable[[], None] = _nothing
         """Ends the session's hearing of the workspace's file changes."""
@@ -518,7 +518,7 @@ class LanguageSessions:
 
     def _release(self, session: LanguageSession) -> None:
         """Ends the session's relays and stops its server in a task of its own, which outlives
-        a handler that is cancelled. Once only."""
+        a handler that is canceled. Once only."""
         if session not in self._sessions:
             return
         self._sessions.discard(session)

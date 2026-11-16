@@ -145,7 +145,7 @@ def _under_any(path: Path, directories: Sequence[Path]) -> bool:
 
 def _is_under(path: Path, directory: Path) -> bool:
     """Whether `path` is `directory` or lies in it, by name or by identity: some ancestor of
-    `path` is the same directory on the disk, however its name is spelt."""
+    `path` is the same directory on the disk, however its name is spelled."""
     if path.is_relative_to(directory):
         return True
     try:

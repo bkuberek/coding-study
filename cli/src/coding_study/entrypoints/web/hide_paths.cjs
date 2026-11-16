@@ -5,7 +5,7 @@
 // a reference solution, a generated case or run data never reaches an answer
 // (docs/specs/web-ui.md#hidden-directories).
 //
-// A path is judged by where the kernel takes it, not by how it is spelt: it is resolved with
+// A path is judged by where the kernel takes it, not by how it is spelled: it is resolved with
 // realpath (so `..` after a link, a link and `/proc/self/root` all count), and then each
 // directory from the file up is compared with the hidden ones by name, in Unicode decomposed form
 // and lower case, and by what it is on the disk (device and inode), which catches another

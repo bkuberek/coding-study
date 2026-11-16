@@ -2,7 +2,7 @@
  * Saving and managing files (docs/specs/web-ui.md#attempt-view): the unsaved dot on a tab, the
  * banners above an editor, and the tree's tools and menu buttons (the menu is treeActions.css, the
  * dialog that asks for names dialogs.css). A conflict reads like a warning strip taped over the
- * sheet: a hatched edge in the warning hue, never colour alone.
+ * sheet: a hatched edge in the warning hue, never color alone.
  */
 
 /* an editor tab's panel: the banners, then the editor filling the rest */

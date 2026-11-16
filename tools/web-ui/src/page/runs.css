@@ -2,7 +2,7 @@
  * Runs and jobs: the run controls in the attempt's header and the results panel as a terminal pane
  * below the editors. What fills the panel is in the stylesheets of the chunks that draw it
  * (results-draw.css, run-options-form.css, jobs.css), linked when each first loads. Every status is
- * a glyph and a word; colour only repeats it.
+ * a glyph and a word; color only repeats it.
  */
 
 /* the run controls */

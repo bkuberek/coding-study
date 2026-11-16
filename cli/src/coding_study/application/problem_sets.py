@@ -175,7 +175,7 @@ def rename_set(environment: Environment, name: str, new_name: str) -> ProblemSet
 
 
 def delete_set(environment: Environment, name: str) -> ProblemSet:
-    """Takes the set out of the file; what you practised stays in the progress."""
+    """Takes the set out of the file; what you practiced stays in the progress."""
     with _changing(environment):
         found = find_set(environment, name)
         environment.problem_sets.delete(name)

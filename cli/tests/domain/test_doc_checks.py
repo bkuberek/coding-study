@@ -102,20 +102,20 @@ def test_d2_only_slug_named_markdown_files():
 def test_d4_orders_are_unique_and_sections_follow_one_another():
     pages = (
         doc("a", "", section="Start", order=10),
-        doc("b", "", section="Practise", order=20),
+        doc("b", "", section="Practice", order=20),
         doc("c", "", section="Start", order=30),
-        doc("d", "", section="Practise", order=30),
+        doc("d", "", section="Practice", order=30),
     )
     found = order_issues(pages)
     assert {slug: [str(issue) for issue in issues] for slug, issues in found.items()} == {
         "c": [
-            'user-docs/c.md: section: comes after a page of "Practise", apart from the other '
+            'user-docs/c.md: section: comes after a page of "Practice", apart from the other '
             'pages of "Start"'
         ],
         "d": [
             "user-docs/d.md: order: 30 is also the order of c",
             'user-docs/d.md: section: comes after a page of "Start", apart from the other '
-            'pages of "Practise"',
+            'pages of "Practice"',
         ],
     }
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { inSections, neighbours, searchDocs, snippetOf, type DocSummary } from "../src/page/docs-model.ts";
+import { inSections, neighbors, searchDocs, snippetOf, type DocSummary } from "../src/page/docs-model.ts";
 import { docHash, docsHash, parseRoute } from "../src/page/routes.ts";
 
 function page(slug: string, section: string, order: number, passages: readonly [string, string, string][] = []): DocSummary {
@@ -55,9 +55,9 @@ test("the pages are grouped by section, each section where its first page is", (
   );
 });
 
-test("a page's neighbours are the pages before and after it by order", () => {
+test("a page's neighbors are the pages before and after it by order", () => {
   assert.deepEqual(
-    [neighbours(PAGES, "getting-started"), neighbours(PAGES, "doctor"), neighbours(PAGES, "nope")].map(({ previous, next }) => [previous?.slug ?? null, next?.slug ?? null]),
+    [neighbors(PAGES, "getting-started"), neighbors(PAGES, "doctor"), neighbors(PAGES, "nope")].map(({ previous, next }) => [previous?.slug ?? null, next?.slug ?? null]),
     [
       [null, "doctor"],
       ["getting-started", "web-ui"],

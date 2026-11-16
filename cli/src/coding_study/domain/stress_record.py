@@ -49,7 +49,7 @@ class StressRecord:
         return [value for _, sequence in self.sequences(selector) for value in sequence]
 
     def sequences(self, selector: Selector) -> list[tuple[str, list[JsonValue]]]:
-        """For `source_order`: one labelled sequence per worker (`producer[0]`), and setup
+        """For `source_order`: one labeled sequence per worker (`producer[0]`), and setup
         and final as one each."""
         return [
             (label, [entry.value(selector) for entry in entries if entry.op == selector.op])

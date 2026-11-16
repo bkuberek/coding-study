@@ -170,7 +170,7 @@ def need_lines(needs: tuple[NeedRow, ...]) -> Iterator[Text]:
 
 
 def _seeded_rust_folder(started: StartedAttempt) -> bool:
-    """A Rust project folder this start wrote, which rust-analyzer analyses once VS Code's
+    """A Rust project folder this start wrote, which rust-analyzer analyzes once VS Code's
     settings link it."""
     language = started.attempt.language
     return started.project is not None and started.created_stub and language is Language.RUST

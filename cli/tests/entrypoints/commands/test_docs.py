@@ -43,7 +43,7 @@ def test_the_list_shows_each_section_with_its_pages(environment: Environment):
         "Start here",
         "  getting-started     Getting started",
         "  doctor              Check your setup",
-        "Practise",
+        "Practice",
         "  practice            Work on a problem",
         "",
         "read      cstudy docs <topic>",

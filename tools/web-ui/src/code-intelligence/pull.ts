@@ -6,7 +6,7 @@
  * file's pulled diagnostics, beside those the server publishes: rust-analyzer answers for its own
  * diagnostics and publishes those of `cargo check`. While it loads its workspace, rust-analyzer
  * answers with an empty report, then cancels pulls (`ServerCancelled`, `retriggerRequest` true)
- * at each step of the load, so a cancelled pull is asked again, waiting longer each time.
+ * at each step of the load, so a canceled pull is asked again, waiting longer each time.
  */
 
 import type { LSPClient } from "@codemirror/lsp-client";
@@ -15,11 +15,11 @@ import { type PublishedDiagnostic } from "./live-diagnostics.ts";
 import { markFile } from "./publish.ts";
 
 export const PULL_AGAIN = "cstudy/diagnosticRefresh";
-/** How long the first retry of a cancelled pull waits; each later one waits twice as long. */
+/** How long the first retry of a canceled pull waits; each later one waits twice as long. */
 export const FIRST_RETRY_MS = 500;
-/** The longest wait between two tries of a cancelled pull. */
+/** The longest wait between two tries of a canceled pull. */
 export const LONGEST_RETRY_MS = 8_000;
-/** How many times a cancelled pull is asked again: about 40 seconds of a workspace loading. */
+/** How many times a canceled pull is asked again: about 40 seconds of a workspace loading. */
 export const MAX_RETRIES = 8;
 const SERVER_CANCELLED = -32802;
 const CONTENT_MODIFIED = -32801;
@@ -47,8 +47,8 @@ export function pulledItems(report: unknown): readonly PublishedDiagnostic[] | n
 }
 
 /**
- * Whether a failed pull is to be asked again: one the server cancelled (`ServerCancelled`) unless
- * it said not to (`retriggerRequest` false), or one cancelled because the content changed.
+ * Whether a failed pull is to be asked again: one the server canceled (`ServerCancelled`) unless
+ * it said not to (`retriggerRequest` false), or one canceled because the content changed.
  */
 export function retriggers(error: unknown): boolean {
   if (typeof error !== "object" || error === null || !("code" in error)) return false;
@@ -65,7 +65,7 @@ export function retryDelay(attempt: number): number {
 /**
  * Asks the server for the file's diagnostics once the connection is initialized, if it answers
  * such requests, and marks the file with them unless it changed meanwhile: a pull follows each
- * change. A pull the server cancelled is asked again, up to `MAX_RETRIES` times, while the file is
+ * change. A pull the server canceled is asked again, up to `MAX_RETRIES` times, while the file is
  * open and unchanged; `attempt` counts the tries so far.
  */
 export function pullDiagnostics(client: LSPClient, uri: string, attempt = 0): void {

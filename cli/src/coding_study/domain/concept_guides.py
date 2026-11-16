@@ -63,7 +63,7 @@ class GuideMeta:
     prerequisites: tuple[str, ...] = ()
     related: tuple[str, ...] = ()
     problems: tuple[str, ...] = ()
-    """The problems that practise the guide, in the order to try them."""
+    """The problems that practice the guide, in the order to try them."""
     shell: bool = False
     """Its topic is the shell, so its examples may have a bash variant
     (docs/specs/guides.md#shell-guides)."""

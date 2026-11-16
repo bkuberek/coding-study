@@ -84,7 +84,7 @@ async def _signal_bursts(
     burst: asyncio.Event,
 ) -> None:
     """Sets `burst` after each burst of changes, until `stop_event` is set or the task is
-    cancelled; watchfiles' watch blocks, so it runs in a thread of its own, which ends within
+    canceled; watchfiles' watch blocks, so it runs in a thread of its own, which ends within
     a step of either."""
     loop = asyncio.get_running_loop()
     paths = {(root / folder.path).resolve(): folder for folder in folders}

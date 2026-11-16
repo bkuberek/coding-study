@@ -157,7 +157,7 @@
 
 /* A diagram: its SVG drawing in the page's theme, as wide as it is drawn and never wider than
    the text, then its description. The light and dark drawings are both in the figure, and the
-   theme shows one, as it sets the page's colours (app.css). */
+   theme shows one, as it sets the page's colors (app.css). */
 .diagram {
   margin: 20px 0;
 }

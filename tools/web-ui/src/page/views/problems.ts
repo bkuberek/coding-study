@@ -337,9 +337,9 @@ function filterSummary(route: () => Filters, count: HTMLElement): HTMLElement {
   const active = activeFilters(route());
   const chips = active.map(({ key, words }, index) => {
     const chip = h("button", { type: "button", id: `chip-${key}`, class: "filter-chip", "aria-label": `Remove the filter ${words}` }, words, " ", h("span", { "aria-hidden": "true" }, "×"));
-    const neighbour = active[index + 1] ?? active[index - 1];
+    const neighbor = active[index + 1] ?? active[index - 1];
     chip.addEventListener("click", () => {
-      focusAfterDraw = neighbour === undefined ? SEARCH_FIELD : `chip-${neighbour.key}`;
+      focusAfterDraw = neighbor === undefined ? SEARCH_FIELD : `chip-${neighbor.key}`;
       location.hash = problemsHash({ ...route(), [key]: "" });
     });
     return chip;

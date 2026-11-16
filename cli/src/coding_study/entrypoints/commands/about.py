@@ -11,7 +11,7 @@ from coding_study.adapters.workspace_marker import tool_version
 from coding_study.application.about import read_about, read_license_texts
 from coding_study.domain.about import About, CreditSection
 from coding_study.domain.errors import UsageError
-from coding_study.entrypoints.commands.export import labelled
+from coding_study.entrypoints.commands.export import labeled
 from coding_study.entrypoints.shared import add_command, console
 from coding_study.entrypoints.web import STATIC_DIRECTORY
 
@@ -51,17 +51,17 @@ def _summary_lines(found: About) -> list[Text]:
         Text(found.author.credit),
         Text(found.author.link.url),
         *(
-            labelled("sponsor" if index == 0 else "", link.url)
+            labeled("sponsor" if index == 0 else "", link.url)
             for index, link in enumerate(found.sponsor)
         ),
         Text(),
         Text(f"cstudy {found.version}"),
-        labelled("license", found.license),
-        labelled(found.website.label.lower(), found.website.url),
-        *(labelled(link.label.lower(), link.url) for link in found.links),
+        labeled("license", found.license),
+        labeled(found.website.label.lower(), found.website.url),
+        *(labeled(link.label.lower(), link.url) for link in found.links),
         Text(),
-        labelled("credits", "cstudy about --credits"),
-        labelled("licenses", "cstudy about --licenses"),
+        labeled("credits", "cstudy about --credits"),
+        labeled("licenses", "cstudy about --licenses"),
     ]
 
 

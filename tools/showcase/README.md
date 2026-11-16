@@ -26,7 +26,7 @@ rm -rf /tmp/showcase-work /tmp/showcase-wheel
 
 A run takes several minutes and runs one Chromium, `cstudy serve` and the language servers it starts, so close other heavy work first.
 
-Kotlin's server, JetBrains' Kotlin LSP, comes under the JetBrains Free Plugin License Agreement, and `cstudy doctor --fix` downloads it only once that licence is accepted. Read it, then add `--accept-license kotlin-lsp` to the run: the prepare stage passes it to `cstudy doctor --fix`, which records the acceptance in the throwaway workspace only. Without it, the Kotlin hover and the settings shot wait for a server that never comes. The prepare stage prints what `cstudy doctor --fix` printed.
+Kotlin's server, JetBrains' Kotlin LSP, comes under the JetBrains Free Plugin License Agreement, and `cstudy doctor --fix` downloads it only once that license is accepted. Read it, then add `--accept-license kotlin-lsp` to the run: the prepare stage passes it to `cstudy doctor --fix`, which records the acceptance in the throwaway workspace only. Without it, the Kotlin hover and the settings shot wait for a server that never comes. The prepare stage prints what `cstudy doctor --fix` printed.
 
 `--stages` runs part of it, in this order: `prepare` (virtual environment, `cstudy init --no-ide`, preferences, `cstudy doctor --fix`), `seed` (practice history), `videos`, `shots`, `mock`. A later stage needs the earlier ones, so rerun a single stage only against the same `--work` folder, and without `prepare`, which wants the folder empty. Run `videos` before `shots`, and `mock` last: a mock in progress adds a banner to every view.
 

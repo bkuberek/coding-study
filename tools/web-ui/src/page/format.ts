@@ -1,4 +1,4 @@
-/** How the page writes times and statuses: the terminal's wording, never colour alone. */
+/** How the page writes times and statuses: the terminal's wording, never color alone. */
 
 import type { EntryLevels } from "./types.ts";
 

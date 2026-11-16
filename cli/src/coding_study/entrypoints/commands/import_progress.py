@@ -8,7 +8,7 @@ import typer
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.progress_backup import EXPORT_FILE, import_progress
 from coding_study.domain.errors import UsageError
-from coding_study.entrypoints.commands.export import labelled, row_counts_text
+from coding_study.entrypoints.commands.export import labeled, row_counts_text
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
 NAME = "import"
@@ -36,5 +36,5 @@ def import_command(
         raise UsageError(f"cannot read {source}: {error.strerror}") from None
     row_counts = import_progress(environment, text)
     output = console(context)
-    output.print(labelled("imported", row_counts_text(row_counts)))
-    output.print(labelled("into", environment.config.progress_db))
+    output.print(labeled("imported", row_counts_text(row_counts)))
+    output.print(labeled("into", environment.config.progress_db))

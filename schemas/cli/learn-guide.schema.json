@@ -13,7 +13,7 @@
     "level": { "$ref": "#/$defs/level" },
     "prerequisites": { "description": "The slugs of the guides to read first", "type": "array", "items": { "$ref": "#/$defs/slug" } },
     "related": { "description": "The slugs of related guides", "type": "array", "items": { "$ref": "#/$defs/slug" } },
-    "problems": { "description": "The slugs of the problems that practise it", "type": "array", "items": { "$ref": "#/$defs/slug" } },
+    "problems": { "description": "The slugs of the problems that practice it", "type": "array", "items": { "$ref": "#/$defs/slug" } },
     "read": { "description": "Whether you marked it read", "type": "boolean" },
     "read_at": { "description": "When you marked it read, or null", "anyOf": [{ "$ref": "#/$defs/instant" }, { "type": "null" }] },
     "markdown": { "description": "The guide's text, with the examples of `--lang`", "type": "string" },

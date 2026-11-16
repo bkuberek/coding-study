@@ -140,7 +140,7 @@ export class JobPanel {
     this.#cancel.disabled = true;
     try {
       await this.#context.api.post(`/api/v1/jobs/${this.#jobId}/cancel`, {});
-      this.#state.replaceChildren(badge("▸", "cancelling…", "warn"));
+      this.#state.replaceChildren(badge("▸", "canceling…", "warn"));
     } catch (error) {
       if (!(error instanceof ApiError && error.code === "conflict")) this.#log.append(failure(error));
     }

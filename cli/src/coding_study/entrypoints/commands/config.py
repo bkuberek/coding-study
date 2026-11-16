@@ -13,7 +13,7 @@ from coding_study.adapters.toml_config import TomlConfigSource, config_path
 from coding_study.adapters.workspace_marker import has_marker
 from coding_study.application.open_config import ProgressDbChange, open_config
 from coding_study.application.progress_db_change import progress_db_notice
-from coding_study.entrypoints.commands.export import labelled
+from coding_study.entrypoints.commands.export import labeled
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
 NAME = "config"
@@ -32,11 +32,11 @@ def edit(context: typer.Context) -> None:
     source = TomlConfigSource(config_path(environ, Path.home()))
     opened = open_config(source, EnvEditorOpener(environ))
     output = console(context)
-    output.print(labelled("created" if opened.created else "config", source.location))
+    output.print(labeled("created" if opened.created else "config", source.location))
     if opened.editor_problem is not None:
-        output.print(labelled("editor", opened.editor_problem))
+        output.print(labeled("editor", opened.editor_problem))
     if opened.progress_db is not None:
-        output.print(labelled("progress_db", _notice(opened.progress_db, environ)))
+        output.print(labeled("progress_db", _notice(opened.progress_db, environ)))
 
 
 def _notice(change: ProgressDbChange, environ: Mapping[str, str]) -> str:

@@ -8,7 +8,7 @@ import "./docs.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { h, isTyping, rendered } from "../dom.ts";
-import { type DocDocument, type DocResult, type DocsListing, type DocSummary, inSections, neighbours, searchDocs } from "../docs-model.ts";
+import { type DocDocument, type DocResult, type DocsListing, type DocSummary, inSections, neighbors, searchDocs } from "../docs-model.ts";
 import { DOCS_HASH, docHash, docsHash } from "../routes.ts";
 import { empty, loading, showFailure } from "../states.ts";
 
@@ -172,7 +172,7 @@ function allPages(found: DocsListing, slug: string): HTMLElement {
 }
 
 function pager(found: DocsListing, slug: string): HTMLElement | null {
-  const { previous, next } = neighbours(found.pages, slug);
+  const { previous, next } = neighbors(found.pages, slug);
   if (previous === null && next === null) return null;
   return h(
     "nav",

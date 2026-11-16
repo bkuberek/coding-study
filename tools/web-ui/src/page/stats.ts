@@ -38,7 +38,7 @@ export function groupCells(group: StatsGroup): string[] {
   return [group.group, ...counts, rate, solve, group.weakness.toFixed(2)];
 }
 
-/** The labelled lines under the `cstudy stats` table. */
+/** The labeled lines under the `cstudy stats` table. */
 export function summaryLines(stats: StatsDocument): [string, string][] {
   const { attempts, reviews, bench } = stats;
   const finished = `${attempts.finished} finished${stats.since ? ` since ${stats.since}` : ""}`;

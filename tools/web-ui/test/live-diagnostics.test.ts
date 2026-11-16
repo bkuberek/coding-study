@@ -53,15 +53,15 @@ test("a numeric code is part of the label", () => {
   assert.equal(only({ source: "ts", code: 2304 }).source, "ts 2304");
 });
 
-test("a code with a link is labelled by its value", () => {
+test("a code with a link is labeled by its value", () => {
   assert.equal(only({ source: "rustc", code: { value: "E0433", target: "https://example.org" } as never }).source, "rustc E0433");
 });
 
-test("a diagnostic with a source and no code is labelled by the source", () => {
+test("a diagnostic with a source and no code is labeled by the source", () => {
   assert.equal(only({ code: undefined }).source, "basedpyright");
 });
 
-test("a diagnostic with a code and no source is labelled by the code", () => {
+test("a diagnostic with a code and no source is labeled by the code", () => {
   assert.equal(only({ source: undefined, code: 6133 }).source, "6133");
 });
 

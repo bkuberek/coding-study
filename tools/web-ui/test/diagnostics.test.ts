@@ -5,7 +5,7 @@ import { EditorState, Text } from "@codemirror/state";
 
 import type { Diagnostic } from "@codemirror/lint";
 
-import { neighbouringRange } from "../src/diagnostic-navigation.ts";
+import { neighboringRange } from "../src/diagnostic-navigation.ts";
 import {
   countDiagnostics,
   diagnosticCounts,
@@ -68,17 +68,17 @@ test("a marker keeps the message", () => {
   assert.equal(marker?.message, "name 'balance' is not defined");
 });
 
-test("a marker is labelled as the last run's, with the diagnostic's code", () => {
+test("a marker is labeled as the last run's, with the diagnostic's code", () => {
   const [marker] = lintDiagnostics(DOC, [diagnostic({ code: "TS2304", source: "typecheck" })]);
   assert.equal(marker?.source, "last run · TS2304");
 });
 
-test("a marker without a code is labelled as the last run's, with the diagnostic's source", () => {
+test("a marker without a code is labeled as the last run's, with the diagnostic's source", () => {
   const [marker] = lintDiagnostics(DOC, [diagnostic({ code: null, source: "load" })]);
   assert.equal(marker?.source, "last run · load");
 });
 
-test("a marker without a code or a source is labelled as the last run's", () => {
+test("a marker without a code or a source is labeled as the last run's", () => {
   const [marker] = lintDiagnostics(DOC, [diagnostic({})]);
   assert.equal(marker?.source, "last run");
 });
@@ -167,33 +167,33 @@ const RANGES = [
 ];
 
 test("the next diagnostic starts after the selection", () => {
-  assert.deepEqual(neighbouringRange(RANGES, { from: 10, to: 14 }, true), { from: 30, to: 35 });
+  assert.deepEqual(neighboringRange(RANGES, { from: 10, to: 14 }, true), { from: 30, to: 35 });
 });
 
 test("the next diagnostic from a cursor between two is the later one", () => {
-  assert.deepEqual(neighbouringRange(RANGES, { from: 20, to: 20 }, true), { from: 30, to: 35 });
+  assert.deepEqual(neighboringRange(RANGES, { from: 20, to: 20 }, true), { from: 30, to: 35 });
 });
 
 test("after the last diagnostic the next one is the first", () => {
-  assert.deepEqual(neighbouringRange(RANGES, { from: 50, to: 52 }, true), { from: 10, to: 14 });
+  assert.deepEqual(neighboringRange(RANGES, { from: 50, to: 52 }, true), { from: 10, to: 14 });
 });
 
 test("the previous diagnostic starts before the selection", () => {
-  assert.deepEqual(neighbouringRange(RANGES, { from: 30, to: 35 }, false), { from: 10, to: 14 });
+  assert.deepEqual(neighboringRange(RANGES, { from: 30, to: 35 }, false), { from: 10, to: 14 });
 });
 
 test("before the first diagnostic the previous one is the last", () => {
-  assert.deepEqual(neighbouringRange(RANGES, { from: 10, to: 14 }, false), { from: 50, to: 52 });
+  assert.deepEqual(neighboringRange(RANGES, { from: 10, to: 14 }, false), { from: 50, to: 52 });
 });
 
-test("a single diagnostic that is already selected has no neighbour", () => {
-  assert.equal(neighbouringRange([{ from: 10, to: 14 }], { from: 10, to: 14 }, true), null);
+test("a single diagnostic that is already selected has no neighbor", () => {
+  assert.equal(neighboringRange([{ from: 10, to: 14 }], { from: 10, to: 14 }, true), null);
 });
 
-test("no diagnostics have no neighbour", () => {
-  assert.equal(neighbouringRange([], { from: 0, to: 0 }, true), null);
+test("no diagnostics have no neighbor", () => {
+  assert.equal(neighboringRange([], { from: 0, to: 0 }, true), null);
 });
 
 test("the ranges may come in any order", () => {
-  assert.deepEqual(neighbouringRange([RANGES[2]!, RANGES[0]!, RANGES[1]!], { from: 10, to: 14 }, true), { from: 30, to: 35 });
+  assert.deepEqual(neighboringRange([RANGES[2]!, RANGES[0]!, RANGES[1]!], { from: 10, to: 14 }, true), { from: 30, to: 35 });
 });

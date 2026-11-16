@@ -17,7 +17,7 @@ export interface Range {
  * selection's start (before it, going back), wrapping around; null when that is the selection
  * itself or there is none.
  */
-export function neighbouringRange(ranges: readonly Range[], selection: Range, forward: boolean): Range | null {
+export function neighboringRange(ranges: readonly Range[], selection: Range, forward: boolean): Range | null {
   const sorted = [...ranges].sort((a, b) => a.from - b.from || a.to - b.to);
   const beyond = forward ? sorted.filter((range) => range.from > selection.from) : sorted.filter((range) => range.from < selection.from);
   const found = (forward ? beyond[0] : beyond.at(-1)) ?? (forward ? sorted[0] : sorted.at(-1));
@@ -37,7 +37,7 @@ function visibleRanges(state: EditorState): Range[] {
 function moveToDiagnostic(forward: boolean, select: boolean): Command {
   return (view: EditorView): boolean => {
     const { from, to } = view.state.selection.main;
-    const next = neighbouringRange(visibleRanges(view.state), { from, to }, forward);
+    const next = neighboringRange(visibleRanges(view.state), { from, to }, forward);
     if (next === null) return false;
     const selection = select ? { anchor: next.from, head: next.to } : { anchor: next.from };
     view.dispatch({ selection, scrollIntoView: true });

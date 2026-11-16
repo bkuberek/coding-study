@@ -29,7 +29,7 @@ export interface Confirmation {
   readonly message: string;
   /** The button that does it, such as `Delete`. */
   readonly action: string;
-  /** Whether it loses work; the button then shows in the fail colour. */
+  /** Whether it loses work; the button then shows in the fail color. */
   readonly destructive: boolean;
   /** The `cstudy` command it matches, named beside it. */
   readonly command?: string;
@@ -51,7 +51,7 @@ export interface NameRequest {
   readonly note?: string;
   /** Shown before the fields: what the question is about. */
   readonly content?: readonly Node[];
-  /** Whether it loses work; the button then shows in the fail colour. */
+  /** Whether it loses work; the button then shows in the fail color. */
   readonly destructive?: boolean;
   readonly fields: readonly NameField[];
   readonly action: string;

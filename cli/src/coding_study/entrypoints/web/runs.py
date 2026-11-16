@@ -67,7 +67,7 @@ class ChildKind(StrEnum):
 @dataclass(frozen=True, slots=True)
 class ChildTiming:
     terminate_after_s: float = 10.0
-    """How long a cancelled child has after SIGINT before it gets SIGTERM."""
+    """How long a canceled child has after SIGINT before it gets SIGTERM."""
     kill_after_s: float = 5.0
     """How long it has after SIGTERM before it gets SIGKILL."""
     keep_alive_s: float = 15.0
@@ -191,7 +191,7 @@ class Child:
         self._ended = asyncio.Event()
         self._process: StreamedChild | None = None
         self._tasks: set[asyncio.Task[None]] = set()
-        self._cancelled = False
+        self._canceled = False
 
     @property
     def running(self) -> bool:
@@ -207,9 +207,9 @@ class Child:
     def cancel(self) -> None:
         """SIGINT, then SIGTERM and SIGKILL while the child lives on; a second cancel adds
         nothing to the first."""
-        if self._cancelled or self._process is None or not self.running:
+        if self._canceled or self._process is None or not self.running:
             return
-        self._cancelled = True
+        self._canceled = True
         self._run_task(self._escalate(self._process))
 
     async def wait_ended(self) -> None:
@@ -316,7 +316,7 @@ class ChildListener(Protocol):
 
     def stopping(self) -> None:
         """The server stops: no run or job starts from now on, and the running ones are
-        cancelled."""
+        canceled."""
         ...
 
 
@@ -515,7 +515,7 @@ async def _read_lines(stream: asyncio.StreamReader, take: Callable[[str], None])
 
 
 async def _within(waiting: Coroutine[Any, Any, object], seconds: float) -> bool:
-    """Whether `waiting` finished within `seconds`; it is cancelled otherwise."""
+    """Whether `waiting` finished within `seconds`; it is canceled otherwise."""
     try:
         await asyncio.wait_for(waiting, seconds)
     except TimeoutError:

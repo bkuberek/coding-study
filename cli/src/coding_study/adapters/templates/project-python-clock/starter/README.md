@@ -44,7 +44,7 @@ async def test_a_wait_ends_when_a_value_arrives() -> None:
     assert now() == 1000           # the virtual milliseconds since the test started
 ```
 
-Read time only through the loop: `asyncio.sleep`, `asyncio.timeout`, `asyncio.wait_for` and `asyncio.get_running_loop().time()` move with the virtual clock, while `time.time()` and `time.monotonic()` stay real. A task that waits on an event, a queue, a timer or another task lets time move; code that blocks the loop's thread (`time.sleep`, a `threading.Lock` its holder keeps, a busy loop) does not, so the case hangs. Tasks still waiting when a test ends are cancelled. A wait that nothing can end, while no timer is due, is a deadlock: the test fails with `DeadlockError` at once, and `cstudy submit` reports the case as `STALLED` with the operation and the virtual time.
+Read time only through the loop: `asyncio.sleep`, `asyncio.timeout`, `asyncio.wait_for` and `asyncio.get_running_loop().time()` move with the virtual clock, while `time.time()` and `time.monotonic()` stay real. A task that waits on an event, a queue, a timer or another task lets time move; code that blocks the loop's thread (`time.sleep`, a `threading.Lock` its holder keeps, a busy loop) does not, so the case hangs. Tasks still waiting when a test ends are canceled. A wait that nothing can end, while no timer is due, is a deadlock: the test fails with `DeadlockError` at once, and `cstudy submit` reports the case as `STALLED` with the operation and the virtual time.
 
 Events due at the same instant happen in no fixed order, so the expected values never depend on it.
 

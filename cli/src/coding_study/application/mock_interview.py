@@ -38,7 +38,7 @@ class MockRequest:
 
 @dataclass(frozen=True, slots=True)
 class MockAttempt:
-    """One problem of a mock interview: its attempt, and the problem it practises."""
+    """One problem of a mock interview: its attempt, and the problem it practices."""
 
     attempt: Attempt
     meta: ProblemMeta | ItemMeta

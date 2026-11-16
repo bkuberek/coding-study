@@ -154,11 +154,11 @@ function listing(context: PageContext, found: GuideListing, initial: GuideFilter
     count.textContent = countWords(narrowed, found);
     const chips = activeGuideFilters(filters, titles).map(({ key, words }, index, active) => {
       const chip = h("button", { type: "button", id: `chip-${key}`, class: "filter-chip", "aria-label": `Remove the filter ${words}` }, words, " ", h("span", { "aria-hidden": "true" }, "×"));
-      const neighbour = active[index + 1] ?? active[index - 1];
+      const neighbor = active[index + 1] ?? active[index - 1];
       chip.addEventListener("click", () => {
         selects[key].value = "";
         change({ [key]: "" });
-        (neighbour === undefined ? search : (summary.querySelector<HTMLElement>(`#chip-${neighbour.key}`) ?? search)).focus();
+        (neighbor === undefined ? search : (summary.querySelector<HTMLElement>(`#chip-${neighbor.key}`) ?? search)).focus();
       });
       return chip;
     });
@@ -212,7 +212,7 @@ export function guidesView(context: PageContext, filters: GuideFilters): Cleanup
       "section",
       { class: "guides", "aria-labelledby": "guides-heading" },
       h("header", { class: "view-head" }, h("h1", { id: "guides-heading" }, "guides")),
-      h("p", { class: "guides-intro" }, "Short readings that teach an idea before you practise it, with examples and diagrams. Follow a path, or open any guide."),
+      h("p", { class: "guides-intro" }, "Short readings that teach an idea before you practice it, with examples and diagrams. Follow a path, or open any guide."),
       body,
     ),
   );
@@ -247,12 +247,12 @@ function guideLinks(title: string, slugs: readonly string[], titles: ReadonlyMap
   return h("section", { class: "side-block", "aria-labelledby": id }, h("h2", { id, class: "eyebrow" }, title), h("ul", { class: "plain" }, ...items));
 }
 
-function practise(problems: readonly string[]): HTMLElement | null {
+function practice(problems: readonly string[]): HTMLElement | null {
   if (problems.length === 0) return null;
   return h(
     "section",
-    { class: "side-block", "aria-labelledby": "practise-heading" },
-    h("h2", { id: "practise-heading", class: "eyebrow" }, "practise"),
+    { class: "side-block", "aria-labelledby": "practice-heading" },
+    h("h2", { id: "practice-heading", class: "eyebrow" }, "practice"),
     h("ul", { class: "plain" }, ...problems.map((slug) => h("li", {}, h("a", { href: problemHash(slug) }, slug)))),
   );
 }
@@ -322,7 +322,7 @@ export function guideView(context: PageContext, slug: string): Cleanup {
             "aside",
             { class: "guide-side", "aria-label": "Related" },
             guideLinks("read first", guide.prerequisites, titles, "before-heading"),
-            practise(guide.problems),
+            practice(guide.problems),
             guideLinks("read next", guide.related, titles, "next-heading"),
           ),
         ),
@@ -340,7 +340,7 @@ export function guideView(context: PageContext, slug: string): Cleanup {
 
 function stepRow(step: PathStep): HTMLElement {
   const target = stepTarget(step);
-  const action = step.kind === "guide" ? (step.done ? "Read again" : "Read") : step.done ? "Practise again" : "Start";
+  const action = step.kind === "guide" ? (step.done ? "Read again" : "Read") : step.done ? "Practice again" : "Start";
   return h(
     "li",
     { class: step.done ? "path-step is-done" : "path-step" },

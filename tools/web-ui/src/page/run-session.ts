@@ -42,7 +42,7 @@ export class RunSession {
   #starting = false;
   /** The command whose button cancels the run in progress: the one that started it, else Run tests. */
   #active: RunCommandName | null = null;
-  #cancelling = false;
+  #canceling = false;
   #queued = false;
   #refreshOnUnlock = false;
   #byPath = new Map<string, Diagnostic[]>();
@@ -141,14 +141,14 @@ export class RunSession {
 
   /** Stops the run in progress, after the question Escape in the results asks too. */
   async cancel(): Promise<void> {
-    if (this.#runId === null || this.#stream === null || this.#cancelling) return;
+    if (this.#runId === null || this.#stream === null || this.#canceling) return;
     if (!(await confirmLazily(CANCEL_QUESTION)) || this.#stream === null) return;
-    this.#cancelling = true;
+    this.#canceling = true;
     try {
       await this.#shell.host.context.api.post(`/api/v1/runs/${this.#runId}/cancel`, {});
-      this.#announce("cancelling the run");
+      this.#announce("canceling the run");
     } catch (error) {
-      this.#cancelling = false;
+      this.#canceling = false;
       if (!(error instanceof ApiError && error.code === "conflict")) this.#shell.results.show(this.#model, [failure(error)]);
     }
   }
@@ -203,7 +203,7 @@ export class RunSession {
   #stopped(): void {
     this.#stream = null;
     this.#active = null;
-    this.#cancelling = false;
+    this.#canceling = false;
   }
 
   #onEvent(event: RunEvent): void {

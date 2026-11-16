@@ -1,5 +1,5 @@
 """Markdown as the page shows it: rendered on the server, raw HTML left as text, code blocks
-highlighted by Pygments with classes the page's stylesheet colours (docs/specs/web-ui.md#security,
+highlighted by Pygments with classes the page's stylesheet colors (docs/specs/web-ui.md#security,
 docs/specs/web-ui.md#front-end-assets). Nothing in the output carries a `style` attribute, which
 the page's Content Security Policy would refuse.
 
@@ -50,7 +50,7 @@ from coding_study.domain.guide_markdown import (
 from coding_study.domain.user_docs import heading_id
 
 TOKEN_CLASS_PREFIX = "tok-"
-"""`<span class="tok-k">`: the stylesheet colours each Pygments token class under this prefix."""
+"""`<span class="tok-k">`: the stylesheet colors each Pygments token class under this prefix."""
 _FORMATTER: HtmlFormatter[str] = HtmlFormatter(nowrap=True, classprefix=TOKEN_CLASS_PREFIX)
 STYLE = "style"
 TEXT_ALIGN = "text-align:"

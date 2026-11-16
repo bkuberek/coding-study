@@ -35,7 +35,7 @@ export function sourceDetail(files: Pick<PastFilesDocument, "source" | "root">):
   }
 }
 
-/** The mark of where the files come from: a word and a glyph, never colour alone. */
+/** The mark of where the files come from: a word and a glyph, never color alone. */
 export function sourceBadge(source: FilesSource): { readonly glyph: string; readonly text: string; readonly tone: string } {
   switch (source) {
     case "archive":

@@ -6,7 +6,7 @@ import { tags } from "@lezer/highlight";
 export type ThemeName = "light" | "dark";
 
 /**
- * One theme's colours. Both themes share their hue families (rust keywords, green strings, plum
+ * One theme's colors. Both themes share their hue families (rust keywords, green strings, plum
  * literals, blue functions, ochre types), so a file reads the same in either; every pair of text
  * and background meets WCAG AA (4.5:1).
  */
@@ -137,7 +137,7 @@ function highlighting(palette: Palette, dark: boolean): Extension {
   return syntaxHighlighting(style);
 }
 
-/** The chrome and syntax colours of a theme. */
+/** The chrome and syntax colors of a theme. */
 export function themeExtension(name: ThemeName): Extension {
   const dark = name === "dark";
   const palette = dark ? DARK : LIGHT;

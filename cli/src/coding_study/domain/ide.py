@@ -50,7 +50,7 @@ class IdeWorkspace:
 
     rust_projects: tuple[str, ...] = ()
     """The manifest of each Rust project folder, `projects/<slug>/Cargo.toml`, in path order:
-    rust-analyzer analyses only the Cargo projects `linkedProjects` names."""
+    rust-analyzer analyzes only the Cargo projects `linkedProjects` names."""
     jdk: SelectedJdk | None = None
     """The JDK the shell selects, which IntelliJ's project JDK is named after; None when no JDK is
     found, or when the IDE being generated has no use for it."""

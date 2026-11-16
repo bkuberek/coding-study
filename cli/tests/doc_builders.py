@@ -6,7 +6,7 @@ from pathlib import Path
 from coding_study.domain.doc_checks import CommandSpec
 
 START = "Start here"
-PRACTISE = "Practise"
+PRACTICE = "Practice"
 ROOT_COMMANDS = CommandSpec(
     options={"--help": False, "--no-color": False, "--workspace": True},
     subcommands={
@@ -75,7 +75,7 @@ def write_docs(root: Path) -> None:
             "Work on a problem",
             "Start one with `cstudy start two-sum --lang go`.\n\n## Hints\n\nAsk for one.\n",
             summary="Start, test, hints and done.",
-            section=PRACTISE,
+            section=PRACTICE,
             order=30,
         ),
     )

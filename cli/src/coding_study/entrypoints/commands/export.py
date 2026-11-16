@@ -38,8 +38,8 @@ def export(
     except OSError as error:
         raise UsageError(f"cannot write {path}: {error.strerror}") from None
     output = console(context)
-    output.print(labelled("exported", row_counts_text(backup.row_counts)))
-    output.print(labelled("file", str(out) if out else EXPORT_FILE))
+    output.print(labeled("exported", row_counts_text(backup.row_counts)))
+    output.print(labeled("file", str(out) if out else EXPORT_FILE))
 
 
 def row_counts_text(row_counts: Mapping[str, int]) -> str:
@@ -47,7 +47,7 @@ def row_counts_text(row_counts: Mapping[str, int]) -> str:
     return " · ".join(f"{table} {count}" for table, count in row_counts.items())
 
 
-def labelled(label: str, value: str) -> Text:
+def labeled(label: str, value: str) -> Text:
     line = Text(label.ljust(LABEL_WIDTH), style="dim")
     line.append(value)
     return line

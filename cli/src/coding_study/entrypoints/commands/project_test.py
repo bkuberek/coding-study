@@ -34,7 +34,7 @@ from coding_study.entrypoints.commands.report_text import (
     clock_text,
     detail_line,
     error_text,
-    labelled_lines,
+    labeled_lines,
     levels_text,
     status_line,
     trace_lines,
@@ -199,7 +199,7 @@ def _test_lines(verdict: SuiteTestVerdict) -> Iterator[Text]:
     stdout = outcome.stdout if isinstance(outcome, _WITH_STDOUT) else ""
     if stdout:
         lines = stdout.rstrip("\n").splitlines()
-        yield from (detail_line(label, text) for label, text in labelled_lines("stdout", lines))
+        yield from (detail_line(label, text) for label, text in labeled_lines("stdout", lines))
 
 
 _WITH_STDOUT = (Passed, AssertionFailed, Raised, Skipped)

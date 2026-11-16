@@ -79,10 +79,10 @@ def case_details(verdict: CaseVerdict, comparator_label: str | None) -> Iterator
     if case.note:
         yield ("note", case.note)
     if isinstance(outcome, Returned | Raised | InvalidOutput) and outcome.stdout:
-        yield from labelled_lines("stdout", outcome.stdout.rstrip("\n").splitlines())
+        yield from labeled_lines("stdout", outcome.stdout.rstrip("\n").splitlines())
 
 
-def labelled_lines(label: str, lines: list[str]) -> Iterator[tuple[str, str]]:
+def labeled_lines(label: str, lines: list[str]) -> Iterator[tuple[str, str]]:
     for index, line in enumerate(lines):
         yield (label if index == 0 else "", line)
 

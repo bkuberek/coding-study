@@ -30,7 +30,7 @@
       "items": { "$ref": "#/$defs/slug" }
     },
     "problems": {
-      "description": "Problems that practise the guide, in the order to try them; each is named in ## Practice (check G4)",
+      "description": "Problems that practice the guide, in the order to try them; each is named in ## Practice (check G4)",
       "type": "array",
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/slug" }

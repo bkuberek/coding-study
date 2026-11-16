@@ -175,7 +175,7 @@ def test_the_top_bar_and_alt_8_open_the_docs(seen: Seen):
 
 def test_the_list_shows_the_pages_by_section(seen: Seen):
     assert (seen.sections, seen.pages) == (
-        ["Start here", "Practise", "The web UI", "Settings and help"],
+        ["Start here", "Practice", "The web UI", "Settings and help"],
         18,
     )
 
@@ -208,7 +208,7 @@ def test_a_result_opens_its_page_at_its_heading_with_the_focus(seen: Seen):
 def test_the_login_lands_on_the_heading_it_names(seen: Seen):
     assert (seen.landed_hash, seen.landed_title, seen.landed_focused, seen.landed_clear) == (
         f"#{LANDING}",
-        "Practise in your browser",
+        "Practice in your browser",
         "doc-keyboard",
         True,
     )

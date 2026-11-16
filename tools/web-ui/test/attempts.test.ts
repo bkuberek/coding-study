@@ -7,7 +7,7 @@ import {
   doneLines,
   hintText,
   REVIEW_DIALOG_NOTE,
-  REVIEW_PRACTISE_NOTE,
+  REVIEW_PRACTICE_NOTE,
   startBody,
   startLine,
 } from "../src/page/attempts.ts";
@@ -169,13 +169,13 @@ test("the Start dialog says a review moves the files, deletes nothing, and Histo
   );
 });
 
-test("the Practise line says the same of a start", () => {
+test("the Practice line says the same of a start", () => {
   assert.equal(
-    REVIEW_PRACTISE_NOTE,
+    REVIEW_PRACTICE_NOTE,
     "a start is a review attempt: your current files move to .archive/ — nothing is deleted, and History keeps them readable",
   );
 });
 
 test("neither note says the files are lost", () => {
-  assert.deepEqual([REVIEW_DIALOG_NOTE, REVIEW_PRACTISE_NOTE].map((note) => /\bnothing is deleted\b/.test(note)), [true, true]);
+  assert.deepEqual([REVIEW_DIALOG_NOTE, REVIEW_PRACTICE_NOTE].map((note) => /\bnothing is deleted\b/.test(note)), [true, true]);
 });

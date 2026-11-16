@@ -1,7 +1,7 @@
 /*
  * The page of cstudy serve: a terminal window around a sheet of paper. Ink bars frame the view
  * (the top bar with the views, the status bar with the switches); the content between them is
- * set in monospace like the CLI it mirrors, and statements read in a book face. Colours share the
+ * set in monospace like the CLI it mirrors, and statements read in a book face. Colors share the
  * editor's hues (src/themes.ts), and every pair of text and background meets WCAG AA.
  * No fonts are fetched: the stacks name faces the system already has.
  */
@@ -589,7 +589,7 @@ input[type="search"] {
   color: var(--accent);
 }
 
-/* A language of a problem that the selected JDK cannot run: marked with `!`, never by colour alone. */
+/* A language of a problem that the selected JDK cannot run: marked with `!`, never by color alone. */
 .ref-blocked {
   color: var(--warn);
   text-decoration: underline dotted;

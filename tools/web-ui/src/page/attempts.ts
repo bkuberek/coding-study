@@ -25,8 +25,8 @@ const HINT_COMMAND = "cstudy hint";
 const ARCHIVE_NOTE = "your current files move to .archive/ — nothing is deleted, and History keeps them readable";
 /** The Start dialog's note of a problem with a review due. */
 export const REVIEW_DIALOG_NOTE = `review attempt: ${ARCHIVE_NOTE}`;
-/** The Practise panel's line of a problem with a review due. */
-export const REVIEW_PRACTISE_NOTE = `a start is a review attempt: ${ARCHIVE_NOTE}`;
+/** The Practice panel's line of a problem with a review due. */
+export const REVIEW_PRACTICE_NOTE = `a start is a review attempt: ${ARCHIVE_NOTE}`;
 
 export interface StartChoice {
   readonly slug: string;

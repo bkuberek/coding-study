@@ -65,7 +65,7 @@ export function fixHint(fix: string): HTMLElement {
   );
 }
 
-/** A glyph and its word, so a status never depends on colour alone. */
+/** A glyph and its word, so a status never depends on color alone. */
 export function badge(glyph: string, text: string, tone: string): HTMLElement {
   return h(
     "span",

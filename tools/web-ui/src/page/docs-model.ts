@@ -1,6 +1,6 @@
 /**
  * What the Docs view (docs/specs/user-docs.md#docs-view) reads of the user docs, apart from the
- * page so the tests read it without a browser: the pages by section, a page's neighbours, and the
+ * page so the tests read it without a browser: the pages by section, a page's neighbors, and the
  * search over the passages `GET /api/v1/docs` sends.
  */
 
@@ -78,7 +78,7 @@ export function inSections(pages: readonly DocSummary[]): { readonly section: st
 }
 
 /** The pages before and after `slug` by order; null at either end, or for a page not listed. */
-export function neighbours(pages: readonly DocSummary[], slug: string): { readonly previous: DocSummary | null; readonly next: DocSummary | null } {
+export function neighbors(pages: readonly DocSummary[], slug: string): { readonly previous: DocSummary | null; readonly next: DocSummary | null } {
   const ordered = byOrder(pages);
   const index = ordered.findIndex((page) => page.slug === slug);
   if (index < 0) return { previous: null, next: null };

@@ -4,7 +4,7 @@
 The server runs with no shell, in a session of its own so its whole process group can be stopped,
 its standard input and output the LSP stream (`Content-Length` framing, which the WebSocket
 messages go without) and its standard error kept. Stopping it is `shutdown`, `exit`, standard
-input closed, then SIGTERM and SIGKILL to the group, as a cancelled run escalates; whatever the
+input closed, then SIGTERM and SIGKILL to the group, as a canceled run escalates; whatever the
 server does not read, the stop reaches SIGTERM and SIGKILL on time. A Node server also starts with
 `hide_paths.cjs` preloaded, which keeps the hidden directories from it
 (docs/specs/web-ui.md#hidden-directories), and rust-analyzer finds the standard library in links

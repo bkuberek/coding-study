@@ -56,7 +56,7 @@ test("files that are not available say why", () => {
   assert.equal(sourceDetail({ source: "missing", root: null }), "they were never archived, or were deleted");
 });
 
-test("every source has a word for its mark, so colour is never the only sign", () => {
+test("every source has a word for its mark, so color is never the only sign", () => {
   assert.deepEqual(
     (["archive", "current", "missing"] as const).map((source) => sourceBadge(source).text),
     ["archived", "current files,", "not available"],

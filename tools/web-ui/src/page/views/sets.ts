@@ -190,7 +190,7 @@ export function setView(context: PageContext, name: string): Cleanup {
         "table",
         { class: "problems set-table" },
         h("caption", { class: "sr-only" }, `The rows of ${found.name}, in its order`),
-        h("thead", {}, h("tr", {}, ...["#", "problem", "diff", "status", "practise", "order"].map((title) => h("th", { scope: "col" }, title)))),
+        h("thead", {}, h("tr", {}, ...["#", "problem", "diff", "status", "practice", "order"].map((title) => h("th", { scope: "col" }, title)))),
         h("tbody", {}, ...found.rows.map((row) => rowOf(found, row))),
       ),
     );
@@ -207,7 +207,7 @@ export function setView(context: PageContext, name: string): Cleanup {
         : h("td", { class: "title-cell" }, h("a", { href: problemHash(entry.slug), class: "slug" }, entry.slug), h("span", { class: "title" }, entry.title)),
       entry === null ? h("td", {}, "–") : h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
       h("td", {}, badge(status.glyph, status.text, status.tone), targetNote(row.level)),
-      h("td", { class: "resume" }, ...(entry === null ? [] : practise(entry))),
+      h("td", { class: "resume" }, ...(entry === null ? [] : practice(entry))),
       h("td", { class: "set-order" }, ...orderControls(found, row)),
     );
   };
@@ -217,7 +217,7 @@ export function setView(context: PageContext, name: string): Cleanup {
     return words === null ? null : h("span", { class: "quiet set-target" }, ` ${words}`);
   };
 
-  const practise = (entry: ListEntry): Node[] =>
+  const practice = (entry: ListEntry): Node[] =>
     entry.in_progress.length
       ? entry.in_progress.map((attempt) => h("a", { href: attemptHash(attempt.attempt_id), class: "resume-link", title: `Resume attempt ${attempt.attempt_id}` }, `Resume ${attempt.language ?? "notes"}`))
       : [startButton(entry)];

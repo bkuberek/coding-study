@@ -64,7 +64,7 @@ class PathCstudyInstalls:
                 yield _install(resolved.parent.parent, executable, roots, None)
 
     def _roots(self) -> InstallRoots:
-        """uv and pipx honour an environment variable, then the XDG data directory (uv, pipx),
+        """uv and pipx honor an environment variable, then the XDG data directory (uv, pipx),
         then their usual places."""
         home = self._home
         named = {name: Path(value) for name, value in self._environ.items() if value}

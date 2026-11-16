@@ -215,7 +215,7 @@ def _print_listing(
             )
         unfinished = next((view for view in listing.paths if view.next_step is not None), None)
         if unfinished is not None:
-            output.print(_labelled("next", f"cstudy learn --path {unfinished.path.slug}"))
+            output.print(_labeled("next", f"cstudy learn --path {unfinished.path.slug}"))
     if listing.guides:
         output.print(Text(WEB_HINT.format(slug="<guide>"), style="dim"))
 
@@ -241,13 +241,13 @@ def _print_guide(output: Console, page: GuidePage, as_json: bool) -> None:
         output.print(Text(text), end="")
     output.print(Text(""))
     if page.examples_folder is not None:
-        output.print(_labelled("examples", str(page.examples_folder)))
+        output.print(_labeled("examples", str(page.examples_folder)))
     slug = page.entry.meta.slug
     read_at = page.entry.read_at
     if read_at is None:
-        output.print(_labelled("done", f"cstudy learn {slug} --done"))
+        output.print(_labeled("done", f"cstudy learn {slug} --done"))
     else:
-        output.print(_labelled("read", read_at.date().isoformat()))
+        output.print(_labeled("read", read_at.date().isoformat()))
     output.print(Text(WEB_HINT.format(slug=slug), style="dim"))
 
 
@@ -276,7 +276,7 @@ def _print_path(output: Console, view: PathView, as_json: bool) -> None:
     for position, step in enumerate(view.steps, start=1):
         output.print(Text(_step_line(position, step, step_width)))
     if view.next_step is not None:
-        output.print(_labelled("next", _command(view.next_step)))
+        output.print(_labeled("next", _command(view.next_step)))
 
 
 def _step_line(position: int, step: StepProgress, step_width: int) -> str:
@@ -294,7 +294,7 @@ def _command(step: StepProgress) -> str:
     return f"cstudy start {step.step.slug}"
 
 
-def _labelled(label: str, value: str) -> Text:
+def _labeled(label: str, value: str) -> Text:
     line = Text(label.ljust(LABEL_WIDTH), style="dim")
     line.append(value)
     return line

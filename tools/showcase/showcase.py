@@ -671,7 +671,7 @@ editor, and never leaves the editor scrolled sideways."""
 
 
 def shrink(path: Path) -> None:
-    """Quantises a PNG to 256 colours, as the first screenshots in docs/images are."""
+    """Quantizes a PNG to 256 colors, as the first screenshots in docs/images are."""
     if shutil.which("pngquant"):
         run(["pngquant", "--quality", "80-100", "--speed", "1", "--force", "--strip",
              "--output", path, path], check=False)

@@ -79,12 +79,12 @@ def print_listing(
         for page in members:
             output.print(Text(f"{INDENT}{page.slug.ljust(width)}{page.title}"))
     output.print(Text(""))
-    output.print(_labelled("read", f"cstudy {NAME} <topic>"))
+    output.print(_labeled("read", f"cstudy {NAME} <topic>"))
     output.print(Text(WEB_HINT.format(slug="<topic>"), style="dim"))
 
 
 def print_page(output: Console, page: DocPage, as_json: bool) -> None:
-    """Rendered by Rich on a terminal, which reads without colour too; the Markdown as written
+    """Rendered by Rich on a terminal, which reads without color too; the Markdown as written
     otherwise, piped or redirected."""
     if as_json:
         typer.echo(json.dumps(page_document(page), indent=2))
@@ -121,7 +121,7 @@ def page_fields(page: DocPage) -> dict[str, JsonValue]:
     }
 
 
-def _labelled(label: str, value: str) -> Text:
+def _labeled(label: str, value: str) -> Text:
     line = Text(label.ljust(LABEL_WIDTH), style="dim")
     line.append(value)
     return line

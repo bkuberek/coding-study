@@ -1,7 +1,7 @@
 """The `cstudy` commands the server starts as child processes (docs/specs/web-ui.md#process).
 
 A child is the same install as the server, given the server's workspace and content, started in a
-session of its own, in the workspace, with nothing on its standard input, no colour and 120
+session of its own, in the workspace, with nothing on its standard input, no color and 120
 columns. The argument list is built here, never by a shell. `start_process` also starts the
 language servers of the code-intelligence sessions, in the same way.
 """

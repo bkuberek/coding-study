@@ -6,7 +6,7 @@
 
 import "./problem.css";
 
-import { defaultLanguage, REVIEW_PRACTISE_NOTE } from "../attempts.ts";
+import { defaultLanguage, REVIEW_PRACTICE_NOTE } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { solutionButton } from "../solution.ts";
@@ -98,7 +98,7 @@ function side(context: PageContext, problem: ProblemDocument, history: History, 
   );
 }
 
-/** The concept guides that teach what the problem practises, each a link to its Guides view; null for none. */
+/** The concept guides that teach what the problem practices, each a link to its Guides view; null for none. */
 function guidesSection(problem: ProblemDocument): HTMLElement | null {
   if (problem.guides.length === 0) return null;
   return h(
@@ -146,10 +146,10 @@ function practice(context: PageContext, problem: ProblemDocument, history: Histo
   return h(
     "section",
     { class: "side-block", "aria-labelledby": "practice-heading" },
-    h("h2", { id: "practice-heading", class: "eyebrow" }, "practise"),
+    h("h2", { id: "practice-heading", class: "eyebrow" }, "practice"),
     resumes.length ? h("ul", { class: "plain" }, ...resumes) : null,
     h("p", { class: "practice-actions" }, start, solution),
-    scheduled ? h("p", { class: "quiet" }, REVIEW_PRACTISE_NOTE) : null,
+    scheduled ? h("p", { class: "quiet" }, REVIEW_PRACTICE_NOTE) : null,
     problem.hints_total ? h("p", { class: "quiet" }, `${problem.hints_total} hints · any hint caps the review grade at ok`) : null,
     problem.levels ? h("p", { class: "quiet" }, `${problem.levels.last} levels, each opened by passing the one before`) : null,
     ...goalLines(history.levels).map((goal) => h("p", { class: "level-goal" }, goal)),

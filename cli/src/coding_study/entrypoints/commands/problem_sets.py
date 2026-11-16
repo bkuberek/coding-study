@@ -114,7 +114,7 @@ def create(
     created = create_set(_environment(context), name, description)
     output = console(context)
     output.print(Text(f"created {created.name}"))
-    output.print(_labelled("next", f"cstudy set add {created.name} <slug>"))
+    output.print(_labeled("next", f"cstudy set add {created.name} <slug>"))
 
 
 def add(
@@ -291,7 +291,7 @@ def _print_view(output: Console, view: SetView) -> None:
         output.print(Text(_position(str(row.position)) + table_row(_cells(row))))
         if row.level is not None:
             output.print(Text(f"{_position('')}target  through level {row.level}"))
-    output.print(_labelled("next", f"cstudy next --set {problem_set.name}"))
+    output.print(_labeled("next", f"cstudy next --set {problem_set.name}"))
 
 
 def _position(text: str) -> str:
@@ -308,7 +308,7 @@ def _cells(row: SetRow) -> tuple[str, ...]:
             return (NO_VALUE, row.slug, NO_VALUE, NO_VALUE, MISSING_STATUS, NO_VALUE, NO_VALUE)
 
 
-def _labelled(label: str, value: str) -> Text:
+def _labeled(label: str, value: str) -> Text:
     line = Text(label.ljust(LABEL_WIDTH), style="dim")
     line.append(value)
     return line
