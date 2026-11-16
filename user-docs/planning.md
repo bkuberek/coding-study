@@ -1,13 +1,13 @@
 ---
 title: Plan your practice
 summary: What cstudy next picks and why, problem sets for an interview or a topic, timed mock interviews, and your progress in numbers.
-section: Practise
+section: Practice
 order: 90
 ---
 
 # Plan your practice
 
-You can let `cstudy` choose what to practise, choose yourself from a list you made, or test yourself under a timer.
+You can let `cstudy` choose what to practice, choose yourself from a list you made, or test yourself under a timer.
 
 ## What to do next
 
@@ -19,7 +19,7 @@ cstudy next
 
 1. **An attempt you have open**, so you finish what you started. Other open attempts are listed after it.
 2. **A review that is due**: a problem you solved before, which the schedule brings back before you forget it.
-3. **A new problem from your weakest area**: the pattern, or the track outside `dsa`, where your recent attempts failed most, you have mastered least, and you have not practised for longest. Within it, easy problems come first, then medium once you passed an easy one, then hard.
+3. **A new problem from your weakest area**: the pattern, or the track outside `dsa`, where your recent attempts failed most, you have mastered least, and you have not practiced for longest. Within it, easy problems come first, then medium once you passed an easy one, then hard.
 
 ```text
 review  merge-intervals  (medium · intervals)  overdue 3d, interval 7d

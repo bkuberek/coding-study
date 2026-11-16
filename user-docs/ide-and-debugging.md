@@ -1,7 +1,7 @@
 ---
 title: Your IDE and the debugger
 summary: The VS Code and IntelliJ IDEA files cstudy writes, other editors with cstudy test --watch, how cstudy ide keeps your edits, how to debug a run with cstudy test --debug, and common editor problems.
-section: Practise
+section: Practice
 order: 75
 ---
 

@@ -343,7 +343,7 @@ The six planned rows (owner P1) are `progressive`:
 | `duplicate-contractor-records` | Duplicate Contractor Records | `union-find`, `arrays-hashing` | function | medium |
 | `effective-dated-history` | Effective-Dated History | `binary-search` | progressive | medium |
 
-One more added later is a sibling of `banking-system` whose level 3 replaces the fixed-delay cashback with transfers that each have their own delay and can be cancelled:
+One more added later is a sibling of `banking-system` whose level 3 replaces the fixed-delay cashback with transfers that each have their own delay and can be canceled:
 
 | slug | title | patterns | kind | difficulty |
 |------|-------|----------|------|------------|

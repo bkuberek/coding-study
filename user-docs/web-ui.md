@@ -1,11 +1,11 @@
 ---
-title: Practise in your browser
+title: Practice in your browser
 summary: cstudy serve opens the whole practice loop in a page on your computer, beside the terminal and your IDE.
 section: The web UI
 order: 100
 ---
 
-# Practise in your browser
+# Practice in your browser
 
 `cstudy serve` opens a page on your own computer where the whole practice loop happens: pick a problem, read the statement, edit the code, run the tests and submit with results arriving as they run, take hints, reveal solutions, finish the attempt, run mock interviews, and check your progress and your setup. It is another way to use `cstudy`, not a separate app: the page works on the same workspace files and the same `progress.db` as the terminal and your IDE, and every run is the same `cstudy test` or `cstudy submit` command.
 
@@ -52,13 +52,13 @@ The top bar holds the views, the attempts in progress while one is open, and the
 | Problem | A click on a row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over. For a problem with levels, it also shows your best level in each language and, when you stopped below the last level, the level to try next. A problem whose reviews keep reaching level 2 of 4 reads *mastered through level 2 of 4*: each level is mastered on its own reviews, so a level you have just reached starts over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Sets | `Alt+2` | [Your own lists of problems](planning.md#problem-sets), with passed of total; one open shows its pick and its rows, to start, resume or reorder |
-| Guides | `Alt+3` | [Short readings that teach an idea](guides.md) before you practise it, and the paths that order them with problems, with how far you have come |
+| Guides | `Alt+3` | [Short readings that teach an idea](guides.md) before you practice it, and the paths that order them with problems, with how far you have come |
 | Mock | `Alt+4` | The start form, or the running mock's countdown and problems |
 | Progress | `Alt+5` | `cstudy stats`, the reviews due, export and import |
 | Health | `Alt+6` | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
 | Settings | `Alt+7` | This workspace's preferences, and your `config.toml`, which every workspace reads ([settings](settings.md)) |
 | Docs | `Alt+8` | These pages: every topic by section, a search over all of them, and a link to each heading. `cstudy docs` reads the same pages in the terminal |
-| About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the licence, the website and project links, and the credits, with the full licence texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
+| About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the license, the website and project links, and the credits, with the full license texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
 
 ## Edit and save
 
@@ -135,7 +135,7 @@ An open set lists its rows in order with their status and a **Start…** or **Re
 
 ## Learn with guides
 
-Open **Guides** (`Alt+3`) to read the [guides and learning paths](guides.md): each path with its level and progress, from the introductory ones to the advanced, then every guide with its level and whether you have read it. Type in the search (`/` jumps there) to find guides and paths by title, summary or slug, and narrow them by level, by path, which lists that path's guides in its order, and by what you have read; a reload or Back from a guide keeps them, and **clear** empties them. A guide shows its diagrams in the page's theme, its code highlighted, what to read first, the problems that practise it and what to read next, and **Mark as read** at its end. An example in several languages shows as tabs, starting on your `default_lang` (bash in a guide about the shell); choosing a tab switches every example that has that language, and the choice holds for the guides you read until the page reloads. A path shows each step in order, with a check once it is done. The page is the best place to read guides, since it draws the diagrams.
+Open **Guides** (`Alt+3`) to read the [guides and learning paths](guides.md): each path with its level and progress, from the introductory ones to the advanced, then every guide with its level and whether you have read it. Type in the search (`/` jumps there) to find guides and paths by title, summary or slug, and narrow them by level, by path, which lists that path's guides in its order, and by what you have read; a reload or Back from a guide keeps them, and **clear** empties them. A guide shows its diagrams in the page's theme, its code highlighted, what to read first, the problems that practice it and what to read next, and **Mark as read** at its end. An example in several languages shows as tabs, starting on your `default_lang` (bash in a guide about the shell); choosing a tab switches every example that has that language, and the choice holds for the guides you read until the page reloads. A path shows each step in order, with a check once it is done. The page is the best place to read guides, since it draws the diagrams.
 
 ## Read the docs
 

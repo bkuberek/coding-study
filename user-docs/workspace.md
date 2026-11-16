@@ -1,13 +1,13 @@
 ---
 title: Your workspace
-summary: The folder where you practise, what each part of it holds, how cstudy finds it, and how to keep it in version control.
+summary: The folder where you practice, what each part of it holds, how cstudy finds it, and how to keep it in version control.
 section: Start here
 order: 40
 ---
 
 # Your workspace
 
-A workspace is a folder of your own where you practise: your solutions, your notes, your own problems and sets, and your progress. It is separate from `cstudy`, which you install once with its problems; you can have several workspaces, and keep each in a git repository of your own.
+A workspace is a folder of your own where you practice: your solutions, your notes, your own problems and sets, and your progress. It is separate from `cstudy`, which you install once with its problems; you can have several workspaces, and keep each in a git repository of your own.
 
 ## Create one
 
@@ -62,7 +62,7 @@ cstudy-workspace/
 
 | Part | What to know |
 |------|--------------|
-| `python/`, `typescript/`, `jvm/`, `go/`, `rust/` | Ordinary projects for each language, so your editor and its language server open them directly. Open the one you practise in, or the workspace root |
+| `python/`, `typescript/`, `jvm/`, `go/`, `rust/` | Ordinary projects for each language, so your editor and its language server open them directly. Open the one you practice in, or the workspace root |
 | `projects/` | A project problem is a folder of its own, started from the problem's files ([levels and projects](levels.md#project-problems)) |
 | `.archive/` | When you start a review, or start again with `--fresh`, `cstudy` moves the earlier files here, under `.archive/<slug>/<attempt>-<language>/`. Nothing is deleted |
 | `.statements/` | Rendered from the problem each time you start it, so there is nothing to keep |

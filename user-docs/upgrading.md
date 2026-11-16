@@ -113,7 +113,7 @@ cstudy export   # writes progress-export.json at the workspace root
 
 Commit and push the workspace with the export, or copy the workspace folder. Then, on the new machine:
 
-1. Install `cstudy`, the same version or a newer one ([install cstudy](getting-started.md#install-cstudy)), and the toolchains of the languages you practise ([toolchains](toolchains.md)).
+1. Install `cstudy`, the same version or a newer one ([install cstudy](getting-started.md#install-cstudy)), and the toolchains of the languages you practice ([toolchains](toolchains.md)).
 
 2. Clone the workspace, set it up, and restore your progress into its new, empty `progress.db`:
 

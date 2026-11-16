@@ -1,13 +1,13 @@
 ---
 title: Guides and learning paths
-summary: Short guides that teach an idea before you practise it, paths that put guides and problems in order, and how to read them in the terminal or the web UI.
-section: Practise
+summary: Short guides that teach an idea before you practice it, paths that put guides and problems in order, and how to read them in the terminal or the web UI.
+section: Practice
 order: 80
 ---
 
 # Guides and learning paths
 
-A **guide** is a short reading that teaches one idea before you practise it: the idea in plain words, a worked example traced step by step, when to use it, the common traps, its cost with the conditions that hold, notes for experts, and the problems that practise it. Every example in a guide is a real program that a test runs, so it prints what the guide says.
+A **guide** is a short reading that teaches one idea before you practice it: the idea in plain words, a worked example traced step by step, when to use it, the common traps, its cost with the conditions that hold, notes for experts, and the problems that practice it. Every example in a guide is a real program that a test runs, so it prints what the guide says.
 
 A **path** puts guides and problems in order, from a topic's first idea to an expert's. "Getting started" goes from the terminal to your first problem; others cover hashing, AI engineering, data engineering, testing, networking, machine learning, operating systems, distributed systems, database internals, infrastructure as code, knowledge representation, security, and the classic algorithm patterns. Each path has a level, introductory, core or advanced, and the list shows them in that order.
 
@@ -31,7 +31,7 @@ A path lists its steps with their state, and the command for the next one:
 ```text
 $ cstudy learn --path hashing
 hashing  Hashing: from your first hash map to content-addressed storage
-From what a hash function is to Merkle proofs, through the problems that practise each idea.
+From what a hash function is to Merkle proofs, through the problems that practice each idea.
 3 of 22 done
 #   KIND     STEP                       TARGET   STATUS          TITLE
 1   guide    hash-functions                      read            What a hash function is
@@ -61,11 +61,11 @@ cstudy learn --path hashing --open
 | Where | What you see |
 |-------|--------------|
 | The list | Each path with its progress, `3 of 22 steps done`, then every guide with its level and whether you have read it |
-| A guide | The guide with its diagrams drawn in the page's light or dark theme, its code highlighted, what to read first, the problems that practise it and what to read next. **Mark as read** at the end records it, as `cstudy learn <guide> --done` does |
+| A guide | The guide with its diagrams drawn in the page's light or dark theme, its code highlighted, what to read first, the problems that practice it and what to read next. **Mark as read** at the end records it, as `cstudy learn <guide> --done` does |
 | A path | Each step in order, with a check once it is done. **Read** opens a guide and **Start** a problem's page. `next:` names the first step not done |
-| A problem | Under **read first**, the guides that teach what it practises |
+| A problem | Under **read first**, the guides that teach what it practices |
 
-Each diagram is a picture that ships with `cstudy`, in the page's colours, and switches with the theme. Nothing is fetched from the internet. Under it, a caption says what it shows, and a screen reader reads the diagram's title with it.
+Each diagram is a picture that ships with `cstudy`, in the page's colors, and switches with the theme. Nothing is fetched from the internet. Under it, a caption says what it shows, and a screen reader reads the diagram's title with it.
 
 ## Your reading progress
 

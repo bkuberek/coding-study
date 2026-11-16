@@ -11,4 +11,4 @@ In short:
 
 ## Reporting
 
-To report behaviour that breaks this code, use GitHub's **Report content** option on the comment, issue or pull request, or report the account to GitHub. Reports are handled in confidence, and the maintainer may remove content or block anyone who breaks this code, following the Contributor Covenant's enforcement guidelines.
+To report behavior that breaks this code, use GitHub's **Report content** option on the comment, issue or pull request, or report the account to GitHub. Reports are handled in confidence, and the maintainer may remove content or block anyone who breaks this code, following the Contributor Covenant's enforcement guidelines.

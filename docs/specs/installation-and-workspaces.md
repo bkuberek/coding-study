@@ -104,7 +104,7 @@ Every path `cstudy` prints for a workspace file is relative to the workspace roo
 
 ### What `cstudy reset` deletes
 
-[`cstudy reset`](cli.md#cstudy-reset) goes by what a path holds: what you practised goes, and what `cstudy doctor --fix` would have to install again stays.
+[`cstudy reset`](cli.md#cstudy-reset) goes by what a path holds: what you practiced goes, and what `cstudy doctor --fix` would have to install again stays.
 
 | Path | Holds | A reset |
 |------|-------|---------|
@@ -220,7 +220,7 @@ A Rust project folder is a crate of its own ([problem-format](problem-format.md#
 |------|------|
 | Toolchain | The workspace's `rustc` and `cargo`, and the runtime's vendored crates, which the folder's `.cargo/config.toml` names by the relative path `../../.cs/runtime/runners/rust/vendor`. `cstudy start` writes that file when the folder lacks it, on a new or a resumed attempt, and never changes one that exists |
 | Build files | The starter's `Cargo.toml` and `.cargo/config.toml`. The folder is not a member of `rust/`: Cargo refuses a member outside the workspace root |
-| Editors | rust-analyzer analyses a Cargo project that `rust-analyzer.linkedProjects` names, so [`cstudy ide`](#ide-files) adds `projects/<slug>/Cargo.toml` of each Rust folder to it, and so does [`cstudy start`](cli.md#cstudy-start) of a new Rust folder once `cstudy` has written `.vscode/settings.json` |
+| Editors | rust-analyzer analyzes a Cargo project that `rust-analyzer.linkedProjects` names, so [`cstudy ide`](#ide-files) adds `projects/<slug>/Cargo.toml` of each Rust folder to it, and so does [`cstudy start`](cli.md#cstudy-start) of a new Rust folder once `cstudy` has written `.vscode/settings.json` |
 | How `cstudy` runs it | It builds in `.cs/build/rust-projects/<slug>/` with the dev profile and a private `CARGO_HOME`, and writes nothing into the folder ([runners](runners.md#rust-projects)) |
 | Native command | `cargo test` in the folder: it writes `target/` and `Cargo.lock` there, both ignored |
 | Caches | `target/` |
@@ -250,7 +250,7 @@ One catalog (`coding_study/domain/ide_actions.py`) lists these actions, and both
 | `.idea/gradle.xml` | `jvm/` linked as a Gradle project with its `java` and `kotlin` modules, run with the project JDK (`#USE_PROJECT_JDK`) |
 | `.idea/runConfigurations/*.xml` | Shared run configurations in the folders `cstudy: current file` (JAR Application configurations that start the launcher with `"$FilePath$"`), `cstudy: active attempt` and `cstudy: workspace` (Shell Script configurations run in the terminal), and `cstudy: debug`: **Debug JVM (listen)**, a Remote JVM Debug configuration listening on port 5005 that restarts after each session, and the compounds `Debug current file (Java, Kotlin)` and `Debug active attempt (Java, Kotlin)`, each starting the listener and `cstudy test --debug --debug-connect`. Each file is named after its configuration as IntelliJ names it (`cstudy test (current file)` is `cstudy_test__current_file_.xml`) |
 
-Go and Rust need no tasks or run configurations of their own: every action is language-agnostic, so `cstudy test (current file)` runs `cstudy test ${file}` on a `.go` or `.rs` solution as it does on a `.py` one, and IntelliJ writes no Go or Rust project files and no Go or Rust debug configurations: debug them in VS Code (above) or with any client of [debug mode](runners.md#debug-mode). The settings are what the two editors need to analyse the practice files:
+Go and Rust need no tasks or run configurations of their own: every action is language-agnostic, so `cstudy test (current file)` runs `cstudy test ${file}` on a `.go` or `.rs` solution as it does on a `.py` one, and IntelliJ writes no Go or Rust project files and no Go or Rust debug configurations: debug them in VS Code (above) or with any client of [debug mode](runners.md#debug-mode). The settings are what the two editors need to analyze the practice files:
 
 | Setting | Why |
 |---------|-----|

@@ -12,7 +12,7 @@ Rationale and rejected alternatives: [ADR 0005](../decisions/0005-empirical-comp
 | Is my extra memory constant or linear? | Reliable in Python; approximate on JVM and Node |
 | n versus n log n? | **Not separable by slope** (the log factor adds about 0.1 to the slope over 3 decades). Judged by the ratio to the optimal reference and its trend |
 | 1 versus log n versus sqrt n? | **Not separable**: such a call takes nanoseconds to a few microseconds, and where its fresh input sits in the memory hierarchy moves the slope by up to 0.5. They share one band; telling them from linear growth is reliable |
-| Is a declared class right on a ladder spanning one decade? | Only roughly: the cost per unit of growth wanders by 2 to 4 times across a ladder, so neighbouring classes (n^1.5 and n^2) are within the [drift tolerance](#ladder-check) there. Two or more decades keep the check sharp |
+| Is a declared class right on a ladder spanning one decade? | Only roughly: the cost per unit of growth wanders by 2 to 4 times across a ladder, so neighboring classes (n^1.5 and n^2) are within the [drift tolerance](#ladder-check) there. Two or more decades keep the check sharp |
 | How do I rank? | Against the reference ladder and against the user's own past runs. There is no crowd percentile and none is ever shown |
 | Exact percentiles, cross-language comparisons | Not provided; memory metrics differ by runtime |
 

@@ -30,19 +30,19 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
 | Code intelligence | Live errors, warnings and unused code; documentation when you hover; go to definition into your files and into read-only library sources |
 | Autocomplete | Completion as you type or with `Ctrl+Space`, and signature help when you open a call |
 
-**Autocomplete controls all completion.** With it off, the editor offers no completion list and no signature help, not even the basic completion of earlier versions of the page. That is the reason for the setting: you can practise recalling names and signatures with nothing to prompt you, and turn the help on when you want it. Closing brackets as you type is not completion and stays.
+**Autocomplete controls all completion.** With it off, the editor offers no completion list and no signature help, not even the basic completion of earlier versions of the page. That is the reason for the setting: you can practice recalling names and signatures with nothing to prompt you, and turn the help on when you want it. Closing brackets as you type is not completion and stays.
 
 
 ## Turn them on
 
-1. Choose **Settings**, check **Code intelligence** and choose **Save**. **Autocomplete** is greyed out with `Turn on code intelligence first` until you check it; it keeps its choice if you turn code intelligence off, and does nothing until both are on.
+1. Choose **Settings**, check **Code intelligence** and choose **Save**. **Autocomplete** is grayed out with `Turn on code intelligence first` until you check it; it keeps its choice if you turn code intelligence off, and does nothing until both are on.
 2. Install the language servers once. In the terminal, run:
 
    ```bash
    cstudy doctor --fix
    ```
 
-   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs the Python and TypeScript servers into `.cs/lsp/` in your workspace, plus jdtls for Java, a download checked by its SHA-256, and gopls for Go, built with your Go, and needs the network that one time. Kotlin's server comes under a licence you accept first ([Kotlin](#kotlin)). rust-analyzer comes with your Rust toolchain instead ([Rust](#rust)). After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
+   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs the Python and TypeScript servers into `.cs/lsp/` in your workspace, plus jdtls for Java, a download checked by its SHA-256, and gopls for Go, built with your Go, and needs the network that one time. Kotlin's server comes under a license you accept first ([Kotlin](#kotlin)). rust-analyzer comes with your Rust toolchain instead ([Rust](#rust)). After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text
@@ -98,7 +98,7 @@ Read `Ctrl` for `Cmd` on Linux and Windows. These work while code intelligence a
 | Python | basedpyright | Available |
 | TypeScript | typescript-language-server | Available |
 | Java | jdtls | Available, on JDK 25 or 26 |
-| Kotlin | kotlin-lsp | Available once you accept its licence, with a JDK from 21 to 26 |
+| Kotlin | kotlin-lsp | Available once you accept its license, with a JDK from 21 to 26 |
 | Go | gopls | Available, built by `cstudy doctor --fix` with your Go |
 | Rust | rust-analyzer | Available, once you run `rustup component add rust-analyzer` |
 
@@ -123,7 +123,7 @@ WARN  code intelligence java jdtls needs JDK 25 or 26, not 21.0.5
 
 ## Kotlin
 
-Kotlin's server is kotlin-lsp, the Kotlin analysis of a well-known Kotlin IDE behind the same protocol. It is partly closed source and comes under its own [licence agreement](https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt), so `cstudy doctor --fix` downloads it only once you accept that licence. It fetches the newest build each time it runs, checked against the SHA-256 published beside it, and downloads nothing when the newest is the one you have. Read the licence, then either answer `y` when `--fix` asks at a terminal, or say so up front:
+Kotlin's server is kotlin-lsp, the Kotlin analysis of a well-known Kotlin IDE behind the same protocol. It is partly closed source and comes under its own [license agreement](https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt), so `cstudy doctor --fix` downloads it only once you accept that license. It fetches the newest build each time it runs, checked against the SHA-256 published beside it, and downloads nothing when the newest is the one you have. Read the license, then either answer `y` when `--fix` asks at a terminal, or say so up front:
 
 ```bash
 cstudy doctor --fix --accept-license kotlin-lsp
@@ -138,7 +138,7 @@ Your acceptance is recorded in the workspace's `.cs/workspace.toml`, so `--fix` 
 - **Memory.** A Kotlin session uses around 2 GB of memory, the most of any language, plus the Gradle daemon its import may start.
 - **Definitions into the standard library.** A function such as `mutableListOf` lives in a sources jar: a Cmd-click on it shows a note naming the jar and the file, and hover shows its documentation. Your project's files open in tabs.
 - **It leaves your folders as they were,** apart from Gradle's own `.gradle/`, as `cstudy test` leaves it.
-- **Each build stops a few weeks after its release.** kotlin-lsp ships as early-access builds that stop working once their built-in licence ends, and a new one comes out every few weeks. `cstudy doctor` shows the last day of yours, `ok    code intelligence kotlin kotlin-lsp 263.7084.0, runs until 2026-11-12`, and warns in its last week. Run `cstudy doctor --fix` with the network then: it fetches the newest build if there is one, and says the one you have is the newest otherwise. Once a build has stopped, `cstudy doctor`, Settings and the status bar say `expired on 2026-11-13: run cstudy doctor --fix`, and Kotlin files work as without code intelligence until `--fix` fetches a newer one.
+- **Each build stops a few weeks after its release.** kotlin-lsp ships as early-access builds that stop working once their built-in license ends, and a new one comes out every few weeks. `cstudy doctor` shows the last day of yours, `ok    code intelligence kotlin kotlin-lsp 263.7084.0, runs until 2026-11-12`, and warns in its last week. Run `cstudy doctor --fix` with the network then: it fetches the newest build if there is one, and says the one you have is the newest otherwise. Once a build has stopped, `cstudy doctor`, Settings and the status bar say `expired on 2026-11-13: run cstudy doctor --fix`, and Kotlin files work as without code intelligence until `--fix` fetches a newer one.
 
 ## Go
 

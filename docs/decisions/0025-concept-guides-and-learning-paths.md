@@ -24,7 +24,7 @@ Three questions were open: where the guides live, what a first path covers, and 
 
 | Path | Holds |
 |------|-------|
-| `guides/<slug>/meta.yaml` | Title, summary, level (`intro`, `core` or `advanced`), prerequisites, related guides, and the problems that practise it |
+| `guides/<slug>/meta.yaml` | Title, summary, level (`intro`, `core` or `advanced`), prerequisites, related guides, and the problems that practice it |
 | `guides/<slug>/guide.md` | The guide: a fixed set of sections, diagrams as Mermaid, examples embedded from `examples/` |
 | `guides/<slug>/examples/` | Runnable programs, each embedded in `guide.md` with its output |
 | `guides/paths/<slug>.yaml` | A path: a title, a summary and ordered steps, each a guide or a problem, with an optional level target for a progressive or project problem |
@@ -69,7 +69,7 @@ The terminal is fully supported. `cstudy learn` lists the guides and the paths; 
 
 ### The first path: "Hashing: from your first hash map to content-addressed storage"
 
-Seven guides, from what a hash function is to Merkle proofs and content-addressed storage, around the fourteen problems of the catalog that practise hashing. It covers one topic from its first idea to an expert's, which is the shape every later path takes.
+Seven guides, from what a hash function is to Merkle proofs and content-addressed storage, around the fourteen problems of the catalog that practice hashing. It covers one topic from its first idea to an expert's, which is the shape every later path takes.
 
 ## Consequences
 
@@ -93,7 +93,7 @@ Seven guides, from what a hash function is to Merkle proofs and content-addresse
 
 | Alternative | Why not |
 |-------------|---------|
-| Guides inside `problems/` | A guide teaches an idea that several problems practise, so it belongs to none of them |
+| Guides inside `problems/` | A guide teaches an idea that several problems practice, so it belongs to none of them |
 | Guides as items in `tracks/` | Items are answered and graded; a guide is read |
 | Front matter in `guide.md` | GitHub shows front matter as a table above the guide, and the problems already keep their metadata in `meta.yaml` |
 | Hand-drawn SVG files | Two sources per diagram, and the terminal could not show them |

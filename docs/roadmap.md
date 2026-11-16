@@ -39,13 +39,13 @@ v1.0.0 is the release in which every learner journey works end to end on macOS a
 
 ### Definition
 
-Someone new to a topic installs cstudy on macOS or Linux, chooses the languages, job roles and domains they study, and runs the whole loop in the terminal, their own editor or the local page: learn from a guide, practise, test, review and come back on schedule. After setup, everything works offline, except the optional AI features, which use your own key. The journeys:
+Someone new to a topic installs cstudy on macOS or Linux, chooses the languages, job roles and domains they study, and runs the whole loop in the terminal, their own editor or the local page: learn from a guide, practice, test, review and come back on schedule. After setup, everything works offline, except the optional AI features, which use your own key. The journeys:
 
 | Journey | Covers |
 |---------|--------|
 | Install and set up | Install, `cstudy init` with your languages, `cstudy doctor --fix` with every row ok |
 | Learn | Read a guide, mark it read, follow a path |
-| Practise | `next`, `start`, edit, `test`, `hint`, `done`, and the review comes back |
+| Practice | `next`, `start`, edit, `test`, `hint`, `done`, and the review comes back |
 | Levels and projects | `test`, `submit`, levels opening, `done` with level passes |
 | Service projects | Start with Docker, the dev stack, `test`, `submit`, nothing left behind |
 | Frontend problems | A React component graded in a headless browser in the sandbox |
@@ -69,14 +69,14 @@ The promise starts at 1.0.0. Before it, any release may change any surface.
 | `--json` documents | Public, additive only: fields are never removed, renamed or retyped, and each document has a published JSON Schema |
 | `--events` stream | Public, versioned: `version` 1 changes only with an incompatible change, and readers ignore unknown event types and fields |
 | Workspace layout outside `.cs/` | Public. A 1.0 workspace works with every 1.x. A layout change bumps the marker's `schema` and `cstudy doctor --fix` migrates it; an older cstudy refuses a newer schema |
-| `progress.db` | Public in behaviour: every 1.x migrates any earlier 1.x database forward, automatically, after a backup. No downgrade. The tables are not an API for other programs, except the assistance and AI review records, which are public records |
+| `progress.db` | Public in behavior: every 1.x migrates any earlier 1.x database forward, automatically, after a backup. No downgrade. The tables are not an API for other programs, except the assistance and AI review records, which are public records |
 | Progress export | Public: any 1.x imports any earlier 1.x export |
 | Config keys and environment variables | Public: keys and meanings stay; a default may change in a minor release, with a release note |
 | Your own problems | Public, additive only: a problem that passes `cstudy verify` under 1.0 loads, runs and verifies under every 1.x. New checks apply to catalog content only |
 | Canonical IDs | A released content ID never changes, since progress is keyed on it. Content itself may be corrected or reworded in any release |
 | Web API, `.cs/`, guide and path formats | Internal: they may change in any release |
 | Human-readable output | Not promised: scripts use `--json` |
-| AI features | Preview: their commands, `[ai]` keys and behaviour may change in a minor release. The assistance record and AI review records are public |
+| AI features | Preview: their commands, `[ai]` keys and behavior may change in a minor release. The assistance record and AI review records are public |
 | Kotlin code intelligence | Preview: it depends on builds outside cstudy that expire |
 
 Rules:
@@ -134,7 +134,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | P6 | Real use during the soak: at least 30 finished attempts across at least 4 languages and every kind, in both the terminal and the page, with no open P1 issue | Not met | Release candidates |
 | P7 | The desktop app is designed: an accepted ADR for `cstudy app` and `cstudy app install` | Not met | v0.64 |
 | P8 | Feedback and issue reporting: GitHub issue forms in `.github/ISSUE_TEMPLATE` for a bug, missing content or a feature, and a content error in a problem or guide; "Found an issue?" and "Missing something?" entries in the page, one global and one on every problem and guide page, open the matching form in the browser, prefilled through query parameters with the cstudy version, the OS, the page and the content ID (`<type>/<slug>`), never with code or transcripts; `cstudy feedback` does the same from the terminal | Not met | v0.53 |
-| P9 | A cstudy-owned lab image, and a variant with the AWS CLI, built in CI from a pinned Debian snapshot, published, pinned by digest and with its licences recorded, under an ADR that amends [ADR 0019](decisions/0019-service-projects.md) for lab images | Not met | v0.59 |
+| P9 | A cstudy-owned lab image, and a variant with the AWS CLI, built in CI from a pinned Debian snapshot, published, pinned by digest and with its licenses recorded, under an ADR that amends [ADR 0019](decisions/0019-service-projects.md) for lab images | Not met | v0.59 |
 | P10 | `cstudy shell [<slug>] [--host <name>]` opens an interactive shell as your UID on a host of a running lab stack, refuses without a terminal (exit 3), and keeps the shell history in the project folder; the page shows the command with a copy button | Not met | v0.59 |
 | P11 | Lab stacks start broken: a lab stack is up once its infrastructure runs, not when its services are healthy, and a problem-owned break step injects each level's fault into the dev stack once, seeded by `CSTUDY_FAULT_SEED`, so names, ports and sizes vary between attempts | Not met | v0.59 |
 | P12 | Two-phase grading: `cstudy submit` runs the checks on the stack you fixed, then on a fresh stack built from your project folder with the fault injected again, then checks that `rca.md` has its sections (symptoms, evidence, root cause, fix, prevention); a level passes only when all three pass, and the level's rubric then reviews the written root cause | Not met | v0.59 |
@@ -146,7 +146,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 |----|-----------|--------|-----------|
 | AI1 | Bring your own key: keys only in `credentials.toml`, never in the workspace, logs, transcripts or exports; consent before the first send per provider, model and purpose; a daily token cap; usage and known cost shown | Not met | v0.60 |
 | AI2 | Routing: one fixed model, or auto, which serves each task from a fast or a strong tier you configure | Not met | v0.60 |
-| AI3 | AI review of rubric-checked problems: a schema-validated verdict per rubric criterion, stored as a versioned record with provider, model and rubric version, labelled AI review, never changing a grade or the schedule | Not met | v0.60 |
+| AI3 | AI review of rubric-checked problems: a schema-validated verdict per rubric criterion, stored as a versioned record with provider, model and rubric version, labeled AI review, never changing a grade or the schedule | Not met | v0.60 |
 | AI4 | The chat drawer on every page, with free sessions you create, rename, archive, compact and delete, and the same sessions in `cstudy ai chat`; the drawer is a chunk with its own bundle budget | Not met | v0.61 |
 | AI5 | Web search through each provider's server-side search tool, per message, counted in usage | Not met | v0.61 |
 | AI6 | Problem sessions: one per `attempt_id`, read-only once the attempt is done or aborted; help modes `interviewer`, `collaborator` and `tutor`; during `cstudy mock`, interviewer only, with free sessions locked | Not met | v0.62 |
@@ -183,12 +183,12 @@ The content must-haves:
 | Frontend fundamentals path on today's engine | 6 | 3 | v0.57 |
 | Platform and operations path: containers, CI/CD and deploys, logs, metrics and traces, SLOs and alerting, incidents | 5 | 2 | v0.57 |
 | Entry problems for the networking, distributed systems, OS, data engineering and testing paths, and a mutation tester | 0 | 6 | v0.57 |
-| Machine learning depth: trees and ensembles, clustering and nearest neighbours, neural network basics | 3 | 3 | v0.57 |
+| Machine learning depth: trees and ensembles, clustering and nearest neighbors, neural network basics | 3 | 3 | v0.57 |
 | Security: password storage and sessions, encryption and signatures | 2 | 2 | v0.57 |
 | Browser-graded React problems: the search box, and a data table with sorting and pagination | 0 | 2 | v0.58 |
 | Operations and troubleshooting guides: three paths, on Linux servers and SSH; databases, caches and search; and messaging and cloud CLIs, opening on a shared troubleshooting method | 22 | 0 | v0.63 |
 | Break-and-fix problems on Linux servers and SSH: a full disk, a runaway process, memory and the OOM killer, a proxy's 502s, names and certificates, an SSH bastion and tunnels | 0 | 6 | v0.63 |
-| Break-and-fix problems on databases, caches and search: Postgres locks and connections, a MySQL metadata lock, MongoDB slow queries behind licence acceptance, a Valkey cache that evicts everything, and OpenSearch cluster health, mappings and heavy queries | 0 | 8 | v0.63 |
+| Break-and-fix problems on databases, caches and search: Postgres locks and connections, a MySQL metadata lock, MongoDB slow queries behind license acceptance, a Valkey cache that evicts everything, and OpenSearch cluster health, mappings and heavy queries | 0 | 8 | v0.63 |
 | Break-and-fix problems on messaging and cloud CLIs: Kafka consumer lag, a stuck Valkey stream consumer, SQS, SNS and EventBridge through the real `aws` CLI on Moto, RabbitMQ, NATS JetStream, and a cloud incident with Google Pub/Sub read from recorded `gcloud` output | 0 | 6 | v0.63 |
 | **Total** | **75** | **47** | |
 
@@ -227,7 +227,7 @@ The content must-haves:
 |----|-----------|--------|-----------|
 | A1 | axe-core finds no WCAG 2.2 A or AA violation on any view or dialog, in light and dark, at 1440 and 390 pixels, in Chromium, Firefox and WebKit | Met locally; CI runs Chromium | Every release candidate |
 | A2 | The keyboard-only journey passes | Met | |
-| A3 | A manual screen-reader pass of the learn and practise journeys with VoiceOver and Orca, with its findings fixed | Not met | v0.64 |
+| A3 | A manual screen-reader pass of the learn and practice journeys with VoiceOver and Orca, with its findings fixed | Not met | v0.64 |
 | A4 | Every new view and control (Guides search, example tabs, the Docs page, the profile filters, the shell command and the grading phases of troubleshooting problems, the AI drawer) is covered by A1 and A2 | Partly met: covered as each lands | Each milestone |
 
 #### Performance
@@ -243,7 +243,7 @@ The content must-haves:
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| S1 | An independent security review of `cstudy serve`, the code-intelligence broker, the sandbox, the browser grader, the lab stacks and `cstudy shell`, the licence acceptance for images, and the AI features, with a threat model and its findings closed | Partly met: the controls are specified and tested | v0.64 |
+| S1 | An independent security review of `cstudy serve`, the code-intelligence broker, the sandbox, the browser grader, the lab stacks and `cstudy shell`, the license acceptance for images, and the AI features, with a threat model and its findings closed | Partly met: the controls are specified and tested | v0.64 |
 | S2 | A clean dependency audit of `uv.lock`, the web UI lock, the language-server manifest and the pinned images | Not met | v0.64, release candidates |
 | S3 | Rootless Docker and SELinux proven or documented as unsupported | Not met | v0.64 |
 | S4 | A written trust model for problems from others: generators, oracles, checkers and native code run as you, with no sandbox | Not met | v0.64 |
@@ -253,9 +253,9 @@ The content must-haves:
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| L1 | `cstudy about --credits` and `--licenses` list every component cstudy redistributes or downloads, the vendored Rust crates, the vendored Go module and the images included, with the images under an accepted licence listed apart | Partly met | v0.64 |
+| L1 | `cstudy about --credits` and `--licenses` list every component cstudy redistributes or downloads, the vendored Rust crates, the vendored Go module and the images included, with the images under an accepted license listed apart | Partly met | v0.64 |
 | L2 | The Kotlin language server has explicit acceptance, a preview label and handled expiry | Partly met: acceptance and expiry exist | v0.64 |
-| L3 | Every image a problem pulls is pinned by digest and its licence recorded. Each is under an OSI-approved licence, unless the problem needs a specific image under another licence. Then the problem names that licence and links its text, nothing is pulled until you accept it (with `cstudy start --accept-license <key>` or a prompt at a terminal, never by `--yes`), and your acceptance is recorded in the workspace's marker as `[licenses.<key>]`, the same way as the Kotlin LSP's. The problem carries a licence marker in `cstudy list`, `cstudy show` and the page, and shows as unavailable, with the reason and the command, until you accept. No image needs an account, a token or the network after it is pulled | Partly met: digests are enforced | v0.59 (licence acceptance for images), v0.64 |
+| L3 | Every image a problem pulls is pinned by digest and its license recorded. Each is under an OSI-approved license, unless the problem needs a specific image under another license. Then the problem names that license and links its text, nothing is pulled until you accept it (with `cstudy start --accept-license <key>` or a prompt at a terminal, never by `--yes`), and your acceptance is recorded in the workspace's marker as `[licenses.<key>]`, the same way as the Kotlin LSP's. The problem carries a license marker in `cstudy list`, `cstudy show` and the page, and shows as unavailable, with the reason and the command, until you accept. No image needs an account, a token or the network after it is pulled | Partly met: digests are enforced | v0.59 (license acceptance for images), v0.64 |
 | L4 | Code and content under MIT, in original wording, with sources recorded | Met | |
 | L5 | Terms that bind the user are disclosed | Met | |
 | L6 | The backing-services test fixture moves from `redis:7.4.12-alpine`, under RSALv2 or SSPLv1, which are not open source, to Valkey: `cli/tests/fixtures/service_projects/fixture-members-python/services/compose.yaml`, with its test and the service-projects spec | Met: the fixture uses Valkey | v0.50 |
@@ -266,7 +266,7 @@ The content must-haves:
 |----|-----------|--------|-----------|
 | O1 | No telemetry and no update check, enforced by a test | Partly met: neither exists; no test guards it | v0.64 |
 | O2 | A published network map: each command that can use the network, and why | Partly met: spread across the specs | v0.64 |
-| O3 | Offline proof: after setup, the learn, practise and levels journeys and a page run pass with networking off | Not met | v0.64 |
+| O3 | Offline proof: after setup, the learn, practice and levels journeys and a page run pass with networking off | Not met | v0.64 |
 | O4 | The page requests nothing off the machine | Met | |
 | O5 | User code sees only the allowlisted environment | Met | |
 
@@ -286,7 +286,7 @@ A milestone is a body of work, not a release. Each release bundles every branch 
 | v0.56 Content batch 2 | Applied SQL, system design, software design, concurrency and async: 16 guides, 3 paths, 9 problems (C7) | Content |
 | v0.57 Content batch 3 | Frontend fundamentals, platform and operations, entry problems, machine learning, security: 16 guides, 2 paths, 16 problems (C7) | Content |
 | v0.58 Frontend problems | [Phase 16](#phase-16-frontend-problems): the ADR and spike, a browser image in the sandbox, the grader that drives it, `cstudy dev` for it, and the React search box and data table (C8) | Engineering |
-| v0.59 Operations engine | An ADR for the kind `troubleshooting` that amends [ADR 0019](decisions/0019-service-projects.md), and its spike on macOS and Linux; the lab images (P9); `cstudy shell` (P10); lab stacks that start broken and the seeded break step (P11); two-phase grading and the `rca.md` rubric (P12); the kind, its schema and its `verify` checks (P13); licence acceptance for images (L3); the Checked by value, the shell command and the two grading phases on the page, with A4 for them | Engineering |
+| v0.59 Operations engine | An ADR for the kind `troubleshooting` that amends [ADR 0019](decisions/0019-service-projects.md), and its spike on macOS and Linux; the lab images (P9); `cstudy shell` (P10); lab stacks that start broken and the seeded break step (P11); two-phase grading and the `rca.md` rubric (P12); the kind, its schema and its `verify` checks (P13); license acceptance for images (L3); the Checked by value, the shell command and the two grading phases on the page, with A4 for them | Engineering |
 | v0.60 AI foundation | An ADR that amends [ADR 0021](decisions/0021-ai-reviewed-problems.md); the model port and four provider adapters; keys, consent, caps and usage (AI1); fixed and auto routing (AI2); the AI settings section; AI review of rubric-checked problems (AI3); nothing sent with AI off (AI8) | Engineering |
 | v0.61 AI chat | Sessions in `progress.db`; replies as child `cstudy ai reply --events` processes relayed to the page; the drawer chunk and its budget; free sessions and `cstudy ai chat` (AI4); page context; web search (AI5); issue drafts from the assistant (AI9) | Engineering |
 | v0.62 AI problem sessions | Problem sessions, help modes and the mock rules (AI6); turn tags, the assistance record, its grade caps, and its place in history, stats, export and import (AI7); the AI preview guide (D3); the PRD's AI requirements | Engineering |
@@ -532,7 +532,7 @@ The pilots are written with the next project problems.
 - [x] Search box practice: `search-box-navigation`, a search box with keyboard navigation, matching, stale responses and selection, in all six languages, as a plain class on an explicit clock. A browser-graded version waits for Phase 16. The catalog then had 319 entries.
 - [x] P12 problems and two DSA additions: `coworking-availability-java` and `coworking-availability-kotlin`, the Java and Kotlin versions of `coworking-availability-typescript`, `fix-the-flaws-typescript`, the built PP14, and `all-grid-paths` and `find-missing-and-duplicates`, two DSA problems (all grid paths on backtracking, and finding every missing and duplicate number, with a cyclic-sort optimum) that take the next free ids outside the stream plan, listed under [later DSA additions](specs/catalog.md#later-dsa-additions). The catalog then had 324 entries.
 - [x] P13 problem and six more: `coworking-availability-go`, the Go version of `coworking-availability-typescript`, then `tamper-evident-ledger`, a tamper-evident ledger in four levels on hash chaining (Python, TypeScript, Java, Kotlin and Go); `feed-ingest-python`, a Python service project that loads a daily purchase file into Postgres once and asks a flaky bonus partner for points; `org-chart-outline`, `referral-rewards` and `water-on-terrain`, three four-level problems in all six languages on an org chart, referral counts and water poured on terrain; and `safe-redaction-python`, a Python project that checks a model's spans and adds a regex safety net before redacting text. The catalog then had 331 entries.
-- [x] Knowledge representation (owner, 2026-11-11): five four-level problems: `taxonomy` a taxonomy with several parents per concept, as in SKOS (all six languages); `reasoner-vs-validator` an ontology reasoner set against a closed-world validator, to show open-world inference beside SHACL-style validation; `triple-store` a triple store with pattern queries, `+` property paths, provenance and as-of answers (all six languages); `entity-resolution` entity resolution, from blocking and string similarity to clusters, a canonical record and B-cubed scores; `graphrag-context` a GraphRAG context builder that fits a neighbourhood into a token budget and cites the path behind each fact. `reasoner-vs-validator`, `entity-resolution` and `graphrag-context` are in Python and TypeScript. A guides path on the same topic follows them. All five are built: the catalog then had 336 entries.
+- [x] Knowledge representation (owner, 2026-11-11): five four-level problems: `taxonomy` a taxonomy with several parents per concept, as in SKOS (all six languages); `reasoner-vs-validator` an ontology reasoner set against a closed-world validator, to show open-world inference beside SHACL-style validation; `triple-store` a triple store with pattern queries, `+` property paths, provenance and as-of answers (all six languages); `entity-resolution` entity resolution, from blocking and string similarity to clusters, a canonical record and B-cubed scores; `graphrag-context` a GraphRAG context builder that fits a neighborhood into a token budget and cites the path behind each fact. `reasoner-vs-validator`, `entity-resolution` and `graphrag-context` are in Python and TypeScript. A guides path on the same topic follows them. All five are built: the catalog then had 336 entries.
 - [x] Content-addressed storage (owner, 2026-11-11), `content-addressed-store`, in four levels and all six languages, with a small SHA-256 helper in the Rust starter: content stored under its SHA-256 address and read back verified; folder snapshots as tree objects whose unchanged subtrees are shared and skipped when diffing; fixed-size chunking set against content-defined chunking on a rolling hash, with the dedup ratio; and named refs with mark-and-sweep garbage collection. It is the last step of the hashing guides path, after `tamper-evident-ledger`. Not the same as `versioned-memory-store`, which is compare-and-swap on versions. It is built: the catalog then had 337 entries.
 - [x] AI engineering (owner, 2026-11-11): `loop-controller` a loop controller with iteration, no-progress, token and time brakes and a completion check; `tool-permission-gate` a tool permission gate that instructions inside tool output can never change; `context-compaction` context compaction with a stable cacheable prefix; `cache-and-router` an exact and semantic response cache with routing by query class and cost accounting; `eval-release-gate` an eval release gate from assertions, judge scores and golden-set regressions; `sql-guard` a guard that proves model-written SQL is a read-only query on allowed tables with a row limit; `plan-and-execute` a plan-and-execute runner over a task graph with retries, replanning and budgets; `corrective-rag` corrective retrieval that grades what it found before trusting it; `agent-trace-analyzer` an agent trace analyzer. All in Python and TypeScript. All nine are built: the catalog then had 346 entries.
 - [x] Data engineering (owner, 2026-11-12), all six languages: `stream-windows` stream windows with event time, watermarks and late data; `cdc-apply` applying a change-data-capture log; `pipeline-scheduler` a pipeline scheduler with partitions, idempotent reruns and backfills; `scd-type2-dimension` a type 2 slowly changing dimension; `data-quality-gate` a data quality gate; `snapshot-table` a table format with snapshots, time travel and optimistic commits; `lineage-graph` column-level lineage with impact analysis. All seven are built: the catalog then had 353 entries.

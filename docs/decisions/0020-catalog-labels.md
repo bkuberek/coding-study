@@ -251,7 +251,7 @@ The catalog is for engineers from beginner to expert, and planned problems have 
 | `patterns` | `string-matching` | Substring search, rolling hashes, pattern and wildcard matching |
 | `patterns` | `recursion` | Recursive decomposition and divide and conquer, without a search or a table |
 
-The new values are appended, so the order of the existing ones does not change: the three patterns rank after `segment-tree-fenwick` in the `cstudy next` tie-break. Existing problems are not relabelled, and no new pattern has a problem yet, so the counts in [content](../specs/content.md#pattern-taxonomy) and [catalog](../specs/catalog.md) still describe 23 patterns in use.
+The new values are appended, so the order of the existing ones does not change: the three patterns rank after `segment-tree-fenwick` in the `cstudy next` tie-break. Existing problems are not relabeled, and no new pattern has a problem yet, so the counts in [content](../specs/content.md#pattern-taxonomy) and [catalog](../specs/catalog.md) still describe 23 patterns in use.
 
 ### Language rule
 

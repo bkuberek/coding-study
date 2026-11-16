@@ -44,7 +44,7 @@ Preferences stay per workspace and apply at once; the config stays per user and 
 
 ### A reset goes by what a path holds
 
-`cstudy reset` and the Danger section call one use case. What you practised goes, and what `cstudy doctor --fix` would have to install again stays. Progress is the default; your code is an option, off by default, and `.archive/` a third, since keeping earlier attempts while deleting the current ones is a thing a person may want.
+`cstudy reset` and the Danger section call one use case. What you practiced goes, and what `cstudy doctor --fix` would have to install again stays. Progress is the default; your code is an option, off by default, and `.archive/` a third, since keeping earlier attempts while deleting the current ones is a thing a person may want.
 
 | Rule | Detail |
 |------|--------|

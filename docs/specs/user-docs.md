@@ -69,15 +69,15 @@ Pages are listed by `order`. A section is listed where its first page is, and it
 | 30 | `doctor` | Check your setup with cstudy doctor | Start here |
 | 40 | `workspace` | Your workspace | Start here |
 | 45 | `upgrading` | Upgrading cstudy | Start here |
-| 50 | `practice` | Work on a problem | Practise |
-| 55 | `problem-kinds` | Kinds of problems | Practise |
-| 60 | `levels` | Progressive levels and projects | Practise |
-| 70 | `service-projects` | Service projects and the dev stack | Practise |
-| 75 | `ide-and-debugging` | Your IDE and the debugger | Practise |
-| 80 | `guides` | Guides and learning paths | Practise |
-| 90 | `planning` | Plan your practice | Practise |
-| 95 | `own-problems` | Write your own problems | Practise |
-| 100 | `web-ui` | Practise in your browser | The web UI |
+| 50 | `practice` | Work on a problem | Practice |
+| 55 | `problem-kinds` | Kinds of problems | Practice |
+| 60 | `levels` | Progressive levels and projects | Practice |
+| 70 | `service-projects` | Service projects and the dev stack | Practice |
+| 75 | `ide-and-debugging` | Your IDE and the debugger | Practice |
+| 80 | `guides` | Guides and learning paths | Practice |
+| 90 | `planning` | Plan your practice | Practice |
+| 95 | `own-problems` | Write your own problems | Practice |
+| 100 | `web-ui` | Practice in your browser | The web UI |
 | 110 | `editor` | The editor and code intelligence | The web UI |
 | 120 | `settings` | Settings and preferences | Settings and help |
 | 125 | `commands` | Command reference | Settings and help |
@@ -98,7 +98,7 @@ It needs no workspace, except `--open`, which serves the page as `cstudy serve` 
 | Form | Does | Says |
 |------|------|------|
 | `cstudy docs` | Lists the topics | Each section's name, then its pages, one per line: the slug and the title. Then `read      cstudy docs <topic>` and the web hint. With no `user-docs/`, `no docs in <content root>` |
-| `cstudy docs <topic>` | Prints the page, its front matter left out. On a terminal it is Markdown rendered by Rich, which reads without colour too (`--no-color`, `NO_COLOR`); otherwise, piped or redirected, the Markdown text as written | The page, then the web hint |
+| `cstudy docs <topic>` | Prints the page, its front matter left out. On a terminal it is Markdown rendered by Rich, which reads without color too (`--no-color`, `NO_COLOR`); otherwise, piped or redirected, the Markdown text as written | The page, then the web hint |
 | `cstudy docs --open`, `cstudy docs <topic> --open` | Finds the topic, then runs `cstudy serve --open` on a free port, whose page opens on the Docs view, or on the topic: the URL adds `&view=/docs` or `&view=/docs/<topic>`. Runs until Ctrl-C | What `cstudy serve --open` prints |
 
 The web hint is one dim line, `Read in the web UI: cstudy docs <topic> --open`, with the topic's slug after a page and `<topic>` after the list. `--json` never prints it.

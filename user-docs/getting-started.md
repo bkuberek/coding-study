@@ -9,7 +9,7 @@ order: 10
 
 `cstudy` is a study tool for everyone who writes code, from beginners to experts. You solve original problems in your own editor, in Python, TypeScript, Java, Kotlin, Go or Rust, and `cstudy` tests your code, checks whether it is fast enough, shows reference solutions, and brings each problem back for review when you are about to forget it. Everything runs on your computer, with no account.
 
-The problems cover algorithms and data structures, practical tasks that grow over several levels, object-oriented design, concurrency, debugging, system design, code review, security and AI. Short guides teach each idea before you practise it.
+The problems cover algorithms and data structures, practical tasks that grow over several levels, object-oriented design, concurrency, debugging, system design, code review, security and AI. Short guides teach each idea before you practice it.
 
 ## Install cstudy
 
@@ -37,11 +37,11 @@ After an upgrade, run `cstudy doctor --fix` in your workspace. [Upgrading cstudy
 
 ## Install the language toolchains
 
-`cstudy` runs your code with the real toolchain of each language, which you install yourself. uv and Python 3.13 are required. Node.js and pnpm (TypeScript), a JDK (Java and Kotlin), Go and Rust are needed only for the languages you practise. [Install the language toolchains](toolchains.md) has the steps for macOS and Linux.
+`cstudy` runs your code with the real toolchain of each language, which you install yourself. uv and Python 3.13 are required. Node.js and pnpm (TypeScript), a JDK (Java and Kotlin), Go and Rust are needed only for the languages you practice. [Install the language toolchains](toolchains.md) has the steps for macOS and Linux.
 
 ## Create your workspace
 
-You practise in a **workspace**: a folder of your own for your solutions, notes and progress. Create one, then let `cstudy doctor --fix` set up its projects:
+You practice in a **workspace**: a folder of your own for your solutions, notes and progress. Create one, then let `cstudy doctor --fix` set up its projects:
 
 ```bash
 cstudy init ~/cstudy-workspace --git   # --git runs git init; cstudy never commits
@@ -78,7 +78,7 @@ cstudy doctor --fix                    # uv sync, pnpm install, Gradle warm-up, 
 
 `cstudy done` schedules the next review, and `cstudy next` brings the problem back when it is due. [Work on a problem](practice.md) covers hints, solutions and the rest of the loop.
 
-## Practise in your browser
+## Practice in your browser
 
 `cstudy serve` opens a page on your own computer with the same loop: the problem list, the statement, an editor over your files, test runs, hints, solutions, mock interviews, your progress and these docs. It works on the same workspace as the terminal and your IDE, so you can switch at any time.
 
@@ -86,11 +86,11 @@ cstudy doctor --fix                    # uv sync, pnpm install, Gradle warm-up, 
 cstudy serve --open                    # Ctrl-C stops it
 ```
 
-[Practise in your browser](web-ui.md) covers the page.
+[Practice in your browser](web-ui.md) covers the page.
 
-## Learn before you practise
+## Learn before you practice
 
-Concept guides teach an idea before you practise it, and learning paths put guides and problems in order, from a topic's first idea to an expert's:
+Concept guides teach an idea before you practice it, and learning paths put guides and problems in order, from a topic's first idea to an expert's:
 
 ```bash
 cstudy learn                           # the guides and paths, with what you have read
@@ -105,7 +105,7 @@ cstudy learn --path getting-started    # a path's steps and the next one
 |---------|------|
 | `cstudy init [PATH]` | Creates a workspace |
 | `cstudy doctor [--fix]` | Checks the toolchains and the workspace; `--fix` sets up the projects |
-| `cstudy next` | Picks what to practise: an attempt you have open, a due review, or a new problem |
+| `cstudy next` | Picks what to practice: an attempt you have open, a due review, or a new problem |
 | `cstudy start <slug> [--lang L]` | Writes the stub, renders the statement, opens your editor, begins an attempt |
 | `cstudy test [--watch]` | Runs your code against the cases |
 | `cstudy hint` | Shows the next hint |
@@ -118,6 +118,6 @@ cstudy learn --path getting-started    # a path's steps and the next one
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
 | `cstudy serve [--open]` | Serves the practice page on your computer |
 | `cstudy docs [<topic>]` | Reads these pages in the terminal |
-| `cstudy about` | Shows the version, the licence, the links and the credits |
+| `cstudy about` | Shows the version, the license, the links and the credits |
 
 Every command takes `--help`. `cstudy docs` lists every topic, and `cstudy docs <topic>` prints one, such as `cstudy docs practice`.

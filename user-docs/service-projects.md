@@ -1,7 +1,7 @@
 ---
 title: Service projects and the dev stack
 summary: Projects that run a real app in a Docker sandbox with mock servers, how they are tested and graded, and cstudy dev for your own IDE and debugger.
-section: Practise
+section: Practice
 order: 70
 ---
 

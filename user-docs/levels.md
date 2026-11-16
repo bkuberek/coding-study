@@ -1,7 +1,7 @@
 ---
 title: Progressive levels and projects
 summary: Problems that grow over several levels, project folders graded with cstudy submit, and how a pass through some of the levels counts.
-section: Practise
+section: Practice
 order: 60
 ---
 

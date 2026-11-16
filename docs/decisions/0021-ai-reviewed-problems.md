@@ -30,7 +30,7 @@ Some skills cannot be graded deterministically: a written answer, how you answer
 | Name | What the repository already means by it | Decision |
 |------|------------------------------------------|----------|
 | "mock interview" | [`cstudy mock`](../specs/cli.md#cstudy-mock): a timed practice session with no reviewer | This feature is a **simulated interview** |
-| "review" | A due review in spaced repetition (`cstudy next --review`), and the `code-review` track | The result is an **AI review**, always labelled so. A verb, if one is added, is `cstudy ai-review`, never a bare `review` |
+| "review" | A due review in spaced repetition (`cstudy next --review`), and the `code-review` track | The result is an **AI review**, always labeled so. A verb, if one is added, is `cstudy ai-review`, never a bare `review` |
 
 ### Open to confirm
 
@@ -43,9 +43,9 @@ Recommended by the assistant and not contradicted by the owner.
 | R3 | Who calls | The local server process, never the page, so the page's CSP does not change. **There is no cstudy server between you and the provider** |
 | R4 | Consent and cost | Nothing is sent automatically. Before the first send, cstudy shows the provider, the model and exactly what will be sent. It shows an estimated cost if knowable, and actual usage afterwards, with a token cap. You pick the model; cstudy hardcodes no model ids |
 | R5 | Verdict | A problem ships a rubric with items. A review returns schema-validated structured output per item: score, evidence quoted from your answer, and gaps. The stored result records provider, model, rubric version and time |
-| R6 | Honesty | Always labelled "AI review", and kept separate from deterministic pass and fail in progress and streaks. **The same answer can get a different review.** You can re-run it and dismiss it |
+| R6 | Honesty | Always labeled "AI review", and kept separate from deterministic pass and fail in progress and streaks. **The same answer can get a different review.** You can re-run it and dismiss it |
 | R7 | Injection | Your answer is data, never instructions, and the reviewer has no tools. Prompt injection only cheats yourself, so it is **not treated as a security boundary** |
-| R8 | Quality | Each rubric ships a small labelled set of good, weak and poor answers, checked by a manual verify step with a real key, never in CI. Tests use a fake provider through a port, following the hexagonal layers, with a provider adapter per API. Structured output and image support differ by provider, so a problem that needs images requires a vision-capable model and says so |
+| R8 | Quality | Each rubric ships a small labeled set of good, weak and poor answers, checked by a manual verify step with a real key, never in CI. Tests use a fake provider through a port, following the hexagonal layers, with a provider adapter per API. Structured output and image support differ by provider, so a problem that needs images requires a vision-capable model and says so |
 | R9 | Simulated interview | Turn-based, with follow-up questions, a rubric per competency, a transcript stored locally and an optional timer. Generic roles only, never imitating a real company or person. Voice is out of scope |
 | R10 | Whiteboard | A canvas in the page, on a lazily loaded chunk, sending both the structured scene and a PNG, along with your written notes ([below](#whiteboard)) |
 | R11 | First consumers | The existing 10 system-design and 6 code-review items gain optional AI review, with no change for those who do not use it |
@@ -71,7 +71,7 @@ A spike item, not a decision.
 | Candidate | An MIT-licensed canvas library such as Excalidraw. Its `LICENSE` reads MIT (read 2026-11-05). Its size is unverified, and it may well exceed every budget above, so the spike measures it against a smaller library or a small canvas of our own |
 | The page's CSP | `default-src 'self'`, `style-src` with a nonce, no `unsafe-inline` or `unsafe-eval` (NFR-10). The library must run under that with fonts and assets vendored, and fetch nothing from a CDN. Unverified |
 | What is sent | The structured scene, elements and connections as JSON, which is more reliable to reason over; a PNG, for free-form drawing; and your written notes |
-| Parity | [FR-16](../prd.md#functional-requirements) says the page never gets behaviour the CLI lacks. Drawing is page-only by nature, so this needs a stated exception. The CLI can still send a scene and image from files |
+| Parity | [FR-16](../prd.md#functional-requirements) says the page never gets behavior the CLI lacks. Drawing is page-only by nature, so this needs a stated exception. The CLI can still send a scene and image from files |
 
 ### Where it plugs in
 
@@ -101,7 +101,7 @@ No phase commitments beyond an order, and it sits after ADRs 0019 and 0020 unles
 | Trigger | What to reconsider |
 |---------|--------------------|
 | Users want reviews without a key or with no internet | A local model, behind the same port |
-| Reviews prove too inconsistent to help, on the labelled sets | Tighter rubrics, or dropping the feature |
+| Reviews prove too inconsistent to help, on the labeled sets | Tighter rubrics, or dropping the feature |
 | The canvas cannot fit any sensible budget | Whiteboard as an imported file, or no whiteboard |
 
 ## Alternatives considered

@@ -1,7 +1,7 @@
 ---
 title: Write your own problems
 summary: Scaffold a problem of your own with cstudy new, check it with cstudy verify, take it from draft to ready, step by step, and fix folders from older versions.
-section: Practise
+section: Practice
 order: 95
 ---
 
@@ -95,7 +95,7 @@ problems/max-gap/
 
 | File | What to know |
 |------|--------------|
-| `meta.yaml` | `languages` lists the languages to write references in. `cstudy new` writes the line; remove the languages you do not practise, with their reference files. Without the line, a problem of yours lists Python, TypeScript, Java and Kotlin |
+| `meta.yaml` | `languages` lists the languages to write references in. `cstudy new` writes the line; remove the languages you do not practice, with their reference files. Without the line, a problem of yours lists Python, TypeScript, Java and Kotlin |
 | `problem.md` | The statement, in your own words, with its hints, which `cstudy hint` shows one at a time |
 | `tests.json` | Visible cases show in every run; hidden cases show only when they fail. Each case is checked against the signature in `meta.yaml` |
 | `solutions/` | The reference code, which `cstudy solution` shows, and its explanation |
@@ -152,7 +152,7 @@ Without slugs, `cstudy verify` checks every problem, the catalog's and yours.
 
 ## From draft to ready
 
-A draft is a problem you can practise: `cstudy start`, `cstudy test` and the rest work on it. `cstudy next` skips drafts, and `cstudy list --content draft` lists them.
+A draft is a problem you can practice: `cstudy start`, `cstudy test` and the rest work on it. `cstudy next` skips drafts, and `cstudy list --content draft` lists them.
 
 A problem is ready when it is complete: an optimal reference in every language it lists, enough visible and hidden cases, an explanation of every approach, and, for a `dsa` problem, a slower approach, an oracle and `generator.py`. Set `status: ready` in its `meta.yaml`, then run `cstudy verify <slug> --oracle --ladder --require-ready`. When it passes, the problem is ready, and `cstudy next` can pick it.
 
@@ -208,7 +208,7 @@ Edit them in `meta.yaml` to fit the problem. They are optional for your own prob
 
 A problem of yours with the slug of a catalog problem wins: it hides the catalog's everywhere, in `cstudy list`, `cstudy start`, `cstudy verify`, `cstudy status`, `cstudy history` and the web UI, and nothing of the two is merged. Your practice files and progress therefore always belong to the problem you wrote, even after an upgrade adds a catalog problem with your slug.
 
-`cstudy new` never takes a slug that is in use, so this happens when a newer `cstudy` adds one, or when you copy a folder in by hand. To practise the catalog's problem, give yours another slug: rename its folder and change `slug` in its `meta.yaml` to match.
+`cstudy new` never takes a slug that is in use, so this happens when a newer `cstudy` adds one, or when you copy a folder in by hand. To practice the catalog's problem, give yours another slug: rename its folder and change `slug` in its `meta.yaml` to match.
 
 Your own problems are checked by tests. A folder of yours with a `system-design` or `code-review` kind is an error, which `cstudy list` and `cstudy verify` report: `rubric problems are catalog-only`.
 

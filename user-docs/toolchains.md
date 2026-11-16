@@ -237,7 +237,7 @@ Service projects need a Docker engine with Compose v2, the `docker compose` comm
 | macOS | Docker Desktop: [install Docker Desktop on Mac](https://docs.docker.com/desktop/setup/install/mac-install/) |
 | Linux | Docker Engine: [install Docker Engine](https://docs.docker.com/engine/install/), or Docker Desktop: [get Docker](https://docs.docker.com/get-started/get-docker/) |
 
-Docker Desktop's licence requires a paid plan at larger companies: read [its licence terms](https://docs.docker.com/subscription-billing/desktop-license/) before you use it at work.
+Docker Desktop's license requires a paid plan at larger companies: read [its license terms](https://docs.docker.com/subscription-billing/desktop-license/) before you use it at work.
 
 Check both parts:
 

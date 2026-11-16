@@ -1,13 +1,13 @@
 ---
 title: Kinds of problems
 summary: The tracks, the kinds of problem and how each is checked, why any approach that passes counts, how a signature reads in each language, the labels, and what concurrency and debugging problems ask of you.
-section: Practise
+section: Practice
 order: 55
 ---
 
 # Kinds of problems
 
-Every problem has a **track**, the interview round it practises, and a **kind**, the shape of what you write. How it is checked follows from its kind, and three **labels** say what it is about, who it is for and how big it is. `cstudy list` shows each, and filters by each:
+Every problem has a **track**, the interview round it practices, and a **kind**, the shape of what you write. How it is checked follows from its kind, and three **labels** say what it is about, who it is for and how big it is. `cstudy list` shows each, and filters by each:
 
 ```bash
 cstudy list --track concurrency
@@ -18,7 +18,7 @@ cstudy list --domain security --scope function
 
 ## Tracks
 
-| Track | What you practise | Checked by |
+| Track | What you practice | Checked by |
 |-------|-------------------|------------|
 | `dsa` | Data structures and algorithms | tests |
 | `practical` | Work-like problems: classes that grow over levels, and projects of several files, services among them | tests |
@@ -27,7 +27,7 @@ cstudy list --domain security --scope function
 | `debugging` | Finding and fixing a bug in code that looks right | tests |
 | `system-design` | Designing a system, in notes | rubric |
 | `code-review` | Reviewing a change, in notes | rubric |
-| `behavioral` | Behavioural rounds. The track has no problems: prepare from a story bank of your own | - |
+| `behavioral` | Behavioral rounds. The track has no problems: prepare from a story bank of your own | - |
 
 `cstudy list` shows the tracks in this order, and `cstudy next --track system-design` picks within one track.
 
@@ -111,7 +111,7 @@ Three labels describe every catalog problem, apart from its track, kind and diff
 |--------|-------|
 | `algorithms` | Data structures and algorithms, language pitfalls |
 | `backend` | Services, APIs, data, the design of backend components |
-| `security` | Authorisation, tenancy, validation, defensive engineering |
+| `security` | Authorization, tenancy, validation, defensive engineering |
 | `identity` | Tokens, sessions, login flows, provisioning |
 | `ai-llm` | The code around models: clients, retrieval, evaluation, cost |
 | `fintech` | Money, ledgers, insurance |

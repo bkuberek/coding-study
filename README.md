@@ -1,4 +1,4 @@
-[![cstudy: practise coding interviews in your own editor](docs/images/readme-header.png)](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=header)
+[![cstudy: practice coding interviews in your own editor](docs/images/readme-header.png)](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=header)
 
 [![CI](https://github.com/bkuberek/coding-study/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bkuberek/coding-study/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/bkuberek/coding-study)](https://github.com/bkuberek/coding-study/releases/latest)
@@ -15,7 +15,7 @@ The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_
 - **More than algorithms.** Data structures and algorithms, multi-level practical problems, low-level design, concurrency, debugging, system design, and code review.
 - **Optimality, not only correctness.** `cstudy bench` measures how your solution grows with input size and compares it with the reference approaches.
 - **Spaced repetition.** `cstudy next` resumes what you have open, brings back what is due and picks new problems from your weakest pattern.
-- **Code intelligence in the browser, when you want it.** The practice page can show errors as you type, documentation on hover, go to definition and completion for Python, TypeScript, Java, Go and Rust from language servers on your computer. Each is a setting, off by default, so you can also practise without any help.
+- **Code intelligence in the browser, when you want it.** The practice page can show errors as you type, documentation on hover, go to definition and completion for Python, TypeScript, Java, Go and Rust from language servers on your computer. Each is a setting, off by default, so you can also practice without any help.
 
 ## Install
 
@@ -40,7 +40,7 @@ cstudy test --watch                    # runs the tests on every save
 cstudy done --rating ok                # finishes the attempt and schedules the review
 ```
 
-Or practise in your browser, on the same workspace: `cstudy serve --open`.
+Or practice in your browser, on the same workspace: `cstudy serve --open`.
 
 ![The attempt view of cstudy serve: the file tree, the editor, a run's results and the statement](docs/images/web-ui-attempt-light.png)
 
@@ -63,7 +63,7 @@ The user docs ship with `cstudy`: `cstudy docs` lists them in the terminal, `cst
 | [Guides and learning paths](user-docs/guides.md) | Reading guides and following paths with `cstudy learn` |
 | [Plan your practice](user-docs/planning.md) | `cstudy next`, problem sets, mock interviews and statistics |
 | [Write your own problems](user-docs/own-problems.md) | `cstudy new`, checking a problem with `cstudy verify`, and making it ready |
-| [Practise in your browser](user-docs/web-ui.md) | `cstudy serve`: the views and the keyboard |
+| [Practice in your browser](user-docs/web-ui.md) | `cstudy serve`: the views and the keyboard |
 | [The editor and code intelligence](user-docs/editor.md) | Live errors, hover documentation, go to definition and autocomplete |
 | [Settings and preferences](user-docs/settings.md) | `config.toml`, the preferences, backups and reset |
 | [Command reference](user-docs/commands.md) | Every command and its flags, and the exit codes |

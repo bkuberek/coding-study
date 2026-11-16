@@ -1,7 +1,7 @@
 ---
 title: Work on a problem
 summary: The practice loop from start to done, with tests, hints, solutions, benchmarks and how each attempt is graded and scheduled.
-section: Practise
+section: Practice
 order: 50
 ---
 

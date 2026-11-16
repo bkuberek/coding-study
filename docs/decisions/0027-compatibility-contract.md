@@ -51,7 +51,7 @@ A workspace folder of your own named `NNNN-<slug>` is reported by `cstudy verify
 
 ### The items become rubric-checked problems
 
-The 10 system design and 6 code review items are problems of the kinds `system-design` and `code-review` in `problems/`, validated by `meta.schema.json` with a branch per kind family. `tracks/` and `item.schema.json` go. One folder, one schema and one ID space for everything you practise, and the word "item" leaves what you see. Rubric problems come from the catalog only. The Python modules that load them keep their names, which are not a surface.
+The 10 system design and 6 code review items are problems of the kinds `system-design` and `code-review` in `problems/`, validated by `meta.schema.json` with a branch per kind family. `tracks/` and `item.schema.json` go. One folder, one schema and one ID space for everything you practice, and the word "item" leaves what you see. Rubric problems come from the catalog only. The Python modules that load them keep their names, which are not a surface.
 
 ### Checked by
 

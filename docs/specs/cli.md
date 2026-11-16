@@ -1206,7 +1206,7 @@ Reads the [concept guides and learning paths](guides.md) of the content root ([A
 ```text
 $ cstudy learn --path hashing
 hashing  Hashing: from your first hash map to content-addressed storage
-From what a hash function is to Merkle proofs, through the problems that practise each idea.
+From what a hash function is to Merkle proofs, through the problems that practice each idea.
 3 of 22 done
 #   KIND     STEP                       TARGET   STATUS          TITLE
 1   guide    hash-functions                      read            What a hash function is
@@ -1250,7 +1250,7 @@ Reads the [user docs](user-docs.md) of the content root: how to use `cstudy`, on
 | Form | Does | Says |
 |------|------|------|
 | `cstudy docs` | Lists the topics by `order`, grouped by section | Each section's name, then a line per page, its slug and title; then `read      cstudy docs <topic>` and the web hint. With no `user-docs/`, `no docs in <content root>` |
-| `cstudy docs <topic>` | Shows the page without its front matter. On a terminal it is Markdown rendered by Rich, which reads without colour too (`--no-color`, `NO_COLOR`); otherwise, piped or redirected, the Markdown text as written | The page, then the web hint |
+| `cstudy docs <topic>` | Shows the page without its front matter. On a terminal it is Markdown rendered by Rich, which reads without color too (`--no-color`, `NO_COLOR`); otherwise, piped or redirected, the Markdown text as written | The page, then the web hint |
 | `cstudy docs --open` | Runs [`cstudy serve --open`](#cstudy-serve) on a free port, whose page opens on the web UI's [Docs view](web-ui.md#docs-view): the URL adds `&view=/docs`. Runs until Ctrl-C | What `cstudy serve --open` prints |
 | `cstudy docs <topic> --open` | Finds the topic, then the same, landing on its page: `&view=/docs/<topic>` | The same |
 
@@ -1515,7 +1515,7 @@ Neither needs a workspace, and both find the file as every command does ([Config
 cstudy reset [--files] [--archive] [--yes]
 ```
 
-Deletes what you have practised in this workspace, as if you had just run `cstudy init`, so you can start again ([ADR 0022](../decisions/0022-settings-and-reset.md)). It prints what will go, with counts, then what stays, your [sets](#cstudy-set) among it, then `This can't be undone.` and asks you to type `reset`. [What each part covers](installation-and-workspaces.md#what-cstudy-reset-deletes).
+Deletes what you have practiced in this workspace, as if you had just run `cstudy init`, so you can start again ([ADR 0022](../decisions/0022-settings-and-reset.md)). It prints what will go, with counts, then what stays, your [sets](#cstudy-set) among it, then `This can't be undone.` and asks you to type `reset`. [What each part covers](installation-and-workspaces.md#what-cstudy-reset-deletes).
 
 | Option | Deletes as well |
 |--------|-----------------|

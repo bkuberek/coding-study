@@ -384,7 +384,7 @@ So `cstudy doctor --fix` fetches the Linux build beside this machine's, in `.cs/
 | A Python service project's starter leaves `venv` out of `[tool.pyright]` | `basedpyright.analysis.extraPaths` with the `.venv`'s `site-packages`, which the spike measured working |
 | A service project in another language gets a template | Its server in the sidecar, or in an image of its own, in place of its pending cell in the route table |
 | JetBrains ships the Kotlin LSP's native libraries for musl, or one build for every platform | Its jars on the project's own Alpine image, in place of the Linux build and the glibc image |
-| The Kotlin LSP's import honours a Gradle home, or the Kotlin template ships a Gradle wrapper | The link to the image's Gradle laid out as the tooling API's own distribution |
+| The Kotlin LSP's import honors a Gradle home, or the Kotlin template ships a Gradle wrapper | The link to the image's Gradle laid out as the tooling API's own distribution |
 
 ## Alternatives considered
 

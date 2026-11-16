@@ -46,7 +46,7 @@ Every command ends with a code that says how it went, which scripts can read:
 | progress.db uses schema `<n>`, newer than the `<m>` this cstudy reads: upgrade cstudy | A newer `cstudy` wrote it, and this one cannot read it. Upgrade `cstudy` ([older workspaces](upgrading.md#older-workspaces)) |
 | `cstudy hint is locked during the mock interview` | Hints and solutions unlock when the mock's timer ends or every problem is done ([mock interviews](planning.md#mock-interviews)) |
 | A service project says Docker is missing or not running | Install or start Docker; `cstudy` starts a stopped engine itself when it can, and says what to run when it cannot ([Docker](toolchains.md#docker)) |
-| Output with colours you do not want | Pass `--no-color`, or set `NO_COLOR`. Output to a pipe or a file has no colours |
+| Output with colors you do not want | Pass `--no-color`, or set `NO_COLOR`. Output to a pipe or a file has no colors |
 
 ## Errors by command
 

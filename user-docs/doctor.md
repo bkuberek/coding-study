@@ -69,13 +69,13 @@ cstudy doctor --fix
 
 Go and Rust need no setup step: everything their runners use ships with `cstudy`. `--fix` needs a workspace, and exits 3 outside one. It needs the network the first time; after that, practice needs no network.
 
-Kotlin's language server comes under a licence you accept first. `--fix` asks at a terminal, or you accept it up front:
+Kotlin's language server comes under a license you accept first. `--fix` asks at a terminal, or you accept it up front:
 
 ```bash
 cstudy doctor --fix --accept-license kotlin-lsp
 ```
 
-The Health view of the web UI (`Alt+6`) shows the same rows, with a **Fix** button that runs `cstudy doctor --fix`. It never accepts a licence for you.
+The Health view of the web UI (`Alt+6`) shows the same rows, with a **Fix** button that runs `cstudy doctor --fix`. It never accepts a license for you.
 
 ## For scripts
 
@@ -144,4 +144,4 @@ Every row is `ok` when its check passes. This table says when each one is not, a
 | `java project libraries`, `kotlin project libraries` | `WARN` | The libraries that Java and Kotlin project folders build with are not cached yet. Only project problems need them | `cstudy doctor --fix`, once with the network |
 | `web ui assets` | `WARN` | A file of the web UI is missing or damaged. Only `cstudy serve` needs them | The reinstall command of the install that runs, such as `brew reinstall cstudy` |
 | `web server` | `WARN` | A library of the web server does not import. Only `cstudy serve` needs them | The same reinstall command |
-| `code intelligence <language>`, `code intelligence <language> service projects` | `WARN` | Only while code intelligence is on: the language server is not installed, is another version, or cannot run on the selected JDK; for Kotlin, its licence is not accepted, or its build stops working soon | `cstudy doctor --fix`. For Kotlin's licence, `cstudy doctor --fix --accept-license kotlin-lsp`. For Rust, `rustup component add rust-analyzer`. For a JDK, the one the row names ([the editor](editor.md#turn-them-on)) |
+| `code intelligence <language>`, `code intelligence <language> service projects` | `WARN` | Only while code intelligence is on: the language server is not installed, is another version, or cannot run on the selected JDK; for Kotlin, its license is not accepted, or its build stops working soon | `cstudy doctor --fix`. For Kotlin's license, `cstudy doctor --fix --accept-license kotlin-lsp`. For Rust, `rustup component add rust-analyzer`. For a JDK, the one the row names ([the editor](editor.md#turn-them-on)) |

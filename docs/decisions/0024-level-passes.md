@@ -142,7 +142,7 @@ sets:
 | `cstudy history` | The header reads `mastered through level 2 of 4`, the status column `passed through level 2 of 4`, a `passed` line gives the best per language, and `--json` adds `levels_passed` and `levels_total` to each attempt and `levels.mastered` |
 | `cstudy list` | The status column reads `mastered 2/4`, and `--json` gives each entry `levels`: `last`, `passed` (the best in any language) and `mastered` |
 | The statement | The goal, under the title, while an attempt is in progress |
-| The page | The Done dialog's line, the History of the Problem view, and the goal in its Practise panel; the Attempt view shows the goal through the statement; the status badge of the Problems, Problem and Sets views reads `mastered through level 2 of 4` |
+| The page | The Done dialog's line, the History of the Problem view, and the goal in its Practice panel; the Attempt view shows the goal through the statement; the status badge of the Problems, Problem and Sets views reads `mastered through level 2 of 4` |
 
 The done API keeps `levels_finished`, a project's levels finished, for compatibility, and adds `levels_passed` and `levels_total`, N and M for any problem with levels, which the page writes the done line from.
 

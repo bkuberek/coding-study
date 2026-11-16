@@ -39,7 +39,7 @@ cstudy --no-color list --track dsa
 
 `--json` and `--events` belong to the commands that have them, so they come after the command, as in `cstudy stats --json`.
 
-## Practise
+## Practice
 
 | Command | Flags | Does |
 |---------|-------|------|
@@ -58,11 +58,11 @@ cstudy --no-color list --track dsa
 
 | Command | Flags | Does |
 |---------|-------|------|
-| `cstudy next` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--lang <language>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--new`, `--review`, `--start`, `--json` | Picks what to practise: an open attempt, a due review, or a new problem. `--track` repeats; `--new` skips reviews, `--review` skips new problems; `--start` starts the pick ([what to do next](planning.md#what-to-do-next)) |
+| `cstudy next` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--lang <language>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--new`, `--review`, `--start`, `--json` | Picks what to practice: an open attempt, a due review, or a new problem. `--track` repeats; `--new` skips reviews, `--review` skips new problems; `--start` starts the pick ([what to do next](planning.md#what-to-do-next)) |
 | `cstudy list` | `--set <name>`, `--track <track>`, `--pattern <pattern>`, `--difficulty <difficulty>`, `--status <status>`, `--content <status>`, `--lang <language>`, `--kind <kind>`, `--domain <domain>`, `--role <role>`, `--scope <scope>`, `--search <text>`, `--needs <what>`, `--checked-by <how>`, `--json` | Lists problems. `--status` is `new`, `in_progress`, `attempted`, `passed`, `due` or `mastered`; `--content` is `draft` or `ready`; `--lang` keeps problems with a reference in that language; `--search` matches the slug or the title; `--needs none` keeps problems that need only the language's toolchain, and `--needs docker` those that need Docker; `--checked-by` is `tests` or `rubric` |
 | `cstudy show <slug>` | `--level <n>` | Prints the statement, never the hints. `--level` shows levels 1 to n of the open ones |
 | `cstudy history <slug>` | `--json` | Shows every attempt, run and review of a problem, and when it comes back |
-| `cstudy stats` | `--by <group>`, `--since <date>`, `--json` | Summarises your progress, by `pattern`, `track`, `lang` or `difficulty`; `--since` takes a date, `2026-10-01` ([your progress](planning.md#your-progress)) |
+| `cstudy stats` | `--by <group>`, `--since <date>`, `--json` | Summarizes your progress, by `pattern`, `track`, `lang` or `difficulty`; `--since` takes a date, `2026-10-01` ([your progress](planning.md#your-progress)) |
 | `cstudy mock` | `--minutes <n>`, `--count <n>`, `--track <track>`, `--lang <language>` | Runs a timed mock interview: a few problems under one timer, with hints and solutions locked until it ends ([mock interviews](planning.md#mock-interviews)) |
 | `cstudy set list` | `--json` | Lists your sets, each with how many of its problems you passed ([problem sets](planning.md#problem-sets)) |
 | `cstudy set show <name>` | `--json` | Shows a set's problems, in its order |
@@ -85,11 +85,11 @@ cstudy --no-color list --track dsa
 | Command | Flags | Does |
 |---------|-------|------|
 | `cstudy init [<path>]` | `--git`, `--ide <ide>`, `--no-ide`, `--force` | Creates a workspace. `--git` runs `git init` there; `--ide` is `vscode` or `idea`, and repeats; `--no-ide` writes no IDE files; `--force` allows a workspace inside a checkout of the `cstudy` source ([create one](workspace.md#create-one)) |
-| `cstudy doctor` | `--fix`, `--json`, `--accept-license <server>` | Checks the toolchains, your configuration and the workspace. `--fix` sets up the workspace's projects and repairs what it can; `--accept-license kotlin-lsp`, with `--fix`, accepts that language server's licence so that it downloads ([check your setup](doctor.md)) |
+| `cstudy doctor` | `--fix`, `--json`, `--accept-license <server>` | Checks the toolchains, your configuration and the workspace. `--fix` sets up the workspace's projects and repairs what it can; `--accept-license kotlin-lsp`, with `--fix`, accepts that language server's license so that it downloads ([check your setup](doctor.md)) |
 | `cstudy ide [<ide>]` | `--force` | Writes or refreshes the IDE project files and the IntelliJ IDEA launcher: `vscode`, `idea`, or `all`, the default. `--force` also overwrites the files you edited ([your edits and cstudy ide](ide-and-debugging.md#your-edits-and-cstudy-ide)) |
 | `cstudy config path` | - | Prints the path of your `config.toml` |
 | `cstudy config edit` | - | Opens your `config.toml` in `$VISUAL` or `$EDITOR`, and creates it when it is missing ([your configuration](settings.md#your-configuration)) |
-| `cstudy about` | `--credits`, `--licenses` | Shows the version, the licence, the links and the credits. `--credits` lists the software `cstudy` uses; `--licenses` prints the full licence texts |
+| `cstudy about` | `--credits`, `--licenses` | Shows the version, the license, the links and the credits. `--credits` lists the software `cstudy` uses; `--licenses` prints the full license texts |
 
 ## Content
 

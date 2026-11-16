@@ -1,6 +1,6 @@
 # Spec: Concept guides and learning paths
 
-A **guide** is a short, original reading page that teaches one idea before you practise it: the plain idea, a worked example, when to use it, the traps, the complexity, notes for experts, the problems that practise it, and where to read more. A **path** orders guides and problems into a track, from a topic's first idea to an expert's. Both are content: they ship with `cstudy` like the problems, and [`cstudy learn`](cli.md#cstudy-learn) reads them ([ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)).
+A **guide** is a short, original reading page that teaches one idea before you practice it: the plain idea, a worked example, when to use it, the traps, the complexity, notes for experts, the problems that practice it, and where to read more. A **path** orders guides and problems into a track, from a topic's first idea to an expert's. Both are content: they ship with `cstudy` like the problems, and [`cstudy learn`](cli.md#cstudy-learn) reads them ([ADR 0025](../decisions/0025-concept-guides-and-learning-paths.md)).
 
 The web UI is the recommended place to read them: the [Guides page](#guides-page) of `cstudy serve` shows the diagrams, links the guides to each other and shows a path's progress beside its steps. The terminal is fully supported: `cstudy learn` renders a guide's Markdown with Rich, shows each diagram as its [text drawing](#text-drawings), and has `--json` for scripts.
 
@@ -47,7 +47,7 @@ problems: [contains-duplicate, two-sum, valid-anagram]
 | `level` | `intro`, `core` or `advanced` | yes | `intro`: the first idea of a topic; `core`: what working engineers use daily; `advanced`: designs and guarantees beyond the basics |
 | `prerequisites` | list of guide slugs | no | Guides to read first. They form no cycle |
 | `related` | list of guide slugs | no | Guides worth reading next, in no order |
-| `problems` | list of problem slugs | no | The problems that practise the guide, in the order to try them; each is named in `## Practice` |
+| `problems` | list of problem slugs | no | The problems that practice the guide, in the order to try them; each is named in `## Practice` |
 | `shell` | boolean, default false | no | true for a guide whose topic is the shell, such as `using-the-terminal`: a [shell guide](#shell-guides), whose examples may have a bash variant |
 
 ## guide.md
@@ -64,7 +64,7 @@ The first line is `# <title>`. These `##` sections follow, non-empty and in this
 | `## Common traps` | The mistakes people make, each with why it happens |
 | `## Complexity` | Time and space, with their conditions: average against worst case, amortized, and what is assumed of the hash function or the input |
 | `## Expert notes` | Depth: implementations, guarantees, attacks, history, the facts of specific languages |
-| `## Practice` | Each problem of `problems`, by slug, with what it practises |
+| `## Practice` | Each problem of `problems`, by slug, with what it practices |
 | `## Further reading` | At least one link; the official documentation for every fact about a language or library |
 
 No `TODO` anywhere. A fact about a language or library names the version it holds from when that matters, and cites the official documentation in `## Further reading`; a fact that cannot be checked there is left out.
@@ -142,7 +142,7 @@ One rule picks the variant the Guides page shows first and the one `cstudy learn
 
 1. The language the reader chose: on the page, the last tab chosen since the page was opened; in the terminal, `--lang`.
 2. Bash: only a shell guide has bash variants, and the shell is its topic.
-3. `default_lang` of the [configuration](cli.md#configuration), the language the reader practises in.
+3. `default_lang` of the [configuration](cli.md#configuration), the language the reader practices in.
 4. Python.
 5. The first variant in the tab order.
 
@@ -235,7 +235,7 @@ A path is `guides/paths/<slug>.yaml`, validated by `schemas/path.schema.json`:
 ```yaml
 # yaml-language-server: $schema=../../schemas/path.schema.json
 title: "Hashing: from your first hash map to content-addressed storage"
-summary: From what a hash function is to Merkle proofs, through the problems that practise each idea.
+summary: From what a hash function is to Merkle proofs, through the problems that practice each idea.
 level: core
 steps:
   - guide: hash-functions
@@ -265,7 +265,7 @@ The same problem may come twice with different levels, so a path can return to i
 | Level | The `level` the path names. Without it, the level nearest the mean of those numbers, the higher one when the mean is halfway between two: only `intro` guides make an `intro` path, an `intro` and a `core` guide a `core` path, mostly `advanced` guides an `advanced` path. A path that names none and has no guide steps has no level |
 | Order | By level: the `intro` paths, then the `core` ones, then the `advanced` ones. Within a level, by the mean, lowest first, so the path whose guides average lower comes first. Paths alike in both keep their order by file name; a path without guide steps comes after the others of its level, and one with no level at all comes last |
 
-The shipped paths name these levels, from what each teaches: `intro` for "Getting started" and the first data structures ("Arrays: two pointers and sliding windows", "Stacks, queues and tries"); `core` for what working engineers use every day ("Hashing", "Binary search", "Trees and heaps", "Greedy choices and intervals", "Testing", "Networking", "Security", "Machine learning fundamentals", "AI engineering", "Infrastructure as code"); and `advanced` for the specialised depth ("Graphs", "Recursion and dynamic programming", "Operating systems", "Data engineering", "Distributed systems", "Database internals", "Knowledge representation").
+The shipped paths name these levels, from what each teaches: `intro` for "Getting started" and the first data structures ("Arrays: two pointers and sliding windows", "Stacks, queues and tries"); `core` for what working engineers use every day ("Hashing", "Binary search", "Trees and heaps", "Greedy choices and intervals", "Testing", "Networking", "Security", "Machine learning fundamentals", "AI engineering", "Infrastructure as code"); and `advanced` for the specialized depth ("Graphs", "Recursion and dynamic programming", "Operating systems", "Data engineering", "Distributed systems", "Database internals", "Knowledge representation").
 
 "Getting started" comes first: it is `intro`, and its guides, all `intro`, average lowest. `tests/content/test_guide_paths.py` checks that it stays first and that every shipped path names its level. The guides of `cstudy learn` follow the paths in this order, so the guides of "Getting started" come first too.
 
@@ -330,6 +330,6 @@ The path's next step is its first step that is not done.
 
 ## Guides page
 
-The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, each example with [variants](#variants) as tabs that change language together, starting on the [language shown](#the-language-shown), links between guides and to the problems that practise them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. The list shows the paths in their [order](#path-order), from introductory to advanced, and narrows the guides and the paths by a search and by level, path and status (read or not), kept in the page's URL. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
+The [Guides view](web-ui.md#guides-view) of [`cstudy serve`](web-ui.md) is the recommended way to read: the guides and the paths with their progress, a guide rendered from its Markdown with its code highlighted, each `mermaid` block shown as the image of its [SVG drawing](#svg-drawings) in the page's light or dark theme, with `accTitle` as alt text and `accDescr` as caption, each example with [variants](#variants) as tabs that change language together, starting on the [language shown](#the-language-shown), links between guides and to the problems that practice them, and **Mark as read**, which marks a guide read through `mark_read`, the use case of `--done`. The list shows the paths in their [order](#path-order), from introductory to advanced, and narrows the guides and the paths by a search and by level, path and status (read or not), kept in the page's URL. A path shows its steps in order, each done or not, with its level target and a link to read the guide or start the problem; the Problem view lists the guides a problem's `guides` names. The page runs no diagram code, and the text drawings, which a screen reader would read as box-drawing characters, are not in it; a diagram whose SVG drawings are missing or stale shows its text drawing instead.
 
 `cstudy learn <guide> --open` and `cstudy learn --path <path> --open` run `cstudy serve --open` landing on the guide or the path ([cli](cli.md#cstudy-learn)). The terminal still reads every guide in full.

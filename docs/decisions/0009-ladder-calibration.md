@@ -30,7 +30,7 @@ A fixed per-call cost, the suspected cause, explains almost none of them. It ben
 
 ## Consequences
 
-- The ladder gate can no longer separate neighbouring classes on a ladder spanning about one decade: n^1.5 against n^2 over 1,000 to 10,000 varies only 3.2x. Ladders that span two or more decades keep the gate sharp; the warning says when a ladder does not.
+- The ladder gate can no longer separate neighboring classes on a ladder spanning about one decade: n^1.5 against n^2 over 1,000 to 10,000 varies only 3.2x. Ladders that span two or more decades keep the gate sharp; the warning says when a ladder does not.
 - A user's O(sqrt n) solution against an O(log n) optimal lands in the same band and is judged by the ratio to the optimal reference and its trend, like n log n against n.
 - The tolerance of 4 (`DRIFT_TOLERANCE`) comes from the re-measured failing problems at a load of 3 to 5.5 on 11 cores: references whose class is not in doubt drifted at most 2.9x, the remaining contradictions, all traced to generators or ladders, 4.0x to 7.1x. Some content issues stay below it (a fixed-size board at 3.8x) and surface only as warnings.
 - No measurement changes: the runners, the sampling and the stored bench rows stay as they are.
