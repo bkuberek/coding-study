@@ -64,6 +64,9 @@ class FsItemRepository:
     def load(self, slug: str) -> ItemMeta:
         return self._meta(self._directory_of(slug))
 
+    def attempted(self, slug: str) -> ItemMeta:
+        return self.load(slug)
+
     def list_items(self) -> tuple[ItemMeta, ...]:
         items: list[ItemMeta] = []
         issues: list[ContentIssue] = []

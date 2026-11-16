@@ -95,6 +95,11 @@ class ItemRepository(Protocol):
         meta.yaml."""
         ...
 
+    def attempted(self, slug: str) -> ItemMeta:
+        """The rubric problem an attempt without a language was made on, even when a problem of
+        your own hides its slug; raises UnknownProblemError."""
+        ...
+
     def list_items(self) -> tuple[ItemMeta, ...]:
         """Every rubric problem in name order; raises ContentError listing every invalid
         meta.yaml."""

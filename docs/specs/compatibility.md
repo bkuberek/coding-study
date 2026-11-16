@@ -167,7 +167,7 @@ The system design and code review exercises are problems of the kinds `system-de
 | Folder | `problems/<slug>/` with `meta.yaml`, `prompt.md`, `rubric.md`, `reference.md`, `template.md`, and for code review `change.diff` or `files/` |
 | Notes | Your answer stays at `notes/<track>/<slug>.md` in the workspace |
 | Catalog only | Rubric problems load from the content root only. A workspace's own `problems/` folder with a rubric kind is a content error: `rubric problems are catalog-only`, which `cstudy list` and `cstudy verify` both report |
-| Your own problem with the slug of a rubric problem | The workspace problem wins everywhere (`list`, `start`, `verify`, `status`, `history`, the page) and hides the catalog's, as it hides a catalog problem checked by tests ([installation-and-workspaces](installation-and-workspaces.md#your-own-problems)). `cstudy verify` checks the workspace folder, and reports no conflict between the two slugs |
+| Your own problem with the slug of a rubric problem | The workspace problem wins everywhere (`list`, `start`, `verify`, `status`, `history`, the page) and hides the catalog's, as it hides a catalog problem checked by tests ([installation-and-workspaces](installation-and-workspaces.md#your-own-problems)). `cstudy verify` checks the workspace folder, and reports no conflict between the two slugs. A rubric attempt started before keeps its rubric problem: `cstudy status` and `cstudy done` show and finish it from the catalog, and `cstudy history` lists it among the workspace problem's attempts |
 | `behavioral` | Stays a track value and holds no content |
 | `tracks/` | Gone, with `schemas/item.schema.json`. Its track notes are in [content](content.md) and the self-graded loop in the user docs' practice page |
 

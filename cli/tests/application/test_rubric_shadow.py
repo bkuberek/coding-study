@@ -14,11 +14,17 @@ from coding_study.adapters.problem_overlay import (
     OverlayProblemFiles,
     OverlayProblemRepository,
 )
+from coding_study.application.attempt_status import attempt_status
+from coding_study.application.complete_attempt import DoneRequest, complete_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.list_items import list_items
 from coding_study.application.list_problems import ProblemFilter, list_problems
 from coding_study.application.practice_catalog import is_item
+from coding_study.application.problem_history import problem_history
+from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.application.verify_content import VerifyRequest, verify_content
+from coding_study.domain.attempts import AttemptStatus, Rating
+from coding_study.domain.items import EntryKind
 from tests.e2e import e2e_environment
 from tests.helpers import FIXTURE_RUBRIC_PROBLEMS, SCHEMAS_DIRECTORY
 
@@ -120,3 +126,30 @@ def test_a_whole_catalog_verify_refuses_a_rubric_problem_in_the_workspace(catalo
     problems = verified(overlaid(catalog, workspace))
     failing = [problem.directory for problem in problems if problem.static_errors]
     assert failing == [f"problems/{SHADOWED}"]
+
+
+def start_rubric_attempt_then_shadow(catalog: Path, workspace: Path) -> Environment:
+    """A rubric attempt on `SHADOWED`, started before a problem of your own took that slug."""
+    start_item_attempt(overlaid(catalog, workspace), ItemStartRequest(SHADOWED))
+    write_autograded(workspace, SHADOWED)
+    return overlaid(catalog, workspace)
+
+
+def test_status_shows_a_rubric_attempt_started_before_the_slug_was_shadowed(catalog, workspace):
+    environment = start_rubric_attempt_then_shadow(catalog, workspace)
+    standing = attempt_status(environment, None, None)
+    assert (standing.attempt.slug, standing.kind) == (SHADOWED, EntryKind.SYSTEM_DESIGN)
+
+
+def test_done_finishes_that_rubric_attempt(catalog, workspace):
+    environment = start_rubric_attempt_then_shadow(catalog, workspace)
+    finished = complete_attempt(environment, DoneRequest(rating=Rating.OK))
+    assert (finished.attempt.slug, finished.attempt.status) == (SHADOWED, AttemptStatus.PASSED)
+
+
+def test_history_lists_that_rubric_attempt_among_the_workspace_problems_attempts(
+    catalog, workspace
+):
+    environment = start_rubric_attempt_then_shadow(catalog, workspace)
+    history = problem_history(environment, SHADOWED)
+    assert [past.attempt.slug for past in history.attempts] == [SHADOWED]

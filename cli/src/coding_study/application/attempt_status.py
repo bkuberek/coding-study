@@ -133,7 +133,7 @@ def attempt_status(
 
 
 def _item_status(environment: Environment, attempt: Attempt) -> AttemptStanding:
-    meta = environment.items.load(attempt.slug)
+    meta = environment.items.attempted(attempt.slug)
     return AttemptStanding(
         attempt=attempt,
         kind=meta.kind,

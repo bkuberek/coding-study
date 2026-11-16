@@ -143,7 +143,7 @@ def _finish_item(
     environment: Environment, attempt: Attempt, request: DoneRequest
 ) -> FinishedAttempt:
     """Rubric problems take a rating only and are graded by it alone."""
-    meta = environment.items.load(attempt.slug)
+    meta = environment.items.attempted(attempt.slug)
     if request.rating is None:
         raise UsageError(f"{attempt.slug} is self-graded; finish with --rating {RATINGS}")
     now = environment.clock.now()

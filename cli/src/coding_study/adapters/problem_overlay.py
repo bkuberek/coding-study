@@ -101,6 +101,9 @@ class OverlayItemRepository:
     def load(self, slug: str) -> ItemMeta:
         return self._owner(slug).load(slug)
 
+    def attempted(self, slug: str) -> ItemMeta:
+        return self._catalog.load(slug)
+
     def list_items(self) -> tuple[ItemMeta, ...]:
         hidden = set(self._own.slugs())
         return tuple(meta for meta in self._catalog.list_items() if meta.slug not in hidden)

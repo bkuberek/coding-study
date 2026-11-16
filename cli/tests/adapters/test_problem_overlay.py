@@ -219,6 +219,18 @@ def test_a_hidden_rubric_problem_is_not_listed_or_loaded(items, workspace):
         items.load("url-shortener")
 
 
+def test_an_attempted_rubric_problem_loads_from_the_catalog_under_a_workspace_problem(
+    items, workspace
+):
+    own_problem(workspace, "url-shortener", "My URL Shortener")
+    assert items.attempted("url-shortener").slug == "url-shortener"
+
+
+def test_attempted_raises_for_a_slug_the_catalog_lacks(items):
+    with pytest.raises(UnknownProblemError):
+        items.attempted("two-sum")
+
+
 def test_the_directories_follow_the_visible_slugs(items, workspace):
     own_problem(workspace, "news-feed", "My News Feed")
     assert items.directories() == ("problems/retry-wrapper", "problems/url-shortener")

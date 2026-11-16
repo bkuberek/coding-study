@@ -368,7 +368,7 @@ def _scope(environment: Environment, attempt: Attempt) -> _Scope:
     language = attempt.language
     if language is None:
         return _single_file(
-            layout.notes_path(environment.items.load(attempt.slug)), StartedFile.NOTES
+            layout.notes_path(environment.items.attempted(attempt.slug)), StartedFile.NOTES
         )
     problem = environment.problems.load(attempt.slug)
     if problem.meta.kind is ProblemKind.PROJECT:
