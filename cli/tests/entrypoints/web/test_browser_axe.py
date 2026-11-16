@@ -3,21 +3,23 @@ light and dark, 1440 and 390 pixels wide, in each engine of `tests/browsers.py`:
 a project problem, its attempt with a file in the editor and a run's results, the file tree's menu,
 its new-file dialog and restore question, the start, done and solution dialogs, the History of a
 problem with a finished attempt, expanded, and the dialog that shows that attempt's code read-only,
-the mock view before and during a mock, the progress, health and settings views, and, on a server
-whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog of a problem and of
-a Java project with the languages disabled, and a start refused with a `fix:` hint; and, with code
-intelligence on against the scripted language server, the status bar's segment ready, stopped with
-its Restart and for a language whose server is not installed, the hover tooltip with a diagnostic
-and its documentation, a library file open in its read-only tab, the completion list with its
-panel, a signature help, and the Health view with the `code intelligence` rows. Each view must
-have no violation of WCAG 2.2 A and AA, nor of axe's best practices, but for a target that only
-a sticky bar, the top bar or the status bar, covers as the view rests, which the focus scrolls
-clear of the bar.
+the mock view before and during a mock, the progress, health and settings views, Settings' AI
+section with AI on, with changes staged and after Load models, and its consent dialog, and, on a
+server whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog of a problem
+and of a Java project with the languages disabled, and a start refused with a `fix:` hint; and,
+with code intelligence on against the scripted language server, the status bar's segment ready,
+stopped with its Restart and for a language whose server is not installed, the hover tooltip with
+a diagnostic and its documentation, a library file open in its read-only tab, the completion list
+with its panel, a signature help, and the Health view with the `code intelligence` rows. Each view
+must have no violation of WCAG 2.2 A and AA, nor of axe's best practices, but for a target that
+only a sticky bar, the top bar or the status bar, covers as the view rests, which the focus
+scrolls clear of the bar.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
 """
 
+import copy
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
@@ -28,10 +30,14 @@ from typing import Any
 import pytest
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.domain.ai import Provider
 from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.problem import Language
 from coding_study.domain.taxonomy import PROFILE_JOB_ROLES
+from tests.ai_fixtures import recorded
+from tests.ai_workspace import SENTINEL_KEY, ai_workspace
 from tests.browsers import launched, refusing_starts
+from tests.fake_ai_provider import Answer, FakeAiProvider, Route
 from tests.helpers import mark_workspace, selecting_jdk
 from tests.intelligence_lab import SERVES as CAPABLE
 from tests.language_server_scripts import (
@@ -856,3 +862,76 @@ def test_the_profile_chip_and_controls_have_no_accessibility_violation(profile_v
 @pytest.mark.parametrize("view", REFUSED_VIEWS)
 def test_the_removal_dialog_refusal_has_no_accessibility_violation(refused_violations, view):
     assert refused_violations[view] == []
+
+
+AI_VIEWS = (
+    "settings AI section",
+    "settings AI section with changes staged",
+    "settings AI section after Load models",
+    "AI consent dialog",
+)
+AI_READY = "#ai-key-anthropic-state:text-is('key set')"
+AI_CHECK = "#ai-models .ai-actions button"
+
+
+@pytest.fixture(scope="module")
+def ai_server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
+    """AI on with a model, a key and a consent to review, and a fake provider that lists models."""
+    workspace = ai_workspace(tmp_path_factory.mktemp(f"axe-ai-{engine}"))
+    models = copy.deepcopy(recorded(Provider.ANTHROPIC, "models"))
+    with FakeAiProvider() as provider:
+        provider.script(Provider.ANTHROPIC, Route.MODELS, Answer(json=models))
+        variables = {"CSTUDY_AI_ENDPOINT": provider.endpoint}
+        with running_server(workspace, variables=variables) as running:
+            yield running
+
+
+@pytest.fixture(scope="module")
+def ai_violations(engine: str, ai_server: RunningServer) -> dict[str, list[str]]:
+    """The violations of Settings' AI section and its consent dialog."""
+    return _tour_of(engine, ai_server, _ai_tour)
+
+
+def _ai_tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
+    yield AI_VIEWS[0], lambda: _ai_section(page)
+    yield AI_VIEWS[1], lambda: _ai_staged(page)
+    yield AI_VIEWS[2], lambda: _ai_models_loaded(page)
+    yield AI_VIEWS[3], lambda: _ai_consent_dialog(page)
+
+
+def _ai_section(page: Any) -> None:
+    _open(page, "#/settings", AI_READY)
+    page.wait_for_selector(f"{AI_CHECK}:not([disabled])")
+    page.wait_for_selector(".ai-consents button")
+
+
+def _ai_staged(page: Any) -> None:
+    """A key typed, the model changed and the routing on auto: the marks, the fast and strong keys
+    and the reason Check waits."""
+    _ai_section(page)
+    page.fill("#ai-key-google", SENTINEL_KEY)
+    page.check("#config-ai-routing-auto")
+    page.fill("#config-ai-fast", "anthropic:claude-fast-example")
+    page.wait_for_selector("#ai-actions-reason:not([hidden])")
+
+
+def _ai_models_loaded(page: Any) -> None:
+    """After a Save of nothing: Reset, then Load models, whose job panel shows its lines."""
+    page.click(f"{SETTINGS_BAR} button:has-text('Reset')")
+    page.wait_for_selector(f"{AI_CHECK}:not([disabled])")
+    page.click("button[aria-label='Load models of anthropic']")
+    page.wait_for_selector("#ai-models section.job .job-state:has-text('exit 0')")
+    # The view rests at its top, as the other views are checked: the click scrolled it.
+    page.evaluate("window.scrollTo(0, 0)")
+
+
+def _ai_consent_dialog(page: Any) -> None:
+    _open(page, "#/settings", AI_READY)
+    page.wait_for_selector(f"{AI_CHECK}:not([disabled])")
+    page.click(AI_CHECK)
+    page.wait_for_selector(f"{SHEET} button:has-text('Send')")
+
+
+@pytest.mark.parametrize("view", AI_VIEWS)
+def test_settings_ai_section_and_its_dialog_have_no_accessibility_violation(ai_violations, view):
+    assert ai_violations[view] == []

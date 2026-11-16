@@ -5,6 +5,7 @@
 
 import "./settings.css";
 
+import { aiStage } from "../ai-settings.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { h } from "../dom.ts";
 import { languageRow } from "../intelligence-status.ts";
@@ -63,6 +64,9 @@ export function settingsView(context: PageContext, section: "profile" | null = n
   const preferences = preferencesStage(context);
   const config = configStage(context);
   const languages = languagesStage(context);
+  const ai = aiStage(context, config, () => {
+    refresh();
+  });
   const title = h("h1", { id: "settings-heading", tabindex: "-1" }, "settings");
   const profileHeading = h("h2", { id: "profile-heading", tabindex: "-1" }, "profile");
   const count = h("span", { class: "settings-count" });
@@ -70,11 +74,12 @@ export function settingsView(context: PageContext, section: "profile" | null = n
   const save = h("button", { type: "submit", class: "button primary" }, "Save");
   const status = h("p", { class: "quiet settings-status", role: "status" });
   let saving = false;
-  const unsaved = () => Object.keys(preferences.changes()).length + Object.keys(config.changes()).length + languages.count();
+  const unsaved = () => Object.keys(preferences.changes()).length + Object.keys(config.changes()).length + ai.count() + languages.count();
   const refresh = () => {
     preferences.sync();
     languages.sync();
     config.mark();
+    ai.sync();
     const changes = unsaved();
     count.textContent = changesText(changes);
     count.hidden = changes === 0;
@@ -137,6 +142,14 @@ export function settingsView(context: PageContext, section: "profile" | null = n
         configOutcome = { error: messageOf(error) };
       }
     }
+    let credentialsOutcome: StoreOutcome = null;
+    try {
+      credentialsOutcome = await ai.saveKeys();
+    } catch (error) {
+      credentialsOutcome = { error: messageOf(error) };
+    }
+    // What the status and the usage say follows from the config and the keys just written.
+    if (configOutcome !== null || credentialsOutcome !== null) ai.reload();
     let languagesOutcome: StoreOutcome = null;
     if (languages.count() > 0) {
       try {
@@ -155,12 +168,13 @@ export function settingsView(context: PageContext, section: "profile" | null = n
         preferencesOutcome = { error: messageOf(error) };
       }
     }
-    settle(saveLines(configOutcome, languagesOutcome, preferencesOutcome));
+    settle(saveLines(configOutcome, credentialsOutcome, languagesOutcome, preferencesOutcome));
   };
   undo.addEventListener("click", () => {
     preferences.undo();
     languages.undo();
     config.undo();
+    ai.undo();
     settle([{ text: "changes undone", failed: false }]);
   });
   const form = h(
@@ -174,6 +188,7 @@ export function settingsView(context: PageContext, section: "profile" | null = n
       h("p", { class: "quiet" }, "The default filter of the Problems, Guides and Mock views, each of which can widen it without changing it."),
       h("div", { class: "profile-groups" }, languages.element, config.profile),
     ),
+    ai.element,
     h(
       "div",
       { class: "settings-columns" },
@@ -220,6 +235,7 @@ export function settingsView(context: PageContext, section: "profile" | null = n
     untrack();
     stopFollowing();
     preferences.stop();
+    ai.stop();
   };
 }
 

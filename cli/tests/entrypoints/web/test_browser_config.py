@@ -114,9 +114,13 @@ def seen(engine: str, server: RunningServer, config_file: Path, workspace: Path)
 
 
 def _read_the_form(page: Any, found: Seen) -> None:
-    found.labels = page.locator(".config-key label").all_inner_texts()
+    found.labels = page.locator(
+        ".config-key .config-head label, .config-radios > legend"
+    ).all_text_contents()
     found.names = page.locator(".config-key .config-name").all_inner_texts()
-    found.legends = page.locator("fieldset:has(.config-key) > legend").all_inner_texts()
+    found.legends = page.locator(
+        ".settings-columns fieldset:has(.config-key) > legend"
+    ).all_inner_texts()
     found.value = page.input_value(MAX_INTERVAL)
     found.help_text = page.locator(f"{MAX_INTERVAL} ~ p").inner_text()
     found.headings = page.locator(".settings h2").all_inner_texts()
@@ -204,7 +208,7 @@ def test_a_review_interval_says_dates_already_set_do_not_move(seen):
 
 
 def test_the_page_tells_the_workspace_from_every_workspace(seen):
-    assert seen.headings[:3] == ["profile", "THIS WORKSPACE", "ALL YOUR WORKSPACES"]
+    assert seen.headings[:4] == ["profile", "AI (preview)", "THIS WORKSPACE", "ALL YOUR WORKSPACES"]
 
 
 def test_the_reserved_key_cannot_be_changed(seen):

@@ -16,12 +16,17 @@ import { failure } from "./states.ts";
 
 const LINE_EVENT = "line";
 
-interface JobLine {
+export interface JobLine {
   readonly stream: "stdout" | "stderr";
   readonly text: string;
 }
 
 export interface JobPanelOptions {
+  /** Asks a job's 409 `confirmation_required` in a question of its own, such as the AI consent
+   * dialog, instead of the generic one; true repeats the request with `confirm`. */
+  readonly confirm?: (error: ApiError) => Promise<boolean>;
+  /** Called with each line the job prints, as it comes. */
+  readonly line?: (line: JobLine) => void;
   /** Called once the job's child exited, after `busy(false)`. */
   readonly ended?: (closed: Closed) => void;
   /** Called when the panel starts or stops following a job, and `running` has changed. */
@@ -82,7 +87,7 @@ export class JobPanel {
   async #refused(error: unknown, body: Readonly<Record<string, unknown>>, shown: string): Promise<void> {
     if (error instanceof ApiError && error.code === "confirmation_required") {
       const question = { title: "confirm", message: error.message, action: "Run", destructive: false, command: shown };
-      if (await confirmLazily(question)) {
+      if (await (this.#options.confirm?.(error) ?? confirmLazily(question))) {
         await this.start({ ...body, confirm: true }, shown);
       } else {
         this.element.hidden = true;
@@ -121,6 +126,7 @@ export class JobPanel {
   #append(line: JobLine): void {
     const atEnd = this.#log.scrollTop + this.#log.clientHeight >= this.#log.scrollHeight - 4;
     this.#log.append(h("span", { class: `job-line job-${line.stream}` }, line.text), "\n");
+    this.#options.line?.(line);
     if (atEnd) this.#log.scrollTop = this.#log.scrollHeight;
   }
 

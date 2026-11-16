@@ -14,6 +14,10 @@ the removal dialog: Keep the folder has the focus, Tab stays inside, Escape canc
 focus back to Save, the delete's second confirmation is reached with Tab and Enter, and a refused
 delete is disabled with its reason tied to it.
 
+Settings' AI section: its controls in reading order, each a stop with a visible focus, the consent
+dialog opened with Enter, its focus on Cancel, kept inside by Tab and given back to Check by
+Escape, and Revoke moving the focus to its message.
+
 WebKit moves the focus to links and buttons with Option-Tab, as Safari does unless its setting
 "Press Tab to highlight each item" is on, so the steps press Alt+Tab there.
 """
@@ -28,6 +32,7 @@ from typing import Any
 import pytest
 
 from coding_study.domain.problem import Language
+from tests.ai_workspace import MODEL, ai_workspace
 from tests.browsers import launched
 from tests.profile_workspace import profiled_workspace, with_attempt_in_progress
 from tests.serve_process import RunningServer, running_server, served_environment
@@ -733,3 +738,129 @@ def test_tab_skips_a_disabled_delete_and_stays_in_the_dialog(profile_keys):
     assert "Cancel" in profile_keys.refused_stops
     assert not any(name.startswith("Delete go") for name in profile_keys.refused_stops)
     assert profile_keys.refused_escape_dialogs == 0
+
+
+AI_TABS = 20
+AI_SECTION = ".settings-ai"
+AI_CHECK = "#ai-models .ai-actions button"
+UNREACHABLE_PROVIDER = {"CSTUDY_AI_ENDPOINT": "http://127.0.0.1:9"}
+"""Where a request would go if a test sent one by mistake: nowhere."""
+AI_STOPS = [
+    "What AI does here",
+    "config-ai-enabled",
+    "ai-key-anthropic",
+    "Remove the key for anthropic",
+    "Load models of anthropic",
+    "ai-key-google",
+    "ai-key-openai",
+    "ai-key-openrouter",
+    "config-ai-routing-fixed",
+    "config-ai-model",
+    "config-ai-daily_token_cap",
+    "Check",
+]
+
+
+@dataclass
+class AiKeys:
+    """What the keyboard did in Settings' AI section."""
+
+    stops: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
+    dialog_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    dialog_stops: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
+    dialog_title: str = ""
+    dialogs_after_escape: int = -1
+    focus_after_escape: dict[str, Any] = field(default_factory=dict[str, Any])
+    revoke_focus_class: str = ""
+    revoke_says: str = ""
+
+
+@pytest.fixture(scope="module")
+def ai_server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
+    workspace = ai_workspace(tmp_path_factory.mktemp(f"keys-ai-{engine}"))
+    with running_server(workspace, variables=UNREACHABLE_PROVIDER) as running:
+        yield running
+
+
+def _ai_stops(page: Any, tab: str, found: AiKeys) -> None:
+    page.evaluate("location.hash = '#/settings'")
+    page.wait_for_selector("#ai-key-anthropic-state:text-is('key set')")
+    page.wait_for_selector(f"{AI_CHECK}:not([disabled])")
+    page.wait_for_selector(".ai-consents button")
+    page.focus("#ai-heading")
+    for _ in range(AI_TABS):
+        page.keyboard.press(tab)
+        if not page.evaluate(f"document.activeElement.closest('{AI_SECTION}') !== null"):
+            break
+        found.stops.append(_focus(page))
+
+
+def _ai_dialog(page: Any, tab: str, found: AiKeys) -> None:
+    page.focus(AI_CHECK)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(DIALOG)
+    found.dialog_focus = _focus(page)
+    found.dialog_title = page.locator(f"{DIALOG} h2").inner_text()
+    for _ in range(DIALOG_TABS):
+        page.keyboard.press(tab)
+        found.dialog_stops.append(page.evaluate(FOCUS))
+    page.keyboard.press("Escape")
+    page.wait_for_selector(DIALOG, state="detached")
+    found.dialogs_after_escape = page.locator(DIALOG).count()
+    found.focus_after_escape = _focus(page)
+
+
+def _ai_revoke(page: Any, found: AiKeys) -> None:
+    page.focus(".ai-consents button")
+    page.keyboard.press("Enter")
+    page.wait_for_function("() => document.activeElement?.classList.contains('ai-revoked')")
+    found.revoke_focus_class = page.evaluate("document.activeElement.className")
+    found.revoke_says = page.locator(".ai-revoked").inner_text()
+
+
+@pytest.fixture(scope="module")
+def ai_keys(engine: str, ai_server: RunningServer) -> AiKeys:
+    found = AiKeys()
+    tab = "Alt+Tab" if engine == "webkit" else "Tab"
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.set_default_timeout(WAIT_MS)
+        page.goto(ai_server.login_url)
+        page.wait_for_selector(LISTED)
+        _ai_stops(page, tab, found)
+        _ai_dialog(page, tab, found)
+        _ai_revoke(page, found)
+        browser.close()
+    return found
+
+
+def test_tab_reaches_each_control_of_the_ai_section_in_reading_order(ai_keys):
+    names = [stop["id"] or stop["name"] for stop in ai_keys.stops]
+    assert names[: len(AI_STOPS)] == AI_STOPS
+    assert names[len(AI_STOPS)].startswith(f"Revoke {MODEL} · AI review · since ")
+
+
+def test_every_stop_of_the_ai_section_shows_the_focus(ai_keys):
+    assert [stop["name"] or stop["id"] for stop in ai_keys.stops if not stop["visible"]] == []
+
+
+def test_enter_on_check_opens_the_consent_dialog_with_the_focus_on_cancel(ai_keys):
+    assert ai_keys.dialog_title == f"Send to {MODEL}?"
+    assert (ai_keys.dialog_focus["name"], ai_keys.dialog_focus["inDialog"]) == ("Cancel", True)
+
+
+def test_tab_keeps_the_focus_in_the_consent_dialog(ai_keys):
+    stops = [stop for stop in ai_keys.dialog_stops if stop is not None]
+    assert [stop["name"] for stop in stops if not stop["inDialog"]] == []
+    assert stops[0]["name"] == "Send"
+
+
+def test_escape_closes_the_consent_dialog_and_gives_the_focus_back_to_check(ai_keys):
+    assert ai_keys.dialogs_after_escape == 0
+    assert ai_keys.focus_after_escape["name"] == "Check"
+
+
+def test_revoke_by_the_keyboard_moves_the_focus_to_its_message(ai_keys):
+    assert "ai-revoked" in ai_keys.revoke_focus_class
+    assert ai_keys.revoke_says == "revoked: cstudy asks again next time"

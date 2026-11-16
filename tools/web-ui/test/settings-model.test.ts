@@ -26,39 +26,50 @@ test("more changes read in the plural", () => {
 });
 
 test("a store with no change says nothing", () => {
-  assert.deepEqual(saveLines(null, null, null), []);
+  assert.deepEqual(saveLines(null, null, null, null), []);
 });
 
 test("a saved store says what it saved", () => {
-  assert.deepEqual(saveLines({ saved: "saved: bench.reps applies at the next bench" }, null, null), [
+  assert.deepEqual(saveLines({ saved: "saved: bench.reps applies at the next bench" }, null, null, null), [
     { text: "config.toml saved: bench.reps applies at the next bench", failed: false },
   ]);
 });
 
 test("a store that failed says which, and the other its own result", () => {
-  assert.deepEqual(saveLines({ error: "bench.reps: expected a positive integer" }, null, { saved: "saved in preferences.json" }), [
+  assert.deepEqual(saveLines({ error: "bench.reps: expected a positive integer" }, null, null, { saved: "saved in preferences.json" }), [
     { text: "config.toml not saved: bench.reps: expected a positive integer", failed: true },
     { text: "preferences saved in preferences.json", failed: false },
   ]);
 });
 
 test("the other way round, the preferences say they failed", () => {
-  assert.deepEqual(saveLines({ saved: "unchanged" }, null, { error: "no room" }), [
+  assert.deepEqual(saveLines({ saved: "unchanged" }, null, null, { error: "no room" }), [
     { text: "config.toml unchanged", failed: false },
     { text: "preferences not saved: no room", failed: true },
   ]);
 });
 
 test("the languages come between the config and the preferences, a refusal in the fail ink", () => {
-  assert.deepEqual(saveLines({ saved: "unchanged" }, { error: "a workspace needs at least one language" }, { saved: "saved in preferences.json" }), [
+  assert.deepEqual(saveLines({ saved: "unchanged" }, null, { error: "a workspace needs at least one language" }, { saved: "saved in preferences.json" }), [
     { text: "config.toml unchanged", failed: false },
     { text: "languages not saved: a workspace needs at least one language", failed: true },
     { text: "preferences saved in preferences.json", failed: false },
   ]);
 });
 
+test("the keys come after the config, a store that failed saying so beside the other's result", () => {
+  assert.deepEqual(saveLines({ saved: "saved: ai.enabled applies at the next AI request" }, { error: "google: credentials.toml cannot be written" }, null, null), [
+    { text: "config.toml saved: ai.enabled applies at the next AI request", failed: false },
+    { text: "credentials.toml not saved: google: credentials.toml cannot be written", failed: true },
+  ]);
+  assert.deepEqual(saveLines(null, { saved: "saved: a key for anthropic" }, null, { saved: "saved in preferences.json" }), [
+    { text: "credentials.toml saved: a key for anthropic", failed: false },
+    { text: "preferences saved in preferences.json", failed: false },
+  ]);
+});
+
 test("a saved store's notes follow its line, each on one of its own", () => {
-  assert.deepEqual(saveLines(null, { saved: "saved in .cs/workspace.toml: go removed", notes: ["note: attempt 3 (two-sum, go) is in progress"] }, null), [
+  assert.deepEqual(saveLines(null, null, { saved: "saved in .cs/workspace.toml: go removed", notes: ["note: attempt 3 (two-sum, go) is in progress"] }, null), [
     { text: "languages saved in .cs/workspace.toml: go removed", failed: false },
     { text: "note: attempt 3 (two-sum, go) is in progress", failed: false },
   ]);

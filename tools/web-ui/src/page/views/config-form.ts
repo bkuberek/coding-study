@@ -4,7 +4,7 @@
  * the view's Save.
  */
 
-import { changedKeys, type ConfigDocument, type ConfigKey, type ConfigValue, sectionsOf, shownValue, typedValue } from "../config-keys.ts";
+import { AI_SECTION, changedKeys, type ConfigDocument, type ConfigKey, type ConfigValue, MODEL_KEYS, MODEL_LIST_ID, sectionsOf, shownValue, typedValue } from "../config-keys.ts";
 import { confirmed } from "../confirmation.ts";
 import type { PageContext } from "../context.ts";
 import { command, h } from "../dom.ts";
@@ -12,8 +12,14 @@ import { confirmLazily } from "../lazy.ts";
 import { failure, loading, showFailure } from "../states.ts";
 
 const CONFIG = "/api/v1/config";
+/** What every field's id starts with. */
+const FIELD_PREFIX = "config-";
 /** The section of `profile.job_roles` and `profile.domains`, which the Profile section draws. */
 const PROFILE_SECTION = "profile";
+/** The keys of a choice that two radio buttons draw, rather than a list. */
+const RADIO_KEYS: ReadonlySet<string> = new Set(["ai.routing"]);
+/** The sections the file's column leaves to the Profile and AI sections. */
+const DRAWN_ELSEWHERE: ReadonlySet<string> = new Set([PROFILE_SECTION, AI_SECTION]);
 /** What each profile key says under its legend (docs/specs/web-ui.md#settings-view). */
 const PROFILE_NOTES: Readonly<Record<string, string>> = {
   "profile.job_roles": "Problems for any engineer (general) always show.",
@@ -41,6 +47,16 @@ export interface ConfigStage {
   readonly profile: HTMLElement;
   /** What differs from the file, by each key's name, as `POST /api/v1/config` takes it. */
   changes(): Record<string, ConfigValue>;
+  /** A key's row as drawn from the file, for the AI section to place; null while the file is
+   * unread, when it could not be read, and for a key it does not describe. */
+  row(name: string): HTMLElement | null;
+  /** What a key's field holds now, staged or not; undefined where `row` is null. */
+  staged(name: string): ConfigValue | undefined;
+  /** Whether the file can be written: its fields are disabled when it cannot. */
+  writable(): boolean;
+  /** Calls the listener after the file was read, or could not be, and after each time its fields
+   * are drawn again (a save, a reset), so a row placed elsewhere is placed again. */
+  drawn(listener: () => void): void;
   /** Refuses each profile group with every box unchecked, with a message next to it; the first
    * such group's first box, or null when none is refused. */
   refuse(): HTMLElement | null;
@@ -58,8 +74,12 @@ export function configStage(context: PageContext): ConfigStage {
   const profile = h("div", { class: "profile-config" }, loading("reading config.toml…"));
   let shown: ConfigDocument | null = null;
   let fields: ReadonlyMap<ConfigKey, Field> = new Map();
+  const listeners: (() => void)[] = [];
+  const fieldNamed = (name: string) => [...fields].find(([key]) => key.name === name)?.[1];
   const show = (found: ConfigDocument) => {
-    const focused = element.contains(document.activeElement) ? document.activeElement?.id : undefined;
+    // A field of the AI section is drawn elsewhere, so the focus is found by the id every field has.
+    const active = document.activeElement;
+    const focused = active instanceof HTMLElement && active.id.startsWith(FIELD_PREFIX) ? active.id : undefined;
     shown = found;
     const drawn = new Map(found.keys.map((key) => [key, fieldOf(key)]));
     fields = drawn;
@@ -67,13 +87,14 @@ export function configStage(context: PageContext): ConfigStage {
       h("p", { class: "quiet" }, "Stored in ", h("code", {}, found.path), found.exists ? "" : ", made when you save", ", for every workspace; ", command("cstudy config edit"), " opens it."),
       ...found.issues.map((issue) => failure(new Error(issue))),
       ...sectionsOf(found.keys)
-        .filter(([section]) => section !== PROFILE_SECTION)
+        .filter(([section]) => !DRAWN_ELSEWHERE.has(section))
         .map(([section, keys]) =>
           h("fieldset", { class: "config-section", disabled: !found.writable }, h("legend", {}, section), ...keys.map((key) => drawn.get(key)?.row)),
         ),
     );
     profile.replaceChildren(...found.keys.filter((key) => key.section === PROFILE_SECTION).flatMap((key) => drawn.get(key)?.row ?? []));
     for (const group of profile.querySelectorAll("fieldset")) group.disabled = !found.writable;
+    for (const listener of listeners) listener();
     if (focused) document.getElementById(focused)?.focus();
   };
   const changes = () => changedKeys([...fields].map(([key, { read, drawn }]) => [key, read(), drawn] as const));
@@ -83,11 +104,18 @@ export function configStage(context: PageContext): ConfigStage {
     .catch((error: unknown) => {
       showFailure(element, error);
       showFailure(profile, error);
+      for (const listener of listeners) listener();
     });
   return {
     element,
     profile,
     changes,
+    row: (name) => fieldNamed(name)?.row ?? null,
+    staged: (name) => fieldNamed(name)?.read(),
+    writable: () => shown?.writable ?? false,
+    drawn: (listener) => {
+      listeners.push(listener);
+    },
     refuse() {
       const refused = [...fields.values()].map((field) => field.refuse?.() ?? null);
       return refused.find((box) => box !== null) ?? null;
@@ -119,6 +147,7 @@ function savedNote(document: ConfigDocument): string {
 
 function fieldOf(key: ConfigKey): Field {
   if (key.section === PROFILE_SECTION) return profileField(key);
+  if (RADIO_KEYS.has(key.name) && key.kind === "choice") return radioField(key);
   const [control, read] = controlOf(key);
   return { row: rowOf(key, control), read, drawn: read() };
 }
@@ -166,14 +195,42 @@ function rowOf(key: ConfigKey, control: HTMLElement): HTMLElement {
   return h(
     "div",
     { class: "config-key" },
-    h("div", { class: "config-head" }, boxed ? h("span", { class: "config-check" }, control, label) : label, h("code", { id: `${id}-name`, class: "config-name" }, key.name)),
+    h(
+      "div",
+      { class: "config-head" },
+      boxed ? h("span", { class: "config-check" }, control, label) : label,
+      h("span", { class: "config-names" }, previewMark(key), h("code", { id: `${id}-name`, class: "config-name" }, key.name)),
+    ),
     boxed ? null : control,
     h("p", { id: `${id}-help`, class: "quiet" }, `${key.help} Default: ${shownValue(key.default)}. Applies ${key.applies}.`),
   );
 }
 
 function idOf(key: ConfigKey): string {
-  return `config-${key.name.replace(/\W/g, "-")}`;
+  return `${FIELD_PREFIX}${key.name.replace(/\W/g, "-")}`;
+}
+
+/** A key of the AI preview carries the word, since its name alone does not say so. */
+function previewMark(key: ConfigKey): HTMLElement | null {
+  return key.preview === true ? h("span", { class: "preview-mark" }, "preview") : null;
+}
+
+/** A choice of two as radio buttons in a group named by the key's label, which the AI section draws
+ * for `ai.routing`. */
+function radioField(key: ConfigKey): Field {
+  const id = idOf(key);
+  const held = [key.value].flat()[0];
+  const radios = key.choices.map((choice) => h("input", { type: "radio", name: key.name, id: `${id}-${choice}`, value: choice, checked: held === choice }));
+  const row = h(
+    "fieldset",
+    { class: "config-key config-radios", id, "aria-describedby": `${id}-name ${id}-help` },
+    h("legend", {}, key.label),
+    h("div", { class: "config-head" }, h("code", { id: `${id}-name`, class: "config-name" }, key.name), previewMark(key)),
+    h("div", { class: "config-radio-list" }, ...radios.map((radio) => h("div", { class: "radio" }, radio, h("label", { for: radio.id }, radio.value)))),
+    h("p", { id: `${id}-help`, class: "quiet" }, `${key.help} Default: ${shownValue(key.default)}. Applies ${key.applies}.`),
+  );
+  const read = () => radios.find((radio) => radio.checked)?.value ?? null;
+  return { row, read, drawn: read() };
 }
 
 function controlOf(key: ConfigKey): readonly [control: HTMLElement, read: () => ConfigValue] {
@@ -196,6 +253,7 @@ function controlOf(key: ConfigKey): readonly [control: HTMLElement, read: () => 
     inputmode: key.kind === "integer" ? "numeric" : null,
     spellcheck: "false",
     autocomplete: "off",
+    list: MODEL_KEYS.includes(key.name) ? MODEL_LIST_ID : null,
   });
   return [input, () => typedValue(key, input.value)];
 }

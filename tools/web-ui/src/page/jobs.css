@@ -1,6 +1,11 @@
 /* A job's panel (jobs.ts): its command, state and Cancel over the report as it comes. */
 
+/* The panel is dark in both schemes, so its states take the dark scheme's inks. */
 .job {
+  --ok: #a5d38f;
+  --warn: #e8c36a;
+  --fail: #ff8f87;
+  --info: #86c1f0;
   margin: 12px 0;
   border: 1px solid var(--rule);
   border-radius: var(--radius);

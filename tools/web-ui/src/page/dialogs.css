@@ -348,3 +348,29 @@
 .set-none {
   margin: 0 0 14px;
 }
+
+/* aiConsentDialog.ts */
+
+.consent-purpose,
+.consent-estimate {
+  margin: 0 0 8px;
+}
+
+.consent-items,
+.consent-models {
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.consent-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.consent-size {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}

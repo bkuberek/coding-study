@@ -586,3 +586,77 @@ export interface About {
 export interface AboutLicenses {
   readonly text: string;
 }
+
+export type AiProvider = "anthropic" | "google" | "openai" | "openrouter";
+export type AiPurpose = "review" | "check";
+
+/** One consent of `GET /api/v1/ai/status`: to send to a provider's model for a purpose. */
+export interface AiConsent {
+  readonly provider: AiProvider;
+  readonly model: string;
+  readonly purpose: AiPurpose;
+  readonly granted_at: string;
+}
+
+/** What the daily cap has counted, in `GET /api/v1/ai/status`. */
+export interface AiToday {
+  readonly day: string;
+  readonly tokens: number;
+  readonly cap: number;
+  readonly requests: number;
+  readonly cost_usd: number | null;
+  readonly requests_without_cost: number;
+}
+
+/** `GET /api/v1/ai/status` (`cstudy ai status --json`); the keys' state is `credentials.keys`,
+ * never a key. */
+export interface AiStatus {
+  readonly enabled: boolean;
+  readonly credentials: {
+    readonly path: string;
+    readonly keys: Readonly<Record<AiProvider, boolean>>;
+    readonly issue: string | null;
+  };
+  readonly consents: readonly AiConsent[];
+  readonly today: AiToday;
+}
+
+export interface AiUsageCounters {
+  readonly requests: number;
+  readonly failed: number;
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly counted_tokens: number;
+  readonly cost_usd: number | null;
+  readonly requests_without_cost: number;
+}
+
+export interface AiUsageRow extends AiUsageCounters {
+  readonly day: string;
+  readonly provider: AiProvider;
+  readonly model: string;
+  readonly purpose: AiPurpose;
+}
+
+/** `GET /api/v1/ai/usage` (`cstudy ai usage --json`). */
+export interface AiUsage {
+  readonly days: number;
+  readonly from: string;
+  readonly to: string;
+  readonly cap: number;
+  readonly rows: readonly AiUsageRow[];
+  readonly total: AiUsageCounters;
+}
+
+/** The consent document of a 409 `confirmation_required` of an AI job
+ * (docs/specs/web-ui.md#ai-preview): what the request sends, to which models, and what it costs
+ * in tokens. */
+export interface ConsentDocument {
+  readonly purpose: AiPurpose;
+  readonly models: readonly { readonly tier: "fast" | "strong" | null; readonly provider: AiProvider; readonly model: string }[];
+  readonly sends: readonly { readonly label: string; readonly bytes: number | null }[];
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly today: { readonly tokens: number; readonly cap: number };
+  readonly terms: string;
+}

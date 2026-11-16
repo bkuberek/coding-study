@@ -143,7 +143,7 @@ Nothing is sent to a model for a purpose before you agree to send to that provid
 | When it is asked | After the routing, key and cap checks pass and before the request leaves, for each model the request goes to that has no consent for its purpose |
 | At a terminal | The question below, `[y/N]`. Yes records the consent and sends; no, or Enter, prints `not sent` and exits 0 |
 | Without a terminal | Exit 3, nothing sent: `AI review needs your consent to send to anthropic:<model id>: run it once at a terminal, or cstudy ai consent anthropic:<model id> --purpose review` |
-| In the page | The job's 409 `confirmation_required` carries the consent document; the page's dialog shows it, and Allow repeats the request with `confirm`, which records the consent and starts the job ([web-ui](web-ui.md#ai-preview)) |
+| In the page | The job's 409 `confirmation_required` carries the consent document; the page's dialog shows it, and Send repeats the request with `confirm`, which records the consent and starts the job ([web-ui](web-ui.md#ai-preview)) |
 | Without a question | `cstudy ai consent <provider>:<model id> --purpose review\|check` records it; `--revoke` removes it |
 | Revoking | `cstudy ai consent … --revoke`, Settings' Revoke, or `cstudy reset`. The next request asks again |
 | Never | A `--yes`, a config key or an environment variable grants it |

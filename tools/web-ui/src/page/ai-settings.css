@@ -1,0 +1,179 @@
+/* The Settings view's AI section (ai-settings.ts): across both columns, its four groups side by
+   side where they fit, each a box like the config form's sections. */
+
+.settings-ai {
+  margin-bottom: 28px;
+}
+
+.settings-ai > p {
+  margin: 0 0 12px;
+}
+
+.settings-ai .ai-group {
+  margin: 0 0 14px;
+}
+
+.ai-group > p {
+  margin: 0 0 8px;
+  font-size: var(--text-s);
+}
+
+/* A key the config form draws, which fills its group's width at a readable length. */
+.ai-slot .config-key {
+  max-width: 80ch;
+}
+
+.settings-form fieldset.config-radios {
+  min-width: 0;
+  margin: 0;
+  padding: 6px 0 6px 10px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+}
+
+.config-radios legend {
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--text-m);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.config-radios .config-head {
+  margin-bottom: 4px;
+}
+
+.config-radio-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+.settings .config-radios.changed {
+  border-left-color: var(--accent);
+}
+
+/* A radio button keeps 24 pixels clear of the next one (WCAG 2.5.8). */
+.config-radios .radio {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.config-names {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.preview-mark {
+  padding: 0 6px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+.ai-key {
+  margin-left: -12px;
+  padding: 6px 0 8px 10px;
+  border-left: 2px solid transparent;
+}
+
+.ai-key-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+  margin-bottom: 4px;
+}
+
+.ai-key-name {
+  font-weight: 700;
+}
+
+.ai-key-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.ai-key-controls input {
+  flex: 1 1 22ch;
+  min-width: 0;
+  max-width: 44ch;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 10px;
+}
+
+.ai-consents {
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.ai-consent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.ai-revoked:empty {
+  display: none;
+}
+
+.ai-today {
+  margin: 8px 0;
+  font-weight: 700;
+}
+
+.ai-usage-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ai-usage {
+  border-collapse: collapse;
+  font-size: var(--text-s);
+}
+
+.ai-usage caption {
+  padding: 0 0 4px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.ai-usage th,
+.ai-usage td {
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.ai-usage thead th {
+  color: var(--ink-soft);
+}
+
+.ai-usage tfoot td {
+  font-weight: 700;
+}

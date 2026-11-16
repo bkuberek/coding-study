@@ -5,6 +5,7 @@
  */
 
 export { abortAttempt } from "./abortDialog.ts";
+export { askAiConsent } from "./aiConsentDialog.ts";
 export { askNames, confirmAction, openSheet } from "./dialogs.ts";
 export { openDoneDialog } from "./doneDialog.ts";
 export { showPastFiles } from "./pastFiles.ts";

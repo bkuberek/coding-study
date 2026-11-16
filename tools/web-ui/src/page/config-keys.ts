@@ -2,6 +2,13 @@
 
 export type ConfigValue = boolean | number | string | readonly string[] | null;
 
+/** The section of the AI keys, which the Settings view draws in its AI section. */
+export const AI_SECTION = "ai";
+/** The keys that name a model, which Load models offers the ids of. */
+export const MODEL_KEYS: readonly string[] = ["ai.model", "ai.fast", "ai.strong"];
+/** The `<datalist>` that holds those ids. */
+export const MODEL_LIST_ID = "ai-model-ids";
+
 export interface ConfigKey {
   /** Dotted: `schedule.max_interval_days`. */
   readonly name: string;
@@ -19,6 +26,8 @@ export interface ConfigKey {
   readonly choices: readonly string[];
   readonly example: ConfigValue;
   readonly reserved: boolean;
+  /** A key of the AI preview, which the page marks as such. */
+  readonly preview?: boolean;
 }
 
 export interface ConfigDocument {

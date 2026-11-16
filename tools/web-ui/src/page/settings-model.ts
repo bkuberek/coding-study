@@ -26,8 +26,8 @@ export function changesText(count: number): string {
 
 /** One line per store that held a change, so a failure in one says which and the other its result;
  * in the order a Save writes them. */
-export function saveLines(config: StoreOutcome, languages: StoreOutcome, preferences: StoreOutcome): readonly SaveLine[] {
-  return [lineOf("config.toml", config), lineOf("languages", languages), lineOf("preferences", preferences)].flat();
+export function saveLines(config: StoreOutcome, credentials: StoreOutcome, languages: StoreOutcome, preferences: StoreOutcome): readonly SaveLine[] {
+  return [lineOf("config.toml", config), lineOf("credentials.toml", credentials), lineOf("languages", languages), lineOf("preferences", preferences)].flat();
 }
 
 function lineOf(store: string, outcome: StoreOutcome): readonly SaveLine[] {
