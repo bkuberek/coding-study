@@ -1,0 +1,40 @@
+{
+  "models": [
+    {
+      "name": "models/gemini-test-pro",
+      "baseModelId": "gemini-test-pro",
+      "version": "1",
+      "displayName": "Gemini Test Pro",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens"
+      ]
+    },
+    {
+      "name": "models/embedding-test",
+      "baseModelId": "embedding-test",
+      "version": "1",
+      "displayName": "Embedding Test",
+      "inputTokenLimit": 2048,
+      "outputTokenLimit": 1,
+      "supportedGenerationMethods": [
+        "embedContent"
+      ]
+    },
+    {
+      "name": "models/gemini-test-flash",
+      "baseModelId": "gemini-test-flash",
+      "version": "1",
+      "displayName": "Gemini Test Flash",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens"
+      ]
+    }
+  ],
+  "nextPageToken": "page 2/token"
+}

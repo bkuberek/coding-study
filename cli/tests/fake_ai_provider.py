@@ -6,11 +6,11 @@ server. A test or a child `cstudy` reaches it through `CSTUDY_AI_ENDPOINT`.
         provider.script(Provider.ANTHROPIC, Answer(json={"content": []}))
         environ = {"CSTUDY_AI_ENDPOINT": provider.endpoint}
 
-`script` queues answers for one route of a provider, each served once, in order. A request to a
-path that is no provider's, or to a route whose answers are used up, is answered 404 or 599 and
-kept in `unanswered`, so a test can assert that nothing went astray. Every request is kept in
-`received`, its path without the query, which is kept beside it. It imports the standard library
-only.
+`script` queues answers for one route of a provider, each served once, in order; a request's query
+string does not take part in the match. A request to a path that is no provider's, or to a route
+whose answers are used up, is answered 404 or 599 and kept in `unanswered`, so a test can assert
+that nothing went astray. Every request is kept in `received`, its path without the query, which
+is kept beside it. It imports the standard library only.
 """
 
 import json
@@ -84,6 +84,11 @@ class Received:
     def json(self) -> Any:
         return json.loads(self.body)
 
+    @property
+    def route_path(self) -> str:
+        """The path a script matches: `path`, which holds no query."""
+        return self.path
+
 
 class FakeAiProvider:
     def __init__(self, host: str = "127.0.0.1") -> None:
@@ -109,7 +114,7 @@ class FakeAiProvider:
 
     def requests_to(self, provider: Provider, route: Route, model_id: str = "") -> list[Received]:
         path = path_of(provider, route, model_id)
-        return [request for request in self.received if request.path == path]
+        return [request for request in self.received if request.route_path == path]
 
     def __enter__(self) -> Self:
         self._thread.start()
@@ -123,11 +128,11 @@ class FakeAiProvider:
 
     def answer(self, request: Received) -> Answer:
         self.received.append(request)
-        queue = self._routes.get((request.method, request.path))
+        queue = self._routes.get((request.method, request.route_path))
         if queue:
             return queue.popleft()
         self.unanswered.append(request)
-        if not _is_provider_path(request.path):
+        if not _is_provider_path(request.route_path):
             return Answer(404, json={"error": {"message": f"no route {request.path}"}})
         return Answer(UNSCRIPTED_STATUS, json={"error": {"message": "no scripted answer"}})
 

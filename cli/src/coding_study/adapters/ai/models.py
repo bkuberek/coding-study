@@ -7,6 +7,7 @@ class that takes the `JsonClient` and provides a `ProviderAdapter`; `ADAPTERS` n
 from collections.abc import Callable, Mapping
 from typing import Protocol
 
+from coding_study.adapters.ai import google, openrouter
 from coding_study.adapters.ai.anthropic import AnthropicModels
 from coding_study.adapters.ai.http_json import JsonClient
 from coding_study.adapters.ai.openai import OpenAiModels
@@ -33,7 +34,9 @@ type AdapterFactory = Callable[[JsonClient], ProviderAdapter]
 
 ADAPTERS: dict[Provider, AdapterFactory] = {
     Provider.ANTHROPIC: AnthropicModels,
+    Provider.GOOGLE: google.open_adapter,
     Provider.OPENAI: OpenAiModels,
+    Provider.OPENROUTER: openrouter.open_adapter,
 }
 """The provider adapters of this build."""
 

@@ -1,0 +1,15 @@
+{
+  "models": [
+    {
+      "name": "models/gemini-test-lite",
+      "baseModelId": "gemini-test-lite",
+      "version": "1",
+      "displayName": "Gemini Test Lite",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 8192,
+      "supportedGenerationMethods": [
+        "generateContent"
+      ]
+    }
+  ]
+}

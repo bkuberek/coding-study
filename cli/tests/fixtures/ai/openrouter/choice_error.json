@@ -1,0 +1,25 @@
+{
+  "id": "gen-test",
+  "object": "chat.completion",
+  "model": "test/model",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "error",
+      "message": {
+        "role": "assistant",
+        "content": ""
+      },
+      "error": {
+        "code": 502,
+        "message": "Upstream provider returned an invalid response"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1200,
+    "completion_tokens": 0,
+    "total_tokens": 1200,
+    "cost": 0.0004
+  }
+}

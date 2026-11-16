@@ -1,0 +1,11 @@
+{
+  "promptFeedback": {
+    "blockReason": "PROHIBITED_CONTENT"
+  },
+  "usageMetadata": {
+    "promptTokenCount": 1200,
+    "totalTokenCount": 1200
+  },
+  "modelVersion": "gemini-test-1",
+  "responseId": "resp-blocked"
+}

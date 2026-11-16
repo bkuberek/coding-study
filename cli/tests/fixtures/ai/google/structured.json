@@ -1,0 +1,25 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "{\"summary\": \"Retries are bounded.\", \"ok\": true}"
+          }
+        ]
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1200,
+    "cachedContentTokenCount": 800,
+    "candidatesTokenCount": 40,
+    "thoughtsTokenCount": 310,
+    "totalTokenCount": 1550
+  },
+  "modelVersion": "gemini-test-1",
+  "responseId": "resp-structured"
+}

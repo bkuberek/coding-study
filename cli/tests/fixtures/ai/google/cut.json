@@ -1,0 +1,24 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "{\"summary\": \"Retries are bou"
+          }
+        ]
+      },
+      "finishReason": "MAX_TOKENS",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1200,
+    "candidatesTokenCount": 20,
+    "thoughtsTokenCount": 480,
+    "totalTokenCount": 1700
+  },
+  "modelVersion": "gemini-test-1",
+  "responseId": "resp-cut"
+}

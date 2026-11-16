@@ -1,0 +1,20 @@
+{
+  "candidates": [
+    {
+      "finishReason": "SAFETY",
+      "index": 0,
+      "safetyRatings": [
+        {
+          "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+          "probability": "HIGH"
+        }
+      ]
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1200,
+    "totalTokenCount": 1200
+  },
+  "modelVersion": "gemini-test-1",
+  "responseId": "resp-safety"
+}

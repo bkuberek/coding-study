@@ -70,6 +70,8 @@ User code of a problem that runs natively runs as you and could read the file, a
 
 Each adapter sends the task's instructions as its API's system prompt and the rest as one user message, sets the task's output limit (`max_tokens`, `max_output_tokens`, `maxOutputTokens`), and leaves temperature and reasoning settings at the provider's defaults.
 
+A model list holds the ids that can answer a request, sorted: Google's is read page by page (1,000 models a page) and keeps the models that support `generateContent`, without the `models/` prefix. OpenRouter reports a failure that happens after it accepted the request as an `error` document in an answer with status 200, or in the choice; it is reported as the error its `code` names, with the tokens and cost the answer carries.
+
 | Reply | Mapped to |
 |-------|-----------|
 | Tokens | Input tokens, cached input included, and output tokens, reasoning or thinking tokens included: Anthropic's `usage.input_tokens` with its cache fields and `usage.output_tokens`; OpenAI's `usage.input_tokens` and `usage.output_tokens`; Google's `usageMetadata.promptTokenCount`, and `candidatesTokenCount` plus `thoughtsTokenCount`; OpenRouter's `usage.prompt_tokens` and `usage.completion_tokens` |

@@ -1,0 +1,28 @@
+{
+  "id": "gen-test",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "test/model",
+  "provider": "TestProvider",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "native_finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "{\"summary\": \"Retries are bounded.\", \"ok\": true}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1200,
+    "completion_tokens": 350,
+    "total_tokens": 1550,
+    "cost": 0.00231,
+    "is_byok": false,
+    "completion_tokens_details": {
+      "reasoning_tokens": 310
+    }
+  }
+}

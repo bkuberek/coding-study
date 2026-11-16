@@ -1,0 +1,24 @@
+{
+  "id": "gen-test",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "test/model",
+  "provider": "TestProvider",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "length",
+      "native_finish_reason": "length",
+      "message": {
+        "role": "assistant",
+        "content": "{\"summary\": \"Retries are bou"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1200,
+    "completion_tokens": 500,
+    "total_tokens": 1700,
+    "cost": 0.0031
+  }
+}
