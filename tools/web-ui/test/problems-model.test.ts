@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { activeFilters, canHide, checkedWords, columnLabel, counted, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
+import { canHide, checkedWords, choiceWords, columnLabel, counted, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
 
 const TWO_SUM = { slug: "two-sum", title: "Two Sum" };
 const LRU = { slug: "lru-cache", title: "LRU Cache" };
@@ -26,19 +26,8 @@ test("a search leaves out what neither holds", () => {
   assert.equal(matchesSearch(TWO_SUM, "lru"), false);
 });
 
-test("the active filters follow the route's order, without the search", () => {
-  assert.deepEqual(activeFilters({ search: "two", domain: "backend", lang: "go" }), [
-    { key: "lang", value: "go", words: "lang: go" },
-    { key: "domain", value: "backend", words: "domain: backend" },
-  ]);
-});
-
-test("a status filter reads in words", () => {
-  assert.deepEqual(activeFilters({ status: "in_progress" }), [{ key: "status", value: "in_progress", words: "status: in progress" }]);
-});
-
-test("no filter is no chip", () => {
-  assert.deepEqual(activeFilters({}), []);
+test("a status filter reads in words, any other as its value", () => {
+  assert.deepEqual([choiceWords("status", "in_progress"), choiceWords("domain", "backend")], ["in progress", "backend"]);
 });
 
 test("the count says how many of the whole list show", () => {
@@ -83,10 +72,6 @@ test("a column reads as words, with no underscore", () => {
 
 test("the Checked by column shows tests, tests + rubric or rubric", () => {
   assert.deepEqual([checkedWords(["tests"]), checkedWords(["tests", "rubric"]), checkedWords(["rubric"])], ["tests", "tests + rubric", "rubric"]);
-});
-
-test("the checked filter is a chip like the others", () => {
-  assert.deepEqual(activeFilters({ checked: "rubric" }), [{ key: "checked", value: "rubric", words: "checked: rubric" }]);
 });
 
 test("a count of one has no plural", () => {

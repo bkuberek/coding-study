@@ -1,5 +1,5 @@
-/* The search and filter row of the Problems and Guides views (problems.ts, guides.ts), and the
-   chips of what is active under it. */
+/* The search and filter row of the filter component (filter-bar.ts), which the Problems and
+   Guides views draw, and the chips of what is active under it, which the Mock view draws too. */
 
 /* The row: slim, each list reading its name until it holds a choice. */
 
@@ -185,6 +185,20 @@
 
 .filter-chip span {
   color: var(--ink-soft);
+}
+
+/* The profile chip is quiet: the ordinary chip's ink and border, its counts in the muted ink, and
+   never the warn or fail ink. A link to Settings follows it. */
+.profile-chip .chip-counts {
+  font-variant-numeric: tabular-nums;
+}
+
+.edit-profile {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 4px;
+  font-size: var(--text-s);
 }
 
 .filter-tally {

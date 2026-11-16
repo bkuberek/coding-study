@@ -132,3 +132,15 @@ test("the search is kept in the fragment's query", () => {
   assert.deepEqual(parseRoute("#/?search=two%20sum"), { view: "problems", filters: { search: "two sum" } });
   assert.equal(problemsHash({ search: "two sum" }), "#/?search=two+sum");
 });
+
+test("the widening is kept in the fragment's query as a comma-separated list in the order lang, role, domain", () => {
+  assert.deepEqual(parseRoute("#/?status=due&widen=domain,lang"), { view: "problems", filters: { widen: "lang,domain", status: "due" } });
+  assert.equal(problemsHash({ status: "due", widen: "lang,role" }), "#/?widen=lang,role&status=due");
+});
+
+test("a widening that names no dimension, or one twice, is dropped or written once; all is every dimension", () => {
+  assert.deepEqual(
+    [parseRoute("#/?widen=everything"), parseRoute("#/?widen=role,role"), parseRoute("#/?widen=all")],
+    [{ view: "problems", filters: {} }, { view: "problems", filters: { widen: "role" } }, { view: "problems", filters: { widen: "lang,role,domain" } }],
+  );
+});

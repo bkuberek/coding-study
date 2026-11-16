@@ -21,6 +21,20 @@ export interface Session {
   readonly patterns: readonly string[];
   /** The JDK `cstudy` selects in the server's environment, or null when none is found. */
   readonly selected_jdk: SelectedJdk | null;
+  /** The learner profile, the default filter of the Problems, Guides and Mock views. */
+  readonly profile: LearnerProfile;
+}
+
+/** `profile` of `GET /api/v1/session` (docs/specs/web-ui.md#session-and-preferences). */
+export interface LearnerProfile {
+  /** The workspace's languages: all six while the marker lists none. */
+  readonly languages: readonly string[];
+  readonly languages_chosen: boolean;
+  /** `default_lang` while it is one of the languages, else the first of them. */
+  readonly default_language: string;
+  /** The config's roles, never `general`, which always shows. */
+  readonly job_roles: readonly string[];
+  readonly domains: readonly string[];
 }
 
 export interface Preferences {
@@ -117,10 +131,19 @@ export interface NeedRow {
   readonly problem: string | null;
 }
 
+/** What the learner profile did to the rows of a list (docs/specs/cli.md#explicit-filters-and-widening):
+ * each dimension's values when it narrowed them, null when it did not. */
+export interface ProfileEffect {
+  readonly languages: readonly string[] | null;
+  readonly job_roles: readonly string[] | null;
+  readonly domains: readonly string[] | null;
+}
+
 export interface ProblemList {
   readonly today: string;
   readonly entries: readonly ListEntry[];
   readonly selected_jdk: SelectedJdk | null;
+  readonly profile: ProfileEffect & { readonly hidden: { readonly problems: number } };
   /** Under the Set filter: the set, and the slugs the catalog no longer has. */
   readonly set?: { readonly name: string; readonly missing: readonly string[] };
 }

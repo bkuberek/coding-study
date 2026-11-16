@@ -85,3 +85,21 @@ test("the guides view's command is cstudy learn with its level, status and searc
     ["cstudy learn", "cstudy learn --level core --status not_read --search 'hash map'"],
   );
 });
+
+test("the list command widens the profile in the place of widen among the flags, or with all", () => {
+  assert.deepEqual(
+    [listCommand({ widen: "lang" }), listCommand({ widen: "lang,role", track: "dsa", status: "due" }), listCommand({ widen: "lang,role,domain" }), listCommand({ widen: "role", search: "two" })],
+    ["cstudy list --widen lang", "cstudy list --track dsa --widen lang --widen role --status due", "cstudy list --widen all", "cstudy list --widen role --search two"],
+  );
+});
+
+test("a value a flag names replaces the profile there, so its widening is left out", () => {
+  assert.equal(listCommand({ widen: "lang,role", lang: "go" }), "cstudy list --widen role --lang go");
+});
+
+test("the next command takes no widening of the language: a pick starts in a workspace language", () => {
+  assert.deepEqual(
+    [nextCommand({ widen: "lang" }), nextCommand({ widen: "lang,role" }), nextCommand({ widen: "role,domain", track: "dsa" })],
+    ["cstudy next", "cstudy next --widen role", "cstudy next --track dsa --widen all"],
+  );
+});

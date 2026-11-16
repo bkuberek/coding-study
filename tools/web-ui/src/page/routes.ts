@@ -1,11 +1,14 @@
 /**
  * The page's views, addressed by the URL's fragment so the server serves only `/`
- * (docs/specs/web-ui.md#page). The Problems and Guides views keep their filters in the fragment's
- * query.
+ * (docs/specs/web-ui.md#page). The Problems and Guides views keep their filters, and the widening
+ * of the learner profile, in the fragment's query.
  */
 
-/** The filters of the Problems view, as `cstudy list` names them. */
-export const FILTER_KEYS = ["set", "track", "kind", "checked", "lang", "difficulty", "status", "content", "domain", "role", "scope", "pattern", "search"] as const;
+import { DIMENSIONS, type Dimension, LABEL_DIMENSIONS, widenedDimensions, widenText } from "./filter-model.ts";
+
+/** The filters of the Problems view, as `cstudy list` names them, `widen` (the dimensions of the
+ * learner profile the route drops, as `--widen`) before the languages. */
+export const FILTER_KEYS = ["set", "track", "kind", "checked", "widen", "lang", "difficulty", "status", "content", "domain", "role", "scope", "pattern", "search"] as const;
 export type FilterKey = (typeof FILTER_KEYS)[number];
 export type Filters = Partial<Record<FilterKey, string>>;
 
@@ -46,8 +49,8 @@ export function parseRoute(fragment: string): Route {
   const [path = "", query = ""] = hash.split("?", 2);
   const segments = path.split("/").filter((segment) => segment !== "");
   const [first, second, ...rest] = segments;
-  if (first === undefined) return { view: "problems", filters: filtersOf(new URLSearchParams(query), FILTER_KEYS) };
-  if (first === "guides" && second === undefined) return { view: "guides", filters: filtersOf(new URLSearchParams(query), GUIDE_FILTER_KEYS) };
+  if (first === undefined) return { view: "problems", filters: filtersOf(new URLSearchParams(query), FILTER_KEYS, DIMENSIONS) };
+  if (first === "guides" && second === undefined) return { view: "guides", filters: filtersOf(new URLSearchParams(query), GUIDE_FILTER_KEYS, LABEL_DIMENSIONS) };
   if (first === "problems" && second !== undefined && rest.length === 0) {
     return { view: "problem", slug: decodeURIComponent(second) };
   }
@@ -81,6 +84,8 @@ export const setHash = (name: string): string => `${SETS_HASH}/${encodeURICompon
 /** The Guides view, and a guide's and a path's: where `cstudy learn <guide> --open` and
  * `cstudy learn --path <path> --open` land. */
 export const GUIDES_HASH = "#/guides";
+/** Settings, where `edit profile` leads. */
+export const SETTINGS_HASH = "#/settings";
 /** The Guides view with its search and filters, each in the query while it holds a value. */
 export function guidesHash(filters: GuideFilters): string {
   const text = queryText(filters, GUIDE_FILTER_KEYS);
@@ -105,13 +110,16 @@ function queryText<Key extends string>(filters: Partial<Record<Key, string>>, ke
     const value = filters[key];
     if (value) query.set(key, value);
   }
-  return query.toString();
+  // The widening is a list, `widen=lang,role`: its commas stay readable.
+  return query.toString().replaceAll("%2C", ",");
 }
 
-function filtersOf<Key extends string>(query: URLSearchParams, keys: readonly Key[]): Partial<Record<Key, string>> {
+/** The filters a query holds, the widening in its canonical form and only of the dimensions the
+ * view `widens`. */
+function filtersOf<Key extends string>(query: URLSearchParams, keys: readonly Key[], widens: readonly Dimension[]): Partial<Record<Key, string>> {
   const filters: Partial<Record<Key, string>> = {};
   for (const key of keys) {
-    const value = query.get(key);
+    const value = key === "widen" ? widenText(widenedDimensions(query.get(key) ?? "", widens)) : query.get(key);
     if (value) filters[key] = value;
   }
   return filters;

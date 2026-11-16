@@ -9,6 +9,7 @@ import "./stats.css";
 import { confirmed } from "./confirmation.ts";
 import type { Cleanup, PageContext } from "./context.ts";
 import { command, h } from "./dom.ts";
+import { ALL_PROBLEMS } from "./filter-model.ts";
 import { solveTime } from "./format.ts";
 import { problemHash } from "./routes.ts";
 import { confirmAction, openStartDialog } from "./sheets.ts";
@@ -154,7 +155,7 @@ function summary(stats: StatsDocument): HTMLElement {
 function reviews(context: PageContext): HTMLElement {
   const region = h("div", {}, loading());
   context.api
-    .get<ProblemList>("/api/v1/problems")
+    .get<ProblemList>(ALL_PROBLEMS)
     .then((list) => {
       const ahead = reviewsAhead(list.entries, list.today);
       region.replaceChildren(

@@ -8,6 +8,7 @@ import "./health.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, fixHint, h } from "../dom.ts";
+import { ALL_PROBLEMS } from "../filter-model.ts";
 import { checkBadge } from "../format.ts";
 import { JobPanel } from "../jobs.ts";
 import { loading, showFailure } from "../states.ts";
@@ -93,7 +94,7 @@ function yourProblems(context: PageContext, job: JobPanel): HTMLElement {
     void job.start(body, ["cstudy verify", slug, ...chosen.map((name) => `--${name}`)].join(" "));
   };
   void context.api
-    .get<ProblemList>("/api/v1/problems")
+    .get<ProblemList>(ALL_PROBLEMS)
     .then((problems) => {
       const own = problems.entries.filter((entry) => entry.source === "workspace");
       list.replaceChildren(

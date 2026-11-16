@@ -10,6 +10,7 @@ import type { Finishing } from "./attemptEnding.ts";
 import { quoted, startCommand } from "./commands.ts";
 import type { PageContext } from "./context.ts";
 import { h, rendered } from "./dom.ts";
+import { ALL_PROBLEMS } from "./filter-model.ts";
 import { solveTime } from "./format.ts";
 import { openLazily } from "./lazy.ts";
 import { solutionButton } from "./solution.ts";
@@ -118,7 +119,7 @@ function ratingText(done: DoneDocument): string {
 /** Refreshes the top bar's menu of attempts in progress after a start or a finish. */
 export function refreshAttemptsMenu(context: PageContext): void {
   void context.api
-    .get<ProblemList>("/api/v1/problems")
+    .get<ProblemList>(ALL_PROBLEMS)
     .then((list) => context.shell.setAttempts(list.entries))
     .catch(() => {});
 }
