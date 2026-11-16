@@ -16,7 +16,7 @@ Three ideas follow, and this guide takes them in order:
 
 ### Cutting text into tokens
 
-One common way to build a vocabulary is **byte pair encoding** (BPE), adapted to text by Sennrich, Haddow and Birch in 2016 from a compression method. Start with single characters, and an end-of-word marker so that a piece at the end of a word stays distinct from the same letters inside one. Count every pair of neighbouring symbols across a corpus, weighting each word by how often it occurs. Merge the most frequent pair into a new symbol, everywhere. Repeat. Each merge adds one symbol to the vocabulary, so the number of merges decides its size. Frequent words end up as a single symbol; rare ones stay as several.
+One common way to build a vocabulary is **byte pair encoding** (BPE), adapted to text by Sennrich, Haddow and Birch in 2016 from a compression method. Start with single characters, and an end-of-word marker so that a piece at the end of a word stays distinct from the same letters inside one. Count every pair of neighboring symbols across a corpus, weighting each word by how often it occurs. Merge the most frequent pair into a new symbol, everywhere. Repeat. Each merge adds one symbol to the vocabulary, so the number of merges decides its size. Frequent words end up as a single symbol; rare ones stay as several.
 
 ```python examples/bpe_merges.py
 """Byte pair encoding on a toy corpus: learn merges from word counts, then split words with them."""

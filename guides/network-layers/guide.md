@@ -338,7 +338,7 @@ Encapsulation itself is cheap: building or removing a header is constant work pe
 
 ## Practice
 
-This guide has no problem of its own. Each later guide of the path practises one layer:
+This guide has no problem of its own. Each later guide of the path practices one layer:
 
 - [DNS: names, resolution and caching](../dns-resolution/guide.md): an application protocol, with `dns-resolver-sim`.
 - [Reliable transport](../reliable-transport/guide.md) and [Congestion control](../congestion-control/guide.md): building TCP's promise on top of IP's, with `stream-reassembler` and `reliable-transport-sim`.

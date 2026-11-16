@@ -206,7 +206,7 @@ The drawing orders the levers by cost: a cache hit costs a lookup, routing costs
 
 ## When to use it
 
-- **Prompt caching** almost always: it needs no change of behaviour and mostly needs a stable layout; depending on the provider it may also need to be enabled, and writing to the cache may cost more than an ordinary read. Keep the instructions, tool definitions and long shared documents identical and first; keep timestamps, user details and the question last.
+- **Prompt caching** almost always: it needs no change of behavior and mostly needs a stable layout; depending on the provider it may also need to be enabled, and writing to the cache may cost more than an ordinary read. Keep the instructions, tool definitions and long shared documents identical and first; keep timestamps, user details and the question last.
 - **Response caching** for repeated, deterministic requests: classification of the same input, the same question on a help page, embeddings of the same text. Never across users when answers depend on who asks.
 - **Semantic caching** for high-volume, low-stakes questions that recur in many wordings, with a threshold measured on real traffic and a way to invalidate answers when the facts change. Avoid it where a near miss is costly.
 - **Routing** when requests vary in difficulty: a small model for the easy majority, a large one for the rest. Decide with a validator where you can check answers, with a trained router where you cannot.
@@ -230,7 +230,7 @@ For a request with `n` prompt tokens, of which `p` are a cached prefix, and `m` 
 | Step | Cost |
 |------|------|
 | Exact cache lookup | O(n) to hash the canonical request, then O(1) |
-| Semantic cache lookup | One embedding call, then a nearest-neighbour search over the cached questions |
+| Semantic cache lookup | One embedding call, then a nearest-neighbor search over the cached questions |
 | Prompt with a cached prefix | Reading `n - p` new tokens instead of `n` |
 | Writing the answer | `m` sequential steps; an output limit caps `m` |
 | Cascade | The small model always, plus the large model for the share `e` that escalates: `small + e · large` per request |
@@ -244,7 +244,7 @@ A cascade beats the large model alone when `small + e · large < large`, that is
 - **What a prompt cache keeps.** Kwon and colleagues describe the key-value cache of each request as large and growing with the request, and built a serving system that can share it within and across requests. Gim and colleagues' Prompt Cache precomputes and stores the attention states of frequently reused text segments, such as system messages, templates and documents, and reuses them when those segments reappear, keeping track of their positions; they report time-to-first-token improvements from 8 times on GPUs to 60 times on CPUs, with the same output accuracy.
 - **Stable tool lists.** The Model Context Protocol's specification asks servers to return tools in a deterministic order, noting that this improves prompt cache hit rates when tool definitions are included in the model's context.
 - **Cascades and routers.** Chen, Zaharia and Zou describe three ways to cut inference cost: adapting the prompt, approximating a large model, and cascading from cheaper to more expensive models; they report a learned cascade matching the best individual model at up to 98% lower cost on their benchmarks. Ong and colleagues train routers that choose between a stronger and a weaker model from human preference data, reporting cost reductions of more than half in some cases without loss of response quality, and routers that keep working when the two models are swapped for others.
-- **Cost is an attack surface.** The 2026 OWASP Top 10 for LLM Applications ranks Unbounded Consumption sixth: attackers can trigger expensive computation at little cost to themselves, up to a denial of wallet. Its advice includes limits in tokens per minute and per day as well as requests, estimating tokens before inference to reject oversized requests, and hard spending caps that stop inference rather than alert. Its entry on vector and embedding weaknesses describes semantic cache poisoning, where content crafted to land just above a similarity threshold is served for every similar question, and its entry on sensitive information disclosure lists cache-hit behaviour among the signals that can leak information.
+- **Cost is an attack surface.** The 2026 OWASP Top 10 for LLM Applications ranks Unbounded Consumption sixth: attackers can trigger expensive computation at little cost to themselves, up to a denial of wallet. Its advice includes limits in tokens per minute and per day as well as requests, estimating tokens before inference to reject oversized requests, and hard spending caps that stop inference rather than alert. Its entry on vector and embedding weaknesses describes semantic cache poisoning, where content crafted to land just above a similarity threshold is served for every similar question, and its entry on sensitive information disclosure lists cache-hit behavior among the signals that can leak information.
 
 ## Practice
 

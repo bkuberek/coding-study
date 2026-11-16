@@ -2,7 +2,7 @@
 
 ## The idea
 
-The [previous guide](../declarative-desired-state/guide.md) compared and changed each resource in one go. That is fine for a file on a server. It is not fine for a network, a database or a disk in a data centre, where a change can take minutes, cost money, cut off users or destroy data. Before anything happens, someone wants to see exactly what will happen.
+The [previous guide](../declarative-desired-state/guide.md) compared and changed each resource in one go. That is fine for a file on a server. It is not fine for a network, a database or a disk in a data center, where a change can take minutes, cost money, cut off users or destroy data. Before anything happens, someone wants to see exactly what will happen.
 
 So tools that manage such infrastructure split the work in two.
 

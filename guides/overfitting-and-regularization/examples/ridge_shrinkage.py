@@ -22,16 +22,16 @@ def example() -> tuple[float, float, float]:
 train = [example() for _ in range(10)]
 test = [example() for _ in range(1000)]
 
-# Centre on the training means, so that the bias is the mean label and is not penalized.
+# Center on the training means, so that the bias is the mean label and is not penalized.
 means = [sum(row[j] for row in train) / len(train) for j in range(3)]
 
 
-def centred(rows):
+def centered(rows):
     return [tuple(value - mean for value, mean in zip(row, means)) for row in rows]
 
 
 def fit(strength: float) -> tuple[float, float]:
-    rows = centred(train)
+    rows = centered(train)
     n = len(train)
     a = sum(x1 * x1 for x1, _, _ in rows) + n * strength
     b = sum(x1 * x2 for x1, x2, _ in rows)
@@ -43,7 +43,7 @@ def fit(strength: float) -> tuple[float, float]:
 
 
 def mse(rows, w1: float, w2: float) -> float:
-    return sum((w1 * x1 + w2 * x2 - y) ** 2 for x1, x2, y in centred(rows)) / len(rows)
+    return sum((w1 * x1 + w2 * x2 - y) ** 2 for x1, x2, y in centered(rows)) / len(rows)
 
 
 print("strength      w1      w2   training MSE   test MSE")

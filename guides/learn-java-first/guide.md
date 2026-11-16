@@ -2,7 +2,7 @@
 
 ## The idea
 
-cstudy problems assume you can already write a small function in the language you practise: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practise in Java and are not there yet. It lists what to learn first and where to learn it for free, from Java's own documentation.
+cstudy problems assume you can already write a small function in the language you practice: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practice in Java and are not there yet. It lists what to learn first and where to learn it for free, from Java's own documentation.
 
 **What to learn before your first problem:**
 
@@ -65,7 +65,7 @@ ok    java 21.0.2 (JAVA_HOME)
 
 Look for the `java` row. `ok` shows the version and how it was selected; `FAIL` means no JDK, or one outside 21 to 26, and a `fix:` hint follows. A `WARN` on `gradle` is expected and harmless: each workspace has its own Gradle wrapper, which downloads Gradle on first use, and a system Gradle is only needed to regenerate it. Inside a workspace, `cstudy doctor --fix` runs the first Gradle build.
 
-Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practising in Java.
+Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practicing in Java.
 
 ## When to use it
 
@@ -111,6 +111,6 @@ Start with [your first problem](../your-first-problem/guide.md), which walks thr
 - [The Java Tutorials: arrays](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/arrays.html): fixed length, and indexes from 0.
 - [Java Language Specification, chapter 4](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html): the range of `int`, and silent overflow.
 - [Java Language Specification, chapter 15](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html): `==` on references and `equals` for strings (§15.21.3).
-- [`ArrayList`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html), [`HashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html), [`Arrays`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Arrays.html) and [`Object.toString()`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#toString()): the costs and behaviour above, in Java 21's API documentation.
+- [`ArrayList`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html), [`HashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html), [`Arrays`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Arrays.html) and [`Object.toString()`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#toString()): the costs and behavior above, in Java 21's API documentation.
 - [`java.util`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/package-summary.html) and [`UnsupportedOperationException`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/UnsupportedOperationException.html): the package the stub imports, and the exception it throws.
 - [Install the language toolchains: JDK](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md#jdk): cstudy's install steps.

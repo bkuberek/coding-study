@@ -10,7 +10,7 @@ A secret has a life, and each stage has its rule:
 
 | Stage | Rule |
 |-------|------|
-| Created | From a cryptographically strong source. Python's `secrets` module exists for this, and its documentation says to prefer it to `random`, which is designed for modelling and simulation; as of 2015, it says, 32 bytes of randomness are believed sufficient for typical tokens |
+| Created | From a cryptographically strong source. Python's `secrets` module exists for this, and its documentation says to prefer it to `random`, which is designed for modeling and simulation; as of 2015, it says, 32 bytes of randomness are believed sufficient for typical tokens |
 | Stored | Outside the source code, in a secret store or a file mounted for the process. The cheat sheet warns that environment variables are generally accessible to all processes and may end up in logs or system dumps, and recommends them only when nothing else is possible |
 | Delivered and used | Only to the process that needs it, with the least privilege that does the job |
 | Rotated | Regularly, so that a stolen copy works only for a short time; better still, short-lived secrets issued on demand |

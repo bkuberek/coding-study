@@ -199,7 +199,7 @@ In Python specifically, the documentation of `threading` notes that a global int
 
 ## Practice
 
-No problem practises this guide alone: it is the vocabulary of the guides after it. The jobs of `cstudy start cpu-scheduler-sim`, which the guide on CPU scheduling links, are processes that only compute; the workers of the problems linked from the guide on locks are threads that share one object.
+No problem practices this guide alone: it is the vocabulary of the guides after it. The jobs of `cstudy start cpu-scheduler-sim`, which the guide on CPU scheduling links, are processes that only compute; the workers of the problems linked from the guide on locks are threads that share one object.
 
 ## Further reading
 

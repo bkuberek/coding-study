@@ -7,7 +7,7 @@
 | Word | Meaning | For a parcel |
 |------|---------|--------------|
 | **Example** | One row of the data | One parcel |
-| **Feature** | A number or category that describes the example and is known when the model must answer | Distance in kilometres, weight, the day it was sent |
+| **Feature** | A number or category that describes the example and is known when the model must answer | Distance in kilometers, weight, the day it was sent |
 | **Label** | The answer the model should learn to give | Arrived late: yes or no; or the delivery time in minutes |
 | **Model** | A function from features to a **prediction**, with numbers inside it that learning sets | A weighted sum of the features, turned into a probability |
 | **Training** | Adjusting the model's numbers so that its predictions match the labels of known examples | |

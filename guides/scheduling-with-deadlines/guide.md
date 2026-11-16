@@ -376,7 +376,7 @@ After the last job, promises 1 and 2 say that the plan is a largest set of jobs 
 
 ## Practice
 
-- `cstudy start task-scheduler`: the fewest time slots to run labelled tasks when copies of one label need a cooldown between them.
+- `cstudy start task-scheduler`: the fewest time slots to run labeled tasks when copies of one label need a cooldown between them.
 - `cstudy start maximize-capital`: the most capital after at most `k` projects, each needing a minimum capital before it can start.
 
 ## Further reading

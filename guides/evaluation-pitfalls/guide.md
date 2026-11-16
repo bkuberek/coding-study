@@ -4,7 +4,7 @@
 
 A model's score is a measurement, and it answers a narrower question than the one people ask of it. People ask "how well will this model do when we use it?" The score answers "how well did it do on these particular examples, counted this particular way?" Every gap between the two questions is a way to be fooled. They fall into four groups:
 
-| Group | What goes wrong | Defence |
+| Group | What goes wrong | Defense |
 |-------|-----------------|---------|
 | **The data** | The test examples do not look like the cases the model will meet: information leaked across the split, or the world changed | Split the way the model will be used; test on recent data; watch the inputs after release |
 | **The choice** | The test set was used to choose, so the winner's score is too good | Choose on validation data or by cross-validation; touch the test set once; nest the choice |
@@ -156,7 +156,7 @@ Before trusting a score, ask:
 - **The average that hides a group.** A model can improve on average while getting worse for one region, one language or one kind of customer; and a calibration check can pass overall while every group is off in opposite directions.
 - **Small groups read as large.** A group of twenty cases can show a large error by chance; report its size and its interval with it.
 - **A metric that is not the goal.** Accuracy when the costs of the two errors differ, AUC when the model will run at one threshold, a validation loss when users see rankings.
-- **Last year's test set for next year's model.** Behaviour drifts, and a test set frozen in the past measures the past.
+- **Last year's test set for next year's model.** Behavior drifts, and a test set frozen in the past measures the past.
 
 ## Complexity
 

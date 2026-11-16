@@ -408,7 +408,7 @@ On random input a push is much cheaper than its worst case: Rust's `BinaryHeap` 
 
 - `cstudy start last-stone-weight`: repeatedly combine the two heaviest stones of a pile until at most one is left.
 - `cstudy start single-threaded-cpu`: report the order in which a one-core CPU, following a fixed policy, runs tasks that arrive over time.
-- `cstudy start task-scheduler`: find the fewest time slots to run labelled tasks when equal labels need a cooldown between them.
+- `cstudy start task-scheduler`: find the fewest time slots to run labeled tasks when equal labels need a cooldown between them.
 
 ## Further reading
 

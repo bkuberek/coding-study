@@ -308,7 +308,7 @@ Checkpoints trade normal work against recovery time. PostgreSQL's documentation 
 
 ## Practice
 
-- `cstudy start transactional-kv-store`: a key-value store with transactions that roll back, nest, commit into their parent and take snapshots on commit; it practises keeping what is needed to undo a transaction's changes in memory.
+- `cstudy start transactional-kv-store`: a key-value store with transactions that roll back, nest, commit into their parent and take snapshots on commit; it practices keeping what is needed to undo a transaction's changes in memory.
 
 ## Further reading
 

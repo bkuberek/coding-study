@@ -52,7 +52,7 @@ def label_recursively() -> dict[str, int]:
                 visit(nearby, number)
 
     for room in doorways:
-        if room not in label:  # an unlabelled room starts a new component
+        if room not in label:  # an unlabeled room starts a new component
             visit(room, len(set(label.values())))
     return label
 
@@ -93,56 +93,56 @@ can you walk from shop to sculpture? True
 can you walk from shop to terrace? False
 ```
 
-The first search starts at `atrium` and reaches `gallery`, `sculpture` and `shop`: component 0. `cafe` is still unlabelled, so it starts component 1 with `terrace`, and `vault`, which has no doorway, is a component of its own. After the labelling, "can I walk from `shop` to `sculpture`?" is a comparison of two labels, with no search at all.
+The first search starts at `atrium` and reaches `gallery`, `sculpture` and `shop`: component 0. `cafe` is still unlabeled, so it starts component 1 with `terrace`, and `vault`, which has no doorway, is a component of its own. After the labeling, "can I walk from `shop` to `sculpture`?" is a comparison of two labels, with no search at all.
 
 The version with its own stack marks a room when it pushes it, as BFS does, so no room is pushed twice. It visits the rooms in a different order from the recursive one, which does not matter here: a component is the same set whichever order you collect it in.
 
-### Three colours find a cycle
+### Three colors find a cycle
 
 In a directed graph, a visited set is not enough to find a cycle. Take a project's modules and what each one imports. `app` imports `auth` and `ui`, and `ui` also imports `auth`. A search that reaches `auth` a second time, from `ui`, has not found a cycle: `auth` was reached by two routes, and no module imports itself.
 
-DFS tells the two cases apart with three colours:
+DFS tells the two cases apart with three colors:
 
 - **white**: not reached yet;
-- **grey**: entered and not finished, so it is on the current path;
+- **gray**: entered and not finished, so it is on the current path;
 - **black**: finished, along with everything reachable from it.
 
-An edge to a grey node goes back to a node on the current path, so following it closes a loop: a **cycle**. An edge to a black node goes to work that is already complete: a shared dependency, not a cycle.
+An edge to a gray node goes back to a node on the current path, so following it closes a loop: a **cycle**. An edge to a black node goes to work that is already complete: a shared dependency, not a cycle.
 
 ```python examples/import_cycles.py
-"""Three colours tell a module imported twice from a circular import.
+"""Three colors tell a module imported twice from a circular import.
 
-white: not reached yet. grey: entered and not finished, so it is on the current path.
-black: finished, with everything it imports. An edge to a grey module closes a cycle."""
+white: not reached yet. gray: entered and not finished, so it is on the current path.
+black: finished, with everything it imports. An edge to a gray module closes a cycle."""
 
-WHITE, GREY, BLACK = "white", "grey", "black"
+WHITE, GRAY, BLACK = "white", "gray", "black"
 
 
 def find_cycle(imports: dict[str, list[str]]) -> list[str] | None:
-    colour = dict.fromkeys(imports, WHITE)
+    color = dict.fromkeys(imports, WHITE)
     path: list[str] = []
 
     def visit(module: str) -> list[str] | None:
-        colour[module] = GREY
+        color[module] = GRAY
         path.append(module)
         print(f"  enter {module}")
         for imported in imports[module]:
-            if colour[imported] == GREY:
-                print(f"  {module} imports {imported}, which is grey: a cycle")
+            if color[imported] == GRAY:
+                print(f"  {module} imports {imported}, which is gray: a cycle")
                 return [*path[path.index(imported) :], imported]
-            if colour[imported] == BLACK:
+            if color[imported] == BLACK:
                 print(f"  {module} imports {imported}, which is black: already finished")
                 continue
             cycle = visit(imported)
             if cycle:
                 return cycle
-        colour[module] = BLACK
+        color[module] = BLACK
         path.pop()
         print(f"  leave {module}")
         return None
 
     for module in imports:
-        if colour[module] == WHITE:
+        if color[module] == WHITE:
             cycle = visit(module)
             if cycle:
                 return cycle
@@ -188,32 +188,32 @@ second project:
   enter auth
   enter db
   enter config
-  config imports db, which is grey: a cycle
+  config imports db, which is gray: a cycle
 cycle: ['db', 'config', 'db']
 ```
 
-In the first project, the search goes `app`, `auth`, `db`, `config`, finishes them on the way back, then enters `ui`. When `ui` looks at `auth`, the drawing below is the state of the search: `app` and `ui` are grey, on the current path; `auth`, `db` and `config` are black; `theme` is still white.
+In the first project, the search goes `app`, `auth`, `db`, `config`, finishes them on the way back, then enters `ui`. When `ui` looks at `auth`, the drawing below is the state of the search: `app` and `ui` are gray, on the current path; `auth`, `db` and `config` are black; `theme` is still white.
 
 ```mermaid
 flowchart TD
-  accTitle: The colours when ui looks at auth
-  accDescr: App is grey and imports auth and ui. Auth, db and config are black, finished earlier in that order of depth. Ui is grey, on the current path, and imports theme, still white, and auth, already black, which is not a cycle.
-  app["app: grey"] --> auth["auth: black"]
-  app --> ui["ui: grey"]
+  accTitle: The colors when ui looks at auth
+  accDescr: App is gray and imports auth and ui. Auth, db and config are black, finished earlier in that order of depth. Ui is gray, on the current path, and imports theme, still white, and auth, already black, which is not a cycle.
+  app["app: gray"] --> auth["auth: black"]
+  app --> ui["ui: gray"]
   auth --> db["db: black"]
   ui --> theme["theme: white"]
   db --> config["config: black"]
   ui -- "already black" --> auth
 ```
 
-<!-- text-of-mermaid sha256:fc462339ce5b9bb7d62bc8104426538b26d09056282a82b00624640dd25e8f6f -->
+<!-- text-of-mermaid sha256:4be8e4abd4fc4fd9a7b3f19bc5ecfe70b2e216b8210855e083d3482dc1d57a23 -->
 ```text
 ┌─────────────┐
-│  app: grey  │
+│  app: gray  │
 └─────────────┘
        ▼─────────────────────────────▼
 ┌─────────────┐               ┌────────────┐
-│ auth: black │◄already─black─┤  ui: grey  │
+│ auth: black │◄already─black─┤  ui: gray  │
 └──────┬──────┘               └──────┬─────┘
        ▼                             ▼
 ┌─────────────┐               ┌────────────┐
@@ -225,31 +225,31 @@ flowchart TD
 └─────────────┘
 ```
 
-`auth` is black, so the search moves on. In the second project, `config` imports `db` as well, and the search meets it while `db` is still grey:
+`auth` is black, so the search moves on. In the second project, `config` imports `db` as well, and the search meets it while `db` is still gray:
 
 ```mermaid
 flowchart LR
   accTitle: The edge that closes a cycle
-  accDescr: The current path is app, auth, db, config, all grey. Config imports db, drawn a second time at the end of the path because it is the same db, still grey, so the edge from config back to db closes the cycle db, config, db.
-  app["app: grey"] --> auth["auth: grey"] --> db["db: grey"] --> config["config: grey"]
-  config --> again["db again: grey, a cycle"]
+  accDescr: The current path is app, auth, db, config, all gray. Config imports db, drawn a second time at the end of the path because it is the same db, still gray, so the edge from config back to db closes the cycle db, config, db.
+  app["app: gray"] --> auth["auth: gray"] --> db["db: gray"] --> config["config: gray"]
+  config --> again["db again: gray, a cycle"]
 ```
 
-<!-- text-of-mermaid sha256:975af65cd8f5d4c9a525153929717a91cada7093aa989a9e4ef9858c56ac00ec -->
+<!-- text-of-mermaid sha256:a1c4927a969c4494f707956bda50ba8d2355d34ed11f05acf12ede60469b1b6f -->
 ```text
 ┌─────────┐    ┌──────────┐    ┌────────┐    ┌────────────┐    ┌───────────────────────┐
-│app: grey├───►│auth: grey├───►│db: grey├───►│config: grey├───►│db again: grey, a cycle│
+│app: gray├───►│auth: gray├───►│db: gray├───►│config: gray├───►│db again: gray, a cycle│
 └─────────┘    └──────────┘    └────────┘    └────────────┘    └───────────────────────┘
 ```
 
-The drawing shows `db` twice, but it is one module: the last box is where `config`'s import leads, back to the `db` that is still grey on the path. The current path, kept in `path`, is `app`, `auth`, `db`, `config`; the part from `db` to the end, plus `db` again, is the cycle the program reports.
+The drawing shows `db` twice, but it is one module: the last box is where `config`'s import leads, back to the `db` that is still gray on the path. The current path, kept in `path`, is `app`, `auth`, `db`, `config`; the part from `db` to the end, plus `db` again, is the cycle the program reports.
 
 Why this is right in both directions:
 
-- **A grey hit is a real cycle.** The grey nodes are exactly the calls that have not returned, which form the current path, each one reached from the one before. An edge from the current node to a grey node leads back to an earlier node of that path, which then leads forward to the current node again.
-- **Every cycle gets a grey hit.** Let `w` be the first node of a cycle that the search enters. At that moment the rest of the cycle is white. A node is only finished after trying all of its edges and visiting every white node they lead to, so the search walks around the cycle from `w` before `w` finishes, and the node just before `w` on the cycle is entered while `w` is grey. Its edge to `w` is the grey hit.
+- **A gray hit is a real cycle.** The gray nodes are exactly the calls that have not returned, which form the current path, each one reached from the one before. An edge from the current node to a gray node leads back to an earlier node of that path, which then leads forward to the current node again.
+- **Every cycle gets a gray hit.** Let `w` be the first node of a cycle that the search enters. At that moment the rest of the cycle is white. A node is only finished after trying all of its edges and visiting every white node they lead to, so the search walks around the cycle from `w` before `w` finishes, and the node just before `w` on the cycle is entered while `w` is gray. Its edge to `w` is the gray hit.
 
-An undirected graph needs no third colour. Every edge works both ways, so the node you just came from always looks visited; skip that one, the **parent**, and any other visited neighbor closes a cycle. If the input can hold the same edge twice, skip the parent once, not every edge to it: a doubled edge is itself a cycle of two edges.
+An undirected graph needs no third color. Every edge works both ways, so the node you just came from always looks visited; skip that one, the **parent**, and any other visited neighbor closes a cycle. If the input can hold the same edge twice, skip the parent once, not every edge to it: a doubled edge is itself a cycle of two edges.
 
 ### Deep graphs and the call stack
 
@@ -357,8 +357,8 @@ Raising Python's limit is not a fix to rely on: the documentation warns that a t
 
 ## When to use it
 
-- **Reachability and connected components**: which nodes hang together, how big each piece is, labelling regions of a grid. BFS does the same job; DFS is usually shorter to write.
-- **Cycles**: three colours in a directed graph, the parent check in an undirected one.
+- **Reachability and connected components**: which nodes hang together, how big each piece is, labeling regions of a grid. BFS does the same job; DFS is usually shorter to write.
+- **Cycles**: three colors in a directed graph, the parent check in an undirected one.
 - **Order of dependencies**: the order in which DFS finishes nodes gives a [topological order](../topological-order/guide.md).
 - **Exploring every possibility**: a search that tries a choice, recurses, and undoes the choice on the way back is a DFS over the tree of choices, called backtracking.
 - **Structure**: the edges DFS uses to discover nodes form a tree, and the edges it does not use say a lot about the graph. Bridges, articulation points and strongly connected components all come from DFS (see the expert notes).
@@ -369,7 +369,7 @@ Use BFS instead for fewest steps, or when the graph is deep and narrow and you w
 
 - **Recursing on a deep graph in Python.** At the default limit, a path or a winding region of a few thousand nodes is enough to fail. Use an explicit stack, or know that the input is shallow.
 - **Marking late.** In the recursive form, mark a node when you enter it, before looping over its neighbors. Mark it after, and a cycle sends the search round forever.
-- **One visited set for cycles in a directed graph.** It reports a cycle every time two routes meet at a shared node, as `auth` would have been. Use grey and black.
+- **One visited set for cycles in a directed graph.** It reports a cycle every time two routes meet at a shared node, as `auth` would have been. Use gray and black.
 - **Forgetting nodes no search started from.** A single DFS from one node only covers that node's component. Loop over every node and start a search from each one still unvisited.
 - **Expecting the stack version to visit in the same order.** Popping the last pushed neighbor visits a node's neighbors in reverse, and marking on push lets a node be claimed by whoever pushed it first. Both are fine for reachability; neither gives the entry and finish times of the recursive version. When those matter, keep on the stack, for each node, where it is in its own neighbor list, and finish a node when that list runs out.
 - **Writing marks into the input.** Overwriting a grid cell to mark it visited saves a set, but changes the caller's data. Do it only when the problem allows it.
@@ -381,7 +381,7 @@ With V nodes and E edges stored as adjacency lists:
 | Resource | Cost | Why |
 |----------|------|-----|
 | Time | O(V + E) | Each node is entered once; each of its edges is looked at once, or twice for an undirected edge |
-| Memory | O(V) | The marks or colours, plus the stack, whose depth is the length of the current path: up to V on a graph that is one long path |
+| Memory | O(V) | The marks or colors, plus the stack, whose depth is the length of the current path: up to V on a graph that is one long path |
 | Components | O(V + E) | The outer loop over nodes adds O(V); each node and edge is still handled once across all the searches |
 
 A grid of R rows and C columns has R · C nodes and O(R · C) edges, so a search over it is O(R · C), and the stack can reach R · C entries deep when the open cells wind in a single path.
@@ -389,8 +389,8 @@ A grid of R rows and C columns has R · C nodes and O(R · C) edges, so a search
 ## Expert notes
 
 - **Tarjan, 1972.** Robert Tarjan's paper "Depth-First Search and Linear Graph Algorithms" illustrates the value of depth-first search with two examples: an improved algorithm for the strongly connected components of a directed graph, and one for the biconnected components of an undirected graph. The paper bounds the time and space of both by k₁V + k₂E + k₃ for some constants, that is, linear in the size of the graph.
-- **Edge types.** Run DFS on a directed graph and every edge falls in one of four kinds: a **tree edge** discovers a white node; a **back edge** reaches a grey node, an ancestor on the current path; a **forward edge** reaches a black descendant; a **cross edge** reaches a black node in another branch. Only back edges mean cycles. In an undirected graph there are only tree edges and edges back to an ancestor: of the two ends of an edge, say `u` is entered first; the edge itself leads from `u` to `v`, so `v` is entered and finished while `u` is still grey, as a descendant of `u`. That is why the parent check is enough there.
-- **Iterative DFS with finish times.** Keep on the stack pairs of a node and an iterator over its neighbors. Look at the top: if its iterator yields a white neighbor, colour it grey and push it with a fresh iterator; when the iterator is exhausted, colour the node black, record its finish, and pop it. This is exactly the recursive order, with the path on the heap.
+- **Edge types.** Run DFS on a directed graph and every edge falls in one of four kinds: a **tree edge** discovers a white node; a **back edge** reaches a gray node, an ancestor on the current path; a **forward edge** reaches a black descendant; a **cross edge** reaches a black node in another branch. Only back edges mean cycles. In an undirected graph there are only tree edges and edges back to an ancestor: of the two ends of an edge, say `u` is entered first; the edge itself leads from `u` to `v`, so `v` is entered and finished while `u` is still gray, as a descendant of `u`. That is why the parent check is enough there.
+- **Iterative DFS with finish times.** Keep on the stack pairs of a node and an iterator over its neighbors. Look at the top: if its iterator yields a white neighbor, color it gray and push it with a fresh iterator; when the iterator is exhausted, color the node black, record its finish, and pop it. This is exactly the recursive order, with the path on the heap.
 - **Python.** `sys.setrecursionlimit` sets the maximum depth of the interpreter stack, says the documentation; the highest possible limit is platform-dependent, a too-high limit can crash the interpreter, and setting a limit lower than the current depth raises `RecursionError` (since 3.5.1). `RecursionError` itself was added in 3.5; earlier versions raised a plain `RuntimeError`.
 - **Java.** `StackOverflowError` is thrown when a stack overflow occurs because an application recurses too deeply, in the words of its documentation. The `-Xss` option sets the thread stack size, rounded up to a multiple of the system page size where the operating system requires it.
 - **JavaScript.** MDN lists the error as `RangeError: Maximum call stack size exceeded` in Chrome, a `RangeError` in Safari too, and `InternalError: too much recursion` in Firefox. Node.js 24.18.0 throws the same `RangeError` as Chrome, and `node --v8-options` lists the engine's `--stack-size`, with a default of 984 KB.
@@ -398,7 +398,7 @@ A grid of R rows and C columns has R · C nodes and O(R · C) edges, so a search
 
 ## Practice
 
-- `cstudy start flood-fill`: repaint one tile of a courtyard and every tile joined to it through its colour.
+- `cstudy start flood-fill`: repaint one tile of a courtyard and every tile joined to it through its color.
 - `cstudy start number-of-islands`: count the separate pieces of land on a map.
 - `cstudy start max-area-of-island`: the size of the largest piece.
 - `cstudy start surrounded-regions`: fill in the regions that cannot reach the edge of the board.

@@ -120,7 +120,7 @@ Two passing tests matter too. `test_even_split` and `test_empty_list` pass on bo
 
 ### From a bug report to a test
 
-A user reports: a 90-minute meeting shows as "1 h 30 min", but a meeting of exactly one hour shows as "60 min". The first step is to reproduce the report as a test, before touching the code. The second is to probe the neighbourhood, because a bug at one boundary often has company. The program writes down the expected answers first, for the values on each side of every boundary in the rule, then compares both versions with them:
+A user reports: a 90-minute meeting shows as "1 h 30 min", but a meeting of exactly one hour shows as "60 min". The first step is to reproduce the report as a test, before touching the code. The second is to probe the neighborhood, because a bug at one boundary often has company. The program writes down the expected answers first, for the values on each side of every boundary in the rule, then compares both versions with them:
 
 ```python examples/from_bug_report.py
 """From a bug report to a regression test: reproduce, probe the boundaries, fix.
@@ -204,7 +204,7 @@ A useful habit, taken from the advice to write the assertion first: before writi
 
 ## When to use it
 
-- **Example tests** like these, for the behaviour you can state as specific inputs and outputs, for every bug you fix, and as documentation: a reader learns what `chunk([], 3)` returns faster from a test than from prose.
+- **Example tests** like these, for the behavior you can state as specific inputs and outputs, for every bug you fix, and as documentation: a reader learns what `chunk([], 3)` returns faster from a test than from prose.
 - **A failing test first** whenever you start from a bug report: reproduce, then fix, then keep the test.
 - **Property-based tests** when the input space is large and you can state a rule that every input must satisfy; the guide on [property-based testing](../property-based-testing/guide.md) shows how.
 - **Test doubles** when the code depends on something slow, random or outside your control, such as a clock, a network service or a payment provider; see [test doubles](../stubs-spies-mocks-and-fakes/guide.md).
@@ -214,7 +214,7 @@ A useful habit, taken from the advice to write the assertion first: before writi
 - **Copying the expected value from the code's own output.** Run the code, paste what it printed into the assertion, and the test now agrees with the bug. Work the expected value out by hand, or from the specification.
 - **A test that has never failed.** If you never saw it fail, you do not know that it can. Break the code on purpose once, or write the test before the fix.
 - **Asserting too little.** `assertTrue(result)` passes for any non-empty result, and a test with no assertion passes whenever the code does not crash. Assert the exact value, or the exact error and its message.
-- **Several behaviours in one test.** When a test with ten assertions fails, the report may not make clear which one did. The xUnit patterns vocabulary calls this *assertion roulette*. One behaviour per test, named for that behaviour, makes the failure explain itself.
+- **Several behaviors in one test.** When a test with ten assertions fails, the report may not make clear which one did. The xUnit patterns vocabulary calls this *assertion roulette*. One behavior per test, named for that behavior, makes the failure explain itself.
 - **Logic in the test.** Loops and `if` statements in a test mean that some of its checks may not run at all. A test should be simple enough to need no test of its own; when many cases share one shape, use a table of cases, or `subTest`, which reports each case on its own.
 - **Testing how instead of what.** A test that checks which private helper was called breaks when the code is refactored, even if every answer stays right. Check the result the caller sees.
 - **Comparing floating-point results with `==`.** `0.1 + 0.2 == 0.3` is false in Python. Compare with a tolerance, such as `math.isclose`, and remember that its default tolerance is relative, so comparing with `0.0` needs an `abs_tol`.

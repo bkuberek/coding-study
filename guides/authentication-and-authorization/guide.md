@@ -7,7 +7,7 @@ Every request to a protected system raises two different questions, and keeping 
 - **Authentication**: who is asking? The OWASP Authorization Cheat Sheet calls it the process of verifying an entity's identity.
 - **Authorization**: may they do *this*, to *this* object, now? The same cheat sheet calls it verifying that a requested action or service is approved for a specific entity, and stresses that the two are distinct.
 
-HTTP has a status code for each failure. RFC 9110 defines `401 Unauthorized` for a request that lacks valid authentication credentials, despite its name, and `403 Forbidden` for a request the server understood and refuses to fulfil. It also allows a server that wants to hide that a forbidden resource exists to answer `404 Not Found` instead.
+HTTP has a status code for each failure. RFC 9110 defines `401 Unauthorized` for a request that lacks valid authentication credentials, despite its name, and `403 Forbidden` for a request the server understood and refuses to fulfill. It also allows a server that wants to hide that a forbidden resource exists to answer `404 Not Found` instead.
 
 ### Authentication
 

@@ -152,7 +152,7 @@ print("10 is absent, both bounds agree:", lower_bound(weights, 10), upper_bound(
 start, stop = lower_bound(weights, 5), upper_bound(weights, 19)
 print(f"weights in 5..19: {stop - start}, {weights[start:stop]}")
 
-# The neighbours of an absent value: the lightest of at least 10, the heaviest below 10.
+# The neighbors of an absent value: the lightest of at least 10, the heaviest below 10.
 i = lower_bound(weights, 10)
 print("lightest >= 10:", weights[i] if i < len(weights) else None, "| heaviest < 10:", weights[i - 1] if i > 0 else None)
 
@@ -189,7 +189,7 @@ bisect_left and bisect_right agree for 0..34: True
 first parcel of at least 10: ('drum', 12)
 ```
 
-The two rows of T and F are the two predicates; each bound is where its row turns to T. Counting the weights from 5 to 19 takes two searches and a subtraction, however many values are in between. The neighbours of the absent 10 sit on both sides of its lower bound. A bound of 0 or `len(weights)` has no element on one side, which is why the code checks before reading. The last line searches records with `key=`: the key reads each record's weight, and the value searched for, 10, is already a weight.
+The two rows of T and F are the two predicates; each bound is where its row turns to T. Counting the weights from 5 to 19 takes two searches and a subtraction, however many values are in between. The neighbors of the absent 10 sit on both sides of its lower bound. A bound of 0 or `len(weights)` has no element on one side, which is why the code checks before reading. The last line searches records with `key=`: the key reads each record's weight, and the value searched for, 10, is already a weight.
 
 ## The standard libraries
 

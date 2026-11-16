@@ -95,16 +95,16 @@ rate   factor     loss at 1       at 5      at 20      w at 20
 - **0.12** has a negative factor: each step jumps past the best `w` to the other side, closer each time. It converges, zigzagging.
 - **0.14** has a factor of -1.1: each jump lands 10% further away than the last, and after 20 steps the loss is 1,344 and `w` has the wrong sign.
 
-Nothing in the code differs between the four runs but one number. Real losses are not exact parabolas, but near their bottom they are close to one, which is why the same three behaviours appear everywhere.
+Nothing in the code differs between the four runs but one number. Real losses are not exact parabolas, but near their bottom they are close to one, which is why the same three behaviors appear everywhere.
 
 ### Why features need a common scale
 
-With several weights, the loss has a curvature in every direction, and they can differ wildly. One learning rate serves all of them, and it must be safe for the steepest; the flattest then barely moves. The ratio of the largest curvature to the smallest is the **condition number**. The program fits a flat's price from its area, with a bias, first with the area in square metres and then **standardized**: shifted by its mean and divided by its standard deviation, so that it has mean 0 and spread 1.
+With several weights, the loss has a curvature in every direction, and they can differ wildly. One learning rate serves all of them, and it must be safe for the steepest; the flattest then barely moves. The ratio of the largest curvature to the smallest is the **condition number**. The program fits a flat's price from its area, with a bias, first with the area in square meters and then **standardized**: shifted by its mean and divided by its standard deviation, so that it has mean 0 and spread 1.
 
 ```python examples/scaling.py
 """The same data, fitted by gradient descent with its feature as it comes and standardized.
 
-A flat's price (in thousands) from its area in square metres, with a bias. The loss is a bowl with
+A flat's price (in thousands) from its area in square meters, with a bias. The loss is a bowl with
 two curvatures, one per main direction. Their ratio, the condition number, says how many steps the
 slow direction needs at a rate that is safe for the fast one.
 """
@@ -167,7 +167,7 @@ standardized: curvatures 2 and 2, condition number 1
 lowest loss 4.4770
 ```
 
-With the area in square metres, the bias and the weight pull against each other: the steep direction has a curvature more than a hundred thousand times the flat one. The rate is set to `1 / largest curvature`, which keeps the steep direction safe, and the flat direction moves by a fraction of a percent per step: after 10,000 steps the loss is still 27 above its lowest. Standardized, both curvatures are 2, the bowl is round, and a rate of `0.5` makes the factor `1 - 0.5 * 2` exactly 0: one step lands on the bottom. Both runs fit the same line; only the units of the weight changed, and the predictions at the bottom are the same.
+With the area in square meters, the bias and the weight pull against each other: the steep direction has a curvature more than a hundred thousand times the flat one. The rate is set to `1 / largest curvature`, which keeps the steep direction safe, and the flat direction moves by a fraction of a percent per step: after 10,000 steps the loss is still 27 above its lowest. Standardized, both curvatures are 2, the bowl is round, and a rate of `0.5` makes the factor `1 - 0.5 * 2` exactly 0: one step lands on the bottom. Both runs fit the same line; only the units of the weight changed, and the predictions at the bottom are the same.
 
 Here all the data is used to compute the mean and the spread, because nothing is being measured. With a validation set, they come from the training set only, as [data splits and leakage](../data-splits-and-leakage/guide.md) explains.
 

@@ -12,7 +12,7 @@ cosine(a, b) = (a · b) / (|a| * |b|)       a · b = a[0]*b[0] + a[1]*b[1] + ...
 
 It is 1 when the vectors point the same way, 0 when they are at right angles, and -1 when they point opposite ways. It ignores length: a vector and the same vector doubled score 1. If every stored vector is scaled to length 1 first, cosine similarity is just the dot product, which is cheaper.
 
-**Vector search** keeps a vector per document and returns the `k` documents most similar to the query's vector. With a few thousand documents you compare the query with every one of them. With millions you use an **approximate nearest neighbour** index, which answers far faster by looking at only part of the collection, and occasionally misses a true neighbour.
+**Vector search** keeps a vector per document and returns the `k` documents most similar to the query's vector. With a few thousand documents you compare the query with every one of them. With millions you use an **approximate nearest neighbor** index, which answers far faster by looking at only part of the collection, and occasionally misses a true neighbor.
 
 ## A worked example
 
@@ -171,7 +171,7 @@ The drawing has two columns because the work happens at two times. Documents are
 
 ## When to use it
 
-- **Questions in people's own words** over documents written in other words: help centres, policies, notes, past conversations. This is the retrieval step of the next guide, retrieval-augmented generation.
+- **Questions in people's own words** over documents written in other words: help centers, policies, notes, past conversations. This is the retrieval step of the next guide, retrieval-augmented generation.
 - **Similar items**: near-duplicate questions, related articles, grouping texts by topic.
 - **Keyword search instead, or beside it**, when queries hold exact strings: codes, names, numbers, quoted phrases. Many search systems use both and fuse them.
 - **Neither**, when the question is really a filter or a count: "orders from March over 100" is a database query, not a similarity search.
@@ -205,7 +205,7 @@ Memory adds up quickly: a million vectors of 1,024 numbers stored as 4-byte floa
 
 - **Where embeddings came from.** Mikolov and colleagues showed in 2013 that continuous vector representations of words, learned from a corpus of 1.6 billion words in under a day, captured syntactic and semantic similarity between words. Embedding whole passages followed the same idea at a larger scale.
 - **Dense against sparse retrieval.** Karpukhin and colleagues showed that a dual encoder, one encoder for questions and one for passages trained together, could retrieve passages with dense vectors alone, and beat a strong BM25 baseline by 9 to 19 points of top-20 accuracy on open-domain question answering. BM25 is the classic keyword ranking, which weighs each matching word by how often it occurs in the document, how rare it is across the collection and how long the document is; Robertson and Zaragoza describe the framework behind it.
-- **Approximate indexes.** Malkov and Yashunin's hierarchical navigable small world graphs (HNSW) keep several layers of proximity graphs, each over a subset of the elements of the layer below, so the top layer holds the fewest; a search starts at the top and works down, which gives logarithmic scaling. An approximate index is judged by its recall: the share of the true `k` nearest neighbours, found by an exact scan, that it returns.
+- **Approximate indexes.** Malkov and Yashunin's hierarchical navigable small world graphs (HNSW) keep several layers of proximity graphs, each over a subset of the elements of the layer below, so the top layer holds the fewest; a search starts at the top and works down, which gives logarithmic scaling. An approximate index is judged by its recall: the share of the true `k` nearest neighbors, found by an exact scan, that it returns.
 - **Fusion.** Cormack, Clarke and Büttcher proposed reciprocal rank fusion in 2009 and found that it beat Condorcet fusion and individual learning-to-rank methods; its strength is that it uses only ranks, so scores of different kinds never need to be put on one scale.
 - **Security.** The 2026 OWASP Top 10 for LLM Applications gives vector stores their own entry, LLM09:2026 Vector and Embedding Weaknesses (LLM08 in the 2025 edition): one tenant's documents found by another tenant's query in a shared index, embeddings inverted back into text, poisoned documents planted to be retrieved, and the threshold of a semantic cache abused. Its advice includes enforcing who may see a document inside the index query, not after retrieval.
 - **Changing the model is a migration.** Every stored vector must be computed again with the new model, and old and new vectors must never be compared. Plan it like a schema migration: build the new index beside the old one and switch when it is complete.

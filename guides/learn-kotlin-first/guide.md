@@ -2,7 +2,7 @@
 
 ## The idea
 
-cstudy problems assume you can already write a small function in the language you practise: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practise in Kotlin and are not there yet. It lists what to learn first and where to learn it for free, from Kotlin's own documentation.
+cstudy problems assume you can already write a small function in the language you practice: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practice in Kotlin and are not there yet. It lists what to learn first and where to learn it for free, from Kotlin's own documentation.
 
 **What to learn before your first problem:**
 
@@ -23,7 +23,7 @@ You are ready when you can write, without looking anything up, a function that t
 
 ## A worked example
 
-When you start a problem, cstudy writes a file for you to fill in, a **stub**. `cstudy start two-sum --lang kotlin` writes it in `jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt`. Below the comments that summarise the problem, it reads like this; the function's one line of body is shown here as a comment:
+When you start a problem, cstudy writes a file for you to fill in, a **stub**. `cstudy start two-sum --lang kotlin` writes it in `jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt`. Below the comments that summarize the problem, it reads like this; the function's one line of body is shown here as a comment:
 
 ```kotlin
 package practice.two_sum
@@ -56,7 +56,7 @@ ok    java 21.0.2 (JAVA_HOME)
 
 Look for the `java` row: `ok` shows the version and how it was selected, and `FAIL` means no JDK, or one outside 21 to 26, with a `fix:` hint. A `WARN` on `gradle` is expected: the workspace's Gradle wrapper downloads its own Gradle. Inside a workspace, `cstudy doctor --fix` runs the first Gradle build, and `cstudy doctor` then shows a `runner kotlin` row that answers `hello` when Kotlin code can run.
 
-Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practising in Kotlin.
+Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practicing in Kotlin.
 
 ## When to use it
 

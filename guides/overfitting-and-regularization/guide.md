@@ -40,14 +40,14 @@ Read the drawing from left to right as capacity grows. Training error falls all 
 
 ## A worked example
 
-### Capacity: how many neighbours
+### Capacity: how many neighbors
 
-**k-nearest-neighbour regression** predicts the average label of the `k` training examples whose features are closest. Its capacity is set by `k`, backwards: with `k = 1` it repeats the label of the nearest example, noise and all, and with `k` equal to the size of the training set it predicts the same average everywhere. The program fits 30 noisy examples of a curve and measures each `k` on 200 new ones.
+**k-nearest-neighbor regression** predicts the average label of the `k` training examples whose features are closest. Its capacity is set by `k`, backwards: with `k = 1` it repeats the label of the nearest example, noise and all, and with `k` equal to the size of the training set it predicts the same average everywhere. The program fits 30 noisy examples of a curve and measures each `k` on 200 new ones.
 
 ```python examples/neighbours.py
 """Training error and test error as a model gets more flexible.
 
-The model is k-nearest-neighbour regression: it predicts the average label of the k training
+The model is k-nearest-neighbor regression: it predicts the average label of the k training
 examples whose feature is closest. With k = 1 it repeats the nearest label, noise and all; with k
 equal to the whole training set it predicts the same average everywhere.
 """
@@ -96,7 +96,7 @@ It prints:
 noise alone: an MSE of 0.750 that no model can remove
 ```
 
-With `k = 1` the training error is 0, since each training example is its own nearest neighbour, and the test error is about twice the noise: the model copies one noisy label for each prediction. With `k = 3` the test error is lowest, 0.871, not far above the 0.750 that the noise alone guarantees. From there, larger `k` averages over examples further away, where the curve has other values, and both errors rise together: underfitting. The training error alone would have chosen `k = 1`, the worst model but one.
+With `k = 1` the training error is 0, since each training example is its own nearest neighbor, and the test error is about twice the noise: the model copies one noisy label for each prediction. With `k = 3` the test error is lowest, 0.871, not far above the 0.750 that the noise alone guarantees. From there, larger `k` averages over examples further away, where the curve has other values, and both errors rise together: underfitting. The training error alone would have chosen `k = 1`, the worst model but one.
 
 ### A penalty: two features that agree
 
@@ -127,16 +127,16 @@ def example() -> tuple[float, float, float]:
 train = [example() for _ in range(10)]
 test = [example() for _ in range(1000)]
 
-# Centre on the training means, so that the bias is the mean label and is not penalized.
+# Center on the training means, so that the bias is the mean label and is not penalized.
 means = [sum(row[j] for row in train) / len(train) for j in range(3)]
 
 
-def centred(rows):
+def centered(rows):
     return [tuple(value - mean for value, mean in zip(row, means)) for row in rows]
 
 
 def fit(strength: float) -> tuple[float, float]:
-    rows = centred(train)
+    rows = centered(train)
     n = len(train)
     a = sum(x1 * x1 for x1, _, _ in rows) + n * strength
     b = sum(x1 * x2 for x1, x2, _ in rows)
@@ -148,7 +148,7 @@ def fit(strength: float) -> tuple[float, float]:
 
 
 def mse(rows, w1: float, w2: float) -> float:
-    return sum((w1 * x1 + w2 * x2 - y) ** 2 for x1, x2, y in centred(rows)) / len(rows)
+    return sum((w1 * x1 + w2 * x2 - y) ** 2 for x1, x2, y in centered(rows)) / len(rows)
 
 
 print("strength      w1      w2   training MSE   test MSE")
@@ -201,8 +201,8 @@ Without a penalty the weights are 10.20 and -8.25. They add up to about 2, the t
 ## Expert notes
 
 - **Capacity, underfitting and overfitting.** Goodfellow, Bengio and Courville (*Deep Learning*, §5.2) define underfitting as a training error that is not low enough and overfitting as a gap between training and test error that is too large, both controlled through a model's capacity, its ability to fit a wide variety of functions. A hyperparameter that controls capacity cannot be learned on the training set, which would always pick the most capacity (§5.3).
-- **The decomposition.** *The Elements of Statistical Learning* (§7.3) writes the expected squared error at a point as irreducible error plus squared bias plus variance. For k-nearest neighbours the variance term is the noise variance divided by `k`, so `k` is inversely related to the model's complexity: a small `k` adapts to the true function better, and a large one averages over neighbours further away, which raises the bias.
-- **Ridge and lasso.** ESL (§3.4.1) explains that with many correlated features a wildly large positive weight on one can be cancelled by a similarly large negative weight on its correlated cousin, and that a size constraint on the weights alleviates it. Ridge solutions change with the scale of the inputs, so the inputs are normally standardized first, and the intercept is left out of the penalty so that adding a constant to every label shifts every prediction by that constant. In closed form, ridge adds a positive constant to the diagonal of `X^T X` before inverting it, which makes the problem solvable even when `X^T X` is singular; that was the main motivation when Hoerl and Kennard introduced it in 1970. The lasso (§3.4.2), proposed by Tibshirani in 1996, replaces the squared weights by their absolute values; a strong enough constraint makes some weights exactly zero, a kind of continuous subset selection, and there is no closed form. Among strong but correlated features, the lasso is somewhat indifferent to which it keeps, while ridge shrinks their weights toward each other (§18.4).
+- **The decomposition.** *The Elements of Statistical Learning* (§7.3) writes the expected squared error at a point as irreducible error plus squared bias plus variance. For k-nearest neighbors the variance term is the noise variance divided by `k`, so `k` is inversely related to the model's complexity: a small `k` adapts to the true function better, and a large one averages over neighbors further away, which raises the bias.
+- **Ridge and lasso.** ESL (§3.4.1) explains that with many correlated features a wildly large positive weight on one can be canceled by a similarly large negative weight on its correlated cousin, and that a size constraint on the weights alleviates it. Ridge solutions change with the scale of the inputs, so the inputs are normally standardized first, and the intercept is left out of the penalty so that adding a constant to every label shifts every prediction by that constant. In closed form, ridge adds a positive constant to the diagonal of `X^T X` before inverting it, which makes the problem solvable even when `X^T X` is singular; that was the main motivation when Hoerl and Kennard introduced it in 1970. The lasso (§3.4.2), proposed by Tibshirani in 1996, replaces the squared weights by their absolute values; a strong enough constraint makes some weights exactly zero, a kind of continuous subset selection, and there is no closed form. Among strong but correlated features, the lasso is somewhat indifferent to which it keeps, while ridge shrinks their weights toward each other (§18.4).
 - **Why biases go unpenalized.** *Deep Learning* (§7.1) notes that a bias controls a single variable, needs less data to fit than a weight, and adds little variance when left free, while penalizing it can cause significant underfitting.
 - **Early stopping as a penalty.** Training error often falls steadily while validation error falls and then rises again, reliably (*Deep Learning*, §7.8). Early stopping stores the parameters at each new best validation error and returns them when no improvement has come for a set number of steps. For a linear model with squared error and plain gradient descent, the book shows it is equivalent to L2 regularization, the number of steps times the learning rate acting like the inverse of the strength.
 - **When the curve is not a U.** Zhang and others (*Understanding deep learning requires rethinking generalization*, 2017) showed that image-classification networks trained with stochastic gradient methods easily fit randomly assigned labels, with or without explicit regularization, so capacity alone does not explain why such networks generalize. Belkin, Hsu, Ma and Mandal (2019) describe a **double descent**: past the point where a model can fit its training data exactly, test error can fall again as capacity keeps growing, a curve that contains the classic U as its first part.

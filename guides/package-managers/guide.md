@@ -6,7 +6,7 @@ cstudy runs your code with the real toolchain of each language: Python and uv, N
 
 A package manager is a program that installs software for you. You name what you want, and it:
 
-1. looks it up in a **repository**, a catalogue of software it knows how to install;
+1. looks it up in a **repository**, a catalog of software it knows how to install;
 2. works out what that software needs to run, its **dependencies**, and what those need in turn;
 3. downloads and installs each of them, dependencies first, skipping what you already have;
 4. puts the commands where your shell finds them, on your [`PATH`](../using-the-terminal/guide.md#how-the-shell-finds-a-command);
@@ -241,7 +241,7 @@ When no set of versions meets every requirement, there is nothing to install: uv
 
 ## Practice
 
-This guide has no cstudy problem of its own. Install the toolchain of the language you want to practise, following the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md), then read the guide for that language. Each says what to learn before your first problem, where to learn it for free, and which `cstudy doctor` rows to check:
+This guide has no cstudy problem of its own. Install the toolchain of the language you want to practice, following the [toolchains guide](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md), then read the guide for that language. Each says what to learn before your first problem, where to learn it for free, and which `cstudy doctor` rows to check:
 
 - [Learn Python first](../learn-python-first/guide.md)
 - [Learn TypeScript first](../learn-typescript-first/guide.md)

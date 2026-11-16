@@ -128,7 +128,7 @@ An index gives row addresses; the rows live in the table's pages. This program c
 
 A table of 100,000 rows with 100 rows per page, so 1,000 pages: row i sits on page i // 100.
 Two columns are indexed. order_id is i, so it follows the order of the rows on disk. customer
-is (i * 7919) % 100,000, which visits every value once in a scrambled order, so neighbouring
+is (i * 7919) % 100,000, which visits every value once in a scrambled order, so neighboring
 values sit on unrelated pages. Each query asks for 1,000 consecutive key values, 1% of the rows.
 """
 

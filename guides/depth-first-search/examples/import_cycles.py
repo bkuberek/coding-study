@@ -1,36 +1,36 @@
-"""Three colours tell a module imported twice from a circular import.
+"""Three colors tell a module imported twice from a circular import.
 
-white: not reached yet. grey: entered and not finished, so it is on the current path.
-black: finished, with everything it imports. An edge to a grey module closes a cycle."""
+white: not reached yet. gray: entered and not finished, so it is on the current path.
+black: finished, with everything it imports. An edge to a gray module closes a cycle."""
 
-WHITE, GREY, BLACK = "white", "grey", "black"
+WHITE, GRAY, BLACK = "white", "gray", "black"
 
 
 def find_cycle(imports: dict[str, list[str]]) -> list[str] | None:
-    colour = dict.fromkeys(imports, WHITE)
+    color = dict.fromkeys(imports, WHITE)
     path: list[str] = []
 
     def visit(module: str) -> list[str] | None:
-        colour[module] = GREY
+        color[module] = GRAY
         path.append(module)
         print(f"  enter {module}")
         for imported in imports[module]:
-            if colour[imported] == GREY:
-                print(f"  {module} imports {imported}, which is grey: a cycle")
+            if color[imported] == GRAY:
+                print(f"  {module} imports {imported}, which is gray: a cycle")
                 return [*path[path.index(imported) :], imported]
-            if colour[imported] == BLACK:
+            if color[imported] == BLACK:
                 print(f"  {module} imports {imported}, which is black: already finished")
                 continue
             cycle = visit(imported)
             if cycle:
                 return cycle
-        colour[module] = BLACK
+        color[module] = BLACK
         path.pop()
         print(f"  leave {module}")
         return None
 
     for module in imports:
-        if colour[module] == WHITE:
+        if color[module] == WHITE:
             cycle = visit(module)
             if cycle:
                 return cycle

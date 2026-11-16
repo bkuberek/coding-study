@@ -1,7 +1,7 @@
 """Fit a line by least squares, check it against the standard library, and see that it is the
 lowest point of the mean squared error.
 
-Each example is a delivery: its distance in kilometres (the feature) and how many minutes it took
+Each example is a delivery: its distance in kilometers (the feature) and how many minutes it took
 (the label).
 """
 

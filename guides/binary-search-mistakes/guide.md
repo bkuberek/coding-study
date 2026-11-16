@@ -138,7 +138,7 @@ print("  first_true says", first_true(0, len(ages), lambda i: ages[i] == 3), "(n
 print("  ages >= 3 finds", first_true(0, len(ages), lambda i: ages[i] >= 3), "then one equality check")
 
 
-# 3. Real numbers: near 1e16 neighbouring doubles are 2 apart, so the midpoint can equal an end.
+# 3. Real numbers: near 1e16 neighboring doubles are 2 apart, so the midpoint can equal an end.
 def bisect_real(
     lo: float, hi: float, is_true: Callable[[float], bool], eps: float, max_steps: int
 ) -> tuple[int, float]:
@@ -237,7 +237,7 @@ Off-by-one errors also hide in what the search returns:
 - In Rust, every index is a `usize`, so every subtraction of positions is unsigned. By default, `0 - 1` panics in a debug build ("attempt to subtract with overflow") and wraps around to the largest `usize` in a release build, where overflow checks are off unless enabled with `-C overflow-checks`.
 - In Go, unsigned arithmetic wraps silently, by the language's specification, in every build.
 
-A binary search subtracts in more places than its midpoint: a count, a difference of two values, the distance from the target to a neighbour. Here the values are unsigned: kilometre posts of railway stations, and the question is which station is nearest to kilometre 500. A lower bound finds the two neighbours, and the code compares their distances:
+A binary search subtracts in more places than its midpoint: a count, a difference of two values, the distance from the target to a neighbor. Here the values are unsigned: kilometer posts of railway stations, and the question is which station is nearest to kilometer 500. A lower bound finds the two neighbors, and the code compares their distances:
 
 ```go examples/underflow.go
 // Unsigned numbers cannot go below zero: a subtraction whose true result is negative wraps around
@@ -263,13 +263,13 @@ func gap(x, station uint64) uint64 {
 }
 
 func main() {
-	stations := []uint64{120, 340, 560, 910} // kilometre posts along a railway, sorted
+	stations := []uint64{120, 340, 560, 910} // kilometer posts along a railway, sorted
 	x := uint64(500)
 
-	// The first station at or after kilometre 500; its neighbour before it is the other candidate.
+	// The first station at or after kilometer 500; its neighbor before it is the other candidate.
 	i := sort.Search(len(stations), func(i int) bool { return stations[i] >= x })
 	before, after := stations[i-1], stations[i]
-	fmt.Println("lower bound of 500:", i, "| neighbours:", before, "and", after)
+	fmt.Println("lower bound of 500:", i, "| neighbors:", before, "and", after)
 
 	fmt.Println("careless gaps:", carelessGap(x, before), "and", carelessGap(x, after))
 	fmt.Println("gaps:         ", gap(x, before), "and", gap(x, after))
@@ -287,13 +287,13 @@ func main() {
 It prints:
 
 ```output examples/underflow.go
-lower bound of 500: 2 | neighbours: 340 and 560
+lower bound of 500: 2 | neighbors: 340 and 560
 careless gaps: 160 and 18446744073709551556
 gaps:          160 and 60
 nearest, careless: 340 | nearest: 560
 ```
 
-The careless distance `x - station` is right for 340, below 500, and wraps for 560, above it: `500 - 560` becomes 18,446,744,073,709,551,556. So the nearest station comes out as 340, 160 kilometres away, instead of 560, 60 kilometres away. Nothing panicked and nothing failed: the answer is just wrong. Subtracting the smaller value from the larger one fixes it, and so does a signed type wide enough for every difference.
+The careless distance `x - station` is right for 340, below 500, and wraps for 560, above it: `500 - 560` becomes 18,446,744,073,709,551,556. So the nearest station comes out as 340, 160 kilometers away, instead of 560, 60 kilometers away. Nothing panicked and nothing failed: the answer is just wrong. Subtracting the smaller value from the larger one fixes it, and so does a signed type wide enough for every difference.
 
 Wherever unsigned numbers are subtracted, ask what happens when the true result would be negative, and test that input. A condition such as `i >= 0` on an unsigned `i` is always true, for the same reason. In Rust, `checked_sub` returns `None` instead of a wrapped value, so the negative case becomes a value the code has to deal with.
 

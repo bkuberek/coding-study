@@ -253,7 +253,7 @@ The traces match the tables. The two versions and the scan agree on every prefix
 - **Mixing the two interval styles.** A line taken from the other style breaks the search on some input. Pick one style and keep its three lines together ([common mistakes](../binary-search-mistakes/guide.md)).
 - **Overflow in `(lo + hi) / 2`.** Harmless in Python, real in Java for very large arrays, and real in every fixed-width language when the bounds are large values instead of positions.
 - **Duplicates.** With equal values, a plain search returns *one* of them, not necessarily the first: Java's documentation says "there is no guarantee which one will be found", and Rust's that "any one of the matches could be returned". To get the first or the last, use a [bound search](../lower-and-upper-bounds/guide.md).
-- **Stopping at "absent".** A search that ends without finding the target has still computed something useful: where it would go. Throwing that away and scanning for the neighbours undoes the speed.
+- **Stopping at "absent".** A search that ends without finding the target has still computed something useful: where it would go. Throwing that away and scanning for the neighbors undoes the speed.
 
 ## Complexity
 

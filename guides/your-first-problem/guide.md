@@ -48,9 +48,9 @@ The diagram shows the six steps. Steps 3 and 4 repeat: you change your code and 
 - **Start** it. `cstudy start` writes a file for your code, the **stub**, and the problem's **statement**, then opens both in your editor.
 - **Write** your solution in the stub, in your own editor.
 - **Test** it. `cstudy test` runs your code against the problem's cases, including hidden ones, and shows what passed and what failed. `cstudy hint` shows the next hint when you are stuck.
-- **Finish** with `cstudy done`, saying how it went. cstudy uses that to schedule a **review**: a later day when `cstudy next` brings the problem back, so you practise it again before you forget it.
+- **Finish** with `cstudy done`, saying how it went. cstudy uses that to schedule a **review**: a later day when `cstudy next` brings the problem back, so you practice it again before you forget it.
 
-Every problem assumes you can write a small function in the language you practise. If that still needs looking up, read the guide for your language first. Each says what to learn, where to learn it for free, and what your first stub looks like:
+Every problem assumes you can write a small function in the language you practice. If that still needs looking up, read the guide for your language first. Each says what to learn, where to learn it for free, and what your first stub looks like:
 
 - [Learn Python first](../learn-python-first/guide.md)
 - [Learn TypeScript first](../learn-typescript-first/guide.md)
@@ -93,7 +93,7 @@ statement  .statements/two-sum.md
 next       cstudy test --watch
 ```
 
-cstudy wrote the stub and the statement and opened them in the editor that your `VISUAL` or `EDITOR` variable names; `--no-open` skips that. Read the statement first: it says what the function gets, what it must return, the examples and the limits on the input. `cstudy show two-sum` prints it in the terminal too. To practise in another language, add `--lang`, such as `--lang rust`.
+cstudy wrote the stub and the statement and opened them in the editor that your `VISUAL` or `EDITOR` variable names; `--no-open` skips that. Read the statement first: it says what the function gets, what it must return, the examples and the limits on the input. `cstudy show two-sum` prints it in the terminal too. To practice in another language, add `--lang`, such as `--lang rust`.
 
 **3 and 4. Write and test.** Before writing anything, run the tests on the untouched stub. It shows what a test report looks like:
 
@@ -263,5 +263,5 @@ After `contains-duplicate` and `two-sum`, the hashing path continues with the gu
 
 - [cstudy's command reference](https://github.com/bkuberek/coding-study/blob/main/docs/specs/cli.md): every command and option used here, with its output.
 - [Scheduling and grades](https://github.com/bkuberek/coding-study/blob/main/docs/specs/progress-and-scheduling.md): how a grade and the review intervals are computed.
-- [Practise in your browser](https://github.com/bkuberek/coding-study/blob/main/user-docs/web-ui.md): the same loop in `cstudy serve`.
+- [Practice in your browser](https://github.com/bkuberek/coding-study/blob/main/user-docs/web-ui.md): the same loop in `cstudy serve`.
 - [Install the language toolchains](https://github.com/bkuberek/coding-study/blob/main/user-docs/toolchains.md): what `cstudy doctor` checks, and how to fix each row.

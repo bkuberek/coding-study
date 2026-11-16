@@ -2,7 +2,7 @@
 
 ## The idea
 
-cstudy problems assume you can already write a small function in the language you practise: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practise in Python and are not there yet. It lists what to learn first and where to learn it for free: Python's official tutorial, and a community list for people new to programming.
+cstudy problems assume you can already write a small function in the language you practice: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practice in Python and are not there yet. It lists what to learn first and where to learn it for free: Python's official tutorial, and a community list for people new to programming.
 
 **What to learn before your first problem:**
 
@@ -39,7 +39,7 @@ def two_sum(nums: list[int], target: int) -> list[int]:
     raise NotImplementedError
 ```
 
-Read it line by line. You should recognise every part before you start:
+Read it line by line. You should recognize every part before you start:
 
 1. The text between the triple quotes `"""` at the top is the file's **docstring**: a short summary of the problem and the two commands you need. It documents the file and does not change what the code does.
 2. `def two_sum(...)` defines the function that cstudy's tests call. Keep its name and its parameters as they are.
@@ -60,7 +60,7 @@ ok    uv 0.12.13
 
 Look for the `python` and `uv` rows. `ok` means the tool was found, with its version; `FAIL` means it is missing or too old, and a `fix:` hint follows when there is one. Inside a workspace, `cstudy doctor --fix` then sets up the Python project with `uv sync`.
 
-Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practising in Python.
+Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practicing in Python.
 
 ## When to use it
 

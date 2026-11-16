@@ -1,6 +1,6 @@
-"""BFS over states nobody listed: measure exactly 4 litres with a 3-litre jug and a 5-litre jug.
+"""BFS over states nobody listed: measure exactly 4 liters with a 3-liter jug and a 5-liter jug.
 
-A node is a state (litres in the small jug, litres in the big jug), and its neighbors are the states
+A node is a state (liters in the small jug, liters in the big jug), and its neighbors are the states
 one pour away, computed when the search reaches it."""
 
 from collections import deque

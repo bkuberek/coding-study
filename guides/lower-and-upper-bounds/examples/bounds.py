@@ -41,7 +41,7 @@ print("10 is absent, both bounds agree:", lower_bound(weights, 10), upper_bound(
 start, stop = lower_bound(weights, 5), upper_bound(weights, 19)
 print(f"weights in 5..19: {stop - start}, {weights[start:stop]}")
 
-# The neighbours of an absent value: the lightest of at least 10, the heaviest below 10.
+# The neighbors of an absent value: the lightest of at least 10, the heaviest below 10.
 i = lower_bound(weights, 10)
 print("lightest >= 10:", weights[i] if i < len(weights) else None, "| heaviest < 10:", weights[i - 1] if i > 0 else None)
 

@@ -21,13 +21,13 @@ func gap(x, station uint64) uint64 {
 }
 
 func main() {
-	stations := []uint64{120, 340, 560, 910} // kilometre posts along a railway, sorted
+	stations := []uint64{120, 340, 560, 910} // kilometer posts along a railway, sorted
 	x := uint64(500)
 
-	// The first station at or after kilometre 500; its neighbour before it is the other candidate.
+	// The first station at or after kilometer 500; its neighbor before it is the other candidate.
 	i := sort.Search(len(stations), func(i int) bool { return stations[i] >= x })
 	before, after := stations[i-1], stations[i]
-	fmt.Println("lower bound of 500:", i, "| neighbours:", before, "and", after)
+	fmt.Println("lower bound of 500:", i, "| neighbors:", before, "and", after)
 
 	fmt.Println("careless gaps:", carelessGap(x, before), "and", carelessGap(x, after))
 	fmt.Println("gaps:         ", gap(x, before), "and", gap(x, after))

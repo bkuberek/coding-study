@@ -20,7 +20,7 @@ The skill is the same each time: write down the operations and the bound each ne
 
 ### A map and a doubly linked list: a queue you can cancel from
 
-A job queue hands out jobs in the order they were submitted, and any waiting job can be cancelled. With a plain list, cancelling costs O(n): find the job, then shift everything after it. A **doubly linked list** removes a node in O(1), since the node knows both its neighbors and they can be linked to each other, but finding the node is still O(n). A hash map from job id to its node removes that search.
+A job queue hands out jobs in the order they were submitted, and any waiting job can be canceled. With a plain list, canceling costs O(n): find the job, then shift everything after it. A **doubly linked list** removes a node in O(1), since the node knows both its neighbors and they can be linked to each other, but finding the node is still O(n). A hash map from job id to its node removes that search.
 
 ```mermaid
 flowchart LR
@@ -38,19 +38,19 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  accTitle: Cancelling email in three steps
+  accTitle: Canceling email in three steps
   accDescr: The map gives the node of email. The nodes before and after it, resize and report, are linked to each other. Then email is deleted from the map.
   find["map: email to its node"] --> unlink["link resize and report to each other"] --> forget["delete email from the map"]
 ```
 
-<!-- text-of-mermaid sha256:8ff5b3a6ba5f6a5ae7587b17a7760c2c78171739e56500536ca46d4b22abaf45 -->
+<!-- text-of-mermaid sha256:b8c1990326ed7b24e7fc1e1792cbc0d1cc75b77d9f0fa298fa7388940c746388 -->
 ```text
 ┌──────────────────────┐    ┌────────────────────────────────────┐    ┌─────────────────────────┐
 │map: email to its node├───►│link resize and report to each other├───►│delete email from the map│
 └──────────────────────┘    └────────────────────────────────────┘    └─────────────────────────┘
 ```
 
-The first drawing shows the list between two **sentinels**, `head` and `tail`, nodes that hold no job. Every real node then has a node before it and a node after it, so linking and unlinking never need a special case for an empty list or for the ends. Cancelling `email`, in the second drawing, is: look up its node in the map, point `resize` and `report` at each other, and delete the map entry. Two pointer writes and a map deletion, whatever the length of the queue.
+The first drawing shows the list between two **sentinels**, `head` and `tail`, nodes that hold no job. Every real node then has a node before it and a node after it, so linking and unlinking never need a special case for an empty list or for the ends. Canceling `email`, in the second drawing, is: look up its node in the map, point `resize` and `report` at each other, and delete the map entry. Two pointer writes and a map deletion, whatever the length of the queue.
 
 ```python examples/job_queue.py
 """A first-in, first-out job queue that can also cancel any waiting job in O(1).

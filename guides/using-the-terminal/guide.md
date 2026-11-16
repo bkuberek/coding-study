@@ -475,7 +475,7 @@ Use the terminal whenever a tool is a command: cstudy, the language toolchains (
 
 ## Complexity
 
-The shell does very little work of its own; these costs explain two behaviours that surprise people.
+The shell does very little work of its own; these costs explain two behaviors that surprise people.
 
 | Step | Cost | Why |
 |------|------|-----|
@@ -497,7 +497,7 @@ The remembered paths have a side effect. If you install a second copy of a tool 
 
 ## Practice
 
-This guide has no cstudy problem of its own: you practise it by using cstudy. Try the commands of the worked example in a folder of your own, then read [package managers](../package-managers/guide.md) to install the toolchains, the guide for your language, which package managers lists, and [your first problem](../your-first-problem/guide.md), which runs the whole cstudy loop in the terminal.
+This guide has no cstudy problem of its own: you practice it by using cstudy. Try the commands of the worked example in a folder of your own, then read [package managers](../package-managers/guide.md) to install the toolchains, the guide for your language, which package managers lists, and [your first problem](../your-first-problem/guide.md), which runs the whole cstudy loop in the terminal.
 
 ## Further reading
 

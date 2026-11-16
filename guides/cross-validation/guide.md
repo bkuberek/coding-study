@@ -164,7 +164,7 @@ The median model scores about what it is worth, but the scores spread from 32.5%
 ## When to use it
 
 - **Small and medium datasets**, where setting aside a validation set would cost too much training data or leave too few examples to measure.
-- **Choosing hyperparameters**: the strength of a penalty, the number of neighbours, the number of training steps.
+- **Choosing hyperparameters**: the strength of a penalty, the number of neighbors, the number of training steps.
 - **Comparing two kinds of model** on the same folds, so that both see the same splits.
 - **Nested cross-validation** when you need an honest number for the whole procedure, choice included, and have no separate test set.
 - **Not when the data is large**: one validation set of tens of thousands of examples gives a precise answer at a `k`-th of the cost.

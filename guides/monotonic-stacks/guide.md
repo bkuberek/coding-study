@@ -118,11 +118,11 @@ Walk through the first seven lines, one person each:
 ```mermaid
 flowchart TD
   accTitle: Person 4 arrives
-  accDescr: Person 4, 165 centimetres tall, meets the top of the stack, person 3 at 158, and pops it. The next item, person 2 at 165, is not shorter, so the loop stops there and never looks at person 1, at 172, below it.
+  accDescr: Person 4, 165 centimeters tall, meets the top of the stack, person 3 at 158, and pops it. The next item, person 2 at 165, is not shorter, so the loop stops there and never looks at person 1, at 172, below it.
   new["#4, 165 cm, arrives"] --> t3["top: #3, 158, popped"] --> t2["#2, 165, stays: loop stops"] --> t1["#1, 172, not looked at"]
 ```
 
-<!-- text-of-mermaid sha256:6870b25c5707e32fa8b28ef281fa7ec184bce58491c5a00b8deede421b1b1cf9 -->
+<!-- text-of-mermaid sha256:a0112d35cbfa69f2d77e29982c73c2a141ea62c9e5e7b5595168b9b02a4e661c -->
 ```text
 ┌──────────────────────────┐
 │   #4, 165 cm, arrives    │

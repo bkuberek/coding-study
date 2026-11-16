@@ -202,14 +202,14 @@ Marking on discovery pushes each member once: 30 pushes. Marking on exit lets a 
 
 ### A graph nobody listed: two jugs
 
-A classic puzzle: with a 3-litre jug, a 5-litre jug and a tap, measure exactly 4 litres. You may fill a jug, empty it, or pour one into the other until the source is empty or the target is full.
+A classic puzzle: with a 3-liter jug, a 5-liter jug and a tap, measure exactly 4 liters. You may fill a jug, empty it, or pour one into the other until the source is empty or the target is full.
 
-There is no map to search, but there is a graph: a **state** is the pair (litres in the small jug, litres in the big jug), and its neighbors are the states one move away. The search computes them when it reaches a state, as the [grid](../graph-representations/guide.md) was computed on demand.
+There is no map to search, but there is a graph: a **state** is the pair (liters in the small jug, liters in the big jug), and its neighbors are the states one move away. The search computes them when it reaches a state, as the [grid](../graph-representations/guide.md) was computed on demand.
 
 ```python examples/two_jugs.py
-"""BFS over states nobody listed: measure exactly 4 litres with a 3-litre jug and a 5-litre jug.
+"""BFS over states nobody listed: measure exactly 4 liters with a 3-liter jug and a 5-liter jug.
 
-A node is a state (litres in the small jug, litres in the big jug), and its neighbors are the states
+A node is a state (liters in the small jug, liters in the big jug), and its neighbors are the states
 one pour away, computed when the search reaches it."""
 
 from collections import deque

@@ -350,7 +350,7 @@ Compare a hash set: a lookup hashes the whole key and compares it, O(L) expected
 ## Expert notes
 
 - **The name.** The structure's name appears in the title of Edward Fredkin's paper "Trie memory", Communications of the ACM, volume 3, issue 9, pages 490 to 499, September 1960.
-- **Compressed tries.** Many nodes of a trie have a single child, like the `i` and the `l` that lead to the `d` at the end of `build`. A compressed trie, also called a radix tree, merges each such chain into a single edge labelled with a string, so the number of nodes is at most about twice the number of keys, whatever their length. Lookups then compare whole labels instead of single letters.
+- **Compressed tries.** Many nodes of a trie have a single child, like the `i` and the `l` that lead to the `d` at the end of `build`. A compressed trie, also called a radix tree, merges each such chain into a single edge labeled with a string, so the number of nodes is at most about twice the number of keys, whatever their length. Lookups then compare whole labels instead of single letters.
 - **How a node holds its children** is the main lever on a trie's memory. A map per node, as here, stores only the letters that occur, at the price of a whole map for every node.
 - **A trie is also a map.** The command table stores a summary at each marked node, so it maps names to values, just like a hash map, with prefix questions on top.
 

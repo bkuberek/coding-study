@@ -42,7 +42,7 @@ The drawing is the hierarchy of the example below, with each arrow going from a 
 - A **concept**, `skos:Concept`, which SKOS describes as "an idea or notion; a unit of thought".
 - **Hierarchical links**: `skos:broader` and `skos:narrower`, which by convention state only direct links, and `skos:broaderTransitive` and `skos:narrowerTransitive`, which are not stated but inferred, and hold for every ancestor and every descendant. An **associative** link, `skos:related`, says two concepts are related without one being more general.
 - **Labels**: one **preferred label** per language, `skos:prefLabel`, the name to show; any number of **alternative labels**, `skos:altLabel`, such as synonyms and abbreviations; and **hidden labels**, `skos:hiddenLabel`, which search can match but nobody is shown, such as common misspellings.
-- **Concept schemes**, `skos:ConceptScheme`: a whole vocabulary, such as one shop's catalogue.
+- **Concept schemes**, `skos:ConceptScheme`: a whole vocabulary, such as one shop's catalog.
 - **Mappings** between concepts of different schemes: `skos:exactMatch`, `skos:closeMatch`, `skos:broadMatch`, `skos:narrowMatch` and `skos:relatedMatch`.
 
 SKOS is careful to say what a hierarchy is not. SKOS itself is not a formal knowledge representation language: a thesaurus or classification scheme "does not assert any axioms or facts", and its structures "do not have any formal semantics". `A skos:broader B` says that people organize A under B, not that every A is a B. The guide on [reasoning and validation](../reasoning-and-validation/guide.md) covers the vocabularies that do carry logic.
@@ -192,10 +192,10 @@ Each stated link looks right on its own: a zoo's crane is an encyclopedia's cran
 
 ## When to use it
 
-- **Browsing and navigation**: a catalogue, a site's sections, a library's subjects.
+- **Browsing and navigation**: a catalog, a site's sections, a library's subjects.
 - **Search expansion**: a query or a filter on a broad concept also selects everything narrower, which is what `skos:narrowerTransitive` is for.
 - **Consistent tagging**: many systems tag their data with the same concept identifiers, so the data can be joined.
-- **Aligning vocabularies**: two catalogues map their concepts to each other instead of merging.
+- **Aligning vocabularies**: two catalogs map their concepts to each other instead of merging.
 - **Not when you need inference.** If "every car is a vehicle" must let a program conclude facts about individual cars, you need classes and rules, as in RDF Schema or the W3C's Web Ontology Language (OWL), not a SKOS hierarchy.
 
 ## Common traps

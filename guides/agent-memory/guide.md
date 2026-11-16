@@ -213,7 +213,7 @@ flowchart TD
 └────────────────────────────────────┘
 ```
 
-The drawing funnels the three stores into the context window: a memory that is never retrieved into working memory might as well not exist. The last box is the dangerous write. Changing what the agent knows how to do changes its behaviour on every later task, so it deserves a person's review.
+The drawing funnels the three stores into the context window: a memory that is never retrieved into working memory might as well not exist. The last box is the dangerous write. Changing what the agent knows how to do changes its behavior on every later task, so it deserves a person's review.
 
 ## When to use it
 
@@ -253,7 +253,7 @@ Retrieval for one user is usually small enough for an exact scan; the cost that 
 ## Expert notes
 
 - **The four kinds, precisely.** Sumers and colleagues define working memory as information kept active for the current decision cycle, a data structure that persists across model calls, from which each call's input is built. Episodic memory stores experience from earlier decision cycles, semantic memory stores knowledge about the world and the agent itself, and procedural memory is both implicit, in the model's weights, and explicit, in the agent's code. They note that writing to procedural memory is significantly riskier than writing to episodic or semantic memory, because it can introduce bugs or let an agent subvert its designers' intentions.
-- **Generative agents.** Park and colleagues stored a complete record of each agent's experiences in natural language, synthesized those memories over time into higher-level reflections, and retrieved them to plan behaviour. Their retrieval combined recency, importance and relevance as in the example, with all three weights set to 1, and put the top-ranked memories that fit the context window into the prompt.
+- **Generative agents.** Park and colleagues stored a complete record of each agent's experiences in natural language, synthesized those memories over time into higher-level reflections, and retrieved them to plan behavior. Their retrieval combined recency, importance and relevance as in the example, with all three weights set to 1, and put the top-ranked memories that fit the context window into the prompt.
 - **Recursive summaries.** Wang and colleagues had a model first summarize small parts of a dialogue, then recursively produce new memory from the previous memory and the following context, so that a long conversation is carried by a summary that is rewritten as it grows. The rolling summary of the example follows the same idea.
 - **Memory is an attack surface.** The 2026 OWASP Top 10 for LLM Applications notes, under prompt injection, that an injection which writes to long-term memory taints every later session that reads it, and advises treating memory writes as privileged operations: log the prompt that caused them, classify writes for instruction-like content, and require approval before memories that carry instructions persist across sessions.
 - **Concurrency is not optional.** As soon as two runs share a memory, writes need the same care as any shared database row: versions checked on write, refused writes retried after reading again. A revision that waits on a model call keeps that window open for as long as the call takes.

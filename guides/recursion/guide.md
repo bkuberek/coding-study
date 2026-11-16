@@ -259,7 +259,7 @@ For `digit_sum` in Python, "constant time per step" holds only while the number 
 
 ## Practice
 
-This guide has no problem of its own: recursion is practised through the techniques built on it. Continue with [backtracking](../backtracking/guide.md), which uses recursion to try every arrangement, and [memoization](../memoization/guide.md), which makes a slow recursion fast by remembering its answers.
+This guide has no problem of its own: recursion is practiced through the techniques built on it. Continue with [backtracking](../backtracking/guide.md), which uses recursion to try every arrangement, and [memoization](../memoization/guide.md), which makes a slow recursion fast by remembering its answers.
 
 ## Further reading
 

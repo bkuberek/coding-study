@@ -321,7 +321,7 @@ What to use instead: when the most recent item must come out first, a [stack](..
 
 ## Expert notes
 
-- **CPython's `deque` is made of linked blocks.** Its source says "Data for deque objects is stored in a doubly-linked list of fixed length blocks", of 64 items each (`BLOCKLEN`). Blocks need fewer calls to `malloc` than one node per item, keep neighbours close in memory for the cache, and never need `realloc`. The documentation gives indexed access as O(1) at both ends, but it "slows to O(n) in the middle".
+- **CPython's `deque` is made of linked blocks.** Its source says "Data for deque objects is stored in a doubly-linked list of fixed length blocks", of 64 items each (`BLOCKLEN`). Blocks need fewer calls to `malloc` than one node per item, keep neighbors close in memory for the cache, and never need `realloc`. The documentation gives indexed access as O(1) at both ends, but it "slows to O(n) in the middle".
 - **Java's `ArrayDeque`** has "no capacity restrictions" and is "likely to be faster than `Stack` when used as a stack, and faster than `LinkedList` when used as a queue". It is not thread-safe, unlike Python's `deque`, whose documentation promises "thread-safe, memory efficient appends and pops from either side".
 - **Rust's `VecDeque`** is a growable ring buffer. Its "default" usage as a queue is `push_back` to add and `pop_front` to remove; `pop_front` and `pop_back` return `Option<T>`, `None` when it is empty.
 - **Go** has no queue type. Its `container/list` package "implements a doubly linked list", which works as a deque, with each item in an element of its own; or use a slice, with the care described in the traps.

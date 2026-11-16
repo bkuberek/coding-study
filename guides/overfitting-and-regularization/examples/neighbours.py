@@ -1,6 +1,6 @@
 """Training error and test error as a model gets more flexible.
 
-The model is k-nearest-neighbour regression: it predicts the average label of the k training
+The model is k-nearest-neighbor regression: it predicts the average label of the k training
 examples whose feature is closest. With k = 1 it repeats the nearest label, noise and all; with k
 equal to the whole training set it predicts the same average everywhere.
 """

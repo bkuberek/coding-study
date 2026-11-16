@@ -184,7 +184,7 @@ Here `k = 3` and `w = 4`. The bounds are worst-case: the loop does a fixed amoun
 
 ## Practice
 
-- `cstudy start house-robber`: the most cash from a row of houses when no two neighbouring houses may both be chosen.
+- `cstudy start house-robber`: the most cash from a row of houses when no two neighboring houses may both be chosen.
 - `cstudy start coin-change`: the fewest coins that pay an amount exactly.
 - `cstudy start longest-increasing-subsequence`: the length of the longest strictly increasing subsequence of an array.
 - `cstudy start decode-ways`: count the ways a string of digits can be read back as letters.

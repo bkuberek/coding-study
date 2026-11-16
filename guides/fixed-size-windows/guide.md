@@ -166,7 +166,7 @@ rolling float sum of [1.0, 1.0]: 1.0 | math.fsum: 2.0
 - The question names a **fixed length**: every `k` days, every block of `k` characters, windows of a given size.
 - The summary of a window can **take in and give up** one value cheaply: sums, counts, counts per value, XOR.
 
-When the windows have no fixed length but must obey a rule, use [variable-size windows](../variable-size-windows/guide.md). When you need the sums of many stretches of different lengths in data that does not change, [prefix sums](../prefix-sums-with-hash-maps/guide.md) answer each in O(1) after one O(n) pass. When the summary cannot give up a value, such as the largest value, you need a structure that can forget the oldest value efficiently: `sliding-window-maximum` practises one.
+When the windows have no fixed length but must obey a rule, use [variable-size windows](../variable-size-windows/guide.md). When you need the sums of many stretches of different lengths in data that does not change, [prefix sums](../prefix-sums-with-hash-maps/guide.md) answer each in O(1) after one O(n) pass. When the summary cannot give up a value, such as the largest value, you need a structure that can forget the oldest value efficiently: `sliding-window-maximum` practices one.
 
 ## Common traps
 

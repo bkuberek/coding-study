@@ -9,7 +9,7 @@ Such an order exists exactly when the graph has no directed cycle. A graph with 
 Two algorithms do it in linear time:
 
 1. **Kahn's algorithm** counts, for each node, how many arrows still point into it, its **in-degree**. A node at 0 waits for nothing, so it can go next. Take one, append it to the order, and remove its outgoing arrows by lowering the count of each node they point to; any node whose count reaches 0 becomes ready. Repeat until nothing is ready. If the order then holds every node, it is a topological order; if not, the nodes left over are stuck behind a cycle.
-2. **Depth-first search** finishes a node only after everything reachable from it is finished. So for every arrow from `u` to `v`, `v` finishes before `u`, and the finish order read **backwards** is a topological order. Meeting a grey node during the search means a cycle, as in the [three colours](../depth-first-search/guide.md) of depth-first search.
+2. **Depth-first search** finishes a node only after everything reachable from it is finished. So for every arrow from `u` to `v`, `v` finishes before `u`, and the finish order read **backwards** is a topological order. Meeting a gray node during the search means a cycle, as in the [three colors](../depth-first-search/guide.md) of depth-first search.
 
 ## A worked example
 
@@ -145,7 +145,7 @@ Trace Kahn's algorithm with the in-degrees: config 0, metrics 0, db 1, cache 1, 
 
 The depth-first order is different, `metrics`, `config`, `db`, `cache`, `auth`, `web`, and also correct: a graph usually has many topological orders, and any of them is an answer unless the question adds a rule, such as "smallest name first", that picks one.
 
-With the mistake, `config` waits for `auth`, which waits for `db` and `cache`, which wait for `config`. Kahn's algorithm starts `metrics` and then has nothing ready. The five services never ready are everything on a cycle plus everything waiting behind one: `web` is on no cycle, but it waits for `auth`. Kahn's algorithm proves that a cycle exists; to name one, use the three colours, or the standard library.
+With the mistake, `config` waits for `auth`, which waits for `db` and `cache`, which wait for `config`. Kahn's algorithm starts `metrics` and then has nothing ready. The five services never ready are everything on a cycle plus everything waiting behind one: `web` is on no cycle, but it waits for `auth`. Kahn's algorithm proves that a cycle exists; to name one, use the three colors, or the standard library.
 
 ### The standard library
 
@@ -188,7 +188,7 @@ CycleError, one cycle: ['db', 'auth', 'config', 'db']
 
 **A cycle, then no order exists.** In any list of the nodes, look at the cycle's node that comes first. The node before it on the cycle comes later in the list, and its arrow points backwards.
 
-**The reversed finish order of DFS is an order.** Take an arrow from `u` to `v` in a graph with no cycle. When the search at `u` looks at `v`, either `v` is white, and then it is entered and finished inside the visit of `u`, before `u` finishes; or `v` is black, finished already. It cannot be grey, since that would be a cycle. Either way `v` finishes before `u`, so in the reversed finish order `u` comes before `v`.
+**The reversed finish order of DFS is an order.** Take an arrow from `u` to `v` in a graph with no cycle. When the search at `u` looks at `v`, either `v` is white, and then it is entered and finished inside the visit of `u`, before `u` finishes; or `v` is black, finished already. It cannot be gray, since that would be a cycle. Either way `v` finishes before `u`, so in the reversed finish order `u` comes before `v`.
 
 ## When to use it
 
@@ -203,7 +203,7 @@ Kahn's algorithm is the one to reach for when you also want to know what is read
 - **The arrows the wrong way round.** "`[a, b]` means `a` needs `b`" and "`[a, b]` means `a` comes before `b`" are opposite graphs. Built backwards, the algorithm happily returns a reversed order. Write down what one pair means, and draw the arrow from what must come first.
 - **A graph built carelessly.** The algorithms are only as right as the nodes and arrows you give them. Before trusting an order, ask what your input can hold that the services example did not, and whether your counts and lists still agree with each other.
 - **Expecting one answer.** Unless the problem picks one, any valid order is right, and a test that compares with a single expected order is wrong. When you need a stable output, break ties explicitly, as the heap does.
-- **An undirected cycle check on a directed graph.** `app` importing `auth` both directly and through `ui` is not a cycle. Use in-degrees or the three colours.
+- **An undirected cycle check on a directed graph.** `app` importing `auth` both directly and through `ui` is not a cycle. Use in-degrees or the three colors.
 - **A node that needs itself.** An arrow from a node to itself is a cycle of one node: its in-degree never reaches 0.
 
 ## Complexity

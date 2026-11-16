@@ -19,7 +19,7 @@ def first_true(lo: int, hi: int, is_true: Callable[[int], bool]) -> int:
     return lo
 
 
-posts = [0, 3, 4, 7, 11, 12, 18, 20, 25]  # metres along the fence, sorted
+posts = [0, 3, 4, 7, 11, 12, 18, 20, 25]  # meters along the fence, sorted
 k = 4
 
 

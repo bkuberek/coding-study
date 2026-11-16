@@ -65,7 +65,7 @@ print("  first_true says", first_true(0, len(ages), lambda i: ages[i] == 3), "(n
 print("  ages >= 3 finds", first_true(0, len(ages), lambda i: ages[i] >= 3), "then one equality check")
 
 
-# 3. Real numbers: near 1e16 neighbouring doubles are 2 apart, so the midpoint can equal an end.
+# 3. Real numbers: near 1e16 neighboring doubles are 2 apart, so the midpoint can equal an end.
 def bisect_real(
     lo: float, hi: float, is_true: Callable[[float], bool], eps: float, max_steps: int
 ) -> tuple[int, float]:

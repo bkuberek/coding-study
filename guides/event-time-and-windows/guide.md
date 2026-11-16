@@ -218,7 +218,7 @@ A **retraction** tells the reader to undo the previous result. For a count or a 
 
 ## When to use it
 
-- **Event time** whenever the question is about when things happened, which is almost always: metrics per minute, billing per day, behaviour per session. Use processing time only for questions about the pipeline itself, such as how much it handled per second.
+- **Event time** whenever the question is about when things happened, which is almost always: metrics per minute, billing per day, behavior per session. Use processing time only for questions about the pipeline itself, such as how much it handled per second.
 - **Tumbling windows** for reports by period: per minute, per hour, per day.
 - **Sliding windows** for moving measures that should update more often than their length: "the error rate over the last 10 minutes, every minute".
 - **Session windows** for activity with natural pauses: visits to a site, viewing sessions, a user's burst of actions.
@@ -246,7 +246,7 @@ For `n` events, a sliding window of size `s` and period `p`, and `w` windows ope
 | Update a window's result, for a result that combines one value at a time (count, sum, maximum) | O(1) on average, with a hash map from window to result | O(1) per window, not per event |
 | Report windows when the watermark moves | O(w) by scanning, or O(log w) each with the windows kept in order of their end | |
 | Keep windows for corrections | | Every window whose end plus grace is ahead of the watermark |
-| Sessions | O(log k) per event to find the neighbours among a key's `k` sessions kept in order, plus merging | One entry per open session |
+| Sessions | O(log k) per event to find the neighbors among a key's `k` sessions kept in order, plus merging | One entry per open session |
 
 Results like the median or a distinct count do not combine one value at a time cheaply; they keep more per window, or an approximate summary.
 

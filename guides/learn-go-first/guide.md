@@ -2,7 +2,7 @@
 
 ## The idea
 
-cstudy problems assume you can already write a small function in the language you practise: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practise in Go and are not there yet. It lists what to learn first and where to learn it for free, from Go's own documentation.
+cstudy problems assume you can already write a small function in the language you practice: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practice in Go and are not there yet. It lists what to learn first and where to learn it for free, from Go's own documentation.
 
 **What to learn before your first problem:**
 
@@ -96,7 +96,7 @@ A loop inside a loop over the same slice of n items does about n² steps. That i
 - **The Go cstudy uses.** cstudy builds with your installed Go and `GOTOOLCHAIN=local`, so it never downloads another toolchain; with a Go older than 1.25 it stops with an error instead.
 - **Its own build settings.** cstudy pins its build environment (`GOENV=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`), so your `go env -w` settings do not change how it builds. They still apply to the `go` commands you run yourself.
 - **No downloads.** The runner uses the standard library only, plus one module that ships with cstudy for decimal values, so Go problems need no network.
-- **Loop variables since Go 1.22.** Before Go 1.22 the variables a `for` loop declares were created once and updated by each iteration; since 1.22 each iteration creates new ones, "to avoid accidental sharing bugs". Older articles and answers may describe the old behaviour.
+- **Loop variables since Go 1.22.** Before Go 1.22 the variables a `for` loop declares were created once and updated by each iteration; since 1.22 each iteration creates new ones, "to avoid accidental sharing bugs". Older articles and answers may describe the old behavior.
 
 ## Practice
 

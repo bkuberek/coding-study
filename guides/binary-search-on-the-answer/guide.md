@@ -49,13 +49,13 @@ Each check halves the candidates, so a range of a billion values needs about 30 
 
 ## A worked example
 
-Nine fence posts stand at these distances from the gate, in metres: `0 3 4 7 11 12 18 20 25`. Four sensors go on four of the posts, and they interfere when they are close, so the **closest two should be as far apart as possible**. What is the largest such distance?
+Nine fence posts stand at these distances from the gate, in meters: `0 3 4 7 11 12 18 20 25`. Four sensors go on four of the posts, and they interfere when they are close, so the **closest two should be as far apart as possible**. What is the largest such distance?
 
-**The answer and its range.** The answer is a distance, the **gap**, a whole number of metres. A gap of 1 always works, since the posts are at different whole-metre spots, and no gap can exceed 25, the length of the fence.
+**The answer and its range.** The answer is a distance, the **gap**, a whole number of meters. A gap of 1 always works, since the posts are at different whole-meter spots, and no gap can exceed 25, the length of the fence.
 
 **The check.** Given a gap, can four sensors stand on posts with every two at least that far apart? Put the first sensor on the first post, and each next sensor on the first post at least `gap` beyond the previous one; the gap works if that places four sensors. Why is this greedy right? Compare it with any placement that works, sensor by sensor. The greedy's first sensor is on the first post, so it is no further along than the other's first. If the greedy's sensor number `i` is no further along than the other's, then the other's next sensor is at least `gap` beyond the other's sensor `i`, hence at least `gap` beyond the greedy's: a post the greedy was allowed to take, so its next sensor is no further along either. By the end, the greedy has placed at least as many sensors as any placement that works.
 
-**Monotone.** Sensors that are at least 8 metres apart are also at least 7 metres apart. So if a gap works, every smaller gap works: yes, yes, ..., then no from some gap on.
+**Monotone.** Sensors that are at least 8 meters apart are also at least 7 meters apart. So if a gap works, every smaller gap works: yes, yes, ..., then no from some gap on.
 
 | Gap | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |-----|---|---|---|---|---|---|---|---|---|----|----|----|
@@ -64,11 +64,11 @@ Nine fence posts stand at these distances from the gate, in metres: `0 3 4 7 11 
 ```mermaid
 flowchart LR
   accTitle: Where the gaps stop fitting
-  accDescr: Gaps from 1 to 7 metres fit four sensors, and gaps from 8 to 25 metres do not. The largest gap that fits, 7, is one less than the first gap that does not.
+  accDescr: Gaps from 1 to 7 meters fit four sensors, and gaps from 8 to 25 meters do not. The largest gap that fits, 7, is one less than the first gap that does not.
   fit["gaps 1 to 7: four sensors fit"] -->|"first too wide: 8"| wide["gaps 8 to 25: too wide"]
 ```
 
-<!-- text-of-mermaid sha256:18542c640048299b73c8371a2b9d073007d0883935050efc594d10dc5df4df92 -->
+<!-- text-of-mermaid sha256:397792d253634b26ca703de9f203f54c654864af220d43aeed0c47f14d90a102 -->
 ```text
 ┌─────────────────────────────┐                   ┌──────────────────────┐
 │gaps 1 to 7: four sensors fit├─first─too─wide:─8►│gaps 8 to 25: too wide│
@@ -110,7 +110,7 @@ def first_true(lo: int, hi: int, is_true: Callable[[int], bool]) -> int:
     return lo
 
 
-posts = [0, 3, 4, 7, 11, 12, 18, 20, 25]  # metres along the fence, sorted
+posts = [0, 3, 4, 7, 11, 12, 18, 20, 25]  # meters along the fence, sorted
 k = 4
 
 

@@ -1,6 +1,6 @@
 """The same data, fitted by gradient descent with its feature as it comes and standardized.
 
-A flat's price (in thousands) from its area in square metres, with a bias. The loss is a bowl with
+A flat's price (in thousands) from its area in square meters, with a bias. The loss is a bowl with
 two curvatures, one per main direction. Their ratio, the condition number, says how many steps the
 slow direction needs at a rate that is safe for the fast one.
 """

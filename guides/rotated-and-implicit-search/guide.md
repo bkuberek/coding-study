@@ -248,7 +248,7 @@ Use something else when no such question exists, as in an arbitrary unsorted arr
 - `cstudy start search-2d-matrix`: whether a value occurs in a grid ordered like the lines of a book, in a number of steps logarithmic in the number of cells.
 - `cstudy start min-in-rotated-array`: the smallest value of a sorted array that was rotated by an unknown amount.
 - `cstudy start search-rotated-array`: where a value sits in a sorted array that was rotated by an unknown amount.
-- `cstudy start find-peak-element`: a position whose value beats its neighbours, in an array that is not sorted at all, in logarithmic time.
+- `cstudy start find-peak-element`: a position whose value beats its neighbors, in an array that is not sorted at all, in logarithmic time.
 - `cstudy start median-of-two-sorted-arrays`: the median of two sorted arrays together, in a number of steps logarithmic in the shorter one.
 
 ## Further reading

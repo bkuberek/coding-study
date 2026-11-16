@@ -8,7 +8,7 @@ A **linear model** predicts from the features with a weighted sum. Each feature 
 z = b + w1 * x1 + w2 * x2 + ... + wd * xd
 ```
 
-A weight says how much its feature moves the result: a weight of 2.4 on the distance in kilometres means each extra kilometre adds 2.4 to `z`. Statisticians call the bias the **intercept** and the weights the **coefficients**; it is the same model. Training a linear model means choosing the weights and the bias, and two choices of what to do with `z` give the two models of this guide.
+A weight says how much its feature moves the result: a weight of 2.4 on the distance in kilometers means each extra kilometer adds 2.4 to `z`. Statisticians call the bias the **intercept** and the weights the **coefficients**; it is the same model. Training a linear model means choosing the weights and the bias, and two choices of what to do with `z` give the two models of this guide.
 
 **Linear regression** predicts a number: the prediction is `z` itself. How wrong a set of weights is gets measured by a **loss**, one number for the whole training set that is 0 when every prediction is right and grows as they get worse. Linear regression uses the **mean squared error** (MSE):
 
@@ -29,8 +29,8 @@ A large positive `z` gives a `p` near 1, a large negative one a `p` near 0, and 
 Logistic regression is measured with the **log loss**, the average of `-ln` of the probability the model gave to what really happened:
 
 ```text
-log loss = average of  -ln(p)      for an example labelled 1
-                       -ln(1 - p)  for an example labelled 0
+log loss = average of  -ln(p)      for an example labeled 1
+                       -ln(1 - p)  for an example labeled 0
 ```
 
 `ln` is the natural logarithm. A confident right answer costs almost nothing; a confident wrong answer costs a lot, without limit as the probability of the right answer goes to 0. It is the negative log-likelihood of the labels (how unlikely the model found what really happened), also called the **cross-entropy** between the data and the model, a name that covers any number of classes.
@@ -55,13 +55,13 @@ The drawing shows the chain. Linear regression stops at `z`; logistic regression
 
 ### Fitting a line
 
-Eight deliveries, each with its distance in kilometres and the minutes it took. The program fits a line by least squares, checks the answer against Python's `statistics.linear_regression`, and then moves the line a little in each direction to see that the MSE only goes up.
+Eight deliveries, each with its distance in kilometers and the minutes it took. The program fits a line by least squares, checks the answer against Python's `statistics.linear_regression`, and then moves the line a little in each direction to see that the MSE only goes up.
 
 ```python examples/fit_a_line.py
 """Fit a line by least squares, check it against the standard library, and see that it is the
 lowest point of the mean squared error.
 
-Each example is a delivery: its distance in kilometres (the feature) and how many minutes it took
+Each example is a delivery: its distance in kilometers (the feature) and how many minutes it took
 (the label).
 """
 
@@ -111,7 +111,7 @@ MSE, intercept + 1: 1.594
 MSE, intercept - 1: 1.594
 ```
 
-The line says a delivery takes about 13.6 minutes plus 2.36 minutes per kilometre. Every nudge raises the MSE, and by the same amount in both directions: the MSE of a linear model is a bowl, a **quadratic** function of the weights, and least squares finds its bottom. Moving the intercept by 1 adds exactly 1, because at the bottom the residuals average to zero, so shifting every prediction by 1 adds 1 to the average squared residual. Moving the slope by 0.2 adds 0.2² times the average of the squared distances, 92.5, which is 3.7.
+The line says a delivery takes about 13.6 minutes plus 2.36 minutes per kilometer. Every nudge raises the MSE, and by the same amount in both directions: the MSE of a linear model is a bowl, a **quadratic** function of the weights, and least squares finds its bottom. Moving the intercept by 1 adds exactly 1, because at the bottom the residuals average to zero, so shifting every prediction by 1 adds 1 to the average squared residual. Moving the slope by 0.2 adds 0.2² times the average of the squared distances, 92.5, which is 3.7.
 
 With one feature the bottom has the closed form in the program. With many, it is the solution of a system of linear equations, as the expert notes say, and the next guide reaches the same bottom by walking downhill instead.
 
@@ -177,13 +177,13 @@ The first table shows that the log odds undo the sigmoid, and that the sigmoid i
 
 ## Common traps
 
-- **Reading weights as importance.** A weight depends on its feature's units: the same effect has a weight of 2.4 per kilometre and 0.0024 per metre. Compare weights only after putting the features on the same scale, and even then, two features that move together share their effect in ways that are hard to read.
+- **Reading weights as importance.** A weight depends on its feature's units: the same effect has a weight of 2.4 per kilometer and 0.0024 per meter. Compare weights only after putting the features on the same scale, and even then, two features that move together share their effect in ways that are hard to read.
 - **Reading weights as causes.** A weight says how the prediction moves with a feature in this data, not what would happen if you changed the feature.
 - **Treating the probability as a fact.** A logistic model's `p` is a probability only when the model is **calibrated**, which [classifier metrics](../classifier-metrics/guide.md) explains how to check.
 - **Taking `ln(0)`.** A model that gives exactly 0 to the right answer has an infinite log loss; in CPython, `math.log(0.0)` raises `ValueError`. Implementations clip `p` a little away from 0 and 1 before taking the logarithm.
 - **Computing the sigmoid of a large negative number naively.** `e^(-z)` overflows for `z` below about -709 in double precision, and CPython's `math.exp` raises `OverflowError`. For a negative `z`, `e^z / (1 + e^z)` gives the same value safely.
 - **Extrapolating.** The line was fitted between 2 and 15 km. What it says about 60 km is a guess the data never checked.
-- **Forgetting the bias.** A model without it must pass through 0: zero kilometres, zero minutes, which is rarely true.
+- **Forgetting the bias.** A model without it must pass through 0: zero kilometers, zero minutes, which is rarely true.
 
 ## Complexity
 

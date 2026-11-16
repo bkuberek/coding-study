@@ -264,7 +264,7 @@ Data rarely arrives as an adjacency list. It comes as rows of a table, records w
 - **Forgetting nodes with no edges.** A graph built from its edges alone has no entry for an isolated node, as `gorse` showed, so a loop over the dictionary's keys skips it. Create an entry for every node first when the nodes are known.
 - **A defaultdict read that writes.** Reading a missing key with `[]` inserts it, so a lookup inside a loop over the same dictionary can change its size while you iterate, which Python refuses with `RuntimeError: dictionary changed size during iteration`. Use `in` or `.get()` to ask without inserting.
 - **Swapping rows and columns.** `grid[r][c]` is row `r`, column `c`, and the row is the vertical position. Name the variables `row` and `column` rather than `x` and `y`, and check each against its own bound.
-- **Numbering from 1.** When nodes are labelled `1` to `n`, a list of size `n` has no slot for `n`. Use size `n + 1` and ignore slot 0, or subtract 1 everywhere, but decide once.
+- **Numbering from 1.** When nodes are labeled `1` to `n`, a list of size `n` has no slot for `n`. Use size `n + 1` and ignore slot 0, or subtract 1 everywhere, but decide once.
 - **Duplicate and self edges.** The same pair listed twice, or a node linked to itself, is legal in some inputs. Decide whether it matters: it changes the degrees, and an edge from a node to itself is already a cycle.
 
 ## Complexity

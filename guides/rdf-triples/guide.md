@@ -8,7 +8,7 @@ Most databases ask you to design tables before you store anything. Facts about b
 - a **predicate**, the kind of relation: "has author";
 - an **object**, what the subject is related to: a person.
 
-A set of triples is a **graph**. Draw each subject and object as a node, and each triple as an arrow from its subject to its object, labelled with its predicate. Facts connect where they share a node: "the book has an author" and "the author is named Frank" meet at the author.
+A set of triples is a **graph**. Draw each subject and object as a node, and each triple as an arrow from its subject to its object, labeled with its predicate. Facts connect where they share a node: "the book has an author" and "the author is named Frank" meet at the author.
 
 ```mermaid
 flowchart LR
@@ -166,7 +166,7 @@ A store answers questions such as "everything about this subject" or "everyone w
 
 - **Resources and denotation.** In RDF 1.1, any IRI or literal denotes a **resource**, and anything can be one: physical things, documents, abstract concepts, numbers and strings. A predicate denotes a **property**, a resource that can be thought of as a binary relation. Relations that involve more than two entities can only be expressed indirectly.
 - **Literals in detail.** A literal's lexical form should be in Unicode Normal Form C. A literal has a language tag exactly when its datatype is `rdf:langString`, and language tags may be converted to lower case. A literal with no datatype in a concrete syntax, a **simple literal**, is shorthand for one with the datatype `xsd:string`.
-- **Blank nodes and IRIs.** Blank node identifiers are not part of the abstract syntax; they are local to a file or a store. Where stronger identification is needed, RDF 1.1 allows systems to replace some or all blank nodes with IRIs. Two graphs that differ only in how their blank nodes are labelled are **isomorphic**, the notion RDF uses for "the same graph".
+- **Blank nodes and IRIs.** Blank node identifiers are not part of the abstract syntax; they are local to a file or a store. Where stronger identification is needed, RDF 1.1 allows systems to replace some or all blank nodes with IRIs. Two graphs that differ only in how their blank nodes are labeled are **isomorphic**, the notion RDF uses for "the same graph".
 - **Named graphs.** A graph name is unique within a dataset, blank nodes can be shared between the graphs of one dataset, and RDF does not require the name to denote the graph: it is only paired with it. Some implementations do not keep empty named graphs, so applications should not depend on them.
 - **Generalized triples.** A non-normative section of RDF 1.1 allows a generalized triple, in which each position can be an IRI, a blank node or a literal, for example to show more easily that the RDF Schema entailment rules are complete.
 - **N-Triples and Turtle.** N-Triples is a line-based, plain text format and a subset of Turtle: a sequence of subject, predicate and object, separated by white space and ended by a `.` and a new line. In Turtle, the token `a` in the predicate position stands for `rdf:type`.

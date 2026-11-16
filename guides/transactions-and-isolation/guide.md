@@ -145,7 +145,7 @@ HISTORIES = {
 }
 
 
-def analyse(history: str) -> None:
+def analyze(history: str) -> None:
     actions = re.findall(r"([rw])(\d)\[(\w)\]", history)
     edges: dict[tuple[str, str], str] = {}
     for i, (op1, t1, item1) in enumerate(actions):
@@ -169,7 +169,7 @@ def analyse(history: str) -> None:
 
 for name, history in HISTORIES.items():
     print(f"{name}: {history}")
-    analyse(history)
+    analyze(history)
 ```
 
 It prints:

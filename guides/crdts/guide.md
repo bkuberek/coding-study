@@ -2,7 +2,7 @@
 
 ## The idea
 
-Some data must stay writable everywhere, all the time: a shared list on a phone that has no signal, a document edited by two people at once, a counter updated in several data centres. Each copy, a **replica**, accepts every update at once, without asking the others, and sends what it learned to the other replicas later. That is eventual consistency, as the guide on consistency models defines it. Shapiro, Preguiça, Baquero and Zawirski's 2011 paper on **conflict-free replicated data types** (CRDTs) starts from its weak spot: updates reach replicas in different orders, concurrent updates may conflict, and resolving a conflict after the fact may need a consensus and a rollback, an approach the paper calls ad hoc and error-prone.
+Some data must stay writable everywhere, all the time: a shared list on a phone that has no signal, a document edited by two people at once, a counter updated in several data centers. Each copy, a **replica**, accepts every update at once, without asking the others, and sends what it learned to the other replicas later. That is eventual consistency, as the guide on consistency models defines it. Shapiro, Preguiça, Baquero and Zawirski's 2011 paper on **conflict-free replicated data types** (CRDTs) starts from its weak spot: updates reach replicas in different orders, concurrent updates may conflict, and resolving a conflict after the fact may need a consensus and a rollback, an approach the paper calls ad hoc and error-prone.
 
 A CRDT avoids conflicts by design. The paper's goal is **strong eventual consistency**: replicas that have delivered the same updates are in equivalent states, immediately, with no conflict to resolve and nothing to roll back. It gives two ways to get there.
 

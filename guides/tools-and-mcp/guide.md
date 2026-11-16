@@ -62,11 +62,11 @@ def server(request: dict) -> dict:
     if not problem and arguments["order_id"] not in ORDERS:
         problem = f"no order {arguments['order_id']}"
     if not problem and name == "cancel_order" and ORDERS[arguments["order_id"]] == "shipped":
-        problem = "a shipped order cannot be cancelled"
+        problem = "a shipped order cannot be canceled"
     if problem:
         return reply | {"result": {"resultType": "complete", "content": [{"type": "text", "text": problem}], "isError": True}}
     if name == "cancel_order":
-        ORDERS[arguments["order_id"]] = "cancelled"
+        ORDERS[arguments["order_id"]] = "canceled"
     text = f"{arguments['order_id']}: {ORDERS[arguments['order_id']]}"
     return reply | {"result": {"resultType": "complete", "content": [{"type": "text", "text": text}], "isError": False}}
 
@@ -122,7 +122,7 @@ get_order{'order_id': 'A-1002'}: isError=False, A-1002: processing
 get_order{}: isError=True, missing order_id
 get_order{'order_id': 'A-9999'}: isError=True, no order A-9999
 refund_order{'order_id': 'A-1002'}: protocol error -32602: Unknown tool: refund_order
-cancel_order{'order_id': 'A-1001'}: isError=True, a shipped order cannot be cancelled
+cancel_order{'order_id': 'A-1001'}: isError=True, a shipped order cannot be canceled
 cancel_order{'order_id': 'A-1002'}: the user declined, so the host never called the server
 a request without _meta: {'code': -32602, 'message': 'missing required _meta fields'}
 the first request on the wire:
@@ -135,7 +135,7 @@ What each line shows:
 - **A good call.** `get_order` with `A-1002` returns `isError=False` and the status as text content.
 - **Bad arguments.** A call without `order_id` lacks a required argument, and `A-9999` is not an order the server knows. The server answers each with a **tool execution error**: a normal result with `isError: true` and a message the model can read and correct. This server checks only the required keys; a real one checks the whole `inputSchema` with a JSON Schema validator. The specification counts input validation, failed API calls and business rules among these, and advises clients to pass them back to the model.
 - **An unknown tool.** `refund_order` was never offered. That is a **protocol error**, a JSON-RPC error with code `-32602`, because the request itself is wrong and the model is less likely to recover from it.
-- **A business rule.** Cancelling a shipped order fails at the server, as a tool execution error.
+- **A business rule.** Canceling a shipped order fails at the server, as a tool execution error.
 - **A declined call.** For the second cancellation the user said no, so the host never sent the request. Confirmation happens in the host, before the server hears of the call.
 - **A request without `_meta`** is malformed under this revision and is refused with `-32602`: the version and the capabilities travel with every request, not once per connection.
 
@@ -205,7 +205,7 @@ The drawing shows where the decisions sit. The model only proposes. The host che
 
 ## When to use it
 
-- **A tool per capability the model needs**, and no more: read an order, search the help centre, open a ticket. Narrow tools with strict schemas are easier for the model to use correctly and for you to secure.
+- **A tool per capability the model needs**, and no more: read an order, search the help center, open a ticket. Narrow tools with strict schemas are easier for the model to use correctly and for you to secure.
 - **MCP when tools are shared** between applications, teams or vendors, or when you want to use servers others have written. A single application calling three of its own functions does not need a protocol.
 - **stdio for local servers** that the host launches and stops; **Streamable HTTP for remote ones**, with the protocol's authorization framework.
 - **A confirmation step for anything that changes the world**: sending, deleting, paying, publishing. The specification asks for a human in the loop who can deny tool invocations.

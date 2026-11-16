@@ -158,7 +158,7 @@ class Node:
 root = Node("A", Node("B", Node("D"), Node("E", Node("G"))), Node("C", None, Node("F")))
 ```
 
-**In an array.** A complete binary tree needs no links at all. Write its nodes into a list level by level, left to right, and the positions alone say who is whose child: with indexes counted from 0, the children of index `i` sit at `2i + 1` and `2i + 2`, and its parent at `(i - 1) // 2`. Here is a complete tree of ten nodes, labelled with the index each one gets.
+**In an array.** A complete binary tree needs no links at all. Write its nodes into a list level by level, left to right, and the positions alone say who is whose child: with indexes counted from 0, the children of index `i` sit at `2i + 1` and `2i + 2`, and its parent at `(i - 1) // 2`. Here is a complete tree of ten nodes, labeled with the index each one gets.
 
 ```mermaid
 flowchart LR
@@ -249,7 +249,7 @@ The arithmetic works because a complete tree has no gaps: level `d` starts at in
 
 Reach for a tree when the data itself is a hierarchy, or when a hierarchy makes a question fast:
 
-- **The data is nested.** Folders, menus, documents, organisation charts, the structure of a program or an expression: anything where each part belongs to exactly one larger part.
+- **The data is nested.** Folders, menus, documents, organization charts, the structure of a program or an expression: anything where each part belongs to exactly one larger part.
 - **You want "between" and "nearest", not only "equal to".** A hash map finds an exact key in O(1) on average but has no order; a [binary search tree](../binary-search-trees/guide.md) keeps keys in order and finds the nearest key, or every key in a range, in time proportional to its height.
 - **You want the smallest or largest, over and over.** A [heap](../heaps/guide.md) is a complete binary tree that always has the smallest (or largest) item at its root.
 - **The connections can form loops or a node can have several parents.** Then it is not a tree but a graph, and walking it needs a record of visited nodes so that you do not go round forever.

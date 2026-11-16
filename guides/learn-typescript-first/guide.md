@@ -2,7 +2,7 @@
 
 ## The idea
 
-cstudy problems assume you can already write a small function in the language you practise: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practise in TypeScript and are not there yet.
+cstudy problems assume you can already write a small function in the language you practice: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practice in TypeScript and are not there yet.
 
 TypeScript is JavaScript with types added. Its own documentation is direct about the order: "you can't learn TypeScript without learning JavaScript!" The types are checked before the code runs; when it runs, it is JavaScript. So you learn the JavaScript first, then the types on top.
 
@@ -57,7 +57,7 @@ ok    pnpm 12.8.1
 
 Look for the `node` and `pnpm` rows. `ok` means the tool was found, with its version; `FAIL` means it is missing or too old, and a `fix:` hint follows when there is one. Inside a workspace, `cstudy doctor --fix` then runs `pnpm install` in the TypeScript project.
 
-Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practising in TypeScript.
+Rows for other languages may show `FAIL` or `WARN` when you have not installed their toolchains. That does not stop you practicing in TypeScript.
 
 ## When to use it
 

@@ -40,11 +40,11 @@ def server(request: dict) -> dict:
     if not problem and arguments["order_id"] not in ORDERS:
         problem = f"no order {arguments['order_id']}"
     if not problem and name == "cancel_order" and ORDERS[arguments["order_id"]] == "shipped":
-        problem = "a shipped order cannot be cancelled"
+        problem = "a shipped order cannot be canceled"
     if problem:
         return reply | {"result": {"resultType": "complete", "content": [{"type": "text", "text": problem}], "isError": True}}
     if name == "cancel_order":
-        ORDERS[arguments["order_id"]] = "cancelled"
+        ORDERS[arguments["order_id"]] = "canceled"
     text = f"{arguments['order_id']}: {ORDERS[arguments['order_id']]}"
     return reply | {"result": {"resultType": "complete", "content": [{"type": "text", "text": text}], "isError": False}}
 

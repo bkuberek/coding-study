@@ -7,7 +7,7 @@ A language model reads instructions and data in the same stream of tokens, and i
 You cannot make the model impossible to fool. You can build the system around it so that when it is fooled, nothing important breaks:
 
 - **Treat the model as an untrusted user.** Its output is input to everything downstream: to the browser that renders it, the database that runs it, the tool that acts on it. Validate and encode it like any other untrusted input.
-- **Put authority in code, not in the prompt.** What a user may see and do is decided by application code, before retrieval and before any tool runs. Instructions in a system prompt shape behaviour; they do not enforce anything.
+- **Put authority in code, not in the prompt.** What a user may see and do is decided by application code, before retrieval and before any tool runs. Instructions in a system prompt shape behavior; they do not enforce anything.
 - **Limit what a fooled model can reach.** Few tools, narrow tools, least privilege, the user's own permissions, and a person's approval for anything irreversible or externally visible.
 - **Bound the cost.** A model call is expensive for you and cheap for an attacker. Every loop, user and team has a limit that stops it.
 
@@ -15,11 +15,11 @@ The **OWASP Top 10 for LLM Applications** is the community's ranking of these ri
 
 | ID | Risk | What goes wrong | A first defense |
 |----|------|-----------------|-----------------|
-| LLM01:2026 | Prompt Injection | Input from any source, a user, a document, a tool result, an image or memory, changes the model's behaviour against the developer's intent | Assume it will happen: least privilege for the model, approval for privileged actions, output schemas validated in code |
+| LLM01:2026 | Prompt Injection | Input from any source, a user, a document, a tool result, an image or memory, changes the model's behavior against the developer's intent | Assume it will happen: least privilege for the model, approval for privileged actions, output schemas validated in code |
 | LLM02:2026 | Sensitive Information Disclosure | Confidential data leaks through answers, tool arguments, logs, embeddings or measurable side channels | Authorize before retrieval, send the model only what the task needs, scrub logs |
 | LLM03:2026 | Excessive Agency | A wrong or manipulated output triggers damaging actions, through excessive functionality, permissions or autonomy | Minimize tools and their permissions, act in the user's context, require approval, enforce authorization in code |
 | LLM04:2026 | Supply Chain | Third-party models, adapters, datasets or conversion pipelines are tampered with or vulnerable | Vet suppliers, keep a signed inventory of models and datasets, scan and patch |
-| LLM05:2026 | Data and Model Poisoning | Training, fine-tuning, embedding or retrieval data is manipulated to plant behaviour | Track lineage, validate incoming data, filter and score retrieved sources |
+| LLM05:2026 | Data and Model Poisoning | Training, fine-tuning, embedding or retrieval data is manipulated to plant behavior | Track lineage, validate incoming data, filter and score retrieved sources |
 | LLM06:2026 | Unbounded Consumption | Uncontrolled inference exhausts service or money, or clones the model | Token-aware rate limits, hard spending caps, circuit breakers on agents |
 | LLM07:2026 | Misinformation | Incorrect but credible output is trusted and acted upon | Ground claims in sources, verify before acting, validate tool calls |
 | LLM08:2026 | Hidden Context Exposure | System prompts, tool schemas and other hidden context are extracted, revealing secrets or rules | Put no secrets in hidden context, and never rely on it for authorization |

@@ -2,7 +2,7 @@
 
 ## The idea
 
-cstudy problems assume you can already write a small function in the language you practise: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practise in Rust and are not there yet. It lists what to learn first and where to learn it for free, from Rust's own documentation.
+cstudy problems assume you can already write a small function in the language you practice: take some input, loop over it, decide things with `if`, and return a result. This page is for you if you want to practice in Rust and are not there yet. It lists what to learn first and where to learn it for free, from Rust's own documentation.
 
 Rust asks for more up front than the other languages here, because of **ownership**: the rules for which part of the program owns each value, which the Rust book calls "Rust's most unique feature". Expect your first problems to take longer than in a language you already know.
 

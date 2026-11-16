@@ -23,7 +23,7 @@ def label_recursively() -> dict[str, int]:
                 visit(nearby, number)
 
     for room in doorways:
-        if room not in label:  # an unlabelled room starts a new component
+        if room not in label:  # an unlabeled room starts a new component
             visit(room, len(set(label.values())))
     return label
 
