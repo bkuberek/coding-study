@@ -22,7 +22,7 @@ Six keys in the `[ai]` table of `config.toml`, all preview ([Surfaces](#surfaces
 |-----|------|---------|---------|------------------|
 | `ai.enabled` | boolean | `false` | Turn on the AI preview | At the next command; an open page after a reload, since the session holds it |
 | `ai.routing` | `fixed` or `auto` | `fixed` | `fixed`: every task uses `ai.model`. `auto`: each task uses its [tier](#routing) | At the next AI request |
-| `ai.model` | text | unset (example `anthropic:<model id>`) | The model of fixed routing | At the next AI request |
+| `ai.model` | text | unset (example `anthropic:<model-id>`) | The model of fixed routing | At the next AI request |
 | `ai.fast` | text | unset | Auto routing's fast tier | At the next AI request |
 | `ai.strong` | text | unset | Auto routing's strong tier | At the next AI request |
 | `ai.daily_token_cap` | integer, 1 or more | `500000` | Input and output tokens per local day, every AI task together, in this workspace ([the cap](#usage-and-the-daily-token-cap)) | At the next AI request |

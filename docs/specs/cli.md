@@ -163,9 +163,9 @@ auto_commit = false              # reserved (PRD Q3)
 [ai]                             # the AI preview (docs/specs/ai.md); nothing is sent while enabled is false
 enabled = false
 routing = "fixed"                # fixed: every task uses model; auto: each task uses its tier
-# model = "anthropic:<model id>" # unset by default: the model of fixed routing
-# fast = "openrouter:<model id>" # unset by default: auto routing's fast tier
-# strong = "openai:<model id>"   # unset by default: auto routing's strong tier
+# model = "anthropic:<model-id>" # unset by default: the model of fixed routing
+# fast = "openrouter:<model-id>" # unset by default: auto routing's fast tier
+# strong = "openai:<model-id>"   # unset by default: auto routing's strong tier
 daily_token_cap = 500000         # input and output tokens per local day, every AI task together, in this workspace
 ```
 
