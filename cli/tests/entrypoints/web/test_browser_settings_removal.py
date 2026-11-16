@@ -371,3 +371,82 @@ def test_a_kept_removal_notes_the_attempt_still_running(busy):
 
 def test_the_refusal_logs_no_error_or_warning(busy):
     assert busy.errors == []
+
+
+@dataclass
+class Unchosen:
+    """A removal from a workspace whose marker chose no languages: all six show checked."""
+
+    marker_before: dict[str, Any] = field(default_factory=dict[str, Any])
+    checked_before: int = 0
+    command: str = ""
+    kept_status: str = ""
+    marker_after: dict[str, Any] = field(default_factory=dict[str, Any])
+    folders_after: dict[str, bool] = field(default_factory=dict[str, bool])
+    errors: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def unchosen_workspace(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    languages = ("python", "typescript", "java", "kotlin", "go", "rust")
+    root = _init(tmp_path_factory.mktemp(f"removal-unchosen-{engine}") / "workspace", *languages)
+    # The folders are real; only the marker forgets which languages were chosen.
+    marker = root / ".cs" / "workspace.toml"
+    kept = [line for line in marker.read_text().splitlines() if not line.startswith("languages")]
+    marker.write_text("\n".join(kept) + "\n")
+    return root
+
+
+@pytest.fixture(scope="module")
+def unchosen_server(unchosen_workspace: Path) -> Iterator[RunningServer]:
+    with running_server(unchosen_workspace) as running:
+        yield running
+
+
+def _marker(workspace: Path) -> dict[str, Any]:
+    return tomllib.loads((workspace / ".cs" / "workspace.toml").read_text())
+
+
+@pytest.fixture(scope="module")
+def unchosen(engine: str, unchosen_workspace: Path, unchosen_server: RunningServer) -> Unchosen:
+    seen = Unchosen()
+    seen.marker_before = _marker(unchosen_workspace)
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = watched(browser.new_page(viewport={"width": 1440, "height": 900}), seen.errors)
+        page.set_default_timeout(WAIT_MS)
+        page.goto(unchosen_server.login_url)
+        page.wait_for_selector(LISTED)
+        _open_settings(page)
+        seen.checked_before = page.locator("#profile-languages input:checked").count()
+        page.uncheck(f"{LANGUAGE}go")
+        seen.command = _words(page.locator(".profile-commands").inner_text())
+        _save(page)
+        page.click(f"{SHEET} button:has-text('Keep the folder')")
+        page.wait_for_selector(SHEET, state="detached")
+        seen.kept_status = _status(page, "go removed").splitlines()[0]
+        seen.marker_after = _marker(unchosen_workspace)
+        seen.folders_after = {
+            name: (unchosen_workspace / name).is_dir() for name in ("go", "rust", "python")
+        }
+        browser.close()
+    return seen
+
+
+def test_a_marker_without_languages_shows_all_six_checked_with_real_folders(unchosen):
+    assert "languages" not in unchosen.marker_before
+    assert unchosen.checked_before == 6
+
+
+def test_removing_one_names_the_command_and_keeps_the_folder(unchosen):
+    assert unchosen.command == "Save runs cstudy lang remove go"
+    assert unchosen.kept_status.endswith("go removed: go/ and go.work stays on disk")
+    assert unchosen.folders_after == {"go": True, "rust": True, "python": True}
+
+
+def test_the_marker_names_the_other_five_after_the_removal(unchosen):
+    assert unchosen.marker_after["languages"] == ["python", "typescript", "java", "kotlin", "rust"]
+
+
+def test_the_removal_from_an_unchosen_workspace_logs_no_error_or_warning(unchosen):
+    assert unchosen.errors == []

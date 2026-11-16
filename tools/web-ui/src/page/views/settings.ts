@@ -10,7 +10,6 @@ import { h } from "../dom.ts";
 import { languageRow } from "../intelligence-status.ts";
 import { messageOf } from "../states.ts";
 import { trackUnsaved } from "../save.ts";
-import { takeProfileFocus } from "../routes.ts";
 import { changesText, lineParts, type SaveLine, saveLines, type StoreOutcome } from "../settings-model.ts";
 import { THEMES } from "../shell.ts";
 import type { LanguageStates, Preferences, Theme } from "../types.ts";
@@ -56,7 +55,7 @@ const PREFERENCES_FILE = ".cs/serve/preferences.json";
 /** What the question before leaving calls the view. */
 const LEAVING = "Settings";
 
-export function settingsView(context: PageContext): Cleanup {
+export function settingsView(context: PageContext, section: "profile" | null = null): Cleanup {
   const { shell } = context;
   shell.setView("settings");
   shell.setCommand("cstudy config edit");
@@ -99,6 +98,13 @@ export function settingsView(context: PageContext): Cleanup {
     if (active === null || active === document.body || active.matches(":disabled, [hidden]")) title.focus({ preventScroll: true });
   };
   const saveAll = async () => {
+    // A group of roles or domains with no box is refused here, before any store is written.
+    const refused = config.refuse();
+    if (refused !== null) {
+      say([{ text: "not saved: choose at least one box in each profile group", failed: true }]);
+      refused.focus();
+      return;
+    }
     saving = true;
     say([{ text: "saving…", failed: false }]);
     refresh();
@@ -196,8 +202,8 @@ export function settingsView(context: PageContext): Cleanup {
     languages.follow();
     refresh();
   }, () => undefined);
-  // The app focuses the view's main element once this returns; `edit profile` wants the section.
-  if (takeProfileFocus()) window.setTimeout(() => profileHeading.focus(), 0);
+  // The app focuses the view's main element once this returns; `#/settings/profile` wants the section.
+  if (section === "profile") window.setTimeout(() => profileHeading.focus(), 0);
   const stopFollowing = context.onPreferences((stored) => {
     preferences.follow(stored);
     refresh();

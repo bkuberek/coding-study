@@ -20,8 +20,16 @@ const PROFILE_NOTES: Readonly<Record<string, string>> = {
   "profile.domains": "Keep algorithms for the data structures and algorithms problems.",
 };
 
+/** What a profile group asks for, in the message under it when every box is unchecked. */
+const PROFILE_NOUNS: Readonly<Record<string, string>> = {
+  "profile.job_roles": "job role",
+  "profile.domains": "domain",
+};
+
 interface Field {
   readonly row: HTMLElement;
+  /** For a group of checkboxes: refuses it, with a message next to it, while every box is unchecked. */
+  readonly refuse?: () => HTMLElement | null;
   readonly read: () => ConfigValue;
   /** What `read` gave when the field was drawn, which a change differs from. */
   readonly drawn: ConfigValue;
@@ -33,6 +41,9 @@ export interface ConfigStage {
   readonly profile: HTMLElement;
   /** What differs from the file, by each key's name, as `POST /api/v1/config` takes it. */
   changes(): Record<string, ConfigValue>;
+  /** Refuses each profile group with every box unchecked, with a message next to it; the first
+   * such group's first box, or null when none is refused. */
+  refuse(): HTMLElement | null;
   /** Marks the rows of what differs. */
   mark(): void;
   /** Draws the file's values again. */
@@ -77,6 +88,10 @@ export function configStage(context: PageContext): ConfigStage {
     element,
     profile,
     changes,
+    refuse() {
+      const refused = [...fields.values()].map((field) => field.refuse?.() ?? null);
+      return refused.find((box) => box !== null) ?? null;
+    },
     mark() {
       const changed = changes();
       for (const [key, { row }] of fields) row.classList.toggle("changed", key.name in changed);
@@ -109,12 +124,15 @@ function fieldOf(key: ConfigKey): Field {
 }
 
 /** A profile key as a group of checkboxes, one per choice, with where it is stored and its note.
- * Unchecking every box stages a list the parser refuses, which a Save refuses by the key's name. */
+ * Unchecking every box stages a list that cannot be saved: a Save refuses it in the page, with a
+ * message tied to the group, and keeps the change staged. */
 function profileField(key: ConfigKey): Field {
   const id = idOf(key);
   const held = [key.value].flat();
   const boxes = key.choices.map((choice) => h("input", { type: "checkbox", id: `${id}-${choice}`, value: choice, checked: held.includes(choice) }));
   const note = PROFILE_NOTES[key.name];
+  const noun = PROFILE_NOUNS[key.name] ?? key.label;
+  const message = h("p", { id: `${id}-error`, class: "profile-error", hidden: true }, `Choose at least one ${noun}.`);
   const row = h(
     "fieldset",
     { class: "profile-group", id },
@@ -122,9 +140,22 @@ function profileField(key: ConfigKey): Field {
     h("p", { class: "quiet" }, "all your workspaces: config.toml · ", h("code", { class: "config-name" }, key.name)),
     note === undefined ? null : h("p", { class: "quiet" }, note),
     h("div", { class: "profile-options" }, ...boxes.map((box) => h("div", { class: "profile-option" }, box, h("label", { for: box.id }, box.value)))),
+    message,
   );
   const read = () => boxes.filter((box) => box.checked).map((box) => box.value);
-  return { row, read, drawn: read() };
+  const show = (shown: boolean) => {
+    message.hidden = !shown;
+    if (shown) row.setAttribute("aria-describedby", message.id);
+    else row.removeAttribute("aria-describedby");
+  };
+  // Checking a box answers the message.
+  row.addEventListener("change", () => show(false));
+  const refuse = () => {
+    const empty = read().length === 0;
+    show(empty);
+    return empty ? (boxes[0] ?? null) : null;
+  };
+  return { row, read, drawn: read(), refuse };
 }
 
 function rowOf(key: ConfigKey, control: HTMLElement): HTMLElement {

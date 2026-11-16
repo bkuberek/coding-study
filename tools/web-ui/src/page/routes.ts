@@ -32,12 +32,14 @@ export type Route =
   | { readonly view: "mock" }
   | { readonly view: "progress" }
   | { readonly view: "health" }
-  | { readonly view: "settings" }
+  | { readonly view: "settings"; readonly section: "profile" | null }
   | { readonly view: "about" }
   | { readonly view: "missing"; readonly fragment: string };
 
 /** The views addressed by one segment, such as `#/health`. */
-const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "settings", "about"] as const;
+const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "about"] as const;
+/** The one section of Settings with a route of its own: `#/settings/profile`. */
+const PROFILE_SECTION = "profile";
 type SingleView = (typeof SINGLE_VIEWS)[number];
 
 function isSingleView(segment: string): segment is SingleView {
@@ -65,6 +67,8 @@ export function parseRoute(fragment: string): Route {
   if (first === "attempts" && second !== undefined && rest.length === 0 && /^[1-9]\d*$/.test(second)) {
     return { view: "attempt", id: Number(second) };
   }
+  if (first === "settings" && second === undefined) return { view: "settings", section: null };
+  if (first === "settings" && second === PROFILE_SECTION && rest.length === 0) return { view: "settings", section: "profile" };
   if (segments.length === 1 && isSingleView(first)) return { view: first };
   return { view: "missing", fragment: `#${hash}` };
 }
@@ -84,24 +88,10 @@ export const setHash = (name: string): string => `${SETS_HASH}/${encodeURICompon
 /** The Guides view, and a guide's and a path's: where `cstudy learn <guide> --open` and
  * `cstudy learn --path <path> --open` land. */
 export const GUIDES_HASH = "#/guides";
-/** Settings, where `edit profile` leads. */
+/** Settings, and its Profile section, where `edit profile` leads: it opens Settings with the focus on
+ * the section's heading, also after a reload or in a new tab. */
 export const SETTINGS_HASH = "#/settings";
-
-/** How long after `edit profile` the Settings view still lands on its Profile section. */
-const PROFILE_REQUEST_MS = 2000;
-let profileRequestedAt = Number.NEGATIVE_INFINITY;
-
-/** Called by `edit profile`: the Settings view that opens next puts the focus on its Profile section. */
-export function requestProfileFocus(now = Date.now()): void {
-  profileRequestedAt = now;
-}
-
-/** Whether `edit profile` led here, once: a click that opened Settings elsewhere has expired. */
-export function takeProfileFocus(now = Date.now()): boolean {
-  const requested = now - profileRequestedAt <= PROFILE_REQUEST_MS;
-  profileRequestedAt = Number.NEGATIVE_INFINITY;
-  return requested;
-}
+export const PROFILE_HASH = `${SETTINGS_HASH}/${PROFILE_SECTION}`;
 /** The Guides view with its search and filters, each in the query while it holds a value. */
 export function guidesHash(filters: GuideFilters): string {
   const text = queryText(filters, GUIDE_FILTER_KEYS);

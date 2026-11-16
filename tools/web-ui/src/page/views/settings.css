@@ -269,6 +269,12 @@ html:has(.settings-bar) {
   font-size: var(--text-s);
 }
 
+/* A group with every box unchecked, refused by Save, in the fail ink. */
+.profile-group p.profile-error {
+  margin: 6px 0 0;
+  color: var(--fail);
+}
+
 .profile-options {
   display: flex;
   flex-wrap: wrap;

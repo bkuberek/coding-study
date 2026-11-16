@@ -382,7 +382,7 @@ def test_the_chip_is_reached_by_tab(visit):
 
 
 def test_edit_profile_follows_the_chip_to_settings(visit):
-    assert visit.edit_href == "#/settings"
+    assert visit.edit_href == "#/settings/profile"
 
 
 def test_the_rows_and_the_count_are_those_of_the_command_above_the_view(visit):

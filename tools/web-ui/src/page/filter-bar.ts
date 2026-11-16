@@ -25,7 +25,7 @@ import {
   widenedChips,
   withChoice,
 } from "./filter-model.ts";
-import { requestProfileFocus, SETTINGS_HASH } from "./routes.ts";
+import { PROFILE_HASH } from "./routes.ts";
 
 export const SEARCH_FIELD = "filter-search";
 const MORE_MENU = ".filter-menu[open]";
@@ -123,7 +123,7 @@ export function activeLine(options: ActiveLineOptions): ActiveLine {
         pendingFocus = widenedChipId(profile.dimensions.find((dimension) => options.widens.includes(dimension)) ?? DIMENSIONS[0]);
         options.change(widenedBy(filters, profile, options.widens));
       });
-      chips.push(button, h("a", { href: SETTINGS_HASH, class: "edit-profile", onclick: () => requestProfileFocus() }, "edit profile"));
+      chips.push(button, h("a", { href: PROFILE_HASH, class: "edit-profile" }, "edit profile"));
     }
     chips.push(...widened.map(({ dimension, words }) => chip(widenedChipId(dimension), words, `Remove the filter ${words}`, unwidened(filters, dimension, options.widens))));
     chips.push(...explicit.map(({ key, words }) => chip(chipId(key), words, `Remove the filter ${words}`, { ...filters, [key]: "" })));

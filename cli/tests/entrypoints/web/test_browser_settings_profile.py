@@ -1,9 +1,10 @@
 """The Settings view's Profile section in a real browser (docs/specs/web-ui.md#settings-view), in
 each engine of `tests/browsers.py`: roles and domains stage as checkboxes and reach `config.toml`
-(a list with every box unchecked is refused by the key's name), languages stage an add or a removal,
-name the command Save runs and reach the marker through `POST /api/v1/languages` with the folder
-kept, the last language cannot be unchecked, a workspace that chose none reads `all six (none
-chosen)`, and `edit profile` lands on the section.
+(a group with every box unchecked is refused in the page, tied to its message), languages stage an
+add or a removal, name the command Save runs and reach the marker through `POST /api/v1/languages`
+with the folder kept, the last language cannot be unchecked, a workspace that chose none reads `all
+six (none chosen)`, and `edit profile` leads to `#/settings/profile`, which a reload and a new tab
+land on too.
 
 The workspaces are made by `cstudy init` or bare ones, nothing is run. Playwright and its engines
 are set up as `tests/browsers.py` says; without them the test is skipped.
@@ -113,6 +114,18 @@ class Edited:
     roles_after_reset: list[str] = field(default_factory=list[str])
     edit_hash: str = ""
     edit_focus: str = ""
+    reload_hash: str = ""
+    reload_focus: str = ""
+    tab_hash: str = ""
+    tab_focus: str = ""
+    role_message: str = ""
+    role_message_visible: bool = False
+    role_described_by: str | None = None
+    domain_message_visible: bool = True
+    role_message_after_check: bool = True
+    role_described_after_check: str | None = None
+    refusal_focus: str = ""
+    count_after_refusal: str = ""
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -183,16 +196,40 @@ def edited(engine: str, narrowed: Path, narrowed_server: RunningServer) -> Edite
         seen.cli_counts = _cli_counts(narrowed)
         page.click(".filter-summary a.edit-profile")
         page.wait_for_selector("#profile-heading")
-        page.wait_for_function("document.activeElement?.id === 'profile-heading'")
+        page.wait_for_selector("#profile-heading:focus")
         seen.edit_hash = page.evaluate("location.hash")
         seen.edit_focus = page.evaluate("document.activeElement?.id")
-        # Every box of a group unchecked is a list the parser refuses, by the key's name.
+        # The route is the landing: a reload and a new tab open on the section too.
+        page.reload()
+        page.wait_for_selector("#profile-heading:focus")
+        seen.reload_hash = page.evaluate("location.hash")
+        seen.reload_focus = page.evaluate("document.activeElement?.id")
+        tab = browser.new_context(storage_state=page.context.storage_state()).new_page()
+        tab.set_default_timeout(WAIT_MS)
+        tab.goto(page.url.split("#")[0] + "#/settings/profile")
+        tab.wait_for_selector("#profile-heading")
+        tab.bring_to_front()
+        tab.wait_for_selector("#profile-heading:focus")
+        seen.tab_hash = tab.evaluate("location.hash")
+        seen.tab_focus = tab.evaluate("document.activeElement?.id")
+        tab.close()
+        # A group with every box unchecked is refused in the page, before anything is written.
         page.wait_for_selector(f"{ROLE}-{KEPT_ROLE}")
         page.uncheck(f"{ROLE}-{KEPT_ROLE}")
         page.click(SAVE)
         seen.refusal = _status(page, "not saved")
+        seen.role_message = page.locator(f"{ROLE}-error").inner_text()
+        seen.role_message_visible = page.locator(f"{ROLE}-error").is_visible()
+        seen.role_described_by = page.get_attribute(ROLE, "aria-describedby")
+        seen.domain_message_visible = page.locator(f"{DOMAIN}-error").is_visible()
+        seen.refusal_focus = page.evaluate("document.activeElement?.id")
+        seen.count_after_refusal = page.locator(COUNT).inner_text()
         seen.config_after_refusal = tomllib.loads(config.read_text())
         seen.roles_after_refusal = _checked(page, ROLE)
+        page.check(f"{ROLE}-{KEPT_ROLE}")
+        seen.role_message_after_check = page.locator(f"{ROLE}-error").is_visible()
+        seen.role_described_after_check = page.get_attribute(ROLE, "aria-describedby")
+        page.uncheck(f"{ROLE}-{KEPT_ROLE}")
         page.click(RESET)
         seen.reset_status = _status(page, "changes undone")
         seen.roles_after_reset = _checked(page, ROLE)
@@ -234,14 +271,33 @@ def test_the_problems_view_after_the_save_counts_as_the_command_does(edited):
     assert edited.chip_counts == edited.cli_counts
 
 
-def test_edit_profile_lands_on_the_profile_section(edited):
-    assert (edited.edit_hash, edited.edit_focus) == ("#/settings", "profile-heading")
+def test_edit_profile_leads_to_the_profile_route_and_focuses_its_heading(edited):
+    assert (edited.edit_hash, edited.edit_focus) == ("#/settings/profile", "profile-heading")
 
 
-def test_a_group_with_every_box_unchecked_is_refused_by_the_keys_name(edited):
-    assert "config.toml not saved: profile.job_roles: expected at least one role" in edited.refusal
+def test_a_reload_and_a_new_tab_land_on_the_profile_heading_too(edited):
+    assert (edited.reload_hash, edited.reload_focus) == ("#/settings/profile", "profile-heading")
+    assert (edited.tab_hash, edited.tab_focus) == ("#/settings/profile", "profile-heading")
+
+
+def test_a_group_with_every_box_unchecked_is_refused_in_the_page_next_to_the_group(edited):
+    assert edited.refusal.startswith("not saved")
+    assert edited.role_message == "Choose at least one job role."
+    assert edited.role_message_visible
+    assert edited.role_described_by == "config-profile-job_roles-error"
+    assert not edited.domain_message_visible
+    assert edited.refusal_focus == f"config-profile-job_roles-{PROFILE_JOB_ROLES[0]}"
+
+
+def test_a_refused_group_keeps_the_change_staged_and_writes_nothing(edited):
+    assert edited.count_after_refusal == "1 change"
     assert edited.config_after_refusal == edited.config_after_save
     assert edited.roles_after_refusal == []
+
+
+def test_checking_a_box_answers_the_message(edited):
+    assert not edited.role_message_after_check
+    assert edited.role_described_after_check is None
 
 
 def test_reset_draws_the_saved_lists_again(edited):
@@ -250,7 +306,7 @@ def test_reset_draws_the_saved_lists_again(edited):
 
 
 def test_the_section_logs_no_error_or_warning_but_the_refusal(edited):
-    assert [line for line in edited.errors if "422" not in line] == []
+    assert edited.errors == []
 
 
 @dataclass
