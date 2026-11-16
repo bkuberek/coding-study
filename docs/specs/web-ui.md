@@ -309,8 +309,8 @@ The endpoints of the [AI preview](ai.md), preview as its commands are. They run 
 
 | Method and path | Request | Response and use case |
 |-----------------|---------|-----------------------|
-| `GET /api/v1/ai/status` | | [`cstudy ai status --json`](cli.md#cstudy-ai-status); `ai_status` |
-| `GET /api/v1/ai/usage` | `days` (1 to 366, default 7) | [`cstudy ai usage --json`](cli.md#cstudy-ai-usage); `ai_usage` |
+| `GET /api/v1/ai/status` | | [`cstudy ai status --json`](cli.md#cstudy-ai-status); `ai_status`. It answers with AI off and with a `credentials.toml` that does not load, which it reports in `credentials.issue` |
+| `GET /api/v1/ai/usage` | `days` (1 to 366, default 7) | [`cstudy ai usage --json`](cli.md#cstudy-ai-usage); `usage_report`. A `days` outside 1 to 366: 422 `usage` |
 | `PUT /api/v1/ai/keys/{provider}` | `{"key": "<the key>"}` | `{"provider", "set": true}`; `save_key`, as [`cstudy ai key`](cli.md#cstudy-ai-key). An unknown provider: 404 `not_found`; a key the CLI refuses, or a file that would be inside the workspace: 422 `usage` with the CLI's message, which never quotes the key; a `credentials.toml` that does not load or cannot be written: 503 `environment`, the file left as it was. No response, log line or error holds the key |
 | `DELETE /api/v1/ai/keys/{provider}` | | `{"provider", "set": false}`; `remove_key` |
 | `DELETE /api/v1/ai/consents` | `{"provider", "model", "purpose"}` | `{"revoked": true}`, or false when there was none; `revoke_consent`, as `cstudy ai consent --revoke` |

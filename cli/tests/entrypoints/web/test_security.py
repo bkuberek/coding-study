@@ -7,6 +7,8 @@ from http.cookies import SimpleCookie
 import pytest
 from starlette.types import Message, Receive, Scope, Send
 
+from coding_study.domain.ai import AiTask, ApiKey, Provider
+from coding_study.domain.ai_records import Consent
 from coding_study.entrypoints.web.security import (
     BODY_LIMIT,
     IMPORT_BODY_LIMIT,
@@ -17,6 +19,7 @@ from coding_study.entrypoints.web.security import (
     cookie_name,
     login_url,
 )
+from tests.fakes import NOW, FakeAiStore, FakeCredentials
 from tests.web_server import (
     HOST,
     ORIGIN,
@@ -26,6 +29,7 @@ from tests.web_server import (
     anonymous_client,
     session_client,
     web_app,
+    web_workspace,
 )
 
 PREFERENCES = "/api/v1/preferences"
@@ -658,3 +662,91 @@ def test_a_set_write_without_the_csrf_token_gets_403(app, sets_file, method, pat
         "forbidden",
         SET_FILE,
     )
+
+
+# The writes of the AI preview: the keys and the consents
+
+
+KEPT_KEY = "sk-kept-0123456789"
+AI_WRITES = (
+    ("PUT", "/api/v1/ai/keys/anthropic", {"key": "sk-new-0123456789"}),
+    ("DELETE", "/api/v1/ai/keys/anthropic", None),
+    (
+        "DELETE",
+        "/api/v1/ai/consents",
+        {"provider": "anthropic", "model": "claude-x", "purpose": "review"},
+    ),
+)
+
+
+@pytest.fixture
+def ai_state(tmp_path):
+    credentials = FakeCredentials({Provider.ANTHROPIC: KEPT_KEY})
+    store = FakeAiStore()
+    store.grant_consent(Consent(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, NOW))
+    environment = web_workspace(tmp_path, credentials=credentials, ai_store=store)
+    return web_app(tmp_path, environment), credentials, store
+
+
+def ai_unchanged(credentials, store) -> bool:
+    return credentials.keys == {Provider.ANTHROPIC: ApiKey(KEPT_KEY)} and len(store.consents()) == 1
+
+
+@pytest.mark.parametrize(("method", "path", "body"), AI_WRITES)
+def test_an_ai_write_for_another_host_gets_403(ai_state, method, path, body):
+    app, credentials, store = ai_state
+    with session_client(app) as client:
+        response = client.request(
+            method, path, json=body, headers={**WRITE_HEADERS, "Host": f"rebound.example:{PORT}"}
+        )
+    assert (response.status_code, error_code(response), ai_unchanged(credentials, store)) == (
+        403,
+        "forbidden",
+        True,
+    )
+
+
+@pytest.mark.parametrize(("method", "path", "body"), AI_WRITES)
+def test_an_ai_write_from_another_origin_gets_403(ai_state, method, path, body):
+    app, credentials, store = ai_state
+    with session_client(app) as client:
+        response = client.request(
+            method, path, json=body, headers={**WRITE_HEADERS, "Origin": "http://evil.example"}
+        )
+    assert (response.status_code, error_code(response), ai_unchanged(credentials, store)) == (
+        403,
+        "forbidden",
+        True,
+    )
+
+
+@pytest.mark.parametrize(("method", "path", "body"), AI_WRITES)
+def test_an_ai_write_without_the_cookie_gets_401(ai_state, method, path, body):
+    app, credentials, store = ai_state
+    with anonymous_client(app) as client:
+        response = client.request(method, path, json=body, headers=WRITE_HEADERS)
+    assert (response.status_code, error_code(response), ai_unchanged(credentials, store)) == (
+        401,
+        "unauthorized",
+        True,
+    )
+
+
+@pytest.mark.parametrize(("method", "path", "body"), AI_WRITES)
+def test_an_ai_write_without_the_csrf_token_gets_403(ai_state, method, path, body):
+    app, credentials, store = ai_state
+    with session_client(app) as client:
+        response = client.request(method, path, json=body, headers={"Origin": ORIGIN})
+    assert (response.status_code, error_code(response), ai_unchanged(credentials, store)) == (
+        403,
+        "forbidden",
+        True,
+    )
+
+
+@pytest.mark.parametrize("path", ["/api/v1/ai/status", "/api/v1/ai/usage"])
+def test_an_ai_read_without_the_cookie_gets_401(ai_state, path):
+    app, _, _ = ai_state
+    with anonymous_client(app) as client:
+        response = client.get(path)
+    assert (response.status_code, error_code(response)) == (401, "unauthorized")

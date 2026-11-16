@@ -55,6 +55,7 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
         "patterns": list(PATTERNS),
         "selected_jdk": selected_jdk_value(environment.jdk.selected()),
         "profile": _profile_value(environment),
+        "ai": {"enabled": environment.config.ai.enabled},
     }
 
 

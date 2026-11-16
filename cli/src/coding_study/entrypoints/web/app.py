@@ -10,6 +10,7 @@ from starlette.types import ASGIApp
 
 from coding_study.application.attempt_changes import WorkspaceSnapshot, workspace_snapshot
 from coding_study.entrypoints.web.api_about import about_routes
+from coding_study.entrypoints.web.api_ai import ai_routes
 from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
 from coding_study.entrypoints.web.api_code_intelligence import (
@@ -60,6 +61,7 @@ def create_app(
         *session_routes(),
         *about_routes(),
         *config_routes(),
+        *ai_routes(),
         *language_routes(),
         *browsing_routes(),
         *set_routes(),

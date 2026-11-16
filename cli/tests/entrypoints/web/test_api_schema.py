@@ -23,12 +23,22 @@ from coding_study.application.attempt_changes import WatchedFolder, workspace_sn
 from coding_study.application.environment import Environment
 from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.domain.ai import AiTask, Provider
+from coding_study.domain.ai_records import Consent
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.web.notifications import Notifications, WorkspaceWatch
 from coding_study.entrypoints.web.runs import Children
 from tests.doc_builders import write_docs
-from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
+from tests.fakes import (
+    NOW,
+    FakeAiStore,
+    FakeCredentials,
+    FakeStubGenerator,
+    FakeToolchains,
+    make_environment,
+    repository_root,
+)
 from tests.guide_builders import write_guide
 from tests.helpers import (
     FIRST_CATALOG,
@@ -51,7 +61,13 @@ from tests.scripted_runs import (
 )
 from tests.service_problems import SLUG as SERVICE_SLUG
 from tests.service_problems import make_content, write_problem
-from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, web_app
+from tests.web_server import (
+    WRITE_HEADERS,
+    anonymous_client,
+    session_client,
+    web_app,
+    web_workspace,
+)
 
 SCHEMA = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
 DEV = "/api/v1/dev"
@@ -64,6 +80,8 @@ DOCUMENTS = (
     "about_licenses",
     "preferences",
     "config",
+    "ai_key",
+    "ai_consent_revoked",
     "reset_preview",
     "reset_done",
     "sets",
@@ -165,7 +183,29 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _needs(tmp_path_factory.mktemp("needs"), record)
     _guides(tmp_path_factory.mktemp("guides"), record)
     _docs(tmp_path_factory.mktemp("docs"), record)
+    _ai(tmp_path_factory.mktemp("ai"), record)
     return record.documents
+
+
+def _ai(root: Path, record: Recorder) -> None:
+    """A key set and removed, a consent revoked, and the refusals of each."""
+    environment = web_workspace(root, ai_store=FakeAiStore(), credentials=FakeCredentials())
+    environment.ai_store.grant_consent(Consent(Provider.ANTHROPIC, "claude-x", AiTask.REVIEW, NOW))
+    key = "/api/v1/ai/keys/anthropic"
+    consent = {"provider": "anthropic", "model": "claude-x", "purpose": "review"}
+    with session_client(web_app(root, environment)) as client:
+        record("ai_key", client.put(key, json={"key": "sk-sentinel"}, headers=WRITE_HEADERS))
+        record("ai_key", client.delete(key, headers=WRITE_HEADERS))
+        record("error", client.put(key, json={"key": "two words"}, headers=WRITE_HEADERS))
+        record("error", client.put("/api/v1/ai/keys/nothing", json={}, headers=WRITE_HEADERS))
+        revoke = client.request(
+            "DELETE", "/api/v1/ai/consents", json=consent, headers=WRITE_HEADERS
+        )
+        record("ai_consent_revoked", revoke)
+        revoke = client.request(
+            "DELETE", "/api/v1/ai/consents", json=consent, headers=WRITE_HEADERS
+        )
+        record("ai_consent_revoked", revoke)
 
 
 def _languages(root: Path, record: Recorder) -> None:

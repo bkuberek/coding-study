@@ -114,6 +114,7 @@ def test_the_session_describes_the_server_and_the_workspace(tmp_path, app):
             ],
             "domains": list(DOMAINS),
         },
+        "ai": {"enabled": False},
     }
 
 
