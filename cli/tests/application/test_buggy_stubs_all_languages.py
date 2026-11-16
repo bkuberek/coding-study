@@ -6,6 +6,7 @@ schemas and of the debugging fixture, plus a symlink to the real `runners/`; the
 session's practice workspace, where `cstudy verify` only builds under `.cs/build/`.
 """
 
+import os
 import shutil
 from pathlib import Path
 
@@ -35,7 +36,7 @@ def repository(root: Path) -> Path:
 
 
 def verified(root: Path, workspace: Path) -> ProblemVerification:
-    environ = {"CSTUDY_CONTENT": str(root), "CSTUDY_WORKSPACE": str(workspace)}
+    environ = {**os.environ, "CSTUDY_CONTENT": str(root), "CSTUDY_WORKSPACE": str(workspace)}
     environment = load_environment(root, environ, workspace)
     request = VerifyRequest(slugs=("running-max",), require_ready=True)
     return verify_content(environment, request, lambda _line: None).problems[0]
