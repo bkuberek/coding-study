@@ -1,8 +1,8 @@
 """`cstudy list`: problems with their progress, filtered (docs/specs/cli.md#cstudy-list)."""
 
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Collection, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 from coding_study.application.environment import Environment
@@ -11,7 +11,7 @@ from coding_study.domain.checked_by import CheckedBy, checked_by_of
 from coding_study.domain.items import RUBRIC_KINDS, EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import fit_of, listing_reason
-from coding_study.domain.labels import LabelFilter
+from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.levels import level_progress
 from coding_study.domain.problem import (
     ContentStatus,
@@ -22,6 +22,7 @@ from coding_study.domain.problem import (
     Track,
 )
 from coding_study.domain.problem_sets import ProblemSet
+from coding_study.domain.profile import NO_WIDENING, NarrowedValues, Profile, Widening
 from coding_study.domain.scheduling import ProblemProgress, ProblemStatus
 from coding_study.domain.service_project import NEEDS_NOTHING, need_markers
 
@@ -51,6 +52,12 @@ class ProblemFilter:
     """`--needs`: `none`, or `docker` or a service a problem needs."""
     checked_by: CheckedBy | None = None
     """`--checked-by`: problems checked this way (docs/specs/compatibility.md#checked-by)."""
+    profile: Profile | None = None
+    """The learner profile that narrows the rows; None applies none, as under `--set`
+    (docs/specs/cli.md#the-learner-profile)."""
+    widening: Widening = NO_WIDENING
+    """The dimensions the profile is dropped in: `--widen`, and each explicit `--lang`, `--role` or
+    `--domain`."""
 
     @property
     def lists_rubric_problems(self) -> bool:
@@ -77,8 +84,25 @@ class ProblemFilter:
             self.finds(meta.slug, meta.title),
             self._needed(meta),
             self._checked(summary),
+            self.in_profile(meta.labels, summary.reference_languages),
         )
         return all(checks)
+
+    def in_profile(self, labels: Labels, languages: Collection[Language]) -> bool:
+        """Whether the learner profile keeps an entry with these labels and reference languages."""
+        return self.profile is None or self.profile.matches(
+            labels, languages, widening=self.widening
+        )
+
+    def narrowed(self) -> NarrowedValues:
+        """The profile values that narrow this run; none without a profile."""
+        if self.profile is None:
+            return NarrowedValues()
+        return self.profile.narrowed(widening=self.widening)
+
+    def without_profile(self) -> "ProblemFilter":
+        """The same filter as `--widen all` would leave it."""
+        return replace(self, profile=None)
 
     def _needed(self, meta: ProblemMeta) -> bool:
         markers = need_markers(meta)
@@ -100,6 +124,20 @@ class ProblemFilter:
             return True
         wanted = self.search.strip().lower()
         return wanted in slug.lower() or wanted in title.lower()
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileEffect:
+    """What the learner profile did to a listing: `shown` rows of the `total` that `--widen all`
+    would show with the same other filters."""
+
+    narrowed: NarrowedValues
+    shown: int
+    total: int
+
+    @property
+    def hidden(self) -> int:
+        return self.total - self.shown
 
 
 @dataclass(frozen=True, slots=True)

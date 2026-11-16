@@ -4,7 +4,7 @@
   "description": "`cstudy list --json`. Spec: docs/specs/cli.md#cstudy-list",
   "type": "object",
   "additionalProperties": false,
-  "required": ["today", "entries", "selected_jdk"],
+  "required": ["today", "entries", "selected_jdk", "profile"],
   "properties": {
     "today": { "$ref": "#/$defs/date", "description": "The local date the statuses and due dates are read against" },
     "entries": {
@@ -15,6 +15,33 @@
     "selected_jdk": {
       "description": "The JDK the shell selects, or null when none is found",
       "anyOf": [{ "$ref": "#/$defs/jdk" }, { "type": "null" }]
+    },
+    "profile": {
+      "description": "What the learner profile did to the rows (docs/specs/cli.md#explicit-filters-and-widening)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languages", "job_roles", "domains", "hidden"],
+      "properties": {
+        "languages": {
+          "description": "The profile's languages when they narrowed the rows, else null",
+          "anyOf": [{ "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/language" } }, { "type": "null" }]
+        },
+        "job_roles": {
+          "description": "The profile's roles when they narrowed the rows, else null; `general`, which matches whatever the profile holds, is never listed",
+          "anyOf": [{ "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/label" } }, { "type": "null" }]
+        },
+        "domains": {
+          "description": "The profile's domains when they narrowed the rows, else null",
+          "anyOf": [{ "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/label" } }, { "type": "null" }]
+        },
+        "hidden": {
+          "description": "The rows the profile hid: those `--widen all` with the same other flags would add",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["problems"],
+          "properties": { "problems": { "$ref": "#/$defs/count" } }
+        }
+      }
     },
     "set": {
       "description": "Present under `--set`",

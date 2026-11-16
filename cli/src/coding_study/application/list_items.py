@@ -8,7 +8,12 @@ from dataclasses import dataclass
 from datetime import date
 
 from coding_study.application.environment import Environment
-from coding_study.application.list_problems import ProblemFilter
+from coding_study.application.list_problems import (
+    ListedProblem,
+    ProblemFilter,
+    ProfileEffect,
+    list_problems,
+)
 from coding_study.domain.items import ItemMeta, is_rubric_track
 from coding_study.domain.scheduling import ProblemProgress, ProblemStatus
 
@@ -18,6 +23,38 @@ class ListedItem:
     meta: ItemMeta
     status: ProblemStatus
     due_on: date | None
+
+
+@dataclass(frozen=True, slots=True)
+class ListedEntries:
+    """The problems and the rubric problems `cstudy list` shows, and what the profile hid."""
+
+    problems: tuple[ListedProblem, ...]
+    items: tuple[ListedItem, ...]
+    profile: ProfileEffect
+
+
+def list_entries(environment: Environment, problem_filter: ProblemFilter) -> ListedEntries:
+    """Both lists, and how many rows the learner profile left out of them: those the same filter
+    shows without it. A narrowing profile lists once without it and keeps its own rows of those."""
+    narrowed = problem_filter.narrowed()
+    if narrowed.is_empty:
+        problems = list_problems(environment, problem_filter)
+        items = list_items(environment, problem_filter)
+        shown = len(problems) + len(items)
+        return ListedEntries(problems, items, ProfileEffect(narrowed, shown, shown))
+    everything = problem_filter.without_profile()
+    every_problem = list_problems(environment, everything)
+    every_item = list_items(environment, everything)
+    problems = tuple(
+        found
+        for found in every_problem
+        if problem_filter.in_profile(found.summary.meta.labels, found.summary.reference_languages)
+    )
+    items = tuple(found for found in every_item if problem_filter.in_profile(found.meta.labels, ()))
+    shown = len(problems) + len(items)
+    total = len(every_problem) + len(every_item)
+    return ListedEntries(problems, items, ProfileEffect(narrowed, shown, total))
 
 
 def list_items(environment: Environment, problem_filter: ProblemFilter) -> tuple[ListedItem, ...]:
@@ -53,6 +90,7 @@ def _matches(problem_filter: ProblemFilter, item: ListedItem) -> bool:
         problem_filter.labels.matches(meta.labels),
         problem_filter.holds(meta.slug),
         problem_filter.finds(meta.slug, meta.title),
+        problem_filter.in_profile(meta.labels, ()),
     )
     return all(checks)
 

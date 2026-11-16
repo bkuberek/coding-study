@@ -1,6 +1,8 @@
 """`cstudy list` (docs/specs/cli.md#cstudy-list)."""
 
 import json
+from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -9,15 +11,15 @@ from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_catalog_environment, load_environment
 from coding_study.application.environment import Environment
-from coding_study.application.list_items import ListedItem, list_items
+from coding_study.application.list_items import ListedItem, list_entries
 from coding_study.application.list_problems import (
     JdkNote,
     ListedLevels,
     ListedProblem,
     ListingContext,
     ProblemFilter,
+    ProfileEffect,
     jdk_note,
-    list_problems,
     listing_context,
 )
 from coding_study.application.problem_sets import in_named_set, missing_slugs
@@ -39,6 +41,15 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
+from coding_study.domain.profile import (
+    Counted,
+    Dimension,
+    ProfileLineKind,
+    Widening,
+    learner_profile,
+    profile_line,
+    widening_from,
+)
 from coding_study.domain.scheduling import ProblemStatus
 from coding_study.domain.service_project import need_markers, service_of
 from coding_study.domain.taxonomy import Scope
@@ -58,6 +69,7 @@ STATUS_WIDTH = max(
 DUE_WIDTH = 10
 NO_VALUE = "-"
 NO_MATCH = "no problems match"
+PROBLEMS_NOUN = "problems"
 MISSING_NOTE = "missing from the catalog"
 MARK = "!"
 """After the label of a language the selected JDK cannot run, and before the footer's list."""
@@ -137,11 +149,20 @@ def list_command(
         CheckedBy | None,
         typer.Option("--checked-by", help="Only problems checked this way: tests or rubric."),
     ] = None,
+    widen: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--widen",
+            metavar="lang|role|domain|all",
+            help="Ignore your learner profile in this dimension for this run; repeatable.",
+        ),
+    ] = None,
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the table.")
     ] = False,
 ) -> None:
     """Browse problems with filters."""
+    widening = _widening(widen or (), language, role, domain)
     labels = LabelFilter(domain, role, scope)
     problem_filter = ProblemFilter(
         track,
@@ -159,10 +180,14 @@ def list_command(
     load = load_catalog_environment if set_name is None else load_environment
     environment = load(Path.cwd(), command_environ(context), Path.home())
     problem_filter = in_named_set(environment, problem_filter, set_name)
+    if set_name is None:
+        profile = learner_profile(environment.config.profile, environment.workspace_languages)
+        problem_filter = replace(problem_filter, profile=profile, widening=widening)
     if as_json:
         typer.echo(json.dumps(list_document(environment, problem_filter), indent=2))
         return
-    problems, items = _entries(environment, problem_filter)
+    entries = list_entries(environment, problem_filter)
+    problems, items = entries.problems, entries.items
     rows = _in_order(
         problem_filter,
         [
@@ -190,6 +215,9 @@ def list_command(
         missing = missing_slugs(environment, problem_filter.in_set)
         if missing:
             output.print(Text(f"{MISSING_NOTE}: {', '.join(missing)}"))
+    line = _profile_line(entries.profile)
+    if line is not None:
+        output.print(Text(line, style="dim"))
 
 
 def problem_status(text: str | None) -> ProblemStatus | None:
@@ -204,7 +232,8 @@ def problem_status(text: str | None) -> ProblemStatus | None:
 
 def list_document(environment: Environment, problem_filter: ProblemFilter) -> dict[str, JsonValue]:
     """`cstudy list --json`: the rows, in the order of the table."""
-    problems, items = _entries(environment, problem_filter)
+    entries = list_entries(environment, problem_filter)
+    problems, items = entries.problems, entries.items
     listing = listing_context(environment)
     rows: list[tuple[str, ListingKey, JsonValue]] = [
         (
@@ -219,6 +248,7 @@ def list_document(environment: Environment, problem_filter: ProblemFilter) -> di
         "today": listing.today.isoformat(),
         "entries": _in_order(problem_filter, rows),
         "selected_jdk": selected_jdk_value(environment.jdk.selected()),
+        "profile": profile_value(entries.profile),
     }
     chosen = problem_filter.in_set
     if chosen is not None:
@@ -239,10 +269,43 @@ def selected_jdk_value(selected: SelectedJdk | None) -> JsonValue:
     }
 
 
-def _entries(
-    environment: Environment, problem_filter: ProblemFilter
-) -> tuple[tuple[ListedProblem, ...], tuple[ListedItem, ...]]:
-    return list_problems(environment, problem_filter), list_items(environment, problem_filter)
+def profile_value(effect: ProfileEffect) -> JsonValue:
+    """`profile` of the documents: the profile values that narrowed the rows, null for a dimension
+    that did not, and how many rows the profile hid (cli.md#explicit-filters-and-widening)."""
+    narrowed = effect.narrowed
+    hidden: JsonValue = {"problems": effect.hidden}
+    return {
+        "languages": _values_value(narrowed.languages),
+        "job_roles": _values_value(narrowed.job_roles),
+        "domains": _values_value(narrowed.domains),
+        "hidden": hidden,
+    }
+
+
+def _values_value(values: tuple[str, ...] | None) -> JsonValue:
+    return None if values is None else [str(value) for value in values]
+
+
+def _profile_line(effect: ProfileEffect) -> str | None:
+    counts = [Counted(effect.shown, effect.total, PROBLEMS_NOUN)]
+    return profile_line(ProfileLineKind.SHOWS, counts, effect.narrowed)
+
+
+def _widening(
+    values: Sequence[str], language: Language | None, role: str | None, domain: str | None
+) -> Widening:
+    """`--widen`, plus the dimension of each explicit filter, which replaces the profile there.
+    Raises UsageError for a value that is none of lang, role, domain and all."""
+    try:
+        widening = widening_from(values)
+    except ValueError as error:
+        raise UsageError(str(error)) from None
+    explicit = (
+        (Dimension.LANGUAGES, language),
+        (Dimension.JOB_ROLES, role),
+        (Dimension.DOMAINS, domain),
+    )
+    return widening.plus(*(dimension for dimension, given in explicit if given is not None))
 
 
 def _in_order[Row](

@@ -49,6 +49,7 @@ from coding_study.domain.attempts import (
 from coding_study.domain.bench_records import BenchRunRecord
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import Confidence, Verdict
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.content_ids import ContentType
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.http_grading import HttpResponse
@@ -665,6 +666,26 @@ def test_list_rejects_an_undocumented_field(every_kind):
         assert_rejects_extra_field("list", document, ("entries", index, field))
     index = next(index for index, entry in enumerate(entries) if entry["in_progress"])
     assert_rejects_extra_field("list", document, ("entries", index, "in_progress", 0))
+
+
+def test_a_list_under_a_narrowed_profile(every_kind, monkeypatch):
+    narrowed = replace(
+        every_kind,
+        config=Config(profile=ProfileSettings(job_roles=("backend",), domains=("security",))),
+        workspace_languages=(Language.PYTHON, Language.GO),
+    )
+    install(monkeypatch, narrowed)
+    document = command_document("list")
+    assert_valid("list", document)
+    profile = document["profile"]
+    assert (profile["languages"], profile["job_roles"], profile["domains"]) == (
+        ["python", "go"],
+        ["backend"],
+        ["security"],
+    )
+    assert profile["hidden"]["problems"] > 0
+    for path in (("profile",), ("profile", "hidden")):
+        assert_rejects_extra_field("list", document, path)
 
 
 def test_list_of_a_set_rejects_an_undocumented_field(every_kind):

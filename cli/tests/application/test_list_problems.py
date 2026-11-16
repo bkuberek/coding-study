@@ -9,6 +9,7 @@ from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewA
 from coding_study.domain.items import EntryKind
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
+from coding_study.domain.profile import NO_WIDENING, Dimension, Profile, Widening
 from coding_study.domain.scheduling import ProblemStatus, ReviewState, ScheduleEntry
 from coding_study.domain.taxonomy import Scope
 from tests.fakes import NOW, make_environment
@@ -194,3 +195,72 @@ def test_the_listing_groups_attempts_in_progress_by_slug(environment):
 def test_the_listing_leaves_finished_attempts_out(environment):
     finish(environment, AttemptStatus.PASSED)
     assert listing_context(environment).in_progress == {}
+
+
+def profiled(environment, *, widening: Widening = NO_WIDENING, **settings) -> list[str]:
+    """The slugs under a profile of the given `settings` (languages, job_roles, domains)."""
+    return slugs(environment, profile=Profile(**settings), widening=widening)
+
+
+def test_a_profile_that_narrows_nothing_lists_every_problem(environment):
+    assert profiled(environment) == ["two-sum", "lru-cache"]
+
+
+def test_a_domain_profile_keeps_the_problems_that_list_one_of_its_domains(environment):
+    assert profiled(environment, domains=("backend",)) == ["lru-cache"]
+    assert profiled(environment, domains=("security", "algorithms")) == ["two-sum", "lru-cache"]
+
+
+def test_a_role_profile_keeps_general_problems(environment):
+    assert profiled(environment, job_roles=("platform",)) == ["two-sum", "lru-cache"]
+    assert profiled(environment, job_roles=("backend",)) == ["two-sum", "lru-cache"]
+
+
+def test_a_language_profile_keeps_the_problems_with_a_reference_in_it(environment):
+    both = (Language.PYTHON, Language.GO)
+    assert profiled(environment, languages=both, languages_chosen=True) == ["two-sum", "lru-cache"]
+    assert profiled(environment, languages=(Language.GO,), languages_chosen=True) == []
+
+
+def test_a_problem_that_lists_no_labels_matches_every_profile(environment):
+    meta = environment.root / "problems" / "two-sum" / "meta.yaml"
+    unlabeled = [
+        line
+        for line in meta.read_text().splitlines()
+        if not line.startswith(("domains:", "job_roles:"))
+    ]
+    meta.write_text("\n".join(unlabeled) + "\n")
+    assert profiled(environment, domains=("security",)) == ["two-sum"]
+
+
+def test_widening_a_dimension_drops_the_profile_in_it(environment):
+    assert profiled(environment, domains=("security",)) == []
+    widened = Widening(frozenset({Dimension.DOMAINS}))
+    assert profiled(environment, domains=("security",), widening=widened) == [
+        "two-sum",
+        "lru-cache",
+    ]
+
+
+def test_widening_another_dimension_keeps_the_profile(environment):
+    widened = Widening(frozenset({Dimension.LANGUAGES, Dimension.JOB_ROLES}))
+    assert profiled(environment, domains=("backend",), widening=widened) == ["lru-cache"]
+
+
+def test_the_profile_combines_with_the_other_filters(environment):
+    backend = Profile(domains=("backend",))
+    assert slugs(environment, profile=backend, difficulty=Difficulty.EASY) == []
+    assert slugs(environment, profile=backend, search="lru") == ["lru-cache"]
+
+
+def test_without_profile_is_the_filter_widen_all_leaves(environment):
+    narrowed = ProblemFilter(profile=Profile(domains=("security",)), search="sum")
+    assert narrowed.without_profile() == ProblemFilter(search="sum")
+
+
+def test_a_filter_narrows_what_its_profile_and_widening_leave(environment):
+    backend = Profile(domains=("backend",))
+    widened = Widening(frozenset({Dimension.DOMAINS}))
+    assert ProblemFilter().narrowed().is_empty
+    assert ProblemFilter(profile=backend).narrowed().domains == ("backend",)
+    assert ProblemFilter(profile=backend, widening=widened).narrowed().is_empty

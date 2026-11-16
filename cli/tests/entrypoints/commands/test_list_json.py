@@ -11,12 +11,15 @@ from typer.testing import CliRunner
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.problem_overlay import OverlayProblemRepository
+from coding_study.application.problem_sets import add_to_set, create_set
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.config import Config, ProfileSettings
 from coding_study.domain.content_ids import ContentType
 from coding_study.domain.problem import Language
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems
+from coding_study.entrypoints.shared import ExitCode
 from tests.content_id_checks import content_ids_in
 from tests.fakes import NOW, make_environment, repository_root
 from tests.helpers import FIXTURE_RUBRIC_PROBLEMS
@@ -38,6 +41,10 @@ def invoke(*arguments: str):
 
 def listed_slugs(*arguments: str) -> list[str]:
     return [line.split()[0] for line in invoke(*arguments).output.splitlines()[1:]]
+
+
+def json_slugs(*arguments: str) -> list[str]:
+    return [found["slug"] for found in document(*arguments)["entries"]]
 
 
 def document(*arguments: str):
@@ -341,3 +348,166 @@ def test_search_narrows_what_the_other_filters_leave(environment):
 
 def test_a_search_nothing_holds_says_so(environment):
     assert "no problems match" in invoke("--search", "zebra").output
+
+
+def with_profile(monkeypatch, environment, languages=None, **settings):
+    """The environment under a config whose `[profile]` holds `settings`, in a workspace that
+    lists `languages` (None: it chose none)."""
+    profiled = replace(
+        environment,
+        config=Config(profile=ProfileSettings(**settings)),
+        workspace_languages=languages,
+    )
+    monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: profiled)
+    monkeypatch.setattr(list_problems, "load_environment", lambda *_: profiled)
+    return profiled
+
+
+NOT_NARROWED = {
+    "languages": None,
+    "job_roles": None,
+    "domains": None,
+    "hidden": {"problems": 0},
+}
+
+
+def test_without_a_profile_the_document_names_nothing_hidden(environment):
+    assert document()["profile"] == NOT_NARROWED
+
+
+def test_a_domain_profile_lists_what_names_one_of_its_domains(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("backend",))
+    assert json_slugs() == ["lru-cache", "url-shortener", "news-feed", "retry-wrapper"]
+    assert document()["profile"] == {
+        **NOT_NARROWED,
+        "domains": ["backend"],
+        "hidden": {"problems": 1},
+    }
+
+
+def test_a_role_profile_keeps_general_and_the_rubric_problems_of_its_roles(
+    environment, monkeypatch
+):
+    with_profile(monkeypatch, environment, job_roles=("platform",))
+    assert json_slugs() == ["two-sum", "lru-cache", "url-shortener", "news-feed"]
+    assert document()["profile"]["job_roles"] == ["platform"]
+    assert document()["profile"]["hidden"] == {"problems": 1}
+
+
+def test_a_language_profile_keeps_the_rubric_problems(environment, monkeypatch):
+    with_profile(monkeypatch, environment, languages=(Language.GO,))
+    assert json_slugs() == ["url-shortener", "news-feed", "retry-wrapper"]
+    assert document()["profile"] == {**NOT_NARROWED, "languages": ["go"], "hidden": {"problems": 2}}
+
+
+def test_a_profile_that_hides_nothing_still_names_what_narrowed(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("algorithms", "backend"))
+    assert document()["profile"] == {**NOT_NARROWED, "domains": ["algorithms", "backend"]}
+
+
+@pytest.mark.parametrize("widening", ["domain", "all"])
+def test_widen_drops_the_profile_for_the_run(environment, monkeypatch, widening):
+    with_profile(monkeypatch, environment, domains=("security",))
+    assert json_slugs() == []
+    assert len(json_slugs("--widen", widening)) == 5
+    assert document("--widen", widening)["profile"] == NOT_NARROWED
+
+
+def test_widen_of_another_dimension_keeps_the_profile(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("security",))
+    assert json_slugs("--widen", "lang", "--widen", "role") == []
+
+
+def test_widen_repeats_and_takes_each_dimension(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("security",), job_roles=("platform",))
+    profile = document("--widen", "role")["profile"]
+    assert (profile["domains"], profile["job_roles"]) == (["security"], None)
+    assert document("--widen", "role", "--widen", "domain")["profile"] == NOT_NARROWED
+
+
+def test_an_explicit_filter_replaces_the_profile_in_its_dimension(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("security",), job_roles=("platform",))
+    found = document("--domain", "algorithms")
+    assert [row["slug"] for row in found["entries"]] == ["two-sum", "lru-cache"]
+    assert found["profile"]["domains"] is None
+    assert found["profile"]["job_roles"] == ["platform"]
+
+
+def test_an_explicit_role_matches_without_general_and_leaves_the_profile_there(
+    environment, monkeypatch
+):
+    with_profile(monkeypatch, environment, job_roles=("platform",))
+    assert json_slugs("--role", "backend") == [
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+    assert document("--role", "backend")["profile"] == NOT_NARROWED
+
+
+def test_an_explicit_language_replaces_the_profile_languages(environment, monkeypatch):
+    with_profile(monkeypatch, environment, languages=(Language.GO,))
+    assert json_slugs("--lang", "python") == ["two-sum", "lru-cache"]
+    assert document("--lang", "python")["profile"]["languages"] is None
+
+
+def test_a_set_ignores_the_profile(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("security",))
+    create_set(environment, "mine")
+    add_to_set(environment, "mine", ["two-sum", "news-feed"])
+    assert json_slugs("--set", "mine") == ["two-sum", "news-feed"]
+    assert document("--set", "mine")["profile"] == NOT_NARROWED
+
+
+def test_widen_must_name_a_dimension_or_all(environment):
+    refused = invoke("--widen", "everything")
+    assert refused.exit_code == ExitCode.USAGE_ERROR
+    assert 'unknown widening "everything"; use lang, role, domain or all' in refused.output
+
+
+def test_the_profile_line_ends_the_table_and_the_json_has_none(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("backend",))
+    lines = invoke().output.splitlines()
+    assert lines[-1] == (
+        "filtered by your profile: 4 of 5 problems · domains backend · --widen all shows all 5"
+    )
+    assert lines.count(lines[-1]) == 1
+    assert "filtered by" not in invoke("--json").stdout
+
+
+def test_the_profile_line_counts_the_rows_the_other_filters_keep(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("backend",))
+    assert invoke("--search", "sum").output.splitlines() == [
+        "no problems match",
+        "filtered by your profile: 0 of 1 problems · domains backend · --widen all shows all 1",
+    ]
+
+
+def test_the_profile_line_names_the_narrowed_dimensions_in_order(environment, monkeypatch):
+    with_profile(
+        monkeypatch,
+        environment,
+        languages=(Language.PYTHON, Language.GO),
+        job_roles=("platform",),
+        domains=("backend",),
+    )
+    assert invoke().output.splitlines()[-1] == (
+        "filtered by your profile: 3 of 5 problems · languages python, go"
+        " · roles platform and general · domains backend · --widen all shows all 5"
+    )
+
+
+def test_the_profile_line_leaves_out_a_dimension_a_flag_replaced(environment, monkeypatch):
+    with_profile(monkeypatch, environment, job_roles=("platform",), domains=("security",))
+    assert invoke("--domain", "backend").output.splitlines()[-1] == (
+        "filtered by your profile: 3 of 4 problems · roles platform and general"
+        " · --widen all shows all 4"
+    )
+
+
+def test_no_line_when_the_profile_hid_nothing_or_was_widened(environment, monkeypatch):
+    with_profile(monkeypatch, environment, domains=("algorithms", "backend"))
+    assert "filtered by" not in invoke().output
+    with_profile(monkeypatch, environment, domains=("security",))
+    assert "filtered by" not in invoke("--widen", "all").output
