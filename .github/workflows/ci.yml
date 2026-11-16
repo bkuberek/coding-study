@@ -271,7 +271,8 @@ jobs:
   # `engine` fixture, and the axe checks' views), a third of the collected tests. The browsers are
   # cached by the version of Playwright that decides their revision, and the pnpm store by the
   # lock files of the packages the workspace and the language servers install; the system
-  # libraries the browsers link are installed every run.
+  # libraries the browsers link are installed every run. Two workers, one test file each, as in the
+  # local gate's browser lane.
   browser:
     name: Browser tests (Chromium, Linux)
     needs: changes
@@ -335,7 +336,7 @@ jobs:
         run: uv run --group browser playwright install --with-deps chromium
 
       - name: Browser tests
-        run: uv run --group browser pytest -q -rs -k chromium tests/entrypoints/web/test_browser_*.py
+        run: uv run --group browser pytest -q -rs -n 2 --dist loadfile -k chromium tests/entrypoints/web/test_browser_*.py
 
   # A real engine, for what no fake can show: compose's behavior, the network that has no way out and
   # the leftovers a killed owner leaves. One job, no matrix and no schedule, on a free account's
