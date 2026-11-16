@@ -79,6 +79,7 @@ def test_a_structured_request_sends_the_schema_as_a_strict_text_format(provider,
         "instructions": "be brief",
         "input": [{"role": "user", "content": "hello"}],
         "max_output_tokens": 16000,
+        "store": False,
         "text": {
             "format": {
                 "type": "json_schema",
@@ -98,6 +99,7 @@ def test_a_free_text_request_has_no_text_format(provider, models):
         "instructions": "be brief",
         "input": [{"role": "user", "content": "hello"}],
         "max_output_tokens": 16000,
+        "store": False,
     }
 
 

@@ -64,7 +64,7 @@ User code of a problem that runs natively runs as you and could read the file, a
 | `provider` | Request | Structured output | Model list | Cost reported |
 |------------|---------|-------------------|------------|---------------|
 | `anthropic` | `POST https://api.anthropic.com/v1/messages`: the key in `x-api-key`, with the `anthropic-version` the adapter pins | `output_config.format`: `{"type": "json_schema", "schema": …}`; the JSON comes back in the text block | `GET /v1/models?limit=1000`, then `after_id` while `has_more`, at most 10 pages | No |
-| `openai` | `POST https://api.openai.com/v1/responses`: the key as `Authorization: Bearer` | `text.format`: `{"type": "json_schema", "name": …, "schema": …, "strict": true}` | `GET /v1/models` | No |
+| `openai` | `POST https://api.openai.com/v1/responses`: the key as `Authorization: Bearer`, with `store` false, so OpenAI keeps no copy of the response for later retrieval | `text.format`: `{"type": "json_schema", "name": …, "schema": …, "strict": true}` | `GET /v1/models` | No |
 | `google` | `POST https://generativelanguage.googleapis.com/v1beta/models/<model id>:generateContent`: the key in `x-goog-api-key` | `generationConfig.responseMimeType` `application/json` with `responseJsonSchema` | `GET /v1beta/models` | No |
 | `openrouter` | `POST https://openrouter.ai/api/v1/chat/completions`: the key as `Authorization: Bearer` | `response_format`: `{"type": "json_schema", "json_schema": {"name": …, "strict": true, "schema": …}}`, with `provider.require_parameters` true, so only endpoints that support it are used | `GET /api/v1/models` | `usage.cost`, in US dollars |
 

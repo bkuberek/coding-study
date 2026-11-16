@@ -64,6 +64,7 @@ def _body(request: ModelRequest) -> dict[str, object]:
         "instructions": request.instructions,
         "input": [{"role": "user", "content": request.message}],
         "max_output_tokens": request.max_output_tokens,
+        "store": False,
     }
     if request.schema is not None:
         body["text"] = {
