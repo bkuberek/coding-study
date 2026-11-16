@@ -43,3 +43,7 @@ progress-export.json
 odd/
 .claude/
 .atl/
+
+# Local secrets, such as API keys for AI providers
+.env
+.env.*
