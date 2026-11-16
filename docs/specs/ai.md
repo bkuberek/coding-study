@@ -355,7 +355,7 @@ With `ai.enabled` false, the default:
 | Test | Proves |
 |------|--------|
 | The network guard | `cli/tests/conftest.py` installs an audit hook (`sys.addaudithook`) that refuses `socket.connect` and `socket.getaddrinfo` off the loopback and Unix sockets for every fast test, unless the test is marked `network`. The fast suite runs with AI off, so every feature it covers is seen to send nothing |
-| `tests/test_ai_off.py` | With AI off and a sentinel key in `credentials.toml`: each `cstudy ai` command that sends exits 3 with the AI-off message; each AI job of the server answers 422; a child `cstudy` run with a guard in `sitecustomize` through `PYTHONPATH` over `list`, `start`, `status`, `done`, `history`, `export`, `ai status` and `ai review` connects to nothing off the loopback and imports nothing of `coding_study.adapters.ai`; the sentinel is in no output, error, `progress.db` or export |
+| `tests/test_ai_off.py` | With AI off and a sentinel key in `credentials.toml`: each `cstudy ai` command that sends exits 3 with the AI-off message; each AI job of the server answers 422; a child `cstudy` run with a guard in `sitecustomize` through `PYTHONPATH` over `list`, `start`, `status`, `done`, `history`, `export`, `doctor` and every `cstudy ai` form connects to nothing off the loopback and imports nothing of `coding_study.adapters.ai`; the sentinel is in no output, error, `progress.db` or export |
 
 ## Surfaces
 
@@ -378,5 +378,5 @@ No test calls a real provider. Every adapter is tested against recorded replies,
 | Commands and contract | Each `cstudy ai` command's output, exit codes and `--json` against its schema; the snapshots of commands, config keys and environment variables | `tests/entrypoints/commands/test_ai.py`, `tests/contract/` | fast |
 | API and jobs | Each AI endpoint's documents against `schemas/web-api.schema.json`; the security matrix of each write; the pre-checks and the consent 409; a job's child reaching the fake provider while the server process connects to nothing | `TestClient` and `tests/scripted_child.py` | fast |
 | Browser | Settings' AI section, the consent dialog, a review shown and dismissed, History's review, no CSP violation, axe in both themes at 1440 and 390 pixels, the keyboard | Playwright against a real `cstudy serve` and the fake provider | slow; Chromium in CI |
-| AI off | [With AI off](#with-ai-off) | The network guard and `tests/test_ai_off.py` | fast |
+| AI off | [With AI off](#with-ai-off) | The network guard, and `tests/test_ai_off.py` with real child processes | fast; the child processes slow |
 | A real key | `cstudy ai check` and one AI review per provider you hold a key for | By hand, by the owner, before a release; never in CI | manual |
