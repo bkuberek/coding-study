@@ -16,6 +16,7 @@ from coding_study.domain.code_intelligence import (
     TYPESCRIPT_LANGUAGE_SERVER,
     Launch,
     go_release,
+    warm_up_succeeded,
 )
 from coding_study.domain.jdk import JdkRange
 from coding_study.domain.problem import Language
@@ -533,3 +534,29 @@ def test_go_and_rust_get_the_same_client_capabilities_as_the_other_servers():
         BASEDPYRIGHT.capabilities,
         BASEDPYRIGHT.capabilities,
     )
+
+
+READY = "intellij/ready-for-test {}\n"
+KILLED = "Server exited with code -9\n"
+
+
+@pytest.mark.parametrize(
+    ("exit_code", "output", "expected"),
+    [
+        (0, "", True),
+        (0, READY, True),
+        (247, READY + KILLED, True),
+        (247, "indexing\n" + READY + "shutdown sent\n" + KILLED, True),
+        (247, READY, False),
+        (247, KILLED, False),
+        (247, "", False),
+        (1, "stopped\n", False),
+        (247, READY + "Server stopped before completion (exit code -9)\n", False),
+        (247, READY + KILLED + "Server stopped before completion (exit code -9)\n", False),
+        (0, "Server stopped before completion (exit code 0)\n", False),
+    ],
+)
+def test_a_warm_up_that_finished_is_told_by_its_output_when_its_exit_code_is_not_zero(
+    exit_code: int, output: str, expected: bool
+):
+    assert warm_up_succeeded(exit_code, output) is expected

@@ -300,6 +300,24 @@ def test_a_failed_warm_up_names_the_manual_fix_and_keeps_its_output():
     )
 
 
+def test_a_warm_up_whose_script_killed_the_finished_server_counts_as_passed():
+    output = "intellij/ready-for-test {}\nServer exited with code -9\n"
+    servers = FakeLanguageServers(INSTALLED_SERVERS, warm_up=ProbeResult(247, output))
+    outcome = next(o for o in fixed(servers) if str(o.step) == WARM_UP_STEP)
+    assert (outcome.succeeded, outcome.detail) == (True, "")
+
+
+def test_a_warm_up_whose_server_stopped_before_completion_fails_with_its_output():
+    output = "intellij/ready-for-test {}\nServer stopped before completion (exit code -9)\n"
+    servers = FakeLanguageServers(INSTALLED_SERVERS, warm_up=ProbeResult(247, output))
+    outcome = next(o for o in fixed(servers) if str(o.step) == WARM_UP_STEP)
+    assert (outcome.succeeded, outcome.detail, outcome.result) == (
+        False,
+        "exited with 247",
+        ProbeResult(247, output),
+    )
+
+
 def test_no_warm_up_for_a_license_you_did_not_accept():
     servers = FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset())
     fixed(servers)

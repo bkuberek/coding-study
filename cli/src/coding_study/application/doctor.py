@@ -80,6 +80,7 @@ from coding_study.domain.code_intelligence import (
     GoInstall,
     LanguageServer,
     License,
+    warm_up_succeeded,
 )
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
@@ -666,7 +667,10 @@ def _warm_up_language_server(
         return None
     notify(f"running {step}")
     installer = workspace.language_server_installer
-    return FixOutcome(step, installer.warm_up(server, step.project, home))
+    result = installer.warm_up(server, step.project, home)
+    if result is not None and warm_up_succeeded(result.exit_code, result.output):
+        result = ProbeResult(0, result.output)
+    return FixOutcome(step, result)
 
 
 def _run_step(

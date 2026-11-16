@@ -101,6 +101,24 @@ class Warmup:
     timeout_s: int = 900
 
 
+WARM_UP_READY = "intellij/ready-for-test"
+"""What the vendor's warm-up script prints once the import and the index are done."""
+WARM_UP_SERVER_EXITED = "Server exited with code"
+"""Logged when the script ends the server itself, after the ready notice."""
+WARM_UP_SERVER_STOPPED = "Server stopped before completion"
+"""Printed when the server died, or the script's own timeout passed, before the ready notice."""
+
+
+def warm_up_succeeded(exit_code: int, output: str) -> bool:
+    """Whether a warm-up run did its work. The vendor's script kills a server that has done
+    its work but is still waiting for its input to close, and exits with that kill's status, so
+    a non-zero exit code alone is no failure: the output that says the server was ready
+    decides, unless it also says the server stopped before completion."""
+    if WARM_UP_SERVER_STOPPED in output:
+        return False
+    return exit_code == 0 or (WARM_UP_READY in output and WARM_UP_SERVER_EXITED in output)
+
+
 _PROCESSORS: Mapping[str, str] = {
     "arm64": "arm64",
     "aarch64": "arm64",
