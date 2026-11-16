@@ -94,7 +94,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | Area | Met | Partly met | Not met |
 |------|----:|-----------:|--------:|
 | Compatibility and release engineering | 6 | 1 | 0 |
-| Product | 1 | 2 | 8 |
+| Product | 2 | 1 | 8 |
 | AI preview | 0 | 0 | 9 |
 | Content | 2 | 2 | 5 |
 | Platforms and install | 0 | 3 | 4 |
@@ -104,7 +104,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | Performance | 1 | 1 | 2 |
 | Licensing | 3 | 1 | 0 |
 | Privacy and offline | 2 | 0 | 0 |
-| **Total (60)** | **20** | **11** | **29** |
+| **Total (60)** | **21** | **10** | **29** |
 
 #### Compatibility and release engineering
 
@@ -122,7 +122,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| P1 | A learner profile of languages, job roles and domains, each defaulting to all, sets the default filters on every page; a page's filter can widen them without editing the profile; one shared filter component serves every page | Partly met: `cstudy list`, `next`, `mock` and `learn` apply the profile, with `--widen`, the profile line and `profile` in `--json`, and the web API serves the profile and takes `widen`; the page's shared filter component, its profile chip and the Settings Profile section remain | v0.53 |
+| P1 | A learner profile of languages, job roles and domains, each defaulting to all, sets the default filters on every page; a page's filter can widen them without editing the profile; one shared filter component serves every page | Met: `cstudy list`, `next`, `mock` and `learn` apply the profile, with `--widen` and a quiet filtered line; the Problems, Guides and Mock views share one filter component with a counted profile chip that widens per dimension; Settings edits the profile | v0.53 |
 | P2 | Languages decide which workspace folders exist: `cstudy init --lang`, `cstudy lang add`, and `doctor`, `doctor --fix` and the IDE files scoped to the chosen languages; a fresh workspace with one language gets an all-ok `doctor` | Met: `cstudy init --lang` and `cstudy lang add` and `remove`; `doctor`, `doctor --fix` and the IDE files keep to the workspace's languages; a slow test runs `init --lang`, `doctor --fix` and `doctor` for each language whose toolchain is installed and finds every row ok, but for the machine-level `docker`, `docker leftovers` and `installs` rows and the Gradle and debugger rows, which only regenerating the wrapper and `--debug` need | v0.53 |
 | P3 | Every journey of the [definition](#definition) passes in the terminal, and on the page where the page has it | Partly met: the parity end-to-end test covers practice for every kind in all six languages | v1.0.0 |
 | P4 | `bench` is honest: on 5 problems with an O(n²) brute force, the brute force gets `suboptimal` at medium or high confidence in every language, the optimal reference gets `optimal`, and the verdicts hold in 5 runs out of 5 | Not met | v0.58 |
