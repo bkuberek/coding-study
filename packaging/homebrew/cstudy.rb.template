@@ -3,7 +3,7 @@
 class Cstudy < Formula
   include Language::Python::Virtualenv
 
-  desc "Free study app for engineers, with problems graded by real tests"
+  desc "Free study and interview prep for engineers"
   homepage "https://github.com/bkuberek/coding-study"
   url "${wheel_url}"
   sha256 "${wheel_sha256}"

@@ -4,7 +4,7 @@
 [project]
 name = "coding-study"
 version = "0.54.2"
-description = "The free study app for engineers: algorithms to system design, graded by real tests, on your own machine"
+description = "Free study and interview prep for engineers: guides, problems graded by real tests, and timed mock interviews"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

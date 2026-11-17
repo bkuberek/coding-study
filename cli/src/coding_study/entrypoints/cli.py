@@ -16,7 +16,7 @@ from coding_study.entrypoints.shared import CsGroup, GlobalOptions
 app = typer.Typer(
     cls=CsGroup,
     name="cstudy",
-    help="The free study app for engineers: learn it, practice it, prove it.",
+    help="Free study and interview prep for engineers: learn it, practice it, prove it.",
     no_args_is_help=True,
     add_completion=False,
 )

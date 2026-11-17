@@ -7,7 +7,7 @@
 
 # coding-study
 
-**The free study app for engineers: algorithms to system design, graded by real tests, on your own machine.** coding-study is a local, IDE-first study tool for everyone who writes code, from beginners to experts, covering algorithms, backend design, concurrency, code review, and security and AI problems. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
+**Free study and interview prep for engineers: guides that teach each idea, problems graded by real tests, and timed mock interviews. In your editor or your browser.** coding-study is a local, IDE-first study tool for everyone who writes code, from beginners to experts, covering algorithms, backend design, concurrency, code review, interview practice, and security and AI problems. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
 
 The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro), has the [install guide](https://coding-study.com/install?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro) and the [usage docs](https://coding-study.com/docs?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro).
 
