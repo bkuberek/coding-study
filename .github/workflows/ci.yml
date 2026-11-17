@@ -189,6 +189,10 @@ jobs:
             cli/tests/intelligence_lab.py
             cli/tests/language_server_scripts.py
             cli/tests/profile_workspace.py
+            cli/tests/ai_fixtures.py
+            cli/tests/ai_review_workspace.py
+            cli/tests/ai_workspace.py
+            cli/tests/fake_ai_provider.py
             cli/tests/sandbox_fakes.py
             cli/tests/scripted_child.py
             cli/tests/scripted_runs.py
