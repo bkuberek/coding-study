@@ -87,6 +87,12 @@ def workspace_directory(cwd: Path, environ: Mapping[str, str]) -> Path:
     return enclosing_workspace(cwd) or cwd
 
 
+def existing_workspace(cwd: Path, environ: Mapping[str, str]) -> Path | None:
+    """The workspace root when `workspace_directory` holds the marker; None before `cstudy init`."""
+    directory = workspace_directory(cwd, environ)
+    return directory if has_marker(directory) else None
+
+
 def find_workspace(cwd: Path, environ: Mapping[str, str]) -> Path:
     """The workspace root; raises WorkspaceError without a marker or for a newer schema."""
     directory = workspace_directory(cwd, environ)

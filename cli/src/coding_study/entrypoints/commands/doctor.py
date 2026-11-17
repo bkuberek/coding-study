@@ -23,6 +23,7 @@ from coding_study.adapters.locations import (
     ContentRootError,
     FsRepositoryFiles,
     WorkspaceError,
+    existing_workspace,
     find_content_root,
     find_workspace,
     workspace_directory,
@@ -181,7 +182,7 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
 
 
 def _ai_probe(cwd: Path, environ: Mapping[str, str], home: Path) -> AiProbe:
-    credentials = open_credentials(environ, home, workspace_directory(cwd, environ))
+    credentials = open_credentials(environ, home, existing_workspace(cwd, environ))
     return AiProbe(credentials, Path(credentials.location).exists, git_tree_of)
 
 

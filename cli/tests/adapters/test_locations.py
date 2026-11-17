@@ -7,6 +7,7 @@ from coding_study.adapters.locations import (
     ContentRootError,
     WorkspaceError,
     enclosing_content_checkout,
+    existing_workspace,
     find_content_root,
     find_workspace,
     workspace_directory,
@@ -93,6 +94,18 @@ def test_the_nearest_marked_ancestor_is_the_workspace(tmp_path):
 
 def test_the_current_directory_is_the_last_resort(tmp_path):
     assert workspace_directory(tmp_path, {}) == tmp_path
+
+
+def test_an_existing_workspace_is_the_marked_directory(tmp_path):
+    workspace = make_workspace(tmp_path / "ws")
+    nested = workspace / "python"
+    nested.mkdir()
+    assert existing_workspace(nested, {}) == workspace
+
+
+def test_an_existing_workspace_is_none_without_a_marker(tmp_path):
+    assert existing_workspace(tmp_path, {}) is None
+    assert existing_workspace(tmp_path, {"CSTUDY_WORKSPACE": "ws"}) is None
 
 
 def test_find_workspace_returns_a_marked_directory(tmp_path):

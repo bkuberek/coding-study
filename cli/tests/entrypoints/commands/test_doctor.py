@@ -493,6 +493,28 @@ def test_the_ai_probe_finds_the_git_tree_of_the_credentials_file(tmp_path):
     assert tree == (tmp_path / "repo").resolve()
 
 
+def test_the_ai_probe_accepts_credentials_under_the_current_folder_without_a_workspace(
+    monkeypatch, tmp_path
+):
+    monkeypatch.delenv("CSTUDY_WORKSPACE", raising=False)
+    config = tmp_path / "config" / "config.toml"
+    environment = doctor.doctor_environment(
+        tmp_path, {"CSTUDY_CONFIG": str(config)}, tmp_path / "home"
+    )
+    assert environment.ai is not None
+    assert environment.ai.credentials.issue() is None
+
+
+def test_the_ai_probe_refuses_credentials_inside_a_real_workspace(monkeypatch, tmp_path):
+    monkeypatch.delenv("CSTUDY_WORKSPACE", raising=False)
+    workspace = mark_workspace(tmp_path / "ws")
+    environment = doctor.doctor_environment(
+        workspace, {"CSTUDY_CONFIG": str(workspace / "config.toml")}, tmp_path / "home"
+    )
+    assert environment.ai is not None
+    assert "would be inside this workspace" in (environment.ai.credentials.issue() or "")
+
+
 def test_with_ai_off_and_no_credentials_the_output_has_no_ai_row(monkeypatch, tmp_path):
     workspace = mark_workspace(tmp_path / "ws")
     monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))

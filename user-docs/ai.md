@@ -104,7 +104,7 @@ api_key = "<key>"
 
 ### Keep keys out of repositories
 
-Never put a key in your workspace or in a repository. `cstudy` refuses to read or write `credentials.toml` when it would lie inside the workspace, as a `CSTUDY_CONFIG` there would put it, and exits 3:
+Never put a key in your workspace or in a repository. `cstudy` refuses to read or write `credentials.toml` when it would lie inside a workspace, as a `CSTUDY_CONFIG` there would put it, and exits 3:
 
 ```text
 error: credentials.toml would be inside this workspace (<path>): keys never go in a workspace; point CSTUDY_CONFIG at a config.toml outside it

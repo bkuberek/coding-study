@@ -33,6 +33,7 @@ from coding_study.adapters.languages.registry import LANGUAGES
 from coding_study.adapters.locations import (
     ContentRoot,
     catalog_cache_directory,
+    existing_workspace,
     find_content_root,
     find_workspace,
     workspace_directory,
@@ -106,7 +107,7 @@ def load_ai_access(cwd: Path, environ: Mapping[str, str], home: Path) -> AiAcces
     user = _user(environ, home)
     return AiAccess(
         user.config.ai,
-        open_credentials(environ, home, workspace_directory(cwd, environ)),
+        open_credentials(environ, home, existing_workspace(cwd, environ)),
         _language_models(user.config.ai.enabled, environ),
     )
 

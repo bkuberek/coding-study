@@ -48,7 +48,7 @@ Keys live in `credentials.toml` and nowhere else.
 | Mode | `0600` whenever `cstudy` writes it. A file you made yourself is read whatever its mode, with no warning ([ADR 0021](../decisions/0021-ai-reviewed-problems.md) O5) |
 | Who reads it | Only AI work: the `cstudy ai` commands, `cstudy doctor`'s [`ai` row](#cstudy-doctor) and the server's [AI endpoints](web-ui.md#ai-preview). No other command opens it, so a file that does not load fails nothing else |
 | Loading | Another table than the four, another key than `api_key`, or a value that is not a non-empty string: `credentials.toml: unknown provider "antropic"` and the like. The AI commands then exit 4 with the path and the problem; `cstudy ai status` and the doctor row show it |
-| Inside the workspace | When the file would resolve inside the workspace, as with a `CSTUDY_CONFIG` there, `cstudy` neither reads nor writes it: `credentials.toml would be inside this workspace (<path>): keys never go in a workspace; point CSTUDY_CONFIG at a config.toml outside it`, exit 3 |
+| Inside the workspace | When the file would resolve inside a workspace (a folder with the workspace marker), as with a `CSTUDY_CONFIG` there, `cstudy` neither reads nor writes it: `credentials.toml would be inside this workspace (<path>): keys never go in a workspace; point CSTUDY_CONFIG at a config.toml outside it`, exit 3 |
 | Environment variables | Never read for keys |
 
 | Where a key never is | How |

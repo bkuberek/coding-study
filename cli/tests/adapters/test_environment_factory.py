@@ -5,6 +5,7 @@ import pytest
 
 from coding_study.adapters.environment_factory import (
     conformance_environment,
+    load_ai_access,
     load_catalog_environment,
     load_environment,
 )
@@ -142,3 +143,17 @@ def test_ai_on_opens_the_provider_adapters_at_the_first_request(environ, workspa
     with pytest.raises(ConfigError) as raised:
         models.list_models(Provider.ANTHROPIC, ApiKey("k"), 5.0)
     assert str(raised.value).startswith("CSTUDY_AI_ENDPOINT: expected http://127.0.0.1:<port>")
+
+
+def test_ai_access_without_a_workspace_accepts_credentials_under_the_current_folder(tmp_path):
+    environ = {"CSTUDY_CONFIG": str(tmp_path / "config" / "config.toml")}
+    access = load_ai_access(tmp_path, environ, tmp_path / "home")
+    access.credentials.save_key(Provider.ANTHROPIC, ApiKey("k"))
+    assert (tmp_path / "config" / "credentials.toml").is_file()
+
+
+def test_ai_access_in_a_workspace_refuses_credentials_inside_it(workspace):
+    environ = {"CSTUDY_CONFIG": str(workspace / "config.toml")}
+    access = load_ai_access(workspace, environ, workspace / "home")
+    with pytest.raises(UsageError, match="would be inside this workspace"):
+        access.credentials.keys_set()

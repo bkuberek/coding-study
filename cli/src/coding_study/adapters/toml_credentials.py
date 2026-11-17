@@ -47,9 +47,9 @@ def git_tree_of(path: Path) -> Path | None:
 
 class TomlCredentials:
     """`Credentials` on the file at `path`, which may be missing, or a link. `workspace` is the
-    workspace root, which the file may not lie in."""
+    workspace root, which the file may not lie in; None when there is no workspace."""
 
-    def __init__(self, path: Path, workspace: Path) -> None:
+    def __init__(self, path: Path, workspace: Path | None) -> None:
         self._path = path
         self._workspace = workspace
 
@@ -89,6 +89,8 @@ class TomlCredentials:
         return True
 
     def _inside_workspace(self) -> str | None:
+        if self._workspace is None:
+            return None
         target = self._path.resolve()
         if not target.is_relative_to(self._workspace.resolve()):
             return None
@@ -136,8 +138,11 @@ class TomlCredentials:
             raise ConfigError(self.location, [f"it cannot be written: {error.strerror}"]) from None
 
 
-def open_credentials(environ: Mapping[str, str], home: Path, workspace: Path) -> TomlCredentials:
-    """The credentials beside the `config.toml` that `environ` and `home` select."""
+def open_credentials(
+    environ: Mapping[str, str], home: Path, workspace: Path | None
+) -> TomlCredentials:
+    """The credentials beside the `config.toml` that `environ` and `home` select; `workspace` is
+    the workspace root, or None when there is none."""
     return TomlCredentials(credentials_path(config_path(environ, home)), workspace)
 
 

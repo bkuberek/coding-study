@@ -178,6 +178,38 @@ def test_a_file_that_would_be_inside_the_workspace_exits_3_and_writes_nothing(tm
     assert SECRET not in shown(result)
 
 
+def test_a_config_under_the_current_folder_is_not_inside_a_workspace_without_a_marker(home):
+    target = home / "work" / "config" / "config.toml"
+    result = ai_key(["anthropic"], f"{SECRET}\n", CSTUDY_CONFIG=str(target))
+    assert (result.exit_code, (target.parent / "credentials.toml").is_file()) == (
+        ExitCode.SUCCESS,
+        True,
+    )
+
+
+def test_the_default_config_is_not_inside_a_current_folder_above_it(home, monkeypatch):
+    monkeypatch.chdir(home)
+    result = ai_key(["anthropic"], f"{SECRET}\n")
+    assert (
+        result.exit_code,
+        (home / ".config" / "coding-study" / "credentials.toml").is_file(),
+    ) == (
+        ExitCode.SUCCESS,
+        True,
+    )
+
+
+def test_a_file_inside_the_workspace_found_from_a_folder_in_it_exits_3(tmp_path, home, monkeypatch):
+    workspace = mark_workspace(tmp_path / "workspace")
+    (workspace / "python").mkdir()
+    monkeypatch.chdir(workspace / "python")
+    result = ai_key(["anthropic"], f"{SECRET}\n", CSTUDY_CONFIG=str(workspace / "config.toml"))
+    assert (result.exit_code, (workspace / "credentials.toml").exists()) == (
+        ExitCode.USAGE_ERROR,
+        False,
+    )
+
+
 def test_remove_refuses_a_file_inside_the_workspace_too(tmp_path, home):
     workspace = mark_workspace(tmp_path / "workspace")
     result = ai_key(

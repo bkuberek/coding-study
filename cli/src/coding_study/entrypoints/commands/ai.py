@@ -13,7 +13,7 @@ from typer._click import Context as ClickContext
 from typer.core import TyperCommand
 
 from coding_study.adapters.environment_factory import load_environment
-from coding_study.adapters.locations import workspace_directory
+from coding_study.adapters.locations import existing_workspace
 from coding_study.adapters.toml_credentials import open_credentials
 from coding_study.application.ai_consent import grant, parse_model, parse_purpose, revoke
 from coding_study.application.ai_keys import parse_provider, remove_key, save_key
@@ -69,7 +69,7 @@ def key(
     """Keep a provider's key in credentials.toml, asked for with a hidden prompt."""
     chosen = parse_provider(provider)
     environ = command_environ(context)
-    credentials = open_credentials(environ, Path.home(), workspace_directory(Path.cwd(), environ))
+    credentials = open_credentials(environ, Path.home(), existing_workspace(Path.cwd(), environ))
     output = console(context)
     if remove:
         removed = remove_key(credentials, chosen)
