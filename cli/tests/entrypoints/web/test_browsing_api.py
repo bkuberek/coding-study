@@ -274,6 +274,13 @@ def test_the_statement_comes_rendered_as_html(client):
     assert html.startswith("<h1>Two Sum</h1>")
 
 
+def test_the_statement_html_leaves_out_the_footer_comment_of_the_statement_file(client):
+    document = client.get("/api/v1/problems/two-sum/statement").json()
+    assert "Rendered by cstudy" in document["markdown"]
+    assert "Rendered by cstudy" not in document["html"]
+    assert "<!--" not in document["html"]
+
+
 def test_the_statement_names_the_jdk_range_the_problem_declares(tmp_path):
     root = repository_root(tmp_path, PRACTICE, FIXTURE_RUBRIC_PROBLEMS)
     declare_jdk(root, "two-sum", "{min: 24}")

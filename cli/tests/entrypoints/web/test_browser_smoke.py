@@ -249,6 +249,10 @@ def test_a_project_problem_shows_its_statement(visit):
     assert "Bank" in visit.statement
 
 
+def test_the_statement_does_not_show_the_footer_comment_of_its_file(visit):
+    assert "Rendered by cstudy" not in visit.statement
+
+
 def test_resuming_the_attempt_shows_the_projects_tree(visit):
     assert FILE in visit.tree
 

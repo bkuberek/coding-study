@@ -65,6 +65,7 @@ LIBRARY_LINK_CLASS = "cs-library-link"
 """The class of the button a link to a library file becomes, which the page opens in a library
 tab at the line its `data-uri` names."""
 BUTTON = "button"
+_COMMENT = re.compile(r"<!--.*?-->(\s*<!--.*?-->)*", re.DOTALL)
 _GUIDE_LINK = re.compile(r"\.\./(?P<slug>[a-z][a-z0-9-]*)/guide\.md")
 """A link from one guide.md to another, as guides link each other."""
 GUIDE_ROUTE = "#/guides/{slug}"
@@ -254,6 +255,26 @@ def _without_title(state: StateCore) -> None:
         state.tokens = tokens[TITLE_TOKENS:]
 
 
+def _without_comments(state: StateCore) -> None:
+    """A paragraph that is only an HTML comment, such as the footer of a rendered statement
+    file, which is for editors: raw HTML is never inserted, and a comment is not shown as text."""
+    tokens = state.tokens
+    kept: list[Token] = []
+    index = 0
+    while index < len(tokens):
+        if (
+            tokens[index].type == "paragraph_open"
+            and index + 2 < len(tokens)
+            and tokens[index + 1].type == "inline"
+            and _COMMENT.fullmatch(tokens[index + 1].content.strip())
+        ):
+            index += 3
+            continue
+        kept.append(tokens[index])
+        index += 1
+    state.tokens = kept
+
+
 def _diagram_figures(state: StateCore) -> None:
     """Each `mermaid` block, with the marker and the text drawing that follow it, becomes one
     figure: its light and dark SVG drawings, of which the page's stylesheet shows the one of its
@@ -412,16 +433,19 @@ def _accept_every_link(url: str) -> bool:
 _RENDERER = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
     ["table", "strikethrough"]
 )
+_RENDERER.core.ruler.push("without_comments", _without_comments)
 _RENDERER.core.ruler.push("alignment_classes", _alignment_classes)
 _DOCUMENTATION = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
     ["table", "strikethrough"]
 )
 _DOCUMENTATION.validateLink = _accept_every_link
+_DOCUMENTATION.core.ruler.push("without_comments", _without_comments)
 _DOCUMENTATION.core.ruler.push("alignment_classes", _alignment_classes)
 _DOCUMENTATION.core.ruler.push("plain_links_and_images", _plain_links_and_images)
 _GUIDE = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
     ["table", "strikethrough"]
 )
+_GUIDE.core.ruler.push("without_comments", _without_comments)
 _GUIDE.core.ruler.push("alignment_classes", _alignment_classes)
 _GUIDE.core.ruler.push("without_title", _without_title)
 _GUIDE.core.ruler.push("diagram_figures", _diagram_figures)
@@ -430,6 +454,7 @@ _GUIDE.core.ruler.push("guide_links", _guide_links)
 _DOC = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
     ["table", "strikethrough"]
 )
+_DOC.core.ruler.push("without_comments", _without_comments)
 _DOC.core.ruler.push("alignment_classes", _alignment_classes)
 _DOC.core.ruler.push("doc_headings", _doc_headings)
 _DOC.core.ruler.push("doc_links", _doc_links)
