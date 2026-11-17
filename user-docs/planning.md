@@ -1,6 +1,6 @@
 ---
 title: Plan your practice
-summary: What cstudy next picks and why, problem sets for an interview or a topic, timed mock interviews, and your progress in numbers.
+summary: What cstudy next picks and why, problem sets for a goal or a topic, timed mock interviews, and your progress in numbers.
 section: Practice
 order: 90
 ---

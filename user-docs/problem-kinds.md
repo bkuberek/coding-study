@@ -7,7 +7,7 @@ order: 55
 
 # Kinds of problems
 
-Every problem has a **track**, the interview round it practices, and a **kind**, the shape of what you write. How it is checked follows from its kind, and three **labels** say what it is about, who it is for and how big it is. `cstudy list` shows each, and filters by each:
+Every problem has a **track**, the area of engineering it practices, and a **kind**, the shape of what you write. How it is checked follows from its kind, and three **labels** say what it is about, who it is for and how big it is. `cstudy list` shows each, and filters by each:
 
 ```bash
 cstudy list --track concurrency
