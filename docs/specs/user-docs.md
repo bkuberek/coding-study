@@ -80,6 +80,7 @@ Pages are listed by `order`. A section is listed where its first page is, and it
 | 100 | `web-ui` | Practice in your browser | The web UI |
 | 110 | `editor` | The editor and code intelligence | The web UI |
 | 120 | `settings` | Settings and preferences | Settings and help |
+| 122 | `ai` | The AI preview: keys, consent and AI review | Settings and help |
 | 125 | `commands` | Command reference | Settings and help |
 | 130 | `troubleshooting` | Troubleshooting | Settings and help |
 

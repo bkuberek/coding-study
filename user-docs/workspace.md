@@ -64,7 +64,7 @@ cstudy-workspace/
   sets.yaml          your problem sets
   .archive/          the files of earlier attempts
   .statements/       the statements cstudy renders
-  progress.db        your attempts, reviews and runs
+  progress.db        your attempts, reviews, runs and AI reviews
   .cs/               the marker, runners, language servers and caches
   .vscode/, .idea/   the IDE project files
 ```
@@ -75,7 +75,7 @@ cstudy-workspace/
 | `projects/` | A project problem is a folder of its own, started from the problem's files ([levels and projects](levels.md#project-problems)) |
 | `.archive/` | When you start a review, or start again with `--fresh`, `cstudy` moves the earlier files here, under `.archive/<slug>/<attempt>-<language>/`. Nothing is deleted |
 | `.statements/` | Rendered from the problem each time you start it, so there is nothing to keep |
-| `progress.db` | A SQLite file with everything you did. It stays on this machine; `cstudy export` backs it up ([settings](settings.md#back-up-and-restore-your-progress)) |
+| `progress.db` | A SQLite file with everything you did, your AI reviews, AI requests and AI consents among it. It stays on this machine; `cstudy export` backs it up, with the AI reviews and without the AI requests and consents, which belong to this machine ([settings](settings.md#back-up-and-restore-your-progress)) |
 | `.cs/workspace.toml` | The marker that makes the folder a workspace, with its languages. Keep it |
 
 ## Choose its languages
@@ -134,6 +134,8 @@ A no, Enter alone or `Ctrl+D` leaves everything as it was. `--yes` does not ask,
 ## Keep it in version control
 
 Your workspace is yours to version. Its `.gitignore` already leaves out what belongs to one machine: `progress.db`, the rest of `.cs/`, rendered statements, virtual environments, `node_modules` and build output. Your practice files, project folders, notes, `.archive/`, your own problems, `sets.yaml`, the IDE files and the marker, with the workspace's languages, stay tracked, and you commit them when you choose.
+
+Your AI keys are never in a workspace: `credentials.toml` sits beside your `config.toml`, and `cstudy` refuses to read or write it inside a workspace ([your keys](ai.md#your-keys)). Never commit a key to the workspace's repository, or to any other.
 
 To keep your progress too, commit a backup:
 

@@ -1,6 +1,6 @@
 ---
 title: Upgrading cstudy
-summary: Upgrade cstudy, bring your workspace up to date with cstudy doctor --fix, keep your own files, choose your languages and profile when you want, and move a workspace to a new machine.
+summary: Upgrade cstudy, bring your workspace up to date with cstudy doctor --fix, keep your own files, choose your languages and profile when you want, see what the AI preview changes, and move a workspace to a new machine.
 section: Start here
 order: 45
 ---
@@ -86,6 +86,7 @@ It stays quiet when every language server it installs is in place already.
 | IDE files you edited | `cstudy ide` rewrites an IDE file only while it is as `cstudy` wrote it. One you edited stays, with a warning, until you run `cstudy ide --force` |
 | Starter files of a project folder | They stay as you started them, even when a newer `cstudy` changes the starter. `cstudy start <slug> --restore <file>` writes the starter's version of one file back |
 | `config.toml` | Nothing. A key that a new version adds takes its default until you set it |
+| `credentials.toml` | Nothing. Your AI keys stay where they are, beside `config.toml` |
 | `progress.db` | Migrated to the current schema, with a copy in `.cs/backups/` first |
 
 What `cstudy` refreshes is its own: `.cs/` (the runner runtime, caches and language servers), `.venv` and `node_modules`.
@@ -120,6 +121,17 @@ Once your profile hides something, `cstudy list`, `cstudy next`, `cstudy mock` a
 
 The languages are kept in the workspace's marker, `.cs/workspace.toml`. A `cstudy` older than the one that added them ignores them: its `cstudy doctor` reports the folders of the languages you removed as missing, and its `cstudy doctor --fix` writes them back.
 
+## The AI preview
+
+The [AI preview](ai.md) stays off after an upgrade, and nothing is sent until you turn it on. Two things change for everyone:
+
+| What | Change |
+|------|--------|
+| `progress.db` | Migrates to schema 8, after its copy in `.cs/backups/`, as every migration does. Schema 8 adds three empty tables: AI reviews, AI requests and AI consents. A `cstudy` older than this one then refuses the database ([older workspaces](#older-workspaces)) |
+| Checked by | The system design and code review problems are checked by `rubric` and `ai-review`, whatever your settings: `checked_by` is `["rubric", "ai-review"]` in `--json` output, and the web UI's Checked by column reads `rubric + AI review`. `cstudy list --checked-by rubric` lists the same problems as before |
+
+A script that tested `checked_by` for exactly `["rubric"]` tests whether it holds `rubric` instead. `cstudy export` writes the AI reviews and leaves out the AI requests and consents, which belong to this machine; an export made after the upgrade has schema 8, so an older `cstudy` refuses to import it. `cstudy doctor` shows an `ai` row only once AI is on or `credentials.toml` exists, so its output is as before until then.
+
 ## Move to a new machine
 
 Your progress lives in `progress.db`, which the workspace's `.gitignore` leaves out, so carry it as an export. On the old machine:
@@ -144,6 +156,8 @@ Commit and push the workspace with the export, or copy the workspace folder. The
 If you copied `progress.db` along, skip `cstudy import`: your progress is there already, and `cstudy import` refuses a database that holds progress. An export from a newer `cstudy` is refused too: upgrade first.
 
 The web UI's preferences stay behind, since they live in `.cs/serve/preferences.json`. Turn code intelligence on again in Settings if you use it, then run `cstudy doctor --fix` once more to install its language servers.
+
+Your AI keys are in neither the workspace nor the export, and neither are your AI consents and usage. If you use the [AI preview](ai.md), save your keys again on the new machine with `cstudy ai key`; its first AI request there asks for your consent again.
 
 ## What changed
 

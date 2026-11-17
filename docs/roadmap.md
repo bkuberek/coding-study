@@ -95,7 +95,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 |------|----:|-----------:|--------:|
 | Compatibility and release engineering | 6 | 1 | 0 |
 | Product | 2 | 1 | 8 |
-| AI preview | 0 | 0 | 9 |
+| AI preview | 4 | 0 | 5 |
 | Content | 2 | 2 | 5 |
 | Platforms and install | 0 | 3 | 4 |
 | Reliability | 1 | 0 | 0 |
@@ -104,7 +104,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 | Performance | 1 | 1 | 2 |
 | Licensing | 3 | 1 | 0 |
 | Privacy and offline | 2 | 0 | 0 |
-| **Total (60)** | **21** | **10** | **29** |
+| **Total (60)** | **25** | **10** | **25** |
 
 #### Compatibility and release engineering
 
@@ -112,7 +112,7 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 |----|-----------|--------|-----------|
 | E1 | A compatibility spec and an ADR state the public, internal and preview surfaces, breaking changes, deprecation and the support window | Met: [compatibility](specs/compatibility.md) and [ADR 0027](decisions/0027-compatibility-contract.md), with a deprecation registry and a helper that warns on stderr only | v0.51 |
 | E2 | Contract tests: a snapshot of commands, flags and exit codes; a JSON Schema per `--json` document; snapshots of the config keys and the workspace marker | Met: `cli/tests/contract/` snapshots the commands, flags, exit codes, config keys, environment variables and marker, and validates real output against the 17 schemas of `schemas/cli/`, with a coverage test | v0.51 |
-| E3 | Canonical IDs `<type>/<slug>` for all content; numeric problem IDs and the ID column are gone and folders are `problems/<slug>`; the 16 items are problems of the kinds `system-design` and `code-review`, checked by a rubric; the Problems page has a Checked by column (tests, rubric, plus AI review) | Met: IDs, slug folders, rubric problems and Checked by with its filter in `cstudy list` and the page; the `ai-review` value is reserved for AI3 | v0.51 |
+| E3 | Canonical IDs `<type>/<slug>` for all content; numeric problem IDs and the ID column are gone and folders are `problems/<slug>`; the 16 items are problems of the kinds `system-design` and `code-review`, checked by a rubric; the Problems page has a Checked by column (tests, rubric, plus AI review) | Met: IDs, slug folders, rubric problems and Checked by with its filter in `cstudy list` and the page; since AI3 the rubric problems are checked by `rubric` and `ai-review`, `rubric + AI review` in the column, and `--checked-by ai-review` lists them | v0.51, v0.54 |
 | E4 | Every migration takes a backup first; upgrade tests migrate a fixture of each schema from 1.0 forward; export round trips keep every row | Met: a backup before each migration, restored when a script fails; `test_sqlite_upgrades.py` migrates a fixture of each schema 1 to 7 and round-trips its export | v0.51 |
 | E8 | `UPGRADING.md` covers moving from 0.x to 1.0 | Partly met: a draft covers the 0.51 changes and the learner profile, linked from the README and the docs index | v0.51 (draft), v1.0.0 (final) |
 | E9 | 1.0.0 is cut deliberately with a major bump | Met: `semantic-release version --major` | v1.0.0 |
@@ -138,14 +138,14 @@ Status is **met**, **partly met** or **not met**; not met includes criteria that
 
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
-| AI1 | Bring your own key: keys only in `credentials.toml`, never in the workspace, logs, transcripts or exports; consent before the first send per provider, model and purpose; a daily token cap; usage and known cost shown | Not met | v0.54 |
-| AI2 | Routing: one fixed model, or auto, which serves each task from a fast or a strong tier you configure | Not met | v0.54 |
-| AI3 | AI review of rubric-checked problems: a schema-validated verdict per rubric criterion, stored as a versioned record with provider, model and rubric version, labeled AI review, never changing a grade or the schedule | Not met | v0.54 |
+| AI1 | Bring your own key: keys only in `credentials.toml`, never in the workspace, logs, transcripts or exports; consent before the first send per provider, model and purpose; a daily token cap; usage and known cost shown | Met: `cstudy ai key` and Settings write `credentials.toml` with mode `0600` beside `config.toml`, refused inside a workspace and warned by `cstudy doctor` in a Git tree; a sentinel key is in no output, record or export; consent at a terminal, in the page's dialog or with `cstudy ai consent`, never `--yes`; `ai.daily_token_cap`; `cstudy ai status`, `cstudy ai usage` and Settings show tokens and the cost OpenRouter reports ([ai](specs/ai.md), [ADR 0029](decisions/0029-ai-foundation.md)) | v0.54 |
+| AI2 | Routing: one fixed model, or auto, which serves each task from a fast or a strong tier you configure | Met: `ai.routing` `fixed` (`ai.model`) or `auto` (`ai.fast`, `ai.strong`), with no fallback; `cstudy ai check` tries every configured model through the fake provider in each provider's shape | v0.54 |
+| AI3 | AI review of rubric-checked problems: a schema-validated verdict per rubric criterion, stored as a versioned record with provider, model and rubric version, labeled AI review, never changing a grade or the schedule | Met: `cstudy ai review` and the page's AI review panel; `ai_reviews` rows of format 1 with provider, model, `review-1` and `rubric_sha256`, exported and imported; a review writes only its own AI rows and never the attempt, the grade or the schedule | v0.54 |
 | AI4 | The chat drawer on every page, with free sessions you create, rename, archive, compact and delete, and the same sessions in `cstudy ai chat`; the drawer is a chunk with its own bundle budget | Not met | v0.55 |
 | AI5 | Web search through each provider's server-side search tool, per message, counted in usage | Not met | v0.55 |
 | AI6 | Problem sessions: one per `attempt_id`, read-only once the attempt is done or aborted; help modes `interviewer`, `collaborator` and `tutor`; during `cstudy mock`, interviewer only, with free sessions locked | Not met | v0.56 |
 | AI7 | Each turn gets a tag; a versioned assistance record is stored on the attempt, caps the review grade, and shows in `cstudy history`, `cstudy stats` and the page | Not met | v0.56 |
-| AI8 | With AI off, nothing leaves the machine and every other feature works as before | Not met | v0.54 |
+| AI8 | With AI off, nothing leaves the machine and every other feature works as before | Met: AI is off by default; a network guard refuses connections off the loopback in every fast test; `tests/test_ai_off.py` runs every `cstudy ai` form and AI job with AI off and a sentinel key, and child `cstudy` commands under a guard, with no connection, no import of the provider adapters and the key in no output | v0.54 |
 | AI9 | The assistant notices when a message sounds like a bug or a missing feature, offers to draft the issue, shows the draft, and opens the prefilled form of P8 only after you agree. cstudy holds no GitHub token; you submit the issue on GitHub | Not met | v0.55 |
 
 #### Content
@@ -630,12 +630,12 @@ Suggested order: PP1 to PP15 are built. P9, code intelligence and the Web UI, is
 
 ## Phase 14: AI-reviewed problems
 
-**Status.** Steps 1 and 2 are part of the AI preview of [v1.0.0](#v100), milestones v0.54 to v0.56, as a wider design that adds the assistant and problem sessions; the 16 items are rubric-checked problems by then. Steps 3 and 4 come after 1.1.
+**Status.** Steps 1 and 2 are built in the AI foundation, milestone v0.54 ([ADR 0029](decisions/0029-ai-foundation.md), [ai](specs/ai.md)), the start of the AI preview of [v1.0.0](#v100); the assistant and problem sessions follow in v0.55 and v0.56. Steps 3 and 4 come after 1.1.
 
 **Scope.** [ADR 0021](decisions/0021-ai-reviewed-problems.md): an opt-in class of problems reviewed by a live LLM with your own key. It needs the environment allowlist of Phase 12's P2, which is built.
 
-- [ ] Step 1: provider port and keys.
-- [ ] Step 2: written answers on existing rubric problems.
+- [x] Step 1: provider port and keys: one model port with four providers, keys in `credentials.toml`, consent, routing and a daily token cap.
+- [x] Step 2: written answers on existing rubric problems: `cstudy ai review` and the page's AI review panel.
 - [ ] Step 3: simulated interview.
 - [ ] Step 4: whiteboard, after its spike.
 

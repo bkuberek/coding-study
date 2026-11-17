@@ -15,7 +15,8 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents. `schemas/cli/` holds one schema per `--json` document and the progress export ([compatibility](specs/compatibility.md#json-documents)); `guide.schema.json`, `path.schema.json`, `user-doc.schema.json`, `sets.schema.json`, `mock.schema.json` and `dev-events.schema.json` describe the guides, the paths, the user docs' front matter, `sets.yaml`, the mock servers of service projects and `cstudy dev --events` |
 | Workspace templates | `cli/src/coding_study/adapters/workspace_template/` | 5 real projects | What `cstudy init` copies into a workspace |
 | Workspace | anywhere, outside this repository ([installation-and-workspaces](specs/installation-and-workspaces.md)) | 5 real projects | The user's code, notes and own problems, versioned on their own |
-| Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs, submissions, level unlocks, guide reads; backed up to `.cs/backups/` before each migration |
+| Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs, submissions, level unlocks, guide reads, and the AI preview's reviews, requests and consents; backed up to `.cs/backups/` before each migration |
+| AI keys | `credentials.toml`, beside `config.toml` | TOML | The AI providers' keys, outside every workspace, read only by AI work ([ai](specs/ai.md#keys)) |
 | Cache | `<workspace>/.cs/` | mixed | Index, generated cases, calibration, build scratch, runner runtime, `progress.db` backups |
 
 ## Hexagonal boundaries
@@ -39,6 +40,8 @@ flowchart LR
     RUN[SubprocessRunner + LanguageRunner x5]
     GEN[Stub generators x6]
     WS[WorkspaceFs]
+    AI[ProviderModels x4, loaded only with AI on]
+    CRED[TomlCredentials]
     PY[ContentCodeLoader]
     ED[EditorOpener]
     CLK[SystemClock]
@@ -46,7 +49,7 @@ flowchart LR
   CLI --> UC --> D
   WEB --> UC
   WEB -->|child cstudy per run| CLI
-  UC --> FS & IT & DB & RUN & GEN & WS & PY & ED & CLK
+  UC --> FS & IT & DB & RUN & GEN & WS & PY & ED & CLK & AI & CRED
 ```
 
 Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/coding_study/application/ports.py`; adapters implement them; each command module in `entrypoints/commands/` wires them, and `entrypoints/cli.py` registers the commands. Shared pure rules live in the domain: `naming` (per-language symbol names), `layout` (stub, statement, archive and reference paths, run targets), `runs` (runner request and per-case outcomes) and `jdk` (the supported JDK range, a problem's effective range and whether the selected JDK can run it, [ADR 0016](decisions/0016-jdk-range.md)).
@@ -80,6 +83,9 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `WorkspaceLanguageStore` | `FsWorkspaceLanguageStore` (`adapters/workspace_setup.py`) | The marker's `languages`, rewritten keeping its comments, and the missing template files of added languages, never overwriting one, for `cstudy lang` and the Settings view |
 | `LanguageFolders` | `FsLanguageFolders` (`adapters/language_folders.py`) | The template folders that `cstudy lang remove --delete-folder` deletes: whether one is there, whether it is a link or resolves outside the workspace, and its deletion, a link inside it deleted as a link |
 | `RunActivity` | `ProcessRunActivity` (`adapters/run_activity.py`) | Whether a run or a job is active, which `cstudy reset` and `cstudy lang remove --delete-folder` wait for |
+| `LanguageModels` | `ProviderModels` (`adapters/ai/models.py`), behind a loader in `adapters/environment_factory.py`; `NoLanguageModels` with AI off | `complete(request, key)` and `list_models(provider, key, deadline_s)`: the AI preview's one door to a provider, one adapter per provider under `adapters/ai/` over `http_json.py` ([below](#ai-preview)) |
+| `Credentials` | `TomlCredentials` (`adapters/toml_credentials.py`) | `credentials.toml` beside `config.toml`: the keys as `ApiKey` values, written whole with mode `0600`, refused inside the workspace ([keys](specs/ai.md#keys)) |
+| `AiStore` | `SqliteAiStore` (`adapters/sqlite/ai_rows.py`) | The tables `ai_reviews`, `ai_calls` and `ai_consents` of `progress.db`, on the connection it shares with `SqliteProgressStore` (`adapters/sqlite/progress_connection.py`) |
 | `Clock`, `Random` | system implementations | Injected for deterministic tests |
 
 | Layer | Package | May import |
@@ -89,7 +95,7 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | Adapters | `coding_study.adapters` | application, domain, third-party libs |
 | Entrypoints | `coding_study.entrypoints` | everything |
 
-An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
+An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8). Two more contracts guard the AI preview: the domain and application layers import none of `http`, `socket` and `ssl`, and the entrypoints import nothing of `coding_study.adapters.ai` directly.
 
 ### Web adapter
 
@@ -142,6 +148,24 @@ The learner profile is the default filter of `cstudy list`, `next`, `mock` and `
 
 Neither these use cases nor these routes write the profile: widening is per run, and only `cstudy init --lang`, `cstudy lang`, `cstudy config edit` and the Settings view change it.
 
+### AI preview
+
+The optional AI features, with the user's own key ([ai](specs/ai.md), [ADR 0029](decisions/0029-ai-foundation.md)). They are off by default, and with them off nothing leaves the machine.
+
+| Piece | Path | Role |
+|-------|------|------|
+| Vocabulary | `domain/ai.py`, `domain/ai_models.py`, `domain/ai_records.py` | `Provider`, `ModelRef` (`<provider>:<model id>`), `Routing`, `Tier`, `AiTask`, `ApiKey`, whose text is `<key>` and which only an adapter unwraps; the request and reply, `ProviderError` and its kinds; the consent, request and review records. `AiSettings` in `domain/config.py` holds the six `[ai]` keys |
+| Rules | `domain/ai_routing.py`, `domain/ai_usage.py`, `domain/ai_review.py` | The task table (purpose, tiers, output limit, deadline) and the model a task uses; the estimate and the daily cap; the review's versioned instructions, numbered criteria, reply schema, the checks on a reply and the record |
+| The send path | `application/ai_send.py` | The one path every request takes: AI on, the routing's models, their keys, the cap, the consent (through a `ConsentAsker`: the terminal, a refusal, or consents a page job recorded), the request, then one `ai_calls` row |
+| Use cases | `application/ai_status.py`, `ai_usage.py`, `ai_keys.py`, `ai_consent.py`, `ai_check.py`, `ai_models.py`, `ai_review.py` | `cstudy ai status`, `usage`, `key`, `consent`, `check`, `models` and `review`, which the page's AI endpoints and jobs share |
+| Providers | `adapters/ai/` | `http_json.py` (`urllib.request` with its own opener, system TLS, proxies, deadlines, a 4 MiB limit, no redirects and no retries, the key scrubbed from provider text, and the loopback-only `CSTUDY_AI_ENDPOINT` of the tests); `anthropic.py`, `openai.py`, `google.py`, `openrouter.py`, each mapping its API's request, structured output, usage, endings and errors; `reply_json.py`; `models.py`, the port by provider |
+| Wiring | `adapters/environment_factory.py` | `Environment` gains `credentials`, `ai_store` and `models`. With `ai.enabled` false, `models` is `NoLanguageModels`, which refuses every request; with it true, a loader imports `coding_study.adapters.ai` at the first request, so no other command imports it, and a test checks `sys.modules` after importing `coding_study.entrypoints.cli` |
+| CLI | `entrypoints/commands/ai.py`, `ai_check.py`, `ai_review.py`, `ai_consent_prompt.py`, `ai_report.py`, `ai_review_report.py` | The `cstudy ai` group; the terminal's consent question; model text printed without markup or control characters |
+| Web | `entrypoints/web/api_ai.py`, the AI jobs of `run_options.py` | Status, usage, keys, consents and reviews in-process; every request to a provider is a job, a child `cstudy ai …` started after in-process checks and the consent 409, so the server process never sends. The page's Settings AI section and AI review panel are chunks of the front end |
+| `cstudy doctor` | `application/doctor.py` | The `ai` row, while AI is on or `credentials.toml` exists; it reads the config and the file only |
+
+The fast tests run under a network guard in `cli/tests/conftest.py` that refuses connections and name lookups off the loopback, and `tests/test_ai_off.py` proves that with AI off nothing is sent ([with AI off](specs/ai.md#with-ai-off)).
+
 ### Use cases
 
 | Use case | Command |
@@ -161,6 +185,9 @@ Neither these use cases nor these routes write the profile: widening is per run,
 | `mock_scope` | The Mock view's profile counts |
 | `AttemptStatus`, `ProblemHistory` | `cstudy status`, `cstudy history` |
 | `AttemptFiles` | The web UI's editor and file tree |
+| `ai_status`, `usage_report`, `save_key`, `remove_key`, `grant`, `revoke` | `cstudy ai status`, `usage`, `key`, `consent` |
+| `run_check`, `list_provider_models` | `cstudy ai check`, `cstudy ai models` |
+| `plan_review`, `dry_run_review`, `prepare_review`, `run_review`, `list_reviews`, `show_review`, `dismiss_review` | `cstudy ai review` and its flags, the page's AI review |
 
 ### CLI libraries
 
@@ -173,6 +200,7 @@ Neither these use cases nor these routes write the profile: widening is per run,
 | File watching | `watchfiles` |
 | Web server (`cstudy serve` only) | Starlette on uvicorn, without uvicorn's `standard` extra; wsproto for the code-intelligence WebSocket |
 | Markdown to HTML (`cstudy serve` only) | markdown-it-py and Pygments, declared directly although Rich installs them too |
+| HTTP to AI providers (AI preview only) | The standard library's `urllib.request` and `ssl`; no provider SDK ([ADR 0029](decisions/0029-ai-foundation.md)) |
 | Tests, lint, types | pytest, ruff, pyright, import-linter; httpx2 for Starlette's test client and Playwright in an optional group, for the web UI |
 
 ## Data flow: `cstudy start two-sum --lang kotlin`

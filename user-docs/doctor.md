@@ -44,8 +44,16 @@ It exits 0 when no row is `FAIL`, and 4 otherwise, so a script can stop on it.
 | The web UI | `web ui assets` and `web server`, which only warn, since the terminal does not need them |
 | Docker | `docker` and `docker leftovers`, which only warn, since only service projects need Docker |
 | Code intelligence | While it is on in the web UI's Settings, one row per language for its language server ([the editor](editor.md#turn-them-on)) |
+| The AI preview | The `ai` row, while AI is on or `credentials.toml` exists: the routing and models, and the providers with a key. It only warns, since only the [AI preview](ai.md) needs it, and it asks no provider anything |
 
-Outside a workspace it checks only the toolchains, your configuration, the content and the installs.
+Outside a workspace it checks only the toolchains, your configuration, the content and the installs, and the `ai` row when it shows.
+
+The `ai` row reads your configuration and `credentials.toml`, and nothing else:
+
+```text
+ok    ai on · fixed anthropic:<model id> · keys anthropic
+WARN  ai on · fixed · no keys · ai.model is not set    fix: set ai.model in Settings or with cstudy config edit
+```
 
 The `java` row names the JDK and where it came from: `JAVA_HOME`, or the first `java` on your `PATH`. A JDK above 26 fails as not supported yet, and one below 21 as too old; the fix names JDK 25, the one to install ([JDK](toolchains.md#jdk)).
 
@@ -146,6 +154,7 @@ Every row is `ok` when its check passes. This table says when each one is not, a
 | `docker` | `WARN` | Docker is installed and not running, Docker refuses you, or Docker is missing or has no Compose v2. Only service projects need it | Not running: `cstudy doctor --fix` starts it. Refused: the step the row names, such as joining the `docker` group. Missing: install it ([which Docker](toolchains.md#which-docker)) |
 | `docker leftovers` | `WARN` | A service project's run ended without cleaning up after itself, or Docker could not list what it left | `cstudy doctor --fix` removes what is left, by the labels `cstudy` puts on it |
 | `config` | `FAIL` | `config.toml` does not load. The row names each wrong key | Correct those keys: `cstudy config edit` opens the file ([your configuration](settings.md#your-configuration)) |
+| `ai` | `WARN` | Only while AI is on or `credentials.toml` exists: AI is on and a model the routing needs is not set, or its provider has no key; `credentials.toml` does not load; it lies in a Git working tree; or it would lie inside the workspace | The `fix:` names the key to set, `cstudy ai key <provider>`, the file to correct, or the `.gitignore` to add it to ([your keys](ai.md#your-keys)) |
 | `content` | `FAIL` | The problems and runners that ship with `cstudy` are not found | Reinstall `cstudy`. If you set `CSTUDY_CONTENT` or pass `--content`, it must name a folder with `problems/` and `schemas/` |
 | `installs` | `WARN` | More than one `cstudy` is on your `PATH`, and only the first runs | Keep one: the fix names the command that removes each other copy ([several installs](#several-installs)) |
 | `workspace` | `WARN` or `FAIL` | `WARN`: no workspace here. `FAIL`: its marker, `.cs/workspace.toml`, does not read, or a newer `cstudy` wrote it | `WARN`: `cstudy init`, or run inside your workspace. `FAIL`: repair the file the row names, or upgrade `cstudy` ([older workspaces](upgrading.md#older-workspaces)) |

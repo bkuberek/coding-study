@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-summary: What to do when a command fails, a toolchain is missing, the web UI loses its server, or a language server stops.
+summary: What to do when a command fails, a toolchain is missing, the web UI loses its server, a language server stops, or the AI preview refuses a request.
 section: Settings and help
 order: 130
 ---
@@ -24,7 +24,7 @@ Every command ends with a code that says how it went, which scripts can read:
 | 1 | Some cases or checks failed, a time limit included |
 | 2 | Your code did not build or load: a compile error, an import error, a missing name |
 | 3 | The command was wrong: a flag, a slug that does not exist, no attempt in progress |
-| 4 | Something on your machine is missing: a toolchain, a JDK in range, a runner that did not start |
+| 4 | Something on your machine is missing: a toolchain, a JDK in range, a runner that did not start; or an AI provider failed ([the AI preview](ai.md#when-a-request-fails)) |
 | 5 | A content file is wrong: a problem, a guide or a page that fails its checks |
 | 70 | A bug in `cstudy`. Please report it |
 | 129 | It was hung up (SIGHUP) during a `cstudy test --debug` run |
@@ -103,6 +103,26 @@ Each message below follows `error: ` in your terminal, word for word. Words in a
 | `cstudy import` | `progress.db already holds progress; import needs an empty database` | Import never mixes two histories. Exit 3 | To replace what is there: `cstudy export --out ~/before-import.json`, then `cstudy reset`, then `cstudy import` |
 | `cstudy import` | the export uses progress.db schema `<n>`, which is newer than this cstudy (`<m>`); update cstudy first | A newer `cstudy` wrote the export. Exit 3 | Upgrade `cstudy` ([upgrade cstudy](upgrading.md#upgrade-cstudy)) |
 | `cstudy solution` | `<slug> is not autograded; --lang, --approach, --all, --explanation-only and --broken apply to autograded problems` | A `system-design` or `code-review` problem has one answer, with no language or approach. Exit 3 | Leave those flags out |
+
+## The AI preview
+
+A refusal of the [AI preview](ai.md) exits 3 and sends nothing. A provider's failure exits 4: [when a request fails](ai.md#when-a-request-fails) lists those messages.
+
+| You see | It means | Do |
+|---------|----------|----|
+| `AI is off: turn it on with ai.enabled = true (cstudy config edit) or in Settings` | The preview is off, so nothing is sent | Turn it on, if you want it ([turn it on](ai.md#turn-it-on)) |
+| `ai.model is not set: choose the model of fixed routing in Settings or with cstudy config edit` | The task's model is not set; under auto routing the message names `ai.fast` or `ai.strong` | Set it to an id that `cstudy ai models <provider>` lists ([routing](ai.md#routing)) |
+| `no key for anthropic, which ai.model uses: cstudy ai key anthropic, or Settings` | The task's provider has no key in `credentials.toml` | Run `cstudy ai key anthropic`, or add the key in Settings |
+| `AI review needs your consent to send to anthropic:<model id>: run it once at a terminal, or cstudy ai consent anthropic:<model id> --purpose review` | Nothing was ever agreed for this model and purpose, and there is no terminal to ask you | Run it once in a terminal, or record the consent with the command it names ([consent](ai.md#consent)) |
+| `not sent` | You answered no, or pressed Enter, at the consent question. Exit 0 | Run it again and answer `y` when you want it sent |
+| `the daily token cap is reached: …` | Today's tokens and this request's estimate would pass `ai.daily_token_cap` | Wait until tomorrow, or raise the cap ([the daily token cap](ai.md#the-daily-token-cap)) |
+| `credentials.toml would be inside this workspace (<path>): keys never go in a workspace; point CSTUDY_CONFIG at a config.toml outside it` | `CSTUDY_CONFIG` names a `config.toml` inside the workspace, so the keys would be there too | Point `CSTUDY_CONFIG` at a file outside the workspace, or unset it ([keep keys out of repositories](ai.md#keep-keys-out-of-repositories)) |
+| `a key is one line of text with no spaces` | The key you typed or piped is empty or holds spaces | Copy the key again, without spaces or a line break inside it |
+| `credentials.toml: unknown provider "antropic"`, or another problem of the file, exit 4 | The file does not load: a table other than `anthropic`, `google`, `openai` and `openrouter`, a key other than `api_key`, or an empty value. Nothing but AI work reads it | Correct the file, or delete it and save your keys again with `cstudy ai key` |
+| `cstudy doctor` warns: `credentials.toml lies in a Git working tree (<path>)` | Your keys file is inside a Git repository and could be committed | Add `credentials.toml` to that repository's `.gitignore`, or keep your config outside it |
+| `your notes are still the template: …`, `… is missing: AI review reads your notes` | AI review reads your answer from the attempt's notes file | Write your answer in the notes file it names, and save it |
+| `cstudy ai review is locked during the mock interview (…)` | A mock interview runs | Wait until its timer ends or every problem is done. `--list`, `--show` and `--dismiss` still work |
+| In the web UI, AI review says `save your notes first: AI review reads them from disk` | The notes tab has unsaved edits | Save with `Cmd+S`, then choose **AI review** again |
 
 ## The web UI
 

@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Accepted as a plan for the future. Nothing here is built, and no phase is committed. The items under [Open to confirm](#open-to-confirm) are confirmed when work starts |
+| Status | Accepted. Steps 1 and 2 of the [order](#order) are built as the AI foundation, milestone v0.54, as [ADR 0029](0029-ai-foundation.md) settles them: one model port with four providers, keys in `credentials.toml`, consent per provider, model and purpose, a daily token cap, and AI review of the rubric problems. ADR 0029 settles R1 to R8 and R11 under [Open to confirm](#open-to-confirm); R8's labeled answer sets wait for a later milestone. Steps 3 and 4 remain a plan, with no phase committed |
 | Date | 2026-11-05 |
-| Spec | None yet. Today's behavior stays in [content](../specs/content.md#rubric-checked-problems) and [web-ui](../specs/web-ui.md#settings-view), which carry forward pointers |
+| Spec | [ai](../specs/ai.md) for steps 1 and 2; none yet for steps 3 and 4 |
 | Amends | [PRD](../prd.md): NFR-6, renamed from "Offline" now; once built, the non-goal "no AI grading", section 3 and NFR-12's wording. [ADR 0019](0019-service-projects.md)'s O1 follows this |
 | Builds on | [ADR 0015](0015-local-web-ui.md), [ADR 0018](0018-editor-code-intelligence.md) (the budget of an optional chunk), [ADR 0019](0019-service-projects.md) (the requirements list, the environment allowlist), [ADR 0020](0020-catalog-labels.md) (what stays out of graded problems) |
 | Amended by | [ADR 0027](0027-compatibility-contract.md): R11's items are rubric-checked problems of the kinds `system-design` and `code-review`; [ADR 0029](0029-ai-foundation.md): steps 1 and 2 as the AI foundation, one model port with four providers, consent, a daily cap, and AI review of rubric problems ([ai](../specs/ai.md)) |

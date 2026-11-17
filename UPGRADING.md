@@ -259,3 +259,20 @@ What to do: nothing. The fields are added; with no profile set, the entries are 
 Every guide's `meta.yaml` lists `domains` and `job_roles`, and `cstudy verify` fails a guide without them.
 
 What to do, only if you keep a content root of your own (`--content` or `CSTUDY_CONTENT`) with guides of your own: add both lists to each guide's `meta.yaml`, as [the guide format](docs/specs/guides.md#metayaml) describes.
+
+### The AI preview
+
+An optional preview sends requests to an AI model with your own key: AI review of the system design and code review problems, and a check of your models ([ai](docs/specs/ai.md), or run `cstudy docs ai`). It is off by default, and with it off nothing leaves the machine. Its commands, `[ai]` keys and human output are preview surfaces, which may change in a minor release; the AI review record is public.
+
+| What | Change |
+|------|--------|
+| Commands | `cstudy ai` with `status`, `usage`, `key`, `models`, `consent`, `check` and `review` |
+| `config.toml` | Six keys in `[ai]`: `enabled` (default `false`), `routing`, `model`, `fast`, `strong` and `daily_token_cap` (default `500000`) |
+| Keys | `credentials.toml`, beside `config.toml`, written with mode `0600` by `cstudy ai key` and Settings. `cstudy` never reads or writes it inside a workspace |
+| `progress.db` | Schema 8 adds `ai_reviews`, `ai_calls` and `ai_consents`, after the usual backup. A `cstudy` older than this one refuses the migrated database |
+| Export and import | The export holds `ai_reviews` and has `schema_version` 8, so an older `cstudy` refuses it; it leaves out `ai_calls` and `ai_consents`, which `cstudy import` neither reads nor checks. `cstudy import` refuses a database that holds an AI review, as it does one with any progress. `cstudy reset` empties all three tables |
+| `checked_by` | The rubric problems are `["rubric", "ai-review"]` in `cstudy list --json`, `cstudy next --json`, `cstudy status --json` and `cstudy set show --json`, whatever the settings. `cstudy list --checked-by` takes `ai-review` |
+| `cstudy doctor` | An `ai` row, only while `ai.enabled` is true or `credentials.toml` exists; it warns and never fails |
+| `cstudy serve` | The AI section in Settings, and, with AI on, AI review on a rubric problem's Attempt view; the Problems page's Checked by column reads `rubric + AI review` |
+
+What to do: nothing, unless you want the preview. A script that tested `checked_by` for exactly `["rubric"]` tests whether it holds `"rubric"`; `--checked-by rubric` lists the same problems as before. Never put a key in your workspace or a repository; if you keep `config.toml` in a dotfiles repository, add `credentials.toml` to its `.gitignore`.

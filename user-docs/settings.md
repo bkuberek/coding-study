@@ -1,21 +1,22 @@
 ---
 title: Settings and preferences
-summary: Your config.toml, which every command reads, your learner profile, the web UI's preferences, and how to back up, restore or reset your progress.
+summary: Your config.toml, which every command reads, your learner profile, the AI section, the web UI's preferences, and how to back up, restore or reset your progress.
 section: Settings and help
 order: 120
 ---
 
 # Settings and preferences
 
-`cstudy` has three kinds of settings:
+`cstudy` has four kinds of settings:
 
 | Kind | Where | Covers |
 |------|-------|--------|
 | Your configuration | `config.toml`, one file for all your workspaces | The default language, the job roles and domains of your [learner profile](#your-learner-profile), time limits, the review schedule and more. Every command reads it |
 | The workspace's languages | `.cs/workspace.toml`, in each workspace | The languages you practice there: its folders, the toolchains `cstudy doctor` checks, its IDE files, and the languages of your learner profile ([choose its languages](workspace.md#choose-its-languages)) |
 | Preferences | `.cs/serve/preferences.json`, in each workspace | How the web UI looks and behaves: Vim keys, the theme, run on save, code intelligence |
+| AI keys | `credentials.toml`, beside `config.toml`, never in a workspace | Your own provider keys for the optional [AI preview](ai.md#your-keys) |
 
-The **Settings** view of the web UI (`Alt+7`) edits all three. In the terminal, `cstudy config` finds and opens the file, and `cstudy lang` changes the languages.
+The **Settings** view of the web UI (`Alt+7`) edits all four. In the terminal, `cstudy config` finds and opens the file, `cstudy lang` changes the languages, and `cstudy ai key` saves a key.
 
 ## Your configuration
 
@@ -43,7 +44,7 @@ The keys you are most likely to change:
 | `schedule.max_interval_days` | `180` | No review is scheduled further away than this |
 | `schedule.mastered_interval_days` | `21` | A problem counts as mastered from this review interval on |
 
-The `[schedule]` table also holds the first intervals of each rating (`ok_first_interval_days`, `easy_first_interval_days` and the like). A new interval applies to reviews scheduled from then on: dates already set do not move. The Settings view lists every key, with its name in the file, its value, its default and when a change applies, and [configuration keys](commands.md#configuration-keys) lists every key with its default.
+The `[schedule]` table also holds the first intervals of each rating (`ok_first_interval_days`, `easy_first_interval_days` and the like). A new interval applies to reviews scheduled from then on: dates already set do not move. The Settings view lists every key, with its name in the file, its value, its default and when a change applies, and [configuration keys](commands.md#configuration-keys) lists every key with its default. The `[ai]` table holds the six keys of the AI preview, which is off by default ([turn it on](ai.md#turn-it-on)).
 
 A change applies at the next command. The web UI reads the file for each request, so it needs no restart, except after a change to `progress_db`: restart `cstudy serve` then.
 
@@ -140,7 +141,7 @@ Preferences are stored in `.cs/serve/preferences.json` in the workspace, so they
 
 Nothing in **Settings** applies until you choose **Save** in the bar at the top, which stays on screen as you scroll: it shows how many changes you have, and **Reset** undoes all of them. The theme previews as you pick it. Leaving with unsaved changes asks first. The `vim` and `theme` switches in the status bar still apply at once.
 
-The **profile** section heads the view ([below](#the-profile-section)). Beside the preferences, or below them in a narrow window, the view edits `config.toml`. Each key shows a friendly label with its name in the file beside it, so a search of the page finds either. **Save** writes only what you changed and keeps your comments; empty a field to return it to its default. A value `cstudy` would refuse is refused here too, by the key's name, and nothing is written to the file. Save covers every place: it writes `config.toml`, then the workspace's languages, then the preferences, and if one fails it says which and keeps those changes unsaved, while the others stay saved.
+The **profile** section heads the view ([below](#the-profile-section)), then the **AI** section ([the AI section](#the-ai-section)). Beside the preferences, or below them in a narrow window, the view edits `config.toml`. Each key shows a friendly label with its name in the file beside it, so a search of the page finds either. **Save** writes only what you changed and keeps your comments; empty a field to return it to its default. A value `cstudy` would refuse is refused here too, by the key's name, and nothing is written to the file. Save covers every place: it writes `config.toml`, then `credentials.toml`, then the workspace's languages, then the preferences, and if one fails it says which and keeps those changes unsaved, while the others stay saved.
 
 ### The Profile section
 
@@ -160,6 +161,19 @@ A Save that removes a language first asks what becomes of the language's folder,
 
 While an attempt in that language is in progress, **Delete rust/** is disabled, with the reason beside it; keeping the folder still works. Progress, `.archive/`, `projects/` and `notes/` always stay ([choose its languages](workspace.md#choose-its-languages)).
 
+### The AI section
+
+The **AI (preview)** section sets up the optional [AI preview](ai.md). It shows whether AI is on or off, since it is where you turn it on, and each group names where it is stored:
+
+| Group | Stored in | Holds |
+|-------|-----------|-------|
+| **Turn on** | `config.toml` | The `ai.enabled` checkbox |
+| **Keys** | `credentials.toml` | A row per provider, `key set` or `no key`, with a field for a new key and **Remove**. A key you type is saved by **Save** and never shown again |
+| **Models** | `config.toml` | The routing, `fixed` or `auto`, then `ai.model`, or `ai.fast` and `ai.strong`, and the daily token cap. **Load models** beside a provider with a key lists its model ids as suggestions, as `cstudy ai models` does; **Check** runs `cstudy ai check`, after the consent dialog when it needs one |
+| **This workspace** | `progress.db` | Your consents, each with **Revoke**, then today's usage and the last 7 days |
+
+**Load models** and **Check** use what is saved, so they are disabled, with the reason beside them, while AI is off or a change is staged. **Revoke** acts at once, without Save: it only makes `cstudy` ask again next time.
+
 ## Back up and restore your progress
 
 Your progress lives in `progress.db`, which the workspace's `.gitignore` leaves out. Back it up as a JSON file you can commit:
@@ -171,11 +185,11 @@ cstudy import                         # restores progress-export.json into an em
 cstudy import ~/backup.json
 ```
 
-`cstudy import` refuses a database that already holds progress, so it never mixes two histories. The Progress view of the web UI (`Alt+5`) has export and import too.
+`cstudy import` refuses a database that already holds progress, so it never mixes two histories. The Progress view of the web UI (`Alt+5`) has export and import too. An export keeps your AI reviews, and leaves out your AI requests and consents, which belong to this machine.
 
 ## Start over
 
-`cstudy reset` in the terminal, or **Reset progress…**, the red button in the **danger** section of Settings, deletes your progress in this workspace: attempts, scheduled reviews, bench runs, run folders and rendered statements. You see what goes, with counts, before anything does. It can't be undone, so you type `reset` to confirm. It refuses while a run or a job is active. Run `cstudy export` first if you may want your progress back.
+`cstudy reset` in the terminal, or **Reset progress…**, the red button in the **danger** section of Settings, deletes your progress in this workspace: attempts, scheduled reviews, bench runs, AI reviews, AI requests and consents, run folders and rendered statements. You see what goes, with counts, before anything does. It can't be undone, so you type `reset` to confirm. It refuses while a run or a job is active. Run `cstudy export` first if you may want your progress back.
 
 ```bash
 cstudy reset                    # progress only
@@ -183,4 +197,4 @@ cstudy reset --files            # also your practice files, project folders and 
 cstudy reset --files --archive  # and .archive/, the files of earlier attempts
 ```
 
-Your practice files, project folders and notes stay unless you tick that box, or pass `--files`. `.archive/` stays unless you tick its own, or pass `--archive`. Your settings, toolchains, language servers, your own problems and your [sets](planning.md#problem-sets) always stay. A reset ends an open attempt along with the rest: the menu of attempts in progress empties at once, and a tab that was showing that attempt says it ended and turns read-only. `--yes` skips the question, for a script with no one to type.
+Your practice files, project folders and notes stay unless you tick that box, or pass `--files`. `.archive/` stays unless you tick its own, or pass `--archive`. Your settings, your AI keys, toolchains, language servers, your own problems and your [sets](planning.md#problem-sets) always stay. A reset ends an open attempt along with the rest: the menu of attempts in progress empties at once, and a tab that was showing that attempt says it ended and turns read-only. `--yes` skips the question, for a script with no one to type.

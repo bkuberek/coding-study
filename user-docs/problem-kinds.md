@@ -25,8 +25,8 @@ cstudy list --domain security --scope function
 | `lld` | Object-oriented and low-level design: an API the tests check, and a design you compare with a rubric | tests and rubric |
 | `concurrency` | Code that several threads or tasks call at once | tests |
 | `debugging` | Finding and fixing a bug in code that looks right | tests |
-| `system-design` | Designing a system, in notes | rubric |
-| `code-review` | Reviewing a change, in notes | rubric |
+| `system-design` | Designing a system, in notes | rubric, and optional AI review |
+| `code-review` | Reviewing a change, in notes | rubric, and optional AI review |
 | `behavioral` | Behavioral rounds. The track has no problems: prepare from a story bank of your own | - |
 
 `cstudy list` shows the tracks in this order, and `cstudy next --track system-design` picks within one track.
@@ -51,9 +51,9 @@ The first five run your code in a language you choose from those the problem lis
 |------------|-----|----------|
 | `tests` | `cstudy test`, or `cstudy submit` for a project, runs your code against the cases and gives the verdict | Every kind that runs code |
 | `rubric` | You compare your answer with a rubric and a reference answer, and your rating is the grade | `system-design` and `code-review` problems, and `lld` problems, whose tests check the API |
-| AI review | Planned: an optional review of a rubric answer. It is not available yet | None yet |
+| `ai-review` | An optional second opinion on your notes from an AI model you choose, with your own key: a verdict per rubric criterion, with quotes from your notes and what is missing ([AI review](ai.md#ai-review)). It never grades: your rating stays the grade | `system-design` and `code-review` problems |
 
-`cstudy list --checked-by tests` and `--checked-by rubric` filter by it, and the web UI's Problems view has a Checked by column, `tests`, `tests + rubric` or `rubric`, with a filter. In the `--json` output of `cstudy list`, `cstudy next` and `cstudy status`, `checked_by` lists the values.
+`cstudy list --checked-by tests`, `--checked-by rubric` and `--checked-by ai-review` filter by it, and the web UI's Problems view has a Checked by column, `tests`, `tests + rubric` or `rubric + AI review`, with a filter. A problem's Checked by describes the problem, whatever your settings: a system design or code review problem reads `rubric + AI review` with the AI preview off too. In the `--json` output of `cstudy list`, `cstudy next` and `cstudy status`, `checked_by` lists the values, such as `["rubric", "ai-review"]`.
 
 ## Any approach that passes
 

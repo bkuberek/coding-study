@@ -16,6 +16,7 @@ The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_
 - **Optimality, not only correctness.** `cstudy bench` measures how your solution grows with input size and compares it with the reference approaches.
 - **Spaced repetition.** `cstudy next` resumes what you have open, brings back what is due and picks new problems from your weakest pattern.
 - **Code intelligence in the browser, when you want it.** The practice page can show errors as you type, documentation on hover, go to definition and completion for Python, TypeScript, Java, Go and Rust from language servers on your computer. Each is a setting, off by default, so you can also practice without any help.
+- **AI review, opt-in, with your own key.** A preview you turn on gives a second opinion on your system design and code review notes, criterion by criterion against the rubric, from the AI provider you choose. It asks before anything is sent, keeps to a daily token cap and never changes a grade; off, nothing leaves your machine.
 
 ## Install
 
@@ -66,6 +67,7 @@ The user docs ship with `cstudy`: `cstudy docs` lists them in the terminal, `cst
 | [Practice in your browser](user-docs/web-ui.md) | `cstudy serve`: the views and the keyboard |
 | [The editor and code intelligence](user-docs/editor.md) | Live errors, hover documentation, go to definition and autocomplete |
 | [Settings and preferences](user-docs/settings.md) | `config.toml`, the preferences, backups and reset |
+| [The AI preview](user-docs/ai.md) | Your own keys, consent, the daily token cap, and AI review of rubric problems |
 | [Command reference](user-docs/commands.md) | Every command and its flags, and the exit codes |
 | [Troubleshooting](user-docs/troubleshooting.md) | What to do when something fails |
 

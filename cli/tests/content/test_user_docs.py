@@ -35,6 +35,7 @@ TOPICS = (
     "web-ui",
     "editor",
     "settings",
+    "ai",
     "commands",
     "troubleshooting",
 )
