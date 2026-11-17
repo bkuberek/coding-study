@@ -984,7 +984,7 @@ def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
         button = page.get_by_role("button", name="AI review", exact=True)
         button.wait_for()
         page.wait_for_timeout(1500)
-        result = review.get_by_text(re.compile(r"\d+ met · \d+ partly · \d+ missed of \d+"))
+        result = review.locator(".ai-review-result")
         if result.count() == 0:
             button.click()
         result.wait_for()
