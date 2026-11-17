@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.54.2 (2026-11-17)
+
+### Bug Fixes
+
+- Draw guide diagrams before dropping comment paragraphs
+  ([`f4dfbfe`](https://github.com/bkuberek/coding-study/commit/f4dfbfe10dd798972f0e3a18c5f25cead92d7d81))
+
+- Hide the statement file's footer comment in the page
+  ([`293a416`](https://github.com/bkuberek/coding-study/commit/293a416a4e30646eafe333de3379b59542bf7448))
+
+### Chores
+
+- **showcase**: Add the AI preview shots for cstudy 0.54
+  ([`31394d9`](https://github.com/bkuberek/coding-study/commit/31394d9900e823db8616cc5081799abfadeac05d))
+
+### Documentation
+
+- Present cstudy as a study app
+  ([`f3c84aa`](https://github.com/bkuberek/coding-study/commit/f3c84aab0490cc01f4a9b8feac0772ac79cf1526))
+
+
 ## v0.54.1 (2026-11-17)
 
 ### Bug Fixes

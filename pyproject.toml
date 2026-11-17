@@ -3,7 +3,7 @@
 # in cli/ (ruff.toml, pyrightconfig.json, pytest.ini, .importlinter).
 [project]
 name = "coding-study"
-version = "0.54.1"
+version = "0.54.2"
 description = "The free study app for engineers: algorithms to system design, graded by real tests, on your own machine"
 readme = "README.md"
 license = "MIT"
