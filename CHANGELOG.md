@@ -2,6 +2,123 @@
 
 <!-- version list -->
 
+## v0.54.0 (2026-11-17)
+
+### Bug Fixes
+
+- Point the credentials.toml header at cstudy docs ai
+  ([`a84d633`](https://github.com/bkuberek/coding-study/commit/a84d6330d6aa3ecc49f3b878decd0b6149ced464))
+
+- Refuse credentials.toml only inside a real workspace
+  ([`57254bd`](https://github.com/bkuberek/coding-study/commit/57254bdef86717f02ff55bf7294c9d321652e36d))
+
+- Treat a bad Google key as a key error
+  ([`ec5ee1c`](https://github.com/bkuberek/coding-study/commit/ec5ee1c316d199e54c0aedc76232d83afffc2d01))
+
+### Chores
+
+- **showcase**: Add the code intelligence Settings shot for cstudy 0.53
+  ([`3ff4644`](https://github.com/bkuberek/coding-study/commit/3ff46440fa473df5d5e03eb955a4d71bfbd43319))
+
+- **showcase**: Retake the web UI shots for cstudy 0.53
+  ([`6fd31f5`](https://github.com/bkuberek/coding-study/commit/6fd31f5f8145fc53c8d13586e7685bbab2c82cb2))
+
+### Documentation
+
+- Explain the AI preview in the user docs and the PRD
+  ([`b1bed80`](https://github.com/bkuberek/coding-study/commit/b1bed8030f449024ebf985bab685403411db34f0))
+
+- List the AI keys and tables
+  ([`b864efb`](https://github.com/bkuberek/coding-study/commit/b864efb283c8ef0764b0158e36d6d3f6cac91a23))
+
+- Place the AI review introduction in the panel
+  ([`75085c0`](https://github.com/bkuberek/coding-study/commit/75085c0d2d7a3747e742e4640814f2a379b76c21))
+
+- Specify the AI foundation
+  ([`e94edaa`](https://github.com/bkuberek/coding-study/commit/e94edaa884e80f99847cf84d3f23974d066a229f))
+
+- Write the example models as provider:model-id
+  ([`f36609e`](https://github.com/bkuberek/coding-study/commit/f36609e5b0971c657bc2aa7c9fc4729f3d4ef3bf))
+
+### Features
+
+- Ask OpenAI to keep no copy of AI requests
+  ([`ed9b558`](https://github.com/bkuberek/coding-study/commit/ed9b558afc043135041b764450a5ae36183ff940))
+
+- Build AI review requests and check their replies
+  ([`8ddfa9b`](https://github.com/bkuberek/coding-study/commit/8ddfa9b57264507afb13644921456a7fa8f723ac))
+
+- Check the AI models and list a provider's models
+  ([`f35d14b`](https://github.com/bkuberek/coding-study/commit/f35d14bb03df933a292c12d3ebf45afaee418575))
+
+- Keep AI provider keys in credentials.toml with cstudy ai key
+  ([`8b20223`](https://github.com/bkuberek/coding-study/commit/8b20223292b0eff9bf12f8dabdab458f1eeb4e3e))
+
+- Mark rubric problems as checked by AI review
+  ([`035b9d8`](https://github.com/bkuberek/coding-study/commit/035b9d844fbe4074f4910d654adc677899cd7972))
+
+- Read the AI preview's settings
+  ([`ff82f00`](https://github.com/bkuberek/coding-study/commit/ff82f009443f3c483b8ab7b8627f7ab40fcbec15))
+
+- Review a rubric problem's notes against its rubric
+  ([`d7fa5bd`](https://github.com/bkuberek/coding-study/commit/d7fa5bdecc48cc1b563cf8e89f3cb5825061b8ff))
+
+- Review rubric problem notes with cstudy ai review
+  ([`cc0072e`](https://github.com/bkuberek/coding-study/commit/cc0072e5b2b65b2fe55875b37d48d5fead77e95d))
+
+- Route, cap and record AI requests after consent
+  ([`bd948c7`](https://github.com/bkuberek/coding-study/commit/bd948c7a7d26ca7629f1ac02bc546b1f9f94441b))
+
+- Run AI reviews, checks and model lists as jobs of the page
+  ([`5d172a4`](https://github.com/bkuberek/coding-study/commit/5d172a4ad69ae3a8c92631cfd1e5d7b45f2cd018))
+
+- Send AI requests over the standard library's HTTP
+  ([`bf5fd00`](https://github.com/bkuberek/coding-study/commit/bf5fd00a8d8dcbeb9e5c22d89d247dd03dc41d4a))
+
+- Send AI requests to Anthropic and OpenAI
+  ([`da563b0`](https://github.com/bkuberek/coding-study/commit/da563b027260bd0a3360a38cc56cfbdb2ea35af9))
+
+- Send AI requests to Google and OpenRouter
+  ([`79b4b8d`](https://github.com/bkuberek/coding-study/commit/79b4b8dcd3f11a0804cf30d5342c86809a37b466))
+
+- Serve the AI settings, keys and usage to the page
+  ([`76c39c0`](https://github.com/bkuberek/coding-study/commit/76c39c09b307a0eca8c60bad647cc2164ffc205f))
+
+- Set up the AI preview in Settings
+  ([`b115144`](https://github.com/bkuberek/coding-study/commit/b1151448187ece05c7f3ea4a6356656bff0c3726))
+
+- Show AI reviews of rubric problems in the page
+  ([`4d50161`](https://github.com/bkuberek/coding-study/commit/4d501618c427ec24acafa3377904e9a8ae2355bf))
+
+- Show AI status and usage and record consent with cstudy ai
+  ([`8f26638`](https://github.com/bkuberek/coding-study/commit/8f26638ca21f1f6452548d29f4da55a974dd5d08))
+
+- Show the AI preview's state in cstudy doctor
+  ([`cec7c30`](https://github.com/bkuberek/coding-study/commit/cec7c30898d87ac8eeba518df3c0228149c865cd))
+
+- Store AI reviews, requests and consents in progress.db
+  ([`65e255e`](https://github.com/bkuberek/coding-study/commit/65e255ecf7316465410d0c7a24103837760f647b))
+
+### Refactoring
+
+- Read AI provider replies with one helper
+  ([`1ca8c51`](https://github.com/bkuberek/coding-study/commit/1ca8c514296ad97c6b05b660b2bc621edf3abf79))
+
+### Testing
+
+- Prove an AI review changes no grade, schedule or stats
+  ([`aee96e9`](https://github.com/bkuberek/coding-study/commit/aee96e990e1ec8264d493e60abc53d3b20696b19))
+
+- Prove nothing leaves the machine with AI off
+  ([`b3f351f`](https://github.com/bkuberek/coding-study/commit/b3f351fb11c7527abda63335aef0cae18efff3b2))
+
+- Refuse network access off the loopback in the fast tests
+  ([`78b5812`](https://github.com/bkuberek/coding-study/commit/78b5812b73d4ad7e52c7c3633252179631467700))
+
+- Run the browser job for the AI test helpers and count the AI docs page
+  ([`a01af77`](https://github.com/bkuberek/coding-study/commit/a01af774bf3a7f68ecf1e5b79ab32079b6804133))
+
+
 ## v0.53.0 (2026-11-16)
 
 ### Bug Fixes
