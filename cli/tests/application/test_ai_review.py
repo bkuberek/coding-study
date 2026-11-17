@@ -22,8 +22,10 @@ from coding_study.application.ai_review import (
     show_review,
 )
 from coding_study.application.ai_send import ConsentQuestion, NotSent
+from coding_study.application.attempt_status import attempt_status
 from coding_study.application.complete_attempt import DoneRequest, complete_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.show_stats import StatsRequest, show_stats
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.ai import AI_OFF, AiTask, ModelRef, Provider
 from coding_study.domain.ai_models import (
@@ -41,6 +43,7 @@ from coding_study.domain.attempts import AttemptMode, NewAttempt, Rating
 from coding_study.domain.config import AiSettings, Config
 from coding_study.domain.errors import UnknownProblemError, UsageError
 from coding_study.domain.problem import Language
+from coding_study.entrypoints.commands.stats import stats_document
 from tests.fakes import (
     NOW,
     FakeAiStore,
@@ -731,3 +734,41 @@ def test_notes_of_a_finished_attempt_are_read_where_they_were_left(tmp_path):
     assert show_review(environment, 1).notes_changed is False
     answered(environment, "changed after done")
     assert show_review(environment, 1).notes_changed is True
+
+
+# a review changes nothing else
+
+
+def standing_after_finishing(root: Path, *answers: ModelReply) -> dict[str, object]:
+    """Everything a finished attempt of url-shortener leaves that a review must not touch."""
+    root.mkdir()
+    environment = started(root, *answers)
+    if answers:
+        reviewed(environment)
+    status = attempt_status(environment, "url-shortener", None)
+    finished = complete_attempt(environment, DoneRequest(rating=Rating.OK))
+    progress = environment.progress
+    return {
+        "status": status,
+        "attempt": finished.attempt,
+        "grade": finished.attempt.grade,
+        "schedule": finished.schedule,
+        "stored schedule": progress.schedule_entry("url-shortener"),
+        "attempts": progress.finished_attempts(),
+        "progress": progress.problem_progress(),
+        "stats": stats_document(show_stats(environment, StatsRequest())),
+    }
+
+
+def test_a_stored_review_changes_no_grade_schedule_or_stats(tmp_path):
+    without = standing_after_finishing(tmp_path / "without")
+    with_review = standing_after_finishing(tmp_path / "with", GOOD)
+    assert with_review == without
+    assert without["grade"] is not None
+    assert without["stored schedule"] is not None
+
+
+def test_the_review_of_the_comparison_is_stored(tmp_path):
+    environment = started(tmp_path, GOOD)
+    reviewed(environment)
+    assert len(environment.ai_store.reviews_of_problem("url-shortener")) == 1
