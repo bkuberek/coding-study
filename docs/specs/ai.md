@@ -42,7 +42,7 @@ Keys live in `credentials.toml` and nowhere else.
 | Item | Rule |
 |------|------|
 | Where | The directory of `config.toml`: `~/.config/coding-study/credentials.toml` by default, under `$XDG_CONFIG_HOME/coding-study/` when that is set, and beside the file `CSTUDY_CONFIG` names when that is set |
-| Shape | A comment line, then one table per provider that has a key, in the order `anthropic`, `google`, `openai`, `openrouter`, each holding `api_key`, a TOML string |
+| Shape | One comment line, `# Your AI provider keys. cstudy rewrites this file whole: comments you add do not survive (cstudy docs ai).`, then one table per provider that has a key, in the order `anthropic`, `google`, `openai`, `openrouter`, each holding `api_key`, a TOML string |
 | A key | One line of text with no whitespace or control characters: `a key is one line of text with no spaces`, exit 3 |
 | Writes | `cstudy ai key` and Settings rewrite the file whole: a temporary file of mode `0600` in the same directory, then a rename. A missing directory is made with mode `0700`. The file goes when its last key goes. Comments you add by hand do not survive a write, and the file's first line says so |
 | Mode | `0600` whenever `cstudy` writes it. A file you made yourself is read whatever its mode, with no warning ([ADR 0021](../decisions/0021-ai-reviewed-problems.md) O5) |

@@ -23,8 +23,8 @@ FILE_MODE = 0o600
 DIRECTORY_MODE = 0o700
 API_KEY = "api_key"
 HEADER = (
-    "# Your AI provider keys (docs/specs/ai.md#keys). cstudy rewrites this file whole when a key\n"
-    "# changes: comments you add here do not survive."
+    "# Your AI provider keys. cstudy rewrites this file whole: comments you add do not survive "
+    "(cstudy docs ai)."
 )
 _TEMPORARY_NAME_BYTES = 8
 _PROVIDER_NAMES = tuple(str(provider) for provider in Provider)

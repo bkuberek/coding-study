@@ -161,12 +161,24 @@ def test_a_file_of_mode_0644_is_rewritten_as_0600(credentials, path):
     assert mode(path) == 0o600
 
 
-def test_the_file_starts_with_a_comment_and_lists_providers_in_order(credentials, path):
+def test_the_file_starts_with_one_comment_line_that_points_at_the_docs(credentials, path):
+    credentials.save_key(Provider.ANTHROPIC, ApiKey(SECRET))
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert lines[:2] == [
+        "# Your AI provider keys. cstudy rewrites this file whole: comments you add do not "
+        "survive (cstudy docs ai).",
+        "",
+    ]
+    assert lines[2] == "[anthropic]"
+
+
+def test_the_providers_are_listed_in_order(credentials, path):
     for provider in (Provider.OPENROUTER, Provider.ANTHROPIC, Provider.OPENAI):
         credentials.save_key(provider, ApiKey(f"key-{provider}"))
-    text = path.read_text(encoding="utf-8")
-    headings = [line for line in text.splitlines() if line.startswith("[")]
-    assert (text.startswith("# "), headings) == (True, ["[anthropic]", "[openai]", "[openrouter]"])
+    headings = [
+        line for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("[")
+    ]
+    assert headings == ["[anthropic]", "[openai]", "[openrouter]"]
 
 
 def test_saving_a_key_keeps_the_others(credentials):
