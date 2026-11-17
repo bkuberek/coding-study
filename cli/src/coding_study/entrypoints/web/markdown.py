@@ -445,10 +445,10 @@ _DOCUMENTATION.core.ruler.push("plain_links_and_images", _plain_links_and_images
 _GUIDE = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
     ["table", "strikethrough"]
 )
-_GUIDE.core.ruler.push("without_comments", _without_comments)
 _GUIDE.core.ruler.push("alignment_classes", _alignment_classes)
 _GUIDE.core.ruler.push("without_title", _without_title)
 _GUIDE.core.ruler.push("diagram_figures", _diagram_figures)
+_GUIDE.core.ruler.push("without_comments", _without_comments)
 _GUIDE.core.ruler.push("example_tabs", _example_tabs)
 _GUIDE.core.ruler.push("guide_links", _guide_links)
 _DOC = MarkdownIt("commonmark", {"html": False, "highlight": _highlighted}).enable(
