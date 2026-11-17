@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.54.1 (2026-11-17)
+
+### Bug Fixes
+
+- Give Keycloak an explicit heap so it fits its memory limit without swap
+  ([`4e420f6`](https://github.com/bkuberek/coding-study/commit/4e420f67d0e8c5d955b7840d9a668eb22a6cdf08))
+
+
 ## v0.54.0 (2026-11-17)
 
 ### Bug Fixes
