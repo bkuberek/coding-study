@@ -28,7 +28,7 @@ A run takes several minutes and runs one Chromium, `cstudy serve` and the langua
 
 Kotlin's server, JetBrains' Kotlin LSP, comes under the JetBrains Free Plugin License Agreement, and `cstudy doctor --fix` downloads it only once that license is accepted. Read it, then add `--accept-license kotlin-lsp` to the run: the prepare stage passes it to `cstudy doctor --fix`, which records the acceptance in the throwaway workspace only. Without it, the Kotlin hover and the settings shot wait for a server that never comes. The prepare stage prints what `cstudy doctor --fix` printed.
 
-`--stages` runs part of it, in this order: `prepare` (virtual environment, `cstudy init --no-ide`, preferences, `cstudy doctor --fix`), `seed` (practice history), `videos`, `shots`, `mock`. A later stage needs the earlier ones, so rerun a single stage only against the same `--work` folder, and without `prepare`, which wants the folder empty. Run `videos` before `shots`, and `mock` last: a mock in progress adds a banner to every view.
+`--stages` runs part of it, in this order: `prepare` (virtual environment, `cstudy init --no-ide`, preferences, `cstudy doctor --fix`), `seed` (practice history), `ai` (the AI preview's setup, see [The AI shots](#the-ai-shots)), `videos`, `shots`, `mock`. A later stage needs the earlier ones, so rerun a single stage only against the same `--work` folder, and without `prepare`, which wants the folder empty. Run `videos` before `shots`, and `mock` last: a mock in progress adds a banner to every view.
 
 `--shots` takes some of the screenshots of the `shots` stage, by name, such as `--shots web-ui-attempt,web-ui-settings`; a shot left out does not open its view, so leaving out `web-ui-health` starts no Gradle. `--variants` takes the screenshots in some themes and widths only, such as `--variants light-phone`: on a machine short of memory, one variant per run starts one Chromium and one Java language server at a time, and frees them in between. `--video-theme dark` records the animations in the dark theme.
 
@@ -74,6 +74,8 @@ Desktop images are 1440 by 900, the phone ones 390 wide at 2x. A name is `<name>
 | `web-ui-health` | The Health view, with the code intelligence rows |
 | `web-ui-settings` | Settings, with both toggles and the state of each language |
 | `web-ui-settings-code-intelligence` | Settings scrolled to the Code intelligence block, with each language server and its version |
+| `web-ui-settings-ai` | Settings scrolled to the AI (preview) section: AI on, fixed routing with its model, a key set for each of three providers, the consent to send reviews to that model, and today's usage |
+| `web-ui-attempt-ai-review` | The url-shortener attempt with the AI review panel: the counts of met, partly and missed criteria, each criterion's verdict with quotes from the notes and its gap, the summary and the usage |
 | `web-ui-mock` | A mock in progress |
 
 Two animations, in the light theme at desktop width unless `--video-theme` says otherwise, each as `<name>.gif`, `<name>.mp4` and `<name>-poster.png` (the first frame):
@@ -85,9 +87,19 @@ Two animations, in the light theme at desktop width unless `--video-theme` says 
 
 Recording uses Playwright's `record_video_dir` with a small injected pointer, since Playwright does not draw one. ffmpeg makes the GIF in two passes (palette, then `paletteuse`) after a light denoise, because Playwright's video is noisy and noise makes every GIF frame different. It starts at 1100 px and 15 fps and steps down until the file is under 3 MB. The MP4 is H.264, `yuv420p`, `+faststart`, with no audio, and kept under about 2 MB.
 
+## The AI shots
+
+The `ai` stage and the two AI shots never reach a provider and use no real key. The `ai` stage writes the throwaway configuration (AI on, fixed routing, `anthropic:claude-sonnet-5-5`), saves `sk-demo-0000000000000000` as the key of anthropic, openai and openrouter with `cstudy ai key`, records the consent to send reviews to that model, and starts url-shortener with the notes of `ai_demo.py`. While the shots run, `cstudy serve` gets `CSTUDY_AI_ENDPOINT`, which sends all provider traffic to a server on the loopback that `ai_demo.py` starts: it answers Anthropic's messages route with a scripted review of those notes and refuses every other request. `cstudy` accepts only a loopback address there, so nothing else can leave the machine. The review the page shows is the real one, made by the button through `cstudy`'s own code, from a reply whose quotes the script checks against the notes.
+
+The script prints what that server received when it stops: one request for the whole run, since the page keeps the first review for the other variants, and the keys it saw. Settings shows `key set` for each provider and never a key. The `web-ui-settings-ai` shot comes after the review shot in the run, so that its usage line is not empty.
+
+Both shots use a window taller than the other shots', so that a long section shows whole: the review shot at desktop width, the Settings shot at either width.
+
+The script keeps the configuration and the keys in `<work>/config`, through `XDG_CONFIG_HOME`, so it never reads or writes yours.
+
 ## Notes
 
-- The screenshots replace this machine's paths with `~` in the page text before they are taken, so no temporary folder or user name shows. A `XDG_CONFIG_HOME` in the environment shows as `~/.config`, so a run can keep its `config.toml` apart from yours.
+- The screenshots replace this machine's paths with `~` in the page text before they are taken, so no temporary folder or user name shows. The run's configuration folder shows as `~/.config`.
 - The practice files keep the header `cstudy start` wrote, and the script replaces only the code below it, so the media show the header of the release they come from.
 - Statements credit the problem each one rewords, by the name of the site it comes from. The media must not name any assessment vendor, so the script hides those credit lines in the page while it records and photographs. Nothing else in a statement changes.
 - The script writes files only into `--work` and `--out`. Nothing it makes is committed for you.

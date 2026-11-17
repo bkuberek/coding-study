@@ -9,8 +9,8 @@ Run it under `uv run` from `cli/`, which already has Playwright; see README.md i
 
 It builds a throwaway virtual environment and workspace in `--work`, seeds some practice history,
 serves the workspace on localhost and drives one Chromium at a time. It never touches an installed
-`cstudy`. Stages, in the order they run: prepare, seed, videos, shots, mock. The mock stage comes
-last because a running mock shows a banner in every view.
+`cstudy`. Stages, in the order they run: prepare, seed, ai, videos, shots, mock. The mock stage
+comes last because a running mock shows a banner in every view.
 """
 
 import argparse
@@ -30,13 +30,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
+import ai_demo
+from playwright.sync_api import Browser, BrowserContext, Locator, Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-STAGES = ("prepare", "seed", "videos", "shots", "mock")
+STAGES = ("prepare", "seed", "ai", "videos", "shots", "mock")
 DESKTOP = (1440, 900)
 PHONE = (390, 844)
 PHONE_SCALE = 2
+REVIEW_HEIGHT = 1880
+"""The window height of the AI review shot at desktop width, tall enough for criteria of every
+verdict."""
 THEMES = ("light", "dark")
 SHOTS = (
     "code-intelligence-hover",
@@ -54,6 +58,8 @@ SHOTS = (
     "web-ui-health",
     "web-ui-settings",
     "web-ui-settings-code-intelligence",
+    "web-ui-attempt-ai-review",
+    "web-ui-settings-ai",
 )
 """The screenshots of the `shots` stage, in the order they are taken; `--shots` picks some."""
 WAIT_MS = 60_000
@@ -336,6 +342,8 @@ class Showcase:
         self.workspace = self.work / "ws"
         self.toolbin = self.work / "toolbin"
         self.clips = self.work / "clips"
+        self.config_home = self.work / "config"
+        self.ai_endpoint = ""
         self.cstudy = self.venv / "bin" / "cstudy"
         self.daemons = DaemonWatch()
         self.server_pid = 0
@@ -360,7 +368,14 @@ class Showcase:
             target = self.toolbin / tool
             if found and any(found.startswith(o + os.sep) for o in others) and not target.exists():
                 target.symlink_to(found)
-        return {**os.environ, "PATH": os.pathsep.join([str(self.toolbin), *kept])}
+        environment = {
+            **os.environ,
+            "PATH": os.pathsep.join([str(self.toolbin), *kept]),
+            "XDG_CONFIG_HOME": str(self.config_home),
+        }
+        if self.ai_endpoint:
+            environment["CSTUDY_AI_ENDPOINT"] = self.ai_endpoint
+        return environment
 
     def write_preferences(self, **changes: object) -> None:
         folder = self.workspace / ".cs" / "serve"
@@ -422,6 +437,28 @@ class Showcase:
         (project / "bank" / "bank.py").write_text(BANK)
         (project / "README.md").unlink()
 
+    def seed_ai(self) -> None:
+        """Turns the AI preview on in the throwaway configuration, with placeholder keys, one
+        consent and url-shortener started with notes written. Nothing here reaches a provider."""
+        say("ai: AI on, placeholder keys, a consent, the notes of url-shortener")
+        config = self.config_home / "coding-study" / "config.toml"
+        if config.exists():
+            sys.exit(f"{config} exists already; the ai stage writes it whole")
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text(ai_demo.CONFIG)
+        for provider in ai_demo.PROVIDERS:
+            command = [self.cstudy, "ai", "key", provider]
+            done = subprocess.run(
+                [str(part) for part in command], cwd=self.workspace, env=self.environment(),
+                input=f"{ai_demo.PLACEHOLDER_KEY}\n", text=True, capture_output=True,
+            )
+            if done.returncode != 0:
+                sys.exit(f"cstudy ai key {provider} failed:\n{done.stdout}\n{done.stderr}")
+        self.cs("ai", "consent", ai_demo.MODEL, "--purpose", "review")
+        self.cs("start", ai_demo.SLUG, "--no-open")
+        (self.workspace / ai_demo.NOTES_PATH).write_text(ai_demo.NOTES)
+        ai_demo.review_reply()
+
     def finish(self, slug: str, rating: str) -> None:
         self.cs("test", slug)
         self.cs("done", slug, "--rating", rating)
@@ -472,6 +509,23 @@ class Showcase:
 
     @contextlib.contextmanager
     def serving(self) -> Iterator[None]:
+        """Serves the workspace, with every provider's traffic sent to a loopback server that
+        answers the AI review with the review of `ai_demo`."""
+        with ai_demo.DemoProvider() as provider:
+            self.ai_endpoint = provider.endpoint
+            try:
+                with self.serving_workspace():
+                    yield
+            finally:
+                self.ai_endpoint = ""
+                say(
+                    f"ai provider: {len(provider.received)} request(s) served "
+                    f"{sorted(set(provider.received))}, refused {sorted(set(provider.refused))}, "
+                    f"keys seen {sorted(provider.keys)}"
+                )
+
+    @contextlib.contextmanager
+    def serving_workspace(self) -> Iterator[None]:
         say("serve: cstudy serve on a free port")
         server = subprocess.Popen(
             [self.cstudy, "serve", "--port", "0"], cwd=self.workspace, env=self.environment(),
@@ -570,12 +624,9 @@ class Showcase:
             [str(self.toolbin / "cstudy"), "~/.local/bin/cstudy"],
             [str(self.venv), "~/.local/share/uv/tools/coding-study"],
             [str(self.workspace), "~/cstudy-workspace"],
+            [str(self.config_home), "~/.config"],
             [home, "~"],
         ]
-        config_home = os.environ.get("XDG_CONFIG_HOME")
-        if config_home:
-            pairs.insert(0, [str(Path(config_home).resolve()), "~/.config"])
-            pairs.insert(0, [config_home, "~/.config"])
         page.evaluate(REDACT_SCRIPT, pairs)
 
 
@@ -921,6 +972,41 @@ def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
         app.screenshot(page, "web-ui-settings-code-intelligence", variant, redact=True)
         page.close()
 
+    if app.wants("web-ui-attempt-ai-review"):
+        page = app.page(context, "/")
+        link = page.locator("a[href^='#/attempts/']", has_text=ai_demo.SLUG).first
+        link.wait_for(state="attached")
+        route = (link.get_attribute("href") or "").removeprefix("#")
+        page.goto(f"{app.base}#{route}")
+        if not variant.phone:
+            page.set_viewport_size({"width": DESKTOP[0], "height": REVIEW_HEIGHT})
+        review = page.get_by_role("region", name="AI review", exact=True)
+        button = page.get_by_role("button", name="AI review", exact=True)
+        button.wait_for()
+        page.wait_for_timeout(1500)
+        result = review.get_by_text(re.compile(r"\d+ met · \d+ partly · \d+ missed of \d+"))
+        if result.count() == 0:
+            button.click()
+        result.wait_for()
+        page.get_by_role("button", name="Review again").wait_for()
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        review.evaluate("element => element.scrollIntoView({block: 'start'})")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "web-ui-attempt-ai-review", variant)
+        page.close()
+
+    if app.wants("web-ui-settings-ai"):
+        page = app.page(context, "/settings")
+        page.locator("#ai-heading").wait_for()
+        page.locator(".ai-consent").first.wait_for()
+        page.wait_for_selector(".ai-today:not(:empty)")
+        page.wait_for_function(
+            "() => !document.querySelector('.ai-usage-host')?.textContent?.includes('reading')"
+        )
+        show_section(page, variant, page.locator(".settings-ai"))
+        app.screenshot(page, "web-ui-settings-ai", variant, redact=True)
+        page.close()
+
 
 def settings_page(app: Showcase, context: BrowserContext) -> Page:
     """The Settings view, once every language server's line shows its version."""
@@ -933,6 +1019,18 @@ def settings_page(app: Showcase, context: BrowserContext) -> Page:
     page.wait_for_selector("text=rust-analyzer 1.")
     page.wait_for_timeout(300)
     return page
+
+
+def show_section(page: Page, variant: Variant, section: Locator) -> None:
+    """Scrolls a section to the top and grows the window to its height, up to a limit, so that a
+    long section shows whole."""
+    width, height = variant.size
+    section.evaluate("element => element.scrollIntoView({block: 'start'})")
+    shown = section.bounding_box()
+    assert shown is not None
+    wanted = int(shown["y"] + shown["height"]) + 46
+    page.set_viewport_size({"width": width, "height": min(max(height, wanted), 2600)})
+    page.wait_for_timeout(500)
 
 
 def tall(page: Page, variant: Variant) -> None:
@@ -1148,6 +1246,8 @@ def main() -> None:
             app.prepare(args.wheel.resolve(), tuple(args.accept_license))
         if "seed" in stages:
             app.seed()
+        if "ai" in stages:
+            app.seed_ai()
         if {"videos", "shots", "mock"} & set(stages):
             with app.serving(), sync_playwright() as playwright:
                 browser = playwright.chromium.launch()
