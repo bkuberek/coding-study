@@ -209,7 +209,7 @@ The content must-haves:
 | ID | Criterion | Status | Milestone |
 |----|-----------|--------|-----------|
 | D1 | The normative docs match what shipped | Met: the specs, the architecture, the docs index, the PRD, the README and the user docs match v0.51 | v0.51, then each milestone |
-| D2 | In-app docs: `cstudy docs`, a Docs page, and a test that parses every command and flag the docs show against the real CLI | Met: the 13 pages of `user-docs/`, read with `cstudy docs` and the Docs page, and `tests/content/test_user_docs.py` | v0.50 |
+| D2 | In-app docs: `cstudy docs`, a Docs page, and a test that parses every command and flag the docs show against the real CLI | Met: the 19 pages of `user-docs/`, read with `cstudy docs` and the Docs page, and `tests/content/test_user_docs.py` | v0.50 |
 | D3 | A guide to the AI preview: keys, providers, what is sent, costs and caps | Not met | v0.56 |
 
 #### Accessibility

@@ -217,6 +217,12 @@ Every key of `config.toml`, in the order of the file. A dotted key is a key of a
 | `schedule.mastered_interval_days` | `21` | A problem counts as mastered from this review interval on, with a grade of `ok` or `easy` |
 | `done.auto_commit` | `false` | Reserved: it does nothing yet |
 | `study_guides.root` | not set | The folder of your study guides, an absolute path or one that starts with `~/` ([point to your study guides](settings.md#point-to-your-study-guides)) |
+| `ai.enabled` | `false` | Turns on the AI preview. Off, nothing leaves your machine. On, nothing is sent until you run an AI command or press an AI button, and agree to send ([the AI preview](ai.md)) |
+| `ai.routing` | `"fixed"` | `"fixed"`: every AI task uses `ai.model`. `"auto"`: each task uses its tier, `ai.fast` or `ai.strong` |
+| `ai.model` | not set | The model of fixed routing, as `provider:model-id`, such as `"anthropic:<model-id>"`. `cstudy ai models <provider>` lists the ids |
+| `ai.fast` | not set | Auto routing's fast tier, as `provider:model-id` |
+| `ai.strong` | not set | Auto routing's strong tier, as `provider:model-id`. AI review uses it |
+| `ai.daily_token_cap` | `500000` | Input and output tokens per local day, every AI task together, in this workspace. A request that would pass it is refused before anything is sent |
 
 ## The selected JDK
 
