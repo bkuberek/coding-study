@@ -4,7 +4,9 @@ a project problem, its attempt with a file in the editor and a run's results, th
 its new-file dialog and restore question, the start, done and solution dialogs, the History of a
 problem with a finished attempt, expanded, and the dialog that shows that attempt's code read-only,
 the mock view before and during a mock, the progress, health and settings views, Settings' AI
-section with AI on, with changes staged and after Load models, and its consent dialog, and, on a
+section with AI on, with changes staged and after Load models, and its consent dialog, the AI
+review of a rubric attempt before any review, in its consent dialog, shown and with an earlier
+review open, History's line of it and the dialog that reads it, and, on a
 server whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog of a problem
 and of a Java project with the languages disabled, and a start refused with a `fix:` hint; and,
 with code intelligence on against the scripted language server, the status bar's segment ready,
@@ -35,6 +37,8 @@ from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.problem import Language
 from coding_study.domain.taxonomy import PROFILE_JOB_ROLES
 from tests.ai_fixtures import recorded
+from tests.ai_review_workspace import SLUG as REVIEW_SLUG
+from tests.ai_review_workspace import review_answer, review_workspace
 from tests.ai_workspace import SENTINEL_KEY, ai_workspace
 from tests.browsers import launched, refusing_starts
 from tests.fake_ai_provider import Answer, FakeAiProvider, Route
@@ -935,3 +939,88 @@ def _ai_consent_dialog(page: Any) -> None:
 @pytest.mark.parametrize("view", AI_VIEWS)
 def test_settings_ai_section_and_its_dialog_have_no_accessibility_violation(ai_violations, view):
     assert ai_violations[view] == []
+
+
+REVIEW_VIEWS = (
+    "attempt before any AI review",
+    "AI review consent dialog",
+    "attempt with an AI review",
+    "attempt with earlier AI reviews open",
+    "history with an AI review",
+    "history AI review dialog",
+)
+REVIEW_PANEL = "section[aria-label='AI review']"
+REVIEW_BUTTON = "button[title^='cstudy ai review']"
+
+
+@pytest.fixture(scope="module")
+def review_server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
+    """A rubric attempt in progress with AI on, a key and no consent, and a fake provider that
+    answers two reviews."""
+    workspace = review_workspace(tmp_path_factory.mktemp(f"axe-review-{engine}"), consented=False)
+    with FakeAiProvider() as provider:
+        provider.script(Provider.ANTHROPIC, Route.COMPLETE, review_answer(), review_answer(10, 10))
+        variables = {"CSTUDY_AI_ENDPOINT": provider.endpoint}
+        with running_server(workspace, variables=variables) as running:
+            yield running
+
+
+@pytest.fixture(scope="module")
+def review_violations(engine: str, review_server: RunningServer) -> dict[str, list[str]]:
+    """The violations of the AI review panel, its consent dialog and History's line and dialog."""
+    return _tour_of(engine, review_server, _review_tour)
+
+
+def _review_tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
+    yield REVIEW_VIEWS[0], lambda: _review_attempt(page)
+    yield REVIEW_VIEWS[1], lambda: _review_consent(page)
+    yield REVIEW_VIEWS[2], lambda: _review_shown(page)
+    yield REVIEW_VIEWS[3], lambda: _review_earlier(page)
+    yield REVIEW_VIEWS[4], lambda: _review_history(page)
+    yield REVIEW_VIEWS[5], lambda: _review_dialog(page)
+
+
+def _review_attempt(page: Any) -> None:
+    attempt = page.evaluate(
+        f"fetch('/api/v1/problems/{REVIEW_SLUG}').then(r => r.json())"
+        ".then(p => p.in_progress[0].attempt_id)"
+    )
+    _open(page, f"#/attempts/{attempt}", f"{REVIEW_PANEL} .ai-review-intro")
+    page.wait_for_selector(".panel:not([hidden]) .cm-content")
+
+
+def _review_consent(page: Any) -> None:
+    page.click(REVIEW_BUTTON)
+    page.wait_for_selector(f"{SHEET} button:has-text('Send')")
+
+
+def _review_shown(page: Any) -> None:
+    page.click(f"{SHEET} button:has-text('Send')")
+    page.wait_for_selector(f"{REVIEW_PANEL} .ai-review-result")
+    page.wait_for_selector(f"{REVIEW_PANEL} section.job", state="hidden")
+
+
+def _review_earlier(page: Any) -> None:
+    page.click(f"{REVIEW_PANEL} button:has-text('Review again')")
+    page.wait_for_selector(f"{REVIEW_PANEL} .ai-review-result:has-text('10 met')")
+    page.wait_for_selector(f"{REVIEW_PANEL} section.job", state="hidden")
+    page.click(f"{REVIEW_PANEL} details.ai-earlier > summary")
+    page.wait_for_selector(f"{REVIEW_PANEL} details.ai-earlier > ul")
+
+
+def _review_history(page: Any) -> None:
+    _open(page, f"#/problems/{REVIEW_SLUG}", "ol.attempts > li > details > summary")
+    page.click("ol.attempts > li > details > summary")
+    page.wait_for_selector(".ai-review-line button")
+
+
+def _review_dialog(page: Any) -> None:
+    page.click(".ai-review-line button")
+    page.wait_for_selector(f"{SHEET} details.ai-review-entry[open]")
+
+
+@pytest.mark.parametrize("view", REVIEW_VIEWS)
+def test_the_ai_review_panel_and_its_dialogs_have_no_accessibility_violation(
+    review_violations, view
+):
+    assert review_violations[view] == []

@@ -18,6 +18,11 @@ Settings' AI section: its controls in reading order, each a stop with a visible 
 dialog opened with Enter, its focus on Cancel, kept inside by Tab and given back to Check by
 Escape, and Revoke moving the focus to its message.
 
+A rubric attempt's AI review: its button a stop with a visible focus, the consent dialog opened
+with Enter, its focus on Cancel, kept inside by Tab and given back to the button by Escape, Send
+reached by Tab, the panel's buttons and text in reading order, and Dismiss moving the focus to the
+panel's heading.
+
 WebKit moves the focus to links and buttons with Option-Tab, as Safari does unless its setting
 "Press Tab to highlight each item" is on, so the steps press Alt+Tab there.
 """
@@ -31,9 +36,13 @@ from typing import Any
 
 import pytest
 
+from coding_study.domain.ai import Provider
 from coding_study.domain.problem import Language
+from tests.ai_review_workspace import SLUG as REVIEW_SLUG
+from tests.ai_review_workspace import review_answer, review_workspace
 from tests.ai_workspace import MODEL, ai_workspace
 from tests.browsers import launched
+from tests.fake_ai_provider import FakeAiProvider, Route
 from tests.profile_workspace import profiled_workspace, with_attempt_in_progress
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
@@ -864,3 +873,133 @@ def test_escape_closes_the_consent_dialog_and_gives_the_focus_back_to_check(ai_k
 def test_revoke_by_the_keyboard_moves_the_focus_to_its_message(ai_keys):
     assert "ai-revoked" in ai_keys.revoke_focus_class
     assert ai_keys.revoke_says == "revoked: cstudy asks again next time"
+
+
+REVIEW_PANEL = "section[aria-label='AI review']"
+REVIEW_BUTTON = "button[title^='cstudy ai review']"
+
+
+@dataclass
+class ReviewKeys:
+    """What the keyboard did on a rubric attempt's AI review."""
+
+    button: dict[str, Any] = field(default_factory=dict[str, Any])
+    dialog_focus: dict[str, Any] = field(default_factory=dict[str, Any])
+    dialog_title: str = ""
+    dialog_stops: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
+    dialogs_after_escape: int = -1
+    focus_after_escape: dict[str, Any] = field(default_factory=dict[str, Any])
+    send_stop: dict[str, Any] = field(default_factory=dict[str, Any])
+    panel_stops: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
+    focus_after_dismiss: str = ""
+    dismissed: bool = False
+
+
+@pytest.fixture(scope="module")
+def review_server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
+    workspace = review_workspace(tmp_path_factory.mktemp(f"keys-review-{engine}"), consented=False)
+    with FakeAiProvider() as provider:
+        provider.script(Provider.ANTHROPIC, Route.COMPLETE, review_answer())
+        with running_server(
+            workspace, variables={"CSTUDY_AI_ENDPOINT": provider.endpoint}
+        ) as running:
+            yield running
+
+
+def _review_dialog(page: Any, tab: str, found: ReviewKeys) -> None:
+    page.focus(REVIEW_BUTTON)
+    found.button = _focus(page)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(DIALOG)
+    found.dialog_focus = _focus(page)
+    found.dialog_title = page.locator(f"{DIALOG} h2").inner_text()
+    for _ in range(DIALOG_TABS):
+        page.keyboard.press(tab)
+        found.dialog_stops.append(page.evaluate(FOCUS))
+    page.keyboard.press("Escape")
+    page.wait_for_selector(DIALOG, state="detached")
+    found.dialogs_after_escape = page.locator(DIALOG).count()
+    found.focus_after_escape = _focus(page)
+
+
+def _review_panel(page: Any, tab: str, found: ReviewKeys) -> None:
+    page.keyboard.press("Enter")
+    page.wait_for_selector(DIALOG)
+    page.keyboard.press(tab)
+    found.send_stop = _focus(page)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{REVIEW_PANEL} .ai-review-result")
+    page.wait_for_selector(f"{REVIEW_PANEL} section.job", state="hidden")
+    page.focus(f"{REVIEW_PANEL} button:has-text('Review again')")
+    found.panel_stops.append(_focus(page))
+    for _ in range(2):
+        page.keyboard.press(tab)
+        found.panel_stops.append(_focus(page))
+    page.focus(f"{REVIEW_PANEL} button:has-text('Dismiss')")
+    page.keyboard.press("Enter")
+    page.wait_for_function("() => document.activeElement?.id === 'ai-review-heading'")
+    found.focus_after_dismiss = page.evaluate("document.activeElement?.id")
+    found.dismissed = page.locator(f"{REVIEW_PANEL} .ai-review-intro").count() == 1
+
+
+@pytest.fixture(scope="module")
+def review_keys(engine: str, review_server: RunningServer) -> ReviewKeys:
+    found = ReviewKeys()
+    tab = "Alt+Tab" if engine == "webkit" else "Tab"
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.set_default_timeout(WAIT_MS)
+        page.goto(review_server.login_url)
+        page.wait_for_selector(LISTED)
+        attempt = page.evaluate(
+            f"fetch('/api/v1/problems/{REVIEW_SLUG}').then(r => r.json())"
+            ".then(p => p.in_progress[0].attempt_id)"
+        )
+        page.evaluate("route => { location.hash = route }", f"#/attempts/{attempt}")
+        page.wait_for_selector(f"{REVIEW_PANEL} .ai-review-intro")
+        page.wait_for_selector(EDITOR)
+        _review_dialog(page, tab, found)
+        _review_panel(page, tab, found)
+        browser.close()
+    return found
+
+
+def test_the_ai_review_button_is_a_stop_with_a_visible_focus(review_keys):
+    assert review_keys.button["name"] == "AI review"
+    assert review_keys.button["visible"]
+
+
+def test_enter_on_ai_review_opens_the_consent_dialog_with_the_focus_on_cancel(review_keys):
+    assert review_keys.dialog_title == f"Send to {MODEL}?"
+    assert (review_keys.dialog_focus["name"], review_keys.dialog_focus["inDialog"]) == (
+        "Cancel",
+        True,
+    )
+
+
+def test_tab_keeps_the_focus_in_the_ai_review_dialog(review_keys):
+    stops = [stop for stop in review_keys.dialog_stops if stop is not None]
+    assert [stop["name"] for stop in stops if not stop["inDialog"]] == []
+    assert stops[0]["name"] == "Send"
+
+
+def test_escape_closes_the_ai_review_dialog_and_gives_the_focus_back_to_the_button(review_keys):
+    assert review_keys.dialogs_after_escape == 0
+    assert review_keys.focus_after_escape["name"] == "AI review"
+
+
+def test_tab_from_cancel_reaches_send_with_a_visible_focus(review_keys):
+    assert review_keys.send_stop["name"] == "Send"
+    assert review_keys.send_stop["visible"]
+
+
+def test_the_panel_buttons_and_text_are_stops_in_reading_order_with_a_visible_focus(review_keys):
+    names = [stop["name"] for stop in review_keys.panel_stops]
+    assert names == ["Review again", "Dismiss", "AI review text"]
+    assert [stop["name"] for stop in review_keys.panel_stops if not stop["visible"]] == []
+
+
+def test_dismiss_by_the_keyboard_moves_the_focus_to_the_panels_heading(review_keys):
+    assert review_keys.focus_after_dismiss == "ai-review-heading"
+    assert review_keys.dismissed

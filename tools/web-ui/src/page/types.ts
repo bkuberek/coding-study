@@ -19,6 +19,8 @@ export interface Session {
   readonly job_roles: readonly string[];
   readonly scopes: readonly string[];
   readonly patterns: readonly string[];
+  /** The AI preview's switch; Settings reads it again after a save (`PageContext.refreshProfile`). */
+  ai: { readonly enabled: boolean };
   /** The JDK `cstudy` selects in the server's environment, or null when none is found. */
   readonly selected_jdk: SelectedJdk | null;
   /** The learner profile, the default filter of the Problems, Guides and Mock views; Settings
@@ -81,7 +83,7 @@ export interface ListEntry {
   readonly title: string;
   readonly track: string;
   readonly kind: string;
-  /** How it is checked: `tests`, `rubric`, or both in that order. */
+  /** How it is checked: `tests`, `rubric`, `ai-review`, in that order. */
   readonly checked_by: readonly string[];
   readonly difficulty: string;
   readonly patterns: readonly string[];
@@ -659,4 +661,41 @@ export interface ConsentDocument {
   readonly output_tokens: number;
   readonly today: { readonly tokens: number; readonly cap: number };
   readonly terms: string;
+}
+
+export type AiVerdict = "met" | "partial" | "missing";
+
+/** One rubric criterion of an AI review. */
+export interface AiCriterion {
+  readonly number: number;
+  readonly area: string;
+  readonly criterion: string;
+  readonly verdict: AiVerdict;
+  /** Quotes of the notes the verdict rests on. */
+  readonly evidence: readonly string[];
+  readonly gaps: string;
+}
+
+/** An AI review (`cstudy ai review --json`); every string a model wrote is shown as text. */
+export interface AiReview {
+  readonly review_id: number;
+  readonly slug: string;
+  readonly attempt_id: number;
+  readonly created_at: string;
+  readonly provider: AiProvider;
+  readonly model: string;
+  readonly prompt_version: string;
+  /** Null when the notes are gone. */
+  readonly notes_changed: boolean | null;
+  readonly criteria: readonly AiCriterion[];
+  readonly summary: string;
+  readonly counts: { readonly met: number; readonly partial: number; readonly missing: number; readonly total: number };
+  readonly usage: { readonly input_tokens: number | null; readonly output_tokens: number | null; readonly cost_usd: number | null };
+  readonly dismissed_at: string | null;
+}
+
+/** `GET /api/v1/problems/{slug}/ai-reviews`, newest first, dismissed ones included. */
+export interface AiReviewList {
+  readonly slug: string;
+  readonly reviews: readonly AiReview[];
 }

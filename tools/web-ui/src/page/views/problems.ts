@@ -38,7 +38,7 @@ import type { AttemptRef, ListEntry, NextPick, ProblemDocument, ProblemList, Set
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
 const CONTENT = ["draft", "ready"];
-const CHECKED = ["tests", "rubric"];
+const CHECKED = ["tests", "rubric", "ai-review"];
 /** The filters the server answers, and the widening; the search narrows the rows already here. */
 const LIST_FILTERS = FILTER_KEYS.filter((key) => key !== "search");
 const ROW_FILTERS = ["status", "difficulty", "domain", "lang"] as const;

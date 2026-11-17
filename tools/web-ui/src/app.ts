@@ -128,7 +128,9 @@ async function start(root: HTMLElement): Promise<void> {
     preferences: () => preferences,
     savePreferences,
     async refreshProfile() {
-      session.profile = (await api.get<Session>("/api/v1/session")).profile;
+      const fresh = await api.get<Session>("/api/v1/session");
+      session.profile = fresh.profile;
+      session.ai = fresh.ai;
     },
     onPreferences(listener) {
       listeners.add(listener);

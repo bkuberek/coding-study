@@ -916,6 +916,17 @@ main:has(.workbench) {
   font-weight: 700;
 }
 
+/* The next step of a rubric attempt is `cstudy done` with its flags, wider than a narrow window. */
+.attempt-head .next-step {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.attempt-head .next-step .cmd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .attempt-ended {
   flex-basis: 100%;
   margin: 0;

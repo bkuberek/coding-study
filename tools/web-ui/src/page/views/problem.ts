@@ -6,6 +6,7 @@
 
 import "./problem.css";
 
+import { historyLine, ofAttempt } from "../ai-review-model.ts";
 import { defaultLanguage, REVIEW_PRACTICE_NOTE, workspaceRefusals } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
@@ -18,9 +19,10 @@ import { needsList, readNeeds } from "../needs.ts";
 import { attemptHash, guideHash, setHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, showFailure } from "../states.ts";
-import type { History, PastAttempt, ProblemDocument, Rendered, SetList } from "../types.ts";
+import type { AiReview, AiReviewList, History, PastAttempt, ProblemDocument, Rendered, SetList } from "../types.ts";
 
 const IN_PROGRESS = "in_progress";
+const AI_REVIEW = "ai-review";
 
 export function problemView(context: PageContext, slug: string): Cleanup {
   const { api, shell } = context;
@@ -94,7 +96,7 @@ function side(context: PageContext, problem: ProblemDocument, history: History, 
     practice(context, problem, history),
     setsSection(context, problem.slug, sets),
     problem.approaches.length ? approaches(problem) : null,
-    historySection(context, problem.slug, history),
+    historySection(context, problem, history),
   );
 }
 
@@ -173,7 +175,14 @@ function approaches(problem: ProblemDocument): HTMLElement {
   );
 }
 
-function historySection(context: PageContext, slug: string, history: History): HTMLElement {
+function historySection(context: PageContext, problem: ProblemDocument, history: History): HTMLElement {
+  const { slug } = problem;
+  // A rubric problem's attempts each get a line for their AI review, filled once the reviews are read.
+  const reviewLines = new Map<number, HTMLElement>();
+  if (problem.checked_by.includes(AI_REVIEW)) {
+    for (const attempt of history.attempts) reviewLines.set(attempt.attempt_id, h("p", { class: "ai-review-line", hidden: true }));
+    showReviewLines(context, slug, reviewLines);
+  }
   const schedule = history.schedule;
   const review = schedule
     ? `due ${schedule.due_on} · interval ${schedule.interval_days}d · ease ${schedule.ease.toFixed(2)} · reps ${schedule.reps} · lapses ${schedule.lapses}`
@@ -186,12 +195,34 @@ function historySection(context: PageContext, slug: string, history: History): H
     h("p", { class: "review-line" }, h("span", { class: "quiet" }, "review "), review),
     best ? h("p", { class: "best-line" }, h("span", { class: "quiet" }, "passed "), best) : null,
     history.attempts.length
-      ? h("ol", { class: "plain attempts" }, ...history.attempts.map((attempt) => pastAttempt(context, slug, attempt)))
+      ? h("ol", { class: "plain attempts" }, ...history.attempts.map((attempt) => pastAttempt(context, slug, attempt, reviewLines.get(attempt.attempt_id) ?? null)))
       : empty("no attempts yet", h("p", { class: "quiet" }, command(`cstudy history ${slug}`))),
   );
 }
 
-function pastAttempt(context: PageContext, slug: string, attempt: PastAttempt): HTMLElement {
+/** Writes each attempt's latest AI review into its line, with View, which opens the attempt's reviews
+ * in a dialog. The stored reviews are read whatever the AI settings; a failed read leaves the lines out. */
+function showReviewLines(context: PageContext, slug: string, lines: ReadonlyMap<number, HTMLElement>): void {
+  context.api
+    .get<AiReviewList>(`/api/v1/problems/${encodeURIComponent(slug)}/ai-reviews`)
+    .then((list) => {
+      for (const [attemptId, line] of lines) {
+        const reviews = ofAttempt(list.reviews, attemptId);
+        const text = historyLine(reviews);
+        if (text !== null) fillReviewLine(context, slug, attemptId, reviews, line, text);
+      }
+    })
+    .catch(() => {});
+}
+
+function fillReviewLine(context: PageContext, slug: string, attemptId: number, reviews: readonly AiReview[], line: HTMLElement, text: string): void {
+  const view = h("button", { type: "button", class: "button", "aria-label": `View the AI reviews of attempt ${attemptId}` }, "View");
+  view.addEventListener("click", () => openLazily(context, () => import("../ai-review.ts"), (module) => void module.showReviews(context, slug, attemptId, reviews)));
+  line.replaceChildren(`${text} `, view);
+  line.hidden = false;
+}
+
+function pastAttempt(context: PageContext, slug: string, attempt: PastAttempt, reviewLine: HTMLElement | null): HTMLElement {
   const runs = attempt.submissions.length
     ? attempt.submissions.map((run) => `${localMinute(run.submitted_at)}  submit ${run.passed}/${run.total}`)
     : attempt.test_runs.map((run) => `${localMinute(run.ran_at)}  test ${run.passed}/${run.total}`);
@@ -213,6 +244,7 @@ function pastAttempt(context: PageContext, slug: string, attempt: PastAttempt): 
     runs.length || bench.length
       ? h("pre", { class: "runs" }, [...runs, ...bench].join("\n"))
       : h("p", { class: "quiet" }, "no runs recorded"),
+    reviewLine,
     attempt.status === IN_PROGRESS ? h("p", {}, h("a", { href: attemptHash(attempt.attempt_id) }, "Open it in the Attempt view")) : files,
   );
   let asked = false;

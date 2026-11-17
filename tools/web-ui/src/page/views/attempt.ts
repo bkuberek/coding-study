@@ -8,9 +8,12 @@ import { ApiError } from "../api.ts";
 import { AttemptEnding, type Finishing } from "../attemptEnding.ts";
 import { type AttemptFlows, attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
+import type { AiReviewControl } from "../ai-review.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { startIntelligence } from "../intelligence-start.ts";
 import { secondsSince, timerText } from "../format.ts";
+import { selfGraded } from "../kinds.ts";
+import { fetchChunk } from "../lazy.ts";
 import { problemHash } from "../routes.ts";
 import { AttemptRuns } from "../runs.ts";
 import { loading, messageOf, showFailure } from "../states.ts";
@@ -42,6 +45,8 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   const statusClock = h("span", { class: "segment timer-segment" });
   let timer: number | undefined;
   const ending = new AttemptEnding();
+  /** The AI review's button and panel of a rubric attempt while AI is on; its code is a chunk. */
+  let aiReview: AiReviewControl | null = null;
   let shown: {
     readonly head: HTMLElement;
     readonly brief: HTMLElement;
@@ -63,17 +68,21 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     ]);
     const reread = shown === null || statement || headKey(status) !== headKey(shown.status);
     // The header is drawn at its final height, toolbar included, so nothing below it moves later.
-    const [text] = await Promise.all([
+    const [text, , review] = await Promise.all([
       reread ? api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`) : shown!.statement,
       shown === null ? runs.showToolbar(status) : null,
+      shown === null && selfGraded(status.kind) && context.session.ai.enabled ? aiReviewOf(context, status) : null,
     ]);
-    if (ending.ended) return;
+    if (ending.ended) {
+      review?.destroy();
+      return;
+    }
     if (shown) {
       // The hints this tab revealed and the controls live on.
       shown.flows.update(status);
       const next = { ...shown, status, statement: text };
       if (headKey(status) !== headKey(shown.status)) {
-        next.head = head(status, clock, shown.flows, runs.toolbar);
+        next.head = head(status, clock, shown.flows, runs.toolbar, aiReview?.button ?? null);
         shown.head.replaceWith(next.head);
       }
       if (text.html !== shown.statement.html || briefKey(status) !== briefKey(shown.status)) {
@@ -96,9 +105,10 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       const flows = attemptFlows(context, status, finishing);
       const files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
       tabs.onSaved(() => void files.refresh().catch(() => {}));
-      shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
+      aiReview = review;
+      shown = { head: head(status, clock, flows, runs.toolbar, review?.button ?? null), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
       page.removeAttribute("aria-busy");
-      page.replaceChildren(shown.head, files.element, tabs.element, shown.brief, runs.panel);
+      page.replaceChildren(shown.head, files.element, tabs.element, shown.brief, review?.element ?? runs.panel);
       intelligence.configure({ language: status.language, noCodeIntelligence: status.no_code_intelligence }, tree.root);
       shell.setCommand(`cstudy status ${status.slug}`);
       document.title = `${status.slug} · cstudy`;
@@ -158,6 +168,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     void ending.reading(shown.files.refresh()).catch(() => {});
   });
   const statusSoon = settle(() => refresh(false));
+  const reviewsSoon = settle(() => aiReview?.reload());
   const unfollow = context.notifications.subscribe((notice) => {
     if (ending.ended || shown === null) return;
     switch (notice.type) {
@@ -172,12 +183,14 @@ export function attemptView(context: PageContext, id: number): Cleanup {
         return;
       case "progress_changed":
         statusSoon();
+        reviewsSoon();
         return;
       case "run_started":
         if (notice.attempt_id === id) runs.attach(notice.run_id);
         return;
       case "resync":
         refresh(true);
+        reviewsSoon();
         void tabs.recheck();
         void runs.catchUp();
         return;
@@ -193,6 +206,8 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     unfollow();
     treeSoon.cancel();
     statusSoon.cancel();
+    reviewsSoon.cancel();
+    aiReview?.destroy();
     runs.destroy();
     tabs.destroy();
     shown?.files.destroy();
@@ -230,7 +245,13 @@ function briefKey(status: AttemptStatus): string {
   return JSON.stringify([status.levels, status.solution_revealed]);
 }
 
-function head(status: AttemptStatus, clock: HTMLElement, flows: AttemptFlows, toolbar: HTMLElement): HTMLElement {
+/** The AI review control of a rubric attempt, once its chunk is fetched; null when it could not be. */
+async function aiReviewOf(context: PageContext, status: AttemptStatus): Promise<AiReviewControl | null> {
+  const chunk = await fetchChunk((message) => context.shell.announce(message), () => import("../ai-review.ts"));
+  return chunk?.aiReviewControl(context, status) ?? null;
+}
+
+function head(status: AttemptStatus, clock: HTMLElement, flows: AttemptFlows, toolbar: HTMLElement, aiReviewButton: HTMLElement | null): HTMLElement {
   return h(
     "header",
     { class: "attempt-head" },
@@ -244,6 +265,7 @@ function head(status: AttemptStatus, clock: HTMLElement, flows: AttemptFlows, to
     status.levels ? h("span", { class: "level" }, `level ${status.levels.unlocked} of ${status.levels.last}`) : null,
     clock,
     flows.actions,
+    aiReviewButton,
     toolbar,
     h("span", { class: "spacer" }),
     h("span", { class: "next-step" }, h("span", { class: "quiet" }, "next "), command(status.next)),

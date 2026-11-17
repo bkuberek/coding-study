@@ -34,9 +34,9 @@ export function columnLabel(column: ProblemColumn): string {
   return column.replaceAll("_", " ");
 }
 
-/** What the Checked by column shows of `checked_by`: `tests`, `tests + rubric` or `rubric`. */
+/** What the Checked by column shows of `checked_by`: `tests`, `tests + rubric` or `rubric + AI review`. */
 export function checkedWords(checkedBy: readonly string[]): string {
-  return checkedBy.join(" + ");
+  return checkedBy.map((how) => (how === "ai-review" ? "AI review" : how)).join(" + ");
 }
 
 export function canHide(column: ProblemColumn): boolean {

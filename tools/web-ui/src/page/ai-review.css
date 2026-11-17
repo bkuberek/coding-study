@@ -1,0 +1,130 @@
+/* The AI review panel (ai-review.ts) in the results panel's place, and History's review dialog. */
+
+.workbench .results.ai-review {
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-review .results-head {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ai-review .results-head .button {
+  padding: 2px 10px;
+}
+
+.ai-review .results-head h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ai-review .ai-review-text {
+  flex: 1;
+  min-height: 0;
+}
+
+.ai-review-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ai-review-working,
+.ai-review-failed {
+  margin: 4px 0;
+}
+
+.ai-review-working:empty {
+  display: none;
+}
+
+.ai-review-intro p {
+  max-width: 78ch;
+  margin: 6px 0;
+}
+
+.ai-review-view p {
+  margin: 4px 0;
+}
+
+.ai-review-model strong {
+  font-family: var(--font-mono);
+}
+
+.ai-review-result {
+  font-weight: 600;
+}
+
+.ai-area {
+  margin-top: 12px;
+}
+
+.ai-area h3 {
+  margin: 0 0 4px;
+  font-size: var(--text-m);
+}
+
+.ai-criteria {
+  margin: 0;
+}
+
+.ai-criterion {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  gap: 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.ai-criterion-text p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ai-quote {
+  margin: 2px 0 2px 12px;
+  padding-left: 10px;
+  border-left: 2px solid var(--rule);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.ai-gap {
+  margin-top: 2px;
+}
+
+.ai-review-summary {
+  margin-top: 12px;
+  max-width: 78ch;
+}
+
+.ai-earlier {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.ai-earlier > summary,
+.ai-review-entry > summary {
+  cursor: pointer;
+}
+
+.ai-earlier > ul,
+.ai-review-list {
+  margin: 8px 0 0;
+}
+
+.ai-review-entry {
+  margin: 6px 0;
+}
+
+.ai-review-entry > .ai-review-view {
+  margin: 8px 0 0 16px;
+}
+
+@media (max-width: 720px) {
+  .ai-criterion {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
