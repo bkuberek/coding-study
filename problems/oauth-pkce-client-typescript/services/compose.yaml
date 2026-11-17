@@ -7,6 +7,9 @@
 # that lives as long as the container. Its first start builds the server into lib/quarkus, so the
 # root filesystem stays writable.
 #
+# The JVM heap is set explicitly: left alone, Keycloak sizes it at 70% of the container's memory
+# (358 MiB of 512m), and with the memory outside the heap that is more than the limit.
+#
 # The healthcheck asks for the realm's discovery document, which Keycloak serves only once the
 # import is done: its readiness endpoint says UP a few seconds earlier, while every request still
 # answers 503. The image has no curl, so bash's /dev/tcp sends the request.
@@ -20,10 +23,12 @@ services:
       - --import-realm
       - --cache=local
       - --db=dev-file
+    environment:
+      JAVA_OPTS_KC_HEAP: "-Xms64m -Xmx256m"
     read_only: false
     volumes:
       - ./realm:/opt/keycloak/data/import
-    mem_limit: 512m
+    mem_limit: 640m
     pids_limit: 128
     healthcheck:
       test:
